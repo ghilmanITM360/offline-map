@@ -1,0 +1,5 @@
+{
+  "name": "Karachi Ijtema Offline Nav",
+  "description": "Offline-first walking navigation for Karachi Ijtema with A* routing and block search.",
+  "requestFramePermissions": ["geolocation"]
+}
