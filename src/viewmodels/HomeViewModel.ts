@@ -19,6 +19,7 @@ export function useHomeViewModel() {
   const {
     currentLocation,
     setHasLocationPermission,
+    hasLocationPermission,
     settings,
     updateSettings,
     addRecentSearch,
@@ -49,24 +50,6 @@ export function useHomeViewModel() {
     longitudeDelta: 0.01,
   };
 
-  // Request permission and start the shared GPS subscription
-  useEffect(() => {
-    (async () => {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      const granted = status === 'granted';
-      setHasLocationPermission(granted);
-
-      if (granted) {
-        // Register a listener for map auto-follow (no-op if already running)
-        GPSManagerService.addListener(handleGPS);
-      }
-    })();
-
-    return () => {
-      GPSManagerService.removeListener(handleGPS);
-    };
-  }, []); // run once on mount
-
   const handleGPS = useCallback(
     (coord: { latitude: number; longitude: number }) => {
       if (autoFollowEnabled && mapRef.current && !isNavigating) {
@@ -82,6 +65,26 @@ export function useHomeViewModel() {
     },
     [autoFollowEnabled, isNavigating]
   );
+
+  // Request permission once on mount
+  useEffect(() => {
+    (async () => {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      const granted = status === 'granted';
+      setHasLocationPermission(granted);
+    })();
+  }, []);
+
+  // Re-register the GPS listener whenever handleGPS reference changes so the
+  // callback always reflects current state. Guard with hasLocationPermission so
+  // we only attach after permission has been granted.
+  useEffect(() => {
+    if (!hasLocationPermission) return;
+    GPSManagerService.addListener(handleGPS);
+    return () => {
+      GPSManagerService.removeListener(handleGPS);
+    };
+  }, [handleGPS, hasLocationPermission]);
 
   const handleSearch = (text: string) => {
     setSearchQuery(text);
