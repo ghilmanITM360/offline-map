@@ -4,11 +4,12 @@
  */
 
 import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, Pressable, Modal, BackHandler } from 'react-native';
+import { View, Text, StyleSheet, Pressable, Modal, BackHandler } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE, LocalTile, Camera } from 'react-native-maps';
 import { X, Navigation, Volume2, VolumeX, ArrowLeft, ArrowRight, MapPin, RefreshCw } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import { useAppStore } from '../../store/useAppStore';
 import { useNavigationViewModel } from '../../viewmodels/NavigationViewModel';
 

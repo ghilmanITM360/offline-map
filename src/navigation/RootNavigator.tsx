@@ -30,8 +30,7 @@ function MainDrawer() {
   return (
     <Drawer.Navigator
       drawerContent={(props) => <CustomDrawer {...props} />}
-      screenOptions={{ headerShown: false }}
-      drawerType="front"
+      screenOptions={{ headerShown: false, drawerType: 'front' }}
     >
       <Drawer.Screen name="Home" component={HomeScreen} />
       <Drawer.Screen name="Settings" component={SettingsScreen} />
@@ -61,8 +60,7 @@ export function RootNavigator() {
   }, []);
 
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}
-      drawerType="front">
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="Splash" component={SplashScreen} />
       <Stack.Screen name="Permission" component={PermissionScreen} />
       <Stack.Screen name="DownloadMap" component={DownloadMapScreen} />
