@@ -39,7 +39,16 @@ import BottomSheet, { BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import { useNavigation, DrawerActions } from '@react-navigation/native';
 import { useHomeViewModel } from '../../viewmodels/HomeViewModel';
 import { IJTEMA_DATA } from '../../constants/data';
+import { Place, SearchResult } from '../../models/types';
 import * as FileSystem from 'expo-file-system';
+
+function isPlace(item: Place | SearchResult): item is Place {
+  return 'name' in item;
+}
+
+function getDisplayName(item: Place | SearchResult): string {
+  return isPlace(item) ? item.name : item.title;
+}
 
 export function HomeScreen() {
   const navigation = useNavigation<any>();
@@ -217,7 +226,7 @@ export function HomeScreen() {
                     {searchQuery.length === 0 ? <Clock size={18} color="#70757A" /> : <MapPin size={18} color="#70757A" />}
                   </View>
                   <View style={styles.searchResultText}>
-                    <Text style={styles.searchResultName}>{(place as any).name || (place as any).title || ''}</Text>
+                    <Text style={styles.searchResultName}>{getDisplayName(place)}</Text>
                     <Text style={styles.searchResultCategory}>{place.category}</Text>
                   </View>
                   <ChevronRight size={18} color="#BDC1C6" />

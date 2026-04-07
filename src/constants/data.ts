@@ -24,7 +24,6 @@ export const IJTEMA_DATA: {
 
     // --- South boundary road endpoints ---
     "S2":  { id: "S2",  lat: 24.965639, lng: 67.000667, type: "road_end", name: "South Rasta-01 End" },
-    "S7":  { id: "S7",  lat: 24.965639, lng: 67.000667, type: "road_end", name: "South Rasta-01 End" },
     "S8":  { id: "S8",  lat: 24.965639, lng: 67.001611, type: "road_end", name: "South Rasta-02 End" },
     "S9":  { id: "S9",  lat: 24.965667, lng: 67.002667, type: "road_end", name: "South Rasta-03 End" },
     "S10": { id: "S10", lat: 24.965667, lng: 67.003944, type: "road_end", name: "South Rasta-04 End" },
