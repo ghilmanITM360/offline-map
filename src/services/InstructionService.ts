@@ -7,6 +7,8 @@ import { IJTEMA_DATA } from '../constants/data';
 import { getRhumbLineBearing } from 'geolib';
 import { NavigationInstruction } from '../models/types';
 
+export type Instruction = NavigationInstruction;
+
 export class InstructionService {
   static generateInstructions(nodeIds: string[]): NavigationInstruction[] {
     const instructions: NavigationInstruction[] = [];

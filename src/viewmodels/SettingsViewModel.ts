@@ -27,20 +27,21 @@ export function useSettingsViewModel() {
     updateSettings({ [key]: value });
   };
 
-  const handleRedownloadMap = async () => {
+  const handleRedownloadMap = async (navigateToDownload?: () => void) => {
     try {
       await OfflineMapService.deleteMapData();
       setOfflineMapAvailable(false);
-      // In a real app, this would navigate to the download screen
+      navigateToDownload?.();
     } catch (err) {
       console.error(err);
     }
   };
 
-  const handleDeleteMap = async () => {
+  const handleDeleteMap = async (navigateToDownload?: () => void) => {
     try {
       await OfflineMapService.deleteMapData();
       setOfflineMapAvailable(false);
+      navigateToDownload?.();
     } catch (err) {
       console.error(err);
     }

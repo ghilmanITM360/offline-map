@@ -33,11 +33,11 @@ export function useDownloadMapViewModel() {
 
       setStatus('Downloading map tiles...');
       
-      // Karachi Ijtema Bounding Box
+      // Karachi Ijtema Bounding Box (correct coordinates)
       const minLat = 24.960;
       const maxLat = 24.975;
-      const minLng = 67.115;
-      const maxLng = 67.130;
+      const minLng = 66.996;
+      const maxLng = 67.012;
       
       const zoomLevels = [14, 15, 16];
       const tilesToDownload: { z: number, x: number, y: number }[] = [];

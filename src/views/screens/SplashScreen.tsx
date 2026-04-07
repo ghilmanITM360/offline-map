@@ -4,7 +4,8 @@
  */
 
 import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Image, Animated } from 'react-native';
+import { View, Text, StyleSheet, Animated } from 'react-native';
+import { Map as MapIcon } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useAppStore } from '../../store/useAppStore';
 import { ConnectivityService } from '../../services/ConnectivityService';
@@ -49,10 +50,9 @@ export function SplashScreen() {
   return (
     <View style={styles.container}>
       <Animated.View style={[styles.content, { opacity: fadeAnim }]}>
-        <Image
-          source={{ uri: 'https://picsum.photos/seed/map/200/200' }}
-          style={styles.logo}
-        />
+        <View style={styles.logoContainer}>
+          <MapIcon size={60} color="#FFFFFF" />
+        </View>
         <Text style={styles.title}>Ijtema Map</Text>
         <Text style={styles.subtitle}>Offline Navigation Guide</Text>
       </Animated.View>
@@ -70,10 +70,13 @@ const styles = StyleSheet.create({
   content: {
     alignItems: 'center',
   },
-  logo: {
+  logoContainer: {
     width: 120,
     height: 120,
     borderRadius: 60,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
     marginBottom: 20,
   },
   title: {

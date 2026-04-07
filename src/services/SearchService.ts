@@ -15,7 +15,11 @@ export class SearchService {
 
     // Search Blocks
     Object.entries(IJTEMA_DATA.blocks).forEach(([id, block]) => {
-      if (block.name.toLowerCase().includes(normalizedQuery) || id.toLowerCase().includes(normalizedQuery)) {
+      const matchesName = block.name.toLowerCase().includes(normalizedQuery);
+      const matchesId = id.toLowerCase().includes(normalizedQuery);
+      const matchesUrdu = block.urduName ? block.urduName.includes(query) : false;
+      const matchesAlias = block.aliases.some(a => a.toLowerCase().includes(normalizedQuery));
+      if (matchesName || matchesId || matchesUrdu || matchesAlias) {
         results.push({
           id,
           name: `Block ${id}`,
@@ -41,6 +45,63 @@ export class SearchService {
         });
       }
     });
+
+    return results;
+  }
+
+  static searchByCategory(category: string): Place[] {
+    const normalizedCategory = category.toLowerCase();
+    const results: Place[] = [];
+
+    if (normalizedCategory === 'blocks') {
+      Object.entries(IJTEMA_DATA.blocks).forEach(([id, block]) => {
+        results.push({
+          id,
+          name: block.name,
+          urduName: block.urduName,
+          category: 'Block',
+          description: `Main residential block area ${id} for pilgrims.`,
+          coordinate: block.center,
+          aliases: block.aliases
+        });
+      });
+    } else if (normalizedCategory === 'gates') {
+      Object.entries(IJTEMA_DATA.nodes).forEach(([id, node]) => {
+        if (node.type === 'gate') {
+          results.push({
+            id,
+            name: node.name || `Gate ${id}`,
+            category: 'Gate',
+            description: `Entry/Exit point ${id} for the ground.`,
+            coordinate: { latitude: node.lat, longitude: node.lng }
+          });
+        }
+      });
+    } else if (normalizedCategory === 'masjid') {
+      Object.entries(IJTEMA_DATA.nodes).forEach(([id, node]) => {
+        if (node.type === 'masjid') {
+          results.push({
+            id,
+            name: node.name || `Masjid ${id}`,
+            category: 'Masjid',
+            description: `Prayer area ${id}.`,
+            coordinate: { latitude: node.lat, longitude: node.lng }
+          });
+        }
+      });
+    } else if (normalizedCategory === 'rastas') {
+      Object.entries(IJTEMA_DATA.nodes).forEach(([id, node]) => {
+        if (node.type === 'road_end') {
+          results.push({
+            id,
+            name: node.name || `Road End ${id}`,
+            category: 'Rasta',
+            description: `Road endpoint ${id}.`,
+            coordinate: { latitude: node.lat, longitude: node.lng }
+          });
+        }
+      });
+    }
 
     return results;
   }

@@ -24,6 +24,7 @@ export function useHomeViewModel() {
     addRecentSearch,
     recentSearches,
     offlineData,
+    hasInternet,
     selectedPlace,
     setSelectedPlace,
     searchQuery,
@@ -35,7 +36,7 @@ export function useHomeViewModel() {
     isNavigating
   } = useAppStore();
 
-  const isOffline = !offlineData.isDownloaded;
+  const isOffline = !hasInternet;
   const [isMapReady, setIsMapReady] = useState(false);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
 

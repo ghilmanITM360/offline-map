@@ -4,15 +4,30 @@
  */
 
 import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, Pressable } from 'react-native';
-import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
-import { X, Navigation, Volume2, VolumeX } from 'lucide-react-native';
+import { View, Text, StyleSheet, SafeAreaView, Pressable, Modal } from 'react-native';
+import MapView, { Marker, Polyline, PROVIDER_GOOGLE, LocalTile } from 'react-native-maps';
+import { X, Navigation, Volume2, VolumeX, ArrowLeft, ArrowRight, MapPin } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
+import * as FileSystem from 'expo-file-system';
+import { useAppStore } from '../../store/useAppStore';
 import { useNavigationViewModel } from '../../viewmodels/NavigationViewModel';
+
+const tilePathTemplate = `${FileSystem.documentDirectory}tiles/{z}_{x}_{y}.png`;
+
+function StepIcon({ type, size = 32 }: { type: string; size?: number }) {
+  const color = '#FFFFFF';
+  switch (type) {
+    case 'left':    return <ArrowLeft size={size} color={color} />;
+    case 'right':   return <ArrowRight size={size} color={color} />;
+    case 'arrival': return <MapPin size={size} color={color} />;
+    default:        return <Navigation size={size} color={color} />;
+  }
+}
 
 export function NavigationScreen() {
   const navigation = useNavigation<any>();
   const mapRef = useRef<MapView>(null);
+  const { offlineData } = useAppStore();
   const {
     destination,
     currentLocation,
@@ -22,6 +37,8 @@ export function NavigationScreen() {
     currentStepIndex,
     isMuted,
     setIsMuted,
+    remainingDistance,
+    arrived,
     handleExit,
   } = useNavigationViewModel();
 
@@ -59,6 +76,9 @@ export function NavigationScreen() {
           longitudeDelta: 0.002,
         }}
       >
+        {offlineData.isDownloaded && (
+          <LocalTile pathTemplate={tilePathTemplate} tileSize={256} zIndex={-1} />
+        )}
         {route && (
           <Polyline
             coordinates={route.coordinates}
@@ -78,10 +98,10 @@ export function NavigationScreen() {
 
       {/* Top Navigation Bar */}
       <SafeAreaView style={styles.topBar}>
-        {currentStep && (
+        {currentStep && !arrived && (
           <View style={styles.instructionCard}>
             <View style={styles.instructionIcon}>
-              <Navigation size={32} color="#FFFFFF" />
+              <StepIcon type={currentStep.type} />
             </View>
             <View style={styles.instructionTextContainer}>
               <Text style={styles.instructionDistance}>{currentStep.distance} m</Text>
@@ -95,23 +115,41 @@ export function NavigationScreen() {
       </SafeAreaView>
 
       {/* Bottom Info Bar */}
-      <View style={styles.bottomBar}>
-        <View style={styles.tripInfo}>
-          <View>
-            <Text style={styles.timeRemaining}>
-              {route ? route.estimatedTimeMin : '--'} min
-            </Text>
-            <Text style={styles.distanceRemaining}>
-              {route ? route.totalDistance : '--'} m • {new Date(Date.now() + (route?.estimatedTimeMin || 0) * 60000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-            </Text>
+      {!arrived && (
+        <View style={styles.bottomBar}>
+          <View style={styles.tripInfo}>
+            <View>
+              <Text style={styles.timeRemaining}>
+                {route ? route.estimatedTimeMin : '--'} min
+              </Text>
+              <Text style={styles.distanceRemaining}>
+                {remainingDistance > 0 ? remainingDistance : (route ? route.totalDistance : '--')} m
+                {' • '}
+                {new Date(Date.now() + (route?.estimatedTimeMin || 0) * 60000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              </Text>
+            </View>
+            <Pressable style={styles.exitButton} onPress={() => handleExit(navigation)}>
+              <X size={24} color="#FFFFFF" />
+              <Text style={styles.exitText}>Exit</Text>
+            </Pressable>
           </View>
-          <Pressable style={styles.exitButton} onPress={() => handleExit(navigation)}>
-            <X size={24} color="#FFFFFF" />
-            <Text style={styles.exitText}>Exit</Text>
-          </Pressable>
+          <View style={styles.dragHandle} />
         </View>
-        <View style={styles.dragHandle} />
-      </View>
+      )}
+
+      {/* Destination Reached Overlay */}
+      <Modal visible={arrived} transparent animationType="fade">
+        <View style={styles.arrivedOverlay}>
+          <View style={styles.arrivedCard}>
+            <MapPin size={52} color="#2E7D32" />
+            <Text style={styles.arrivedTitle}>You've Arrived!</Text>
+            <Text style={styles.arrivedSubtitle}>{destination?.name}</Text>
+            <Pressable style={styles.arrivedButton} onPress={() => handleExit(navigation)}>
+              <Text style={styles.arrivedButtonText}>Done</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -217,5 +255,43 @@ const styles = StyleSheet.create({
     backgroundColor: '#4285F4',
     borderWidth: 3,
     borderColor: '#FFFFFF',
+  },
+  arrivedOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  arrivedCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 36,
+    alignItems: 'center',
+    marginHorizontal: 32,
+    elevation: 20,
+  },
+  arrivedTitle: {
+    fontSize: 26,
+    fontWeight: 'bold',
+    color: '#202124',
+    marginTop: 16,
+  },
+  arrivedSubtitle: {
+    fontSize: 16,
+    color: '#5F6368',
+    marginTop: 6,
+    textAlign: 'center',
+  },
+  arrivedButton: {
+    backgroundColor: '#2E7D32',
+    borderRadius: 25,
+    paddingHorizontal: 40,
+    paddingVertical: 14,
+    marginTop: 28,
+  },
+  arrivedButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 });

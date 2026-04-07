@@ -10,7 +10,7 @@ import { useNavigation } from '@react-navigation/native';
 import { useSettingsViewModel } from '../../viewmodels/SettingsViewModel';
 
 export function SettingsScreen() {
-  const navigation = useNavigation();
+  const navigation = useNavigation<any>();
   const { 
     settings, 
     handleToggle, 
@@ -129,7 +129,7 @@ export function SettingsScreen() {
             onPress={() => {
               Alert.alert('Redownload', 'Are you sure you want to redownload the map?', [
                 { text: 'Cancel', style: 'cancel' },
-                { text: 'Redownload', onPress: handleRedownloadMap }
+                { text: 'Redownload', onPress: () => handleRedownloadMap(() => navigation.navigate('DownloadMap')) }
               ]);
             }}
             description="Update offline map files"
@@ -142,7 +142,7 @@ export function SettingsScreen() {
             onPress={() => {
               Alert.alert('Delete', 'This will remove offline map data. Continue?', [
                 { text: 'Cancel', style: 'cancel' },
-                { text: 'Delete', style: 'destructive', onPress: handleDeleteMap }
+                { text: 'Delete', style: 'destructive', onPress: () => handleDeleteMap(() => navigation.navigate('DownloadMap')) }
               ]);
             }}
             description="Free up space on your device"
