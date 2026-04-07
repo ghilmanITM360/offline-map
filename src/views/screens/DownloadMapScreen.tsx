@@ -9,8 +9,8 @@ import {
   Text,
   StyleSheet,
   Pressable,
-  SafeAreaView,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { Download, Wifi, AlertTriangle, CheckCircle, Pause, Play, RotateCcw } from 'lucide-react-native';
 import { useDownloadMapViewModel } from '../../viewmodels/DownloadMapViewModel';
