@@ -40,10 +40,14 @@ export class FuzzySearchService {
 
     // Fuzzy — only kick in for longer queries to reduce noise
     if (q.length >= 3) {
-      // Check each word in target
+      // Check each word in target against the full word (up to MAX_LEN)
       for (const word of t.split(/\s+/)) {
-        if (word.length >= q.length - 1 && this.levenshtein(q, word.slice(0, q.length + 1)) <= this.MAX_EDITS) {
-          return true;
+        if (word.length >= q.length - 1) {
+          const truncatedWord = word.slice(0, this.MAX_LEN);
+          const truncatedQuery = q.slice(0, this.MAX_LEN);
+          if (this.levenshtein(truncatedQuery, truncatedWord) <= this.MAX_EDITS) {
+            return true;
+          }
         }
       }
     }

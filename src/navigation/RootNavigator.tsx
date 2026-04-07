@@ -18,6 +18,7 @@ import { HelpScreen } from '../views/screens/HelpScreen';
 import { AboutScreen } from '../views/screens/AboutScreen';
 import { CustomDrawer } from '../views/components/CustomDrawer';
 import { ConnectivityService } from '../services/ConnectivityService';
+import { GPSManagerService } from '../services/GPSManagerService';
 import { useAppStore } from '../store/useAppStore';
 
 const Stack = createNativeStackNavigator();
@@ -27,7 +28,7 @@ const CONNECTIVITY_POLL_INTERVAL_MS = 30000;
 
 function MainDrawer() {
   return (
-    <Drawer.Navigator 
+    <Drawer.Navigator
       drawerContent={(props) => <CustomDrawer {...props} />}
       screenOptions={{ headerShown: false }}
     >
@@ -40,7 +41,12 @@ function MainDrawer() {
 }
 
 export function RootNavigator() {
-  const { setHasInternet } = useAppStore();
+  const { setHasInternet, setCurrentLocation } = useAppStore();
+
+  // Wire GPSManagerService store updater once — keeps the service decoupled
+  useEffect(() => {
+    GPSManagerService.setStoreUpdater(setCurrentLocation);
+  }, [setCurrentLocation]);
 
   // Poll connectivity every 30s and update the global store
   useEffect(() => {

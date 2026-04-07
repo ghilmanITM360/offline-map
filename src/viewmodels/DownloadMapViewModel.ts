@@ -100,9 +100,9 @@ export function useDownloadMapViewModel() {
             return;
           }
 
-          // Wait while paused
+          // Wait while paused — use 1 s interval to reduce CPU wake-ups
           while (pausedRef.current) {
-            await new Promise(resolve => setTimeout(resolve, 500));
+            await new Promise(resolve => setTimeout(resolve, 1000));
             if (cancelledRef.current) {
               setDownloadState({ phase: 'paused', resumable: true });
               return;

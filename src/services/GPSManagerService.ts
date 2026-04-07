@@ -4,7 +4,6 @@
  */
 
 import * as Location from 'expo-location';
-import { useAppStore } from '../store/useAppStore';
 import { Coordinate } from '../models/types';
 
 type LocationCallback = (coord: Coordinate) => void;
@@ -12,11 +11,20 @@ type LocationCallback = (coord: Coordinate) => void;
 /**
  * Singleton GPS subscription manager.
  * Maintains exactly one watchPositionAsync subscription for the whole app.
- * Screens subscribe/unsubscribe via addListener/removeListener.
+ * Screens/viewmodels subscribe/unsubscribe via addListener/removeListener.
+ * The store-update callback is injected at startup (see RootNavigator) to keep
+ * this service fully decoupled from the Zustand store.
  */
 class GPSManager {
   private subscription: Location.LocationSubscription | null = null;
-  private listeners: Set<LocationCallback> = new Set();
+  private readonly listeners: Set<LocationCallback> = new Set();
+  /** Optional callback injected externally to update the global store. */
+  private storeUpdater: LocationCallback | null = null;
+
+  /** Call once at app start to wire the GPS manager to the global store. */
+  setStoreUpdater(cb: LocationCallback): void {
+    this.storeUpdater = cb;
+  }
 
   async start(): Promise<void> {
     if (this.subscription) return; // already running
@@ -38,9 +46,8 @@ class GPSManager {
           accuracy: location.coords.accuracy ?? 0,
         };
 
-        // Update global store
-        const store = useAppStore.getState();
-        store.setCurrentLocation(coord);
+        // Update global store via the injected callback (no direct store import)
+        this.storeUpdater?.(coord);
 
         // Notify all registered listeners (NavigationViewModel, etc.)
         this.listeners.forEach((cb) => cb(coord));
