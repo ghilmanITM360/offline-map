@@ -158,7 +158,7 @@ export function useNavigationViewModel() {
     };
   }, []); // run once on mount, use refs for all state
 
-  const handleMuteToggle = (muted: boolean) => {
+  const setMuteState = (muted: boolean) => {
     if (muted) VoiceService.stop();
     setIsMuted(muted);
   };
@@ -177,7 +177,7 @@ export function useNavigationViewModel() {
     instructions,
     currentStepIndex,
     isMuted,
-    setIsMuted: handleMuteToggle,
+    setIsMuted: setMuteState,
     remainingDistance,
     arrived,
     handleExit,

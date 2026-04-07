@@ -23,7 +23,7 @@ import { useAppStore } from '../store/useAppStore';
 const Stack = createNativeStackNavigator();
 const Drawer = createDrawerNavigator();
 
-const CONNECTIVITY_POLL_INTERVAL_MS = 30_000;
+const CONNECTIVITY_POLL_INTERVAL_MS = 30000;
 
 function MainDrawer() {
   return (
