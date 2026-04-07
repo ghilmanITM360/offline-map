@@ -25,6 +25,7 @@ export interface Edge {
   to: string;
   distance_m: number;
   isRasta?: boolean;
+  name?: string;
 }
 
 export interface Gate {
@@ -80,10 +81,11 @@ export interface OfflineData {
 }
 
 export interface RouteSegment {
-  from: Coordinate;
-  to: Coordinate;
+  fromId: string;
+  toId: string;
   distance: number;
-  instruction: string;
+  isRasta: boolean;
+  name?: string;
 }
 
 export interface NavigationInstruction {
@@ -127,11 +129,13 @@ export interface OfflineTile {
 }
 
 export interface RoutePreview {
-  polyline: Coordinate[];
-  totalDistance: number;
-  totalTime: number;
-  instructions: NavigationInstruction[];
+  id: string;
   coordinates: Coordinate[];
   nodes: string[];
-  id: string;
+  totalDistance: number;
+  estimatedTimeMin: number;
+  segments: RouteSegment[];
+  polyline?: Coordinate[];
+  totalTime?: number;
+  instructions?: NavigationInstruction[];
 }

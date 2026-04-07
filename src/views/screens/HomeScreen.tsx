@@ -135,7 +135,7 @@ export function HomeScreen() {
         )}
 
         {/* Render Blocks */}
-        {Object.entries(IJTEMA_DATA.blocks).map(([id, block]) => (
+        {Object.entries(IJTEMA_DATA.blocks).map(([id, block]) => block.corners && (
           <Polygon
             key={id}
             coordinates={block.corners}
@@ -217,7 +217,7 @@ export function HomeScreen() {
                     {searchQuery.length === 0 ? <Clock size={18} color="#70757A" /> : <MapPin size={18} color="#70757A" />}
                   </View>
                   <View style={styles.searchResultText}>
-                    <Text style={styles.searchResultName}>{place.name}</Text>
+                    <Text style={styles.searchResultName}>{(place as any).name || (place as any).title || ''}</Text>
                     <Text style={styles.searchResultCategory}>{place.category}</Text>
                   </View>
                   <ChevronRight size={18} color="#BDC1C6" />

@@ -17,6 +17,8 @@ import {
 interface AppState {
   offlineData: OfflineData;
   setOfflineDownloaded: (val: boolean) => void;
+  setOfflineMapAvailable: (val: boolean) => void;
+  updateOfflineData: (data: Partial<OfflineData & { version?: string; lastUpdated?: string }>) => void;
   downloadProgress: number;
   setDownloadProgress: (progress: number) => void;
   
@@ -63,6 +65,12 @@ export const useAppStore = create<AppState>((set) => ({
   setOfflineDownloaded: (val) => set((state) => ({
     offlineData: { ...state.offlineData, isDownloaded: val, downloadDate: val ? new Date().toISOString() : undefined, sizeMB: val ? 24.5 : 0 }
   })),
+  setOfflineMapAvailable: (val) => set((state) => ({
+    offlineData: { ...state.offlineData, isDownloaded: val }
+  })),
+  updateOfflineData: (data) => set((state) => ({
+    offlineData: { ...state.offlineData, ...data }
+  })),
   downloadProgress: 0,
   setDownloadProgress: (progress) => set({ downloadProgress: progress }),
   
@@ -75,6 +83,7 @@ export const useAppStore = create<AppState>((set) => ({
     walkingSpeed: 1.4,
     autoReroute: true,
     distanceUnit: 'meters',
+    language: 'en',
     mapSize: 24.5
   },
   updateSettings: (newSettings) => set((state) => ({

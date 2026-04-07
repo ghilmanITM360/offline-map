@@ -7,6 +7,8 @@ import { IJTEMA_DATA } from '../constants/data';
 import { Coordinate, RoutePreview, RouteSegment } from '../models/types';
 import { getDistance } from 'geolib';
 
+export type RouteResult = RoutePreview;
+
 export class RoutingService {
   static findNearestNode(coord: Coordinate): string {
     let nearestId = "";
@@ -131,6 +133,7 @@ export class RoutingService {
     return {
       id: `route_${Date.now()}`,
       coordinates,
+      nodes: path,
       totalDistance,
       estimatedTimeMin: Math.ceil(totalDistance / 80), // Assuming 80m/min walking speed
       segments
