@@ -11,7 +11,7 @@ export type RouteResult = RoutePreview;
 
 export class RoutingService {
   static findNearestNode(coord: Coordinate): string {
-    let nearestId = "";
+    let nearestId = '';
     let minDistance = Infinity;
 
     Object.entries(IJTEMA_DATA.nodes).forEach(([id, node]) => {
@@ -30,7 +30,7 @@ export class RoutingService {
 
   static calculateRoute(startCoord: Coordinate, destinationNodeIds: string[]): RoutePreview | null {
     const startNodeId = this.findNearestNode(startCoord);
-    
+
     let bestRoute: RoutePreview | null = null;
 
     for (const destId of destinationNodeIds) {
@@ -44,9 +44,11 @@ export class RoutingService {
   }
 
   private static aStar(startId: string, goalId: string): RoutePreview | null {
-    const openSet = [startId];
+    const openSet: string[] = [startId];
+    // Closed set prevents redundant re-expansion of already-settled nodes
+    const closedSet = new Set<string>();
     const cameFrom: Record<string, string> = {};
-    
+
     const gScore: Record<string, number> = {};
     gScore[startId] = 0;
 
@@ -54,9 +56,12 @@ export class RoutingService {
     fScore[startId] = this.heuristic(startId, goalId);
 
     while (openSet.length > 0) {
-      // Sort by fScore
-      openSet.sort((a, b) => (fScore[a] || Infinity) - (fScore[b] || Infinity));
+      // Pick the node in openSet with the lowest fScore
+      openSet.sort((a, b) => (fScore[a] ?? Infinity) - (fScore[b] ?? Infinity));
       const current = openSet.shift()!;
+
+      if (closedSet.has(current)) continue;
+      closedSet.add(current);
 
       if (current === goalId) {
         return this.reconstructPath(cameFrom, current, gScore[current]);
@@ -64,13 +69,15 @@ export class RoutingService {
 
       const neighbors = this.getNeighbors(current);
       for (const neighbor of neighbors) {
-        const tentativeGScore = gScore[current] + neighbor.distance;
-        
-        if (tentativeGScore < (gScore[neighbor.id] || Infinity)) {
+        if (closedSet.has(neighbor.id)) continue;
+
+        const tentativeGScore = (gScore[current] ?? Infinity) + neighbor.distance;
+
+        if (tentativeGScore < (gScore[neighbor.id] ?? Infinity)) {
           cameFrom[neighbor.id] = current;
           gScore[neighbor.id] = tentativeGScore;
           fScore[neighbor.id] = tentativeGScore + this.heuristic(neighbor.id, goalId);
-          
+
           if (!openSet.includes(neighbor.id)) {
             openSet.push(neighbor.id);
           }
@@ -91,16 +98,20 @@ export class RoutingService {
     );
   }
 
-  private static getNeighbors(nodeId: string): { id: string, distance: number }[] {
+  private static getNeighbors(nodeId: string): { id: string; distance: number }[] {
     return IJTEMA_DATA.edges
-      .filter(e => e.from === nodeId || e.to === nodeId)
-      .map(e => ({
+      .filter((e) => e.from === nodeId || e.to === nodeId)
+      .map((e) => ({
         id: e.from === nodeId ? e.to : e.from,
-        distance: e.distance_m
+        distance: e.distance_m,
       }));
   }
 
-  private static reconstructPath(cameFrom: Record<string, string>, current: string, totalDistance: number): RoutePreview {
+  private static reconstructPath(
+    cameFrom: Record<string, string>,
+    current: string,
+    totalDistance: number
+  ): RoutePreview {
     const path = [current];
     let tempCurrent = current;
     while (tempCurrent in cameFrom) {
@@ -108,7 +119,7 @@ export class RoutingService {
       path.unshift(tempCurrent);
     }
 
-    const coordinates = path.map(id => {
+    const coordinates = path.map((id) => {
       const node = (IJTEMA_DATA.nodes as any)[id];
       return { latitude: node.lat, longitude: node.lng };
     });
@@ -116,17 +127,17 @@ export class RoutingService {
     const segments: RouteSegment[] = [];
     for (let i = 0; i < path.length - 1; i++) {
       const fromId = path[i];
-      const toId = path[i+1];
-      const edge = IJTEMA_DATA.edges.find(e => 
-        (e.from === fromId && e.to === toId) || (e.from === toId && e.to === fromId)
+      const toId = path[i + 1];
+      const edge = IJTEMA_DATA.edges.find(
+        (e) => (e.from === fromId && e.to === toId) || (e.from === toId && e.to === fromId)
       );
-      
+
       segments.push({
         fromId,
         toId,
-        distance: edge?.distance_m || 0,
-        isRasta: edge?.isRasta || false,
-        name: edge?.name
+        distance: edge?.distance_m ?? 0,
+        isRasta: edge?.isRasta ?? false,
+        name: edge?.name,
       });
     }
 
@@ -135,8 +146,8 @@ export class RoutingService {
       coordinates,
       nodes: path,
       totalDistance,
-      estimatedTimeMin: Math.ceil(totalDistance / 80), // Assuming 80m/min walking speed
-      segments
+      estimatedTimeMin: Math.ceil(totalDistance / 83), // ~5 km/h walking speed
+      segments,
     };
   }
 }

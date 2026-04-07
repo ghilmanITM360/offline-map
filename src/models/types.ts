@@ -7,6 +7,7 @@ export interface Coordinate {
   latitude: number;
   longitude: number;
   heading?: number;
+  accuracy?: number;
 }
 
 export type MapMode = 'standard' | 'satellite' | 'hybrid';
@@ -80,6 +81,57 @@ export interface OfflineData {
   sizeMB?: number;
 }
 
+/** Granular state for the map download flow */
+export type DownloadPhase = 'idle' | 'connecting' | 'downloading' | 'paused' | 'error' | 'complete';
+
+export interface DownloadState {
+  phase: DownloadPhase;
+  progress: number;          // 0 – 1
+  downloadedTiles: number;
+  totalTiles: number;
+  errorMessage: string | null;
+  resumable: boolean;        // can we continue where we left off?
+}
+
+export const DEFAULT_DOWNLOAD_STATE: DownloadState = {
+  phase: 'idle',
+  progress: 0,
+  downloadedTiles: 0,
+  totalTiles: 0,
+  errorMessage: null,
+  resumable: false,
+};
+
+/** Typed entry point for a block */
+export interface BlockEntryPoint {
+  nodeId: string;
+  side: 'north' | 'south' | 'east' | 'west';
+  friendlyName: string;
+  urduName: string;
+}
+
+/** A saved / favourite place */
+export interface FavoritePlace {
+  id: string;
+  placeId: string;
+  name: string;
+  urduName?: string;
+  category: string;
+  coordinate: Coordinate;
+  savedAt: string; // ISO timestamp
+}
+
+/** One alternative route for a destination */
+export interface RouteAlternative {
+  id: string;
+  label: string;
+  entryNodeId: string;
+  entryFriendlyName: string;
+  distanceM: number;
+  durationMin: number;
+  route: RoutePreview;
+}
+
 export interface RouteSegment {
   fromId: string;
   toId: string;
@@ -91,6 +143,7 @@ export interface RouteSegment {
 export interface NavigationInstruction {
   id: string;
   text: string;
+  urduText?: string;
   distance: number;
   type: 'straight' | 'left' | 'right' | 'arrival';
   coordinate: Coordinate;

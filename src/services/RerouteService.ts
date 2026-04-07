@@ -8,28 +8,23 @@ import { getDistance } from 'geolib';
 
 export class RerouteService {
   /**
-   * Checks if a coordinate is off the current route.
-   * A coordinate is considered off-route if it's more than 20m away from any segment of the route.
+   * Returns true when the user is off the current route.
+   * Threshold is 20 m normally; expands to 50 m when GPS accuracy is poor (> 40 m).
    */
-  static isOffRoute(coord: Coordinate, route: RoutePreview): boolean {
-    const threshold = 20; // 20 meters
+  static isOffRoute(coord: Coordinate, route: RoutePreview, gpsAccuracyM = 0): boolean {
+    const threshold = gpsAccuracyM > 40 ? 50 : 20;
 
     for (let i = 0; i < route.coordinates.length - 1; i++) {
       const p1 = route.coordinates[i];
       const p2 = route.coordinates[i + 1];
-
-      // Check if point is near the line segment
-      // geolib's isPointInLine is more for exact matches, so we use distance to line
-      const dist = this.getDistanceToLine(coord, p1, p2);
-      if (dist <= threshold) {
-        return false;
-      }
+      const dist = this.getDistanceToSegment(coord, p1, p2);
+      if (dist <= threshold) return false;
     }
 
     return true;
   }
 
-  private static getDistanceToLine(p: Coordinate, a: Coordinate, b: Coordinate): number {
+  private static getDistanceToSegment(p: Coordinate, a: Coordinate, b: Coordinate): number {
     const x = p.longitude;
     const y = p.latitude;
     const x1 = a.longitude;
@@ -47,7 +42,8 @@ export class RerouteService {
     let param = -1;
     if (len_sq !== 0) param = dot / len_sq;
 
-    let xx, yy;
+    let xx: number;
+    let yy: number;
 
     if (param < 0) {
       xx = x1;

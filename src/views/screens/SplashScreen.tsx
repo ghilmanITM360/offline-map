@@ -7,41 +7,67 @@ import React, { useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, Animated } from 'react-native';
 import { Map as MapIcon } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
+import * as Location from 'expo-location';
 import { useAppStore } from '../../store/useAppStore';
 import { ConnectivityService } from '../../services/ConnectivityService';
+import { OfflineMapService } from '../../services/OfflineMapService';
 
 export function SplashScreen() {
   const navigation = useNavigation<any>();
   const fadeAnim = useRef(new Animated.Value(0)).current;
-  const { offlineData } = useAppStore();
+  const { updateOfflineData, setHasLocationPermission } = useAppStore();
 
   useEffect(() => {
     Animated.timing(fadeAnim, {
       toValue: 1,
-      duration: 1500,
+      duration: 1200,
       useNativeDriver: true,
     }).start();
 
     const checkStatus = async () => {
-      // Wait for animation
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Minimum visible time so the logo is seen
+      const minVisibleMs = new Promise(resolve => setTimeout(resolve, 1500));
 
-      const isConnected = await ConnectivityService.isConnected();
+      // Run all checks in parallel
+      const [mapStatus, permissionResult, isConnected] = await Promise.all([
+        OfflineMapService.getMapStatus(),
+        Location.getForegroundPermissionsAsync(),
+        ConnectivityService.isConnected(),
+        minVisibleMs,
+      ]);
 
-      if (!isConnected && !offlineData.isDownloaded) {
-        navigation.replace('Error', {
-          title: 'No Internet Connection',
-          message: 'You need an internet connection to download the offline map for the first time.',
-          type: 'connectivity'
+      const permissionGranted = permissionResult.status === 'granted';
+
+      // Sync real map status into persisted Zustand state
+      if (mapStatus.isDownloaded) {
+        updateOfflineData({
+          isDownloaded: true,
+          downloadDate: mapStatus.downloadDate ?? undefined,
+          sizeMB: mapStatus.sizeMB,
         });
+      }
+
+      setHasLocationPermission(permissionGranted);
+
+      // Routing logic — check permission and map independently
+      if (!permissionGranted) {
+        navigation.replace('Permission');
         return;
       }
 
-      if (!offlineData.isDownloaded) {
-        navigation.replace('Permission');
-      } else {
+      if (mapStatus.isDownloaded) {
         navigation.replace('Main');
+        return;
       }
+
+      if (!isConnected) {
+        // No internet AND no map — go to Main in graph-only mode
+        navigation.replace('Main');
+        return;
+      }
+
+      // Have internet, no map yet — go to download
+      navigation.replace('DownloadMap');
     };
 
     checkStatus();
@@ -54,6 +80,7 @@ export function SplashScreen() {
           <MapIcon size={60} color="#FFFFFF" />
         </View>
         <Text style={styles.title}>Ijtema Map</Text>
+        <Text style={styles.urduTitle}>اجتماع میپ</Text>
         <Text style={styles.subtitle}>Offline Navigation Guide</Text>
       </Animated.View>
     </View>
@@ -85,9 +112,15 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     letterSpacing: 1,
   },
-  subtitle: {
-    fontSize: 16,
+  urduTitle: {
+    fontSize: 22,
     color: '#E8F5E9',
+    marginTop: 4,
+    letterSpacing: 0.5,
+  },
+  subtitle: {
+    fontSize: 15,
+    color: '#A5D6A7',
     marginTop: 8,
   },
 });

@@ -9,11 +9,13 @@ import * as Location from 'expo-location';
 import { UserSettings } from '../models/types';
 
 export function useSettingsViewModel() {
-  const { 
-    settings, 
-    updateSettings, 
+  const {
+    settings,
+    updateSettings,
     setOfflineMapAvailable,
-    setHasLocationPermission
+    setHasLocationPermission,
+    resetDownloadState,
+    updateOfflineData,
   } = useAppStore();
 
   const handleToggle = (key: keyof UserSettings) => {
@@ -31,6 +33,8 @@ export function useSettingsViewModel() {
     try {
       await OfflineMapService.deleteMapData();
       setOfflineMapAvailable(false);
+      updateOfflineData({ isDownloaded: false, sizeMB: 0, downloadDate: undefined });
+      resetDownloadState();
       navigateToDownload?.();
     } catch (err) {
       console.error(err);
@@ -41,6 +45,8 @@ export function useSettingsViewModel() {
     try {
       await OfflineMapService.deleteMapData();
       setOfflineMapAvailable(false);
+      updateOfflineData({ isDownloaded: false, sizeMB: 0, downloadDate: undefined });
+      resetDownloadState();
       navigateToDownload?.();
     } catch (err) {
       console.error(err);

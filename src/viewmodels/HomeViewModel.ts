@@ -10,14 +10,14 @@ import * as Location from 'expo-location';
 import { useAppStore } from '../store/useAppStore';
 import { Place } from '../models/types';
 import { SearchService } from '../services/SearchService';
+import { GPSManagerService } from '../services/GPSManagerService';
 
 export function useHomeViewModel() {
   const mapRef = useRef<MapView>(null);
   const bottomSheetRef = useRef<BottomSheet>(null);
-  
-  const { 
-    currentLocation, 
-    setCurrentLocation, 
+
+  const {
+    currentLocation,
     setHasLocationPermission,
     settings,
     updateSettings,
@@ -33,14 +33,14 @@ export function useHomeViewModel() {
     setSearchResults,
     autoFollowEnabled,
     setAutoFollowEnabled,
-    isNavigating
+    isNavigating,
   } = useAppStore();
 
   const isOffline = !hasInternet;
   const [isMapReady, setIsMapReady] = useState(false);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
 
-  const snapPoints = useMemo(() => ['25%', '50%', '90%'], []);
+  const snapPoints = useMemo(() => ['15%', '50%', '92%'], []);
 
   const initialRegion: Region = {
     latitude: 24.9685,
@@ -49,45 +49,39 @@ export function useHomeViewModel() {
     longitudeDelta: 0.01,
   };
 
-  const requestPermissions = useCallback(async () => {
-    const { status } = await Location.requestForegroundPermissionsAsync();
-    setHasLocationPermission(status === 'granted');
-    return status === 'granted';
-  }, [setHasLocationPermission]);
-
+  // Request permission and start the shared GPS subscription
   useEffect(() => {
     (async () => {
-      const granted = await requestPermissions();
-      if (!granted) return;
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      const granted = status === 'granted';
+      setHasLocationPermission(granted);
 
-      const subscription = await Location.watchPositionAsync(
-        {
-          accuracy: Location.Accuracy.High,
-          timeInterval: 1000,
-          distanceInterval: 1,
-        },
-        (location) => {
-          const newLoc = {
-            latitude: location.coords.latitude,
-            longitude: location.coords.longitude,
-            heading: location.coords.heading || 0,
-            accuracy: location.coords.accuracy || 0
-          };
-          setCurrentLocation(newLoc);
-          
-          if (autoFollowEnabled && mapRef.current && !isNavigating) {
-            mapRef.current.animateToRegion({
-              ...newLoc,
-              latitudeDelta: 0.005,
-              longitudeDelta: 0.005,
-            }, 1000);
-          }
-        }
-      );
-
-      return () => subscription.remove();
+      if (granted) {
+        // Register a listener for map auto-follow (no-op if already running)
+        GPSManagerService.addListener(handleGPS);
+      }
     })();
-  }, [autoFollowEnabled, isNavigating, requestPermissions, setCurrentLocation]);
+
+    return () => {
+      GPSManagerService.removeListener(handleGPS);
+    };
+  }, []); // run once on mount
+
+  const handleGPS = useCallback(
+    (coord: { latitude: number; longitude: number }) => {
+      if (autoFollowEnabled && mapRef.current && !isNavigating) {
+        mapRef.current.animateToRegion(
+          {
+            ...coord,
+            latitudeDelta: 0.005,
+            longitudeDelta: 0.005,
+          },
+          1000
+        );
+      }
+    },
+    [autoFollowEnabled, isNavigating]
+  );
 
   const handleSearch = (text: string) => {
     setSearchQuery(text);
@@ -105,26 +99,32 @@ export function useHomeViewModel() {
     setSearchQuery('');
     setSearchResults([]);
     bottomSheetRef.current?.snapToIndex(1);
-    mapRef.current?.animateToRegion({
-      ...place.coordinate,
-      latitudeDelta: 0.002,
-      longitudeDelta: 0.002,
-    }, 1000);
+    mapRef.current?.animateToRegion(
+      {
+        ...place.coordinate,
+        latitudeDelta: 0.002,
+        longitudeDelta: 0.002,
+      },
+      1000
+    );
   };
 
   const handleRecenter = () => {
     if (currentLocation && mapRef.current) {
       setAutoFollowEnabled(true);
-      mapRef.current.animateToRegion({
-        ...currentLocation,
-        latitudeDelta: 0.005,
-        longitudeDelta: 0.005,
-      }, 1000);
+      mapRef.current.animateToRegion(
+        {
+          ...currentLocation,
+          latitudeDelta: 0.005,
+          longitudeDelta: 0.005,
+        },
+        1000
+      );
     }
   };
 
   const handleZoomIn = () => {
-    mapRef.current?.getCamera().then(camera => {
+    mapRef.current?.getCamera().then((camera) => {
       if (camera.zoom !== undefined) {
         camera.zoom += 1;
         mapRef.current?.animateCamera(camera);
@@ -133,7 +133,7 @@ export function useHomeViewModel() {
   };
 
   const handleZoomOut = () => {
-    mapRef.current?.getCamera().then(camera => {
+    mapRef.current?.getCamera().then((camera) => {
       if (camera.zoom !== undefined) {
         camera.zoom -= 1;
         mapRef.current?.animateCamera(camera);
@@ -176,6 +176,7 @@ export function useHomeViewModel() {
     offlineData,
     isOffline,
     activeCategory,
+    settings,
     setIsMapReady,
     handleSearch,
     handlePlaceSelect,
@@ -185,6 +186,6 @@ export function useHomeViewModel() {
     toggleMapType,
     clearSearch,
     handleCategoryPress,
-    setSelectedPlace
+    setSelectedPlace,
   };
 }
