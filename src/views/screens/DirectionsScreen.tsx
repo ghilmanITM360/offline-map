@@ -4,7 +4,8 @@
  */
 
 import React from 'react';
-import { View, Text, StyleSheet, SafeAreaView, Pressable, ScrollView, TextInput } from 'react-native';
+import { View, Text, StyleSheet, Pressable, ScrollView, TextInput } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { ChevronLeft, ArrowRight, MapPin, Navigation } from 'lucide-react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useDirectionsViewModel } from '../../viewmodels/DirectionsViewModel';

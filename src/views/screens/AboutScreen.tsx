@@ -4,7 +4,8 @@
  */
 
 import React from 'react';
-import { View, Text, StyleSheet, SafeAreaView, ScrollView, Pressable, Image, Linking } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Pressable, Image, Linking } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { ChevronLeft, Info, Heart, Shield, ExternalLink } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
 
