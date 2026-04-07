@@ -6,7 +6,6 @@
 import { useState, useRef, useMemo, useEffect, useCallback } from 'react';
 import MapView, { Region } from 'react-native-maps';
 import BottomSheet from '@gorhom/bottom-sheet';
-import * as Location from 'expo-location';
 import { useAppStore } from '../store/useAppStore';
 import { Place } from '../models/types';
 import { SearchService } from '../services/SearchService';
@@ -18,7 +17,6 @@ export function useHomeViewModel() {
 
   const {
     currentLocation,
-    setHasLocationPermission,
     hasLocationPermission,
     settings,
     updateSettings,
@@ -65,15 +63,6 @@ export function useHomeViewModel() {
     },
     [autoFollowEnabled, isNavigating]
   );
-
-  // Request permission once on mount
-  useEffect(() => {
-    (async () => {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      const granted = status === 'granted';
-      setHasLocationPermission(granted);
-    })();
-  }, []);
 
   // Re-register the GPS listener whenever handleGPS reference changes so the
   // callback always reflects current state. Guard with hasLocationPermission so

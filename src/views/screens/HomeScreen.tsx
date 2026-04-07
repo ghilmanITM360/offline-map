@@ -42,7 +42,7 @@ import { Place, SearchResult } from '../../models/types';
 import { PlaceDetailService } from '../../services/PlaceDetailService';
 import { FavoriteService } from '../../services/FavoriteService';
 import { useAppStore } from '../../store/useAppStore';
-import * as FileSystem from 'expo-file-system/legacy';
+import * as FileSystem from 'expo-file-system';
 
 const TILE_PATH = `${FileSystem.documentDirectory}tiles/{z}_{x}_{y}.png`;
 
