@@ -19,6 +19,7 @@ export function useHomeViewModel() {
   const {
     currentLocation,
     setHasLocationPermission,
+    hasLocationPermission,
     settings,
     updateSettings,
     addRecentSearch,
@@ -74,14 +75,16 @@ export function useHomeViewModel() {
     })();
   }, []);
 
-  // Re-register the GPS listener whenever handleGPS changes (i.e. when
-  // autoFollowEnabled or isNavigating changes) so the callback is never stale.
+  // Re-register the GPS listener whenever handleGPS reference changes so the
+  // callback always reflects current state. Guard with hasLocationPermission so
+  // we only attach after permission has been granted.
   useEffect(() => {
+    if (!hasLocationPermission) return;
     GPSManagerService.addListener(handleGPS);
     return () => {
       GPSManagerService.removeListener(handleGPS);
     };
-  }, [handleGPS]);
+  }, [handleGPS, hasLocationPermission]);
 
   const handleSearch = (text: string) => {
     setSearchQuery(text);
