@@ -8,13 +8,13 @@ import {
   View,
   Text,
   StyleSheet,
-  SafeAreaView,
   TextInput,
   Pressable,
   ScrollView,
   Platform,
   StatusBar,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import MapView, { Marker, Polygon, PROVIDER_GOOGLE, LocalTile } from 'react-native-maps';
 import {
   Menu,
@@ -42,7 +42,7 @@ import { Place, SearchResult } from '../../models/types';
 import { PlaceDetailService } from '../../services/PlaceDetailService';
 import { FavoriteService } from '../../services/FavoriteService';
 import { useAppStore } from '../../store/useAppStore';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 
 const TILE_PATH = `${FileSystem.documentDirectory}tiles/{z}_{x}_{y}.png`;
 

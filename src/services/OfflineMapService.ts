@@ -4,7 +4,7 @@
  */
 
 import * as SQLite from 'expo-sqlite';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import { IJTEMA_DATA } from '../constants/data';
 
 const DB_NAME = 'offline_maps.db';
