@@ -3,28 +3,27 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  SafeAreaView, 
-  TextInput, 
-  Pressable, 
-  ScrollView, 
+import React, { useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  SafeAreaView,
+  TextInput,
+  Pressable,
+  ScrollView,
   Platform,
   StatusBar,
-  Image
 } from 'react-native';
 import MapView, { Marker, Polygon, PROVIDER_GOOGLE, LocalTile } from 'react-native-maps';
-import { 
-  Menu, 
-  Mic, 
-  Navigation, 
-  LocateFixed, 
-  Plus, 
-  Minus, 
-  Compass, 
+import {
+  Menu,
+  Mic,
+  Navigation,
+  LocateFixed,
+  Plus,
+  Minus,
+  Compass,
   Layers,
   Star,
   MapPin,
@@ -33,25 +32,32 @@ import {
   X,
   Clock,
   Share2,
-  Info
+  Info,
 } from 'lucide-react-native';
 import BottomSheet, { BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import { useNavigation, DrawerActions } from '@react-navigation/native';
 import { useHomeViewModel } from '../../viewmodels/HomeViewModel';
 import { IJTEMA_DATA } from '../../constants/data';
 import { Place, SearchResult } from '../../models/types';
+import { PlaceDetailService } from '../../services/PlaceDetailService';
+import { FavoriteService } from '../../services/FavoriteService';
+import { useAppStore } from '../../store/useAppStore';
 import * as FileSystem from 'expo-file-system';
+
+const TILE_PATH = `${FileSystem.documentDirectory}tiles/{z}_{x}_{y}.png`;
 
 function isPlace(item: Place | SearchResult): item is Place {
   return 'name' in item;
 }
-
 function getDisplayName(item: Place | SearchResult): string {
   return isPlace(item) ? item.name : item.title;
 }
 
 export function HomeScreen() {
-  const navigation = useNavigation<any>();
+  const nav = useNavigation<any>();
+  const { currentLocation, favorites } = useAppStore();
+  const [selectedEntryIdx, setSelectedEntryIdx] = useState(0);
+
   const {
     mapRef,
     bottomSheetRef,
@@ -73,40 +79,69 @@ export function HomeScreen() {
     toggleMapType,
     clearSearch,
     handleCategoryPress,
-    setSelectedPlace
+    setSelectedPlace,
   } = useHomeViewModel();
 
-  const tilePathTemplate = `${FileSystem.documentDirectory}tiles/{z}_{x}_{y}.png`;
+  // Reset entry index when selection changes
+  React.useEffect(() => {
+    setSelectedEntryIdx(0);
+  }, [selectedPlace?.id]);
+
+  const entryPoints = selectedPlace?.category === 'Block'
+    ? PlaceDetailService.getEntryPoints(selectedPlace.id)
+    : [];
+
+  const walkingTimeMin = (selectedPlace && currentLocation)
+    ? PlaceDetailService.estimateWalkingTime(
+        PlaceDetailService.distanceToBlock(selectedPlace.id, currentLocation)
+      )
+    : null;
+
+  const isFav = selectedPlace ? favorites.some((f) => f.placeId === selectedPlace.id) : false;
+
+  const handleToggleFav = () => {
+    if (!selectedPlace) return;
+    FavoriteService.toggleFavorite(selectedPlace);
+  };
+
+  const handleStartNavigation = () => {
+    if (!selectedPlace) return;
+    const entryNode = entryPoints[selectedEntryIdx];
+    const destPlace = entryNode
+      ? {
+          ...selectedPlace,
+          // Override coordinate with chosen entry point's node coordinate
+          coordinate: (() => {
+            const n = (IJTEMA_DATA.nodes as any)[entryNode.nodeId];
+            return n ? { latitude: n.lat, longitude: n.lng } : selectedPlace.coordinate;
+          })(),
+        }
+      : selectedPlace;
+    useAppStore.getState().startNavigation(destPlace);
+    nav.navigate('Navigation');
+  };
 
   const renderChips = () => {
     const categories = [
-      { id: 'blocks', label: 'Blocks', icon: 'grid' },
-      { id: 'masjid', label: 'Masjid', icon: 'home' },
-      { id: 'gates', label: 'Gates', icon: 'door-open' },
-      { id: 'rastas', label: 'Rastas', icon: 'map' },
-      { id: 'saved', label: 'Saved', icon: 'star' },
+      { id: 'blocks', label: 'Blocks' },
+      { id: 'masjid', label: 'Masjid' },
+      { id: 'gates', label: 'Gates' },
+      { id: 'rastas', label: 'Rastas' },
     ];
-
     return (
-      <ScrollView 
-        horizontal 
-        showsHorizontalScrollIndicator={false} 
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
         style={styles.chipsContainer}
         contentContainerStyle={styles.chipsContent}
       >
         {categories.map((cat) => (
-          <Pressable 
-            key={cat.id} 
-            style={[
-              styles.chip,
-              activeCategory === cat.id && styles.activeChip
-            ]}
+          <Pressable
+            key={cat.id}
+            style={[styles.chip, activeCategory === cat.id && styles.activeChip]}
             onPress={() => handleCategoryPress(cat.id)}
           >
-            <Text style={[
-              styles.chipText,
-              activeCategory === cat.id && styles.activeChipText
-            ]}>
+            <Text style={[styles.chipText, activeCategory === cat.id && styles.activeChipText]}>
               {cat.label}
             </Text>
           </Pressable>
@@ -118,52 +153,53 @@ export function HomeScreen() {
   return (
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
-      
+
       <MapView
         ref={mapRef}
         style={styles.map}
         provider={PROVIDER_GOOGLE}
         initialRegion={initialRegion}
         mapType={isOffline ? 'none' : mapType}
-        showsUserLocation={true}
+        showsUserLocation
         showsMyLocationButton={false}
         showsCompass={false}
         onMapReady={() => setIsMapReady(true)}
         onPress={() => {
           if (searchQuery) clearSearch();
-          if (selectedPlace) setSelectedPlace(null);
+          if (selectedPlace) {
+            setSelectedPlace(null);
+            bottomSheetRef.current?.close();
+          }
         }}
       >
-        {/* Offline Tile Support */}
         {isOffline && (
-          <LocalTile
-            pathTemplate={tilePathTemplate}
-            tileSize={256}
-            zIndex={-1}
-          />
+          <LocalTile pathTemplate={TILE_PATH} tileSize={256} zIndex={-1} />
         )}
 
-        {/* Render Blocks */}
-        {Object.entries(IJTEMA_DATA.blocks).map(([id, block]) => block.corners && (
-          <Polygon
-            key={id}
-            coordinates={block.corners}
-            fillColor="rgba(46, 125, 50, 0.15)"
-            strokeColor="#2E7D32"
-            strokeWidth={1.5}
-            tappable={true}
-            onPress={() => handlePlaceSelect({
-              id: block.id,
-              name: block.name,
-              urduName: block.urduName,
-              category: 'Block',
-              coordinate: block.center,
-              description: `Block ${block.name} of the Karachi Ijtema ground. Contains ${block.gates.length} gates.`
-            })}
-          />
-        ))}
+        {Object.entries(IJTEMA_DATA.blocks).map(([id, block]) => {
+          const isSelected = selectedPlace?.id === id;
+          return block.corners ? (
+            <Polygon
+              key={id}
+              coordinates={block.corners}
+              fillColor={isSelected ? 'rgba(26, 115, 232, 0.35)' : 'rgba(46, 125, 50, 0.15)'}
+              strokeColor={isSelected ? '#1A73E8' : '#2E7D32'}
+              strokeWidth={isSelected ? 3 : 1.5}
+              tappable
+              onPress={() =>
+                handlePlaceSelect({
+                  id: block.id,
+                  name: block.name,
+                  urduName: block.urduName,
+                  category: 'Block',
+                  coordinate: block.center,
+                  description: `${block.name} of the Karachi Ijtema ground.`,
+                })
+              }
+            />
+          ) : null;
+        })}
 
-        {/* Selected Place Marker */}
         {selectedPlace && (
           <Marker coordinate={selectedPlace.coordinate}>
             <View style={styles.selectedMarker}>
@@ -173,18 +209,18 @@ export function HomeScreen() {
         )}
       </MapView>
 
-      {/* Top UI Elements */}
+      {/* Top UI */}
       <SafeAreaView style={styles.topOverlay} pointerEvents="box-none">
         <View style={styles.searchBarContainer}>
-          <Pressable 
-            onPress={() => navigation.dispatch(DrawerActions.openDrawer())}
+          <Pressable
+            onPress={() => nav.dispatch(DrawerActions.openDrawer())}
             style={styles.iconButton}
           >
             <Menu size={24} color="#5F6368" />
           </Pressable>
           <TextInput
             style={styles.searchInput}
-            placeholder="Search here"
+            placeholder="Search blocks, masjid, gates…"
             placeholderTextColor="#70757A"
             value={searchQuery}
             onChangeText={handleSearch}
@@ -198,36 +234,30 @@ export function HomeScreen() {
               <Mic size={22} color="#4285F4" />
             </Pressable>
           )}
-          <View style={styles.divider} />
-          <Pressable style={styles.profileButton}>
-            <View style={styles.profileInitial}>
-              <Text style={styles.profileInitialText}>K</Text>
-            </View>
-          </Pressable>
         </View>
 
-        {/* Search Results Dropdown */}
         {(searchResults.length > 0 || (searchQuery.length === 0 && recentSearches.length > 0)) && (
           <View style={styles.searchResultsContainer}>
             <ScrollView keyboardShouldPersistTaps="handled">
-              {searchQuery.length === 0 && recentSearches.length > 0 && (
-                <View style={styles.searchSectionHeader}>
-                  <Text style={styles.searchSectionTitle}>Recent searches</Text>
-                </View>
+              {searchQuery.length === 0 && (
+                <Text style={styles.sectionTitle}>Recent</Text>
               )}
-              
-              {(searchQuery.length > 0 ? searchResults : recentSearches).map((place) => (
-                <Pressable 
-                  key={place.id} 
+              {(searchQuery.length > 0 ? searchResults : recentSearches).map((item) => (
+                <Pressable
+                  key={(item as any).id}
                   style={styles.searchResultItem}
-                  onPress={() => handlePlaceSelect(place as any)}
+                  onPress={() => handlePlaceSelect(item as any)}
                 >
                   <View style={styles.searchResultIcon}>
-                    {searchQuery.length === 0 ? <Clock size={18} color="#70757A" /> : <MapPin size={18} color="#70757A" />}
+                    {searchQuery.length === 0 ? (
+                      <Clock size={18} color="#70757A" />
+                    ) : (
+                      <MapPin size={18} color="#70757A" />
+                    )}
                   </View>
                   <View style={styles.searchResultText}>
-                    <Text style={styles.searchResultName}>{getDisplayName(place)}</Text>
-                    <Text style={styles.searchResultCategory}>{place.category}</Text>
+                    <Text style={styles.searchResultName}>{getDisplayName(item)}</Text>
+                    <Text style={styles.searchResultCategory}>{(item as any).category}</Text>
                   </View>
                   <ChevronRight size={18} color="#BDC1C6" />
                 </Pressable>
@@ -239,7 +269,6 @@ export function HomeScreen() {
         {renderChips()}
       </SafeAreaView>
 
-      {/* Offline Indicator */}
       {isOffline && (
         <View style={styles.offlineIndicator}>
           <WifiOff size={14} color="#FFFFFF" />
@@ -247,7 +276,7 @@ export function HomeScreen() {
         </View>
       )}
 
-      {/* Map Controls */}
+      {/* Map controls */}
       <View style={styles.rightControls}>
         <Pressable style={styles.controlButton} onPress={toggleMapType}>
           <Layers size={22} color="#5F6368" />
@@ -272,7 +301,7 @@ export function HomeScreen() {
         </Pressable>
       </View>
 
-      {/* Bottom Sheet for Place Details */}
+      {/* Bottom Sheet */}
       <BottomSheet
         ref={bottomSheetRef}
         index={-1}
@@ -280,70 +309,105 @@ export function HomeScreen() {
         enablePanDownToClose
         handleIndicatorStyle={styles.sheetIndicator}
       >
-        <BottomSheetScrollView contentContainerStyle={styles.bottomSheetContent}>
+        <BottomSheetScrollView contentContainerStyle={styles.sheetContent}>
           {selectedPlace ? (
-            <View style={styles.placeDetails}>
+            <View>
+              {/* Header */}
               <View style={styles.placeHeader}>
-                <View style={styles.placeTitleContainer}>
+                <View style={{ flex: 1 }}>
                   <Text style={styles.placeName}>{selectedPlace.name}</Text>
+                  {selectedPlace.urduName && (
+                    <Text style={styles.placeUrdu}>{selectedPlace.urduName}</Text>
+                  )}
                   <Text style={styles.placeCategory}>{selectedPlace.category}</Text>
                 </View>
-                <Pressable style={styles.closeSheetButton} onPress={() => bottomSheetRef.current?.close()}>
+                <Pressable onPress={() => { setSelectedPlace(null); bottomSheetRef.current?.close(); }}>
                   <X size={24} color="#5F6368" />
                 </Pressable>
               </View>
 
-              <View style={styles.placeQuickActions}>
-                <Pressable 
-                  style={styles.directionsButton} 
-                  onPress={() => navigation.navigate('Directions', { destination: selectedPlace })}
-                >
-                  <Navigation size={20} color="#FFFFFF" />
-                  <Text style={styles.directionsButtonText}>Directions</Text>
-                </Pressable>
-                <Pressable style={styles.actionCircle}>
-                  <Star size={20} color="#1A73E8" />
-                  <Text style={styles.actionLabel}>Save</Text>
-                </Pressable>
-                <Pressable style={styles.actionCircle}>
-                  <Share2 size={20} color="#1A73E8" />
-                  <Text style={styles.actionLabel}>Share</Text>
-                </Pressable>
-                <Pressable style={styles.actionCircle}>
-                  <Info size={20} color="#1A73E8" />
-                  <Text style={styles.actionLabel}>Info</Text>
-                </Pressable>
-              </View>
-
-              <View style={styles.placeInfoSection}>
-                <View style={styles.infoRow}>
-                  <MapPin size={20} color="#1A73E8" />
-                  <Text style={styles.infoText}>Karachi Ijtema Ground, Block {selectedPlace.name}</Text>
-                </View>
-                {selectedPlace.urduName && (
-                  <View style={styles.infoRow}>
-                    <Text style={styles.urduText}>{selectedPlace.urduName}</Text>
+              {/* Info chips */}
+              <View style={styles.infoChips}>
+                {walkingTimeMin !== null && (
+                  <View style={styles.infoChip}>
+                    <Clock size={14} color="#2E7D32" />
+                    <Text style={styles.infoChipText}>{walkingTimeMin} min walk</Text>
                   </View>
                 )}
-                <View style={styles.infoRow}>
-                  <Clock size={20} color="#70757A" />
-                  <Text style={styles.infoText}>Open 24 hours during Ijtema</Text>
-                </View>
+                {entryPoints.length > 0 && (
+                  <View style={styles.infoChip}>
+                    <MapPin size={14} color="#2E7D32" />
+                    <Text style={styles.infoChipText}>{entryPoints.length} entrances</Text>
+                  </View>
+                )}
               </View>
 
-              <Text style={styles.placeDesc}>{selectedPlace.description}</Text>
-              
-              <View style={styles.placeImageContainer}>
-                <Image 
-                  source={{ uri: `https://picsum.photos/seed/${selectedPlace.id}/400/200` }}
-                  style={styles.placeImage}
-                  referrerPolicy="no-referrer"
-                />
+              {/* Entrance selector */}
+              {entryPoints.length > 0 && (
+                <View style={styles.entranceSection}>
+                  <Text style={styles.sectionLabel}>Choose Entrance</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                    {entryPoints.map((ep, idx) => (
+                      <Pressable
+                        key={ep.nodeId}
+                        style={[
+                          styles.entranceChip,
+                          selectedEntryIdx === idx && styles.entranceChipActive,
+                        ]}
+                        onPress={() => setSelectedEntryIdx(idx)}
+                      >
+                        <Text
+                          style={[
+                            styles.entranceChipText,
+                            selectedEntryIdx === idx && styles.entranceChipTextActive,
+                          ]}
+                        >
+                          {ep.friendlyName}
+                        </Text>
+                        <Text style={styles.entranceUrdu}>{ep.urduName}</Text>
+                      </Pressable>
+                    ))}
+                  </ScrollView>
+                </View>
+              )}
+
+              {/* CTA */}
+              <Pressable style={styles.takeMeButton} onPress={handleStartNavigation}>
+                <Navigation size={22} color="#FFFFFF" />
+                <Text style={styles.takeMeText}>Take Me There</Text>
+              </Pressable>
+
+              {/* Secondary actions */}
+              <View style={styles.secondaryActions}>
+                <Pressable style={styles.secondaryAction} onPress={handleToggleFav}>
+                  <Star
+                    size={20}
+                    color={isFav ? '#FBC02D' : '#1A73E8'}
+                    fill={isFav ? '#FBC02D' : 'none'}
+                  />
+                  <Text style={styles.secondaryActionText}>{isFav ? 'Saved' : 'Save'}</Text>
+                </Pressable>
+                <Pressable style={styles.secondaryAction}>
+                  <Share2 size={20} color="#1A73E8" />
+                  <Text style={styles.secondaryActionText}>Share</Text>
+                </Pressable>
+                <Pressable
+                  style={styles.secondaryAction}
+                  onPress={() => nav.navigate('Directions', { destination: selectedPlace })}
+                >
+                  <Info size={20} color="#1A73E8" />
+                  <Text style={styles.secondaryActionText}>Details</Text>
+                </Pressable>
               </View>
+
+              {/* Description */}
+              {selectedPlace.description && (
+                <Text style={styles.placeDesc}>{selectedPlace.description}</Text>
+              )}
             </View>
           ) : (
             <View style={styles.emptySheet}>
-              <Text style={styles.emptySheetText}>Select a place to see details</Text>
+              <Text style={styles.emptySheetText}>Tap a block to see details</Text>
             </View>
           )}
         </BottomSheetScrollView>
@@ -353,13 +417,8 @@ export function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F8F9FA',
-  },
-  map: {
-    ...StyleSheet.absoluteFillObject,
-  },
+  container: { flex: 1, backgroundColor: '#F8F9FA' },
+  map: { ...StyleSheet.absoluteFillObject },
   topOverlay: {
     position: 'absolute',
     top: 0,
@@ -376,51 +435,26 @@ const styles = StyleSheet.create({
     marginTop: 8,
     borderRadius: 24,
     paddingHorizontal: 8,
-    height: 48,
+    height: 52,
     elevation: 4,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
     shadowRadius: 4,
   },
-  iconButton: {
-    padding: 10,
-  },
+  iconButton: { padding: 10 },
   searchInput: {
     flex: 1,
     fontSize: 16,
     color: '#202124',
     paddingHorizontal: 4,
   },
-  divider: {
-    width: 1,
-    height: 24,
-    backgroundColor: '#DADCE0',
-    marginHorizontal: 4,
-  },
-  profileButton: {
-    padding: 4,
-    marginRight: 4,
-  },
-  profileInitial: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#1A73E8',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  profileInitialText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: 'bold',
-  },
   searchResultsContainer: {
     backgroundColor: '#FFFFFF',
     marginHorizontal: 12,
     marginTop: 4,
     borderRadius: 16,
-    maxHeight: 400,
+    maxHeight: 380,
     elevation: 4,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -428,16 +462,13 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     overflow: 'hidden',
   },
-  searchSectionHeader: {
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 4,
-  },
-  searchSectionTitle: {
+  sectionTitle: {
     fontSize: 12,
     fontWeight: '600',
     color: '#70757A',
     textTransform: 'uppercase',
+    paddingHorizontal: 16,
+    paddingTop: 12,
   },
   searchResultItem: {
     flexDirection: 'row',
@@ -446,105 +477,44 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#F1F3F4',
   },
-  searchResultIcon: {
-    width: 40,
-    alignItems: 'center',
-  },
-  searchResultText: {
-    flex: 1,
-    marginLeft: 4,
-  },
-  searchResultName: {
-    fontSize: 15,
-    color: '#202124',
-    fontWeight: '500',
-  },
-  searchResultCategory: {
-    fontSize: 13,
-    color: '#70757A',
-    marginTop: 1,
-  },
-  chipsContainer: {
-    marginTop: 12,
-  },
-  chipsContent: {
-    paddingHorizontal: 12,
-    paddingBottom: 8,
-  },
+  searchResultIcon: { width: 40, alignItems: 'center' },
+  searchResultText: { flex: 1, marginLeft: 4 },
+  searchResultName: { fontSize: 15, color: '#202124', fontWeight: '500' },
+  searchResultCategory: { fontSize: 13, color: '#70757A', marginTop: 1 },
+  chipsContainer: { marginTop: 10 },
+  chipsContent: { paddingHorizontal: 12, paddingBottom: 8 },
   chip: {
     backgroundColor: '#FFFFFF',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 18,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
     marginRight: 8,
     elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
     borderWidth: 1,
     borderColor: '#DADCE0',
-    flexDirection: 'row',
-    alignItems: 'center',
   },
-  activeChip: {
-    backgroundColor: '#E8F0FE',
-    borderColor: '#1A73E8',
-  },
-  chipText: {
-    fontSize: 14,
-    color: '#3C4043',
-    fontWeight: '500',
-  },
-  activeChipText: {
-    color: '#1A73E8',
-  },
-  rightControls: {
-    position: 'absolute',
-    top: 180,
-    right: 12,
-    zIndex: 5,
-  },
+  activeChip: { backgroundColor: '#E8F0FE', borderColor: '#1A73E8' },
+  chipText: { fontSize: 14, color: '#3C4043', fontWeight: '500' },
+  activeChipText: { color: '#1A73E8' },
+  rightControls: { position: 'absolute', top: 180, right: 12, zIndex: 5 },
   controlButton: {
     backgroundColor: '#FFFFFF',
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 12,
     elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.2,
-    shadowRadius: 2,
   },
   zoomControls: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 20,
+    borderRadius: 22,
     elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.2,
-    shadowRadius: 2,
   },
-  zoomButton: {
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  zoomDivider: {
-    height: 1,
-    backgroundColor: '#DADCE0',
-    marginHorizontal: 8,
-  },
-  bottomControls: {
-    position: 'absolute',
-    bottom: 20,
-    right: 12,
-    zIndex: 5,
-  },
+  zoomButton: { width: 44, height: 44, justifyContent: 'center', alignItems: 'center' },
+  zoomDivider: { height: 1, backgroundColor: '#DADCE0', marginHorizontal: 8 },
+  bottomControls: { position: 'absolute', bottom: 24, right: 12, zIndex: 5 },
   recenterButton: {
     backgroundColor: '#FFFFFF',
     width: 56,
@@ -553,10 +523,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     elevation: 6,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
   },
   offlineIndicator: {
     position: 'absolute',
@@ -570,130 +536,67 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     zIndex: 10,
   },
-  offlineText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '600',
-    marginLeft: 6,
-  },
-  sheetIndicator: {
-    backgroundColor: '#DADCE0',
-    width: 36,
-  },
-  bottomSheetContent: {
-    padding: 0,
-  },
-  placeDetails: {
-    flex: 1,
-  },
+  offlineText: { color: '#FFFFFF', fontSize: 12, fontWeight: '600', marginLeft: 6 },
+  selectedMarker: { alignItems: 'center', justifyContent: 'center' },
+  sheetIndicator: { backgroundColor: '#DADCE0', width: 36 },
+  sheetContent: { padding: 20 },
   placeHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    paddingHorizontal: 20,
-    paddingTop: 12,
+    marginBottom: 12,
   },
-  placeTitleContainer: {
-    flex: 1,
-  },
-  placeName: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: '#202124',
-  },
-  placeCategory: {
-    fontSize: 14,
-    color: '#70757A',
-    marginTop: 2,
-  },
-  closeSheetButton: {
-    padding: 4,
-  },
-  placeQuickActions: {
+  placeName: { fontSize: 24, fontWeight: 'bold', color: '#202124' },
+  placeUrdu: { fontSize: 18, color: '#2E7D32', marginTop: 2 },
+  placeCategory: { fontSize: 14, color: '#70757A', marginTop: 4 },
+  infoChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 },
+  infoChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    marginTop: 20,
+    backgroundColor: '#E8F5E9',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 16,
+    gap: 4,
+  },
+  infoChipText: { fontSize: 13, color: '#2E7D32', fontWeight: '500' },
+  entranceSection: { marginBottom: 16 },
+  sectionLabel: { fontSize: 13, fontWeight: '600', color: '#5F6368', marginBottom: 8 },
+  entranceChip: {
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 14,
+    backgroundColor: '#F1F3F4',
+    marginRight: 8,
+    minWidth: 120,
+  },
+  entranceChipActive: { backgroundColor: '#E8F0FE', borderWidth: 1.5, borderColor: '#1A73E8' },
+  entranceChipText: { fontSize: 14, color: '#3C4043', fontWeight: '500' },
+  entranceChipTextActive: { color: '#1A73E8' },
+  entranceUrdu: { fontSize: 12, color: '#888', marginTop: 2 },
+  takeMeButton: {
+    backgroundColor: '#2E7D32',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    borderRadius: 16,
+    gap: 10,
     marginBottom: 16,
   },
-  directionsButton: {
-    backgroundColor: '#1A73E8',
+  takeMeText: { color: '#FFFFFF', fontSize: 18, fontWeight: 'bold' },
+  secondaryActions: {
     flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 24,
-    marginRight: 16,
-  },
-  directionsButtonText: {
-    color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: '600',
-    marginLeft: 8,
-  },
-  actionCircle: {
-    alignItems: 'center',
-    marginRight: 20,
-  },
-  actionLabel: {
-    fontSize: 11,
-    color: '#1A73E8',
-    marginTop: 4,
-    fontWeight: '500',
-  },
-  placeInfoSection: {
+    justifyContent: 'space-around',
+    marginBottom: 20,
     borderTopWidth: 1,
     borderBottomWidth: 1,
     borderColor: '#F1F3F4',
-    paddingVertical: 16,
-    paddingHorizontal: 20,
+    paddingVertical: 12,
   },
-  infoRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  infoText: {
-    fontSize: 14,
-    color: '#3C4043',
-    marginLeft: 12,
-  },
-  urduText: {
-    fontSize: 18,
-    color: '#2E7D32',
-    fontWeight: 'bold',
-    textAlign: 'right',
-    flex: 1,
-  },
-  placeDesc: {
-    fontSize: 14,
-    color: '#3C4043',
-    lineHeight: 20,
-    paddingHorizontal: 20,
-    marginTop: 16,
-  },
-  placeImageContainer: {
-    marginTop: 20,
-    paddingHorizontal: 20,
-    paddingBottom: 30,
-  },
-  placeImage: {
-    width: '100%',
-    height: 180,
-    borderRadius: 12,
-    backgroundColor: '#F1F3F4',
-  },
-  emptySheet: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 60,
-  },
-  emptySheetText: {
-    color: '#70757A',
-    fontSize: 15,
-  },
-  selectedMarker: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+  secondaryAction: { alignItems: 'center', gap: 4 },
+  secondaryActionText: { fontSize: 12, color: '#1A73E8', fontWeight: '500' },
+  placeDesc: { fontSize: 14, color: '#5F6368', lineHeight: 22 },
+  emptySheet: { alignItems: 'center', padding: 60 },
+  emptySheetText: { color: '#70757A', fontSize: 15 },
 });

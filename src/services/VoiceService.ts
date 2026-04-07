@@ -6,9 +6,10 @@
 import * as Speech from 'expo-speech';
 
 export class VoiceService {
-  static speak(text: string): void {
+  static speak(text: string, language: 'en' | 'ur' = 'en'): void {
     Speech.stop();
-    Speech.speak(text, { language: 'en-US', rate: 0.9 });
+    const locale = language === 'ur' ? 'ur-PK' : 'en-US';
+    Speech.speak(text, { language: locale, rate: 0.85 });
   }
 
   static stop(): void {

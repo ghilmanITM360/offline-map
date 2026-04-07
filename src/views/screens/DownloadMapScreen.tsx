@@ -4,67 +4,139 @@
  */
 
 import React from 'react';
-import { View, Text, StyleSheet, Pressable, SafeAreaView } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  Pressable,
+  SafeAreaView,
+} from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { Download, Wifi, Database, AlertTriangle } from 'lucide-react-native';
+import { Download, Wifi, AlertTriangle, CheckCircle, Pause, Play, RotateCcw } from 'lucide-react-native';
 import { useDownloadMapViewModel } from '../../viewmodels/DownloadMapViewModel';
+import { useAppStore } from '../../store/useAppStore';
 
 export function DownloadMapScreen() {
   const navigation = useNavigation<any>();
-  const { progress, status, error, startDownload } = useDownloadMapViewModel();
+  const { hasInternet } = useAppStore();
+  const { downloadState, startDownload, pauseDownload, resumeDownload, cancelDownload, retryDownload } =
+    useDownloadMapViewModel();
+
+  const { phase, progress, downloadedTiles, totalTiles, errorMessage } = downloadState;
+
+  const pct = Math.round(progress * 100);
+  const isIdle = phase === 'idle';
+  const isDownloading = phase === 'downloading' || phase === 'connecting';
+  const isPaused = phase === 'paused';
+  const isError = phase === 'error';
+  const isComplete = phase === 'complete';
 
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
         <View style={styles.header}>
           <Text style={styles.title}>Offline Maps</Text>
-          <Text style={styles.subtitle}>Download map data for offline use</Text>
+          <Text style={styles.urduTitle}>آف لائن نقشہ</Text>
+          <Text style={styles.subtitle}>Download once. Navigate forever.</Text>
         </View>
 
         <View style={styles.card}>
           <View style={styles.cardHeader}>
-            <Database size={24} color="#2E7D32" />
+            {isComplete ? (
+              <CheckCircle size={28} color="#2E7D32" />
+            ) : (
+              <Download size={28} color="#2E7D32" />
+            )}
             <Text style={styles.cardTitle}>Ijtema Ground Map</Text>
           </View>
-          <Text style={styles.cardSize}>Size: 45.2 MB</Text>
-          <Text style={styles.cardDesc}>Includes all blocks, masjids, gates, and navigation paths.</Text>
-          
-          {progress > 0 ? (
+          <Text style={styles.cardDesc}>
+            Includes all blocks, masjids, gates, rastas, and walking paths.{'\n'}
+            Works completely without internet after download.
+          </Text>
+
+          {/* Progress bar — shown whenever download has started */}
+          {(isDownloading || isPaused || isError || isComplete) && (
             <View style={styles.progressContainer}>
               <View style={styles.progressBarBg}>
-                <View 
-                  style={[
-                    styles.progressBarFill, 
-                    { width: `${progress * 100}%` }
-                  ]} 
-                />
+                <View style={[styles.progressBarFill, { width: `${pct}%` }]} />
               </View>
-              <Text style={styles.progressText}>{Math.round(progress * 100)}% Downloaded</Text>
-              <Text style={styles.statusText}>{status}</Text>
+              <View style={styles.progressRow}>
+                <Text style={styles.progressText}>{pct}%</Text>
+                {totalTiles > 0 && (
+                  <Text style={styles.tilesText}>
+                    {downloadedTiles} / {totalTiles} tiles
+                  </Text>
+                )}
+              </View>
             </View>
-          ) : (
-            <Pressable style={styles.downloadButton} onPress={() => startDownload(navigation)}>
-              <Download size={20} color="#FFFFFF" />
-              <Text style={styles.downloadText}>Download Now</Text>
-            </Pressable>
           )}
 
-          {error && (
+          {/* Status text */}
+          {isDownloading && (
+            <Text style={styles.statusText}>
+              {phase === 'connecting' ? 'Connecting to server…' : 'Downloading map tiles…'}
+            </Text>
+          )}
+          {isPaused && <Text style={styles.statusText}>Download paused. Tap Resume to continue.</Text>}
+          {isComplete && <Text style={[styles.statusText, styles.successText]}>✓ Map saved! Redirecting…</Text>}
+
+          {/* Error state */}
+          {isError && (
             <View style={styles.errorBox}>
               <AlertTriangle size={20} color="#D32F2F" />
-              <Text style={styles.errorText}>{error}</Text>
+              <Text style={styles.errorText}>{errorMessage}</Text>
             </View>
           )}
+
+          {/* Action buttons */}
+          <View style={styles.actionRow}>
+            {isIdle && (
+              <Pressable style={styles.primaryButton} onPress={() => startDownload(navigation)}>
+                <Download size={20} color="#FFFFFF" />
+                <Text style={styles.primaryButtonText}>Download Now</Text>
+              </Pressable>
+            )}
+
+            {isDownloading && (
+              <Pressable style={styles.secondaryButton} onPress={pauseDownload}>
+                <Pause size={18} color="#2E7D32" />
+                <Text style={styles.secondaryButtonText}>Pause</Text>
+              </Pressable>
+            )}
+
+            {isPaused && (
+              <>
+                <Pressable style={styles.primaryButton} onPress={() => resumeDownload(navigation)}>
+                  <Play size={18} color="#FFFFFF" />
+                  <Text style={styles.primaryButtonText}>Resume</Text>
+                </Pressable>
+                <Pressable style={styles.cancelButton} onPress={cancelDownload}>
+                  <Text style={styles.cancelButtonText}>Cancel</Text>
+                </Pressable>
+              </>
+            )}
+
+            {isError && (
+              <Pressable style={styles.primaryButton} onPress={() => retryDownload(navigation)}>
+                <RotateCcw size={18} color="#FFFFFF" />
+                <Text style={styles.primaryButtonText}>Try Again</Text>
+              </Pressable>
+            )}
+          </View>
         </View>
 
         <View style={styles.infoBox}>
-          <Wifi size={20} color="#666" />
-          <Text style={styles.infoText}>Recommended to use Wi-Fi for downloading.</Text>
+          <Wifi size={18} color="#666" />
+          <Text style={styles.infoText}>Wi-Fi recommended. Download is about 25 MB.</Text>
         </View>
 
-        {progress === 0 && (
-          <Pressable style={styles.skipButton} onPress={() => navigation.replace('Main')}>
-            <Text style={styles.skipText}>Skip for now (Online only)</Text>
+        {/* Skip link — only show when we have internet or map is downloaded */}
+        {(isIdle || isError) && hasInternet && (
+          <Pressable
+            style={styles.skipButton}
+            onPress={() => navigation.reset({ index: 0, routes: [{ name: 'Main' }] })}
+          >
+            <Text style={styles.skipText}>Skip — Use online mode</Text>
           </Pressable>
         )}
       </View>
@@ -83,21 +155,26 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   header: {
-    marginBottom: 40,
+    marginBottom: 32,
   },
   title: {
-    fontSize: 32,
+    fontSize: 30,
     fontWeight: 'bold',
-    color: '#333',
+    color: '#202124',
+  },
+  urduTitle: {
+    fontSize: 20,
+    color: '#2E7D32',
+    marginTop: 2,
   },
   subtitle: {
-    fontSize: 16,
+    fontSize: 15,
     color: '#666',
-    marginTop: 8,
+    marginTop: 6,
   },
   card: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 16,
+    borderRadius: 20,
     padding: 24,
     elevation: 4,
     shadowColor: '#000',
@@ -113,68 +190,61 @@ const styles = StyleSheet.create({
   cardTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#333',
+    color: '#202124',
     marginLeft: 12,
   },
-  cardSize: {
-    fontSize: 14,
-    color: '#2E7D32',
-    fontWeight: '600',
-    marginBottom: 8,
-  },
   cardDesc: {
-    fontSize: 15,
+    fontSize: 14,
     color: '#666',
     lineHeight: 22,
-    marginBottom: 24,
-  },
-  downloadButton: {
-    backgroundColor: '#2E7D32',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 14,
-    borderRadius: 10,
-  },
-  downloadText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
-    marginLeft: 10,
+    marginBottom: 20,
   },
   progressContainer: {
-    marginTop: 10,
+    marginBottom: 8,
   },
   progressBarBg: {
-    height: 8,
-    backgroundColor: '#E0E0E0',
-    borderRadius: 4,
+    height: 12,
+    backgroundColor: '#E8F5E9',
+    borderRadius: 6,
     overflow: 'hidden',
   },
   progressBarFill: {
     height: '100%',
     backgroundColor: '#2E7D32',
+    borderRadius: 6,
+  },
+  progressRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 8,
   },
   progressText: {
-    textAlign: 'center',
-    marginTop: 12,
-    fontSize: 14,
-    color: '#666',
+    fontSize: 15,
+    fontWeight: 'bold',
+    color: '#2E7D32',
+  },
+  tilesText: {
+    fontSize: 13,
+    color: '#888',
   },
   statusText: {
+    fontSize: 13,
+    color: '#555',
     textAlign: 'center',
     marginTop: 4,
-    fontSize: 12,
+    marginBottom: 16,
+  },
+  successText: {
     color: '#2E7D32',
-    fontWeight: '500',
+    fontWeight: '600',
   },
   errorBox: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#FFEBEE',
     padding: 12,
-    borderRadius: 8,
-    marginTop: 16,
+    borderRadius: 10,
+    marginBottom: 16,
   },
   errorText: {
     fontSize: 14,
@@ -182,24 +252,71 @@ const styles = StyleSheet.create({
     marginLeft: 10,
     flex: 1,
   },
+  actionRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 8,
+  },
+  primaryButton: {
+    flex: 1,
+    backgroundColor: '#2E7D32',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    borderRadius: 12,
+    gap: 8,
+  },
+  primaryButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  secondaryButton: {
+    flex: 1,
+    backgroundColor: '#E8F5E9',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    borderRadius: 12,
+    gap: 8,
+  },
+  secondaryButtonText: {
+    color: '#2E7D32',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  cancelButton: {
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#CCC',
+    justifyContent: 'center',
+  },
+  cancelButtonText: {
+    color: '#888',
+    fontSize: 15,
+  },
   infoBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 24,
-    paddingHorizontal: 8,
+    marginTop: 20,
+    paddingHorizontal: 4,
   },
   infoText: {
-    fontSize: 14,
+    fontSize: 13,
     color: '#666',
-    marginLeft: 10,
+    marginLeft: 8,
   },
   skipButton: {
-    marginTop: 40,
+    marginTop: 32,
     alignItems: 'center',
   },
   skipText: {
-    color: '#2E7D32',
-    fontSize: 16,
+    color: '#1A73E8',
+    fontSize: 15,
     fontWeight: '500',
   },
 });
