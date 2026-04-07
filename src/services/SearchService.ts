@@ -15,7 +15,11 @@ export class SearchService {
 
     // Search Blocks
     Object.entries(IJTEMA_DATA.blocks).forEach(([id, block]) => {
-      if (block.name.toLowerCase().includes(normalizedQuery) || id.toLowerCase().includes(normalizedQuery)) {
+      const matchesName = block.name.toLowerCase().includes(normalizedQuery);
+      const matchesId = id.toLowerCase().includes(normalizedQuery);
+      const matchesUrdu = block.urduName ? block.urduName.includes(query) : false;
+      const matchesAlias = block.aliases.some(a => a.toLowerCase().includes(normalizedQuery));
+      if (matchesName || matchesId || matchesUrdu || matchesAlias) {
         results.push({
           id,
           name: `Block ${id}`,
