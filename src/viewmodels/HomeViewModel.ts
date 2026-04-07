@@ -49,24 +49,6 @@ export function useHomeViewModel() {
     longitudeDelta: 0.01,
   };
 
-  // Request permission and start the shared GPS subscription
-  useEffect(() => {
-    (async () => {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      const granted = status === 'granted';
-      setHasLocationPermission(granted);
-
-      if (granted) {
-        // Register a listener for map auto-follow (no-op if already running)
-        GPSManagerService.addListener(handleGPS);
-      }
-    })();
-
-    return () => {
-      GPSManagerService.removeListener(handleGPS);
-    };
-  }, []); // run once on mount
-
   const handleGPS = useCallback(
     (coord: { latitude: number; longitude: number }) => {
       if (autoFollowEnabled && mapRef.current && !isNavigating) {
@@ -82,6 +64,24 @@ export function useHomeViewModel() {
     },
     [autoFollowEnabled, isNavigating]
   );
+
+  // Request permission once on mount
+  useEffect(() => {
+    (async () => {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      const granted = status === 'granted';
+      setHasLocationPermission(granted);
+    })();
+  }, []);
+
+  // Re-register the GPS listener whenever handleGPS changes (i.e. when
+  // autoFollowEnabled or isNavigating changes) so the callback is never stale.
+  useEffect(() => {
+    GPSManagerService.addListener(handleGPS);
+    return () => {
+      GPSManagerService.removeListener(handleGPS);
+    };
+  }, [handleGPS]);
 
   const handleSearch = (text: string) => {
     setSearchQuery(text);
