@@ -12,12 +12,16 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Download, Wifi, AlertTriangle, CheckCircle, Pause, Play, RotateCcw } from 'lucide-react-native';
 import { useDownloadMapViewModel } from '../../viewmodels/DownloadMapViewModel';
 import { useAppStore } from '../../store/useAppStore';
+import { RootStackParamList } from '../../navigation/RootNavigator'; // fixed: type the download screen navigation prop
+
+type DownloadMapScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'DownloadMap'>; // fixed: describe valid navigation actions for the download flow
 
 export function DownloadMapScreen() {
-  const navigation = useNavigation<any>();
+  const navigation = useNavigation<DownloadMapScreenNavigationProp>(); // fixed: replace any navigation with typed stack navigation
   const { hasInternet } = useAppStore();
   const { downloadState, startDownload, pauseDownload, resumeDownload, cancelDownload, retryDownload } =
     useDownloadMapViewModel();
@@ -91,7 +95,13 @@ export function DownloadMapScreen() {
           {/* Action buttons */}
           <View style={styles.actionRow}>
             {isIdle && (
-              <Pressable style={styles.primaryButton} onPress={() => startDownload(navigation)}>
+              <Pressable
+                style={[styles.primaryButton, !isIdle && styles.primaryButtonDisabled]} // fixed: visually disable the primary action as soon as a job is in flight
+                onPress={() => startDownload(navigation)}
+                disabled={!isIdle} // fixed: prevent rapid double-taps from starting duplicate download jobs
+                accessibilityRole="button" // fixed: expose the download action as a button
+                accessibilityLabel="Download map" // fixed: provide a clear accessible name for the download action
+              >
                 <Download size={20} color="#FFFFFF" />
                 <Text style={styles.primaryButtonText}>Download Now</Text>
               </Pressable>
@@ -266,6 +276,9 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderRadius: 12,
     gap: 8,
+  },
+  primaryButtonDisabled: {
+    opacity: 0.5, // fixed: visibly indicate when the primary download action is disabled
   },
   primaryButtonText: {
     color: '#FFFFFF',

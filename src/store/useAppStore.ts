@@ -81,8 +81,6 @@ interface AppState {
   isFavorite: (placeId: string) => boolean;
 
   // --- UI state ---
-  autoFollowEnabled: boolean;
-  setAutoFollowEnabled: (val: boolean) => void;
   isMuted: boolean;
   setIsMuted: (val: boolean) => void;
 }
@@ -188,8 +186,6 @@ export const useAppStore = create<AppState>()(
       isFavorite: (placeId) => get().favorites.some((f) => f.placeId === placeId),
 
       // --- UI ---
-      autoFollowEnabled: true,
-      setAutoFollowEnabled: (val) => set({ autoFollowEnabled: val }),
       isMuted: false,
       setIsMuted: (val) => set({ isMuted: val }),
     }),

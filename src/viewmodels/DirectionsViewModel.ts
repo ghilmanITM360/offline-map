@@ -4,17 +4,19 @@
  */
 
 import { useState, useEffect } from 'react';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAppStore } from '../store/useAppStore';
 import { RoutingService, RouteResult } from '../services/RoutingService';
 import { InstructionService, Instruction } from '../services/InstructionService';
 import { Place } from '../models/types';
 import { IJTEMA_DATA } from '../constants/data';
+import { RootStackParamList } from '../navigation/RootNavigator'; // fixed: type navigation used to enter turn-by-turn mode
 
 export function useDirectionsViewModel(destination: Place | null) {
   const { currentLocation, startNavigation } = useAppStore();
   const [route, setRoute] = useState<RouteResult | null>(null);
   const [instructions, setInstructions] = useState<Instruction[]>([]);
-  const [origin, setOrigin] = useState('Your Location');
+  const [origin] = useState('Current location'); // fixed: keep the displayed origin text read-only until custom origin routing exists
 
   useEffect(() => {
     if (currentLocation && destination) {
@@ -30,7 +32,7 @@ export function useDirectionsViewModel(destination: Place | null) {
     }
   }, [currentLocation, destination]);
 
-  const handleStartNavigation = (navigation: any) => {
+  const handleStartNavigation = (navigation: NativeStackNavigationProp<RootStackParamList, 'Directions'>) => { // fixed: type the directions-screen navigation helper
     if (destination) {
       startNavigation(destination);
       navigation.navigate('Navigation');
@@ -41,7 +43,6 @@ export function useDirectionsViewModel(destination: Place | null) {
     route,
     instructions,
     origin,
-    setOrigin,
     handleStartNavigation,
   };
 }

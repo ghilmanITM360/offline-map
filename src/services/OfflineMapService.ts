@@ -4,11 +4,15 @@
  */
 
 import * as SQLite from 'expo-sqlite';
-import * as FileSystem from 'expo-file-system';
+import { Directory, File, Paths } from 'expo-file-system'; // fixed: migrate to current file-system Paths API
 import { IJTEMA_DATA } from '../constants/data';
 
 const DB_NAME = 'offline_maps.db';
-const TILE_DIR = `${FileSystem.documentDirectory}tiles/`;
+let _tileDir: Directory | null = null;
+const getTileDir = (): Directory => {
+  if (!_tileDir) _tileDir = new Directory(Paths.document, 'tiles'); // fixed: defer Directory construction to first call so Paths.document is only read after native module init
+  return _tileDir;
+};
 
 export interface MapStatus {
   isDownloaded: boolean;
@@ -29,9 +33,8 @@ export class OfflineMapService {
     `);
 
     // Ensure tile directory exists
-    const dirInfo = await FileSystem.getInfoAsync(TILE_DIR);
-    if (!dirInfo.exists) {
-      await FileSystem.makeDirectoryAsync(TILE_DIR, { intermediates: true });
+    if (!getTileDir().exists) { // fixed: use Directory.exists instead of deprecated legacy helpers
+      getTileDir().create({ idempotent: true, intermediates: true }); // fixed: create tiles directory through new API
     }
   }
 
@@ -49,8 +52,7 @@ export class OfflineMapService {
       );
       if (!row) return { isDownloaded: false, tileCount: 0, sizeMB: 0, downloadDate: null };
 
-      const dirInfo = await FileSystem.getInfoAsync(TILE_DIR);
-      if (!dirInfo.exists) return { isDownloaded: false, tileCount: 0, sizeMB: 0, downloadDate: null };
+      if (!getTileDir().exists) return { isDownloaded: false, tileCount: 0, sizeMB: 0, downloadDate: null }; // fixed: use Directory.exists
 
       const countRow = await this.db!.getFirstAsync<{ cnt: number }>(
         'SELECT COUNT(*) AS cnt FROM tiles;'
@@ -83,8 +85,7 @@ export class OfflineMapService {
         [z, x, y]
       );
       if (!row) return false;
-      const info = await FileSystem.getInfoAsync(row.local_uri);
-      return info.exists;
+      return new File(row.local_uri).exists; // fixed: confirm file presence with the new File API
     } catch {
       return false;
     }
@@ -110,15 +111,15 @@ export class OfflineMapService {
 
   static async downloadTile(z: number, x: number, y: number): Promise<string | null> {
     const url = `https://tile.openstreetmap.org/${z}/${x}/${y}.png`;
-    const localUri = `${TILE_DIR}${z}_${x}_${y}.png`;
+    const file = new File(getTileDir(), `${z}_${x}_${y}.png`); // fixed: construct tile destination from Paths-backed directory
 
     try {
-      const { uri } = await FileSystem.downloadAsync(url, localUri);
+      const downloadedFile = await File.downloadFileAsync(url, file, { idempotent: true }); // fixed: use modern download API
       await this.db!.runAsync(
         'INSERT OR REPLACE INTO tiles (z, x, y, local_uri) VALUES (?, ?, ?, ?);',
-        [z, x, y, uri]
+        [z, x, y, downloadedFile.uri]
       );
-      return uri;
+      return downloadedFile.exists ? downloadedFile.uri : null; // fixed: only report success when the file exists on disk
     } catch (error) {
       console.error(`Failed to download tile ${z}/${x}/${y}:`, error);
       return null;
@@ -140,9 +141,8 @@ export class OfflineMapService {
     await this.db!.runAsync('DELETE FROM tiles;');
 
     // Delete tile directory
-    const dirInfo = await FileSystem.getInfoAsync(TILE_DIR);
-    if (dirInfo.exists) {
-      await FileSystem.deleteAsync(TILE_DIR, { idempotent: true });
+    if (getTileDir().exists) { // fixed: use Directory.exists for cleanup
+      getTileDir().delete(); // fixed: delete tiles with the new Directory API
     }
   }
 }

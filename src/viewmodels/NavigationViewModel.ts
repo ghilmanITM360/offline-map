@@ -74,12 +74,12 @@ export function useNavigationViewModel() {
         setInstructions(generated);
         instructionsRef.current = generated;
         setRemainingDistance(result.totalDistance);
-        if (!isMuted && generated[0]) {
+        if (!isMuted && settingsRef.current.voiceInstructions && generated[0]) { // fixed: honor the persisted voice-instructions setting
           VoiceService.speak(generated[0].text, settingsRef.current.language);
         }
       }
     }
-  }, [destination]);
+  }, [currentLocation, destination, isMuted]); // fixed: recalculate when GPS arrives after mount
 
   // GPS listener — registered once with the shared GPSManagerService
   const handleGPS = useCallback(
@@ -105,7 +105,7 @@ export function useNavigationViewModel() {
             const next = stepIdx + 1;
             setCurrentStepIndex(next);
             currentStepIndexRef.current = next;
-            if (!isMuted && steps[next]) {
+            if (!isMuted && currentSettings.voiceInstructions && steps[next]) { // fixed: respect voice settings for step advancement prompts
               VoiceService.speak(steps[next].text, currentSettings.language);
             }
           }
@@ -125,7 +125,7 @@ export function useNavigationViewModel() {
         if (distToDest < ARRIVAL_THRESHOLD_M) {
           arrivedRef.current = true;
           setArrived(true);
-          if (!isMuted) {
+          if (!isMuted && currentSettings.voiceInstructions) { // fixed: respect voice settings for arrival prompts
             VoiceService.speak(
               currentSettings.language === 'ur'
                 ? `${dest.name} پہنچ گئے۔`
@@ -165,7 +165,7 @@ export function useNavigationViewModel() {
                   instructionsRef.current = newInstructions;
                   setCurrentStepIndex(0);
                   currentStepIndexRef.current = 0;
-                  if (!isMuted) {
+                  if (!isMuted && settingsRef.current.voiceInstructions) { // fixed: respect voice settings for reroute prompts
                     VoiceService.speak(
                       settingsRef.current.language === 'ur'
                         ? 'راستہ دوبارہ بن رہا ہے۔ چلتے رہیں۔'

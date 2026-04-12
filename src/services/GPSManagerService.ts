@@ -42,8 +42,8 @@ class GPSManager {
         const coord: Coordinate = {
           latitude: location.coords.latitude,
           longitude: location.coords.longitude,
-          heading: location.coords.heading ?? 0,
-          accuracy: location.coords.accuracy ?? 0,
+          heading: location.coords.heading ?? 0, // fixed: normalize null/undefined heading values coming from Expo Location
+          accuracy: location.coords.accuracy ?? 0, // fixed: normalize null/undefined accuracy values coming from Expo Location
         };
 
         // Update global store via the injected callback (no direct store import)
@@ -66,7 +66,9 @@ class GPSManager {
     this.listeners.add(cb);
     // Auto-start when first listener attaches
     if (this.listeners.size === 1 && !this.subscription) {
-      this.start();
+      void this.start().catch((err) => {
+        console.warn('[GPSManager] start failed:', err); // fixed: prevent watchPositionAsync failures from surfacing as unhandled promise rejections
+      });
     }
   }
 

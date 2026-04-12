@@ -16,6 +16,8 @@ export function SplashScreen() {
   const navigation = useNavigation<any>();
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const { updateOfflineData, setHasLocationPermission } = useAppStore();
+  const isMountedRef = useRef(true); // fixed: guard navigation and state writes after unmount
+  const minVisibleTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null); // fixed: cancel the splash delay on unmount
 
   useEffect(() => {
     Animated.timing(fadeAnim, {
@@ -26,7 +28,9 @@ export function SplashScreen() {
 
     const checkStatus = async () => {
       // Minimum visible time so the logo is seen
-      const minVisibleMs = new Promise(resolve => setTimeout(resolve, 1500));
+      const minVisibleMs = new Promise<void>((resolve) => {
+        minVisibleTimeoutRef.current = setTimeout(resolve, 1500); // fixed: keep a handle so the delay can be cancelled on unmount
+      });
 
       // Run all checks in parallel
       const [mapStatus, permissionResult, isConnected] = await Promise.all([
@@ -37,6 +41,17 @@ export function SplashScreen() {
       ]);
 
       const permissionGranted = permissionResult.status === 'granted';
+      if (!isMountedRef.current) {
+        return; // fixed: stop after async work if the splash screen already unmounted
+      }
+
+      const { downloadState, setDownloadState } = useAppStore.getState(); // fixed: reconcile persisted download progress with actual disk state on cold start
+      if (downloadState.phase === 'downloading' || downloadState.phase === 'connecting') {
+        setDownloadState({
+          phase: 'paused',
+          resumable: (downloadState.downloadedTiles ?? 0) > 0,
+        }); // fixed: prevent the app from showing a phantom active download after a force-quit
+      }
 
       // Sync real map status into persisted Zustand state
       if (mapStatus.isDownloaded) {
@@ -70,8 +85,15 @@ export function SplashScreen() {
       navigation.replace('DownloadMap');
     };
 
-    checkStatus();
-  }, []);
+    void checkStatus();
+
+    return () => {
+      isMountedRef.current = false; // fixed: mark splash work as cancelled on unmount
+      if (minVisibleTimeoutRef.current) {
+        clearTimeout(minVisibleTimeoutRef.current); // fixed: cancel the pending splash timeout
+      }
+    };
+  }, [fadeAnim, navigation, setHasLocationPermission, updateOfflineData]);
 
   return (
     <View style={styles.container}>

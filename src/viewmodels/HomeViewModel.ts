@@ -15,25 +15,21 @@ export function useHomeViewModel() {
   const mapRef = useRef<MapView>(null);
   const bottomSheetRef = useRef<BottomSheet>(null);
 
-  const {
-    currentLocation,
-    hasLocationPermission,
-    settings,
-    updateSettings,
-    addRecentSearch,
-    recentSearches,
-    offlineData,
-    hasInternet,
-    selectedPlace,
-    setSelectedPlace,
-    searchQuery,
-    setSearchQuery,
-    searchResults,
-    setSearchResults,
-    autoFollowEnabled,
-    setAutoFollowEnabled,
-    isNavigating,
-  } = useAppStore();
+  const currentLocation = useAppStore((s) => s.currentLocation); // fixed: subscribe only to current location updates needed by the home viewmodel
+  const hasLocationPermission = useAppStore((s) => s.hasLocationPermission); // fixed: keep the GPS listener subscription focused on permission changes
+  const settings = useAppStore((s) => s.settings); // fixed: subscribe only to the persisted settings slice used by the map
+  const recentSearches = useAppStore((s) => s.recentSearches); // fixed: subscribe only to recent-search changes that affect the home sheet
+  const offlineData = useAppStore((s) => s.offlineData); // fixed: subscribe only to offline-map metadata used by the screen
+  const hasInternet = useAppStore((s) => s.hasInternet); // fixed: subscribe only to connectivity changes relevant to offline mode
+  const selectedPlace = useAppStore((s) => s.selectedPlace); // fixed: subscribe only to the selected place for detail rendering
+  const searchQuery = useAppStore((s) => s.searchQuery); // fixed: subscribe only to the current search query
+  const searchResults = useAppStore((s) => s.searchResults); // fixed: subscribe only to search results that feed the sheet
+  const isNavigating = useAppStore((s) => s.isNavigating); // fixed: subscribe only to navigation-mode changes that affect auto-follow
+  const updateSettings = useAppStore((s) => s.updateSettings); // fixed: keep action references scoped to the values this hook mutates
+  const addRecentSearch = useAppStore((s) => s.addRecentSearch); // fixed: keep action references scoped to recent-search mutations
+  const setSelectedPlace = useAppStore((s) => s.setSelectedPlace); // fixed: keep action references scoped to place selection changes
+  const setSearchQuery = useAppStore((s) => s.setSearchQuery); // fixed: keep action references scoped to search query updates
+  const setSearchResults = useAppStore((s) => s.setSearchResults); // fixed: keep action references scoped to search result updates
 
   const isOffline = !hasInternet;
   const [isMapReady, setIsMapReady] = useState(false);
@@ -50,7 +46,7 @@ export function useHomeViewModel() {
 
   const handleGPS = useCallback(
     (coord: { latitude: number; longitude: number }) => {
-      if (autoFollowEnabled && mapRef.current && !isNavigating) {
+      if (settings.autoFollowLocation && mapRef.current && !isNavigating) { // fixed: use the persisted setting as the single auto-follow source of truth
         mapRef.current.animateToRegion(
           {
             ...coord,
@@ -61,7 +57,7 @@ export function useHomeViewModel() {
         );
       }
     },
-    [autoFollowEnabled, isNavigating]
+    [isNavigating, settings.autoFollowLocation] // fixed: react to live auto-follow setting changes
   );
 
   // Re-register the GPS listener whenever handleGPS reference changes so the
@@ -103,7 +99,7 @@ export function useHomeViewModel() {
 
   const handleRecenter = () => {
     if (currentLocation && mapRef.current) {
-      setAutoFollowEnabled(true);
+      updateSettings({ autoFollowLocation: true }); // fixed: recenter now updates the same persisted auto-follow setting
       mapRef.current.animateToRegion(
         {
           ...currentLocation,

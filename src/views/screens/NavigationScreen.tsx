@@ -4,16 +4,20 @@
  */
 
 import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Pressable, Modal, BackHandler } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { View, Text, StyleSheet, Pressable, Modal, BackHandler, Platform } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE, LocalTile, Camera } from 'react-native-maps';
 import { X, Navigation, Volume2, VolumeX, ArrowLeft, ArrowRight, MapPin, RefreshCw } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
-import * as FileSystem from 'expo-file-system';
+import { Paths } from 'expo-file-system'; // fixed: use Paths API instead of deprecated documentDirectory
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAppStore } from '../../store/useAppStore';
 import { useNavigationViewModel } from '../../viewmodels/NavigationViewModel';
+import { RootStackParamList } from '../../navigation/RootNavigator'; // fixed: use typed stack params
 
-const TILE_PATH = `${FileSystem.documentDirectory}tiles/{z}_{x}_{y}.png`;
+type NavigationScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Navigation'>; // fixed: type stack navigation on the navigation screen
+
+const getTilePath = (): string => `${Paths.document.uri}tiles/{z}_{x}_{y}.png`; // fixed: lazy getter defers Paths.document access to render time so the native module is ready
 
 function StepIcon({ type, size = 32 }: { type: string; size?: number }) {
   const color = '#FFFFFF';
@@ -26,9 +30,11 @@ function StepIcon({ type, size = 32 }: { type: string; size?: number }) {
 }
 
 export function NavigationScreen() {
-  const nav = useNavigation<any>();
+  const nav = useNavigation<NavigationScreenNavigationProp>(); // fixed: replace any navigation with typed stack navigation
   const mapRef = useRef<MapView>(null);
-  const { offlineData } = useAppStore();
+  const insets = useSafeAreaInsets(); // fixed: pad the bottom bar away from gesture/navigation insets
+  const offlineData = useAppStore((s) => s.offlineData); // fixed: subscribe only to offline-map metadata needed by the navigation screen
+  const settings = useAppStore((s) => s.settings); // fixed: subscribe only to settings that affect map rotation and heading
 
   const {
     destination,
@@ -65,12 +71,12 @@ export function NavigationScreen() {
           longitude: snappedLocation.longitude,
         },
         zoom: 18,
-        heading: snappedLocation.heading ?? 0,
+        heading: settings.keepNorthFixed ? 0 : (snappedLocation.heading ?? 0), // fixed: lock heading when north-up mode is enabled
         pitch: 30,
       };
       mapRef.current.animateCamera(camera as Camera, { duration: 800 });
     }
-  }, [snappedLocation]);
+  }, [settings.keepNorthFixed, snappedLocation]); // fixed: react to north-up setting changes while navigating
 
   const currentStep = instructions[currentStepIndex];
   const nextStep = instructions[currentStepIndex + 1];
@@ -84,10 +90,10 @@ export function NavigationScreen() {
       <MapView
         ref={mapRef}
         style={styles.map}
-        provider={PROVIDER_GOOGLE}
+        provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined} // fixed: avoid forcing Google provider on iOS
         showsUserLocation={true}
         showsMyLocationButton={false}
-        rotateEnabled={true}
+        rotateEnabled={!settings.keepNorthFixed} // fixed: disable free rotation when north-up mode is enabled
         initialRegion={{
           latitude: currentLocation?.latitude ?? 24.9685,
           longitude: currentLocation?.longitude ?? 67.0015,
@@ -96,7 +102,7 @@ export function NavigationScreen() {
         }}
       >
         {offlineData.isDownloaded && (
-          <LocalTile pathTemplate={TILE_PATH} tileSize={256} zIndex={-1} />
+          <LocalTile pathTemplate={getTilePath()} tileSize={256} zIndex={-1} />
         )}
 
         {route && (
@@ -151,7 +157,7 @@ export function NavigationScreen() {
 
       {/* Bottom info bar */}
       {!arrived && (
-        <View style={styles.bottomBar}>
+        <View style={[styles.bottomBar, { paddingBottom: Math.max(insets.bottom, 12) }]}> {/* fixed: apply safe-area bottom padding */}
           <View style={styles.tripInfo}>
             <View>
               <Text style={styles.timeRemaining}>

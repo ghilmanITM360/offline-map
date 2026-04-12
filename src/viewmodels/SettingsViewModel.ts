@@ -5,6 +5,7 @@
 
 import { useAppStore } from '../store/useAppStore';
 import { OfflineMapService } from '../services/OfflineMapService';
+import { Alert, Linking } from 'react-native';
 import * as Location from 'expo-location';
 import { UserSettings } from '../models/types';
 
@@ -54,9 +55,16 @@ export function useSettingsViewModel() {
   };
 
   const handleReRequestPermission = async () => {
-    const { status } = await Location.requestForegroundPermissionsAsync();
+    const { status, canAskAgain } = await Location.requestForegroundPermissionsAsync();
     if (status === 'granted') {
       setHasLocationPermission(true);
+      return;
+    }
+    if (!canAskAgain) {
+      Alert.alert('Location permission required', 'Enable location access in Settings to use navigation.', [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Open Settings', onPress: () => { void Linking.openSettings(); } },
+      ]); // fixed: direct permanently denied users to OS settings
     }
   };
 

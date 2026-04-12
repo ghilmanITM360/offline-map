@@ -13,6 +13,7 @@ import {
   ScrollView,
   Platform,
   StatusBar,
+  KeyboardAvoidingView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import MapView, { Marker, Polygon, PROVIDER_GOOGLE, LocalTile } from 'react-native-maps';
@@ -35,16 +36,24 @@ import {
   Info,
 } from 'lucide-react-native';
 import BottomSheet, { BottomSheetScrollView } from '@gorhom/bottom-sheet';
-import { useNavigation, DrawerActions } from '@react-navigation/native';
+import { useNavigation, DrawerActions, CompositeNavigationProp } from '@react-navigation/native';
+import { DrawerNavigationProp } from '@react-navigation/drawer';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useHomeViewModel } from '../../viewmodels/HomeViewModel';
 import { IJTEMA_DATA } from '../../constants/data';
 import { Place, SearchResult } from '../../models/types';
 import { PlaceDetailService } from '../../services/PlaceDetailService';
 import { FavoriteService } from '../../services/FavoriteService';
 import { useAppStore } from '../../store/useAppStore';
-import * as FileSystem from 'expo-file-system';
+import { Paths } from 'expo-file-system'; // fixed: use Paths API instead of deprecated documentDirectory
+import { DrawerParamList, RootStackParamList } from '../../navigation/RootNavigator'; // fixed: use typed navigation params
 
-const TILE_PATH = `${FileSystem.documentDirectory}tiles/{z}_{x}_{y}.png`;
+type HomeScreenNavigationProp = CompositeNavigationProp<
+  DrawerNavigationProp<DrawerParamList, 'Home'>,
+  NativeStackNavigationProp<RootStackParamList>
+>; // fixed: type Home screen navigation across drawer + stack routes
+
+const getTilePath = (): string => `${Paths.document.uri}tiles/{z}_{x}_{y}.png`; // fixed: lazy getter defers Paths.document access to render time so the native module is ready
 
 function isPlace(item: Place | SearchResult): item is Place {
   return 'name' in item;
@@ -54,8 +63,9 @@ function getDisplayName(item: Place | SearchResult): string {
 }
 
 export function HomeScreen() {
-  const nav = useNavigation<any>();
-  const { currentLocation, favorites } = useAppStore();
+  const nav = useNavigation<HomeScreenNavigationProp>(); // fixed: replace any navigation with typed route support
+  const currentLocation = useAppStore((s) => s.currentLocation); // fixed: subscribe only to current location updates used by the selected-place summary
+  const favorites = useAppStore((s) => s.favorites); // fixed: subscribe only to favorite changes used by the details sheet
   const [selectedEntryIdx, setSelectedEntryIdx] = useState(0);
 
   const {
@@ -69,6 +79,7 @@ export function HomeScreen() {
     snapPoints,
     initialRegion,
     isOffline,
+    offlineData, // fixed: destructure offlineData so the tile guard and empty-state can check isDownloaded
     activeCategory,
     setIsMapReady,
     handleSearch,
@@ -151,180 +162,193 @@ export function HomeScreen() {
   };
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
+    <KeyboardAvoidingView
+      style={styles.container} // fixed: keep map layout stable while keyboard is open
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'} // fixed: apply platform-appropriate keyboard avoidance
+    >
+      <View style={styles.container}>
+        <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
 
-      <MapView
-        ref={mapRef}
-        style={styles.map}
-        provider={PROVIDER_GOOGLE}
-        initialRegion={initialRegion}
-        mapType={isOffline ? 'none' : mapType}
-        showsUserLocation
-        showsMyLocationButton={false}
-        showsCompass={false}
-        onMapReady={() => setIsMapReady(true)}
-        onPress={() => {
-          if (searchQuery) clearSearch();
-          if (selectedPlace) {
-            setSelectedPlace(null);
-            bottomSheetRef.current?.close();
-          }
-        }}
-      >
-        {isOffline && (
-          <LocalTile pathTemplate={TILE_PATH} tileSize={256} zIndex={-1} />
-        )}
-
-        {Object.entries(IJTEMA_DATA.blocks).map(([id, block]) => {
-          const isSelected = selectedPlace?.id === id;
-          return block.corners ? (
-            <Polygon
-              key={id}
-              coordinates={block.corners}
-              fillColor={isSelected ? 'rgba(26, 115, 232, 0.35)' : 'rgba(46, 125, 50, 0.15)'}
-              strokeColor={isSelected ? '#1A73E8' : '#2E7D32'}
-              strokeWidth={isSelected ? 3 : 1.5}
-              tappable
-              onPress={() =>
-                handlePlaceSelect({
-                  id: block.id,
-                  name: block.name,
-                  urduName: block.urduName,
-                  category: 'Block',
-                  coordinate: block.center,
-                  description: `${block.name} of the Karachi Ijtema ground.`,
-                })
-              }
-            />
-          ) : null;
-        })}
-
-        {selectedPlace && (
-          <Marker coordinate={selectedPlace.coordinate}>
-            <View style={styles.selectedMarker}>
-              <MapPin size={32} color="#EA4335" fill="#EA4335" />
-            </View>
-          </Marker>
-        )}
-      </MapView>
-
-      {/* Top UI */}
-      <SafeAreaView style={styles.topOverlay} pointerEvents="box-none">
-        <View style={styles.searchBarContainer}>
-          <Pressable
-            onPress={() => nav.dispatch(DrawerActions.openDrawer())}
-            style={styles.iconButton}
-          >
-            <Menu size={24} color="#5F6368" />
-          </Pressable>
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search blocks, masjid, gates…"
-            placeholderTextColor="#70757A"
-            value={searchQuery}
-            onChangeText={handleSearch}
-          />
-          {searchQuery.length > 0 ? (
-            <Pressable onPress={clearSearch} style={styles.iconButton}>
-              <X size={20} color="#5F6368" />
-            </Pressable>
-          ) : (
-            <Pressable style={styles.iconButton}>
-              <Mic size={22} color="#4285F4" />
-            </Pressable>
+        <MapView
+          ref={mapRef}
+          style={styles.map}
+          provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined} // fixed: avoid forcing Google provider on iOS
+          initialRegion={initialRegion}
+          mapType={isOffline ? 'none' : mapType}
+          showsUserLocation
+          showsMyLocationButton={false}
+          showsCompass={false}
+          onMapReady={() => setIsMapReady(true)}
+          onPress={() => {
+            if (searchQuery) clearSearch();
+            if (selectedPlace) {
+              setSelectedPlace(null);
+              bottomSheetRef.current?.close();
+            }
+          }}
+        >
+          {isOffline && offlineData.isDownloaded && (
+            <LocalTile pathTemplate={getTilePath()} tileSize={256} zIndex={-1} /> // fixed: lazy getter called at render time so native module is already initialized
           )}
-        </View>
 
-        {(searchResults.length > 0 || (searchQuery.length === 0 && recentSearches.length > 0)) && (
-          <View style={styles.searchResultsContainer}>
-            <ScrollView keyboardShouldPersistTaps="handled">
-              {searchQuery.length === 0 && (
-                <Text style={styles.sectionTitle}>Recent</Text>
-              )}
-              {(searchQuery.length > 0 ? searchResults : recentSearches).map((item) => (
-                <Pressable
-                  key={(item as any).id}
-                  style={styles.searchResultItem}
-                  onPress={() => handlePlaceSelect(item as any)}
-                >
-                  <View style={styles.searchResultIcon}>
-                    {searchQuery.length === 0 ? (
-                      <Clock size={18} color="#70757A" />
-                    ) : (
-                      <MapPin size={18} color="#70757A" />
-                    )}
-                  </View>
-                  <View style={styles.searchResultText}>
-                    <Text style={styles.searchResultName}>{getDisplayName(item)}</Text>
-                    <Text style={styles.searchResultCategory}>{(item as any).category}</Text>
-                  </View>
-                  <ChevronRight size={18} color="#BDC1C6" />
-                </Pressable>
-              ))}
-            </ScrollView>
+          {Object.entries(IJTEMA_DATA.blocks).map(([id, block]) => {
+            const isSelected = selectedPlace?.id === id;
+            return block.corners ? (
+              <Polygon
+                key={id}
+                coordinates={block.corners}
+                fillColor={isSelected ? 'rgba(26, 115, 232, 0.35)' : 'rgba(46, 125, 50, 0.15)'}
+                strokeColor={isSelected ? '#1A73E8' : '#2E7D32'}
+                strokeWidth={isSelected ? 3 : 1.5}
+                tappable
+                onPress={() =>
+                  handlePlaceSelect({
+                    id: block.id,
+                    name: block.name,
+                    urduName: block.urduName,
+                    category: 'Block',
+                    coordinate: block.center,
+                    description: `${block.name} of the Karachi Ijtema ground.`,
+                  })
+                }
+              />
+            ) : null;
+          })}
+
+          {selectedPlace && (
+            <Marker coordinate={selectedPlace.coordinate}>
+              <View style={styles.selectedMarker}>
+                <MapPin size={32} color="#EA4335" fill="#EA4335" />
+              </View>
+            </Marker>
+          )}
+        </MapView>
+
+        {/* Top UI */}
+        <SafeAreaView style={styles.topOverlay} pointerEvents="box-none">
+          <View style={styles.searchBarContainer}>
+            <Pressable
+              onPress={() => nav.dispatch(DrawerActions.openDrawer())}
+              style={styles.iconButton}
+            >
+              <Menu size={24} color="#5F6368" />
+            </Pressable>
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search blocks, masjid, gates…"
+              placeholderTextColor="#70757A"
+              value={searchQuery}
+              onChangeText={handleSearch}
+            />
+            {searchQuery.length > 0 ? (
+              <Pressable onPress={clearSearch} style={styles.iconButton}>
+                <X size={20} color="#5F6368" />
+              </Pressable>
+            ) : (
+              <Pressable style={styles.iconButton}>
+                <Mic size={22} color="#4285F4" />
+              </Pressable>
+            )}
+          </View>
+
+          {(searchResults.length > 0 || (searchQuery.length === 0 && recentSearches.length > 0)) && (
+            <View style={styles.searchResultsContainer}>
+              <ScrollView keyboardShouldPersistTaps="handled">
+                {searchQuery.length === 0 && (
+                  <Text style={styles.sectionTitle}>Recent</Text>
+                )}
+                {(searchQuery.length > 0 ? searchResults : recentSearches).map((item) => (
+                  <Pressable
+                    key={(item as any).id}
+                    style={styles.searchResultItem}
+                    onPress={() => handlePlaceSelect(item as any)}
+                  >
+                    <View style={styles.searchResultIcon}>
+                      {searchQuery.length === 0 ? (
+                        <Clock size={18} color="#70757A" />
+                      ) : (
+                        <MapPin size={18} color="#70757A" />
+                      )}
+                    </View>
+                    <View style={styles.searchResultText}>
+                      <Text style={styles.searchResultName}>{getDisplayName(item)}</Text>
+                      <Text style={styles.searchResultCategory}>{(item as any).category}</Text>
+                    </View>
+                    <ChevronRight size={18} color="#BDC1C6" />
+                  </Pressable>
+                ))}
+              </ScrollView>
+            </View>
+          )}
+
+          {renderChips()}
+        </SafeAreaView>
+
+        {isOffline && (
+          <View style={styles.offlineIndicator}>
+            <WifiOff size={14} color="#FFFFFF" />
+            <Text style={styles.offlineText}>Offline</Text>
           </View>
         )}
 
-        {renderChips()}
-      </SafeAreaView>
+        {isOffline && !offlineData.isDownloaded && (
+          <View style={styles.emptyOfflineState}> {/* fixed: explain why the map is blank when the device is offline without downloaded tiles */}
+            <Text style={styles.emptyOfflineTitle}>No offline map available.</Text>
+            <Pressable style={styles.emptyOfflineButton} onPress={() => nav.navigate('DownloadMap')}>
+              <Text style={styles.emptyOfflineButtonText}>Download now</Text>
+            </Pressable>
+          </View>
+        )}
 
-      {isOffline && (
-        <View style={styles.offlineIndicator}>
-          <WifiOff size={14} color="#FFFFFF" />
-          <Text style={styles.offlineText}>Offline</Text>
-        </View>
-      )}
-
-      {/* Map controls */}
-      <View style={styles.rightControls}>
-        <Pressable style={styles.controlButton} onPress={toggleMapType}>
-          <Layers size={22} color="#5F6368" />
-        </Pressable>
-        <Pressable style={styles.controlButton}>
-          <Compass size={22} color="#5F6368" />
-        </Pressable>
-        <View style={styles.zoomControls}>
-          <Pressable style={styles.zoomButton} onPress={handleZoomIn}>
-            <Plus size={22} color="#5F6368" />
+        {/* Map controls */}
+        <View style={styles.rightControls}>
+          <Pressable style={styles.controlButton} onPress={toggleMapType}>
+            <Layers size={22} color="#5F6368" />
           </Pressable>
-          <View style={styles.zoomDivider} />
-          <Pressable style={styles.zoomButton} onPress={handleZoomOut}>
-            <Minus size={22} color="#5F6368" />
+          <Pressable style={styles.controlButton}>
+            <Compass size={22} color="#5F6368" />
+          </Pressable>
+          <View style={styles.zoomControls}>
+            <Pressable style={styles.zoomButton} onPress={handleZoomIn}>
+              <Plus size={22} color="#5F6368" />
+            </Pressable>
+            <View style={styles.zoomDivider} />
+            <Pressable style={styles.zoomButton} onPress={handleZoomOut}>
+              <Minus size={22} color="#5F6368" />
+            </Pressable>
+          </View>
+        </View>
+
+        <View style={styles.bottomControls}>
+          <Pressable style={styles.recenterButton} onPress={handleRecenter}>
+            <LocateFixed size={24} color="#4285F4" />
           </Pressable>
         </View>
-      </View>
 
-      <View style={styles.bottomControls}>
-        <Pressable style={styles.recenterButton} onPress={handleRecenter}>
-          <LocateFixed size={24} color="#4285F4" />
-        </Pressable>
-      </View>
-
-      {/* Bottom Sheet */}
-      <BottomSheet
-        ref={bottomSheetRef}
-        index={-1}
-        snapPoints={snapPoints}
-        enablePanDownToClose
-        handleIndicatorStyle={styles.sheetIndicator}
-      >
-        <BottomSheetScrollView contentContainerStyle={styles.sheetContent}>
-          {selectedPlace ? (
-            <View>
-              {/* Header */}
-              <View style={styles.placeHeader}>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.placeName}>{selectedPlace.name}</Text>
-                  {selectedPlace.urduName && (
-                    <Text style={styles.placeUrdu}>{selectedPlace.urduName}</Text>
-                  )}
-                  <Text style={styles.placeCategory}>{selectedPlace.category}</Text>
+        {/* Bottom Sheet */}
+        <BottomSheet
+          ref={bottomSheetRef}
+          index={-1}
+          snapPoints={snapPoints}
+          enablePanDownToClose
+          handleIndicatorStyle={styles.sheetIndicator}
+        >
+          <BottomSheetScrollView contentContainerStyle={styles.sheetContent}>
+            {selectedPlace ? (
+              <View>
+                {/* Header */}
+                <View style={styles.placeHeader}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.placeName}>{selectedPlace.name}</Text>
+                    {selectedPlace.urduName && (
+                      <Text style={styles.placeUrdu}>{selectedPlace.urduName}</Text>
+                    )}
+                    <Text style={styles.placeCategory}>{selectedPlace.category}</Text>
+                  </View>
+                  <Pressable onPress={() => { setSelectedPlace(null); bottomSheetRef.current?.close(); }}>
+                    <X size={24} color="#5F6368" />
+                  </Pressable>
                 </View>
-                <Pressable onPress={() => { setSelectedPlace(null); bottomSheetRef.current?.close(); }}>
-                  <X size={24} color="#5F6368" />
-                </Pressable>
-              </View>
 
               {/* Info chips */}
               <View style={styles.infoChips}>
@@ -404,15 +428,16 @@ export function HomeScreen() {
               {selectedPlace.description && (
                 <Text style={styles.placeDesc}>{selectedPlace.description}</Text>
               )}
-            </View>
-          ) : (
-            <View style={styles.emptySheet}>
-              <Text style={styles.emptySheetText}>Tap a block to see details</Text>
-            </View>
-          )}
-        </BottomSheetScrollView>
-      </BottomSheet>
-    </View>
+              </View>
+            ) : (
+              <View style={styles.emptySheet}>
+                <Text style={styles.emptySheetText}>Tap a block to see details</Text>
+              </View>
+            )}
+          </BottomSheetScrollView>
+        </BottomSheet>
+      </View>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -599,4 +624,33 @@ const styles = StyleSheet.create({
   placeDesc: { fontSize: 14, color: '#5F6368', lineHeight: 22 },
   emptySheet: { alignItems: 'center', padding: 60 },
   emptySheetText: { color: '#70757A', fontSize: 15 },
+  emptyOfflineState: { // fixed: container for the no-offline-map warning shown when device is offline without downloaded tiles
+    position: 'absolute',
+    bottom: 100,
+    left: 16,
+    right: 16,
+    backgroundColor: 'rgba(32, 33, 36, 0.9)',
+    borderRadius: 12,
+    padding: 16,
+    alignItems: 'center',
+    zIndex: 20,
+  },
+  emptyOfflineTitle: { // fixed: title text for the no-offline-map empty state
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '600',
+    textAlign: 'center',
+    marginBottom: 12,
+  },
+  emptyOfflineButton: { // fixed: CTA button driving users to the download screen from the offline empty state
+    backgroundColor: '#2E7D32',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  emptyOfflineButtonText: { // fixed: button label text for the download CTA in the offline empty state
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
+  },
 });

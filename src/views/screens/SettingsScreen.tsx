@@ -38,7 +38,7 @@ import { useAppStore } from '../../store/useAppStore';
 export function SettingsScreen() {
   const navigation = useNavigation<any>();
   const theme = useTheme();
-  const { offlineData } = useAppStore();
+  const offlineData = useAppStore((s) => s.offlineData); // fixed: focused selector prevents every GPS store update from re-rendering SettingsScreen
   const {
     settings,
     handleToggle,
@@ -104,7 +104,7 @@ export function SettingsScreen() {
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
       <View style={[styles.header, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
-        <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
+        <Pressable onPress={() => navigation.canGoBack() ? navigation.goBack() : navigation.navigate('Home')} style={styles.backButton}> {/* fixed: guard goBack() and fall back to Home */}
           <ChevronLeft size={28} color={theme.text} />
         </Pressable>
         <Text style={[styles.headerTitle, { color: theme.text }]}>Settings</Text>
@@ -215,7 +215,7 @@ export function SettingsScreen() {
               description="When the map was last downloaded"
             />
           )}
-          {offlineData.sizeMB && (
+          {(offlineData.sizeMB ?? 0) > 0 && ( // fixed: bare number 0 wrapped in boolean guard so {0 && ...} never renders the number directly
             <SettingItem
               icon={Info}
               label="Map Size"

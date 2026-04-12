@@ -4,98 +4,104 @@
  */
 
 import React from 'react';
-import { View, Text, StyleSheet, Pressable, ScrollView, TextInput } from 'react-native';
+import { View, Text, StyleSheet, Pressable, ScrollView, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ChevronLeft, ArrowRight, MapPin, Navigation } from 'lucide-react-native';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useDirectionsViewModel } from '../../viewmodels/DirectionsViewModel';
+import { RootStackParamList } from '../../navigation/RootNavigator'; // fixed: use typed stack params
 
 export function DirectionsScreen() {
-  const navigation = useNavigation<any>();
-  const routeParams = useRoute<any>();
-  const { destination } = routeParams.params || {};
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList, 'Directions'>>(); // fixed: type directions navigation
+  const routeParams = useRoute<RouteProp<RootStackParamList, 'Directions'>>(); // fixed: type directions route params
+  const { destination } = routeParams.params;
   
   const {
     route,
     instructions,
     origin,
-    setOrigin,
     handleStartNavigation,
   } = useDirectionsViewModel(destination);
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
-          <ChevronLeft size={28} color="#333" />
-        </Pressable>
-        <Text style={styles.headerTitle}>Directions</Text>
-      </View>
-
-      <View style={styles.searchSection}>
-        <View style={styles.inputRow}>
-          <View style={styles.dotOrigin} />
-          <TextInput
-            style={styles.input}
-            value={origin}
-            onChangeText={setOrigin}
-            placeholder="Choose starting point"
-          />
+    <KeyboardAvoidingView
+      style={styles.container} // fixed: keep text inputs visible above the keyboard
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'} // fixed: apply platform-specific keyboard avoidance
+    >
+      <SafeAreaView style={styles.container}>
+        <View style={styles.header}>
+          <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
+            <ChevronLeft size={28} color="#333" />
+          </Pressable>
+          <Text style={styles.headerTitle}>Directions</Text>
         </View>
-        <View style={styles.verticalLine} />
-        <View style={styles.inputRow}>
-          <MapPin size={20} color="#2E7D32" />
-          <TextInput
-            style={styles.input}
-            value={destination?.name || ''}
-            placeholder="Choose destination"
-            editable={false}
-          />
-        </View>
-      </View>
 
-      <ScrollView style={styles.content}>
-        {route ? (
-          <View style={styles.routeCard}>
-            <View style={styles.routeInfo}>
-              <View>
-                <Text style={styles.routeTime}>{route.estimatedTimeMin} min</Text>
-                <Text style={styles.routeDistance}>{route.totalDistance} m</Text>
+        <View style={styles.searchSection}>
+          <View style={styles.inputRow}>
+            <View style={styles.dotOrigin} />
+            <TextInput
+              style={styles.input}
+              value={origin}
+              editable={false} // fixed: prevent misleading edits until custom origin routing is implemented
+              placeholder="Current location"
+            />
+          </View>
+          <View style={styles.verticalLine} />
+          <View style={styles.inputRow}>
+            <MapPin size={20} color="#2E7D32" />
+            <TextInput
+              style={styles.input}
+              value={destination?.name || ''}
+              placeholder="Choose destination"
+              editable={false}
+            />
+          </View>
+        </View>
+
+        <ScrollView style={styles.content}>
+          {route ? (
+            <View style={styles.routeCard}>
+              <View style={styles.routeInfo}>
+                <View>
+                  <Text style={styles.routeTime}>{route.estimatedTimeMin} min</Text>
+                  <Text style={styles.routeDistance}>{route.totalDistance} m</Text>
+                </View>
+                <Pressable 
+                  style={styles.startButton}
+                  onPress={() => handleStartNavigation(navigation)}
+                >
+                  <Navigation size={20} color="#FFFFFF" />
+                  <Text style={styles.startButtonText}>Start</Text>
+                </Pressable>
               </View>
-              <Pressable 
-                style={styles.startButton}
-                onPress={() => handleStartNavigation(navigation)}
-              >
-                <Navigation size={20} color="#FFFFFF" />
-                <Text style={styles.startButtonText}>Start</Text>
-              </Pressable>
+              <Text style={styles.routeDesc}>Fastest route, mostly flat</Text>
             </View>
-            <Text style={styles.routeDesc}>Fastest route, mostly flat</Text>
-          </View>
-        ) : (
-          <View style={styles.loadingContainer}>
-            <Text style={styles.loadingText}>Calculating best route...</Text>
-          </View>
-        )}
+          ) : (
+            <View style={styles.loadingContainer}>
+              <Text style={styles.loadingText}>Calculating best route...</Text>
+            </View>
+          )}
 
-        <View style={styles.stepsSection}>
-          <Text style={styles.stepsTitle}>Steps</Text>
-          {instructions.map((step, index) => (
-            <View key={index} style={styles.stepItem}>
-              {step.type === 'arrival' ? (
-                <MapPin size={20} color="#2E7D32" />
-              ) : (
-                <ArrowRight size={20} color="#666" />
-              )}
-              <Text style={styles.stepText}>{step.text}</Text>
-              {step.distance > 0 && (
-                <Text style={styles.stepDist}>{step.distance}m</Text>
-              )}
-            </View>
-          ))}
-        </View>
-      </ScrollView>
-    </SafeAreaView>
+          <View style={styles.stepsSection}>
+            <Text style={styles.stepsTitle}>Steps</Text>
+            {instructions.map((step, index) => (
+              <View key={index} style={styles.stepItem}>
+                {step.type === 'arrival' ? (
+                  <MapPin size={20} color="#2E7D32" />
+                ) : (
+                  <ArrowRight size={20} color="#666" />
+                )}
+                <Text style={styles.stepText}>{step.text}</Text>
+                {step.distance > 0 && (
+                  <Text style={styles.stepDist}>{step.distance}m</Text>
+                )}
+              </View>
+            ))}
+          </View>
+        </ScrollView>
+      </SafeAreaView>
+    </KeyboardAvoidingView>
   );
 }
 

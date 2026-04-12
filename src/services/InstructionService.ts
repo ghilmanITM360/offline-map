@@ -27,6 +27,8 @@ const INTERSECTION_NAMES: Record<string, { en: string; ur: string }> = {
 
 export class InstructionService {
   static generateInstructions(nodeIds: string[]): NavigationInstruction[] {
+    if (nodeIds.length === 0) return []; // fixed: guard against empty routes before reading the last node
+
     const instructions: NavigationInstruction[] = [];
 
     for (let i = 0; i < nodeIds.length - 1; i++) {
@@ -35,6 +37,7 @@ export class InstructionService {
 
       const currentNode = (IJTEMA_DATA.nodes as any)[currentId];
       const nextNode = (IJTEMA_DATA.nodes as any)[nextId];
+      if (!currentNode || !nextNode) continue; // fixed: skip malformed segments instead of crashing on missing node data
 
       const distance = this.getEdgeDistance(currentId, nextId);
 
@@ -51,6 +54,7 @@ export class InstructionService {
       } else {
         const prevId = nodeIds[i - 1];
         const prevNode = (IJTEMA_DATA.nodes as any)[prevId];
+        if (!prevNode) continue; // fixed: skip turn-calculation work when the previous node is missing from the dataset
 
         const bearing1 = getRhumbLineBearing(
           { latitude: prevNode.lat, longitude: prevNode.lng },
@@ -96,6 +100,7 @@ export class InstructionService {
     // Arrival step
     const lastNodeId = nodeIds[nodeIds.length - 1];
     const lastNode = (IJTEMA_DATA.nodes as any)[lastNodeId];
+    if (!lastNode) return instructions; // fixed: guard against missing destination nodes before reading coordinates
     const destName = this.getFriendlyName(lastNodeId, 'en');
     const destNameUr = this.getFriendlyName(lastNodeId, 'ur');
 

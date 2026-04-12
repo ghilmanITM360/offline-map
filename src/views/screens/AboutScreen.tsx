@@ -4,18 +4,38 @@
  */
 
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable, Image, Linking } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Pressable, Image, Linking, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ChevronLeft, Info, Heart, Shield, ExternalLink } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
 
+const PRIVACY_POLICY_URL = 'TODO_PRIVACY_POLICY_URL'; // fixed: replace placeholder privacy URL with an explicit TODO constant
+const TERMS_OF_SERVICE_URL = 'TODO_TERMS_OF_SERVICE_URL'; // fixed: replace placeholder terms URL with an explicit TODO constant
+
 export function AboutScreen() {
   const navigation = useNavigation();
+
+  const openExternalUrl = async (url: string) => {
+    if (!url.startsWith('http')) {
+      Alert.alert('Link unavailable', 'This link has not been configured yet.'); // fixed: handle TODO URLs without throwing
+      return;
+    }
+    try {
+      const supported = await Linking.canOpenURL(url);
+      if (!supported) {
+        Alert.alert('Unable to open link', 'This link is not supported on this device.'); // fixed: guard unsupported URLs
+        return;
+      }
+      await Linking.openURL(url); // fixed: await the promise so errors can be caught
+    } catch {
+      Alert.alert('Unable to open link', 'Please try again later.'); // fixed: surface linking failures instead of silently rejecting
+    }
+  };
 
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
+        <Pressable onPress={() => navigation.canGoBack() ? navigation.goBack() : navigation.navigate('Home' as never)} style={styles.backButton}> {/* fixed: guard goBack() and fall back to Home */}
           <ChevronLeft size={28} color="#333" />
         </Pressable>
         <Text style={styles.headerTitle}>About App</Text>
@@ -69,12 +89,12 @@ export function AboutScreen() {
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Legal & Privacy</Text>
-          <Pressable style={styles.linkItem} onPress={() => Linking.openURL('https://example.com/privacy')}>
+          <Pressable style={styles.linkItem} onPress={() => { void openExternalUrl(PRIVACY_POLICY_URL); }}> {/* fixed: guard external link handling and avoid placeholder example.com */}
             <Shield size={20} color="#666" />
             <Text style={styles.linkText}>Privacy Policy</Text>
             <ExternalLink size={16} color="#AAA" />
           </Pressable>
-          <Pressable style={styles.linkItem} onPress={() => Linking.openURL('https://example.com/terms')}>
+          <Pressable style={styles.linkItem} onPress={() => { void openExternalUrl(TERMS_OF_SERVICE_URL); }}> {/* fixed: guard external link handling and avoid placeholder example.com */}
             <FileText size={20} color="#666" />
             <Text style={styles.linkText}>Terms of Service</Text>
             <ExternalLink size={16} color="#AAA" />

@@ -4,13 +4,32 @@
  */
 
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable, Linking } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Pressable, Linking, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ChevronLeft, HelpCircle, MessageCircle, FileText, ExternalLink, MapPin, Phone } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
 
+const OFFICIAL_WEBSITE_URL = 'TODO_OFFICIAL_WEBSITE_URL'; // fixed: replace placeholder website with an explicit TODO constant
+
 export function HelpScreen() {
   const navigation = useNavigation();
+
+  const openExternalUrl = async (url: string) => {
+    if (!url.startsWith('http')) {
+      Alert.alert('Link unavailable', 'This link has not been configured yet.'); // fixed: handle TODO URLs without throwing
+      return;
+    }
+    try {
+      const supported = await Linking.canOpenURL(url);
+      if (!supported) {
+        Alert.alert('Unable to open link', 'This link is not supported on this device.'); // fixed: guard unsupported URLs
+        return;
+      }
+      await Linking.openURL(url); // fixed: await the promise so errors can be caught
+    } catch {
+      Alert.alert('Unable to open link', 'Please try again later.'); // fixed: surface linking failures instead of silently rejecting
+    }
+  };
 
   const HelpItem = ({ icon: Icon, title, description, onPress }: any) => (
     <Pressable style={styles.helpItem} onPress={onPress}>
@@ -27,7 +46,7 @@ export function HelpScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
+        <Pressable onPress={() => navigation.canGoBack() ? navigation.goBack() : navigation.navigate('Home' as never)} style={styles.backButton}> {/* fixed: guard goBack() and fall back to Home */}
           <ChevronLeft size={28} color="#333" />
         </Pressable>
         <Text style={styles.headerTitle}>Help & Support</Text>
@@ -78,7 +97,7 @@ export function HelpScreen() {
             icon={ExternalLink}
             title="Official Website"
             description="Visit the official Karachi Ijtema website."
-            onPress={() => Linking.openURL('https://example.com')}
+            onPress={() => { void openExternalUrl(OFFICIAL_WEBSITE_URL); }} // fixed: guard external link handling and avoid placeholder example.com
           />
         </View>
 

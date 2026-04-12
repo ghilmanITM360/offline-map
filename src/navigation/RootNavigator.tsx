@@ -4,6 +4,7 @@
  */
 
 import React, { useEffect } from 'react';
+import { NavigatorScreenParams } from '@react-navigation/native'; // fixed: add typed nested navigator params
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createDrawerNavigator } from '@react-navigation/drawer';
 import { HomeScreen } from '../views/screens/HomeScreen';
@@ -20,9 +21,27 @@ import { CustomDrawer } from '../views/components/CustomDrawer';
 import { ConnectivityService } from '../services/ConnectivityService';
 import { GPSManagerService } from '../services/GPSManagerService';
 import { useAppStore } from '../store/useAppStore';
+import { Place } from '../models/types'; // fixed: type stack params that carry destination data
 
-const Stack = createNativeStackNavigator();
-const Drawer = createDrawerNavigator();
+export type DrawerParamList = {
+  Home: undefined;
+  Settings: undefined;
+  Help: undefined;
+  About: undefined;
+}; // fixed: type drawer routes
+
+export type RootStackParamList = {
+  Splash: undefined;
+  Permission: undefined;
+  DownloadMap: undefined;
+  Main: NavigatorScreenParams<DrawerParamList> | undefined;
+  Directions: { destination: Place };
+  Navigation: undefined;
+  Error: { title?: string; message?: string; type?: 'general' | 'connectivity' } | undefined;
+}; // fixed: type stack routes
+
+const Stack = createNativeStackNavigator<RootStackParamList>(); // fixed: use typed stack navigator
+const Drawer = createDrawerNavigator<DrawerParamList>(); // fixed: use typed drawer navigator
 
 const CONNECTIVITY_POLL_INTERVAL_MS = 30000;
 
@@ -57,7 +76,7 @@ export function RootNavigator() {
     check();
     const interval = setInterval(check, CONNECTIVITY_POLL_INTERVAL_MS);
     return () => clearInterval(interval);
-  }, []);
+  }, [setHasInternet]); // fixed: include store setter dependency
 
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
