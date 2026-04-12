@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { IJTEMA_DATA } from '../constants/data';
+import { IJTEMA_DATA, LANDMARK_PLACES } from '../constants/data';
 import { Place } from '../models/types';
 import { FuzzySearchService } from './FuzzySearchService';
 
@@ -21,27 +21,34 @@ function blockNumber(blockId: string): string {
   return blockId.replace(/^B/, '');
 }
 
+// Category ordering for search result ranking (lower = higher priority)
+const CATEGORY_RANK: Record<string, number> = {
+  Block: 0,
+  Gate: 1,
+  Masjid: 2,
+  Landmark: 3,
+  Rasta: 4,
+};
+
 export class SearchService {
-  static search(query: string): Place[] {
+  static search(query: string, userLocation?: { latitude: number; longitude: number }): Place[] {
     if (!query || query.trim().length === 0) return [];
 
     const raw = query.trim();
-    // Normalise Urdu numerals before matching
     const normalised = normalizeUrdu(raw).toLowerCase();
 
     const results: Place[] = [];
 
     // ─── Blocks ────────────────────────────────────────────────────────────
     Object.entries(IJTEMA_DATA.blocks).forEach(([id, block]) => {
-      const num = blockNumber(id);                        // "13"
-      const friendlyName = block.name;                    // "Block 13"
+      const num = blockNumber(id);
+      const friendlyName = block.name;
       const urduName = block.urduName ?? '';
 
       const matchesName    = FuzzySearchService.matches(normalised, friendlyName.toLowerCase());
       const matchesNumber  = normalised === num || normalised === `b${num}`;
       const matchesUrdu    = urduName.includes(raw) || normalizeUrdu(urduName).toLowerCase().includes(normalised);
       const matchesAlias   = block.aliases.some((a) => FuzzySearchService.matches(normalised, a.toLowerCase()));
-      // Tolerate typos like "blok" → "block"
       const matchesFuzzy   = FuzzySearchService.matches(normalised, `block ${num}`);
 
       if (matchesName || matchesNumber || matchesUrdu || matchesAlias || matchesFuzzy) {
@@ -49,17 +56,31 @@ export class SearchService {
       }
     });
 
-    // ─── Named nodes (gates, masjids) — only those with a human name ──────
+    // ─── Landmarks (gates, masjid, POIs) ─────────────────────────────────
+    LANDMARK_PLACES.forEach((lm) => {
+      const nameMatch = FuzzySearchService.matches(normalised, lm.name.toLowerCase());
+      const urduMatch = lm.urduName
+        ? (lm.urduName.includes(raw) || normalizeUrdu(lm.urduName).toLowerCase().includes(normalised))
+        : false;
+      const aliasMatch = (lm.aliases ?? []).some((a) =>
+        a.toLowerCase().includes(normalised) ||
+        FuzzySearchService.matches(normalised, a.toLowerCase()),
+      );
+      if (nameMatch || urduMatch || aliasMatch) {
+        if (!results.find((r) => r.id === lm.id)) results.push(lm);
+      }
+    });
+
+    // ─── Named graph nodes (terminals, named road-ends) ──────────────────
     Object.entries(IJTEMA_DATA.nodes).forEach(([id, node]) => {
-      // Skip internal intersection/road-end nodes that have no meaningful name
       if (!node.name) return;
-      // Never surface raw IDs like P10, S12
-      if (/^(P|S)\d+$/.test(id)) return;
+      if (/^(P|S)\d+$/.test(id)) return; // skip raw intersection IDs
+      if (node.nearestRoadNode) return;   // skip off-graph landmark nodes
 
       const matchesName  = FuzzySearchService.matches(normalised, node.name.toLowerCase());
       const matchesUrdu  = node.urduName ? node.urduName.includes(raw) : false;
       if (matchesName || matchesUrdu) {
-        results.push(this.nodeToPlace(id, node));
+        if (!results.find((r) => r.id === id)) results.push(this.nodeToPlace(id, node));
       }
     });
 
@@ -67,6 +88,8 @@ export class SearchService {
     const keywords: Record<string, string[]> = {
       masjid: ['masjid', 'مسجد', 'mosque', 'prayer'],
       food:   ['food', 'کھانا', 'water', 'پانی', 'langar', 'لنگر'],
+      gate:   ['gate', 'گیٹ', 'entrance', 'entry'],
+      medical:['medical', 'طبی', 'doctor', 'first aid', 'hospital'],
     };
     for (const [cat, terms] of Object.entries(keywords)) {
       if (terms.some((t) => normalised.includes(t))) {
@@ -76,6 +99,21 @@ export class SearchService {
         });
       }
     }
+
+    // ─── Sort: category rank first, then proximity if location provided ──
+    results.sort((a, b) => {
+      const rankA = CATEGORY_RANK[a.category] ?? 5;
+      const rankB = CATEGORY_RANK[b.category] ?? 5;
+      if (rankA !== rankB) return rankA - rankB;
+      if (userLocation) {
+        const distA = Math.abs(a.coordinate.latitude - userLocation.latitude) +
+                      Math.abs(a.coordinate.longitude - userLocation.longitude);
+        const distB = Math.abs(b.coordinate.latitude - userLocation.latitude) +
+                      Math.abs(b.coordinate.longitude - userLocation.longitude);
+        return distA - distB;
+      }
+      return 0;
+    });
 
     return results;
   }
@@ -88,16 +126,23 @@ export class SearchService {
       Object.entries(IJTEMA_DATA.blocks).forEach(([id, block]) => {
         results.push(this.blockToPlace(id, block));
       });
-    } else if (cat === 'gates') {
+    } else if (cat === 'gates' || cat === 'gate') {
+      // Landmark gates first
+      LANDMARK_PLACES.filter((lm) => lm.category === 'Gate').forEach((lm) => results.push(lm));
+      // Then any graph nodes typed as gate
       Object.entries(IJTEMA_DATA.nodes).forEach(([id, node]) => {
-        if (node.type === 'gate') results.push(this.nodeToPlace(id, node));
+        if (node.type === 'gate' && !results.find((r) => r.id === id)) {
+          results.push(this.nodeToPlace(id, node));
+        }
       });
     } else if (cat === 'masjid') {
+      LANDMARK_PLACES.filter((lm) => lm.category === 'Masjid').forEach((lm) => results.push(lm));
       Object.entries(IJTEMA_DATA.nodes).forEach(([id, node]) => {
-        if (node.type === 'masjid') results.push(this.nodeToPlace(id, node));
+        if (node.type === 'masjid' && !results.find((r) => r.id === id)) {
+          results.push(this.nodeToPlace(id, node));
+        }
       });
     } else if (cat === 'rastas') {
-      // Surface named rastas — not raw internal S/P nodes
       const seen = new Set<string>();
       IJTEMA_DATA.edges.forEach((edge) => {
         if (!edge.name || seen.has(edge.name) || !edge.isRasta) return;
@@ -112,12 +157,22 @@ export class SearchService {
           coordinate: { latitude: fromNode.lat, longitude: fromNode.lng },
         });
       });
+    } else if (cat === 'food' || cat === 'medical') {
+      const keyword = cat;
+      LANDMARK_PLACES.forEach((lm) => {
+        const aliases = lm.aliases ?? [];
+        if (aliases.some((a) => a.toLowerCase().includes(keyword))) results.push(lm);
+      });
     }
 
     return results;
   }
 
   static getPlaceById(id: string): Place | null {
+    // Landmark?
+    const lm = LANDMARK_PLACES.find((l) => l.id === id);
+    if (lm) return lm;
+
     const block = (IJTEMA_DATA.blocks as any)[id];
     if (block) return this.blockToPlace(id, block);
 

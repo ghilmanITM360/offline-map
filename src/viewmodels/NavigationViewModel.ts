@@ -5,15 +5,14 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useAppStore } from '../store/useAppStore';
-import { RoutingService, RouteResult } from '../services/RoutingService';
+import { RoutingService } from '../services/RoutingService';
 import { InstructionService, Instruction } from '../services/InstructionService';
 import { SnapToRoadService } from '../services/SnapToRoadService';
 import { VoiceService } from '../services/VoiceService';
 import { RerouteService } from '../services/RerouteService';
 import { GPSManagerService } from '../services/GPSManagerService';
 import { getDistance } from 'geolib';
-import { IJTEMA_DATA } from '../constants/data';
-import { Coordinate } from '../models/types';
+import { Coordinate, RoutePreview } from '../models/types';
 
 const ARRIVAL_THRESHOLD_M = 20;
 const REROUTE_GRACE_MS = 3000; // 3 s grace period before rerouting
@@ -30,7 +29,7 @@ export function useNavigationViewModel() {
     setIsMuted,
   } = useAppStore();
 
-  const [route, setRoute] = useState<RouteResult | null>(null);
+  const [route, setRoute] = useState<RoutePreview | null>(null);
   const [instructions, setInstructions] = useState<Instruction[]>([]);
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [snappedLocation, setSnappedLocation] = useState<Coordinate | null>(currentLocation);
@@ -38,7 +37,7 @@ export function useNavigationViewModel() {
   const [arrived, setArrived] = useState(false);
 
   // Refs to avoid stale closures inside the GPS callback
-  const routeRef = useRef<RouteResult | null>(null);
+  const routeRef = useRef<RoutePreview | null>(null);
   const instructionsRef = useRef<Instruction[]>([]);
   const currentStepIndexRef = useRef(0);
   const destinationRef = useRef(destination);
@@ -58,28 +57,40 @@ export function useNavigationViewModel() {
     currentStepIndexRef.current = 0;
   }, [destination]);
 
-  // Calculate initial route when destination changes
+  // Capture the GPS location at the moment navigation starts so route generation
+  // happens exactly once per destination change, never on every GPS tick.
+  const initialLocationRef = useRef(currentLocation);
   useEffect(() => {
-    if (currentLocation && destination) {
-      const block = Object.values(IJTEMA_DATA.blocks).find((b) => b.name === destination.name);
-      const entryNodes = block
-        ? block.entry_nodes
-        : [RoutingService.findNearestNode(destination.coordinate)];
+    initialLocationRef.current = currentLocation;
+  }, [destination]); // update only when destination changes, not on every location update
 
-      const result = RoutingService.calculateRoute(currentLocation, entryNodes);
-      if (result) {
-        setRoute(result);
-        routeRef.current = result;
-        const generated = InstructionService.generateInstructions(result.nodes);
-        setInstructions(generated);
-        instructionsRef.current = generated;
-        setRemainingDistance(result.totalDistance);
-        if (!isMuted && settingsRef.current.voiceInstructions && generated[0]) { // fixed: honor the persisted voice-instructions setting
-          VoiceService.speak(generated[0].text, settingsRef.current.language);
-        }
+  // Calculate route ONLY when destination changes (or on first mount if GPS is
+  // already available). currentLocation is intentionally excluded from deps.
+  useEffect(() => {
+    const loc = initialLocationRef.current ?? currentLocation;
+    if (!loc || !destination) return;
+
+    const walkingSpeedMs = settingsRef.current.walkingSpeed ?? 1.4;
+    const destNodeIds = RoutingService.resolveDestinationNodes(destination.id, destination.coordinate);
+
+    const result = RoutingService.calculateRoute(loc, destNodeIds);
+    void walkingSpeedMs; // ETA uses walkingSpeedMs via RoutingService default; single-route path defers speed to calculateRoutes
+    if (result) {
+      setRoute(result);
+      routeRef.current = result;
+      const generated = InstructionService.generateInstructions(result.nodes);
+      setInstructions(generated);
+      instructionsRef.current = generated;
+      setRemainingDistance(result.totalDistance);
+      // Speak the first instruction; mute state is checked via ref so this
+      // effect never re-runs when the user toggles mute.
+      if (!settingsRef.current.voiceInstructions) return;
+      const isMutedNow = useAppStore.getState().isMuted;
+      if (!isMutedNow && generated[0]) {
+        VoiceService.speak(generated[0].text, settingsRef.current.language);
       }
     }
-  }, [currentLocation, destination, isMuted]); // fixed: recalculate when GPS arrives after mount
+  }, [destination]); // intentionally only destination — mute and GPS ticks must not re-trigger route generation
 
   // GPS listener — registered once with the shared GPSManagerService
   const handleGPS = useCallback(
@@ -152,11 +163,8 @@ export function useNavigationViewModel() {
               // Re-check still off-route after grace period
               const latestRoute = routeRef.current;
               if (latestRoute && RerouteService.isOffRoute(coord, latestRoute, gpsAccuracy)) {
-                const block = Object.values(IJTEMA_DATA.blocks).find((b) => b.name === dest.name);
-                const entryNodes = block
-                  ? block.entry_nodes
-                  : [RoutingService.findNearestNode(dest.coordinate)];
-                const newRoute = RoutingService.calculateRoute(coord, entryNodes);
+                const destNodeIds = RoutingService.resolveDestinationNodes(dest.id, dest.coordinate);
+                const newRoute = RoutingService.calculateRoute(coord, destNodeIds);
                 if (newRoute) {
                   setRoute(newRoute);
                   routeRef.current = newRoute;

@@ -16,9 +16,11 @@ export interface Node {
   id: string;
   lat: number;
   lng: number;
-  type: 'corner' | 'intersection' | 'road_end' | 'gate' | 'masjid';
+  type: 'corner' | 'intersection' | 'road_end' | 'gate' | 'masjid' | 'landmark';
   name?: string;
   urduName?: string;
+  /** nearest road node for routing — used by landmark nodes that are off-graph */
+  nearestRoadNode?: string;
 }
 
 export interface Edge {
@@ -102,6 +104,13 @@ export const DEFAULT_DOWNLOAD_STATE: DownloadState = {
   resumable: false,
 };
 
+/** Labeled route alternative returned by RoutingService.calculateRoutes */
+export interface RouteAlternative {
+  label: string;       // 'Fastest' | 'Shortest' | 'Alternative'
+  labelUr: string;     // Urdu label
+  route: RoutePreview;
+}
+
 /** Typed entry point for a block */
 export interface BlockEntryPoint {
   nodeId: string;
@@ -119,17 +128,6 @@ export interface FavoritePlace {
   category: string;
   coordinate: Coordinate;
   savedAt: string; // ISO timestamp
-}
-
-/** One alternative route for a destination */
-export interface RouteAlternative {
-  id: string;
-  label: string;
-  entryNodeId: string;
-  entryFriendlyName: string;
-  distanceM: number;
-  durationMin: number;
-  route: RoutePreview;
 }
 
 export interface RouteSegment {

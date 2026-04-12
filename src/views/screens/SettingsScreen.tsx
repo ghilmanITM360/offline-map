@@ -28,8 +28,16 @@ import {
   Moon,
   Compass,
   Calendar,
+  Footprints,
   LucideIcon,
 } from 'lucide-react-native';
+
+// Walking speed presets (m/s)
+const SPEED_PRESETS: { label: string; value: number }[] = [
+  { label: 'Slow (0.8 m/s)', value: 0.8 },
+  { label: 'Normal (1.1 m/s)', value: 1.1 },
+  { label: 'Fast (1.4 m/s)', value: 1.4 },
+];
 import { useNavigation } from '@react-navigation/native';
 import { useSettingsViewModel } from '../../viewmodels/SettingsViewModel';
 import { useTheme } from '../../services/useTheme';
@@ -189,6 +197,23 @@ export function SettingsScreen() {
               )
             }
             description="Unit for distances and measurements"
+          />
+          <SettingItem
+            icon={Footprints}
+            label="Walking Speed"
+            value={SPEED_PRESETS.find((p) => p.value === settings.walkingSpeed)?.label ?? `${settings.walkingSpeed} m/s`}
+            type="text"
+            onPress={() => {
+              const options = SPEED_PRESETS.map((p) => ({
+                text: p.label + (p.value === settings.walkingSpeed ? ' ✓' : ''),
+                onPress: () => updateSettingValue('walkingSpeed', p.value),
+              }));
+              Alert.alert('Walking Speed', 'Choose your typical walking pace for ETA estimates.', [
+                ...options,
+                { text: 'Cancel', style: 'cancel' },
+              ]);
+            }}
+            description="Used for walking time estimates"
           />
         </View>
 

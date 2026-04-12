@@ -3,18 +3,84 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { IJTEMA_DATA } from '../constants/data';
-import { Coordinate, RoutePreview, RouteSegment } from '../models/types';
+import { IJTEMA_DATA, LANDMARK_NEAREST_NODE } from '../constants/data';
+import { Coordinate, RoutePreview, RouteSegment, RouteAlternative } from '../models/types';
 import { getDistance } from 'geolib';
 
 export type RouteResult = RoutePreview;
 
+// ─── Venue boundary ───────────────────────────────────────────────────────────
+// Bounding box: T2 (NW) → S6 (NE) → S12 (SE) → T1 (SW)
+const VENUE_BOUNDS = {
+  minLat: 24.9650,
+  maxLat: 24.9715,
+  minLng: 66.9985,
+  maxLng: 67.0070,
+};
+
+export interface VenueStatus {
+  insideVenue: boolean;
+  insideBlock: string | null; // Block ID if GPS is inside a block polygon
+}
+
 export class RoutingService {
+  // ─── Venue / block detection ───────────────────────────────────────────────
+
+  /** Returns whether a coordinate is within the venue bounding box. */
+  static isInsideVenue(coord: Coordinate): boolean {
+    return (
+      coord.latitude >= VENUE_BOUNDS.minLat &&
+      coord.latitude <= VENUE_BOUNDS.maxLat &&
+      coord.longitude >= VENUE_BOUNDS.minLng &&
+      coord.longitude <= VENUE_BOUNDS.maxLng
+    );
+  }
+
+  /**
+   * Returns the block ID if the coordinate falls inside a block polygon,
+   * using a simple ray-casting algorithm.
+   */
+  static getBlockContaining(coord: Coordinate): string | null {
+    for (const [blockId, block] of Object.entries(IJTEMA_DATA.blocks)) {
+      const polygon = block.corners ?? block.polygon;
+      if (polygon && polygon.length >= 3 && this.pointInPolygon(coord, polygon)) {
+        return blockId;
+      }
+    }
+    return null;
+  }
+
+  /** Ray-casting point-in-polygon test. */
+  private static pointInPolygon(point: Coordinate, polygon: Coordinate[]): boolean {
+    let inside = false;
+    const { latitude: py, longitude: px } = point;
+    for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+      const { latitude: iy, longitude: ix } = polygon[i];
+      const { latitude: jy, longitude: jx } = polygon[j];
+      const intersect =
+        iy > py !== jy > py && px < ((jx - ix) * (py - iy)) / (jy - iy) + ix;
+      if (intersect) inside = !inside;
+    }
+    return inside;
+  }
+
+  /** Full venue/block status for a coordinate. */
+  static getVenueStatus(coord: Coordinate): VenueStatus {
+    return {
+      insideVenue: this.isInsideVenue(coord),
+      insideBlock: this.getBlockContaining(coord),
+    };
+  }
+
+  // ─── Distance helpers ─────────────────────────────────────────────────────
+
   static findNearestNode(coord: Coordinate): string {
     let nearestId = '';
     let minDistance = Infinity;
 
     Object.entries(IJTEMA_DATA.nodes).forEach(([id, node]) => {
+      // Skip off-graph landmark nodes
+      if (node.nearestRoadNode) return;
       const dist = getDistance(
         { latitude: coord.latitude, longitude: coord.longitude },
         { latitude: node.lat, longitude: node.lng }
@@ -27,6 +93,30 @@ export class RoutingService {
 
     return nearestId;
   }
+
+  /**
+   * Resolve destination node IDs for any Place/landmark.
+   * - Block → entry_nodes
+   * - Landmark → LANDMARK_NEAREST_NODE
+   * - Node → the node itself
+   */
+  static resolveDestinationNodes(placeId: string, placeCoord: Coordinate): string[] {
+    // Block?
+    const block = IJTEMA_DATA.blocks[placeId];
+    if (block) return block.entry_nodes;
+
+    // Landmark with explicit nearest road node?
+    const landmarkNode = LANDMARK_NEAREST_NODE[placeId];
+    if (landmarkNode) return [landmarkNode];
+
+    // Raw graph node?
+    if (IJTEMA_DATA.nodes[placeId]) return [placeId];
+
+    // Fallback — nearest graph node
+    return [this.findNearestNode(placeCoord)];
+  }
+
+  // ─── Single best route ────────────────────────────────────────────────────
 
   static calculateRoute(startCoord: Coordinate, destinationNodeIds: string[]): RoutePreview | null {
     const startNodeId = this.findNearestNode(startCoord);
@@ -43,9 +133,90 @@ export class RoutingService {
     return bestRoute;
   }
 
-  private static aStar(startId: string, goalId: string): RoutePreview | null {
+  // ─── Multiple route alternatives (Phase 9) ───────────────────────────────
+
+  /**
+   * Returns up to 3 labeled route alternatives between startCoord and the
+   * cheapest destination node among destinationNodeIds.
+   *
+   * Strategy:
+   *  1. "Fastest" — plain A* (shortest estimated time ≈ shortest distance on
+   *     this graph because all edges are pedestrian rastas).
+   *  2. "Shortest" — A* with the same graph but a different penalty multiplier
+   *     on non-rasta edges to prefer named rastas (labels a separate path when
+   *     one already exists).
+   *  3. "Alternative" — Yen's first alternative: run A* again with the primary
+   *     path edges slightly penalized so the algorithm explores different roads.
+   */
+  static calculateRoutes(
+    startCoord: Coordinate,
+    destinationNodeIds: string[],
+    walkingSpeedMs: number = 1.4,
+  ): RouteAlternative[] {
+    const startNodeId = this.findNearestNode(startCoord);
+    const results: RouteAlternative[] = [];
+
+    // --- Route 1: Fastest (plain A*) ---
+    let bestDestId = '';
+    let route1: RoutePreview | null = null;
+    for (const destId of destinationNodeIds) {
+      const r = this.aStar(startNodeId, destId, 1.0, walkingSpeedMs);
+      if (r && (!route1 || r.totalDistance < route1.totalDistance)) {
+        route1 = r;
+        bestDestId = destId;
+      }
+    }
+    if (route1) {
+      results.push({ label: 'Fastest', labelUr: 'تیز ترین', route: route1 });
+    }
+
+    // --- Route 2: Shortest (boundary-road penalty — stays on named rastas) ---
+    const route2 = this.aStar(startNodeId, bestDestId || destinationNodeIds[0], 1.15, walkingSpeedMs);
+    if (
+      route2 &&
+      route1 &&
+      route2.nodes.join() !== route1.nodes.join() &&
+      route2.totalDistance < route1.totalDistance * 1.5
+    ) {
+      results.push({ label: 'Shortest', labelUr: 'مختصر ترین', route: route2 });
+    }
+
+    // --- Route 3: Alternative (penalise primary-route edges) ---
+    if (route1 && results.length < 3) {
+      const primaryEdgeSet = new Set<string>();
+      for (let i = 0; i < route1.nodes.length - 1; i++) {
+        primaryEdgeSet.add(`${route1.nodes[i]}-${route1.nodes[i + 1]}`);
+        primaryEdgeSet.add(`${route1.nodes[i + 1]}-${route1.nodes[i]}`);
+      }
+      const route3 = this.aStar(
+        startNodeId,
+        bestDestId || destinationNodeIds[0],
+        1.0,
+        walkingSpeedMs,
+        primaryEdgeSet,
+      );
+      if (
+        route3 &&
+        route3.nodes.join() !== route1.nodes.join() &&
+        (!results[1] || route3.nodes.join() !== results[1].route.nodes.join())
+      ) {
+        results.push({ label: 'Alternative', labelUr: 'متبادل راستہ', route: route3 });
+      }
+    }
+
+    return results;
+  }
+
+  // ─── A* core ─────────────────────────────────────────────────────────────
+
+  private static aStar(
+    startId: string,
+    goalId: string,
+    nonRastaPenalty = 1.0,
+    walkingSpeedMs = 1.4,
+    avoidEdges?: Set<string>,
+  ): RoutePreview | null {
     const openSet: string[] = [startId];
-    // Closed set prevents redundant re-expansion of already-settled nodes
     const closedSet = new Set<string>();
     const cameFrom: Record<string, string> = {};
 
@@ -56,7 +227,6 @@ export class RoutingService {
     fScore[startId] = this.heuristic(startId, goalId);
 
     while (openSet.length > 0) {
-      // Pick the node in openSet with the lowest fScore
       openSet.sort((a, b) => (fScore[a] ?? Infinity) - (fScore[b] ?? Infinity));
       const current = openSet.shift()!;
 
@@ -64,14 +234,27 @@ export class RoutingService {
       closedSet.add(current);
 
       if (current === goalId) {
-        return this.reconstructPath(cameFrom, current, gScore[current]);
+        return this.reconstructPath(cameFrom, current, gScore[current], walkingSpeedMs);
       }
 
       const neighbors = this.getNeighbors(current);
       for (const neighbor of neighbors) {
         if (closedSet.has(neighbor.id)) continue;
 
-        const tentativeGScore = (gScore[current] ?? Infinity) + neighbor.distance;
+        // Apply penalty for avoided (primary-path) edges
+        const edgeKey = `${current}-${neighbor.id}`;
+        const avoidPenalty = avoidEdges?.has(edgeKey) ? 2.5 : 1.0;
+
+        // Apply non-rasta penalty
+        const edge = IJTEMA_DATA.edges.find(
+          (e) =>
+            (e.from === current && e.to === neighbor.id) ||
+            (e.from === neighbor.id && e.to === current),
+        );
+        const rastaMult = edge?.isRasta ? 1.0 : nonRastaPenalty;
+
+        const cost = neighbor.distance * rastaMult * avoidPenalty;
+        const tentativeGScore = (gScore[current] ?? Infinity) + cost;
 
         if (tentativeGScore < (gScore[neighbor.id] ?? Infinity)) {
           cameFrom[neighbor.id] = current;
@@ -110,7 +293,8 @@ export class RoutingService {
   private static reconstructPath(
     cameFrom: Record<string, string>,
     current: string,
-    totalDistance: number
+    totalDistance: number,
+    walkingSpeedMs = 1.4,
   ): RoutePreview {
     const path = [current];
     let tempCurrent = current;
@@ -146,7 +330,7 @@ export class RoutingService {
       coordinates,
       nodes: path,
       totalDistance,
-      estimatedTimeMin: Math.ceil(totalDistance / 83), // ~5 km/h walking speed
+      estimatedTimeMin: Math.ceil(totalDistance / (walkingSpeedMs * 60)),
       segments,
     };
   }

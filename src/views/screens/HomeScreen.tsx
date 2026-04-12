@@ -14,6 +14,8 @@ import {
   Platform,
   StatusBar,
   KeyboardAvoidingView,
+  Share,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import MapView, { Marker, Polygon, PROVIDER_GOOGLE, LocalTile } from 'react-native-maps';
@@ -40,6 +42,7 @@ import { useNavigation, DrawerActions, CompositeNavigationProp } from '@react-na
 import { DrawerNavigationProp } from '@react-navigation/drawer';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useHomeViewModel } from '../../viewmodels/HomeViewModel';
+import { useTheme } from '../../services/useTheme';
 import { IJTEMA_DATA } from '../../constants/data';
 import { Place, SearchResult } from '../../models/types';
 import { PlaceDetailService } from '../../services/PlaceDetailService';
@@ -63,10 +66,11 @@ function getDisplayName(item: Place | SearchResult): string {
 }
 
 export function HomeScreen() {
-  const nav = useNavigation<HomeScreenNavigationProp>(); // fixed: replace any navigation with typed route support
-  const currentLocation = useAppStore((s) => s.currentLocation); // fixed: subscribe only to current location updates used by the selected-place summary
-  const favorites = useAppStore((s) => s.favorites); // fixed: subscribe only to favorite changes used by the details sheet
+  const nav = useNavigation<HomeScreenNavigationProp>();
+  const currentLocation = useAppStore((s) => s.currentLocation);
+  const favorites = useAppStore((s) => s.favorites);
   const [selectedEntryIdx, setSelectedEntryIdx] = useState(0);
+  const theme = useTheme();
 
   const {
     mapRef,
@@ -79,12 +83,14 @@ export function HomeScreen() {
     snapPoints,
     initialRegion,
     isOffline,
-    offlineData, // fixed: destructure offlineData so the tile guard and empty-state can check isDownloaded
+    offlineData,
     activeCategory,
+    venueStatus,
     setIsMapReady,
     handleSearch,
     handlePlaceSelect,
     handleRecenter,
+    handleCompassReset,
     handleZoomIn,
     handleZoomOut,
     toggleMapType,
@@ -102,9 +108,12 @@ export function HomeScreen() {
     ? PlaceDetailService.getEntryPoints(selectedPlace.id)
     : [];
 
+  const settings = useAppStore((s) => s.settings);
+
   const walkingTimeMin = (selectedPlace && currentLocation)
     ? PlaceDetailService.estimateWalkingTime(
-        PlaceDetailService.distanceToBlock(selectedPlace.id, currentLocation)
+        PlaceDetailService.distanceToBlock(selectedPlace.id, currentLocation),
+        settings.walkingSpeed ?? 1.4,
       )
     : null;
 
@@ -188,7 +197,7 @@ export function HomeScreen() {
           }}
         >
           {isOffline && offlineData.isDownloaded && (
-            <LocalTile pathTemplate={getTilePath()} tileSize={256} zIndex={-1} /> // fixed: lazy getter called at render time so native module is already initialized
+            <LocalTile pathTemplate={getTilePath()} tileSize={256} zIndex={-1} />
           )}
 
           {Object.entries(IJTEMA_DATA.blocks).map(([id, block]) => {
@@ -226,17 +235,17 @@ export function HomeScreen() {
 
         {/* Top UI */}
         <SafeAreaView style={styles.topOverlay} pointerEvents="box-none">
-          <View style={styles.searchBarContainer}>
+          <View style={[styles.searchBarContainer, { backgroundColor: theme.searchBar }]}>
             <Pressable
               onPress={() => nav.dispatch(DrawerActions.openDrawer())}
               style={styles.iconButton}
             >
-              <Menu size={24} color="#5F6368" />
+              <Menu size={24} color={theme.subtext} />
             </Pressable>
             <TextInput
-              style={styles.searchInput}
+              style={[styles.searchInput, { color: theme.text }]}
               placeholder="Search blocks, masjid, gates…"
-              placeholderTextColor="#70757A"
+              placeholderTextColor={theme.placeholder}
               value={searchQuery}
               onChangeText={handleSearch}
             />
@@ -245,14 +254,23 @@ export function HomeScreen() {
                 <X size={20} color="#5F6368" />
               </Pressable>
             ) : (
-              <Pressable style={styles.iconButton}>
+              <Pressable
+                style={styles.iconButton}
+                onPress={() =>
+                  Alert.alert(
+                    'Voice Search',
+                    'Voice search is not available in the offline edition. Please type your destination in the search bar.',
+                    [{ text: 'OK' }],
+                  )
+                }
+              >
                 <Mic size={22} color="#4285F4" />
               </Pressable>
             )}
           </View>
 
           {(searchResults.length > 0 || (searchQuery.length === 0 && recentSearches.length > 0)) && (
-            <View style={styles.searchResultsContainer}>
+            <View style={[styles.searchResultsContainer, { backgroundColor: theme.card, borderColor: theme.border }]}>
               <ScrollView keyboardShouldPersistTaps="handled">
                 {searchQuery.length === 0 && (
                   <Text style={styles.sectionTitle}>Recent</Text>
@@ -291,6 +309,13 @@ export function HomeScreen() {
           </View>
         )}
 
+        {/* Phase 4 — outside-venue warning */}
+        {currentLocation && !venueStatus.insideVenue && (
+          <View style={styles.outsideVenueBanner}>
+            <Text style={styles.outsideVenueText}>You are outside the Ijtema area</Text>
+          </View>
+        )}
+
         {isOffline && !offlineData.isDownloaded && (
           <View style={styles.emptyOfflineState}> {/* fixed: explain why the map is blank when the device is offline without downloaded tiles */}
             <Text style={styles.emptyOfflineTitle}>No offline map available.</Text>
@@ -305,7 +330,7 @@ export function HomeScreen() {
           <Pressable style={styles.controlButton} onPress={toggleMapType}>
             <Layers size={22} color="#5F6368" />
           </Pressable>
-          <Pressable style={styles.controlButton}>
+          <Pressable style={styles.controlButton} onPress={handleCompassReset}>
             <Compass size={22} color="#5F6368" />
           </Pressable>
           <View style={styles.zoomControls}>
@@ -331,7 +356,8 @@ export function HomeScreen() {
           index={-1}
           snapPoints={snapPoints}
           enablePanDownToClose
-          handleIndicatorStyle={styles.sheetIndicator}
+          handleIndicatorStyle={[styles.sheetIndicator, { backgroundColor: theme.border }]}
+          backgroundStyle={{ backgroundColor: theme.card }}
         >
           <BottomSheetScrollView contentContainerStyle={styles.sheetContent}>
             {selectedPlace ? (
@@ -339,11 +365,11 @@ export function HomeScreen() {
                 {/* Header */}
                 <View style={styles.placeHeader}>
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.placeName}>{selectedPlace.name}</Text>
-                    {selectedPlace.urduName && (
-                      <Text style={styles.placeUrdu}>{selectedPlace.urduName}</Text>
-                    )}
-                    <Text style={styles.placeCategory}>{selectedPlace.category}</Text>
+                  <Text style={[styles.placeName, { color: theme.text }]}>{selectedPlace.name}</Text>
+                  {selectedPlace.urduName && (
+                    <Text style={[styles.placeUrdu, { color: theme.primary }]}>{selectedPlace.urduName}</Text>
+                  )}
+                  <Text style={[styles.placeCategory, { color: theme.subtext }]}>{selectedPlace.category}</Text>
                   </View>
                   <Pressable onPress={() => { setSelectedPlace(null); bottomSheetRef.current?.close(); }}>
                     <X size={24} color="#5F6368" />
@@ -411,7 +437,17 @@ export function HomeScreen() {
                   />
                   <Text style={styles.secondaryActionText}>{isFav ? 'Saved' : 'Save'}</Text>
                 </Pressable>
-                <Pressable style={styles.secondaryAction}>
+                <Pressable
+                  style={styles.secondaryAction}
+                  onPress={() => {
+                    if (!selectedPlace) return;
+                    const { latitude, longitude } = selectedPlace.coordinate;
+                    Share.share({
+                      title: selectedPlace.name,
+                      message: `${selectedPlace.name} — Karachi Ijtema\nLocation: ${latitude.toFixed(6)}, ${longitude.toFixed(6)}`,
+                    }).catch(() => Alert.alert('Unable to share', 'Could not open the share dialog.'));
+                  }}
+                >
                   <Share2 size={20} color="#1A73E8" />
                   <Text style={styles.secondaryActionText}>Share</Text>
                 </Pressable>
@@ -510,13 +546,15 @@ const styles = StyleSheet.create({
   chipsContent: { paddingHorizontal: 12, paddingBottom: 8 },
   chip: {
     backgroundColor: '#FFFFFF',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
+    paddingHorizontal: 18,
+    paddingVertical: 10,
     borderRadius: 20,
     marginRight: 8,
     elevation: 2,
     borderWidth: 1,
     borderColor: '#DADCE0',
+    minWidth: 72,
+    alignItems: 'center',
   },
   activeChip: { backgroundColor: '#E8F0FE', borderColor: '#1A73E8' },
   chipText: { fontSize: 14, color: '#3C4043', fontWeight: '500' },
@@ -562,6 +600,19 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
   offlineText: { color: '#FFFFFF', fontSize: 12, fontWeight: '600', marginLeft: 6 },
+  outsideVenueBanner: {
+    position: 'absolute',
+    top: 168,
+    left: 12,
+    right: 12,
+    backgroundColor: '#F29900',
+    borderRadius: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    zIndex: 10,
+    alignItems: 'center',
+  },
+  outsideVenueText: { color: '#FFFFFF', fontSize: 13, fontWeight: '600' },
   selectedMarker: { alignItems: 'center', justifyContent: 'center' },
   sheetIndicator: { backgroundColor: '#DADCE0', width: 36 },
   sheetContent: { padding: 20 },
@@ -604,12 +655,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 16,
+    paddingVertical: 18,
     borderRadius: 16,
     gap: 10,
-    marginBottom: 16,
+    marginBottom: 20,
+    elevation: 4,
+    shadowColor: '#2E7D32',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
   },
-  takeMeText: { color: '#FFFFFF', fontSize: 18, fontWeight: 'bold' },
+  takeMeText: { color: '#FFFFFF', fontSize: 18, fontWeight: 'bold', letterSpacing: 0.3 },
   secondaryActions: {
     flexDirection: 'row',
     justifyContent: 'space-around',

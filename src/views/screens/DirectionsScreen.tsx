@@ -6,28 +6,34 @@
 import React from 'react';
 import { View, Text, StyleSheet, Pressable, ScrollView, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ChevronLeft, ArrowRight, MapPin, Navigation } from 'lucide-react-native';
+import { ChevronLeft, ArrowRight, MapPin, Navigation, Clock, Footprints } from 'lucide-react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useDirectionsViewModel } from '../../viewmodels/DirectionsViewModel';
-import { RootStackParamList } from '../../navigation/RootNavigator'; // fixed: use typed stack params
+import { InstructionService } from '../../services/InstructionService';
+import { useAppStore } from '../../store/useAppStore';
+import { RootStackParamList } from '../../navigation/RootNavigator';
 
 export function DirectionsScreen() {
-  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList, 'Directions'>>(); // fixed: type directions navigation
-  const routeParams = useRoute<RouteProp<RootStackParamList, 'Directions'>>(); // fixed: type directions route params
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList, 'Directions'>>();
+  const routeParams = useRoute<RouteProp<RootStackParamList, 'Directions'>>();
   const { destination } = routeParams.params;
-  
+  const distanceUnit = useAppStore((s) => s.settings.distanceUnit);
+
   const {
     route,
+    alternatives,
+    selectedIndex,
+    selectAlternative,
     instructions,
-    origin,
+    originLabel,
     handleStartNavigation,
   } = useDirectionsViewModel(destination);
 
   return (
     <KeyboardAvoidingView
-      style={styles.container} // fixed: keep text inputs visible above the keyboard
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'} // fixed: apply platform-specific keyboard avoidance
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <SafeAreaView style={styles.container}>
         <View style={styles.header}>
@@ -42,8 +48,8 @@ export function DirectionsScreen() {
             <View style={styles.dotOrigin} />
             <TextInput
               style={styles.input}
-              value={origin}
-              editable={false} // fixed: prevent misleading edits until custom origin routing is implemented
+              value={originLabel}
+              editable={false}
               placeholder="Current location"
             />
           </View>
@@ -60,14 +66,47 @@ export function DirectionsScreen() {
         </View>
 
         <ScrollView style={styles.content}>
+          {/* Route alternative tabs */}
+          {alternatives.length > 1 && (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={styles.altTabScrollView}
+              contentContainerStyle={styles.altTabContent}
+            >
+              {alternatives.map((alt, idx) => (
+                <Pressable
+                  key={alt.label}
+                  style={[styles.altTab, selectedIndex === idx && styles.altTabActive]}
+                  onPress={() => selectAlternative(idx)}
+                >
+                  <Text style={[styles.altTabLabel, selectedIndex === idx && styles.altTabLabelActive]}>
+                    {alt.label}
+                  </Text>
+                  <Text style={[styles.altTabTime, selectedIndex === idx && styles.altTabTimeActive]}>
+                    {alt.route.estimatedTimeMin} min
+                  </Text>
+                </Pressable>
+              ))}
+            </ScrollView>
+          )}
+
           {route ? (
             <View style={styles.routeCard}>
               <View style={styles.routeInfo}>
-                <View>
-                  <Text style={styles.routeTime}>{route.estimatedTimeMin} min</Text>
-                  <Text style={styles.routeDistance}>{route.totalDistance} m</Text>
+                <View style={styles.routeMetrics}>
+                  <View style={styles.routeMetric}>
+                    <Clock size={16} color="#2E7D32" />
+                    <Text style={styles.routeTime}>{route.estimatedTimeMin} min</Text>
+                  </View>
+                  <View style={styles.routeMetric}>
+                    <Footprints size={16} color="#5F6368" />
+                    <Text style={styles.routeDistance}>
+                      {InstructionService.formatDistance(route.totalDistance, distanceUnit)}
+                    </Text>
+                  </View>
                 </View>
-                <Pressable 
+                <Pressable
                   style={styles.startButton}
                   onPress={() => handleStartNavigation(navigation)}
                 >
@@ -75,7 +114,9 @@ export function DirectionsScreen() {
                   <Text style={styles.startButtonText}>Start</Text>
                 </Pressable>
               </View>
-              <Text style={styles.routeDesc}>Fastest route, mostly flat</Text>
+              {alternatives[selectedIndex] && (
+                <Text style={styles.routeDesc}>{alternatives[selectedIndex].label} route</Text>
+              )}
             </View>
           ) : (
             <View style={styles.loadingContainer}>
@@ -94,7 +135,9 @@ export function DirectionsScreen() {
                 )}
                 <Text style={styles.stepText}>{step.text}</Text>
                 {step.distance > 0 && (
-                  <Text style={styles.stepDist}>{step.distance}m</Text>
+                  <Text style={styles.stepDist}>
+                    {InstructionService.formatDistance(step.distance, distanceUnit)}
+                  </Text>
                 )}
               </View>
             ))}
@@ -166,6 +209,28 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 20,
   },
+  // --- Route alternative tabs ---
+  altTabScrollView: { marginBottom: 16 },
+  altTabContent: { gap: 10, paddingVertical: 4 },
+  altTab: {
+    alignItems: 'center',
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    borderRadius: 20,
+    borderWidth: 1.5,
+    borderColor: '#DADCE0',
+    backgroundColor: '#FFFFFF',
+    minWidth: 90,
+  },
+  altTabActive: {
+    backgroundColor: '#E8F5E9',
+    borderColor: '#2E7D32',
+  },
+  altTabLabel: { fontSize: 13, fontWeight: '600', color: '#5F6368' },
+  altTabLabelActive: { color: '#2E7D32' },
+  altTabTime: { fontSize: 12, color: '#70757A', marginTop: 2 },
+  altTabTimeActive: { color: '#2E7D32' },
+  // --- Route summary card ---
   routeCard: {
     backgroundColor: '#E8F5E9',
     borderRadius: 12,
@@ -177,15 +242,16 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
+  routeMetrics: { gap: 6 },
+  routeMetric: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   routeTime: {
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: 'bold',
     color: '#2E7D32',
   },
   routeDistance: {
     fontSize: 16,
     color: '#666',
-    marginTop: 4,
   },
   startButton: {
     backgroundColor: '#2E7D32',

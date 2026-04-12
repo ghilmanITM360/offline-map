@@ -78,18 +78,37 @@ export class PlaceDetailService {
 
   /**
    * Estimates walking time in minutes given distance in metres.
-   * Uses 5 km/h ≈ 83 m/min typical crowd walking speed.
+   * Pass the user's persisted walkingSpeed (m/s) from settings; defaults to
+   * typical crowd speed 1.38 m/s if not provided.
    */
   static estimateWalkingTime(distanceM: number, walkingSpeedMs = 1.38): number {
-    return Math.ceil(distanceM / (walkingSpeedMs * 60));
+    const speed = walkingSpeedMs > 0 ? walkingSpeedMs : 1.38;
+    return Math.ceil(distanceM / (speed * 60));
   }
 
   /**
-   * Returns the straight-line distance from userLocation to the block center.
+   * Returns the straight-line distance from userLocation to the nearest
+   * entry_node of the block (not the center), giving a more accurate ETA.
    */
   static distanceToBlock(blockId: string, userLocation: Coordinate): number {
     const block = (IJTEMA_DATA.blocks as any)[blockId];
     if (!block) return Infinity;
+
+    // Try nearest entry_node first for accuracy
+    if (block.entry_nodes?.length) {
+      let minDist = Infinity;
+      for (const nodeId of block.entry_nodes as string[]) {
+        const node = (IJTEMA_DATA.nodes as any)[nodeId];
+        if (!node) continue;
+        const d = getDistance(
+          { latitude: userLocation.latitude, longitude: userLocation.longitude },
+          { latitude: node.lat, longitude: node.lng },
+        );
+        if (d < minDist) minDist = d;
+      }
+      if (minDist < Infinity) return minDist;
+    }
+
     return getDistance(
       { latitude: userLocation.latitude, longitude: userLocation.longitude },
       { latitude: block.center.latitude, longitude: block.center.longitude }

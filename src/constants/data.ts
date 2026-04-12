@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { Node, Edge, Block } from '../models/types';
+import { Node, Edge, Block, Place } from '../models/types';
 
 export const IJTEMA_DATA: {
   nodes: Record<string, Node>;
@@ -652,4 +652,165 @@ export const IJTEMA_DATA: {
       aliases: ["B24", "Block 24", "بلاک ۲۴"],
     },
   }
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// LANDMARK PLACES
+// Static POIs that appear in search and on map but are not routing graph nodes.
+// Each carries a nearestRoadNode so RoutingService can route "to" them by
+// snapping to that node. Add future landmarks here — search and routing update
+// automatically.
+// ─────────────────────────────────────────────────────────────────────────────
+export const LANDMARK_PLACES: Place[] = [
+  // ── Masjid ────────────────────────────────────────────────────────────────
+  {
+    id: 'LM_MASJID_MAIN',
+    name: 'Main Masjid',
+    urduName: 'مرکزی مسجد',
+    category: 'Masjid',
+    description: 'Central prayer hall for the Ijtema ground.',
+    coordinate: { latitude: 24.9682, longitude: 67.0030 },
+    aliases: ['masjid', 'mosque', 'مسجد', 'prayer', 'مرکزی مسجد'],
+  },
+  {
+    id: 'LM_MASJID_NORTH',
+    name: 'North Masjid',
+    urduName: 'شمالی مسجد',
+    category: 'Masjid',
+    description: 'Masjid near the north boundary.',
+    coordinate: { latitude: 24.9700, longitude: 67.0025 },
+    aliases: ['north masjid', 'شمالی مسجد', 'مسجد'],
+  },
+  // ── Gates ─────────────────────────────────────────────────────────────────
+  {
+    id: 'LM_GATE_MAIN_NORTH',
+    name: 'Main North Gate',
+    urduName: 'اہم شمالی گیٹ',
+    category: 'Gate',
+    description: 'Primary entry gate from the north side near T2.',
+    coordinate: { latitude: 24.9708, longitude: 66.9992 },
+    aliases: ['main gate', 'north gate', 'گیٹ', 'اہم گیٹ', 'شمالی گیٹ'],
+  },
+  {
+    id: 'LM_GATE_MAIN_SOUTH',
+    name: 'Main South Gate',
+    urduName: 'اہم جنوبی گیٹ',
+    category: 'Gate',
+    description: 'Primary entry gate from the south side near T1.',
+    coordinate: { latitude: 24.9657, longitude: 66.9992 },
+    aliases: ['south gate', 'main south', 'جنوبی گیٹ'],
+  },
+  {
+    id: 'LM_GATE_EAST',
+    name: 'East Gate',
+    urduName: 'مشرقی گیٹ',
+    category: 'Gate',
+    description: 'Entry gate from the east boundary road.',
+    coordinate: { latitude: 24.9680, longitude: 67.0064 },
+    aliases: ['east gate', 'مشرقی گیٹ', 'گیٹ'],
+  },
+  // ── Food / Water ───────────────────────────────────────────────────────────
+  {
+    id: 'LM_FOOD_MAIN',
+    name: 'Food Distribution Area',
+    urduName: 'لنگر خانہ',
+    category: 'Landmark',
+    description: 'Main langar and food distribution point.',
+    coordinate: { latitude: 24.9676, longitude: 67.0018 },
+    aliases: ['food', 'langar', 'کھانا', 'لنگر', 'لنگر خانہ', 'meal'],
+  },
+  {
+    id: 'LM_WATER_NORTH',
+    name: 'Water Point (North)',
+    urduName: 'پانی کا مقام (شمال)',
+    category: 'Landmark',
+    description: 'Drinking water distribution near north boundary.',
+    coordinate: { latitude: 24.9698, longitude: 67.0035 },
+    aliases: ['water', 'پانی', 'drinking water'],
+  },
+  {
+    id: 'LM_WATER_SOUTH',
+    name: 'Water Point (South)',
+    urduName: 'پانی کا مقام (جنوب)',
+    category: 'Landmark',
+    description: 'Drinking water distribution near south boundary.',
+    coordinate: { latitude: 24.9661, longitude: 67.0040 },
+    aliases: ['water', 'پانی', 'drinking water'],
+  },
+  // ── Medical ────────────────────────────────────────────────────────────────
+  {
+    id: 'LM_MEDICAL_MAIN',
+    name: 'Medical Camp',
+    urduName: 'طبی مرکز',
+    category: 'Landmark',
+    description: 'First aid and emergency medical services.',
+    coordinate: { latitude: 24.9685, longitude: 67.0008 },
+    aliases: ['medical', 'first aid', 'hospital', 'doctor', 'طبی', 'طبی مرکز', 'emergency'],
+  },
+  // ── Lost & Found ────────────────────────────────────────────────────────────
+  {
+    id: 'LM_LOST_FOUND',
+    name: 'Lost & Found',
+    urduName: 'گمشدہ و پایا',
+    category: 'Landmark',
+    description: 'Report or collect lost items here.',
+    coordinate: { latitude: 24.9683, longitude: 67.0012 },
+    aliases: ['lost', 'found', 'lost and found', 'گمشدہ', 'گمشدہ و پایا'],
+  },
+  // ── Volunteer / Admin ─────────────────────────────────────────────────────
+  {
+    id: 'LM_VOLUNTEER',
+    name: 'Volunteer Coordination Tent',
+    urduName: 'رضاکار خیمہ',
+    category: 'Landmark',
+    description: 'Main volunteer and organizer coordination point.',
+    coordinate: { latitude: 24.9688, longitude: 67.0020 },
+    aliases: ['volunteer', 'help', 'organizer', 'رضاکار', 'رضاکار خیمہ'],
+  },
+  // ── Terminals / Parking ───────────────────────────────────────────────────
+  {
+    id: 'LM_BUS_NORTH',
+    name: 'North Bus Terminal',
+    urduName: 'شمالی بس ٹرمینل',
+    category: 'Landmark',
+    description: 'Bus terminal on the north-west corner (T2).',
+    coordinate: { latitude: 24.9708, longitude: 66.9991 },
+    aliases: ['bus', 'terminal', 'T2', 'north bus', 'بس', 'ٹرمینل', 'شمالی بس ٹرمینل'],
+  },
+  {
+    id: 'LM_BUS_SOUTH',
+    name: 'South Bus Terminal',
+    urduName: 'جنوبی بس ٹرمینل',
+    category: 'Landmark',
+    description: 'Bus terminal on the south-west corner (T1).',
+    coordinate: { latitude: 24.9656, longitude: 66.9992 },
+    aliases: ['bus', 'terminal', 'T1', 'south bus', 'بس', 'ٹرمینل', 'جنوبی بس ٹرمینل'],
+  },
+  {
+    id: 'LM_PARKING',
+    name: 'Parking Area',
+    urduName: 'پارکنگ',
+    category: 'Landmark',
+    description: 'Main vehicle parking near the west terminal road.',
+    coordinate: { latitude: 24.9675, longitude: 66.9985 },
+    aliases: ['parking', 'car park', 'پارکنگ', 'گاڑی'],
+  },
+];
+
+/** Nearest road-node IDs for each off-graph landmark (used by RoutingService). */
+export const LANDMARK_NEAREST_NODE: Record<string, string> = {
+  LM_MASJID_MAIN:     'P6',
+  LM_MASJID_NORTH:    'P3',
+  LM_GATE_MAIN_NORTH: 'T2',
+  LM_GATE_MAIN_SOUTH: 'T1',
+  LM_GATE_EAST:       'S17',
+  LM_FOOD_MAIN:       'P9',
+  LM_WATER_NORTH:     'P4',
+  LM_WATER_SOUTH:     'P11',
+  LM_MEDICAL_MAIN:    'S13',
+  LM_LOST_FOUND:      'S14',
+  LM_VOLUNTEER:       'P6',
+  LM_BUS_NORTH:       'T2',
+  LM_BUS_SOUTH:       'T1',
+  LM_PARKING:         'S14',
 };

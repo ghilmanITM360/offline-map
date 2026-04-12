@@ -31,6 +31,24 @@ export function HelpScreen() {
     }
   };
 
+  const EMERGENCY_CONTACTS = [
+    { name: 'Rescue / Ambulance (Edhi)', number: '115' },
+    { name: 'Rescue 1122', number: '1122' },
+    { name: 'Police', number: '15' },
+  ];
+
+  const showFAQ = (title: string, body: string) => {
+    Alert.alert(title, body, [{ text: 'Got it', style: 'default' }]);
+  };
+
+  const callNumber = (num: string) => {
+    const tel = `tel:${num}`;
+    Linking.canOpenURL(tel).then((ok) => {
+      if (ok) Linking.openURL(tel);
+      else Alert.alert('Cannot call', 'This device does not support phone calls.');
+    });
+  };
+
   const HelpItem = ({ icon: Icon, title, description, onPress }: any) => (
     <Pressable style={styles.helpItem} onPress={onPress}>
       <View style={styles.iconContainer}>
@@ -46,7 +64,7 @@ export function HelpScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <Pressable onPress={() => navigation.canGoBack() ? navigation.goBack() : navigation.navigate('Home' as never)} style={styles.backButton}> {/* fixed: guard goBack() and fall back to Home */}
+        <Pressable onPress={() => navigation.canGoBack() ? navigation.goBack() : navigation.navigate('Home' as never)} style={styles.backButton}>
           <ChevronLeft size={28} color="#333" />
         </Pressable>
         <Text style={styles.headerTitle}>Help & Support</Text>
@@ -57,31 +75,76 @@ export function HelpScreen() {
           <Text style={styles.sectionTitle}>Common Questions</Text>
           <HelpItem
             icon={HelpCircle}
-            title="How to use offline?"
+            title="How to use offline maps?"
             description="Learn how to download and use maps without internet."
-            onPress={() => {}}
+            onPress={() =>
+              showFAQ(
+                'Offline Maps',
+                '1. Go to Settings → Download Map.\n2. Tap "Download" and wait for completion.\n3. Once downloaded the map works with Airplane Mode on.\n\nNote: Tiles are saved on your device. You do not need internet for navigation after download.',
+              )
+            }
           />
           <HelpItem
             icon={MapPin}
             title="Finding your block"
             description="Tips for locating your specific block and tent."
-            onPress={() => {}}
+            onPress={() =>
+              showFAQ(
+                'Finding Your Block',
+                'Each block is labelled B1–B24 on the map.\n\n• Tap the search bar and type your block number (e.g. "Block 7" or "7").\n• Tap the block polygon on the map for entrance options.\n• Use "Take Me There" to start turn-by-turn navigation to the nearest gate.\n\nUrdu names are also searchable (e.g. بلاک ۷).',
+              )
+            }
+          />
+          <HelpItem
+            icon={HelpCircle}
+            title="How does navigation work?"
+            description="Understand turn-by-turn directions inside the venue."
+            onPress={() =>
+              showFAQ(
+                'Turn-by-Turn Navigation',
+                'The app uses your GPS position to guide you along pre-mapped rastas (paths) inside the Ijtema ground.\n\n• Spoken instructions are announced automatically.\n• If you leave the path, the route recalculates after 3 seconds.\n• Tap the speaker icon to mute / unmute voice.\n• Tap Exit to stop navigation at any time.',
+              )
+            }
           />
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Contact Us</Text>
+          <Text style={styles.sectionTitle}>Emergency Contacts</Text>
+          {EMERGENCY_CONTACTS.map((c) => (
+            <HelpItem
+              key={c.number}
+              icon={Phone}
+              title={c.name}
+              description={`Dial ${c.number}`}
+              onPress={() => callNumber(c.number)}
+            />
+          ))}
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Navigation Tips</Text>
+          <HelpItem
+            icon={HelpCircle}
+            title="GPS accuracy"
+            description="For best results, use outdoors with clear sky view."
+            onPress={() =>
+              showFAQ(
+                'GPS Accuracy',
+                '• Stand in an open area away from large structures for best accuracy.\n• If your position looks wrong, tap the Recenter button.\n• Enable "High accuracy" GPS mode in your phone settings.\n• Low accuracy warnings are shown automatically.',
+              )
+            }
+          />
           <HelpItem
             icon={MessageCircle}
             title="Send Feedback"
-            description="Tell us about your experience or report a bug."
-            onPress={() => {}}
-          />
-          <HelpItem
-            icon={Phone}
-            title="Emergency Contacts"
-            description="Important numbers for medical or security help."
-            onPress={() => {}}
+            description="Tell us about your experience or report a map error."
+            onPress={() =>
+              Alert.alert(
+                'Send Feedback',
+                'To report a map error or send feedback, please contact the Ijtema tech team at your registration desk.',
+                [{ text: 'OK' }],
+              )
+            }
           />
         </View>
 
@@ -89,15 +152,15 @@ export function HelpScreen() {
           <Text style={styles.sectionTitle}>Resources</Text>
           <HelpItem
             icon={FileText}
-            title="User Manual"
-            description="Detailed guide on all app features."
-            onPress={() => {}}
+            title="App Version"
+            description="Ijtema Navigator v1.0 — Karachi Ijtema Edition"
+            onPress={() => Alert.alert('App Info', 'Ijtema Navigator v1.0\nBuilt for offline navigation inside Karachi Ijtema ground.')}
           />
           <HelpItem
             icon={ExternalLink}
             title="Official Website"
             description="Visit the official Karachi Ijtema website."
-            onPress={() => { void openExternalUrl(OFFICIAL_WEBSITE_URL); }} // fixed: guard external link handling and avoid placeholder example.com
+            onPress={() => { void openExternalUrl(OFFICIAL_WEBSITE_URL); }}
           />
         </View>
 

@@ -12,6 +12,7 @@ import {
   Place,
   Coordinate,
   RoutePreview,
+  RouteAlternative,
   NavigationInstruction,
   SearchResult,
   DownloadState,
@@ -64,6 +65,19 @@ interface AppState {
   // --- Place selection ---
   selectedPlace: Place | null;
   setSelectedPlace: (place: Place | null) => void;
+
+  // --- Route planner (From/To, Phase 3) ---
+  routePlannerOrigin: Place | null;       // null = use current GPS
+  routePlannerDest: Place | null;
+  setRoutePlannerOrigin: (place: Place | null) => void;
+  setRoutePlannerDest: (place: Place | null) => void;
+  clearRoutePlanner: () => void;
+
+  // --- Route alternatives (Phase 9) ---
+  routeAlternatives: RouteAlternative[];
+  setRouteAlternatives: (alts: RouteAlternative[]) => void;
+  selectedRouteIndex: number;
+  setSelectedRouteIndex: (idx: number) => void;
 
   // --- Search ---
   searchQuery: string;
@@ -159,6 +173,19 @@ export const useAppStore = create<AppState>()(
       // --- Place selection ---
       selectedPlace: null,
       setSelectedPlace: (place) => set({ selectedPlace: place }),
+
+      // --- Route planner ---
+      routePlannerOrigin: null,
+      routePlannerDest: null,
+      setRoutePlannerOrigin: (place) => set({ routePlannerOrigin: place }),
+      setRoutePlannerDest: (place) => set({ routePlannerDest: place }),
+      clearRoutePlanner: () => set({ routePlannerOrigin: null, routePlannerDest: null, routeAlternatives: [], selectedRouteIndex: 0 }),
+
+      // --- Route alternatives ---
+      routeAlternatives: [],
+      setRouteAlternatives: (alts) => set({ routeAlternatives: alts }),
+      selectedRouteIndex: 0,
+      setSelectedRouteIndex: (idx) => set({ selectedRouteIndex: idx }),
 
       // --- Search ---
       searchQuery: '',

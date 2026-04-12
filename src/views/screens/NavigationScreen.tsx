@@ -13,7 +13,9 @@ import { Paths } from 'expo-file-system'; // fixed: use Paths API instead of dep
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAppStore } from '../../store/useAppStore';
 import { useNavigationViewModel } from '../../viewmodels/NavigationViewModel';
-import { RootStackParamList } from '../../navigation/RootNavigator'; // fixed: use typed stack params
+import { InstructionService } from '../../services/InstructionService';
+import { useTheme } from '../../services/useTheme';
+import { RootStackParamList } from '../../navigation/RootNavigator';
 
 type NavigationScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Navigation'>; // fixed: type stack navigation on the navigation screen
 
@@ -30,11 +32,13 @@ function StepIcon({ type, size = 32 }: { type: string; size?: number }) {
 }
 
 export function NavigationScreen() {
-  const nav = useNavigation<NavigationScreenNavigationProp>(); // fixed: replace any navigation with typed stack navigation
+  const nav = useNavigation<NavigationScreenNavigationProp>();
   const mapRef = useRef<MapView>(null);
-  const insets = useSafeAreaInsets(); // fixed: pad the bottom bar away from gesture/navigation insets
-  const offlineData = useAppStore((s) => s.offlineData); // fixed: subscribe only to offline-map metadata needed by the navigation screen
-  const settings = useAppStore((s) => s.settings); // fixed: subscribe only to settings that affect map rotation and heading
+  const insets = useSafeAreaInsets();
+  const offlineData = useAppStore((s) => s.offlineData);
+  const settings = useAppStore((s) => s.settings);
+  const theme = useTheme();
+  const navBg = theme.background;
 
   const {
     destination,
@@ -86,7 +90,7 @@ export function NavigationScreen() {
   ).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: navBg }]}>
       <MapView
         ref={mapRef}
         style={styles.map}
@@ -139,7 +143,9 @@ export function NavigationScreen() {
             </View>
             <View style={styles.instructionTextContainer}>
               <Text style={styles.instructionDistance}>
-                {currentStep.distance > 0 ? `${currentStep.distance} m` : ''}
+                {currentStep.distance > 0
+                  ? InstructionService.formatDistance(currentStep.distance, settings.distanceUnit)
+                  : ''}
               </Text>
               <Text style={styles.instructionText}>{currentStep.text}</Text>
               {nextStep && (
@@ -165,9 +171,9 @@ export function NavigationScreen() {
               </Text>
               <Text style={styles.distanceRemaining}>
                 {remainingDistance > 0
-                  ? `${remainingDistance} m`
+                  ? InstructionService.formatDistance(remainingDistance, settings.distanceUnit)
                   : route
-                  ? `${route.totalDistance} m`
+                  ? InstructionService.formatDistance(route.totalDistance, settings.distanceUnit)
                   : '—'}{' '}
                 · ETA {arrivalTime}
               </Text>

@@ -151,4 +151,16 @@ export class InstructionService {
 
     return lang === 'ur' ? 'چوراہا' : 'the junction';
   }
+
+  /**
+   * Format a distance value according to the user's unit preference.
+   * Returns a display string like "120 m" or "394 ft".
+   */
+  static formatDistance(meters: number, unit: 'meters' | 'feet' = 'meters'): string {
+    if (unit === 'feet') {
+      const feet = Math.round(meters * 3.28084);
+      return `${feet} ft`;
+    }
+    return `${meters} m`;
+  }
 }
