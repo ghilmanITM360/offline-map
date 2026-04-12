@@ -49,7 +49,7 @@ export function CustomDrawer(props) {
             }} accessibilityRole="button" // fixed: expose drawer menu items correctly to assistive technologies
          accessibilityLabel={item.label} // fixed: use the menu label as the accessible action name
         >
-              <item.icon size={22} color={theme[DRAWER_ICON_COLOR_KEY]}/> {/* fixed: replace hardcoded drawer icon color with a theme-safe value */}
+              <item.icon size={22} color={theme[DRAWER_ICON_COLOR_KEY]}/>
               <View style={styles.menuItemTextContainer}>
                 <Text style={styles.menuItemLabel}>{item.label}</Text>
                 {item.badge && (<Text style={[
@@ -69,7 +69,7 @@ export function CustomDrawer(props) {
           {secondaryItems.map((item, index) => (<Pressable key={index} style={styles.menuItem} onPress={() => props.navigation.navigate(item.route)} accessibilityRole="button" // fixed: expose support drawer items correctly to assistive technologies
          accessibilityLabel={item.label} // fixed: use the support item label as the accessible action name
         >
-              <item.icon size={22} color={theme[DRAWER_ICON_COLOR_KEY]}/> {/* fixed: replace hardcoded support icon color with a theme-safe value */}
+              <item.icon size={22} color={theme[DRAWER_ICON_COLOR_KEY]}/>
               <Text style={styles.menuItemLabel}>{item.label}</Text>
             </Pressable>))}
         </View>
