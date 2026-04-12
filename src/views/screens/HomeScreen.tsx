@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -16,6 +16,8 @@ import {
   KeyboardAvoidingView,
   Share,
   Alert,
+  Keyboard,
+  BackHandler,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import MapView, { Marker, Polygon, PROVIDER_GOOGLE, LocalTile } from 'react-native-maps';
@@ -70,7 +72,17 @@ export function HomeScreen() {
   const currentLocation = useAppStore((s) => s.currentLocation);
   const favorites = useAppStore((s) => s.favorites);
   const [selectedEntryIdx, setSelectedEntryIdx] = useState(0);
+  // Controls whether the search suggestions dropdown is visible
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const searchInputRef = useRef<TextInput>(null);
   const theme = useTheme();
+
+  /** Collapse the search dropdown, blur the input, and hide the keyboard. */
+  const dismissSearch = useCallback(() => {
+    setIsSearchFocused(false);
+    searchInputRef.current?.blur();
+    Keyboard.dismiss();
+  }, []);
 
   const {
     mapRef,
@@ -100,9 +112,21 @@ export function HomeScreen() {
   } = useHomeViewModel();
 
   // Reset entry index when selection changes
-  React.useEffect(() => {
+  useEffect(() => {
     setSelectedEntryIdx(0);
   }, [selectedPlace?.id]);
+
+  // Android hardware back: dismiss search dropdown before exiting the screen
+  useEffect(() => {
+    const handler = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (isSearchFocused) {
+        dismissSearch();
+        return true; // consume event — do NOT go back
+      }
+      return false; // let the default back action proceed
+    });
+    return () => handler.remove();
+  }, [isSearchFocused, dismissSearch]);
 
   const entryPoints = selectedPlace?.category === 'Block'
     ? PlaceDetailService.getEntryPoints(selectedPlace.id)
@@ -189,7 +213,12 @@ export function HomeScreen() {
           showsCompass={false}
           onMapReady={() => setIsMapReady(true)}
           onPress={() => {
-            if (searchQuery) clearSearch();
+            // Tapping the map always closes search first
+            if (isSearchFocused) {
+              dismissSearch();
+              clearSearch();
+              return;
+            }
             if (selectedPlace) {
               setSelectedPlace(null);
               bottomSheetRef.current?.close();
@@ -210,7 +239,8 @@ export function HomeScreen() {
                 strokeColor={isSelected ? '#1A73E8' : '#2E7D32'}
                 strokeWidth={isSelected ? 3 : 1.5}
                 tappable
-                onPress={() =>
+                onPress={() => {
+                  dismissSearch();
                   handlePlaceSelect({
                     id: block.id,
                     name: block.name,
@@ -218,8 +248,8 @@ export function HomeScreen() {
                     category: 'Block',
                     coordinate: block.center,
                     description: `${block.name} of the Karachi Ijtema ground.`,
-                  })
-                }
+                  });
+                }}
               />
             ) : null;
           })}
@@ -237,17 +267,21 @@ export function HomeScreen() {
         <SafeAreaView style={styles.topOverlay} pointerEvents="box-none">
           <View style={[styles.searchBarContainer, { backgroundColor: theme.searchBar }]}>
             <Pressable
-              onPress={() => nav.dispatch(DrawerActions.openDrawer())}
+              onPress={() => { dismissSearch(); nav.dispatch(DrawerActions.openDrawer()); }}
               style={styles.iconButton}
             >
               <Menu size={24} color={theme.subtext} />
             </Pressable>
             <TextInput
+              ref={searchInputRef}
               style={[styles.searchInput, { color: theme.text }]}
               placeholder="Search blocks, masjid, gates…"
               placeholderTextColor={theme.placeholder}
               value={searchQuery}
               onChangeText={handleSearch}
+              onFocus={() => setIsSearchFocused(true)}
+              returnKeyType="search"
+              onSubmitEditing={Keyboard.dismiss}
             />
             {searchQuery.length > 0 ? (
               <Pressable onPress={clearSearch} style={styles.iconButton}>
@@ -269,7 +303,7 @@ export function HomeScreen() {
             )}
           </View>
 
-          {(searchResults.length > 0 || (searchQuery.length === 0 && recentSearches.length > 0)) && (
+          {isSearchFocused && (searchResults.length > 0 || (searchQuery.length === 0 && recentSearches.length > 0)) && (
             <View style={[styles.searchResultsContainer, { backgroundColor: theme.card, borderColor: theme.border }]}>
               <ScrollView keyboardShouldPersistTaps="handled">
                 {searchQuery.length === 0 && (
@@ -279,7 +313,7 @@ export function HomeScreen() {
                   <Pressable
                     key={(item as any).id}
                     style={styles.searchResultItem}
-                    onPress={() => handlePlaceSelect(item as any)}
+                    onPress={() => { handlePlaceSelect(item as any); dismissSearch(); }}
                   >
                     <View style={styles.searchResultIcon}>
                       {searchQuery.length === 0 ? (
@@ -299,7 +333,7 @@ export function HomeScreen() {
             </View>
           )}
 
-          {renderChips()}
+          {!isSearchFocused && renderChips()}
         </SafeAreaView>
 
         {isOffline && (
@@ -325,30 +359,34 @@ export function HomeScreen() {
           </View>
         )}
 
-        {/* Map controls */}
-        <View style={styles.rightControls}>
-          <Pressable style={styles.controlButton} onPress={toggleMapType}>
-            <Layers size={22} color="#5F6368" />
-          </Pressable>
-          <Pressable style={styles.controlButton} onPress={handleCompassReset}>
-            <Compass size={22} color="#5F6368" />
-          </Pressable>
-          <View style={styles.zoomControls}>
-            <Pressable style={styles.zoomButton} onPress={handleZoomIn}>
-              <Plus size={22} color="#5F6368" />
-            </Pressable>
-            <View style={styles.zoomDivider} />
-            <Pressable style={styles.zoomButton} onPress={handleZoomOut}>
-              <Minus size={22} color="#5F6368" />
-            </Pressable>
-          </View>
-        </View>
+        {/* Map controls — hidden when search dropdown is open to prevent z-index overlap */}
+        {!isSearchFocused && (
+          <>
+            <View style={styles.rightControls}>
+              <Pressable style={styles.controlButton} onPress={toggleMapType}>
+                <Layers size={22} color="#5F6368" />
+              </Pressable>
+              <Pressable style={styles.controlButton} onPress={handleCompassReset}>
+                <Compass size={22} color="#5F6368" />
+              </Pressable>
+              <View style={styles.zoomControls}>
+                <Pressable style={styles.zoomButton} onPress={handleZoomIn}>
+                  <Plus size={22} color="#5F6368" />
+                </Pressable>
+                <View style={styles.zoomDivider} />
+                <Pressable style={styles.zoomButton} onPress={handleZoomOut}>
+                  <Minus size={22} color="#5F6368" />
+                </Pressable>
+              </View>
+            </View>
 
-        <View style={styles.bottomControls}>
-          <Pressable style={styles.recenterButton} onPress={handleRecenter}>
-            <LocateFixed size={24} color="#4285F4" />
-          </Pressable>
-        </View>
+            <View style={styles.bottomControls}>
+              <Pressable style={styles.recenterButton} onPress={handleRecenter}>
+                <LocateFixed size={24} color="#4285F4" />
+              </Pressable>
+            </View>
+          </>
+        )}
 
         {/* Bottom Sheet */}
         <BottomSheet
