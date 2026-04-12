@@ -38,13 +38,33 @@ export class PlaceDetailService {
     const block = (IJTEMA_DATA.blocks as any)[blockId];
     if (!block) return [];
 
-    return (block.entry_nodes as string[]).map((nodeId) => {
+    // Deduplicate entry_nodes by nodeId to prevent duplicate cards
+    const seen = new Set<string>();
+    const uniqueNodes = (block.entry_nodes as string[]).filter((nodeId) => {
+      if (seen.has(nodeId)) return false;
+      seen.add(nodeId);
+      return true;
+    });
+
+    // Count occurrences per side so that "North Entrance 1 / 2" labels are generated
+    const sideCounts: Record<string, number> = {};
+    const sideIndex: Record<string, number> = {};
+
+    // First pass: count totals per side
+    uniqueNodes.forEach((nodeId) => {
+      const side: BlockEntryPoint['side'] = ENTRY_SIDE_MAP[nodeId] ?? 'north';
+      sideCounts[side] = (sideCounts[side] ?? 0) + 1;
+    });
+
+    return uniqueNodes.map((nodeId) => {
       const side: BlockEntryPoint['side'] = ENTRY_SIDE_MAP[nodeId] ?? 'north';
       const label = SIDE_LABEL[side];
+      sideIndex[side] = (sideIndex[side] ?? 0) + 1;
+      const needsOrdinal = sideCounts[side] > 1;
       return {
         nodeId,
         side,
-        friendlyName: label.en,
+        friendlyName: needsOrdinal ? `${label.en} ${sideIndex[side]}` : label.en,
         urduName: label.ur,
       };
     });

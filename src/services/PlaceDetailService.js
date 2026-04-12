@@ -33,13 +33,31 @@ export class PlaceDetailService {
         const block = IJTEMA_DATA.blocks[blockId];
         if (!block)
             return [];
-        return block.entry_nodes.map((nodeId) => {
+        // Deduplicate entry_nodes by nodeId to prevent duplicate cards
+        const seen = new Set();
+        const uniqueNodes = block.entry_nodes.filter((nodeId) => {
+            if (seen.has(nodeId))
+                return false;
+            seen.add(nodeId);
+            return true;
+        });
+        // Count occurrences per side so that "North Entrance 1 / 2" labels are generated
+        const sideCounts = {};
+        const sideIndex = {};
+        // First pass: count totals per side
+        uniqueNodes.forEach((nodeId) => {
+            const side = ENTRY_SIDE_MAP[nodeId] ?? 'north';
+            sideCounts[side] = (sideCounts[side] ?? 0) + 1;
+        });
+        return uniqueNodes.map((nodeId) => {
             const side = ENTRY_SIDE_MAP[nodeId] ?? 'north';
             const label = SIDE_LABEL[side];
+            sideIndex[side] = (sideIndex[side] ?? 0) + 1;
+            const needsOrdinal = sideCounts[side] > 1;
             return {
                 nodeId,
                 side,
-                friendlyName: label.en,
+                friendlyName: needsOrdinal ? `${label.en} ${sideIndex[side]}` : label.en,
                 urduName: label.ur,
             };
         });
