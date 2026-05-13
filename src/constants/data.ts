@@ -4,6 +4,8 @@
  */
 
 import { Node, Edge, Block, Place } from '../models/types';
+import { IJTEMA_MAP_BOUNDS } from '../data/ijtema/mapBounds';
+import { validateIjtemaGraph } from '../data/ijtema/validation';
 
 export const IJTEMA_DATA: {
   nodes: Record<string, Node>;
@@ -17,13 +19,14 @@ export const IJTEMA_DATA: {
 
     // --- North boundary road endpoints ---
     "S1":  { id: "S1",  lat: 24.970722, lng: 67.000694, type: "road_end", name: "North Rasta-01 End" },
+    "S2":  { id: "S2",  lat: 24.970722, lng: 67.001611, type: "road_end", name: "North Rasta-02 End" },
     "S3":  { id: "S3",  lat: 24.970750, lng: 67.002667, type: "road_end", name: "North Rasta-03 End" },
-    "S4":  { id: "S4",  lat: 24.970833, lng: 67.002667, type: "road_end", name: "North Rasta-04 End" },
+    "S4":  { id: "S4",  lat: 24.970833, lng: 67.003944, type: "road_end", name: "North Rasta-04 End" },
     "S5":  { id: "S5",  lat: 24.970722, lng: 67.004861, type: "road_end", name: "North Rasta-05 End" },
     "S6":  { id: "S6",  lat: 24.970694, lng: 67.006361, type: "road_end", name: "North-East Corner" },
 
     // --- South boundary road endpoints ---
-    "S2":  { id: "S2",  lat: 24.965639, lng: 67.000667, type: "road_end", name: "South Rasta-01 End" },
+    "S7":  { id: "S7",  lat: 24.965639, lng: 67.000667, type: "road_end", name: "South Rasta-01 End" },
     "S8":  { id: "S8",  lat: 24.965639, lng: 67.001611, type: "road_end", name: "South Rasta-02 End" },
     "S9":  { id: "S9",  lat: 24.965667, lng: 67.002667, type: "road_end", name: "South Rasta-03 End" },
     "S10": { id: "S10", lat: 24.965667, lng: 67.003944, type: "road_end", name: "South Rasta-04 End" },
@@ -64,16 +67,17 @@ export const IJTEMA_DATA: {
     { from: "S13", to: "S14", distance_m: 219, isRasta: true, name: "West Terminal Road" },
     { from: "S14", to: "T1",  distance_m: 201, isRasta: true, name: "West Terminal Road" },
 
-    // === North boundary road (T2 → S1 → S3 → S4 → S5 → S6) ===
+    // === North boundary road (T2 → S1 → S2 → S3 → S4 → S5 → S6) ===
     { from: "T2", to: "S1",  distance_m: 157, isRasta: true, name: "North Boundary Road" },
-    { from: "S1", to: "S3",  distance_m: 199, isRasta: true, name: "North Boundary Road" },
-    { from: "S3", to: "S4",  distance_m: 9,   isRasta: true, name: "North Boundary Road" },
+    { from: "S1", to: "S2",  distance_m: 95,  isRasta: true, name: "North Boundary Road" },
+    { from: "S2", to: "S3",  distance_m: 109, isRasta: true, name: "North Boundary Road" },
+    { from: "S3", to: "S4",  distance_m: 123, isRasta: true, name: "North Boundary Road" },
     { from: "S4", to: "S5",  distance_m: 222, isRasta: true, name: "North Boundary Road" },
     { from: "S5", to: "S6",  distance_m: 151, isRasta: true, name: "North Boundary Road" },
 
-    // === South boundary road (T1 → S2 → S8 → S9 → S10 → S11 → S12) ===
-    { from: "T1",  to: "S2",  distance_m: 151, isRasta: true, name: "South Boundary Road" },
-    { from: "S2",  to: "S8",  distance_m: 95,  isRasta: true, name: "South Boundary Road" },
+    // === South boundary road (T1 → S7 → S8 → S9 → S10 → S11 → S12) ===
+    { from: "T1",  to: "S7",  distance_m: 151, isRasta: true, name: "South Boundary Road" },
+    { from: "S7",  to: "S8",  distance_m: 95,  isRasta: true, name: "South Boundary Road" },
     { from: "S8",  to: "S9",  distance_m: 106, isRasta: true, name: "South Boundary Road" },
     { from: "S9",  to: "S10", distance_m: 129, isRasta: true, name: "South Boundary Road" },
     { from: "S10", to: "S11", distance_m: 90,  isRasta: true, name: "South Boundary Road" },
@@ -85,13 +89,13 @@ export const IJTEMA_DATA: {
     { from: "S17", to: "S15", distance_m: 108, isRasta: true, name: "East Boundary Road" },
     { from: "S15", to: "S12", distance_m: 198, isRasta: true, name: "East Boundary Road" },
 
-    // === Rasta-01 N-S (S1 → P1 → P8 → S2) ===
+    // === Rasta-01 N-S (S1 → P1 → P8 → S7) ===
     { from: "S1", to: "P1", distance_m: 148, isRasta: true, name: "Rasta 01" },
     { from: "P1", to: "P8", distance_m: 219, isRasta: true, name: "Rasta 01" },
-    { from: "P8", to: "S2", distance_m: 198, isRasta: true, name: "Rasta 01" },
+    { from: "P8", to: "S7", distance_m: 198, isRasta: true, name: "Rasta 01" },
 
-    // === Rasta-02 partial N-S (P2 → P6 → P9 → S8) ===
-    { from: "P2", to: "P6", distance_m: 108, isRasta: true, name: "Rasta 02" },
+    // === Rasta-02 N-S (S2 → P6 → P9 → S8) ===
+    { from: "S2", to: "P6", distance_m: 108, isRasta: true, name: "Rasta 02" },
     { from: "P6", to: "P9", distance_m: 111, isRasta: true, name: "Rasta 02" },
     { from: "P9", to: "S8", distance_m: 198, isRasta: true, name: "Rasta 02" },
 
@@ -119,8 +123,8 @@ export const IJTEMA_DATA: {
     { from: "P4",  to: "P5", distance_m: 92,  isRasta: true, name: "Rasta 09" },
     { from: "P5",  to: "S16", distance_m: 151, isRasta: true, name: "Rasta 09" },
 
-    // === Middle E-W connector (P6 → P7) ===
-    { from: "P6", to: "P7", distance_m: 328, isRasta: true, name: "Middle Road" },
+    // === Rasta-10 link (P7 → S17) ===
+    { from: "P7", to: "S17", distance_m: 295, isRasta: true, name: "Rasta 10" },
 
     // === Rasta-11 E-W (S14 → P8 → P9 → P10 → P11 → P12 → S15) ===
     { from: "S14", to: "P8",  distance_m: 149, isRasta: true, name: "Rasta 11" },
@@ -653,6 +657,71 @@ export const IJTEMA_DATA: {
     },
   }
 };
+
+export const BLOCK_ENTRY_MAP_STRICT: Record<string, string[]> = {
+  B1: ['P1', 'S13'],
+  B2: ['P1', 'P8'],
+  B3: ['P8', 'S14'],
+  B4: ['P2', 'S1'],
+  B5: ['P2', 'P6'],
+  B6: ['P6', 'P9'],
+  B7: ['P9', 'S8'],
+  B8: ['P3'],
+  B9: ['P3', 'P10'],
+  B10: ['P10'],
+  B11: ['P10', 'S9'],
+  B12: ['P4'],
+  B13: ['P10', 'P11'],
+  B14: ['P11'],
+  B15: ['P11', 'S10'],
+  B16: ['S9', 'S10'],
+  B17: ['P5'],
+  B18: ['P7'],
+  B19: ['P12'],
+  B20: ['P12', 'S15'],
+  B21: ['P5', 'S16'],
+  B22: ['P7', 'P12'],
+  B23: ['P12', 'S15'],
+  B24: ['S15', 'S12'],
+};
+
+for (const [blockId, entryNodes] of Object.entries(BLOCK_ENTRY_MAP_STRICT)) {
+  const block = IJTEMA_DATA.blocks[blockId];
+  if (!block) continue;
+  block.entry_nodes = [...entryNodes];
+}
+
+for (const edge of IJTEMA_DATA.edges) {
+  if (edge.name?.includes('Boundary') || edge.name?.includes('Terminal')) {
+    edge.type = 'boundary';
+    edge.weightMultiplier = 1;
+  } else if (edge.name === 'Rasta 10') {
+    edge.type = 'connector';
+    edge.rastaId = 'R10';
+    edge.weightMultiplier = 1;
+  } else {
+    edge.type = 'main_rasta';
+    edge.rastaId = edge.name?.replace('Rasta ', 'R') ?? undefined;
+    edge.weightMultiplier = 1;
+  }
+}
+
+export const IJTEMA_NODES = IJTEMA_DATA.nodes;
+export const IJTEMA_EDGES = IJTEMA_DATA.edges;
+export const IJTEMA_BLOCKS = IJTEMA_DATA.blocks;
+export const IJTEMA_BLOCK_ENTRY_MAP = BLOCK_ENTRY_MAP_STRICT;
+export const IJTEMA_RASTAS = Array.from(
+  new Set(IJTEMA_DATA.edges.filter((edge) => edge.name?.startsWith('Rasta')).map((edge) => edge.name!)),
+);
+export const MAP_BOUNDS = IJTEMA_MAP_BOUNDS;
+
+export const GRAPH_VALIDATION = validateIjtemaGraph(IJTEMA_DATA);
+if (!GRAPH_VALIDATION.isValid) {
+  console.error('[IjtemaGraphValidation] Errors:', GRAPH_VALIDATION.errors);
+}
+if (GRAPH_VALIDATION.warnings.length > 0) {
+  console.warn('[IjtemaGraphValidation] Warnings:', GRAPH_VALIDATION.warnings);
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // LANDMARK PLACES

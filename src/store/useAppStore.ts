@@ -20,6 +20,8 @@ import {
   FavoritePlace,
 } from '../models/types';
 
+export type RouteSelectionMode = 'idle' | 'selectingStart' | 'selectingDestination';
+
 interface AppState {
   // --- Offline map ---
   offlineData: OfflineData;
@@ -53,7 +55,7 @@ interface AppState {
   // --- Navigation ---
   isNavigating: boolean;
   destination: Place | null;
-  startNavigation: (destination: Place) => void;
+  startNavigation: (destination: Place, route?: RoutePreview | null, instructions?: NavigationInstruction[]) => void;
   stopNavigation: () => void;
   activeRoute: RoutePreview | null;
   setActiveRoute: (route: RoutePreview | null) => void;
@@ -72,6 +74,8 @@ interface AppState {
   setRoutePlannerOrigin: (place: Place | null) => void;
   setRoutePlannerDest: (place: Place | null) => void;
   clearRoutePlanner: () => void;
+  routeSelectionMode: RouteSelectionMode;
+  setRouteSelectionMode: (mode: RouteSelectionMode) => void;
 
   // --- Route alternatives (Phase 9) ---
   routeAlternatives: RouteAlternative[];
@@ -97,6 +101,14 @@ interface AppState {
   // --- UI state ---
   isMuted: boolean;
   setIsMuted: (val: boolean) => void;
+  showGraphNodes: boolean;
+  setShowGraphNodes: (val: boolean) => void;
+  showRastaNames: boolean;
+  setShowRastaNames: (val: boolean) => void;
+  showBlockPolygons: boolean;
+  setShowBlockPolygons: (val: boolean) => void;
+  showRouteDiagnostics: boolean;
+  setShowRouteDiagnostics: (val: boolean) => void;
 }
 
 export const useAppStore = create<AppState>()(
@@ -160,7 +172,13 @@ export const useAppStore = create<AppState>()(
       // --- Navigation ---
       isNavigating: false,
       destination: null,
-      startNavigation: (dest) => set({ isNavigating: true, destination: dest }),
+      startNavigation: (dest, route = null, instructions = []) =>
+        set({
+          isNavigating: true,
+          destination: dest,
+          activeRoute: route,
+          routeInstructions: instructions,
+        }),
       stopNavigation: () =>
         set({ isNavigating: false, destination: null, activeRoute: null, routeInstructions: [], reroutePending: false }),
       activeRoute: null,
@@ -179,7 +197,17 @@ export const useAppStore = create<AppState>()(
       routePlannerDest: null,
       setRoutePlannerOrigin: (place) => set({ routePlannerOrigin: place }),
       setRoutePlannerDest: (place) => set({ routePlannerDest: place }),
-      clearRoutePlanner: () => set({ routePlannerOrigin: null, routePlannerDest: null, routeAlternatives: [], selectedRouteIndex: 0 }),
+      clearRoutePlanner: () =>
+        set({
+          routePlannerOrigin: null,
+          routePlannerDest: null,
+          routeAlternatives: [],
+          selectedRouteIndex: 0,
+          activeRoute: null,
+          routeInstructions: [],
+        }),
+      routeSelectionMode: 'idle',
+      setRouteSelectionMode: (mode) => set({ routeSelectionMode: mode }),
 
       // --- Route alternatives ---
       routeAlternatives: [],
@@ -215,6 +243,14 @@ export const useAppStore = create<AppState>()(
       // --- UI ---
       isMuted: false,
       setIsMuted: (val) => set({ isMuted: val }),
+      showGraphNodes: false,
+      setShowGraphNodes: (val) => set({ showGraphNodes: val }),
+      showRastaNames: false,
+      setShowRastaNames: (val) => set({ showRastaNames: val }),
+      showBlockPolygons: true,
+      setShowBlockPolygons: (val) => set({ showBlockPolygons: val }),
+      showRouteDiagnostics: false,
+      setShowRouteDiagnostics: (val) => set({ showRouteDiagnostics: val }),
     }),
     {
       name: 'ijtema-app-store',
@@ -227,6 +263,10 @@ export const useAppStore = create<AppState>()(
         recentSearches: state.recentSearches,
         favorites: state.favorites,
         lastKnownLocation: state.lastKnownLocation,
+        showGraphNodes: state.showGraphNodes,
+        showRastaNames: state.showRastaNames,
+        showBlockPolygons: state.showBlockPolygons,
+        showRouteDiagnostics: state.showRouteDiagnostics,
       }),
     }
   )

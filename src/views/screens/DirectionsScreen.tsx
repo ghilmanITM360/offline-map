@@ -6,19 +6,24 @@
 import React from 'react';
 import { View, Text, StyleSheet, Pressable, ScrollView, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import MapView, { Marker, Polygon, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
 import { ChevronLeft, ArrowRight, MapPin, Navigation, Clock, Footprints } from 'lucide-react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useDirectionsViewModel } from '../../viewmodels/DirectionsViewModel';
 import { InstructionService } from '../../services/InstructionService';
+import { RoutePointService } from '../../services/RoutePointService';
 import { useAppStore } from '../../store/useAppStore';
 import { RootStackParamList } from '../../navigation/RootNavigator';
+import { IJTEMA_DATA } from '../../constants/data';
 
 export function DirectionsScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList, 'Directions'>>();
   const routeParams = useRoute<RouteProp<RootStackParamList, 'Directions'>>();
   const { destination } = routeParams.params;
   const distanceUnit = useAppStore((s) => s.settings.distanceUnit);
+  const clearRoutePlanner = useAppStore((s) => s.clearRoutePlanner);
+  const setRoutePlannerDest = useAppStore((s) => s.setRoutePlannerDest);
 
   const {
     route,
@@ -29,6 +34,12 @@ export function DirectionsScreen() {
     originLabel,
     handleStartNavigation,
   } = useDirectionsViewModel(destination);
+
+  const startCoordinate = route?.coordinates[0];
+  const endNodeId = route?.nodes[route.nodes.length - 1];
+  const destinationCoordinate =
+    RoutePointService.nodeToCoordinate(endNodeId) ?? RoutePointService.getDestinationCoordinate(destination);
+  const previewCenter = startCoordinate ?? destinationCoordinate ?? destination.coordinate;
 
   return (
     <KeyboardAvoidingView
@@ -63,6 +74,58 @@ export function DirectionsScreen() {
               editable={false}
             />
           </View>
+        </View>
+
+        <View style={styles.mapPreviewWrap}>
+          <MapView
+            style={styles.mapPreview}
+            provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined}
+            initialRegion={{
+              latitude: previewCenter.latitude,
+              longitude: previewCenter.longitude,
+              latitudeDelta: 0.006,
+              longitudeDelta: 0.006,
+            }}
+            scrollEnabled
+            zoomEnabled
+            rotateEnabled={false}
+            pitchEnabled={false}
+          >
+            {Object.values(IJTEMA_DATA.blocks).map((block) => (
+              <Polygon
+                key={`preview_block_${block.id}`}
+                coordinates={block.corners ?? block.polygon}
+                fillColor={block.id === destination.id ? 'rgba(251,188,5,0.28)' : 'rgba(46,125,50,0.12)'}
+                strokeColor={block.id === destination.id ? '#F29900' : '#2E7D32'}
+                strokeWidth={block.id === destination.id ? 2 : 1}
+              />
+            ))}
+            {IJTEMA_DATA.edges.map((edge, idx) => {
+              const from = IJTEMA_DATA.nodes[edge.from];
+              const to = IJTEMA_DATA.nodes[edge.to];
+              if (!from || !to) return null;
+              const coords = [
+                { latitude: from.lat, longitude: from.lng },
+                { latitude: to.lat, longitude: to.lng },
+              ];
+              return (
+                <React.Fragment key={`preview_edge_${edge.from}_${edge.to}_${idx}`}>
+                  <Polyline coordinates={coords} strokeColor="rgba(60,64,67,0.42)" strokeWidth={6} zIndex={1} />
+                  <Polyline coordinates={coords} strokeColor="rgba(255,255,255,0.86)" strokeWidth={4} zIndex={2} />
+                </React.Fragment>
+              );
+            })}
+            {route && (
+              <>
+                <Polyline coordinates={route.coordinates} strokeColor="rgba(13,71,161,0.72)" strokeWidth={9} zIndex={20} />
+                <Polyline coordinates={route.coordinates} strokeColor="#1A73E8" strokeWidth={5} zIndex={21} />
+              </>
+            )}
+            {startCoordinate && <Marker coordinate={startCoordinate} pinColor="#1A73E8" title="Start" />}
+            {destinationCoordinate && (
+              <Marker coordinate={destinationCoordinate} pinColor="#2E7D32" title={destination.name} />
+            )}
+          </MapView>
         </View>
 
         <ScrollView style={styles.content}>
@@ -117,6 +180,21 @@ export function DirectionsScreen() {
               {alternatives[selectedIndex] && (
                 <Text style={styles.routeDesc}>{alternatives[selectedIndex].label} route</Text>
               )}
+              {route.nodes.length > 0 && (
+                <Text style={styles.routeNodes} numberOfLines={2}>
+                  Nodes: {route.nodes.join(' -> ')}
+                </Text>
+              )}
+              <Pressable
+                style={styles.clearRouteButton}
+                onPress={() => {
+                  clearRoutePlanner();
+                  setRoutePlannerDest(null);
+                  navigation.goBack();
+                }}
+              >
+                <Text style={styles.clearRouteText}>Clear route</Text>
+              </Pressable>
             </View>
           ) : (
             <View style={styles.loadingContainer}>
@@ -174,6 +252,21 @@ const styles = StyleSheet.create({
     backgroundColor: '#F8F9FA',
     borderBottomWidth: 1,
     borderBottomColor: '#EEEEEE',
+  },
+  mapPreviewWrap: {
+    height: 260,
+    margin: 16,
+    borderRadius: 20,
+    overflow: 'hidden',
+    backgroundColor: '#E8EAED',
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.16,
+    shadowRadius: 8,
+  },
+  mapPreview: {
+    flex: 1,
   },
   inputRow: {
     flexDirection: 'row',
@@ -273,6 +366,24 @@ const styles = StyleSheet.create({
     color: '#666',
     marginTop: 12,
     fontStyle: 'italic',
+  },
+  routeNodes: {
+    marginTop: 8,
+    fontSize: 12,
+    color: '#3C4043',
+  },
+  clearRouteButton: {
+    marginTop: 12,
+    alignSelf: 'flex-start',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  clearRouteText: {
+    color: '#D32F2F',
+    fontSize: 12,
+    fontWeight: '700',
   },
   stepsSection: {
     marginTop: 10,

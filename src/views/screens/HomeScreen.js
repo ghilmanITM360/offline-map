@@ -185,7 +185,7 @@ export function HomeScreen() {
             <Text style={styles.outsideVenueText}>You are outside the Ijtema area</Text>
           </View>)}
 
-        {isOffline && !offlineData.isDownloaded && (<View style={styles.emptyOfflineState}> {/* fixed: explain why the map is blank when the device is offline without downloaded tiles */}
+        {isOffline && !offlineData.isDownloaded && (<View style={styles.emptyOfflineState}>
             <Text style={styles.emptyOfflineTitle}>No offline map available.</Text>
             <Pressable style={styles.emptyOfflineButton} onPress={() => nav.navigate('DownloadMap')}>
               <Text style={styles.emptyOfflineButtonText}>Download now</Text>

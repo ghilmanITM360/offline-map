@@ -8,6 +8,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAppStore } from '../store/useAppStore';
 import { RoutingService } from '../services/RoutingService';
 import { InstructionService, Instruction } from '../services/InstructionService';
+import { RoutePointService } from '../services/RoutePointService';
 import { Place, RouteAlternative, RoutePreview } from '../models/types';
 import { RootStackParamList } from '../navigation/RootNavigator';
 
@@ -19,6 +20,8 @@ export function useDirectionsViewModel(destination: Place | null) {
     startNavigation,
     setRouteAlternatives,
     setSelectedRouteIndex,
+    setActiveRoute,
+    setRouteInstructions,
   } = useAppStore.getState();
 
   // Keep a ref to the current GPS position so it does NOT appear in effect deps
@@ -46,19 +49,25 @@ export function useDirectionsViewModel(destination: Place | null) {
     }
 
     const walkingSpeedMs = settings.walkingSpeed ?? 1.4;
-    const destNodeIds = RoutingService.resolveDestinationNodes(destination.id, destination.coordinate);
+    const destNodeIds = RoutingService.resolveDestinationNodesFromPlace(destination, loc);
+    const startNodeIdOverride = routePlannerOrigin?.routingNodeId;
 
-    const alts = RoutingService.calculateRoutes(loc, destNodeIds, walkingSpeedMs);
+    const alts = RoutingService.calculateRoutes(loc, destNodeIds, walkingSpeedMs, startNodeIdOverride);
     setAlternatives(alts);
     setRouteAlternatives(alts);
     setSelectedIndex(0);
     setSelectedRouteIndex(0);
 
-    const best = alts[0]?.route ?? RoutingService.calculateRoute(loc, destNodeIds);
+    const best = alts[0]?.route ?? RoutingService.calculateRoute(loc, destNodeIds, startNodeIdOverride);
     setRoute(best ?? null);
-    if (best) setInstructions(InstructionService.generateInstructions(best.nodes));
+    if (best) {
+      const generated = InstructionService.generateInstructions(best.nodes);
+      setInstructions(generated);
+      setActiveRoute(best);
+      setRouteInstructions(generated);
+    }
 
-  }, [destination, routePlannerOrigin]); // intentionally excludes currentLocation — only recalculate when the explicit origin or destination changes
+  }, [destination, routePlannerOrigin, settings.walkingSpeed, setActiveRoute, setRouteAlternatives, setRouteInstructions, setSelectedRouteIndex]); // intentionally excludes currentLocation — only recalculate when the explicit origin or destination changes
 
   const selectAlternative = (idx: number) => {
     const alt = alternatives[idx];
@@ -66,12 +75,19 @@ export function useDirectionsViewModel(destination: Place | null) {
     setSelectedIndex(idx);
     setSelectedRouteIndex(idx);
     setRoute(alt.route);
-    setInstructions(InstructionService.generateInstructions(alt.route.nodes));
+    const generated = InstructionService.generateInstructions(alt.route.nodes);
+    setInstructions(generated);
+    setActiveRoute(alt.route);
+    setRouteInstructions(generated);
   };
 
   const handleStartNavigation = (navigation: NativeStackNavigationProp<RootStackParamList, 'Directions'>) => {
-    if (destination) {
-      startNavigation(destination);
+    if (destination && route) {
+      const endNodeId = route.nodes[route.nodes.length - 1];
+      const resolvedDestination = endNodeId
+        ? RoutePointService.enrichPlaceWithRoutingNode(destination, endNodeId)
+        : destination;
+      startNavigation(resolvedDestination, route, instructions);
       navigation.navigate('Navigation');
     }
   };

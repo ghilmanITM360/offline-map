@@ -18,9 +18,9 @@ const ENTRY_SIDE_MAP: Record<string, BlockEntryPoint['side']> = {
   // East boundary
   S15: 'east', S16: 'east', S17: 'east',
   // South road
-  S2: 'south', S8: 'south', S9: 'south', S10: 'south', S11: 'south', S12: 'south',
+  S7: 'south', S8: 'south', S9: 'south', S10: 'south', S11: 'south', S12: 'south',
   // North road
-  S1: 'north', S3: 'north', S4: 'north', S5: 'north', S6: 'north',
+  S1: 'north', S2: 'north', S3: 'north', S4: 'north', S5: 'north', S6: 'north',
 };
 
 const SIDE_LABEL: Record<BlockEntryPoint['side'], { en: string; ur: string }> = {

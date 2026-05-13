@@ -30,7 +30,7 @@ export function AboutScreen() {
     };
     return (<SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <Pressable onPress={() => navigation.canGoBack() ? navigation.goBack() : navigation.navigate('Home')} style={styles.backButton}> {/* fixed: guard goBack() and fall back to Home */}
+        <Pressable onPress={() => navigation.canGoBack() ? navigation.goBack() : navigation.navigate('Home')} style={styles.backButton}>
           <ChevronLeft size={28} color="#333"/>
         </Pressable>
         <Text style={styles.headerTitle}>About App</Text>
@@ -81,12 +81,12 @@ export function AboutScreen() {
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Legal & Privacy</Text>
-          <Pressable style={styles.linkItem} onPress={() => { void openExternalUrl(PRIVACY_POLICY_URL); }}> {/* fixed: guard external link handling and avoid placeholder example.com */}
+          <Pressable style={styles.linkItem} onPress={() => { void openExternalUrl(PRIVACY_POLICY_URL); }}>
             <Shield size={20} color="#666"/>
             <Text style={styles.linkText}>Privacy Policy</Text>
             <ExternalLink size={16} color="#AAA"/>
           </Pressable>
-          <Pressable style={styles.linkItem} onPress={() => { void openExternalUrl(TERMS_OF_SERVICE_URL); }}> {/* fixed: guard external link handling and avoid placeholder example.com */}
+          <Pressable style={styles.linkItem} onPress={() => { void openExternalUrl(TERMS_OF_SERVICE_URL); }}>
             <FileText size={20} color="#666"/>
             <Text style={styles.linkText}>Terms of Service</Text>
             <ExternalLink size={16} color="#AAA"/>

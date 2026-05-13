@@ -32,7 +32,7 @@ export function ErrorScreen() {
           <Text style={styles.retryText}>Retry</Text>
         </Pressable>
 
-        <Pressable style={styles.backButton} onPress={() => navigation.canGoBack() ? navigation.goBack() : navigation.navigate('Main')}> {/* fixed: guard goBack() and fall back to the main stack root */}
+        <Pressable style={styles.backButton} onPress={() => navigation.canGoBack() ? navigation.goBack() : navigation.navigate('Main')}>
           <Text style={styles.backText}>Go Back</Text>
         </Pressable>
       </View>

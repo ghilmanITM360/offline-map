@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useRef, useCallback, useEffect } from 'react';
+import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -20,7 +20,7 @@ import {
   BackHandler,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import MapView, { Marker, Polygon, PROVIDER_GOOGLE, LocalTile } from 'react-native-maps';
+import MapView, { Marker, Polygon, Polyline, PROVIDER_GOOGLE, LocalTile } from 'react-native-maps';
 import {
   Menu,
   Mic,
@@ -45,11 +45,14 @@ import { DrawerNavigationProp } from '@react-navigation/drawer';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useHomeViewModel } from '../../viewmodels/HomeViewModel';
 import { useTheme } from '../../services/useTheme';
-import { IJTEMA_DATA } from '../../constants/data';
+import { GRAPH_VALIDATION, IJTEMA_DATA } from '../../constants/data';
 import { Place, SearchResult } from '../../models/types';
 import { PlaceDetailService } from '../../services/PlaceDetailService';
 import { FavoriteService } from '../../services/FavoriteService';
 import { useAppStore } from '../../store/useAppStore';
+import { SnapToRoadService } from '../../services/SnapToRoadService';
+import { RoutingService } from '../../services/RoutingService';
+import { RoutePointService } from '../../services/RoutePointService';
 import { Paths } from 'expo-file-system'; // fixed: use Paths API instead of deprecated documentDirectory
 import { DrawerParamList, RootStackParamList } from '../../navigation/RootNavigator'; // fixed: use typed navigation params
 
@@ -71,6 +74,21 @@ export function HomeScreen() {
   const nav = useNavigation<HomeScreenNavigationProp>();
   const currentLocation = useAppStore((s) => s.currentLocation);
   const favorites = useAppStore((s) => s.favorites);
+  const routePlannerOrigin = useAppStore((s) => s.routePlannerOrigin);
+  const routePlannerDest = useAppStore((s) => s.routePlannerDest);
+  const setRoutePlannerOrigin = useAppStore((s) => s.setRoutePlannerOrigin);
+  const setRoutePlannerDest = useAppStore((s) => s.setRoutePlannerDest);
+  const routeSelectionMode = useAppStore((s) => s.routeSelectionMode);
+  const setRouteSelectionMode = useAppStore((s) => s.setRouteSelectionMode);
+  const clearRoutePlanner = useAppStore((s) => s.clearRoutePlanner);
+  const showGraphNodes = useAppStore((s) => s.showGraphNodes);
+  const setShowGraphNodes = useAppStore((s) => s.setShowGraphNodes);
+  const showRastaNames = useAppStore((s) => s.showRastaNames);
+  const setShowRastaNames = useAppStore((s) => s.setShowRastaNames);
+  const showBlockPolygons = useAppStore((s) => s.showBlockPolygons);
+  const setShowBlockPolygons = useAppStore((s) => s.setShowBlockPolygons);
+  const showRouteDiagnostics = useAppStore((s) => s.showRouteDiagnostics);
+  const setShowRouteDiagnostics = useAppStore((s) => s.setShowRouteDiagnostics);
   const [selectedEntryIdx, setSelectedEntryIdx] = useState(0);
   // Controls whether the search suggestions dropdown is visible
   const [isSearchFocused, setIsSearchFocused] = useState(false);
@@ -134,6 +152,49 @@ export function HomeScreen() {
 
   const settings = useAppStore((s) => s.settings);
 
+  const withBlockEntryNode = useCallback(
+    (place: Place, preferredIndex?: number): Place => {
+      if (place.category !== 'Block') return place;
+      const entries = PlaceDetailService.getEntryPoints(place.id);
+      const preferredEntry = preferredIndex !== undefined ? entries[preferredIndex] : null;
+      const nearestEntry = PlaceDetailService.getNearestEntry(
+        place.id,
+        RoutePointService.getStartCoordinate(routePlannerOrigin) ?? currentLocation ?? place.coordinate,
+      );
+      const nodeId = preferredEntry?.nodeId ?? nearestEntry?.nodeId ?? entries[0]?.nodeId;
+      return nodeId ? RoutePointService.enrichPlaceWithRoutingNode(place, nodeId) : place;
+    },
+    [currentLocation, routePlannerOrigin],
+  );
+
+  const plannerStartCoordinate = useMemo(
+    () => RoutePointService.getStartCoordinate(routePlannerOrigin) ?? currentLocation,
+    [currentLocation, routePlannerOrigin],
+  );
+
+  const routePreview = useMemo(() => {
+    if (!plannerStartCoordinate || !routePlannerDest) return null;
+    const destNodeIds = RoutingService.resolveDestinationNodesFromPlace(routePlannerDest, plannerStartCoordinate);
+    return RoutingService.calculateRoute(
+      plannerStartCoordinate,
+      destNodeIds,
+      routePlannerOrigin?.routingNodeId ?? routePlannerOrigin?.selectedEntryNodeId,
+    );
+  }, [plannerStartCoordinate, routePlannerDest, routePlannerOrigin]);
+
+  const destinationMarkerCoordinate = useMemo(() => {
+    const endNodeId = routePreview?.nodes[routePreview.nodes.length - 1];
+    return RoutePointService.nodeToCoordinate(endNodeId) ?? RoutePointService.getDestinationCoordinate(routePlannerDest);
+  }, [routePreview, routePlannerDest]);
+
+  const selectedPlaceMarkerCoordinate = useMemo(() => {
+    if (!selectedPlace) return null;
+    if (selectedPlace.category === 'Block' && entryPoints[selectedEntryIdx]) {
+      return RoutePointService.nodeToCoordinate(entryPoints[selectedEntryIdx].nodeId) ?? selectedPlace.coordinate;
+    }
+    return RoutePointService.getDestinationCoordinate(selectedPlace);
+  }, [entryPoints, selectedEntryIdx, selectedPlace]);
+
   const walkingTimeMin = (selectedPlace && currentLocation)
     ? PlaceDetailService.estimateWalkingTime(
         PlaceDetailService.distanceToBlock(selectedPlace.id, currentLocation),
@@ -148,28 +209,179 @@ export function HomeScreen() {
     FavoriteService.toggleFavorite(selectedPlace);
   };
 
-  const handleStartNavigation = () => {
-    if (!selectedPlace) return;
-    const entryNode = entryPoints[selectedEntryIdx];
-    const destPlace = entryNode
-      ? {
-          ...selectedPlace,
-          // Override coordinate with chosen entry point's node coordinate
-          coordinate: (() => {
-            const n = (IJTEMA_DATA.nodes as any)[entryNode.nodeId];
-            return n ? { latitude: n.lat, longitude: n.lng } : selectedPlace.coordinate;
-          })(),
-        }
-      : selectedPlace;
-    useAppStore.getState().startNavigation(destPlace);
-    nav.navigate('Navigation');
+  const withSelectedEntryNode = (place: Place): Place => withBlockEntryNode(place, selectedEntryIdx);
+
+  useEffect(() => {
+    if (!selectedPlace || selectedPlace.category !== 'Block') return;
+    if (routePlannerDest?.id !== selectedPlace.id) return;
+    setRoutePlannerDest(withSelectedEntryNode(selectedPlace));
+  }, [selectedEntryIdx, selectedPlace, routePlannerDest?.id]);
+
+  const handleOpenDirections = (place: Place) => {
+    const destination = withSelectedEntryNode(place);
+    setRoutePlannerDest(destination);
+    nav.navigate('Directions', { destination });
+  };
+
+  const setAsStartFromPlace = (place: Place) => {
+    const start = withSelectedEntryNode(place);
+    setRoutePlannerOrigin(start);
+    setRouteSelectionMode('idle');
+  };
+
+  const setAsDestinationFromPlace = (place: Place) => {
+    const destination = withSelectedEntryNode(place);
+    setRoutePlannerDest(destination);
+    setRouteSelectionMode('idle');
+  };
+
+  const handleSearchResultSelect = (place: Place) => {
+    dismissSearch();
+    if (routeSelectionMode === 'selectingStart') {
+      setRoutePlannerOrigin(withBlockEntryNode(place));
+      setRouteSelectionMode('selectingDestination');
+      clearSearch();
+      return;
+    }
+    if (routeSelectionMode === 'selectingDestination') {
+      const destination = withBlockEntryNode(place);
+      setRoutePlannerDest(destination);
+      setRouteSelectionMode('idle');
+      clearSearch();
+      return;
+    }
+    handlePlaceSelect(place);
+  };
+
+  const handleMapSelect = (coord: { latitude: number; longitude: number }, blockId?: string) => {
+    if (routeSelectionMode === 'selectingStart') {
+      if (blockId) {
+        const block = IJTEMA_DATA.blocks[blockId];
+        if (!block) return;
+        const nearestEntry = PlaceDetailService.getNearestEntry(blockId, coord);
+        const rawStartPlace: Place = {
+          id: `start_${blockId}`,
+          name: block.name,
+          urduName: block.urduName,
+          category: 'Block',
+          description: `Manual start at ${block.name}.`,
+          coordinate: block.center,
+        };
+        const startPlace = nearestEntry?.nodeId
+          ? RoutePointService.enrichPlaceWithRoutingNode(rawStartPlace, nearestEntry.nodeId)
+          : rawStartPlace;
+        setRoutePlannerOrigin(startPlace);
+      } else {
+        const resolved = SnapToRoadService.resolveRoutingNode(coord);
+        const startPlace: Place = {
+          id: 'custom_start',
+          name: 'Custom Start',
+          category: 'CustomPoint',
+          description: 'Manual route start point.',
+          coordinate: coord,
+          routingNodeId: resolved.nodeId,
+          resolvedRoutingNodeId: resolved.nodeId,
+          resolvedRoutingCoordinate: resolved.snappedCoordinate,
+          snappedCoordinate: resolved.snappedCoordinate,
+        };
+        setRoutePlannerOrigin(startPlace);
+        if (resolved.warning) Alert.alert('Outside Area', resolved.warning);
+      }
+      setRouteSelectionMode('selectingDestination');
+      return;
+    }
+
+    if (routeSelectionMode === 'selectingDestination') {
+      if (blockId) {
+        const block = IJTEMA_DATA.blocks[blockId];
+        if (!block) return;
+        const nearestEntry = PlaceDetailService.getNearestEntry(blockId, coord);
+        const rawDestination: Place = {
+          id: block.id,
+          name: block.name,
+          urduName: block.urduName,
+          category: 'Block',
+          description: `${block.name} selected by map.`,
+          coordinate: block.center,
+        };
+        const destination = nearestEntry?.nodeId
+          ? RoutePointService.enrichPlaceWithRoutingNode(rawDestination, nearestEntry.nodeId)
+          : rawDestination;
+        setRoutePlannerDest(destination);
+        setRouteSelectionMode('idle');
+        return;
+      }
+
+      const resolved = SnapToRoadService.resolveRoutingNode(coord);
+      const destination: Place = {
+        id: 'custom_destination',
+        name: 'Custom Destination',
+        category: 'CustomPoint',
+        description: 'Manual destination point.',
+        coordinate: coord,
+        routingNodeId: resolved.nodeId,
+        resolvedRoutingNodeId: resolved.nodeId,
+        resolvedRoutingCoordinate: resolved.snappedCoordinate,
+        snappedCoordinate: resolved.snappedCoordinate,
+      };
+      setRoutePlannerDest(destination);
+      setRouteSelectionMode('idle');
+      if (resolved.warning) Alert.alert('Outside Area', resolved.warning);
+      return;
+    }
+
+    if (selectedPlace) {
+      setSelectedPlace(null);
+      bottomSheetRef.current?.close();
+      return;
+    }
+
+    Alert.alert('Map Point', 'Use this point for routing?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Set as Start',
+        onPress: () => {
+          const resolved = SnapToRoadService.resolveRoutingNode(coord);
+          const startPlace: Place = {
+            id: 'custom_start',
+            name: 'Custom Start',
+            category: 'CustomPoint',
+            description: 'Manual route start point.',
+            coordinate: coord,
+            routingNodeId: resolved.nodeId,
+            resolvedRoutingNodeId: resolved.nodeId,
+            resolvedRoutingCoordinate: resolved.snappedCoordinate,
+            snappedCoordinate: resolved.snappedCoordinate,
+          };
+          setRoutePlannerOrigin(startPlace);
+          if (resolved.warning) Alert.alert('Outside Area', resolved.warning);
+        },
+      },
+      {
+        text: 'Set as Destination',
+        onPress: () => {
+          const resolved = SnapToRoadService.resolveRoutingNode(coord);
+          const destination: Place = {
+            id: 'custom_destination',
+            name: 'Custom Destination',
+            category: 'CustomPoint',
+            description: 'Manual destination point.',
+            coordinate: coord,
+            routingNodeId: resolved.nodeId,
+            resolvedRoutingNodeId: resolved.nodeId,
+            resolvedRoutingCoordinate: resolved.snappedCoordinate,
+            snappedCoordinate: resolved.snappedCoordinate,
+          };
+          setRoutePlannerDest(destination);
+          if (resolved.warning) Alert.alert('Outside Area', resolved.warning);
+        },
+      },
+    ]);
   };
 
   const renderChips = () => {
     const categories = [
       { id: 'blocks', label: 'Blocks' },
-      { id: 'masjid', label: 'Masjid' },
-      { id: 'gates', label: 'Gates' },
       { id: 'rastas', label: 'Rastas' },
     ];
     return (
@@ -212,24 +424,48 @@ export function HomeScreen() {
           showsMyLocationButton={false}
           showsCompass={false}
           onMapReady={() => setIsMapReady(true)}
-          onPress={() => {
+          onPress={(event) => {
             // Tapping the map always closes search first
             if (isSearchFocused) {
               dismissSearch();
               clearSearch();
               return;
             }
-            if (selectedPlace) {
-              setSelectedPlace(null);
-              bottomSheetRef.current?.close();
-            }
+            handleMapSelect(event.nativeEvent.coordinate);
           }}
         >
           {isOffline && offlineData.isDownloaded && (
             <LocalTile pathTemplate={getTilePath()} tileSize={256} zIndex={-1} />
           )}
 
-          {Object.entries(IJTEMA_DATA.blocks).map(([id, block]) => {
+          {IJTEMA_DATA.edges.map((edge, idx) => {
+            const from = IJTEMA_DATA.nodes[edge.from];
+            const to = IJTEMA_DATA.nodes[edge.to];
+            if (!from || !to) return null;
+            const coordinates = [
+              { latitude: from.lat, longitude: from.lng },
+              { latitude: to.lat, longitude: to.lng },
+            ];
+            const isBoundary = edge.type === 'boundary';
+            return (
+              <React.Fragment key={`edge_${edge.from}_${edge.to}_${idx}`}>
+                <Polyline
+                  coordinates={coordinates}
+                  strokeColor={isBoundary ? 'rgba(60,64,67,0.45)' : 'rgba(60,64,67,0.55)'}
+                  strokeWidth={isBoundary ? 7 : 9}
+                  zIndex={1}
+                />
+                <Polyline
+                  coordinates={coordinates}
+                  strokeColor={isBoundary ? 'rgba(255,255,255,0.72)' : 'rgba(255,255,255,0.92)'}
+                  strokeWidth={isBoundary ? 4 : 6}
+                  zIndex={2}
+                />
+              </React.Fragment>
+            );
+          })}
+
+          {showBlockPolygons && Object.entries(IJTEMA_DATA.blocks).map(([id, block]) => {
             const isSelected = selectedPlace?.id === id;
             return block.corners ? (
               <Polygon
@@ -239,8 +475,14 @@ export function HomeScreen() {
                 strokeColor={isSelected ? '#1A73E8' : '#2E7D32'}
                 strokeWidth={isSelected ? 3 : 1.5}
                 tappable
-                onPress={() => {
+                onPress={(event) => {
                   dismissSearch();
+                  const tapped = event.nativeEvent.coordinate;
+                  if (!tapped) return;
+                  if (routeSelectionMode === 'selectingStart' || routeSelectionMode === 'selectingDestination') {
+                    handleMapSelect(tapped, id);
+                    return;
+                  }
                   handlePlaceSelect({
                     id: block.id,
                     name: block.name,
@@ -254,8 +496,74 @@ export function HomeScreen() {
             ) : null;
           })}
 
-          {selectedPlace && (
-            <Marker coordinate={selectedPlace.coordinate}>
+          {showGraphNodes && Object.entries(IJTEMA_DATA.nodes).map(([nodeId, node]) => {
+            const color = nodeId.startsWith('P') ? '#D32F2F' : nodeId.startsWith('S') ? '#00ACC1' : '#616161';
+            return (
+              <Marker
+                key={`node_${nodeId}`}
+                coordinate={{ latitude: node.lat, longitude: node.lng }}
+                anchor={{ x: 0.5, y: 0.5 }}
+              >
+                <View style={[styles.debugNode, { backgroundColor: color }]}>
+                  <Text style={styles.debugNodeText}>{nodeId}</Text>
+                </View>
+              </Marker>
+            );
+          })}
+
+          {showRastaNames && Array.from(new Map(
+            IJTEMA_DATA.edges
+              .filter((edge) => !!edge.name)
+              .map((edge) => [edge.name!, edge]),
+          ).values()).map((edge) => {
+            const from = IJTEMA_DATA.nodes[edge.from];
+            const to = IJTEMA_DATA.nodes[edge.to];
+            if (!from || !to || !edge.name) return null;
+            const mid = { latitude: (from.lat + to.lat) / 2, longitude: (from.lng + to.lng) / 2 };
+            return (
+              <Marker key={`rasta_${edge.name}`} coordinate={mid} anchor={{ x: 0.5, y: 0.5 }}>
+                <View style={styles.rastaLabel}>
+                  <Text style={styles.rastaLabelText}>{edge.name}</Text>
+                </View>
+              </Marker>
+            );
+          })}
+
+          {routePreview && (
+            <>
+              <Polyline
+                coordinates={routePreview.coordinates}
+                strokeColor="rgba(13,71,161,0.72)"
+                strokeWidth={10}
+                zIndex={20}
+              />
+              <Polyline
+                coordinates={routePreview.coordinates}
+                strokeColor="#1A73E8"
+                strokeWidth={6}
+                zIndex={21}
+              />
+            </>
+          )}
+
+          {routePlannerOrigin && (
+            <Marker coordinate={RoutePointService.getStartCoordinate(routePlannerOrigin) ?? routePlannerOrigin.coordinate}>
+              <View style={styles.startMarker}>
+                <MapPin size={30} color="#1A73E8" fill="#1A73E8" />
+              </View>
+            </Marker>
+          )}
+
+          {routePlannerDest && destinationMarkerCoordinate && (
+            <Marker coordinate={destinationMarkerCoordinate}>
+              <View style={styles.destMarker}>
+                <MapPin size={30} color="#2E7D32" fill="#2E7D32" />
+              </View>
+            </Marker>
+          )}
+
+          {selectedPlace && selectedPlaceMarkerCoordinate && (
+            <Marker coordinate={selectedPlaceMarkerCoordinate}>
               <View style={styles.selectedMarker}>
                 <MapPin size={32} color="#EA4335" fill="#EA4335" />
               </View>
@@ -275,7 +583,7 @@ export function HomeScreen() {
             <TextInput
               ref={searchInputRef}
               style={[styles.searchInput, { color: theme.text }]}
-              placeholder="Search blocks, masjid, gates…"
+              placeholder="Search blocks or rastas…"
               placeholderTextColor={theme.placeholder}
               value={searchQuery}
               onChangeText={handleSearch}
@@ -313,7 +621,7 @@ export function HomeScreen() {
                   <Pressable
                     key={(item as any).id}
                     style={styles.searchResultItem}
-                    onPress={() => { handlePlaceSelect(item as any); dismissSearch(); }}
+                    onPress={() => handleSearchResultSelect(item as any)}
                   >
                     <View style={styles.searchResultIcon}>
                       {searchQuery.length === 0 ? (
@@ -333,7 +641,90 @@ export function HomeScreen() {
             </View>
           )}
 
-          {!isSearchFocused && renderChips()}
+          {!isSearchFocused && (
+            <>
+              {routeSelectionMode !== 'idle' && (
+                <View style={styles.selectionBanner}>
+                  <Text style={styles.selectionBannerText}>
+                    {routeSelectionMode === 'selectingStart'
+                      ? 'Tap the map to set start location'
+                      : 'Tap a block, road, or map point for destination'}
+                  </Text>
+                </View>
+              )}
+              {renderChips()}
+              <View style={styles.routePlannerCard}>
+                <View style={styles.routePlannerRow}>
+                  <Text style={styles.routePlannerLabel}>From</Text>
+                  <Text style={styles.routePlannerValue} numberOfLines={1}>
+                    {routePlannerOrigin?.name ?? 'Current location'}
+                  </Text>
+                </View>
+                <View style={styles.routePlannerActions}>
+                  <Pressable style={styles.routePlannerBtn} onPress={() => setRoutePlannerOrigin(null)}>
+                    <Text style={styles.routePlannerBtnText}>Use GPS</Text>
+                  </Pressable>
+                  <Pressable
+                    style={[
+                      styles.routePlannerBtn,
+                      routeSelectionMode === 'selectingStart' && styles.routePlannerBtnActive,
+                    ]}
+                    onPress={() => setRouteSelectionMode('selectingStart')}
+                  >
+                    <Text
+                      style={[
+                        styles.routePlannerBtnText,
+                        routeSelectionMode === 'selectingStart' && { color: '#FFFFFF' },
+                      ]}
+                    >
+                      Select Start
+                    </Text>
+                  </Pressable>
+                </View>
+                <View style={styles.routePlannerRow}>
+                  <Text style={styles.routePlannerLabel}>To</Text>
+                  <Text style={styles.routePlannerValue} numberOfLines={1}>
+                    {routePlannerDest?.name ?? 'Search block or tap map'}
+                  </Text>
+                </View>
+                <View style={styles.routePlannerActions}>
+                  <Pressable
+                    style={[
+                      styles.routePlannerBtn,
+                      routeSelectionMode === 'selectingDestination' && styles.routePlannerBtnActive,
+                    ]}
+                    onPress={() => setRouteSelectionMode('selectingDestination')}
+                  >
+                    <Text
+                      style={[
+                        styles.routePlannerBtnText,
+                        routeSelectionMode === 'selectingDestination' && { color: '#FFFFFF' },
+                      ]}
+                    >
+                      Select Destination
+                    </Text>
+                  </Pressable>
+                  <Pressable style={styles.routePlannerBtn} onPress={clearRoutePlanner}>
+                    <Text style={styles.routePlannerBtnText}>Clear</Text>
+                  </Pressable>
+                </View>
+              </View>
+              <View style={styles.debugCard}>
+                <Pressable style={styles.debugBtn} onPress={() => setShowGraphNodes(!showGraphNodes)}>
+                  <Text style={styles.debugBtnText}>Nodes {showGraphNodes ? 'ON' : 'OFF'}</Text>
+                </Pressable>
+                <Pressable style={styles.debugBtn} onPress={() => setShowRastaNames(!showRastaNames)}>
+                  <Text style={styles.debugBtnText}>Rasta Names {showRastaNames ? 'ON' : 'OFF'}</Text>
+                </Pressable>
+                <Pressable style={styles.debugBtn} onPress={() => setShowBlockPolygons(!showBlockPolygons)}>
+                  <Text style={styles.debugBtnText}>Blocks {showBlockPolygons ? 'ON' : 'OFF'}</Text>
+                </Pressable>
+                <Pressable style={styles.debugBtn} onPress={() => setShowRouteDiagnostics(!showRouteDiagnostics)}>
+                  <Text style={styles.debugBtnText}>Diagnostics {showRouteDiagnostics ? 'ON' : 'OFF'}</Text>
+                </Pressable>
+              </View>
+            </>
+          )}
         </SafeAreaView>
 
         {isOffline && (
@@ -347,11 +738,30 @@ export function HomeScreen() {
         {currentLocation && !venueStatus.insideVenue && (
           <View style={styles.outsideVenueBanner}>
             <Text style={styles.outsideVenueText}>You are outside the Ijtema area</Text>
+            <Pressable style={styles.outsideVenueButton} onPress={() => setRouteSelectionMode('selectingStart')}>
+              <Text style={styles.outsideVenueButtonText}>Select start manually</Text>
+            </Pressable>
+          </View>
+        )}
+
+        {showRouteDiagnostics && (
+          <View style={styles.diagnosticsBanner}>
+            <Text style={styles.diagnosticsText}>
+              {GRAPH_VALIDATION.isValid ? 'Graph validation: PASS' : 'Graph validation: FAIL'}
+            </Text>
+            {!GRAPH_VALIDATION.isValid && (
+              <Text style={styles.diagnosticsText} numberOfLines={2}>
+                {GRAPH_VALIDATION.errors[0]}
+              </Text>
+            )}
+            <Text style={styles.diagnosticsText} numberOfLines={1}>
+              {RoutingService.runRouteDiagnostics().map((r) => `${r.from}->${r.to}:${r.success ? 'OK' : 'FAIL'}`).join(' | ')}
+            </Text>
           </View>
         )}
 
         {isOffline && !offlineData.isDownloaded && (
-          <View style={styles.emptyOfflineState}> {/* fixed: explain why the map is blank when the device is offline without downloaded tiles */}
+          <View style={styles.emptyOfflineState}>
             <Text style={styles.emptyOfflineTitle}>No offline map available.</Text>
             <Pressable style={styles.emptyOfflineButton} onPress={() => nav.navigate('DownloadMap')}>
               <Text style={styles.emptyOfflineButtonText}>Download now</Text>
@@ -362,6 +772,34 @@ export function HomeScreen() {
         {/* Map controls — hidden when search dropdown is open to prevent z-index overlap */}
         {!isSearchFocused && (
           <>
+            {routePreview && routePlannerDest && (
+              <View style={styles.previewCard}>
+                <View style={styles.previewMetrics}>
+                  <Text style={styles.previewTime}>{routePreview.estimatedTimeMin} min</Text>
+                  <Text style={styles.previewDistance}>{routePreview.totalDistance} m</Text>
+                  <Text style={styles.previewDest} numberOfLines={1}>
+                    to {routePlannerDest.name}
+                    {routePreview.nodes.length > 0 ? ` entry ${routePreview.nodes[routePreview.nodes.length - 1]}` : ''}
+                  </Text>
+                  {showRouteDiagnostics && (
+                    <Text style={styles.previewNodes} numberOfLines={1}>
+                      {routePreview.nodes.join(' -> ')}
+                    </Text>
+                  )}
+                </View>
+                <View style={styles.previewActions}>
+                  <Pressable
+                    style={styles.previewStartButton}
+                    onPress={() => nav.navigate('Directions', { destination: routePlannerDest })}
+                  >
+                    <Text style={styles.previewStartText}>Start</Text>
+                  </Pressable>
+                  <Pressable style={styles.previewClearButton} onPress={clearRoutePlanner}>
+                    <Text style={styles.previewClearText}>Clear</Text>
+                  </Pressable>
+                </View>
+              </View>
+            )}
             <View style={styles.rightControls}>
               <Pressable style={styles.controlButton} onPress={toggleMapType}>
                 <Layers size={22} color="#5F6368" />
@@ -446,6 +884,14 @@ export function HomeScreen() {
                       >
                         <Text
                           style={[
+                            styles.entranceNodeText,
+                            selectedEntryIdx === idx && styles.entranceChipTextActive,
+                          ]}
+                        >
+                          Entry {ep.nodeId}
+                        </Text>
+                        <Text
+                          style={[
                             styles.entranceChipText,
                             selectedEntryIdx === idx && styles.entranceChipTextActive,
                           ]}
@@ -456,13 +902,16 @@ export function HomeScreen() {
                       </Pressable>
                     ))}
                   </ScrollView>
+                  {entryPoints.length === 1 && (
+                    <Text style={styles.entryHint}>Route ends at {entryPoints[0].nodeId}</Text>
+                  )}
                 </View>
               )}
 
               {/* CTA */}
-              <Pressable style={styles.takeMeButton} onPress={handleStartNavigation}>
+              <Pressable style={styles.takeMeButton} onPress={() => selectedPlace && handleOpenDirections(selectedPlace)}>
                 <Navigation size={22} color="#FFFFFF" />
-                <Text style={styles.takeMeText}>Take Me There</Text>
+                <Text style={styles.takeMeText}>Preview Route</Text>
               </Pressable>
 
               {/* Secondary actions */}
@@ -491,10 +940,24 @@ export function HomeScreen() {
                 </Pressable>
                 <Pressable
                   style={styles.secondaryAction}
-                  onPress={() => nav.navigate('Directions', { destination: selectedPlace })}
+                  onPress={() => selectedPlace && handleOpenDirections(selectedPlace)}
                 >
                   <Info size={20} color="#1A73E8" />
                   <Text style={styles.secondaryActionText}>Details</Text>
+                </Pressable>
+                <Pressable
+                  style={styles.secondaryAction}
+                  onPress={() => selectedPlace && setAsStartFromPlace(selectedPlace)}
+                >
+                  <MapPin size={20} color="#1A73E8" />
+                  <Text style={styles.secondaryActionText}>Set Start</Text>
+                </Pressable>
+                <Pressable
+                  style={styles.secondaryAction}
+                  onPress={() => selectedPlace && setAsDestinationFromPlace(selectedPlace)}
+                >
+                  <Navigation size={20} color="#1A73E8" />
+                  <Text style={styles.secondaryActionText}>Set Destination</Text>
                 </Pressable>
               </View>
 
@@ -597,6 +1060,48 @@ const styles = StyleSheet.create({
   activeChip: { backgroundColor: '#E8F0FE', borderColor: '#1A73E8' },
   chipText: { fontSize: 14, color: '#3C4043', fontWeight: '500' },
   activeChipText: { color: '#1A73E8' },
+  selectionBanner: {
+    marginHorizontal: 12,
+    marginTop: 8,
+    backgroundColor: '#1A73E8',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  selectionBannerText: { color: '#FFFFFF', fontSize: 13, fontWeight: '700', textAlign: 'center' },
+  routePlannerCard: {
+    marginHorizontal: 12,
+    backgroundColor: 'rgba(255,255,255,0.95)',
+    borderRadius: 12,
+    padding: 10,
+    gap: 8,
+  },
+  routePlannerRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  routePlannerLabel: { width: 42, fontSize: 12, color: '#5F6368', fontWeight: '700' },
+  routePlannerValue: { flex: 1, fontSize: 12, color: '#202124' },
+  routePlannerActions: { flexDirection: 'row', gap: 8 },
+  routePlannerBtn: {
+    backgroundColor: '#E8F0FE',
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  routePlannerBtnActive: {
+    backgroundColor: '#1A73E8',
+  },
+  routePlannerBtnText: { fontSize: 12, color: '#1A73E8', fontWeight: '700' },
+  debugCard: {
+    marginHorizontal: 12,
+    marginTop: 6,
+    backgroundColor: 'rgba(32,33,36,0.88)',
+    borderRadius: 10,
+    padding: 6,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  debugBtn: { backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4 },
+  debugBtnText: { color: '#FFFFFF', fontSize: 11, fontWeight: '600' },
   rightControls: { position: 'absolute', top: 180, right: 12, zIndex: 5 },
   controlButton: {
     backgroundColor: '#FFFFFF',
@@ -651,7 +1156,84 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   outsideVenueText: { color: '#FFFFFF', fontSize: 13, fontWeight: '600' },
+  outsideVenueButton: {
+    marginTop: 6,
+    backgroundColor: 'rgba(255,255,255,0.22)',
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 10,
+  },
+  outsideVenueButtonText: { color: '#FFFFFF', fontSize: 12, fontWeight: '700' },
+  diagnosticsBanner: {
+    position: 'absolute',
+    top: 220,
+    left: 12,
+    right: 12,
+    backgroundColor: 'rgba(32,33,36,0.9)',
+    borderRadius: 8,
+    padding: 8,
+    zIndex: 12,
+  },
+  diagnosticsText: { color: '#FFFFFF', fontSize: 11, marginBottom: 2 },
+  debugNode: {
+    minWidth: 22,
+    height: 22,
+    borderRadius: 11,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 4,
+  },
+  debugNodeText: { color: '#FFFFFF', fontSize: 9, fontWeight: '700' },
+  rastaLabel: {
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    borderRadius: 8,
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+  },
+  rastaLabelText: { color: '#FFFFFF', fontSize: 10, fontWeight: '600' },
+  startMarker: { alignItems: 'center', justifyContent: 'center' },
+  destMarker: { alignItems: 'center', justifyContent: 'center' },
   selectedMarker: { alignItems: 'center', justifyContent: 'center' },
+  previewCard: {
+    position: 'absolute',
+    left: 12,
+    right: 76,
+    bottom: 24,
+    zIndex: 8,
+    backgroundColor: 'rgba(255,255,255,0.96)',
+    borderRadius: 16,
+    padding: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.18,
+    shadowRadius: 8,
+  },
+  previewMetrics: { flex: 1, paddingRight: 8 },
+  previewTime: { fontSize: 20, fontWeight: '800', color: '#1A73E8' },
+  previewDistance: { fontSize: 13, color: '#3C4043', fontWeight: '700', marginTop: 1 },
+  previewDest: { fontSize: 12, color: '#5F6368', marginTop: 2 },
+  previewNodes: { fontSize: 10, color: '#1A73E8', marginTop: 4 },
+  previewActions: { gap: 8, alignItems: 'stretch' },
+  previewStartButton: {
+    backgroundColor: '#2E7D32',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 9,
+    alignItems: 'center',
+  },
+  previewStartText: { color: '#FFFFFF', fontSize: 13, fontWeight: '800' },
+  previewClearButton: {
+    backgroundColor: '#FCE8E6',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    alignItems: 'center',
+  },
+  previewClearText: { color: '#C5221F', fontSize: 12, fontWeight: '800' },
   sheetIndicator: { backgroundColor: '#DADCE0', width: 36 },
   sheetContent: { padding: 20 },
   placeHeader: {
@@ -685,9 +1267,11 @@ const styles = StyleSheet.create({
     minWidth: 120,
   },
   entranceChipActive: { backgroundColor: '#E8F0FE', borderWidth: 1.5, borderColor: '#1A73E8' },
+  entranceNodeText: { fontSize: 13, color: '#202124', fontWeight: '800', marginBottom: 2 },
   entranceChipText: { fontSize: 14, color: '#3C4043', fontWeight: '500' },
   entranceChipTextActive: { color: '#1A73E8' },
   entranceUrdu: { fontSize: 12, color: '#888', marginTop: 2 },
+  entryHint: { color: '#5F6368', fontSize: 12, fontWeight: '600', marginTop: 8 },
   takeMeButton: {
     backgroundColor: '#2E7D32',
     flexDirection: 'row',

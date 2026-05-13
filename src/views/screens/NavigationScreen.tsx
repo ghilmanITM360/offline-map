@@ -14,8 +14,10 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAppStore } from '../../store/useAppStore';
 import { useNavigationViewModel } from '../../viewmodels/NavigationViewModel';
 import { InstructionService } from '../../services/InstructionService';
+import { RoutePointService } from '../../services/RoutePointService';
 import { useTheme } from '../../services/useTheme';
 import { RootStackParamList } from '../../navigation/RootNavigator';
+import { IJTEMA_DATA } from '../../constants/data';
 
 type NavigationScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Navigation'>; // fixed: type stack navigation on the navigation screen
 
@@ -84,6 +86,7 @@ export function NavigationScreen() {
 
   const currentStep = instructions[currentStepIndex];
   const nextStep = instructions[currentStepIndex + 1];
+  const destinationCoordinate = RoutePointService.getDestinationCoordinate(destination);
 
   const arrivalTime = new Date(
     Date.now() + (route?.estimatedTimeMin ?? 0) * 60_000
@@ -109,17 +112,43 @@ export function NavigationScreen() {
           <LocalTile pathTemplate={getTilePath()} tileSize={256} zIndex={-1} />
         )}
 
+        {IJTEMA_DATA.edges.map((edge, idx) => {
+          const from = IJTEMA_DATA.nodes[edge.from];
+          const to = IJTEMA_DATA.nodes[edge.to];
+          if (!from || !to) return null;
+          const coordinates = [
+            { latitude: from.lat, longitude: from.lng },
+            { latitude: to.lat, longitude: to.lng },
+          ];
+          return (
+            <React.Fragment key={`nav_edge_${edge.from}_${edge.to}_${idx}`}>
+              <Polyline coordinates={coordinates} strokeColor="rgba(60,64,67,0.38)" strokeWidth={7} zIndex={1} />
+              <Polyline coordinates={coordinates} strokeColor="rgba(255,255,255,0.86)" strokeWidth={4} zIndex={2} />
+            </React.Fragment>
+          );
+        })}
+
         {route && (
-          <Polyline
-            coordinates={route.coordinates}
-            strokeColor="#1A73E8"
-            strokeWidth={7}
-            lineDashPattern={reroutePending ? [10, 5] : undefined}
-          />
+          <>
+            <Polyline
+              coordinates={route.coordinates}
+              strokeColor="rgba(13,71,161,0.72)"
+              strokeWidth={11}
+              lineDashPattern={reroutePending ? [10, 5] : undefined}
+              zIndex={20}
+            />
+            <Polyline
+              coordinates={route.coordinates}
+              strokeColor="#1A73E8"
+              strokeWidth={7}
+              lineDashPattern={reroutePending ? [10, 5] : undefined}
+              zIndex={21}
+            />
+          </>
         )}
 
-        {destination && (
-          <Marker coordinate={destination.coordinate} title={destination.name} />
+        {destination && destinationCoordinate && (
+          <Marker coordinate={destinationCoordinate} title={destination.name} pinColor="#2E7D32" />
         )}
 
         {snappedLocation && (
@@ -163,7 +192,7 @@ export function NavigationScreen() {
 
       {/* Bottom info bar */}
       {!arrived && (
-        <View style={[styles.bottomBar, { paddingBottom: Math.max(insets.bottom, 12) }]}> {/* fixed: apply safe-area bottom padding */}
+        <View style={[styles.bottomBar, { paddingBottom: Math.max(insets.bottom, 12) }]}>
           <View style={styles.tripInfo}>
             <View>
               <Text style={styles.timeRemaining}>

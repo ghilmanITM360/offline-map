@@ -45,12 +45,12 @@ export class InstructionService {
       let urduText = '';
       let type: 'straight' | 'left' | 'right' | 'arrival' = 'straight';
 
-      const nextName = this.getFriendlyName(nextId, 'en');
       const nextNameUr = this.getFriendlyName(nextId, 'ur');
+      const edgeName = this.getEdgeName(currentId, nextId);
 
       if (i === 0) {
-        text = `Head toward ${nextName}`;
-        urduText = `${nextNameUr} کی طرف چلیں`;
+        text = `Start on ${edgeName}. Continue ${distance} meters to ${nextId}.`;
+        urduText = `${edgeName} پر چلیں۔ ${nextNameUr} تک ${distance} میٹر جائیں`;
       } else {
         const prevId = nodeIds[i - 1];
         const prevNode = (IJTEMA_DATA.nodes as any)[prevId];
@@ -73,16 +73,16 @@ export class InstructionService {
         const atNameUr = this.getFriendlyName(currentId, 'ur');
 
         if (Math.abs(diff) < 30) {
-          text = `Continue straight on ${this.getEdgeName(currentId, nextId)}`;
-          urduText = `سیدھے چلتے رہیں`;
+          text = `Continue ${distance} meters on ${edgeName} to ${nextId}.`;
+          urduText = `${nextNameUr} تک ${distance} میٹر سیدھا جائیں`;
           type = 'straight';
         } else if (diff > 0) {
-          text = `Turn right at ${atName}`;
-          urduText = `${atNameUr} پر دائیں مڑیں`;
+          text = `Turn right at ${atName} onto ${edgeName}.`;
+          urduText = `${atNameUr} پر ${edgeName} کی طرف دائیں مڑیں`;
           type = 'right';
         } else {
-          text = `Turn left at ${atName}`;
-          urduText = `${atNameUr} پر بائیں مڑیں`;
+          text = `Turn left at ${atName} onto ${edgeName}.`;
+          urduText = `${atNameUr} پر ${edgeName} کی طرف بائیں مڑیں`;
           type = 'left';
         }
       }
@@ -106,7 +106,7 @@ export class InstructionService {
 
     instructions.push({
       id: `inst_${nodeIds.length - 1}`,
-      text: `Arrive at ${destName}`,
+      text: `You have reached ${destName}.`,
       urduText: `${destNameUr} پہنچ گئے`,
       distance: 0,
       type: 'arrival',

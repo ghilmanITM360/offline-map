@@ -29,6 +29,9 @@ export interface Edge {
   distance_m: number;
   isRasta?: boolean;
   name?: string;
+  type?: 'main_rasta' | 'connector' | 'boundary' | 'debug_only';
+  rastaId?: string;
+  weightMultiplier?: number;
 }
 
 export interface Gate {
@@ -57,9 +60,27 @@ export interface Place {
   id: string;
   name: string;
   urduName?: string;
-  category: 'Block' | 'Masjid' | 'Gate' | 'Rasta' | 'Landmark';
+  category:
+    | 'Block'
+    | 'Masjid'
+    | 'Gate'
+    | 'Rasta'
+    | 'Intersection'
+    | 'RoadEndpoint'
+    | 'Landmark'
+    | 'CustomPoint';
   description: string;
   coordinate: Coordinate;
+  /** Preferred graph node for routing (e.g., chosen block entry). */
+  routingNodeId?: string;
+  /** Explicitly selected block entry node for UI diagnostics. */
+  selectedEntryNodeId?: string;
+  /** Final graph node chosen by the planner after snapping/entry selection. */
+  resolvedRoutingNodeId?: string;
+  /** Final graph coordinate for markers, arrival, and diagnostics. */
+  resolvedRoutingCoordinate?: Coordinate;
+  /** Optional snapped coordinate on graph/road for custom points. */
+  snappedCoordinate?: Coordinate;
   thumbnail?: string;
   aliases?: string[];
 }

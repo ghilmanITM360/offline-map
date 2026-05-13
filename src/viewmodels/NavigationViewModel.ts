@@ -8,6 +8,7 @@ import { useAppStore } from '../store/useAppStore';
 import { RoutingService } from '../services/RoutingService';
 import { InstructionService, Instruction } from '../services/InstructionService';
 import { SnapToRoadService } from '../services/SnapToRoadService';
+import { RoutePointService } from '../services/RoutePointService';
 import { VoiceService } from '../services/VoiceService';
 import { RerouteService } from '../services/RerouteService';
 import { GPSManagerService } from '../services/GPSManagerService';
@@ -22,6 +23,9 @@ export function useNavigationViewModel() {
     destination,
     stopNavigation,
     currentLocation,
+    routePlannerOrigin,
+    activeRoute,
+    routeInstructions,
     setReroutePending,
     reroutePending,
     settings,
@@ -67,21 +71,42 @@ export function useNavigationViewModel() {
   // Calculate route ONLY when destination changes (or on first mount if GPS is
   // already available). currentLocation is intentionally excluded from deps.
   useEffect(() => {
-    const loc = initialLocationRef.current ?? currentLocation;
-    if (!loc || !destination) return;
+    if (!destination) return;
 
-    const walkingSpeedMs = settingsRef.current.walkingSpeed ?? 1.4;
-    const destNodeIds = RoutingService.resolveDestinationNodes(destination.id, destination.coordinate);
-
-    const result = RoutingService.calculateRoute(loc, destNodeIds);
-    void walkingSpeedMs; // ETA uses walkingSpeedMs via RoutingService default; single-route path defers speed to calculateRoutes
-    if (result) {
-      setRoute(result);
-      routeRef.current = result;
-      const generated = InstructionService.generateInstructions(result.nodes);
+    if (activeRoute) {
+      setRoute(activeRoute);
+      routeRef.current = activeRoute;
+      const generated = routeInstructions.length > 0
+        ? routeInstructions
+        : InstructionService.generateInstructions(activeRoute.nodes);
       setInstructions(generated);
       instructionsRef.current = generated;
-      setRemainingDistance(result.totalDistance);
+      setRemainingDistance(activeRoute.totalDistance);
+      if (settingsRef.current.voiceInstructions) {
+        const isMutedNow = useAppStore.getState().isMuted;
+        if (!isMutedNow && generated[0]) {
+          VoiceService.speak(generated[0].text, settingsRef.current.language);
+        }
+      }
+      return;
+    }
+
+    const loc = routePlannerOrigin?.coordinate ?? initialLocationRef.current;
+    if (!loc) return;
+
+    const walkingSpeedMs = settingsRef.current.walkingSpeed ?? 1.4;
+    const destNodeIds = RoutingService.resolveDestinationNodesFromPlace(destination, loc);
+    const startNodeIdOverride = routePlannerOrigin?.routingNodeId;
+
+    const routed = RoutingService.calculateRoute(loc, destNodeIds, startNodeIdOverride);
+    void walkingSpeedMs; // ETA uses walkingSpeedMs via RoutingService default; single-route path defers speed to calculateRoutes
+    if (routed) {
+      setRoute(routed);
+      routeRef.current = routed;
+      const generated = InstructionService.generateInstructions(routed.nodes);
+      setInstructions(generated);
+      instructionsRef.current = generated;
+      setRemainingDistance(routed.totalDistance);
       // Speak the first instruction; mute state is checked via ref so this
       // effect never re-runs when the user toggles mute.
       if (!settingsRef.current.voiceInstructions) return;
@@ -90,12 +115,12 @@ export function useNavigationViewModel() {
         VoiceService.speak(generated[0].text, settingsRef.current.language);
       }
     }
-  }, [destination]); // intentionally only destination — mute and GPS ticks must not re-trigger route generation
+  }, [destination, routePlannerOrigin, activeRoute, routeInstructions]); // intentionally excludes current GPS ticks
 
   // GPS listener — registered once with the shared GPSManagerService
   const handleGPS = useCallback(
     (coord: Coordinate) => {
-      const snapped = SnapToRoadService.snapToRoad(coord);
+      const snapped = SnapToRoadService.snapVisualToRoad(coord, 20);
       setSnappedLocation(snapped);
 
       const stepIdx = currentStepIndexRef.current;
@@ -129,9 +154,11 @@ export function useNavigationViewModel() {
 
       // --- Arrival detection ---
       if (dest && !arrivedRef.current) {
+        const destinationCoordinate = RoutePointService.getDestinationCoordinate(dest);
+        if (!destinationCoordinate) return;
         const distToDest = getDistance(
           { latitude: snapped.latitude, longitude: snapped.longitude },
-          { latitude: dest.coordinate.latitude, longitude: dest.coordinate.longitude }
+          { latitude: destinationCoordinate.latitude, longitude: destinationCoordinate.longitude }
         );
         if (distToDest < ARRIVAL_THRESHOLD_M) {
           arrivedRef.current = true;
@@ -163,8 +190,13 @@ export function useNavigationViewModel() {
               // Re-check still off-route after grace period
               const latestRoute = routeRef.current;
               if (latestRoute && RerouteService.isOffRoute(coord, latestRoute, gpsAccuracy)) {
-                const destNodeIds = RoutingService.resolveDestinationNodes(dest.id, dest.coordinate);
-                const newRoute = RoutingService.calculateRoute(coord, destNodeIds);
+                const resolvedStart = SnapToRoadService.resolveRoutingNode(coord);
+                const destNodeIds = RoutingService.resolveDestinationNodesFromPlace(dest, coord);
+                const newRoute = RoutingService.calculateRoute(
+                  resolvedStart.snappedCoordinate,
+                  destNodeIds,
+                  resolvedStart.nodeId,
+                );
                 if (newRoute) {
                   setRoute(newRoute);
                   routeRef.current = newRoute;

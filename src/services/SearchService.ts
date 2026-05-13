@@ -3,9 +3,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { IJTEMA_DATA, LANDMARK_PLACES } from '../constants/data';
+import { IJTEMA_DATA } from '../constants/data';
 import { Place } from '../models/types';
 import { FuzzySearchService } from './FuzzySearchService';
+
+declare const __DEV__: boolean;
 
 // Urdu digit → ASCII digit map for Urdu number search
 const URDU_DIGITS: Record<string, string> = {
@@ -24,11 +26,13 @@ function blockNumber(blockId: string): string {
 // Category ordering for search result ranking (lower = higher priority)
 const CATEGORY_RANK: Record<string, number> = {
   Block: 0,
-  Gate: 1,
-  Masjid: 2,
-  Landmark: 3,
-  Rasta: 4,
+  Rasta: 1,
+  Intersection: 2,
+  RoadEndpoint: 3,
+  Landmark: 4,
 };
+
+const DEBUG_NODE_SEARCH_ENABLED = __DEV__;
 
 export class SearchService {
   static search(query: string, userLocation?: { latitude: number; longitude: number }): Place[] {
@@ -36,6 +40,7 @@ export class SearchService {
 
     const raw = query.trim();
     const normalised = normalizeUrdu(raw).toLowerCase();
+    const exactBlockNumber = normalised.match(/^(?:block\s*|b)?0?([1-9]|1\d|2[0-4])$/)?.[1];
 
     const results: Place[] = [];
 
@@ -45,8 +50,15 @@ export class SearchService {
       const friendlyName = block.name;
       const urduName = block.urduName ?? '';
 
+      const matchesNumber =
+        normalised === num ||
+        normalised === `b${num}` ||
+        normalised === `b${num.padStart(2, '0')}` ||
+        normalised === `block ${num}` ||
+        normalised === `block ${num.padStart(2, '0')}`;
+      if (exactBlockNumber && exactBlockNumber !== num) return;
+
       const matchesName    = FuzzySearchService.matches(normalised, friendlyName.toLowerCase());
-      const matchesNumber  = normalised === num || normalised === `b${num}`;
       const matchesUrdu    = urduName.includes(raw) || normalizeUrdu(urduName).toLowerCase().includes(normalised);
       const matchesAlias   = block.aliases.some((a) => FuzzySearchService.matches(normalised, a.toLowerCase()));
       const matchesFuzzy   = FuzzySearchService.matches(normalised, `block ${num}`);
@@ -56,49 +68,33 @@ export class SearchService {
       }
     });
 
-    // ─── Landmarks (gates, masjid, POIs) ─────────────────────────────────
-    LANDMARK_PLACES.forEach((lm) => {
-      const nameMatch = FuzzySearchService.matches(normalised, lm.name.toLowerCase());
-      const urduMatch = lm.urduName
-        ? (lm.urduName.includes(raw) || normalizeUrdu(lm.urduName).toLowerCase().includes(normalised))
-        : false;
-      const aliasMatch = (lm.aliases ?? []).some((a) =>
-        a.toLowerCase().includes(normalised) ||
-        FuzzySearchService.matches(normalised, a.toLowerCase()),
-      );
-      if (nameMatch || urduMatch || aliasMatch) {
-        if (!results.find((r) => r.id === lm.id)) results.push(lm);
-      }
+    if (exactBlockNumber) return results;
+
+    // ─── Rastas (base navigation scope only) ──────────────────────────────
+    this.searchByCategory('rastas').forEach((rasta) => {
+      const name = rasta.name.toLowerCase();
+      const aliases = rasta.aliases ?? [];
+      const matches =
+        FuzzySearchService.matches(normalised, name) ||
+        aliases.some((alias) => FuzzySearchService.matches(normalised, alias.toLowerCase()));
+      if (matches && !results.find((r) => r.id === rasta.id)) results.push(rasta);
     });
 
-    // ─── Named graph nodes (terminals, named road-ends) ──────────────────
+    // ─── Graph nodes (terminals, named road-ends, debug P/S nodes) ───────
     Object.entries(IJTEMA_DATA.nodes).forEach(([id, node]) => {
-      if (!node.name) return;
-      if (/^(P|S)\d+$/.test(id)) return; // skip raw intersection IDs
+      const isDebugNode = /^(P\d+|S\d+|T\d+)$/.test(id);
+      if (isDebugNode && !DEBUG_NODE_SEARCH_ENABLED) return;
+      if (!node.name && !isDebugNode) return;
       if (node.nearestRoadNode) return;   // skip off-graph landmark nodes
 
-      const matchesName  = FuzzySearchService.matches(normalised, node.name.toLowerCase());
+      const displayName = node.name ?? id;
+      const matchesName  = FuzzySearchService.matches(normalised, displayName.toLowerCase());
       const matchesUrdu  = node.urduName ? node.urduName.includes(raw) : false;
-      if (matchesName || matchesUrdu) {
+      const matchesRawId = id.toLowerCase() === normalised || id.toLowerCase().includes(normalised);
+      if (matchesName || matchesUrdu || matchesRawId) {
         if (!results.find((r) => r.id === id)) results.push(this.nodeToPlace(id, node));
       }
     });
-
-    // ─── Keyword shortcuts ─────────────────────────────────────────────────
-    const keywords: Record<string, string[]> = {
-      masjid: ['masjid', 'مسجد', 'mosque', 'prayer'],
-      food:   ['food', 'کھانا', 'water', 'پانی', 'langar', 'لنگر'],
-      gate:   ['gate', 'گیٹ', 'entrance', 'entry'],
-      medical:['medical', 'طبی', 'doctor', 'first aid', 'hospital'],
-    };
-    for (const [cat, terms] of Object.entries(keywords)) {
-      if (terms.some((t) => normalised.includes(t))) {
-        const catResults = this.searchByCategory(cat);
-        catResults.forEach((p) => {
-          if (!results.find((r) => r.id === p.id)) results.push(p);
-        });
-      }
-    }
 
     // ─── Sort: category rank first, then proximity if location provided ──
     results.sort((a, b) => {
@@ -126,42 +122,34 @@ export class SearchService {
       Object.entries(IJTEMA_DATA.blocks).forEach(([id, block]) => {
         results.push(this.blockToPlace(id, block));
       });
-    } else if (cat === 'gates' || cat === 'gate') {
-      // Landmark gates first
-      LANDMARK_PLACES.filter((lm) => lm.category === 'Gate').forEach((lm) => results.push(lm));
-      // Then any graph nodes typed as gate
-      Object.entries(IJTEMA_DATA.nodes).forEach(([id, node]) => {
-        if (node.type === 'gate' && !results.find((r) => r.id === id)) {
-          results.push(this.nodeToPlace(id, node));
-        }
-      });
-    } else if (cat === 'masjid') {
-      LANDMARK_PLACES.filter((lm) => lm.category === 'Masjid').forEach((lm) => results.push(lm));
-      Object.entries(IJTEMA_DATA.nodes).forEach(([id, node]) => {
-        if (node.type === 'masjid' && !results.find((r) => r.id === id)) {
-          results.push(this.nodeToPlace(id, node));
-        }
-      });
     } else if (cat === 'rastas') {
-      const seen = new Set<string>();
+      const grouped = new Map<string, Set<string>>();
       IJTEMA_DATA.edges.forEach((edge) => {
-        if (!edge.name || seen.has(edge.name) || !edge.isRasta) return;
-        seen.add(edge.name);
-        const fromNode = (IJTEMA_DATA.nodes as any)[edge.from];
-        if (!fromNode) return;
-        results.push({
-          id: edge.name,
-          name: edge.name,
-          category: 'Rasta',
-          description: `Walking path: ${edge.name}`,
-          coordinate: { latitude: fromNode.lat, longitude: fromNode.lng },
-        });
+        if (!edge.name || !edge.isRasta) return;
+        if (!edge.name.startsWith('Rasta')) return;
+        const nodes = grouped.get(edge.name) ?? new Set<string>();
+        nodes.add(edge.from);
+        nodes.add(edge.to);
+        grouped.set(edge.name, nodes);
       });
-    } else if (cat === 'food' || cat === 'medical') {
-      const keyword = cat;
-      LANDMARK_PLACES.forEach((lm) => {
-        const aliases = lm.aliases ?? [];
-        if (aliases.some((a) => a.toLowerCase().includes(keyword))) results.push(lm);
+
+      grouped.forEach((nodeSet, rastaName) => {
+        const preferredNodeId =
+          Array.from(nodeSet).find((nodeId) => nodeId.startsWith('P')) ?? Array.from(nodeSet)[0];
+        const node = preferredNodeId ? IJTEMA_DATA.nodes[preferredNodeId] : null;
+        if (!node) return;
+        const rastaNumber = rastaName.replace('Rasta ', '');
+        results.push({
+          id: rastaName,
+          name: rastaName,
+          category: 'Rasta',
+          description: `Base walking path: ${rastaName}`,
+          coordinate: { latitude: node.lat, longitude: node.lng },
+          routingNodeId: preferredNodeId,
+          resolvedRoutingNodeId: preferredNodeId,
+          resolvedRoutingCoordinate: { latitude: node.lat, longitude: node.lng },
+          aliases: [`rasta ${rastaNumber}`, `road ${rastaNumber}`, `r${rastaNumber}`],
+        });
       });
     }
 
@@ -169,15 +157,14 @@ export class SearchService {
   }
 
   static getPlaceById(id: string): Place | null {
-    // Landmark?
-    const lm = LANDMARK_PLACES.find((l) => l.id === id);
-    if (lm) return lm;
-
     const block = (IJTEMA_DATA.blocks as any)[id];
     if (block) return this.blockToPlace(id, block);
 
     const node = (IJTEMA_DATA.nodes as any)[id];
     if (node) return this.nodeToPlace(id, node);
+
+    const rasta = this.searchByCategory('rastas').find((place) => place.id === id);
+    if (rasta) return rasta;
 
     return null;
   }
@@ -207,8 +194,11 @@ export class SearchService {
     } else if (node.type === 'masjid') {
       category = 'Masjid';
       description = `Prayer area — ${node.name ?? id}`;
+    } else if (node.type === 'intersection') {
+      category = 'Intersection';
+      description = `Graph intersection ${id}`;
     } else if (node.type === 'road_end') {
-      category = 'Rasta';
+      category = 'RoadEndpoint';
       description = node.name ?? id;
     }
 
@@ -219,6 +209,9 @@ export class SearchService {
       category,
       description,
       coordinate: { latitude: node.lat, longitude: node.lng },
+      routingNodeId: id,
+      resolvedRoutingNodeId: id,
+      resolvedRoutingCoordinate: { latitude: node.lat, longitude: node.lng },
     };
   }
 }

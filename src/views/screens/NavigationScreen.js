@@ -107,7 +107,7 @@ export function NavigationScreen() {
       </SafeAreaView>
 
       {/* Bottom info bar */}
-      {!arrived && (<View style={[styles.bottomBar, { paddingBottom: Math.max(insets.bottom, 12) }]}> {/* fixed: apply safe-area bottom padding */}
+      {!arrived && (<View style={[styles.bottomBar, { paddingBottom: Math.max(insets.bottom, 12) }]}>
           <View style={styles.tripInfo}>
             <View>
               <Text style={styles.timeRemaining}>

@@ -3,20 +3,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { IJTEMA_DATA, LANDMARK_NEAREST_NODE } from '../constants/data';
-import { Coordinate, RoutePreview, RouteSegment, RouteAlternative } from '../models/types';
+import { IJTEMA_DATA, LANDMARK_NEAREST_NODE, MAP_BOUNDS } from '../constants/data';
+import { Coordinate, Place, RoutePreview, RouteSegment, RouteAlternative } from '../models/types';
 import { getDistance } from 'geolib';
+import { RoutePointService } from './RoutePointService';
 
 export type RouteResult = RoutePreview;
-
-// ─── Venue boundary ───────────────────────────────────────────────────────────
-// Bounding box: T2 (NW) → S6 (NE) → S12 (SE) → T1 (SW)
-const VENUE_BOUNDS = {
-  minLat: 24.9650,
-  maxLat: 24.9715,
-  minLng: 66.9985,
-  maxLng: 67.0070,
-};
 
 export interface VenueStatus {
   insideVenue: boolean;
@@ -29,10 +21,10 @@ export class RoutingService {
   /** Returns whether a coordinate is within the venue bounding box. */
   static isInsideVenue(coord: Coordinate): boolean {
     return (
-      coord.latitude >= VENUE_BOUNDS.minLat &&
-      coord.latitude <= VENUE_BOUNDS.maxLat &&
-      coord.longitude >= VENUE_BOUNDS.minLng &&
-      coord.longitude <= VENUE_BOUNDS.maxLng
+      coord.latitude >= MAP_BOUNDS.minLat &&
+      coord.latitude <= MAP_BOUNDS.maxLat &&
+      coord.longitude >= MAP_BOUNDS.minLng &&
+      coord.longitude <= MAP_BOUNDS.maxLng
     );
   }
 
@@ -101,9 +93,31 @@ export class RoutingService {
    * - Node → the node itself
    */
   static resolveDestinationNodes(placeId: string, placeCoord: Coordinate): string[] {
+    return this.resolveDestinationNodesFromPlace({
+      id: placeId,
+      coordinate: placeCoord,
+    } as Place);
+  }
+
+  static resolveDestinationNodesFromPlace(place: Place, origin?: Coordinate): string[] {
+    const explicitNodeId =
+      place.routingNodeId ?? place.selectedEntryNodeId ?? place.resolvedRoutingNodeId;
+    if (explicitNodeId && IJTEMA_DATA.nodes[explicitNodeId]) {
+      return [explicitNodeId];
+    }
+
+    const placeId = place.id;
+    const placeCoord = place.coordinate;
+
     // Block?
     const block = IJTEMA_DATA.blocks[placeId];
-    if (block) return block.entry_nodes;
+    if (block) {
+      if (origin) {
+        const nearestEntry = RoutePointService.nearestNodeFromSet(origin, block.entry_nodes);
+        if (nearestEntry) return [nearestEntry];
+      }
+      return block.entry_nodes;
+    }
 
     // Landmark with explicit nearest road node?
     const landmarkNode = LANDMARK_NEAREST_NODE[placeId];
@@ -118,8 +132,12 @@ export class RoutingService {
 
   // ─── Single best route ────────────────────────────────────────────────────
 
-  static calculateRoute(startCoord: Coordinate, destinationNodeIds: string[]): RoutePreview | null {
-    const startNodeId = this.findNearestNode(startCoord);
+  static calculateRoute(
+    startCoord: Coordinate,
+    destinationNodeIds: string[],
+    startNodeIdOverride?: string,
+  ): RoutePreview | null {
+    const startNodeId = startNodeIdOverride ?? this.findNearestNode(startCoord);
 
     let bestRoute: RoutePreview | null = null;
 
@@ -152,8 +170,9 @@ export class RoutingService {
     startCoord: Coordinate,
     destinationNodeIds: string[],
     walkingSpeedMs: number = 1.4,
+    startNodeIdOverride?: string,
   ): RouteAlternative[] {
-    const startNodeId = this.findNearestNode(startCoord);
+    const startNodeId = startNodeIdOverride ?? this.findNearestNode(startCoord);
     const results: RouteAlternative[] = [];
 
     // --- Route 1: Fastest (plain A*) ---
@@ -252,8 +271,9 @@ export class RoutingService {
             (e.from === neighbor.id && e.to === current),
         );
         const rastaMult = edge?.isRasta ? 1.0 : nonRastaPenalty;
+        const edgeWeight = edge?.weightMultiplier ?? 1.0;
 
-        const cost = neighbor.distance * rastaMult * avoidPenalty;
+        const cost = neighbor.distance * rastaMult * avoidPenalty * edgeWeight;
         const tentativeGScore = (gScore[current] ?? Infinity) + cost;
 
         if (tentativeGScore < (gScore[neighbor.id] ?? Infinity)) {
@@ -333,5 +353,65 @@ export class RoutingService {
       estimatedTimeMin: Math.ceil(totalDistance / (walkingSpeedMs * 60)),
       segments,
     };
+  }
+
+  static runRouteDiagnostics(): Array<{
+    from: string;
+    to: string;
+    success: boolean;
+    nodes: string[];
+    distanceM: number;
+    expectedNodes?: string[];
+    matchesExpected?: boolean;
+  }> {
+    const tests: Array<[string, string, string[] | undefined, string | undefined]> = [
+      ['B1', 'B24', ['P1', 'P2', 'P3', 'P4', 'P5', 'P7', 'P12', 'S15'], 'P1'],
+      ['B24', 'B1', ['S15', 'P12', 'P7', 'P5', 'P4', 'P3', 'P2', 'P1'], 'S15'],
+      ['B6', 'B18', ['P6', 'P9', 'P10', 'P11', 'P12', 'P7'], 'P6'],
+      ['B3', 'B21', ['P8', 'P9', 'P10', 'P3', 'P4', 'P5'], 'P8'],
+      ['S13', 'S16', ['S13', 'P1', 'P2', 'P3', 'P4', 'P5', 'S16'], undefined],
+      ['S14', 'S15', ['S14', 'P8', 'P9', 'P10', 'P11', 'P12', 'S15'], undefined],
+      ['T1', 'B21', ['T1', 'S7', 'S8', 'S9', 'P10', 'P3', 'P4', 'P5'], undefined],
+    ];
+
+    const out: Array<{
+      from: string;
+      to: string;
+      success: boolean;
+      nodes: string[];
+      distanceM: number;
+      expectedNodes?: string[];
+      matchesExpected?: boolean;
+    }> = [];
+
+    for (const [fromId, toId, expectedNodes, preferredStartNode] of tests) {
+      const fromNodes = IJTEMA_DATA.blocks[fromId]?.entry_nodes ?? [fromId];
+      const toNodes = IJTEMA_DATA.blocks[toId]?.entry_nodes ?? [toId];
+      const startNode = preferredStartNode ?? fromNodes.find((n) => IJTEMA_DATA.nodes[n]);
+
+      if (!startNode || toNodes.length === 0) {
+        out.push({ from: fromId, to: toId, success: false, nodes: [], distanceM: 0, expectedNodes });
+        continue;
+      }
+
+      const startNodeData = IJTEMA_DATA.nodes[startNode];
+      const route = this.calculateRoute(
+        { latitude: startNodeData.lat, longitude: startNodeData.lng },
+        toNodes,
+        startNode,
+      );
+
+      out.push({
+        from: fromId,
+        to: toId,
+        success: !!route,
+        nodes: route?.nodes ?? [],
+        distanceM: route?.totalDistance ?? 0,
+        expectedNodes,
+        matchesExpected: expectedNodes ? route?.nodes.join('>') === expectedNodes.join('>') : undefined,
+      });
+    }
+
+    return out;
   }
 }

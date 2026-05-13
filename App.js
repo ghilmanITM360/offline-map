@@ -9,7 +9,7 @@ import { ErrorBoundary } from './src/components/ErrorBoundary'; // fixed: protec
 export default function App() {
     return (<GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
-        <ErrorBoundary> {/* fixed: catch render-time crashes before they blank the whole app */}
+        <ErrorBoundary>
           <NavigationContainer>
             <StatusBar style="auto"/>
             <RootNavigator />

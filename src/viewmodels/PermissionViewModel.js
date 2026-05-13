@@ -6,16 +6,29 @@ import { useState } from 'react';
 import { Alert, Linking } from 'react-native';
 import * as Location from 'expo-location';
 import { useAppStore } from '../store/useAppStore';
+import { OfflineMapService } from '../services/OfflineMapService';
+import { ConnectivityService } from '../services/ConnectivityService';
 export function usePermissionViewModel() {
     const { setHasLocationPermission } = useAppStore();
     const [loading, setLoading] = useState(false);
+    const navigateNext = async (navigation) => {
+        const [mapStatus, isConnected] = await Promise.all([
+            OfflineMapService.getMapStatus(),
+            ConnectivityService.isConnected(),
+        ]);
+        if (mapStatus.isDownloaded || !isConnected) {
+            navigation.replace('Main');
+            return;
+        }
+        navigation.replace('DownloadMap');
+    };
     const requestPermission = async (navigation) => {
         setLoading(true);
         try {
             const { status } = await Location.requestForegroundPermissionsAsync();
             if (status === 'granted') {
                 setHasLocationPermission(true);
-                navigation.navigate('DownloadMap');
+                await navigateNext(navigation);
             }
             else {
                 const permission = await Location.getForegroundPermissionsAsync(); // fixed: inspect whether the permission can still be requested in-app
@@ -37,8 +50,8 @@ export function usePermissionViewModel() {
             setLoading(false);
         }
     };
-    const skipPermission = (navigation) => {
-        navigation.navigate('DownloadMap');
+    const skipPermission = async (navigation) => {
+        await navigateNext(navigation);
     };
     return {
         loading,
