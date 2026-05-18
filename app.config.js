@@ -31,6 +31,8 @@ module.exports = {
     },
     extra: {
       ...(base.expo.extra ?? {}),
+      googleMapsAndroidApiKey: androidGoogleMapsApiKey ?? null,
+      googleMapsIosApiKey: iosGoogleMapsApiKey ?? null,
       hasAndroidGoogleMapsKey: Boolean(androidGoogleMapsApiKey),
       hasIosGoogleMapsKey: Boolean(iosGoogleMapsApiKey),
     },
