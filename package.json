@@ -7,7 +7,17 @@
     "android": "expo run:android",
     "ios": "expo run:ios",
     "lint": "eslint .",
-    "build": "tsc"
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "test:offline-download": "node --import tsx scripts/test-offline-download.ts",
+    "test:routing": "node --import tsx scripts/test-routing.ts",
+    "test:gps-fallback": "node --import tsx scripts/test-gps-fallback.ts",
+    "test:home-ux": "node --import tsx scripts/test-home-ux.ts",
+    "test:settings-guide": "node --import tsx scripts/test-settings-guide.ts",
+    "test:offline-rendering": "node --import tsx scripts/test-offline-rendering.ts",
+    "test:route-smoke": "node --import tsx scripts/test-route-smoke.ts",
+    "test:graph-validation": "node --import tsx scripts/test-graph-validation.ts",
+    "test": "npm run test:offline-download && npm run test:routing && npm run test:gps-fallback && npm run test:home-ux && npm run test:settings-guide && npm run test:offline-rendering && npm run test:route-smoke && npm run test:graph-validation"
   },
   "dependencies": {
     "@gorhom/bottom-sheet": "^5.0.0",
@@ -16,6 +26,7 @@
     "@react-navigation/native": "^7.2.2",
     "@react-navigation/native-stack": "^7.14.10",
     "expo": "~54.0.0",
+    "expo-constants": "~18.0.13",
     "expo-file-system": "~19.0.21",
     "expo-location": "~19.0.8",
     "expo-network": "~8.0.8",
@@ -45,6 +56,7 @@
     "eslint": "^9.39.4",
     "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-react-native": "^5.0.0",
+    "tsx": "^4.22.1",
     "typescript": "~5.9.2"
   },
   "private": true

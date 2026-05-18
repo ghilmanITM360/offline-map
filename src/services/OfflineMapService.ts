@@ -54,10 +54,7 @@ export class OfflineMapService {
 
       if (!getTileDir().exists) return { isDownloaded: false, tileCount: 0, sizeMB: 0, downloadDate: null }; // fixed: use Directory.exists
 
-      const countRow = await this.db!.getFirstAsync<{ cnt: number }>(
-        'SELECT COUNT(*) AS cnt FROM tiles;'
-      );
-      const tileCount = countRow?.cnt ?? 0;
+      const tileCount = await this.getStoredTileCount();
       if (tileCount === 0) return { isDownloaded: false, tileCount: 0, sizeMB: 0, downloadDate: null };
 
       // Rough size estimate
@@ -71,6 +68,14 @@ export class OfflineMapService {
     } catch {
       return { isDownloaded: false, tileCount: 0, sizeMB: 0, downloadDate: null };
     }
+  }
+
+  static async getStoredTileCount(): Promise<number> {
+    await this.init();
+    const countRow = await this.db!.getFirstAsync<{ cnt: number }>(
+      'SELECT COUNT(*) AS cnt FROM tiles;'
+    );
+    return countRow?.cnt ?? 0;
   }
 
   /**

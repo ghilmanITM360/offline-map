@@ -8,6 +8,7 @@ import { OfflineMapService } from '../services/OfflineMapService';
 import { Alert, Linking } from 'react-native';
 import * as Location from 'expo-location';
 import { UserSettings } from '../models/types';
+import { OfflineMapStatusService } from '../services/OfflineMapStatusService';
 
 export function useSettingsViewModel() {
   const {
@@ -33,6 +34,8 @@ export function useSettingsViewModel() {
   const handleRedownloadMap = async (navigateToDownload?: () => void) => {
     try {
       await OfflineMapService.deleteMapData();
+      await OfflineMapStatusService.clearManifest();
+      await OfflineMapStatusService.setDownloadedFlag(false);
       setOfflineMapAvailable(false);
       updateOfflineData({ isDownloaded: false, sizeMB: 0, downloadDate: undefined });
       resetDownloadState();
@@ -45,6 +48,8 @@ export function useSettingsViewModel() {
   const handleDeleteMap = async (navigateToDownload?: () => void) => {
     try {
       await OfflineMapService.deleteMapData();
+      await OfflineMapStatusService.clearManifest();
+      await OfflineMapStatusService.setDownloadedFlag(false);
       setOfflineMapAvailable(false);
       updateOfflineData({ isDownloaded: false, sizeMB: 0, downloadDate: undefined });
       resetDownloadState();

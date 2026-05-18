@@ -6,7 +6,6 @@
 import { IJTEMA_DATA, LANDMARK_NEAREST_NODE, MAP_BOUNDS } from '../constants/data';
 import { Coordinate, Place, RoutePreview, RouteSegment, RouteAlternative } from '../models/types';
 import { getDistance } from 'geolib';
-import { RoutePointService } from './RoutePointService';
 
 export type RouteResult = RoutePreview;
 
@@ -86,6 +85,60 @@ export class RoutingService {
     return nearestId;
   }
 
+  private static uniqueValidNodeIds(nodeIds: string[]): string[] {
+    const seen = new Set<string>();
+    const out: string[] = [];
+    for (const nodeId of nodeIds) {
+      if (!IJTEMA_DATA.nodes[nodeId]) continue;
+      if (seen.has(nodeId)) continue;
+      seen.add(nodeId);
+      out.push(nodeId);
+    }
+    return out;
+  }
+
+  private static sortNodeIdsByDistance(nodeIds: string[], coord: Coordinate): string[] {
+    return [...nodeIds].sort((a, b) => {
+      const nodeA = IJTEMA_DATA.nodes[a];
+      const nodeB = IJTEMA_DATA.nodes[b];
+      if (!nodeA || !nodeB) return 0;
+      const distA = getDistance(
+        { latitude: coord.latitude, longitude: coord.longitude },
+        { latitude: nodeA.lat, longitude: nodeA.lng },
+      );
+      const distB = getDistance(
+        { latitude: coord.latitude, longitude: coord.longitude },
+        { latitude: nodeB.lat, longitude: nodeB.lng },
+      );
+      return distA - distB;
+    });
+  }
+
+  private static resolveOriginNodeCandidates(
+    startCoord: Coordinate,
+    startNodeIdOverride?: string,
+  ): string[] {
+    if (startNodeIdOverride && IJTEMA_DATA.nodes[startNodeIdOverride]) {
+      return [startNodeIdOverride];
+    }
+
+    const insideBlockId = this.getBlockContaining(startCoord);
+    if (insideBlockId) {
+      const block = IJTEMA_DATA.blocks[insideBlockId];
+      const entryNodes = this.uniqueValidNodeIds(block?.entry_nodes ?? []);
+      if (entryNodes.length > 0) {
+        return this.sortNodeIdsByDistance(entryNodes, startCoord);
+      }
+    }
+
+    const nearest = this.findNearestNode(startCoord);
+    return nearest ? [nearest] : [];
+  }
+
+  private static isUsableRoute(route: RoutePreview | null): route is RoutePreview {
+    return !!route && route.totalDistance > 0 && route.nodes.length > 1 && route.segments.length > 0;
+  }
+
   /**
    * Resolve destination node IDs for any Place/landmark.
    * - Block → entry_nodes
@@ -112,11 +165,13 @@ export class RoutingService {
     // Block?
     const block = IJTEMA_DATA.blocks[placeId];
     if (block) {
-      if (origin) {
-        const nearestEntry = RoutePointService.nearestNodeFromSet(origin, block.entry_nodes);
-        if (nearestEntry) return [nearestEntry];
+      const entryNodes = this.uniqueValidNodeIds(block.entry_nodes ?? []);
+      if (entryNodes.length > 0) {
+        if (origin) {
+          return this.sortNodeIdsByDistance(entryNodes, origin);
+        }
+        return entryNodes;
       }
-      return block.entry_nodes;
     }
 
     // Landmark with explicit nearest road node?
@@ -136,15 +191,20 @@ export class RoutingService {
     startCoord: Coordinate,
     destinationNodeIds: string[],
     startNodeIdOverride?: string,
+    walkingSpeedMs: number = 1.4,
   ): RoutePreview | null {
-    const startNodeId = startNodeIdOverride ?? this.findNearestNode(startCoord);
+    const startNodeIds = this.resolveOriginNodeCandidates(startCoord, startNodeIdOverride);
+    const targetNodeIds = this.uniqueValidNodeIds(destinationNodeIds);
 
     let bestRoute: RoutePreview | null = null;
 
-    for (const destId of destinationNodeIds) {
-      const route = this.aStar(startNodeId, destId);
-      if (route && (!bestRoute || route.totalDistance < bestRoute.totalDistance)) {
-        bestRoute = route;
+    for (const startNodeId of startNodeIds) {
+      for (const destId of targetNodeIds) {
+        if (startNodeId === destId) continue;
+        const route = this.aStar(startNodeId, destId, 1.0, walkingSpeedMs);
+        if (this.isUsableRoute(route) && (!bestRoute || route.totalDistance < bestRoute.totalDistance)) {
+          bestRoute = route;
+        }
       }
     }
 
@@ -172,27 +232,35 @@ export class RoutingService {
     walkingSpeedMs: number = 1.4,
     startNodeIdOverride?: string,
   ): RouteAlternative[] {
-    const startNodeId = startNodeIdOverride ?? this.findNearestNode(startCoord);
+    const startNodeIds = this.resolveOriginNodeCandidates(startCoord, startNodeIdOverride);
+    const targetNodeIds = this.uniqueValidNodeIds(destinationNodeIds);
     const results: RouteAlternative[] = [];
 
     // --- Route 1: Fastest (plain A*) ---
+    let bestStartId = '';
     let bestDestId = '';
     let route1: RoutePreview | null = null;
-    for (const destId of destinationNodeIds) {
-      const r = this.aStar(startNodeId, destId, 1.0, walkingSpeedMs);
-      if (r && (!route1 || r.totalDistance < route1.totalDistance)) {
-        route1 = r;
-        bestDestId = destId;
+    for (const startNodeId of startNodeIds) {
+      for (const destId of targetNodeIds) {
+        if (startNodeId === destId) continue;
+        const r = this.aStar(startNodeId, destId, 1.0, walkingSpeedMs);
+        if (this.isUsableRoute(r) && (!route1 || r.totalDistance < route1.totalDistance)) {
+          route1 = r;
+          bestStartId = startNodeId;
+          bestDestId = destId;
+        }
       }
     }
     if (route1) {
       results.push({ label: 'Fastest', labelUr: 'تیز ترین', route: route1 });
+    } else {
+      return results;
     }
 
     // --- Route 2: Shortest (boundary-road penalty — stays on named rastas) ---
-    const route2 = this.aStar(startNodeId, bestDestId || destinationNodeIds[0], 1.15, walkingSpeedMs);
+    const route2 = this.aStar(bestStartId, bestDestId, 1.15, walkingSpeedMs);
     if (
-      route2 &&
+      this.isUsableRoute(route2) &&
       route1 &&
       route2.nodes.join() !== route1.nodes.join() &&
       route2.totalDistance < route1.totalDistance * 1.5
@@ -208,14 +276,14 @@ export class RoutingService {
         primaryEdgeSet.add(`${route1.nodes[i + 1]}-${route1.nodes[i]}`);
       }
       const route3 = this.aStar(
-        startNodeId,
-        bestDestId || destinationNodeIds[0],
+        bestStartId,
+        bestDestId,
         1.0,
         walkingSpeedMs,
         primaryEdgeSet,
       );
       if (
-        route3 &&
+        this.isUsableRoute(route3) &&
         route3.nodes.join() !== route1.nodes.join() &&
         (!results[1] || route3.nodes.join() !== results[1].route.nodes.join())
       ) {

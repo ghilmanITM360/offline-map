@@ -3,11 +3,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React from 'react';
+import React, { useMemo, useState } from 'react';
 import { View, Text, StyleSheet, Pressable, ScrollView, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import MapView, { Marker, Polygon, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
-import { ChevronLeft, ArrowRight, MapPin, Navigation, Clock, Footprints } from 'lucide-react-native';
+import { ChevronLeft, ArrowRight, MapPin, Navigation, Clock, Footprints, LocateFixed, RefreshCw } from 'lucide-react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useDirectionsViewModel } from '../../viewmodels/DirectionsViewModel';
@@ -16,6 +16,9 @@ import { RoutePointService } from '../../services/RoutePointService';
 import { useAppStore } from '../../store/useAppStore';
 import { RootStackParamList } from '../../navigation/RootNavigator';
 import { IJTEMA_DATA } from '../../constants/data';
+import { SearchService } from '../../services/SearchService';
+import { Place } from '../../models/types';
+import { MapConfigService } from '../../services/MapConfigService';
 
 export function DirectionsScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList, 'Directions'>>();
@@ -23,7 +26,9 @@ export function DirectionsScreen() {
   const { destination } = routeParams.params;
   const distanceUnit = useAppStore((s) => s.settings.distanceUnit);
   const clearRoutePlanner = useAppStore((s) => s.clearRoutePlanner);
-  const setRoutePlannerDest = useAppStore((s) => s.setRoutePlannerDest);
+  const currentLocation = useAppStore((s) => s.currentLocation);
+  const hasGoogleMapsKey = MapConfigService.isGoogleMapsKeyConfigured();
+  const [startSearch, setStartSearch] = useState('');
 
   const {
     route,
@@ -33,13 +38,28 @@ export function DirectionsScreen() {
     instructions,
     originLabel,
     handleStartNavigation,
+    loadState,
+    errorMessage,
+    setManualStartPlace,
+    chooseCurrentLocation,
+    calculateRoute,
+    useCurrentStart,
   } = useDirectionsViewModel(destination);
 
-  const startCoordinate = route?.coordinates[0];
+  const startCoordinate = route?.coordinates[0] ?? (currentLocation ?? destination.coordinate);
   const endNodeId = route?.nodes[route.nodes.length - 1];
   const destinationCoordinate =
     RoutePointService.nodeToCoordinate(endNodeId) ?? RoutePointService.getDestinationCoordinate(destination);
   const previewCenter = startCoordinate ?? destinationCoordinate ?? destination.coordinate;
+
+  const startCandidates = useMemo(() => {
+    if (startSearch.trim().length < 2) return [];
+    return SearchService.search(startSearch, currentLocation ?? undefined).slice(0, 8);
+  }, [currentLocation, startSearch]);
+
+  const showNeedStartMessage = loadState === 'needs_origin';
+  const showLoading = loadState === 'loading';
+  const showError = loadState === 'error';
 
   return (
     <KeyboardAvoidingView
@@ -61,9 +81,53 @@ export function DirectionsScreen() {
               style={styles.input}
               value={originLabel}
               editable={false}
-              placeholder="Current location"
+              placeholder="Choose starting point"
             />
           </View>
+
+          <View style={styles.startActionsRow}>
+            <Pressable
+              style={[styles.startActionBtn, useCurrentStart && styles.startActionBtnActive]}
+              onPress={() => {
+                chooseCurrentLocation();
+                void calculateRoute();
+              }}
+            >
+              <LocateFixed size={16} color={useCurrentStart ? '#FFFFFF' : '#1A73E8'} />
+              <Text style={[styles.startActionText, useCurrentStart && styles.startActionTextActive]}>Use My Current Location</Text>
+            </Pressable>
+          </View>
+
+          <TextInput
+            style={styles.searchStartInput}
+            value={startSearch}
+            onChangeText={setStartSearch}
+            placeholder="Search start location"
+            placeholderTextColor="#888"
+          />
+
+          {startCandidates.length > 0 && (
+            <View style={styles.startSearchResults}>
+              {startCandidates.map((candidate: Place) => (
+                <Pressable
+                  key={candidate.id}
+                  style={styles.startSearchItem}
+                  onPress={() => {
+                    setManualStartPlace(candidate);
+                    setStartSearch(candidate.name);
+                    void calculateRoute();
+                  }}
+                >
+                  <MapPin size={16} color="#5F6368" />
+                  <View style={styles.startSearchTextWrap}>
+                    <Text style={styles.startSearchName}>{candidate.name}</Text>
+                    <Text style={styles.startSearchCategory}>{candidate.category}</Text>
+                  </View>
+                </Pressable>
+              ))}
+            </View>
+          )}
+
           <View style={styles.verticalLine} />
           <View style={styles.inputRow}>
             <MapPin size={20} color="#2E7D32" />
@@ -77,59 +141,65 @@ export function DirectionsScreen() {
         </View>
 
         <View style={styles.mapPreviewWrap}>
-          <MapView
-            style={styles.mapPreview}
-            provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined}
-            initialRegion={{
-              latitude: previewCenter.latitude,
-              longitude: previewCenter.longitude,
-              latitudeDelta: 0.006,
-              longitudeDelta: 0.006,
-            }}
-            scrollEnabled
-            zoomEnabled
-            rotateEnabled={false}
-            pitchEnabled={false}
-          >
-            {Object.values(IJTEMA_DATA.blocks).map((block) => (
-              <Polygon
-                key={`preview_block_${block.id}`}
-                coordinates={block.corners ?? block.polygon}
-                fillColor={block.id === destination.id ? 'rgba(251,188,5,0.28)' : 'rgba(46,125,50,0.12)'}
-                strokeColor={block.id === destination.id ? '#F29900' : '#2E7D32'}
-                strokeWidth={block.id === destination.id ? 2 : 1}
-              />
-            ))}
-            {IJTEMA_DATA.edges.map((edge, idx) => {
-              const from = IJTEMA_DATA.nodes[edge.from];
-              const to = IJTEMA_DATA.nodes[edge.to];
-              if (!from || !to) return null;
-              const coords = [
-                { latitude: from.lat, longitude: from.lng },
-                { latitude: to.lat, longitude: to.lng },
-              ];
-              return (
-                <React.Fragment key={`preview_edge_${edge.from}_${edge.to}_${idx}`}>
-                  <Polyline coordinates={coords} strokeColor="rgba(60,64,67,0.42)" strokeWidth={6} zIndex={1} />
-                  <Polyline coordinates={coords} strokeColor="rgba(255,255,255,0.86)" strokeWidth={4} zIndex={2} />
-                </React.Fragment>
-              );
-            })}
-            {route && (
-              <>
-                <Polyline coordinates={route.coordinates} strokeColor="rgba(13,71,161,0.72)" strokeWidth={9} zIndex={20} />
-                <Polyline coordinates={route.coordinates} strokeColor="#1A73E8" strokeWidth={5} zIndex={21} />
-              </>
-            )}
-            {startCoordinate && <Marker coordinate={startCoordinate} pinColor="#1A73E8" title="Start" />}
-            {destinationCoordinate && (
-              <Marker coordinate={destinationCoordinate} pinColor="#2E7D32" title={destination.name} />
-            )}
-          </MapView>
+          {hasGoogleMapsKey ? (
+            <MapView
+              style={styles.mapPreview}
+              provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined}
+              initialRegion={{
+                latitude: previewCenter.latitude,
+                longitude: previewCenter.longitude,
+                latitudeDelta: 0.006,
+                longitudeDelta: 0.006,
+              }}
+              scrollEnabled
+              zoomEnabled
+              rotateEnabled={false}
+              pitchEnabled={false}
+            >
+              {Object.values(IJTEMA_DATA.blocks).map((block) => (
+                <Polygon
+                  key={`preview_block_${block.id}`}
+                  coordinates={block.corners ?? block.polygon}
+                  fillColor={block.id === destination.id ? 'rgba(251,188,5,0.28)' : 'rgba(46,125,50,0.12)'}
+                  strokeColor={block.id === destination.id ? '#F29900' : '#2E7D32'}
+                  strokeWidth={block.id === destination.id ? 2 : 1}
+                />
+              ))}
+              {IJTEMA_DATA.edges.map((edge, idx) => {
+                const from = IJTEMA_DATA.nodes[edge.from];
+                const to = IJTEMA_DATA.nodes[edge.to];
+                if (!from || !to) return null;
+                const coords = [
+                  { latitude: from.lat, longitude: from.lng },
+                  { latitude: to.lat, longitude: to.lng },
+                ];
+                return (
+                  <React.Fragment key={`preview_edge_${edge.from}_${edge.to}_${idx}`}>
+                    <Polyline coordinates={coords} strokeColor="rgba(60,64,67,0.42)" strokeWidth={6} zIndex={1} />
+                    <Polyline coordinates={coords} strokeColor="rgba(255,255,255,0.86)" strokeWidth={4} zIndex={2} />
+                  </React.Fragment>
+                );
+              })}
+              {route && (
+                <>
+                  <Polyline coordinates={route.coordinates} strokeColor="rgba(13,71,161,0.72)" strokeWidth={9} zIndex={20} />
+                  <Polyline coordinates={route.coordinates} strokeColor="#1A73E8" strokeWidth={5} zIndex={21} />
+                </>
+              )}
+              {startCoordinate && <Marker coordinate={startCoordinate} pinColor="#1A73E8" title="Start" />}
+              {destinationCoordinate && (
+                <Marker coordinate={destinationCoordinate} pinColor="#2E7D32" title={destination.name} />
+              )}
+            </MapView>
+          ) : (
+            <View style={styles.mapUnavailable}>
+              <Text style={styles.mapUnavailableTitle}>Map preview unavailable</Text>
+              <Text style={styles.mapUnavailableText}>{MapConfigService.getMissingGoogleMapsMessage()}</Text>
+            </View>
+          )}
         </View>
 
         <ScrollView style={styles.content}>
-          {/* Route alternative tabs */}
           {alternatives.length > 1 && (
             <ScrollView
               horizontal
@@ -154,7 +224,33 @@ export function DirectionsScreen() {
             </ScrollView>
           )}
 
-          {route ? (
+          {showNeedStartMessage && (
+            <View style={styles.infoCard}>
+              <Text style={styles.infoTitle}>Choose starting point</Text>
+              <Text style={styles.infoDesc}>
+                GPS is unavailable right now. Select a starting point manually to continue.
+              </Text>
+            </View>
+          )}
+
+          {showLoading && (
+            <View style={styles.infoCard}>
+              <Text style={styles.infoTitle}>Calculating route...</Text>
+              <Text style={styles.infoDesc}>Please wait while we find the best walking path.</Text>
+            </View>
+          )}
+
+          {showError && (
+            <View style={styles.errorCard}>
+              <Text style={styles.errorTitle}>{errorMessage ?? 'Could not calculate route.'}</Text>
+              <Pressable style={styles.retryButton} onPress={() => void calculateRoute()}>
+                <RefreshCw size={16} color="#FFFFFF" />
+                <Text style={styles.retryButtonText}>Retry</Text>
+              </Pressable>
+            </View>
+          )}
+
+          {route && loadState === 'ready' && (
             <View style={styles.routeCard}>
               <View style={styles.routeInfo}>
                 <View style={styles.routeMetrics}>
@@ -174,51 +270,44 @@ export function DirectionsScreen() {
                   onPress={() => handleStartNavigation(navigation)}
                 >
                   <Navigation size={20} color="#FFFFFF" />
-                  <Text style={styles.startButtonText}>Start</Text>
+                  <Text style={styles.startButtonText}>Start Navigation</Text>
                 </Pressable>
               </View>
-              {alternatives[selectedIndex] && (
-                <Text style={styles.routeDesc}>{alternatives[selectedIndex].label} route</Text>
-              )}
-              {route.nodes.length > 0 && (
-                <Text style={styles.routeNodes} numberOfLines={2}>
-                  Nodes: {route.nodes.join(' -> ')}
-                </Text>
-              )}
               <Pressable
                 style={styles.clearRouteButton}
                 onPress={() => {
                   clearRoutePlanner();
-                  setRoutePlannerDest(null);
                   navigation.goBack();
                 }}
               >
                 <Text style={styles.clearRouteText}>Clear route</Text>
               </Pressable>
             </View>
-          ) : (
-            <View style={styles.loadingContainer}>
-              <Text style={styles.loadingText}>Calculating best route...</Text>
-            </View>
           )}
 
           <View style={styles.stepsSection}>
             <Text style={styles.stepsTitle}>Steps</Text>
-            {instructions.map((step, index) => (
-              <View key={index} style={styles.stepItem}>
-                {step.type === 'arrival' ? (
-                  <MapPin size={20} color="#2E7D32" />
-                ) : (
-                  <ArrowRight size={20} color="#666" />
-                )}
-                <Text style={styles.stepText}>{step.text}</Text>
-                {step.distance > 0 && (
-                  <Text style={styles.stepDist}>
-                    {InstructionService.formatDistance(step.distance, distanceUnit)}
-                  </Text>
-                )}
-              </View>
-            ))}
+            {instructions.length === 0 ? (
+              <Text style={styles.emptyStepsText}>
+                {route ? 'No step instructions generated for this route.' : 'Select a valid start and destination to see route steps.'}
+              </Text>
+            ) : (
+              instructions.map((step, index) => (
+                <View key={index} style={styles.stepItem}>
+                  {step.type === 'arrival' ? (
+                    <MapPin size={20} color="#2E7D32" />
+                  ) : (
+                    <ArrowRight size={20} color="#666" />
+                  )}
+                  <Text style={styles.stepText}>{step.text}</Text>
+                  {step.distance > 0 && (
+                    <Text style={styles.stepDist}>
+                      {InstructionService.formatDistance(step.distance, distanceUnit)}
+                    </Text>
+                  )}
+                </View>
+              ))
+            )}
           </View>
         </ScrollView>
       </SafeAreaView>
@@ -248,13 +337,13 @@ const styles = StyleSheet.create({
     color: '#333',
   },
   searchSection: {
-    padding: 20,
+    padding: 16,
     backgroundColor: '#F8F9FA',
     borderBottomWidth: 1,
     borderBottomColor: '#EEEEEE',
   },
   mapPreviewWrap: {
-    height: 260,
+    height: 220,
     margin: 16,
     borderRadius: 20,
     overflow: 'hidden',
@@ -267,6 +356,25 @@ const styles = StyleSheet.create({
   },
   mapPreview: {
     flex: 1,
+  },
+  mapUnavailable: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 16,
+    backgroundColor: '#E8EAED',
+  },
+  mapUnavailableTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#202124',
+    marginBottom: 6,
+  },
+  mapUnavailableText: {
+    fontSize: 13,
+    color: '#5F6368',
+    textAlign: 'center',
+    lineHeight: 18,
   },
   inputRow: {
     flexDirection: 'row',
@@ -291,9 +399,74 @@ const styles = StyleSheet.create({
     color: '#333',
     marginLeft: 10,
   },
+  startActionsRow: {
+    flexDirection: 'row',
+    marginTop: 8,
+    marginBottom: 8,
+  },
+  startActionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#1A73E8',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    gap: 6,
+  },
+  startActionBtnActive: {
+    backgroundColor: '#1A73E8',
+  },
+  startActionText: {
+    color: '#1A73E8',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  startActionTextActive: {
+    color: '#FFFFFF',
+  },
+  searchStartInput: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    paddingHorizontal: 12,
+    height: 42,
+    fontSize: 14,
+    color: '#333',
+    marginBottom: 8,
+  },
+  startSearchResults: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    marginBottom: 8,
+  },
+  startSearchItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#ECECEC',
+    gap: 8,
+  },
+  startSearchTextWrap: {
+    flex: 1,
+  },
+  startSearchName: {
+    fontSize: 14,
+    color: '#202124',
+    fontWeight: '600',
+  },
+  startSearchCategory: {
+    fontSize: 12,
+    color: '#666',
+  },
   verticalLine: {
     width: 2,
-    height: 20,
+    height: 18,
     backgroundColor: '#E0E0E0',
     marginLeft: 16,
     marginVertical: 4,
@@ -302,7 +475,6 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 20,
   },
-  // --- Route alternative tabs ---
   altTabScrollView: { marginBottom: 16 },
   altTabContent: { gap: 10, paddingVertical: 4 },
   altTab: {
@@ -323,7 +495,6 @@ const styles = StyleSheet.create({
   altTabLabelActive: { color: '#2E7D32' },
   altTabTime: { fontSize: 12, color: '#70757A', marginTop: 2 },
   altTabTimeActive: { color: '#2E7D32' },
-  // --- Route summary card ---
   routeCard: {
     backgroundColor: '#E8F5E9',
     borderRadius: 12,
@@ -350,27 +521,16 @@ const styles = StyleSheet.create({
     backgroundColor: '#2E7D32',
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 24,
+    paddingHorizontal: 16,
     paddingVertical: 12,
     borderRadius: 25,
     elevation: 3,
+    gap: 8,
   },
   startButtonText: {
     color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginLeft: 8,
-  },
-  routeDesc: {
     fontSize: 14,
-    color: '#666',
-    marginTop: 12,
-    fontStyle: 'italic',
-  },
-  routeNodes: {
-    marginTop: 8,
-    fontSize: 12,
-    color: '#3C4043',
+    fontWeight: 'bold',
   },
   clearRouteButton: {
     marginTop: 12,
@@ -385,6 +545,49 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
   },
+  infoCard: {
+    backgroundColor: '#E8F0FE',
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 14,
+  },
+  infoTitle: {
+    color: '#1A73E8',
+    fontWeight: '700',
+    fontSize: 14,
+  },
+  infoDesc: {
+    color: '#3C4043',
+    fontSize: 13,
+    marginTop: 4,
+  },
+  errorCard: {
+    backgroundColor: '#FCE8E6',
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 14,
+  },
+  errorTitle: {
+    color: '#B3261E',
+    fontWeight: '700',
+    fontSize: 14,
+  },
+  retryButton: {
+    marginTop: 10,
+    backgroundColor: '#D32F2F',
+    alignSelf: 'flex-start',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  retryButtonText: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+    fontSize: 12,
+  },
   stepsSection: {
     marginTop: 10,
   },
@@ -392,7 +595,12 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
     color: '#333',
-    marginBottom: 16,
+    marginBottom: 12,
+  },
+  emptyStepsText: {
+    color: '#666',
+    fontSize: 14,
+    paddingVertical: 8,
   },
   stepItem: {
     flexDirection: 'row',
@@ -411,14 +619,5 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#999',
     fontWeight: '600',
-  },
-  loadingContainer: {
-    padding: 40,
-    alignItems: 'center',
-  },
-  loadingText: {
-    fontSize: 16,
-    color: '#666',
-    fontStyle: 'italic',
   },
 });

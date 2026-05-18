@@ -11,11 +11,14 @@ import * as Location from 'expo-location';
 import { useAppStore } from '../../store/useAppStore';
 import { ConnectivityService } from '../../services/ConnectivityService';
 import { OfflineMapService } from '../../services/OfflineMapService';
+import { OfflineMapStatusService } from '../../services/OfflineMapStatusService';
+import { RootStackParamList } from '../../navigation/RootNavigator';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 export function SplashScreen() {
-  const navigation = useNavigation<any>();
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const fadeAnim = useRef(new Animated.Value(0)).current;
-  const { updateOfflineData, setHasLocationPermission } = useAppStore();
+  const { updateOfflineData, setHasLocationPermission, setOfflineMapStatus } = useAppStore();
   const isMountedRef = useRef(true); // fixed: guard navigation and state writes after unmount
   const minVisibleTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null); // fixed: cancel the splash delay on unmount
 
@@ -33,8 +36,9 @@ export function SplashScreen() {
       });
 
       // Run all checks in parallel
-      const [mapStatus, permissionResult, isConnected] = await Promise.all([
+      const [mapStatus, startupStatus, permissionResult, isConnected] = await Promise.all([
         OfflineMapService.getMapStatus(),
+        OfflineMapStatusService.validateAtStartup(),
         Location.getForegroundPermissionsAsync(),
         ConnectivityService.isConnected(),
         minVisibleMs,
@@ -47,10 +51,7 @@ export function SplashScreen() {
 
       const { downloadState, setDownloadState } = useAppStore.getState(); // fixed: reconcile persisted download progress with actual disk state on cold start
       if (downloadState.phase === 'downloading' || downloadState.phase === 'connecting') {
-        setDownloadState({
-          phase: 'paused',
-          resumable: (downloadState.downloadedTiles ?? 0) > 0,
-        }); // fixed: prevent the app from showing a phantom active download after a force-quit
+        setDownloadState({ phase: 'idle' }); // fixed: clear stale in-memory downloading state after cold start
       }
 
       // Sync real map status into persisted Zustand state
@@ -61,6 +62,7 @@ export function SplashScreen() {
           sizeMB: mapStatus.sizeMB,
         });
       }
+      setOfflineMapStatus(startupStatus.status, startupStatus.reason ?? null);
 
       setHasLocationPermission(permissionGranted);
 
@@ -70,12 +72,17 @@ export function SplashScreen() {
         return;
       }
 
-      if (mapStatus.isDownloaded) {
+      if (startupStatus.status === 'downloaded') {
         navigation.replace('Main');
         return;
       }
 
-      if (!isConnected) {
+      if (startupStatus.status === 'corrupt' || startupStatus.status === 'needs_update') {
+        navigation.replace('DownloadMap');
+        return;
+      }
+
+      if (!isConnected && startupStatus.status === 'not_downloaded') {
         // No internet AND no map — go to Main in graph-only mode
         navigation.replace('Main');
         return;

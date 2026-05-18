@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -50,22 +50,25 @@ import { Place, SearchResult } from '../../models/types';
 import { PlaceDetailService } from '../../services/PlaceDetailService';
 import { FavoriteService } from '../../services/FavoriteService';
 import { useAppStore } from '../../store/useAppStore';
-import { SnapToRoadService } from '../../services/SnapToRoadService';
-import { RoutingService } from '../../services/RoutingService';
 import { RoutePointService } from '../../services/RoutePointService';
-import { Paths } from 'expo-file-system'; // fixed: use Paths API instead of deprecated documentDirectory
-import { DrawerParamList, RootStackParamList } from '../../navigation/RootNavigator'; // fixed: use typed navigation params
+import { Paths } from 'expo-file-system';
+import { DrawerParamList, RootStackParamList } from '../../navigation/RootNavigator';
+import { RoutingService } from '../../services/RoutingService';
+import { MapConfigService } from '../../services/MapConfigService';
+
+declare const __DEV__: boolean;
 
 type HomeScreenNavigationProp = CompositeNavigationProp<
   DrawerNavigationProp<DrawerParamList, 'Home'>,
   NativeStackNavigationProp<RootStackParamList>
->; // fixed: type Home screen navigation across drawer + stack routes
+>;
 
-const getTilePath = (): string => `${Paths.document.uri}tiles/{z}_{x}_{y}.png`; // fixed: lazy getter defers Paths.document access to render time so the native module is ready
+const getTilePath = (): string => `${Paths.document.uri}tiles/{z}_{x}_{y}.png`;
 
 function isPlace(item: Place | SearchResult): item is Place {
   return 'name' in item;
 }
+
 function getDisplayName(item: Place | SearchResult): string {
   return isPlace(item) ? item.name : item.title;
 }
@@ -74,13 +77,6 @@ export function HomeScreen() {
   const nav = useNavigation<HomeScreenNavigationProp>();
   const currentLocation = useAppStore((s) => s.currentLocation);
   const favorites = useAppStore((s) => s.favorites);
-  const routePlannerOrigin = useAppStore((s) => s.routePlannerOrigin);
-  const routePlannerDest = useAppStore((s) => s.routePlannerDest);
-  const setRoutePlannerOrigin = useAppStore((s) => s.setRoutePlannerOrigin);
-  const setRoutePlannerDest = useAppStore((s) => s.setRoutePlannerDest);
-  const routeSelectionMode = useAppStore((s) => s.routeSelectionMode);
-  const setRouteSelectionMode = useAppStore((s) => s.setRouteSelectionMode);
-  const clearRoutePlanner = useAppStore((s) => s.clearRoutePlanner);
   const showGraphNodes = useAppStore((s) => s.showGraphNodes);
   const setShowGraphNodes = useAppStore((s) => s.setShowGraphNodes);
   const showRastaNames = useAppStore((s) => s.showRastaNames);
@@ -90,12 +86,11 @@ export function HomeScreen() {
   const showRouteDiagnostics = useAppStore((s) => s.showRouteDiagnostics);
   const setShowRouteDiagnostics = useAppStore((s) => s.setShowRouteDiagnostics);
   const [selectedEntryIdx, setSelectedEntryIdx] = useState(0);
-  // Controls whether the search suggestions dropdown is visible
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const searchInputRef = useRef<TextInput>(null);
   const theme = useTheme();
+  const hasGoogleMapsKey = MapConfigService.isGoogleMapsKeyConfigured();
 
-  /** Collapse the search dropdown, blur the input, and hide the keyboard. */
   const dismissSearch = useCallback(() => {
     setIsSearchFocused(false);
     searchInputRef.current?.blur();
@@ -123,25 +118,24 @@ export function HomeScreen() {
     handleCompassReset,
     handleZoomIn,
     handleZoomOut,
-    toggleMapType,
     clearSearch,
     handleCategoryPress,
     setSelectedPlace,
+    updateSettings,
+    settings,
   } = useHomeViewModel();
 
-  // Reset entry index when selection changes
   useEffect(() => {
     setSelectedEntryIdx(0);
   }, [selectedPlace?.id]);
 
-  // Android hardware back: dismiss search dropdown before exiting the screen
   useEffect(() => {
     const handler = BackHandler.addEventListener('hardwareBackPress', () => {
       if (isSearchFocused) {
         dismissSearch();
-        return true; // consume event — do NOT go back
+        return true;
       }
-      return false; // let the default back action proceed
+      return false;
     });
     return () => handler.remove();
   }, [isSearchFocused, dismissSearch]);
@@ -150,56 +144,19 @@ export function HomeScreen() {
     ? PlaceDetailService.getEntryPoints(selectedPlace.id)
     : [];
 
-  const settings = useAppStore((s) => s.settings);
-
-  const withBlockEntryNode = useCallback(
-    (place: Place, preferredIndex?: number): Place => {
-      if (place.category !== 'Block') return place;
-      const entries = PlaceDetailService.getEntryPoints(place.id);
-      const preferredEntry = preferredIndex !== undefined ? entries[preferredIndex] : null;
-      const nearestEntry = PlaceDetailService.getNearestEntry(
-        place.id,
-        RoutePointService.getStartCoordinate(routePlannerOrigin) ?? currentLocation ?? place.coordinate,
-      );
-      const nodeId = preferredEntry?.nodeId ?? nearestEntry?.nodeId ?? entries[0]?.nodeId;
-      return nodeId ? RoutePointService.enrichPlaceWithRoutingNode(place, nodeId) : place;
-    },
-    [currentLocation, routePlannerOrigin],
-  );
-
-  const plannerStartCoordinate = useMemo(
-    () => RoutePointService.getStartCoordinate(routePlannerOrigin) ?? currentLocation,
-    [currentLocation, routePlannerOrigin],
-  );
-
-  const routePreview = useMemo(() => {
-    if (!plannerStartCoordinate || !routePlannerDest) return null;
-    const destNodeIds = RoutingService.resolveDestinationNodesFromPlace(routePlannerDest, plannerStartCoordinate);
-    return RoutingService.calculateRoute(
-      plannerStartCoordinate,
-      destNodeIds,
-      routePlannerOrigin?.routingNodeId ?? routePlannerOrigin?.selectedEntryNodeId,
-    );
-  }, [plannerStartCoordinate, routePlannerDest, routePlannerOrigin]);
-
-  const destinationMarkerCoordinate = useMemo(() => {
-    const endNodeId = routePreview?.nodes[routePreview.nodes.length - 1];
-    return RoutePointService.nodeToCoordinate(endNodeId) ?? RoutePointService.getDestinationCoordinate(routePlannerDest);
-  }, [routePreview, routePlannerDest]);
-
-  const selectedPlaceMarkerCoordinate = useMemo(() => {
+  const selectedPlaceMarkerCoordinate = (() => {
     if (!selectedPlace) return null;
     if (selectedPlace.category === 'Block' && entryPoints[selectedEntryIdx]) {
       return RoutePointService.nodeToCoordinate(entryPoints[selectedEntryIdx].nodeId) ?? selectedPlace.coordinate;
     }
     return RoutePointService.getDestinationCoordinate(selectedPlace);
-  }, [entryPoints, selectedEntryIdx, selectedPlace]);
+  })();
 
   const walkingTimeMin = (selectedPlace && currentLocation)
     ? PlaceDetailService.estimateWalkingTime(
-        PlaceDetailService.distanceToBlock(selectedPlace.id, currentLocation),
-        settings.walkingSpeed ?? 1.4,
-      )
+      PlaceDetailService.distanceToBlock(selectedPlace.id, currentLocation),
+      settings.walkingSpeed ?? 1.4,
+    )
     : null;
 
   const isFav = selectedPlace ? favorites.some((f) => f.placeId === selectedPlace.id) : false;
@@ -209,174 +166,47 @@ export function HomeScreen() {
     FavoriteService.toggleFavorite(selectedPlace);
   };
 
-  const withSelectedEntryNode = (place: Place): Place => withBlockEntryNode(place, selectedEntryIdx);
-
-  useEffect(() => {
-    if (!selectedPlace || selectedPlace.category !== 'Block') return;
-    if (routePlannerDest?.id !== selectedPlace.id) return;
-    setRoutePlannerDest(withSelectedEntryNode(selectedPlace));
-  }, [selectedEntryIdx, selectedPlace, routePlannerDest?.id]);
-
   const handleOpenDirections = (place: Place) => {
-    const destination = withSelectedEntryNode(place);
-    setRoutePlannerDest(destination);
+    const destination =
+      place.category === 'Block' && entryPoints[selectedEntryIdx]
+        ? RoutePointService.enrichPlaceWithRoutingNode(place, entryPoints[selectedEntryIdx].nodeId)
+        : place;
     nav.navigate('Directions', { destination });
-  };
-
-  const setAsStartFromPlace = (place: Place) => {
-    const start = withSelectedEntryNode(place);
-    setRoutePlannerOrigin(start);
-    setRouteSelectionMode('idle');
-  };
-
-  const setAsDestinationFromPlace = (place: Place) => {
-    const destination = withSelectedEntryNode(place);
-    setRoutePlannerDest(destination);
-    setRouteSelectionMode('idle');
   };
 
   const handleSearchResultSelect = (place: Place) => {
     dismissSearch();
-    if (routeSelectionMode === 'selectingStart') {
-      setRoutePlannerOrigin(withBlockEntryNode(place));
-      setRouteSelectionMode('selectingDestination');
-      clearSearch();
-      return;
-    }
-    if (routeSelectionMode === 'selectingDestination') {
-      const destination = withBlockEntryNode(place);
-      setRoutePlannerDest(destination);
-      setRouteSelectionMode('idle');
-      clearSearch();
-      return;
-    }
     handlePlaceSelect(place);
   };
 
-  const handleMapSelect = (coord: { latitude: number; longitude: number }, blockId?: string) => {
-    if (routeSelectionMode === 'selectingStart') {
-      if (blockId) {
-        const block = IJTEMA_DATA.blocks[blockId];
-        if (!block) return;
-        const nearestEntry = PlaceDetailService.getNearestEntry(blockId, coord);
-        const rawStartPlace: Place = {
-          id: `start_${blockId}`,
-          name: block.name,
-          urduName: block.urduName,
-          category: 'Block',
-          description: `Manual start at ${block.name}.`,
-          coordinate: block.center,
-        };
-        const startPlace = nearestEntry?.nodeId
-          ? RoutePointService.enrichPlaceWithRoutingNode(rawStartPlace, nearestEntry.nodeId)
-          : rawStartPlace;
-        setRoutePlannerOrigin(startPlace);
-      } else {
-        const resolved = SnapToRoadService.resolveRoutingNode(coord);
-        const startPlace: Place = {
-          id: 'custom_start',
-          name: 'Custom Start',
-          category: 'CustomPoint',
-          description: 'Manual route start point.',
-          coordinate: coord,
-          routingNodeId: resolved.nodeId,
-          resolvedRoutingNodeId: resolved.nodeId,
-          resolvedRoutingCoordinate: resolved.snappedCoordinate,
-          snappedCoordinate: resolved.snappedCoordinate,
-        };
-        setRoutePlannerOrigin(startPlace);
-        if (resolved.warning) Alert.alert('Outside Area', resolved.warning);
-      }
-      setRouteSelectionMode('selectingDestination');
-      return;
-    }
-
-    if (routeSelectionMode === 'selectingDestination') {
-      if (blockId) {
-        const block = IJTEMA_DATA.blocks[blockId];
-        if (!block) return;
-        const nearestEntry = PlaceDetailService.getNearestEntry(blockId, coord);
-        const rawDestination: Place = {
-          id: block.id,
-          name: block.name,
-          urduName: block.urduName,
-          category: 'Block',
-          description: `${block.name} selected by map.`,
-          coordinate: block.center,
-        };
-        const destination = nearestEntry?.nodeId
-          ? RoutePointService.enrichPlaceWithRoutingNode(rawDestination, nearestEntry.nodeId)
-          : rawDestination;
-        setRoutePlannerDest(destination);
-        setRouteSelectionMode('idle');
-        return;
-      }
-
-      const resolved = SnapToRoadService.resolveRoutingNode(coord);
-      const destination: Place = {
-        id: 'custom_destination',
-        name: 'Custom Destination',
-        category: 'CustomPoint',
-        description: 'Manual destination point.',
-        coordinate: coord,
-        routingNodeId: resolved.nodeId,
-        resolvedRoutingNodeId: resolved.nodeId,
-        resolvedRoutingCoordinate: resolved.snappedCoordinate,
-        snappedCoordinate: resolved.snappedCoordinate,
-      };
-      setRoutePlannerDest(destination);
-      setRouteSelectionMode('idle');
-      if (resolved.warning) Alert.alert('Outside Area', resolved.warning);
-      return;
-    }
-
-    if (selectedPlace) {
-      setSelectedPlace(null);
-      bottomSheetRef.current?.close();
-      return;
-    }
-
-    Alert.alert('Map Point', 'Use this point for routing?', [
+  const openLayerOptions = () => {
+    const options: { text: string; onPress?: () => void; style?: 'default' | 'cancel' }[] = [
+      {
+        text: showBlockPolygons ? 'Hide Blocks Layer' : 'Show Blocks Layer',
+        onPress: () => setShowBlockPolygons(!showBlockPolygons),
+      },
+      {
+        text: showRastaNames ? 'Hide Rasta Labels' : 'Show Rasta Labels',
+        onPress: () => setShowRastaNames(!showRastaNames),
+      },
+      {
+        text: mapType === 'standard' ? 'Switch to Satellite' : 'Switch to Standard',
+        onPress: () => {
+          if (mapType === 'standard') {
+            if (isOffline) {
+              Alert.alert('Satellite unavailable offline', 'Satellite requires internet or downloaded satellite tiles.');
+              return;
+            }
+            updateSettings({ mapMode: 'satellite' });
+            return;
+          }
+          updateSettings({ mapMode: 'standard' });
+        },
+      },
       { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Set as Start',
-        onPress: () => {
-          const resolved = SnapToRoadService.resolveRoutingNode(coord);
-          const startPlace: Place = {
-            id: 'custom_start',
-            name: 'Custom Start',
-            category: 'CustomPoint',
-            description: 'Manual route start point.',
-            coordinate: coord,
-            routingNodeId: resolved.nodeId,
-            resolvedRoutingNodeId: resolved.nodeId,
-            resolvedRoutingCoordinate: resolved.snappedCoordinate,
-            snappedCoordinate: resolved.snappedCoordinate,
-          };
-          setRoutePlannerOrigin(startPlace);
-          if (resolved.warning) Alert.alert('Outside Area', resolved.warning);
-        },
-      },
-      {
-        text: 'Set as Destination',
-        onPress: () => {
-          const resolved = SnapToRoadService.resolveRoutingNode(coord);
-          const destination: Place = {
-            id: 'custom_destination',
-            name: 'Custom Destination',
-            category: 'CustomPoint',
-            description: 'Manual destination point.',
-            coordinate: coord,
-            routingNodeId: resolved.nodeId,
-            resolvedRoutingNodeId: resolved.nodeId,
-            resolvedRoutingCoordinate: resolved.snappedCoordinate,
-            snappedCoordinate: resolved.snappedCoordinate,
-          };
-          setRoutePlannerDest(destination);
-          if (resolved.warning) Alert.alert('Outside Area', resolved.warning);
-        },
-      },
-    ]);
+    ];
+
+    Alert.alert('Map Layers', 'Choose what to show on the map.', options);
   };
 
   const renderChips = () => {
@@ -384,6 +214,7 @@ export function HomeScreen() {
       { id: 'blocks', label: 'Blocks' },
       { id: 'rastas', label: 'Rastas' },
     ];
+
     return (
       <ScrollView
         horizontal
@@ -408,32 +239,35 @@ export function HomeScreen() {
 
   return (
     <KeyboardAvoidingView
-      style={styles.container} // fixed: keep map layout stable while keyboard is open
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'} // fixed: apply platform-appropriate keyboard avoidance
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <View style={styles.container}>
         <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
 
-        <MapView
-          ref={mapRef}
-          style={styles.map}
-          provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined} // fixed: avoid forcing Google provider on iOS
-          initialRegion={initialRegion}
-          mapType={isOffline ? 'none' : mapType}
-          showsUserLocation
-          showsMyLocationButton={false}
-          showsCompass={false}
-          onMapReady={() => setIsMapReady(true)}
-          onPress={(event) => {
-            // Tapping the map always closes search first
-            if (isSearchFocused) {
-              dismissSearch();
-              clearSearch();
-              return;
-            }
-            handleMapSelect(event.nativeEvent.coordinate);
-          }}
-        >
+        {hasGoogleMapsKey ? (
+          <MapView
+            ref={mapRef}
+            style={styles.map}
+            provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined}
+            initialRegion={initialRegion}
+            mapType={isOffline ? 'none' : mapType}
+            showsUserLocation
+            showsMyLocationButton={false}
+            showsCompass={false}
+            onMapReady={() => setIsMapReady(true)}
+            onPress={() => {
+              if (isSearchFocused) {
+                dismissSearch();
+                clearSearch();
+                return;
+              }
+              if (selectedPlace) {
+                setSelectedPlace(null);
+                bottomSheetRef.current?.close();
+              }
+            }}
+          >
           {isOffline && offlineData.isDownloaded && (
             <LocalTile pathTemplate={getTilePath()} tileSize={256} zIndex={-1} />
           )}
@@ -475,14 +309,8 @@ export function HomeScreen() {
                 strokeColor={isSelected ? '#1A73E8' : '#2E7D32'}
                 strokeWidth={isSelected ? 3 : 1.5}
                 tappable
-                onPress={(event) => {
+                onPress={() => {
                   dismissSearch();
-                  const tapped = event.nativeEvent.coordinate;
-                  if (!tapped) return;
-                  if (routeSelectionMode === 'selectingStart' || routeSelectionMode === 'selectingDestination') {
-                    handleMapSelect(tapped, id);
-                    return;
-                  }
                   handlePlaceSelect({
                     id: block.id,
                     name: block.name,
@@ -496,7 +324,7 @@ export function HomeScreen() {
             ) : null;
           })}
 
-          {showGraphNodes && Object.entries(IJTEMA_DATA.nodes).map(([nodeId, node]) => {
+          {showGraphNodes && __DEV__ && Object.entries(IJTEMA_DATA.nodes).map(([nodeId, node]) => {
             const color = nodeId.startsWith('P') ? '#D32F2F' : nodeId.startsWith('S') ? '#00ACC1' : '#616161';
             return (
               <Marker
@@ -529,39 +357,6 @@ export function HomeScreen() {
             );
           })}
 
-          {routePreview && (
-            <>
-              <Polyline
-                coordinates={routePreview.coordinates}
-                strokeColor="rgba(13,71,161,0.72)"
-                strokeWidth={10}
-                zIndex={20}
-              />
-              <Polyline
-                coordinates={routePreview.coordinates}
-                strokeColor="#1A73E8"
-                strokeWidth={6}
-                zIndex={21}
-              />
-            </>
-          )}
-
-          {routePlannerOrigin && (
-            <Marker coordinate={RoutePointService.getStartCoordinate(routePlannerOrigin) ?? routePlannerOrigin.coordinate}>
-              <View style={styles.startMarker}>
-                <MapPin size={30} color="#1A73E8" fill="#1A73E8" />
-              </View>
-            </Marker>
-          )}
-
-          {routePlannerDest && destinationMarkerCoordinate && (
-            <Marker coordinate={destinationMarkerCoordinate}>
-              <View style={styles.destMarker}>
-                <MapPin size={30} color="#2E7D32" fill="#2E7D32" />
-              </View>
-            </Marker>
-          )}
-
           {selectedPlace && selectedPlaceMarkerCoordinate && (
             <Marker coordinate={selectedPlaceMarkerCoordinate}>
               <View style={styles.selectedMarker}>
@@ -569,9 +364,14 @@ export function HomeScreen() {
               </View>
             </Marker>
           )}
-        </MapView>
+          </MapView>
+        ) : (
+          <View style={styles.mapFallback}>
+            <Text style={styles.mapFallbackTitle}>Map unavailable</Text>
+            <Text style={styles.mapFallbackText}>{MapConfigService.getMissingGoogleMapsMessage()}</Text>
+          </View>
+        )}
 
-        {/* Top UI */}
         <SafeAreaView style={styles.topOverlay} pointerEvents="box-none">
           <View style={[styles.searchBarContainer, { backgroundColor: theme.searchBar }]}>
             <Pressable
@@ -583,7 +383,7 @@ export function HomeScreen() {
             <TextInput
               ref={searchInputRef}
               style={[styles.searchInput, { color: theme.text }]}
-              placeholder="Search blocks or rastas…"
+              placeholder="Search blocks, rastas, gates, masjids, terminals..."
               placeholderTextColor={theme.placeholder}
               value={searchQuery}
               onChangeText={handleSearch}
@@ -643,86 +443,7 @@ export function HomeScreen() {
 
           {!isSearchFocused && (
             <>
-              {routeSelectionMode !== 'idle' && (
-                <View style={styles.selectionBanner}>
-                  <Text style={styles.selectionBannerText}>
-                    {routeSelectionMode === 'selectingStart'
-                      ? 'Tap the map to set start location'
-                      : 'Tap a block, road, or map point for destination'}
-                  </Text>
-                </View>
-              )}
               {renderChips()}
-              <View style={styles.routePlannerCard}>
-                <View style={styles.routePlannerRow}>
-                  <Text style={styles.routePlannerLabel}>From</Text>
-                  <Text style={styles.routePlannerValue} numberOfLines={1}>
-                    {routePlannerOrigin?.name ?? 'Current location'}
-                  </Text>
-                </View>
-                <View style={styles.routePlannerActions}>
-                  <Pressable style={styles.routePlannerBtn} onPress={() => setRoutePlannerOrigin(null)}>
-                    <Text style={styles.routePlannerBtnText}>Use GPS</Text>
-                  </Pressable>
-                  <Pressable
-                    style={[
-                      styles.routePlannerBtn,
-                      routeSelectionMode === 'selectingStart' && styles.routePlannerBtnActive,
-                    ]}
-                    onPress={() => setRouteSelectionMode('selectingStart')}
-                  >
-                    <Text
-                      style={[
-                        styles.routePlannerBtnText,
-                        routeSelectionMode === 'selectingStart' && { color: '#FFFFFF' },
-                      ]}
-                    >
-                      Select Start
-                    </Text>
-                  </Pressable>
-                </View>
-                <View style={styles.routePlannerRow}>
-                  <Text style={styles.routePlannerLabel}>To</Text>
-                  <Text style={styles.routePlannerValue} numberOfLines={1}>
-                    {routePlannerDest?.name ?? 'Search block or tap map'}
-                  </Text>
-                </View>
-                <View style={styles.routePlannerActions}>
-                  <Pressable
-                    style={[
-                      styles.routePlannerBtn,
-                      routeSelectionMode === 'selectingDestination' && styles.routePlannerBtnActive,
-                    ]}
-                    onPress={() => setRouteSelectionMode('selectingDestination')}
-                  >
-                    <Text
-                      style={[
-                        styles.routePlannerBtnText,
-                        routeSelectionMode === 'selectingDestination' && { color: '#FFFFFF' },
-                      ]}
-                    >
-                      Select Destination
-                    </Text>
-                  </Pressable>
-                  <Pressable style={styles.routePlannerBtn} onPress={clearRoutePlanner}>
-                    <Text style={styles.routePlannerBtnText}>Clear</Text>
-                  </Pressable>
-                </View>
-              </View>
-              <View style={styles.debugCard}>
-                <Pressable style={styles.debugBtn} onPress={() => setShowGraphNodes(!showGraphNodes)}>
-                  <Text style={styles.debugBtnText}>Nodes {showGraphNodes ? 'ON' : 'OFF'}</Text>
-                </Pressable>
-                <Pressable style={styles.debugBtn} onPress={() => setShowRastaNames(!showRastaNames)}>
-                  <Text style={styles.debugBtnText}>Rasta Names {showRastaNames ? 'ON' : 'OFF'}</Text>
-                </Pressable>
-                <Pressable style={styles.debugBtn} onPress={() => setShowBlockPolygons(!showBlockPolygons)}>
-                  <Text style={styles.debugBtnText}>Blocks {showBlockPolygons ? 'ON' : 'OFF'}</Text>
-                </Pressable>
-                <Pressable style={styles.debugBtn} onPress={() => setShowRouteDiagnostics(!showRouteDiagnostics)}>
-                  <Text style={styles.debugBtnText}>Diagnostics {showRouteDiagnostics ? 'ON' : 'OFF'}</Text>
-                </Pressable>
-              </View>
             </>
           )}
         </SafeAreaView>
@@ -734,17 +455,20 @@ export function HomeScreen() {
           </View>
         )}
 
-        {/* Phase 4 — outside-venue warning */}
-        {currentLocation && !venueStatus.insideVenue && (
-          <View style={styles.outsideVenueBanner}>
-            <Text style={styles.outsideVenueText}>You are outside the Ijtema area</Text>
-            <Pressable style={styles.outsideVenueButton} onPress={() => setRouteSelectionMode('selectingStart')}>
-              <Text style={styles.outsideVenueButtonText}>Select start manually</Text>
-            </Pressable>
+        {!hasGoogleMapsKey && (
+          <View style={styles.mapWarningBanner}>
+            <Text style={styles.mapWarningText}>{MapConfigService.getMissingGoogleMapsMessage()}</Text>
           </View>
         )}
 
-        {showRouteDiagnostics && (
+        {currentLocation && !venueStatus.insideVenue && (
+          <View style={styles.outsideVenueBanner}>
+            <Text style={styles.outsideVenueText}>You are outside the Ijtema area</Text>
+            <Text style={styles.outsideVenueSubtext}>Choose a destination first, then set start manually in Directions.</Text>
+          </View>
+        )}
+
+        {__DEV__ && showRouteDiagnostics && (
           <View style={styles.diagnosticsBanner}>
             <Text style={styles.diagnosticsText}>
               {GRAPH_VALIDATION.isValid ? 'Graph validation: PASS' : 'Graph validation: FAIL'}
@@ -762,46 +486,17 @@ export function HomeScreen() {
 
         {isOffline && !offlineData.isDownloaded && (
           <View style={styles.emptyOfflineState}>
-            <Text style={styles.emptyOfflineTitle}>No offline map available.</Text>
+            <Text style={styles.emptyOfflineTitle}>Offline map not downloaded.</Text>
             <Pressable style={styles.emptyOfflineButton} onPress={() => nav.navigate('DownloadMap')}>
-              <Text style={styles.emptyOfflineButtonText}>Download now</Text>
+              <Text style={styles.emptyOfflineButtonText}>Download offline map</Text>
             </Pressable>
           </View>
         )}
 
-        {/* Map controls — hidden when search dropdown is open to prevent z-index overlap */}
         {!isSearchFocused && (
           <>
-            {routePreview && routePlannerDest && (
-              <View style={styles.previewCard}>
-                <View style={styles.previewMetrics}>
-                  <Text style={styles.previewTime}>{routePreview.estimatedTimeMin} min</Text>
-                  <Text style={styles.previewDistance}>{routePreview.totalDistance} m</Text>
-                  <Text style={styles.previewDest} numberOfLines={1}>
-                    to {routePlannerDest.name}
-                    {routePreview.nodes.length > 0 ? ` entry ${routePreview.nodes[routePreview.nodes.length - 1]}` : ''}
-                  </Text>
-                  {showRouteDiagnostics && (
-                    <Text style={styles.previewNodes} numberOfLines={1}>
-                      {routePreview.nodes.join(' -> ')}
-                    </Text>
-                  )}
-                </View>
-                <View style={styles.previewActions}>
-                  <Pressable
-                    style={styles.previewStartButton}
-                    onPress={() => nav.navigate('Directions', { destination: routePlannerDest })}
-                  >
-                    <Text style={styles.previewStartText}>Start</Text>
-                  </Pressable>
-                  <Pressable style={styles.previewClearButton} onPress={clearRoutePlanner}>
-                    <Text style={styles.previewClearText}>Clear</Text>
-                  </Pressable>
-                </View>
-              </View>
-            )}
             <View style={styles.rightControls}>
-              <Pressable style={styles.controlButton} onPress={toggleMapType}>
+              <Pressable style={styles.controlButton} onPress={openLayerOptions}>
                 <Layers size={22} color="#5F6368" />
               </Pressable>
               <Pressable style={styles.controlButton} onPress={handleCompassReset}>
@@ -823,10 +518,23 @@ export function HomeScreen() {
                 <LocateFixed size={24} color="#4285F4" />
               </Pressable>
             </View>
+
+            {__DEV__ && (
+              <View style={styles.debugCard}>
+                <Pressable style={styles.debugBtn} onPress={() => setShowGraphNodes(!showGraphNodes)}>
+                  <Text style={styles.debugBtnText}>Nodes {showGraphNodes ? 'ON' : 'OFF'}</Text>
+                </Pressable>
+                <Pressable style={styles.debugBtn} onPress={() => setShowRastaNames(!showRastaNames)}>
+                  <Text style={styles.debugBtnText}>Rasta Names {showRastaNames ? 'ON' : 'OFF'}</Text>
+                </Pressable>
+                <Pressable style={styles.debugBtn} onPress={() => setShowRouteDiagnostics(!showRouteDiagnostics)}>
+                  <Text style={styles.debugBtnText}>Diagnostics {showRouteDiagnostics ? 'ON' : 'OFF'}</Text>
+                </Pressable>
+              </View>
+            )}
           </>
         )}
 
-        {/* Bottom Sheet */}
         <BottomSheet
           ref={bottomSheetRef}
           index={-1}
@@ -838,137 +546,114 @@ export function HomeScreen() {
           <BottomSheetScrollView contentContainerStyle={styles.sheetContent}>
             {selectedPlace ? (
               <View>
-                {/* Header */}
                 <View style={styles.placeHeader}>
                   <View style={{ flex: 1 }}>
-                  <Text style={[styles.placeName, { color: theme.text }]}>{selectedPlace.name}</Text>
-                  {selectedPlace.urduName && (
-                    <Text style={[styles.placeUrdu, { color: theme.primary }]}>{selectedPlace.urduName}</Text>
-                  )}
-                  <Text style={[styles.placeCategory, { color: theme.subtext }]}>{selectedPlace.category}</Text>
+                    <Text style={[styles.placeName, { color: theme.text }]}>{selectedPlace.name}</Text>
+                    {selectedPlace.urduName && (
+                      <Text style={[styles.placeUrdu, { color: theme.primary }]}>{selectedPlace.urduName}</Text>
+                    )}
+                    <Text style={[styles.placeCategory, { color: theme.subtext }]}>{selectedPlace.category}</Text>
                   </View>
                   <Pressable onPress={() => { setSelectedPlace(null); bottomSheetRef.current?.close(); }}>
                     <X size={24} color="#5F6368" />
                   </Pressable>
                 </View>
 
-              {/* Info chips */}
-              <View style={styles.infoChips}>
-                {walkingTimeMin !== null && (
-                  <View style={styles.infoChip}>
-                    <Clock size={14} color="#2E7D32" />
-                    <Text style={styles.infoChipText}>{walkingTimeMin} min walk</Text>
-                  </View>
-                )}
-                {entryPoints.length > 0 && (
-                  <View style={styles.infoChip}>
-                    <MapPin size={14} color="#2E7D32" />
-                    <Text style={styles.infoChipText}>{entryPoints.length} entrances</Text>
-                  </View>
-                )}
-              </View>
-
-              {/* Entrance selector */}
-              {entryPoints.length > 0 && (
-                <View style={styles.entranceSection}>
-                  <Text style={styles.sectionLabel}>Choose Entrance</Text>
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                    {entryPoints.map((ep, idx) => (
-                      <Pressable
-                        key={ep.nodeId}
-                        style={[
-                          styles.entranceChip,
-                          selectedEntryIdx === idx && styles.entranceChipActive,
-                        ]}
-                        onPress={() => setSelectedEntryIdx(idx)}
-                      >
-                        <Text
-                          style={[
-                            styles.entranceNodeText,
-                            selectedEntryIdx === idx && styles.entranceChipTextActive,
-                          ]}
-                        >
-                          Entry {ep.nodeId}
-                        </Text>
-                        <Text
-                          style={[
-                            styles.entranceChipText,
-                            selectedEntryIdx === idx && styles.entranceChipTextActive,
-                          ]}
-                        >
-                          {ep.friendlyName}
-                        </Text>
-                        <Text style={styles.entranceUrdu}>{ep.urduName}</Text>
-                      </Pressable>
-                    ))}
-                  </ScrollView>
-                  {entryPoints.length === 1 && (
-                    <Text style={styles.entryHint}>Route ends at {entryPoints[0].nodeId}</Text>
+                <View style={styles.infoChips}>
+                  {walkingTimeMin !== null && (
+                    <View style={styles.infoChip}>
+                      <Clock size={14} color="#2E7D32" />
+                      <Text style={styles.infoChipText}>{walkingTimeMin} min walk</Text>
+                    </View>
+                  )}
+                  {entryPoints.length > 0 && (
+                    <View style={styles.infoChip}>
+                      <MapPin size={14} color="#2E7D32" />
+                      <Text style={styles.infoChipText}>{entryPoints.length} entrances</Text>
+                    </View>
                   )}
                 </View>
-              )}
 
-              {/* CTA */}
-              <Pressable style={styles.takeMeButton} onPress={() => selectedPlace && handleOpenDirections(selectedPlace)}>
-                <Navigation size={22} color="#FFFFFF" />
-                <Text style={styles.takeMeText}>Preview Route</Text>
-              </Pressable>
+                {entryPoints.length > 0 && (
+                  <View style={styles.entranceSection}>
+                    <Text style={styles.sectionLabel}>Entrances</Text>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                      {entryPoints.map((ep, idx) => (
+                        <Pressable
+                          key={ep.nodeId}
+                          style={[
+                            styles.entranceChip,
+                            selectedEntryIdx === idx && styles.entranceChipActive,
+                          ]}
+                          onPress={() => setSelectedEntryIdx(idx)}
+                        >
+                          <Text
+                            style={[
+                              styles.entranceNodeText,
+                              selectedEntryIdx === idx && styles.entranceChipTextActive,
+                            ]}
+                          >
+                            Entry {ep.nodeId}
+                          </Text>
+                          <Text
+                            style={[
+                              styles.entranceChipText,
+                              selectedEntryIdx === idx && styles.entranceChipTextActive,
+                            ]}
+                          >
+                            {ep.friendlyName}
+                          </Text>
+                          <Text style={styles.entranceUrdu}>{ep.urduName}</Text>
+                        </Pressable>
+                      ))}
+                    </ScrollView>
+                  </View>
+                )}
 
-              {/* Secondary actions */}
-              <View style={styles.secondaryActions}>
-                <Pressable style={styles.secondaryAction} onPress={handleToggleFav}>
-                  <Star
-                    size={20}
-                    color={isFav ? '#FBC02D' : '#1A73E8'}
-                    fill={isFav ? '#FBC02D' : 'none'}
-                  />
-                  <Text style={styles.secondaryActionText}>{isFav ? 'Saved' : 'Save'}</Text>
+                <Pressable style={styles.takeMeButton} onPress={() => selectedPlace && handleOpenDirections(selectedPlace)}>
+                  <Navigation size={22} color="#FFFFFF" />
+                  <Text style={styles.takeMeText}>Directions</Text>
                 </Pressable>
-                <Pressable
-                  style={styles.secondaryAction}
-                  onPress={() => {
-                    if (!selectedPlace) return;
-                    const { latitude, longitude } = selectedPlace.coordinate;
-                    Share.share({
-                      title: selectedPlace.name,
-                      message: `${selectedPlace.name} — Karachi Ijtema\nLocation: ${latitude.toFixed(6)}, ${longitude.toFixed(6)}`,
-                    }).catch(() => Alert.alert('Unable to share', 'Could not open the share dialog.'));
-                  }}
-                >
-                  <Share2 size={20} color="#1A73E8" />
-                  <Text style={styles.secondaryActionText}>Share</Text>
-                </Pressable>
-                <Pressable
-                  style={styles.secondaryAction}
-                  onPress={() => selectedPlace && handleOpenDirections(selectedPlace)}
-                >
-                  <Info size={20} color="#1A73E8" />
-                  <Text style={styles.secondaryActionText}>Details</Text>
-                </Pressable>
-                <Pressable
-                  style={styles.secondaryAction}
-                  onPress={() => selectedPlace && setAsStartFromPlace(selectedPlace)}
-                >
-                  <MapPin size={20} color="#1A73E8" />
-                  <Text style={styles.secondaryActionText}>Set Start</Text>
-                </Pressable>
-                <Pressable
-                  style={styles.secondaryAction}
-                  onPress={() => selectedPlace && setAsDestinationFromPlace(selectedPlace)}
-                >
-                  <Navigation size={20} color="#1A73E8" />
-                  <Text style={styles.secondaryActionText}>Set Destination</Text>
-                </Pressable>
-              </View>
 
-              {/* Description */}
-              {selectedPlace.description && (
-                <Text style={styles.placeDesc}>{selectedPlace.description}</Text>
-              )}
+                <View style={styles.secondaryActions}>
+                  <Pressable style={styles.secondaryAction} onPress={handleToggleFav}>
+                    <Star
+                      size={20}
+                      color={isFav ? '#FBC02D' : '#1A73E8'}
+                      fill={isFav ? '#FBC02D' : 'none'}
+                    />
+                    <Text style={styles.secondaryActionText}>{isFav ? 'Saved' : 'Save'}</Text>
+                  </Pressable>
+                  <Pressable
+                    style={styles.secondaryAction}
+                    onPress={() => {
+                      if (!selectedPlace) return;
+                      const { latitude, longitude } = selectedPlace.coordinate;
+                      Share.share({
+                        title: selectedPlace.name,
+                        message: `${selectedPlace.name} — Karachi Ijtema\nLocation: ${latitude.toFixed(6)}, ${longitude.toFixed(6)}`,
+                      }).catch(() => Alert.alert('Unable to share', 'Could not open the share dialog.'));
+                    }}
+                  >
+                    <Share2 size={20} color="#1A73E8" />
+                    <Text style={styles.secondaryActionText}>Share</Text>
+                  </Pressable>
+                  <Pressable
+                    style={styles.secondaryAction}
+                    onPress={() => Alert.alert('Place Details', selectedPlace.description)}
+                  >
+                    <Info size={20} color="#1A73E8" />
+                    <Text style={styles.secondaryActionText}>Details</Text>
+                  </Pressable>
+                </View>
+
+                {selectedPlace.description && (
+                  <Text style={styles.placeDesc}>{selectedPlace.description}</Text>
+                )}
               </View>
             ) : (
               <View style={styles.emptySheet}>
-                <Text style={styles.emptySheetText}>Tap a block to see details</Text>
+                <Text style={styles.emptySheetText}>Tap a block or search to see details</Text>
               </View>
             )}
           </BottomSheetScrollView>
@@ -981,6 +666,25 @@ export function HomeScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F8F9FA' },
   map: { ...StyleSheet.absoluteFillObject },
+  mapFallback: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#E8EAED',
+    paddingHorizontal: 24,
+  },
+  mapFallbackTitle: {
+    color: '#202124',
+    fontSize: 18,
+    fontWeight: '700',
+    marginBottom: 8,
+  },
+  mapFallbackText: {
+    color: '#5F6368',
+    fontSize: 14,
+    textAlign: 'center',
+    lineHeight: 20,
+  },
   topOverlay: {
     position: 'absolute',
     top: 0,
@@ -1060,49 +764,7 @@ const styles = StyleSheet.create({
   activeChip: { backgroundColor: '#E8F0FE', borderColor: '#1A73E8' },
   chipText: { fontSize: 14, color: '#3C4043', fontWeight: '500' },
   activeChipText: { color: '#1A73E8' },
-  selectionBanner: {
-    marginHorizontal: 12,
-    marginTop: 8,
-    backgroundColor: '#1A73E8',
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-  },
-  selectionBannerText: { color: '#FFFFFF', fontSize: 13, fontWeight: '700', textAlign: 'center' },
-  routePlannerCard: {
-    marginHorizontal: 12,
-    backgroundColor: 'rgba(255,255,255,0.95)',
-    borderRadius: 12,
-    padding: 10,
-    gap: 8,
-  },
-  routePlannerRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  routePlannerLabel: { width: 42, fontSize: 12, color: '#5F6368', fontWeight: '700' },
-  routePlannerValue: { flex: 1, fontSize: 12, color: '#202124' },
-  routePlannerActions: { flexDirection: 'row', gap: 8 },
-  routePlannerBtn: {
-    backgroundColor: '#E8F0FE',
-    borderRadius: 10,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-  },
-  routePlannerBtnActive: {
-    backgroundColor: '#1A73E8',
-  },
-  routePlannerBtnText: { fontSize: 12, color: '#1A73E8', fontWeight: '700' },
-  debugCard: {
-    marginHorizontal: 12,
-    marginTop: 6,
-    backgroundColor: 'rgba(32,33,36,0.88)',
-    borderRadius: 10,
-    padding: 6,
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 6,
-  },
-  debugBtn: { backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4 },
-  debugBtnText: { color: '#FFFFFF', fontSize: 11, fontWeight: '600' },
-  rightControls: { position: 'absolute', top: 180, right: 12, zIndex: 5 },
+  rightControls: { position: 'absolute', top: 160, right: 12, zIndex: 5 },
   controlButton: {
     backgroundColor: '#FFFFFF',
     width: 44,
@@ -1143,9 +805,21 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
   offlineText: { color: '#FFFFFF', fontSize: 12, fontWeight: '600', marginLeft: 6 },
+  mapWarningBanner: {
+    position: 'absolute',
+    top: 172,
+    left: 12,
+    right: 12,
+    backgroundColor: '#FFF3CD',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    zIndex: 11,
+  },
+  mapWarningText: { color: '#7C4A03', fontSize: 12, fontWeight: '600' },
   outsideVenueBanner: {
     position: 'absolute',
-    top: 168,
+    top: 220,
     left: 12,
     right: 12,
     backgroundColor: '#F29900',
@@ -1156,17 +830,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   outsideVenueText: { color: '#FFFFFF', fontSize: 13, fontWeight: '600' },
-  outsideVenueButton: {
-    marginTop: 6,
-    backgroundColor: 'rgba(255,255,255,0.22)',
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-    borderRadius: 10,
-  },
-  outsideVenueButtonText: { color: '#FFFFFF', fontSize: 12, fontWeight: '700' },
+  outsideVenueSubtext: { color: '#FFFFFF', fontSize: 11, marginTop: 4 },
   diagnosticsBanner: {
     position: 'absolute',
-    top: 220,
+    top: 260,
     left: 12,
     right: 12,
     backgroundColor: 'rgba(32,33,36,0.9)',
@@ -1191,49 +858,21 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
   },
   rastaLabelText: { color: '#FFFFFF', fontSize: 10, fontWeight: '600' },
-  startMarker: { alignItems: 'center', justifyContent: 'center' },
-  destMarker: { alignItems: 'center', justifyContent: 'center' },
   selectedMarker: { alignItems: 'center', justifyContent: 'center' },
-  previewCard: {
+  debugCard: {
     position: 'absolute',
+    top: 112,
     left: 12,
-    right: 76,
-    bottom: 24,
-    zIndex: 8,
-    backgroundColor: 'rgba(255,255,255,0.96)',
-    borderRadius: 16,
-    padding: 12,
+    right: 66,
+    backgroundColor: 'rgba(32,33,36,0.88)',
+    borderRadius: 10,
+    padding: 6,
     flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    elevation: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.18,
-    shadowRadius: 8,
+    gap: 6,
+    zIndex: 8,
   },
-  previewMetrics: { flex: 1, paddingRight: 8 },
-  previewTime: { fontSize: 20, fontWeight: '800', color: '#1A73E8' },
-  previewDistance: { fontSize: 13, color: '#3C4043', fontWeight: '700', marginTop: 1 },
-  previewDest: { fontSize: 12, color: '#5F6368', marginTop: 2 },
-  previewNodes: { fontSize: 10, color: '#1A73E8', marginTop: 4 },
-  previewActions: { gap: 8, alignItems: 'stretch' },
-  previewStartButton: {
-    backgroundColor: '#2E7D32',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 9,
-    alignItems: 'center',
-  },
-  previewStartText: { color: '#FFFFFF', fontSize: 13, fontWeight: '800' },
-  previewClearButton: {
-    backgroundColor: '#FCE8E6',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    alignItems: 'center',
-  },
-  previewClearText: { color: '#C5221F', fontSize: 12, fontWeight: '800' },
+  debugBtn: { backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4 },
+  debugBtnText: { color: '#FFFFFF', fontSize: 11, fontWeight: '600' },
   sheetIndicator: { backgroundColor: '#DADCE0', width: 36 },
   sheetContent: { padding: 20 },
   placeHeader: {
@@ -1271,7 +910,6 @@ const styles = StyleSheet.create({
   entranceChipText: { fontSize: 14, color: '#3C4043', fontWeight: '500' },
   entranceChipTextActive: { color: '#1A73E8' },
   entranceUrdu: { fontSize: 12, color: '#888', marginTop: 2 },
-  entryHint: { color: '#5F6368', fontSize: 12, fontWeight: '600', marginTop: 8 },
   takeMeButton: {
     backgroundColor: '#2E7D32',
     flexDirection: 'row',
@@ -1302,7 +940,7 @@ const styles = StyleSheet.create({
   placeDesc: { fontSize: 14, color: '#5F6368', lineHeight: 22 },
   emptySheet: { alignItems: 'center', padding: 60 },
   emptySheetText: { color: '#70757A', fontSize: 15 },
-  emptyOfflineState: { // fixed: container for the no-offline-map warning shown when device is offline without downloaded tiles
+  emptyOfflineState: {
     position: 'absolute',
     bottom: 100,
     left: 16,
@@ -1313,20 +951,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     zIndex: 20,
   },
-  emptyOfflineTitle: { // fixed: title text for the no-offline-map empty state
+  emptyOfflineTitle: {
     color: '#FFFFFF',
     fontSize: 15,
     fontWeight: '600',
     textAlign: 'center',
     marginBottom: 12,
   },
-  emptyOfflineButton: { // fixed: CTA button driving users to the download screen from the offline empty state
+  emptyOfflineButton: {
     backgroundColor: '#2E7D32',
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 8,
   },
-  emptyOfflineButtonText: { // fixed: button label text for the download CTA in the offline empty state
+  emptyOfflineButtonText: {
     color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '600',

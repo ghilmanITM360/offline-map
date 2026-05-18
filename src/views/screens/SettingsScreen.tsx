@@ -29,6 +29,7 @@ import {
   Compass,
   Calendar,
   Footprints,
+  BookOpen,
   LucideIcon,
 } from 'lucide-react-native';
 
@@ -42,11 +43,14 @@ import { useNavigation } from '@react-navigation/native';
 import { useSettingsViewModel } from '../../viewmodels/SettingsViewModel';
 import { useTheme } from '../../services/useTheme';
 import { useAppStore } from '../../store/useAppStore';
+import { MapConfigService } from '../../services/MapConfigService';
 
 export function SettingsScreen() {
   const navigation = useNavigation<any>();
   const theme = useTheme();
   const offlineData = useAppStore((s) => s.offlineData); // fixed: focused selector prevents every GPS store update from re-rendering SettingsScreen
+  const hasInternet = useAppStore((s) => s.hasInternet);
+  const hasGoogleMapsKey = MapConfigService.isGoogleMapsKeyConfigured();
   const {
     settings,
     handleToggle,
@@ -148,9 +152,21 @@ export function SettingsScreen() {
             label="Map Style"
             value={settings.mapMode === 'standard' ? 'Standard' : 'Satellite'}
             type="text"
-            onPress={() =>
-              updateSettingValue('mapMode', settings.mapMode === 'standard' ? 'satellite' : 'standard')
-            }
+            onPress={() => {
+              if (settings.mapMode === 'standard') {
+                if (!hasInternet) {
+                  Alert.alert('Satellite unavailable', 'Satellite requires internet or offline satellite tiles.');
+                  return;
+                }
+                if (!hasGoogleMapsKey) {
+                  Alert.alert('Map key missing', 'Configure Google Maps API key to enable reliable satellite map mode.');
+                  return;
+                }
+                updateSettingValue('mapMode', 'satellite');
+                return;
+              }
+              updateSettingValue('mapMode', 'standard');
+            }}
             description="Switch between road and satellite view"
           />
           <SettingItem
@@ -288,6 +304,18 @@ export function SettingsScreen() {
               ]);
             }}
             description="Free up device storage"
+          />
+        </View>
+
+        <View style={[styles.section, { backgroundColor: theme.card, borderColor: theme.border }]}>
+          <Text style={[styles.sectionTitle, { color: theme.primary }]}>Help</Text>
+          <SettingItem
+            icon={BookOpen}
+            label="App Guide"
+            value="Open"
+            type="text"
+            onPress={() => navigation.navigate('AppGuide')}
+            description="How to use offline maps, search, directions, GPS fallback, and safety tips"
           />
         </View>
 

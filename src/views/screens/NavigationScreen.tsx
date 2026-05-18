@@ -16,6 +16,7 @@ import { useNavigationViewModel } from '../../viewmodels/NavigationViewModel';
 import { InstructionService } from '../../services/InstructionService';
 import { RoutePointService } from '../../services/RoutePointService';
 import { useTheme } from '../../services/useTheme';
+import { MapConfigService } from '../../services/MapConfigService';
 import { RootStackParamList } from '../../navigation/RootNavigator';
 import { IJTEMA_DATA } from '../../constants/data';
 
@@ -41,6 +42,7 @@ export function NavigationScreen() {
   const settings = useAppStore((s) => s.settings);
   const theme = useTheme();
   const navBg = theme.background;
+  const hasGoogleMapsKey = MapConfigService.isGoogleMapsKeyConfigured();
 
   const {
     destination,
@@ -54,6 +56,7 @@ export function NavigationScreen() {
     remainingDistance,
     arrived,
     reroutePending,
+    isWeakGps,
     handleExit,
   } = useNavigationViewModel();
 
@@ -94,20 +97,21 @@ export function NavigationScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: navBg }]}>
-      <MapView
-        ref={mapRef}
-        style={styles.map}
-        provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined} // fixed: avoid forcing Google provider on iOS
-        showsUserLocation={true}
-        showsMyLocationButton={false}
-        rotateEnabled={!settings.keepNorthFixed} // fixed: disable free rotation when north-up mode is enabled
-        initialRegion={{
-          latitude: currentLocation?.latitude ?? 24.9685,
-          longitude: currentLocation?.longitude ?? 67.0015,
-          latitudeDelta: 0.002,
-          longitudeDelta: 0.002,
-        }}
-      >
+      {hasGoogleMapsKey ? (
+        <MapView
+          ref={mapRef}
+          style={styles.map}
+          provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined} // fixed: avoid forcing Google provider on iOS
+          showsUserLocation={true}
+          showsMyLocationButton={false}
+          rotateEnabled={!settings.keepNorthFixed} // fixed: disable free rotation when north-up mode is enabled
+          initialRegion={{
+            latitude: currentLocation?.latitude ?? 24.9685,
+            longitude: currentLocation?.longitude ?? 67.0015,
+            latitudeDelta: 0.002,
+            longitudeDelta: 0.002,
+          }}
+        >
         {offlineData.isDownloaded && (
           <LocalTile pathTemplate={getTilePath()} tileSize={256} zIndex={-1} />
         )}
@@ -156,10 +160,21 @@ export function NavigationScreen() {
             <View style={styles.snappedDot} />
           </Marker>
         )}
-      </MapView>
+        </MapView>
+      ) : (
+        <View style={styles.mapUnavailable}>
+          <Text style={styles.mapUnavailableTitle}>Map unavailable</Text>
+          <Text style={styles.mapUnavailableText}>{MapConfigService.getMissingGoogleMapsMessage()}</Text>
+        </View>
+      )}
 
       {/* Top instruction card */}
       <SafeAreaView style={styles.topBar}>
+        {isWeakGps && (
+          <View style={styles.weakGpsBanner}>
+            <Text style={styles.weakGpsText}>Weak GPS signal detected. Route updates may be slower.</Text>
+          </View>
+        )}
         {reroutePending ? (
           <View style={[styles.instructionCard, styles.rerouteCard]}>
             <RefreshCw size={28} color="#FFFFFF" />
@@ -241,11 +256,44 @@ const styles = StyleSheet.create({
   map: {
     ...StyleSheet.absoluteFillObject,
   },
+  mapUnavailable: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+    backgroundColor: '#E8EAED',
+  },
+  mapUnavailableTitle: {
+    color: '#202124',
+    fontSize: 18,
+    fontWeight: '700',
+    marginBottom: 8,
+  },
+  mapUnavailableText: {
+    color: '#5F6368',
+    fontSize: 14,
+    textAlign: 'center',
+    lineHeight: 20,
+  },
   topBar: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
+  },
+  weakGpsBanner: {
+    marginHorizontal: 12,
+    marginTop: 8,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    backgroundColor: '#F29900',
+  },
+  weakGpsText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '700',
+    textAlign: 'center',
   },
   instructionCard: {
     backgroundColor: '#2E7D32',

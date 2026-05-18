@@ -17,6 +17,7 @@ import { NavigationScreen } from '../views/screens/NavigationScreen';
 import { ErrorScreen } from '../views/screens/ErrorScreen';
 import { HelpScreen } from '../views/screens/HelpScreen';
 import { AboutScreen } from '../views/screens/AboutScreen';
+import { AppGuideScreen } from '../views/screens/AppGuideScreen';
 import { CustomDrawer } from '../views/components/CustomDrawer';
 import { ConnectivityService } from '../services/ConnectivityService';
 import { GPSManagerService } from '../services/GPSManagerService';
@@ -37,6 +38,7 @@ export type RootStackParamList = {
   Main: NavigatorScreenParams<DrawerParamList> | undefined;
   Directions: { destination: Place };
   Navigation: undefined;
+  AppGuide: undefined;
   Error: { title?: string; message?: string; type?: 'general' | 'connectivity' } | undefined;
 }; // fixed: type stack routes
 
@@ -86,6 +88,7 @@ export function RootNavigator() {
       <Stack.Screen name="Main" component={MainDrawer} />
       <Stack.Screen name="Directions" component={DirectionsScreen} />
       <Stack.Screen name="Navigation" component={NavigationScreen} />
+      <Stack.Screen name="AppGuide" component={AppGuideScreen} />
       <Stack.Screen name="Error" component={ErrorScreen} />
     </Stack.Navigator>
   );

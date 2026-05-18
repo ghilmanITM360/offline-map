@@ -18,6 +18,7 @@ import {
   DownloadState,
   DEFAULT_DOWNLOAD_STATE,
   FavoritePlace,
+  OfflineMapStatus,
 } from '../models/types';
 
 export type RouteSelectionMode = 'idle' | 'selectingStart' | 'selectingDestination';
@@ -25,8 +26,11 @@ export type RouteSelectionMode = 'idle' | 'selectingStart' | 'selectingDestinati
 interface AppState {
   // --- Offline map ---
   offlineData: OfflineData;
+  offlineMapStatus: OfflineMapStatus;
+  offlineMapStatusMessage: string | null;
   setOfflineDownloaded: (val: boolean) => void;
   setOfflineMapAvailable: (val: boolean) => void;
+  setOfflineMapStatus: (status: OfflineMapStatus, message?: string | null) => void;
   updateOfflineData: (data: Partial<OfflineData & { version?: string; lastUpdated?: string }>) => void;
 
   // --- Download flow ---
@@ -116,6 +120,8 @@ export const useAppStore = create<AppState>()(
     (set, get) => ({
       // --- Offline map ---
       offlineData: { isDownloaded: false },
+      offlineMapStatus: 'not_downloaded',
+      offlineMapStatusMessage: null,
       setOfflineDownloaded: (val) =>
         set((state) => ({
           offlineData: {
@@ -124,9 +130,20 @@ export const useAppStore = create<AppState>()(
             downloadDate: val ? new Date().toISOString() : undefined,
             sizeMB: val ? 24.5 : 0,
           },
+          offlineMapStatus: val ? 'downloaded' : 'not_downloaded',
+          offlineMapStatusMessage: null,
         })),
       setOfflineMapAvailable: (val) =>
-        set((state) => ({ offlineData: { ...state.offlineData, isDownloaded: val } })),
+        set((state) => ({
+          offlineData: { ...state.offlineData, isDownloaded: val },
+          offlineMapStatus: val ? 'downloaded' : 'not_downloaded',
+          offlineMapStatusMessage: null,
+        })),
+      setOfflineMapStatus: (status, message = null) =>
+        set(() => ({
+          offlineMapStatus: status,
+          offlineMapStatusMessage: message,
+        })),
       updateOfflineData: (data) =>
         set((state) => ({ offlineData: { ...state.offlineData, ...data } })),
 
@@ -258,6 +275,8 @@ export const useAppStore = create<AppState>()(
       // Only persist these keys — runtime GPS and transient UI state are not persisted
       partialize: (state) => ({
         offlineData: state.offlineData,
+        offlineMapStatus: state.offlineMapStatus,
+        offlineMapStatusMessage: state.offlineMapStatusMessage,
         downloadState: state.downloadState,
         settings: state.settings,
         recentSearches: state.recentSearches,

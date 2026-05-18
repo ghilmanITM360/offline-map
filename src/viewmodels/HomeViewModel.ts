@@ -189,6 +189,7 @@ export function useHomeViewModel() {
     isOffline,
     activeCategory,
     settings,
+    updateSettings,
     venueStatus,
     setIsMapReady,
     handleSearch,

@@ -104,6 +104,32 @@ export interface OfflineData {
   sizeMB?: number;
 }
 
+export type OfflineMapStatus =
+  | 'not_downloaded'
+  | 'downloading'
+  | 'downloaded'
+  | 'corrupt'
+  | 'needs_update';
+
+export interface OfflineMapManifest {
+  version: number;
+  mapId: string;
+  zoomLevels: number[];
+  tileCountExpected: number;
+  tileCountSaved: number;
+  completedAt?: string;
+  status: Exclude<OfflineMapStatus, 'not_downloaded'>;
+  bounds: {
+    minLat: number;
+    maxLat: number;
+    minLng: number;
+    maxLng: number;
+  };
+  checksum?: string;
+  updatedAt: string;
+  errorMessage?: string;
+}
+
 /** Granular state for the map download flow */
 export type DownloadPhase = 'idle' | 'connecting' | 'downloading' | 'paused' | 'error' | 'complete';
 

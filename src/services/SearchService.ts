@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { IJTEMA_DATA } from '../constants/data';
+import { IJTEMA_DATA, LANDMARK_PLACES } from '../constants/data';
 import { Place } from '../models/types';
 import { FuzzySearchService } from './FuzzySearchService';
 
@@ -93,6 +93,16 @@ export class SearchService {
       const matchesRawId = id.toLowerCase() === normalised || id.toLowerCase().includes(normalised);
       if (matchesName || matchesUrdu || matchesRawId) {
         if (!results.find((r) => r.id === id)) results.push(this.nodeToPlace(id, node));
+      }
+    });
+
+    // ─── Landmarks (help, medical, gates, masjid, terminals) ──────────────
+    LANDMARK_PLACES.forEach((landmark) => {
+      const matchesName = FuzzySearchService.matches(normalised, landmark.name.toLowerCase());
+      const matchesUrdu = landmark.urduName ? landmark.urduName.includes(raw) : false;
+      const matchesAlias = (landmark.aliases ?? []).some((a) => FuzzySearchService.matches(normalised, a.toLowerCase()));
+      if ((matchesName || matchesUrdu || matchesAlias) && !results.find((r) => r.id === landmark.id)) {
+        results.push(landmark);
       }
     });
 

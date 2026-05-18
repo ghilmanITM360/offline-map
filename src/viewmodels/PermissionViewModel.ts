@@ -9,18 +9,22 @@ import * as Location from 'expo-location';
 import { useAppStore } from '../store/useAppStore';
 import { OfflineMapService } from '../services/OfflineMapService';
 import { ConnectivityService } from '../services/ConnectivityService';
+import { OfflineMapStatusService } from '../services/OfflineMapStatusService';
 
 export function usePermissionViewModel() {
-  const { setHasLocationPermission } = useAppStore();
+  const { setHasLocationPermission, setOfflineMapStatus } = useAppStore();
   const [loading, setLoading] = useState(false);
 
   const navigateNext = async (navigation: any) => {
-    const [mapStatus, isConnected] = await Promise.all([
+    const [mapStatus, statusValidation, isConnected] = await Promise.all([
       OfflineMapService.getMapStatus(),
+      OfflineMapStatusService.validateAtStartup(),
       ConnectivityService.isConnected(),
     ]);
 
-    if (mapStatus.isDownloaded || !isConnected) {
+    setOfflineMapStatus(statusValidation.status, statusValidation.reason ?? null);
+
+    if (statusValidation.status === 'downloaded' || mapStatus.isDownloaded || !isConnected) {
       navigation.replace('Main');
       return;
     }

@@ -17,6 +17,8 @@ import { Coordinate, RoutePreview } from '../models/types';
 
 const ARRIVAL_THRESHOLD_M = 20;
 const REROUTE_GRACE_MS = 3000; // 3 s grace period before rerouting
+const REROUTE_COOLDOWN_MS = 15000;
+const WEAK_GPS_THRESHOLD_M = 40;
 
 export function useNavigationViewModel() {
   const {
@@ -39,6 +41,7 @@ export function useNavigationViewModel() {
   const [snappedLocation, setSnappedLocation] = useState<Coordinate | null>(currentLocation);
   const [remainingDistance, setRemainingDistance] = useState(0);
   const [arrived, setArrived] = useState(false);
+  const [isWeakGps, setIsWeakGps] = useState(false);
 
   // Refs to avoid stale closures inside the GPS callback
   const routeRef = useRef<RoutePreview | null>(null);
@@ -47,6 +50,7 @@ export function useNavigationViewModel() {
   const destinationRef = useRef(destination);
   const arrivedRef = useRef(false);
   const rerouteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastRerouteAtRef = useRef(0);
   const settingsRef = useRef(settings);
 
   useEffect(() => { routeRef.current = route; }, [route]);
@@ -98,15 +102,19 @@ export function useNavigationViewModel() {
     const destNodeIds = RoutingService.resolveDestinationNodesFromPlace(destination, loc);
     const startNodeIdOverride = routePlannerOrigin?.routingNodeId;
 
-    const routed = RoutingService.calculateRoute(loc, destNodeIds, startNodeIdOverride);
-    void walkingSpeedMs; // ETA uses walkingSpeedMs via RoutingService default; single-route path defers speed to calculateRoutes
-    if (routed) {
-      setRoute(routed);
-      routeRef.current = routed;
-      const generated = InstructionService.generateInstructions(routed.nodes);
+    const routedWithSpeed = RoutingService.calculateRoute(
+      loc,
+      destNodeIds,
+      startNodeIdOverride,
+      walkingSpeedMs,
+    );
+    if (routedWithSpeed) {
+      setRoute(routedWithSpeed);
+      routeRef.current = routedWithSpeed;
+      const generated = InstructionService.generateInstructions(routedWithSpeed.nodes);
       setInstructions(generated);
       instructionsRef.current = generated;
-      setRemainingDistance(routed.totalDistance);
+      setRemainingDistance(routedWithSpeed.totalDistance);
       // Speak the first instruction; mute state is checked via ref so this
       // effect never re-runs when the user toggles mute.
       if (!settingsRef.current.voiceInstructions) return;
@@ -128,6 +136,8 @@ export function useNavigationViewModel() {
       const currentRoute = routeRef.current;
       const dest = destinationRef.current;
       const currentSettings = settingsRef.current;
+      const gpsAccuracy = coord.accuracy ?? 0;
+      setIsWeakGps(gpsAccuracy > WEAK_GPS_THRESHOLD_M);
 
       // --- Step advancement ---
       if (steps.length > 0 && stepIdx < steps.length - 1) {
@@ -178,8 +188,11 @@ export function useNavigationViewModel() {
       // --- Off-route detection with grace period ---
       if (currentRoute && dest && currentSettings.autoReroute && !arrivedRef.current) {
         // Accuracy-aware threshold: wider tolerance when GPS is weak
-        const gpsAccuracy = coord.accuracy ?? 0;
         const offRoute = RerouteService.isOffRoute(coord, currentRoute, gpsAccuracy);
+        const inCooldown = Date.now() - lastRerouteAtRef.current < REROUTE_COOLDOWN_MS;
+        if (inCooldown) {
+          return;
+        }
 
         if (offRoute) {
           if (!rerouteTimerRef.current) {
@@ -196,8 +209,10 @@ export function useNavigationViewModel() {
                   resolvedStart.snappedCoordinate,
                   destNodeIds,
                   resolvedStart.nodeId,
+                  settingsRef.current.walkingSpeed ?? 1.4,
                 );
                 if (newRoute) {
+                  lastRerouteAtRef.current = Date.now();
                   setRoute(newRoute);
                   routeRef.current = newRoute;
                   const newInstructions = InstructionService.generateInstructions(newRoute.nodes);
@@ -267,6 +282,7 @@ export function useNavigationViewModel() {
     remainingDistance,
     arrived,
     reroutePending,
+    isWeakGps,
     handleExit,
   };
 }
