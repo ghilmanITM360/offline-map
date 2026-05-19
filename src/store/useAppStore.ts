@@ -113,6 +113,8 @@ interface AppState {
   setShowBlockPolygons: (val: boolean) => void;
   showRouteDiagnostics: boolean;
   setShowRouteDiagnostics: (val: boolean) => void;
+  developerModeEnabled: boolean;
+  setDeveloperModeEnabled: (val: boolean) => void;
 }
 
 export const useAppStore = create<AppState>()(
@@ -268,6 +270,8 @@ export const useAppStore = create<AppState>()(
       setShowBlockPolygons: (val) => set({ showBlockPolygons: val }),
       showRouteDiagnostics: false,
       setShowRouteDiagnostics: (val) => set({ showRouteDiagnostics: val }),
+      developerModeEnabled: false,
+      setDeveloperModeEnabled: (val) => set({ developerModeEnabled: val }),
     }),
     {
       name: 'ijtema-app-store',
@@ -286,6 +290,7 @@ export const useAppStore = create<AppState>()(
         showRastaNames: state.showRastaNames,
         showBlockPolygons: state.showBlockPolygons,
         showRouteDiagnostics: state.showRouteDiagnostics,
+        developerModeEnabled: state.developerModeEnabled,
       }),
     }
   )

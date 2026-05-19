@@ -27,12 +27,31 @@ function blockNumber(blockId: string): string {
 const CATEGORY_RANK: Record<string, number> = {
   Block: 0,
   Rasta: 1,
-  Intersection: 2,
-  RoadEndpoint: 3,
-  Landmark: 4,
+  Gate: 2,
+  Masjid: 3,
+  Terminal: 4,
+  Help: 5,
+  Intersection: 6,
+  RoadEndpoint: 7,
+  Landmark: 8,
 };
 
 const DEBUG_NODE_SEARCH_ENABLED = __DEV__;
+
+export interface SearchCategoryChip {
+  id: string;
+  label: string;
+}
+
+const CATEGORY_CHIPS: SearchCategoryChip[] = [
+  { id: 'all', label: 'All' },
+  { id: 'blocks', label: 'Blocks' },
+  { id: 'rastas', label: 'Rastas' },
+  { id: 'gates', label: 'Gates' },
+  { id: 'masjids', label: 'Masjids' },
+  { id: 'terminals', label: 'Terminals' },
+  { id: 'help', label: 'Help' },
+];
 
 export class SearchService {
   static search(query: string, userLocation?: { latitude: number; longitude: number }): Place[] {
@@ -126,6 +145,16 @@ export class SearchService {
 
   static searchByCategory(category: string): Place[] {
     const cat = category.toLowerCase();
+    if (cat === 'all') {
+      const grouped = new Map<string, Place>();
+      for (const categoryId of CATEGORY_CHIPS.map((c) => c.id).filter((id) => id !== 'all')) {
+        for (const place of this.searchByCategory(categoryId)) {
+          grouped.set(place.id, place);
+        }
+      }
+      return Array.from(grouped.values());
+    }
+
     const results: Place[] = [];
 
     if (cat === 'blocks') {
@@ -161,9 +190,43 @@ export class SearchService {
           aliases: [`rasta ${rastaNumber}`, `road ${rastaNumber}`, `r${rastaNumber}`],
         });
       });
+    } else if (cat === 'gates') {
+      this.searchNodesByType('gate').forEach((place) => results.push(place));
+      LANDMARK_PLACES.filter((landmark) => landmark.category === 'Gate').forEach((landmark) => results.push(landmark));
+    } else if (cat === 'masjids') {
+      this.searchNodesByType('masjid').forEach((place) => results.push(place));
+      LANDMARK_PLACES.filter((landmark) => landmark.category === 'Masjid').forEach((landmark) => results.push(landmark));
+    } else if (cat === 'terminals') {
+      Object.entries(IJTEMA_DATA.nodes).forEach(([id, node]) => {
+        if (node.name?.toLowerCase().includes('terminal') || id.startsWith('T')) {
+          const place = this.nodeToPlace(id, node);
+          results.push({ ...place, category: 'Terminal', description: place.description });
+        }
+      });
+      LANDMARK_PLACES.filter((landmark) => landmark.name.toLowerCase().includes('terminal')).forEach((landmark) =>
+        results.push({ ...landmark, category: 'Terminal' as Place['category'] }),
+      );
+    } else if (cat === 'help') {
+      LANDMARK_PLACES.filter((landmark) => {
+        const text = `${landmark.name} ${(landmark.aliases ?? []).join(' ')}`.toLowerCase();
+        return (
+          text.includes('help') ||
+          text.includes('medical') ||
+          text.includes('first aid') ||
+          text.includes('emergency') ||
+          text.includes('volunteer') ||
+          text.includes('lost')
+        );
+      }).forEach((landmark) => results.push({ ...landmark, category: 'Help' as Place['category'] }));
     }
 
-    return results;
+    const uniq = new Map<string, Place>();
+    results.forEach((place) => uniq.set(place.id, place));
+    return Array.from(uniq.values());
+  }
+
+  static getAvailableCategoryChips(): SearchCategoryChip[] {
+    return CATEGORY_CHIPS.filter((chip) => chip.id === 'all' || this.searchByCategory(chip.id).length > 0);
   }
 
   static getPlaceById(id: string): Place | null {
@@ -210,6 +273,9 @@ export class SearchService {
     } else if (node.type === 'road_end') {
       category = 'RoadEndpoint';
       description = node.name ?? id;
+      if (node.name?.toLowerCase().includes('terminal') || id.startsWith('T')) {
+        category = 'Terminal' as Place['category'];
+      }
     }
 
     return {
@@ -223,5 +289,14 @@ export class SearchService {
       resolvedRoutingNodeId: id,
       resolvedRoutingCoordinate: { latitude: node.lat, longitude: node.lng },
     };
+  }
+
+  private static searchNodesByType(type: string): Place[] {
+    const results: Place[] = [];
+    Object.entries(IJTEMA_DATA.nodes).forEach(([id, node]) => {
+      if (node.type !== type) return;
+      results.push(this.nodeToPlace(id, node));
+    });
+    return results;
   }
 }

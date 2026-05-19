@@ -44,6 +44,12 @@ export function useHomeViewModel() {
   const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const snapPoints = useMemo(() => ['15%', '50%', '92%'], []);
+  const categoryChips = useMemo(() => SearchService.getAvailableCategoryChips(), []);
+  const searchPlaceholder = useMemo(() => {
+    const labels = categoryChips.map((chip) => chip.label).filter((label) => label !== 'All');
+    if (labels.length >= 4) return 'Search blocks, rastas, gates, masjids...';
+    return labels.length > 0 ? `Search ${labels.join(', ').toLowerCase()}...` : 'Search places...';
+  }, [categoryChips]);
 
   const initialRegion: Region = {
     latitude: 24.9685,
@@ -188,6 +194,8 @@ export function useHomeViewModel() {
     offlineData,
     isOffline,
     activeCategory,
+    categoryChips,
+    searchPlaceholder,
     settings,
     updateSettings,
     venueStatus,

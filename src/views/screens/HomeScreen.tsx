@@ -85,6 +85,7 @@ export function HomeScreen() {
   const setShowBlockPolygons = useAppStore((s) => s.setShowBlockPolygons);
   const showRouteDiagnostics = useAppStore((s) => s.showRouteDiagnostics);
   const setShowRouteDiagnostics = useAppStore((s) => s.setShowRouteDiagnostics);
+  const developerModeEnabled = useAppStore((s) => s.developerModeEnabled);
   const [selectedEntryIdx, setSelectedEntryIdx] = useState(0);
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const searchInputRef = useRef<TextInput>(null);
@@ -110,6 +111,8 @@ export function HomeScreen() {
     isOffline,
     offlineData,
     activeCategory,
+    categoryChips,
+    searchPlaceholder,
     venueStatus,
     setIsMapReady,
     handleSearch,
@@ -186,10 +189,6 @@ export function HomeScreen() {
         onPress: () => setShowBlockPolygons(!showBlockPolygons),
       },
       {
-        text: showRastaNames ? 'Hide Rasta Labels' : 'Show Rasta Labels',
-        onPress: () => setShowRastaNames(!showRastaNames),
-      },
-      {
         text: mapType === 'standard' ? 'Switch to Satellite' : 'Switch to Standard',
         onPress: () => {
           if (mapType === 'standard') {
@@ -203,6 +202,14 @@ export function HomeScreen() {
           updateSettings({ mapMode: 'standard' });
         },
       },
+      ...(developerModeEnabled
+        ? [
+            {
+              text: showRastaNames ? 'Hide Rasta Labels' : 'Show Rasta Labels',
+              onPress: () => setShowRastaNames(!showRastaNames),
+            },
+          ]
+        : []),
       { text: 'Cancel', style: 'cancel' },
     ];
 
@@ -210,11 +217,6 @@ export function HomeScreen() {
   };
 
   const renderChips = () => {
-    const categories = [
-      { id: 'blocks', label: 'Blocks' },
-      { id: 'rastas', label: 'Rastas' },
-    ];
-
     return (
       <ScrollView
         horizontal
@@ -222,7 +224,7 @@ export function HomeScreen() {
         style={styles.chipsContainer}
         contentContainerStyle={styles.chipsContent}
       >
-        {categories.map((cat) => (
+        {categoryChips.map((cat) => (
           <Pressable
             key={cat.id}
             style={[styles.chip, activeCategory === cat.id && styles.activeChip]}
@@ -324,7 +326,7 @@ export function HomeScreen() {
             ) : null;
           })}
 
-          {showGraphNodes && __DEV__ && Object.entries(IJTEMA_DATA.nodes).map(([nodeId, node]) => {
+          {showGraphNodes && __DEV__ && developerModeEnabled && Object.entries(IJTEMA_DATA.nodes).map(([nodeId, node]) => {
             const color = nodeId.startsWith('P') ? '#D32F2F' : nodeId.startsWith('S') ? '#00ACC1' : '#616161';
             return (
               <Marker
@@ -339,7 +341,7 @@ export function HomeScreen() {
             );
           })}
 
-          {showRastaNames && Array.from(new Map(
+          {showRastaNames && __DEV__ && developerModeEnabled && Array.from(new Map(
             IJTEMA_DATA.edges
               .filter((edge) => !!edge.name)
               .map((edge) => [edge.name!, edge]),
@@ -383,7 +385,7 @@ export function HomeScreen() {
             <TextInput
               ref={searchInputRef}
               style={[styles.searchInput, { color: theme.text }]}
-              placeholder="Search blocks, rastas, gates, masjids, terminals..."
+              placeholder={searchPlaceholder}
               placeholderTextColor={theme.placeholder}
               value={searchQuery}
               onChangeText={handleSearch}
@@ -468,7 +470,7 @@ export function HomeScreen() {
           </View>
         )}
 
-        {__DEV__ && showRouteDiagnostics && (
+        {__DEV__ && developerModeEnabled && showRouteDiagnostics && (
           <View style={styles.diagnosticsBanner}>
             <Text style={styles.diagnosticsText}>
               {GRAPH_VALIDATION.isValid ? 'Graph validation: PASS' : 'Graph validation: FAIL'}
@@ -519,7 +521,7 @@ export function HomeScreen() {
               </Pressable>
             </View>
 
-            {__DEV__ && (
+            {__DEV__ && developerModeEnabled && (
               <View style={styles.debugCard}>
                 <Pressable style={styles.debugBtn} onPress={() => setShowGraphNodes(!showGraphNodes)}>
                   <Text style={styles.debugBtnText}>Nodes {showGraphNodes ? 'ON' : 'OFF'}</Text>
@@ -861,9 +863,9 @@ const styles = StyleSheet.create({
   selectedMarker: { alignItems: 'center', justifyContent: 'center' },
   debugCard: {
     position: 'absolute',
-    top: 112,
+    bottom: 96,
     left: 12,
-    right: 66,
+    right: 12,
     backgroundColor: 'rgba(32,33,36,0.88)',
     borderRadius: 10,
     padding: 6,

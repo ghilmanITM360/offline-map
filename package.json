@@ -11,13 +11,15 @@
     "typecheck": "tsc --noEmit",
     "test:offline-download": "node --import tsx scripts/test-offline-download.ts",
     "test:routing": "node --import tsx scripts/test-routing.ts",
+    "test:same-nearest-node": "node --import tsx scripts/test-same-nearest-node.ts",
     "test:gps-fallback": "node --import tsx scripts/test-gps-fallback.ts",
     "test:home-ux": "node --import tsx scripts/test-home-ux.ts",
+    "test:directions-ux": "node --import tsx scripts/test-directions-ux.ts",
     "test:settings-guide": "node --import tsx scripts/test-settings-guide.ts",
     "test:offline-rendering": "node --import tsx scripts/test-offline-rendering.ts",
     "test:route-smoke": "node --import tsx scripts/test-route-smoke.ts",
     "test:graph-validation": "node --import tsx scripts/test-graph-validation.ts",
-    "test": "npm run test:offline-download && npm run test:routing && npm run test:gps-fallback && npm run test:home-ux && npm run test:settings-guide && npm run test:offline-rendering && npm run test:route-smoke && npm run test:graph-validation"
+    "test": "npm run test:offline-download && npm run test:routing && npm run test:same-nearest-node && npm run test:gps-fallback && npm run test:home-ux && npm run test:directions-ux && npm run test:settings-guide && npm run test:offline-rendering && npm run test:route-smoke && npm run test:graph-validation"
   },
   "dependencies": {
     "@gorhom/bottom-sheet": "^5.0.0",

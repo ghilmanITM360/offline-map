@@ -14,6 +14,12 @@ export interface VenueStatus {
   insideBlock: string | null; // Block ID if GPS is inside a block polygon
 }
 
+interface RouteNodePlan {
+  startNodeIds: string[];
+  targetNodeIds: string[];
+  skippedSameNodePairs: Array<{ startNodeId: string; destNodeId: string }>;
+}
+
 export class RoutingService {
   // ─── Venue / block detection ───────────────────────────────────────────────
 
@@ -135,6 +141,13 @@ export class RoutingService {
     return nearest ? [nearest] : [];
   }
 
+  static resolveOriginNodesForCoordinate(
+    startCoord: Coordinate,
+    startNodeIdOverride?: string,
+  ): string[] {
+    return this.resolveOriginNodeCandidates(startCoord, startNodeIdOverride);
+  }
+
   private static isUsableRoute(route: RoutePreview | null): route is RoutePreview {
     return !!route && route.totalDistance > 0 && route.nodes.length > 1 && route.segments.length > 0;
   }
@@ -193,8 +206,8 @@ export class RoutingService {
     startNodeIdOverride?: string,
     walkingSpeedMs: number = 1.4,
   ): RoutePreview | null {
-    const startNodeIds = this.resolveOriginNodeCandidates(startCoord, startNodeIdOverride);
-    const targetNodeIds = this.uniqueValidNodeIds(destinationNodeIds);
+    const nodePlan = this.resolveRouteNodePlan(startCoord, destinationNodeIds, startNodeIdOverride);
+    const { startNodeIds, targetNodeIds } = nodePlan;
 
     let bestRoute: RoutePreview | null = null;
 
@@ -232,8 +245,8 @@ export class RoutingService {
     walkingSpeedMs: number = 1.4,
     startNodeIdOverride?: string,
   ): RouteAlternative[] {
-    const startNodeIds = this.resolveOriginNodeCandidates(startCoord, startNodeIdOverride);
-    const targetNodeIds = this.uniqueValidNodeIds(destinationNodeIds);
+    const nodePlan = this.resolveRouteNodePlan(startCoord, destinationNodeIds, startNodeIdOverride);
+    const { startNodeIds, targetNodeIds } = nodePlan;
     const results: RouteAlternative[] = [];
 
     // --- Route 1: Fastest (plain A*) ---
@@ -292,6 +305,14 @@ export class RoutingService {
     }
 
     return results;
+  }
+
+  static explainRouteNodeResolution(
+    startCoord: Coordinate,
+    destinationNodeIds: string[],
+    startNodeIdOverride?: string,
+  ): RouteNodePlan {
+    return this.resolveRouteNodePlan(startCoord, destinationNodeIds, startNodeIdOverride);
   }
 
   // ─── A* core ─────────────────────────────────────────────────────────────
@@ -420,6 +441,30 @@ export class RoutingService {
       totalDistance,
       estimatedTimeMin: Math.ceil(totalDistance / (walkingSpeedMs * 60)),
       segments,
+    };
+  }
+
+  private static resolveRouteNodePlan(
+    startCoord: Coordinate,
+    destinationNodeIds: string[],
+    startNodeIdOverride?: string,
+  ): RouteNodePlan {
+    const startNodeIds = this.resolveOriginNodeCandidates(startCoord, startNodeIdOverride);
+    const targetNodeIds = this.uniqueValidNodeIds(destinationNodeIds);
+    const skippedSameNodePairs: Array<{ startNodeId: string; destNodeId: string }> = [];
+
+    for (const startNodeId of startNodeIds) {
+      for (const destNodeId of targetNodeIds) {
+        if (startNodeId === destNodeId) {
+          skippedSameNodePairs.push({ startNodeId, destNodeId });
+        }
+      }
+    }
+
+    return {
+      startNodeIds,
+      targetNodeIds,
+      skippedSameNodePairs,
     };
   }
 

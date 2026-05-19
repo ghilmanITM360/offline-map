@@ -65,6 +65,36 @@ export function useDirectionsViewModel(destination: Place | null) {
       return;
     }
 
+    if (useCurrentStart && !RoutingService.isInsideVenue(originCoord)) {
+      setLoadState('needs_origin');
+      setErrorMessage('You are outside the Ijtema area. Choose a start point inside the ground or use the nearest gate.');
+      setRoute(null);
+      setAlternatives([]);
+      setInstructions([]);
+      setRouteAlternatives([]);
+      return;
+    }
+
+    if (!useCurrentStart && !RoutingService.isInsideVenue(originCoord)) {
+      setLoadState('needs_origin');
+      setErrorMessage('Selected start is outside the Ijtema area. Choose a start point inside the ground.');
+      setRoute(null);
+      setAlternatives([]);
+      setInstructions([]);
+      setRouteAlternatives([]);
+      return;
+    }
+
+    if (manualStart && destination && manualStart.id === destination.id) {
+      setLoadState('error');
+      setErrorMessage('Start and destination are the same. Choose a different starting point.');
+      setRoute(null);
+      setAlternatives([]);
+      setInstructions([]);
+      setRouteAlternatives([]);
+      return;
+    }
+
     setLoadState('loading');
     setErrorMessage(null);
 
@@ -73,6 +103,16 @@ export function useDirectionsViewModel(destination: Place | null) {
         const walkingSpeedMs = settings.walkingSpeed ?? 1.4;
         const destNodeIds = RoutingService.resolveDestinationNodesFromPlace(destination, originCoord);
         const startNodeIdOverride = manualStart?.routingNodeId;
+        const nodePlan = RoutingService.explainRouteNodeResolution(originCoord, destNodeIds, startNodeIdOverride);
+        const hasNonSamePair = nodePlan.startNodeIds.some((startNodeId) =>
+          nodePlan.targetNodeIds.some((destNodeId) => destNodeId !== startNodeId),
+        );
+
+        if (!hasNonSamePair) {
+          resolve([]);
+          return;
+        }
+
         const alts = RoutingService.calculateRoutes(originCoord, destNodeIds, walkingSpeedMs, startNodeIdOverride);
         resolve(alts);
       });
@@ -85,8 +125,20 @@ export function useDirectionsViewModel(destination: Place | null) {
       const best = alts[0]?.route ?? null;
 
       if (!best) {
+        const destNodeIds = RoutingService.resolveDestinationNodesFromPlace(destination, originCoord);
+        const startNodeIdOverride = manualStart?.routingNodeId;
+        const nodePlan = RoutingService.explainRouteNodeResolution(originCoord, destNodeIds, startNodeIdOverride);
+        const sameOnly =
+          nodePlan.startNodeIds.length > 0 &&
+          nodePlan.targetNodeIds.length > 0 &&
+          nodePlan.startNodeIds.every((startNodeId) => nodePlan.targetNodeIds.every((destNodeId) => destNodeId === startNodeId));
+
         setLoadState('error');
-        setErrorMessage('Could not calculate route. Choose a different start point.');
+        setErrorMessage(
+          sameOnly
+            ? 'Start and destination are the same. Choose a different start point.'
+            : 'Could not calculate route. Choose a different start point.',
+        );
         setRoute(null);
         setAlternatives([]);
         setInstructions([]);
@@ -95,6 +147,15 @@ export function useDirectionsViewModel(destination: Place | null) {
       }
 
       const generated = InstructionService.generateInstructions(best.nodes);
+      if (generated.length === 0) {
+        setLoadState('error');
+        setErrorMessage('Could not generate route steps. Choose a different start point.');
+        setRoute(null);
+        setAlternatives([]);
+        setInstructions([]);
+        setRouteAlternatives([]);
+        return;
+      }
 
       setAlternatives(alts);
       setRouteAlternatives(alts);

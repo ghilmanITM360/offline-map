@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -45,12 +45,17 @@ import { useTheme } from '../../services/useTheme';
 import { useAppStore } from '../../store/useAppStore';
 import { MapConfigService } from '../../services/MapConfigService';
 
+declare const __DEV__: boolean;
+
 export function SettingsScreen() {
   const navigation = useNavigation<any>();
   const theme = useTheme();
   const offlineData = useAppStore((s) => s.offlineData); // fixed: focused selector prevents every GPS store update from re-rendering SettingsScreen
   const hasInternet = useAppStore((s) => s.hasInternet);
+  const developerModeEnabled = useAppStore((s) => s.developerModeEnabled);
+  const setDeveloperModeEnabled = useAppStore((s) => s.setDeveloperModeEnabled);
   const hasGoogleMapsKey = MapConfigService.isGoogleMapsKeyConfigured();
+  const [versionTapCount, setVersionTapCount] = useState(0);
   const {
     settings,
     handleToggle,
@@ -112,6 +117,21 @@ export function SettingsScreen() {
       </View>
     </Pressable>
   );
+
+  const handleVersionTap = () => {
+    const nextCount = versionTapCount + 1;
+    if (nextCount >= 7) {
+      const nextEnabled = !developerModeEnabled;
+      setDeveloperModeEnabled(nextEnabled);
+      setVersionTapCount(0);
+      Alert.alert(
+        nextEnabled ? 'Developer mode enabled' : 'Developer mode disabled',
+        nextEnabled ? 'Debug overlays and controls are now available in development builds.' : 'Debug overlays are now hidden.',
+      );
+      return;
+    }
+    setVersionTapCount(nextCount);
+  };
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
@@ -317,10 +337,21 @@ export function SettingsScreen() {
             onPress={() => navigation.navigate('AppGuide')}
             description="How to use offline maps, search, directions, GPS fallback, and safety tips"
           />
+          {__DEV__ && (
+            <SettingItem
+              icon={Shield}
+              label="Developer Mode"
+              value={developerModeEnabled}
+              onToggle={() => setDeveloperModeEnabled(!developerModeEnabled)}
+              description="Show graph/debug overlays and diagnostics"
+            />
+          )}
         </View>
 
         <View style={styles.footer}>
-          <Text style={[styles.version, { color: theme.subtext }]}>Version 1.0.0</Text>
+          <Pressable onPress={handleVersionTap}>
+            <Text style={[styles.version, { color: theme.subtext }]}>Version 1.0.0</Text>
+          </Pressable>
           <Text style={[styles.copyright, { color: theme.subtext }]}>
             © 2026 Karachi Ijtema Navigation
           </Text>

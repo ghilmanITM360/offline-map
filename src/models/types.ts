@@ -65,6 +65,8 @@ export interface Place {
     | 'Masjid'
     | 'Gate'
     | 'Rasta'
+    | 'Terminal'
+    | 'Help'
     | 'Intersection'
     | 'RoadEndpoint'
     | 'Landmark'
