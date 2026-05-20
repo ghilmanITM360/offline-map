@@ -18,7 +18,7 @@ export interface GraphValidationResult {
 }
 
 function isConnectedGraph(data: IjtemaGraphData): boolean {
-  const nodeIds = Object.keys(data.nodes);
+  const nodeIds = Object.keys(data.nodes).filter((nodeId) => !data.nodes[nodeId].nearestRoadNode);
   if (nodeIds.length === 0) return false;
 
   const adjacency: Record<string, Set<string>> = {};
@@ -127,7 +127,7 @@ function pathDistance(data: IjtemaGraphData, nodes: string[]): number {
 
 function resolveRouteTestNodes(data: IjtemaGraphData, id: string): string[] {
   if (data.blocks[id]) return data.blocks[id].entry_nodes;
-  if (data.nodes[id]) return [id];
+  if (data.nodes[id]) return [data.nodes[id].nearestRoadNode ?? id];
   return [];
 }
 

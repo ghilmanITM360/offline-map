@@ -36,7 +36,7 @@ const CATEGORY_RANK: Record<string, number> = {
   Landmark: 8,
 };
 
-const DEBUG_NODE_SEARCH_ENABLED = __DEV__;
+const DEBUG_NODE_SEARCH_ENABLED = typeof __DEV__ !== 'undefined' && __DEV__;
 
 export interface SearchCategoryChip {
   id: string;
@@ -104,7 +104,7 @@ export class SearchService {
       const isDebugNode = /^(P\d+|S\d+|T\d+)$/.test(id);
       if (isDebugNode && !DEBUG_NODE_SEARCH_ENABLED) return;
       if (!node.name && !isDebugNode) return;
-      if (node.nearestRoadNode) return;   // skip off-graph landmark nodes
+      if (node.nearestRoadNode && node.type !== 'gate' && node.type !== 'masjid') return;
 
       const displayName = node.name ?? id;
       const matchesName  = FuzzySearchService.matches(normalised, displayName.toLowerCase());
@@ -285,9 +285,15 @@ export class SearchService {
       category,
       description,
       coordinate: { latitude: node.lat, longitude: node.lng },
-      routingNodeId: id,
-      resolvedRoutingNodeId: id,
-      resolvedRoutingCoordinate: { latitude: node.lat, longitude: node.lng },
+      routingNodeId: node.nearestRoadNode ?? id,
+      resolvedRoutingNodeId: node.nearestRoadNode ?? id,
+      resolvedRoutingCoordinate: node.nearestRoadNode
+        ? {
+            latitude: IJTEMA_DATA.nodes[node.nearestRoadNode].lat,
+            longitude: IJTEMA_DATA.nodes[node.nearestRoadNode].lng,
+          }
+        : { latitude: node.lat, longitude: node.lng },
+      aliases: node.type === 'gate' ? [id.toLowerCase(), id, node.name ?? id, 'gate', 'masjid gate'] : undefined,
     };
   }
 

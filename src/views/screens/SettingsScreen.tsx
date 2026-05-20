@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -12,6 +12,7 @@ import {
   Pressable,
   Switch,
   Alert,
+  AppState,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -63,6 +64,8 @@ export function SettingsScreen() {
     handleRedownloadMap,
     handleDeleteMap,
     handleReRequestPermission,
+    locationPermissionState,
+    refreshLocationPermissionState,
   } = useSettingsViewModel();
 
   type SettingItemProps = {
@@ -87,7 +90,11 @@ export function SettingsScreen() {
     danger,
   }: SettingItemProps) => (
     <Pressable
-      style={[styles.settingItem, { borderBottomColor: theme.border }]}
+      android_ripple={{ color: `${theme.primary}22` }}
+      style={({ pressed }) => [
+        styles.settingItem,
+        { borderBottomColor: theme.border, opacity: pressed ? 0.72 : 1 },
+      ]}
       onPress={onPress}
     >
       <View style={styles.settingMain}>
@@ -133,6 +140,36 @@ export function SettingsScreen() {
     setVersionTapCount(nextCount);
   };
 
+  useEffect(() => {
+    void refreshLocationPermissionState();
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') {
+        void refreshLocationPermissionState();
+      }
+    });
+    return () => sub.remove();
+  }, [refreshLocationPermissionState]);
+
+  const locationPermissionLabel = (() => {
+    if (!locationPermissionState) return 'Checking';
+    if (!locationPermissionState.granted) return 'Not allowed';
+    if (!locationPermissionState.servicesEnabled) return 'Location Off';
+    return 'Allowed';
+  })();
+
+  const locationPermissionDescription = (() => {
+    if (!locationPermissionState) return 'Checking current location permission status';
+    if (!locationPermissionState.granted) {
+      return locationPermissionState.canAskAgain
+        ? 'Tap Manage to request location permission'
+        : 'Not allowed. Tap Manage to change permission in Android settings';
+    }
+    if (!locationPermissionState.servicesEnabled) {
+      return 'Permission allowed, but device location is off. Tap Manage to open location settings';
+    }
+    return 'Tap Manage to change permission in Android settings';
+  })();
+
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
       <View style={[styles.header, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
@@ -156,12 +193,12 @@ export function SettingsScreen() {
           <SettingItem
             icon={Globe}
             label="Language"
-            value={settings.language === 'en' ? 'English' : 'اردو'}
+            value={settings.language === 'en' ? 'English (voice)' : 'اردو (voice)'}
             type="text"
             onPress={() =>
               updateSettingValue('language', settings.language === 'en' ? 'ur' : 'en')
             }
-            description="App language and voice instructions"
+            description="Changes voice instruction language. Full app translation is not enabled yet"
           />
         </View>
 
@@ -258,10 +295,10 @@ export function SettingsScreen() {
           <SettingItem
             icon={Shield}
             label="Location Permission"
-            value="Manage"
+            value={locationPermissionLabel}
             type="text"
             onPress={handleReRequestPermission}
-            description="Grant or revoke location access"
+            description={locationPermissionDescription}
           />
         </View>
 
@@ -311,7 +348,7 @@ export function SettingsScreen() {
             type="text"
             danger
             onPress={() => {
-              Alert.alert('Delete Map', 'This will remove all offline map data.', [
+              Alert.alert('Delete offline map data?', 'This removes downloaded tiles and resets map status. You can download again later.', [
                 { text: 'Cancel', style: 'cancel' },
                 {
                   text: 'Delete',

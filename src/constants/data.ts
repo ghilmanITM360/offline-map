@@ -59,6 +59,12 @@ export const IJTEMA_DATA: {
     "P10": { id: "P10", lat: 24.967417, lng: 67.002694, type: "intersection" },
     "P11": { id: "P11", lat: 24.967417, lng: 67.003917, type: "intersection" },
     "P12": { id: "P12", lat: 24.967417, lng: 67.004861, type: "intersection" },
+
+    // --- Member Masjid / Block 2 gates (off-graph POIs routed via nearest rasta node) ---
+    "C1": { id: "C1", lat: 24.967583, lng: 66.999333, type: "gate", name: "Member Masjid Gate C1", urduName: "ممبر مسجد گیٹ C1", nearestRoadNode: "S14" },
+    "C2": { id: "C2", lat: 24.967583, lng: 67.000528, type: "gate", name: "Member Masjid Gate C2", urduName: "ممبر مسجد گیٹ C2", nearestRoadNode: "P8" },
+    "C3": { id: "C3", lat: 24.969306, lng: 66.999389, type: "gate", name: "Member Masjid Gate C3", urduName: "ممبر مسجد گیٹ C3", nearestRoadNode: "S13" },
+    "C4": { id: "C4", lat: 24.969306, lng: 67.000556, type: "gate", name: "Member Masjid Gate C4", urduName: "ممبر مسجد گیٹ C4", nearestRoadNode: "P1" },
   },
 
   edges: [
@@ -271,6 +277,7 @@ export const IJTEMA_DATA: {
     // ========================================================
     "B2": {
       id: "B2", name: "Block 2", urduName: "بلاک ۲",
+      role: "Member Masjid / Main Member Masjid",
       center: { latitude: 24.968500, longitude: 66.999917 },
       corners: [
         { latitude: 24.969306, longitude: 66.999389 },
@@ -284,11 +291,23 @@ export const IJTEMA_DATA: {
         { latitude: 24.967583, longitude: 67.000528 },
         { latitude: 24.967583, longitude: 66.999333 },
       ],
-      gates: ["S13", "P1", "P8", "S14"],
+      gates: ["C1", "C2", "C3", "C4"],
       entry_nodes: ["S13", "P1", "P8", "S14"],
       connectedRastas: ["West Terminal Road", "Rasta 01", "Rasta 09", "Rasta 11"],
       neighboringBlocks: ["B1", "B3", "B5", "B6"],
-      aliases: ["B2", "Block 2", "بلاک ۲"],
+      aliases: [
+        "B2",
+        "Block 2",
+        "Member Masjid",
+        "Main Member Masjid",
+        "Masjid",
+        "Member Mosque",
+        "Markazi Member Masjid",
+        "ممبر مسجد",
+        "مرکزی ممبر مسجد",
+        "مسجد",
+        "بلاک ۲",
+      ],
     },
     "B5": {
       id: "B5", name: "Block 5", urduName: "بلاک ۵",
@@ -868,6 +887,10 @@ export const LANDMARK_PLACES: Place[] = [
 
 /** Nearest road-node IDs for each off-graph landmark (used by RoutingService). */
 export const LANDMARK_NEAREST_NODE: Record<string, string> = {
+  C1:                 'S14',
+  C2:                 'P8',
+  C3:                 'S13',
+  C4:                 'P1',
   LM_MASJID_MAIN:     'P6',
   LM_MASJID_NORTH:    'P3',
   LM_GATE_MAIN_NORTH: 'T2',

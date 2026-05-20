@@ -5,7 +5,7 @@
 
 import { getDistance } from 'geolib';
 import { IJTEMA_DATA } from '../constants/data';
-import { Coordinate, BlockEntryPoint } from '../models/types';
+import { Coordinate, BlockEntryPoint, Gate } from '../models/types';
 
 /** Maps a raw entry_node ID to its cardinal side relative to the block. */
 const ENTRY_SIDE_MAP: Record<string, BlockEntryPoint['side']> = {
@@ -68,6 +68,25 @@ export class PlaceDetailService {
         urduName: label.ur,
       };
     });
+  }
+
+  static getBlockGates(blockId: string): Gate[] {
+    const block = (IJTEMA_DATA.blocks as any)[blockId];
+    if (!block?.gates?.length) return [];
+
+    const gates: Gate[] = [];
+    for (const nodeId of block.gates as string[]) {
+      const node = (IJTEMA_DATA.nodes as any)[nodeId];
+      if (!node || node.type !== 'gate') continue;
+      gates.push({
+        id: nodeId,
+        name: node.name ?? nodeId,
+        urduName: node.urduName,
+        coordinate: { latitude: node.lat, longitude: node.lng },
+        blockId,
+      });
+    }
+    return gates;
   }
 
   /**

@@ -13,6 +13,7 @@ import {
   TextInput,
   KeyboardAvoidingView,
   Platform,
+  Animated,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import MapView, { Marker, Polygon, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
@@ -40,6 +41,7 @@ export function DirectionsScreen() {
   const hasGoogleMapsKey = MapConfigService.isGoogleMapsKeyConfigured();
   const insets = useSafeAreaInsets();
   const previewMapRef = useRef<MapView>(null);
+  const routeCardAnim = useRef(new Animated.Value(0)).current;
   const [startSearch, setStartSearch] = useState('');
 
   const {
@@ -52,13 +54,15 @@ export function DirectionsScreen() {
     handleStartNavigation,
     loadState,
     errorMessage,
+    manualStart,
     setManualStartPlace,
     chooseCurrentLocation,
+    chooseRememberedLocation,
     calculateRoute,
     useCurrentStart,
   } = useDirectionsViewModel(destination);
 
-  const startCoordinate = route?.coordinates[0] ?? (currentLocation ?? null);
+  const startCoordinate = route?.coordinates[0] ?? (useCurrentStart ? (currentLocation ?? null) : (manualStart?.coordinate ?? null));
   const endNodeId = route?.nodes[route.nodes.length - 1];
   const destinationCoordinate =
     RoutePointService.nodeToCoordinate(endNodeId) ?? RoutePointService.getDestinationCoordinate(destination);
@@ -73,7 +77,15 @@ export function DirectionsScreen() {
   const showNeedStartMessage = loadState === 'needs_origin';
   const showLoading = loadState === 'loading';
   const showError = loadState === 'error';
-  const outsideVenue = currentLocation ? !RoutingService.isInsideVenue(currentLocation) : false;
+  const outsideVenue = useCurrentStart && currentLocation ? !RoutingService.isInsideVenue(currentLocation) : false;
+
+  useEffect(() => {
+    Animated.timing(routeCardAnim, {
+      toValue: route && loadState === 'ready' ? 1 : 0,
+      duration: 180,
+      useNativeDriver: true,
+    }).start();
+  }, [loadState, route, routeCardAnim]);
 
   useEffect(() => {
     if (!hasGoogleMapsKey || !previewMapRef.current) return;
@@ -128,6 +140,7 @@ export function DirectionsScreen() {
           style={styles.scroll}
           contentContainerStyle={[styles.scrollContent, { paddingBottom: Math.max(insets.bottom, 18) + 28 }]}
           keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
         >
           <View style={styles.inputCard}>
             <Text style={styles.fieldLabel}>FROM</Text>
@@ -145,12 +158,24 @@ export function DirectionsScreen() {
               <Pressable
                 style={[styles.startActionBtn, useCurrentStart && styles.startActionBtnActive]}
                 onPress={() => {
-                  chooseCurrentLocation();
-                  void calculateRoute();
+                  void (async () => {
+                    await chooseCurrentLocation();
+                  })();
                 }}
               >
                 <LocateFixed size={16} color={useCurrentStart ? '#FFFFFF' : '#1A73E8'} />
                 <Text style={[styles.startActionText, useCurrentStart && styles.startActionTextActive]}>Use My Current Location</Text>
+              </Pressable>
+              <Pressable
+                style={styles.startActionBtn}
+                onPress={() => {
+                  if (chooseRememberedLocation()) {
+                    setStartSearch('Last known location');
+                  }
+                }}
+              >
+                <MapPin size={16} color="#1A73E8" />
+                <Text style={styles.startActionText}>Use Remembered</Text>
               </Pressable>
             </View>
 
@@ -255,7 +280,7 @@ export function DirectionsScreen() {
                 )}
                 {startCoordinate && <Marker coordinate={startCoordinate} pinColor="#1A73E8" title="Start" />}
                 {destinationCoordinate && (
-                  <Marker coordinate={destinationCoordinate} pinColor="#2E7D32" title={destination.name} />
+                  <Marker coordinate={destinationCoordinate} pinColor="#EA4335" title={destination.name} />
                 )}
               </MapView>
             ) : (
@@ -294,7 +319,7 @@ export function DirectionsScreen() {
             <View style={styles.infoCard}>
               <Text style={styles.infoTitle}>Choose starting point</Text>
               <Text style={styles.infoDesc}>
-                GPS is unavailable right now. Select a starting point manually to continue.
+                GPS is unavailable right now. Use remembered location if shown, or select a starting point manually to continue.
               </Text>
             </View>
           )}
@@ -317,7 +342,15 @@ export function DirectionsScreen() {
           )}
 
           {route && loadState === 'ready' && (
-            <View style={styles.routeCard}>
+            <Animated.View
+              style={[
+                styles.routeCard,
+                {
+                  opacity: routeCardAnim,
+                  transform: [{ translateY: routeCardAnim.interpolate({ inputRange: [0, 1], outputRange: [10, 0] }) }],
+                },
+              ]}
+            >
               <View style={styles.routeInfo}>
                 <View style={styles.routeMetrics}>
                   <View style={styles.routeMetric}>
@@ -339,7 +372,7 @@ export function DirectionsScreen() {
                   <Text style={styles.startButtonText}>Start Navigation</Text>
                 </Pressable>
               </View>
-            </View>
+            </Animated.View>
           )}
 
           <View style={styles.stepsSection}>
@@ -457,8 +490,10 @@ const styles = StyleSheet.create({
   },
   startActionsRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     marginTop: 8,
     marginBottom: 8,
+    gap: 8,
   },
   startActionBtn: {
     flexDirection: 'row',

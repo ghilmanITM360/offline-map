@@ -14,7 +14,7 @@ assert(screen.includes('ScrollView'), 'Directions screen should use scroll layou
 assert(screen.includes('paddingBottom'), 'Directions screen should add bottom padding for safe area');
 assert(screen.includes('fitToCoordinates'), 'Directions map preview should fit route bounds when route exists');
 assert(screen.includes('MAP_BOUNDS'), 'Directions map preview should focus on venue bounds, not city-wide');
-assert(screen.includes('pinColor="#2E7D32"'), 'Destination marker should be visually highlighted');
+assert(screen.includes('pinColor="#EA4335"'), 'Destination marker should be visually highlighted in red');
 
 assert(vm.includes('ROUTE_TIMEOUT_MS'), 'Directions route calculation should include timeout');
 assert(vm.includes('outside the Ijtema area'), 'Directions should handle outside-area start with clear guidance');

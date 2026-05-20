@@ -11,13 +11,29 @@ import { InstructionService, Instruction } from '../services/InstructionService'
 import { RoutePointService } from '../services/RoutePointService';
 import { Place, RouteAlternative, RoutePreview } from '../models/types';
 import { RootStackParamList } from '../navigation/RootNavigator';
+import { LocationAccessService } from '../services/LocationAccessService';
 
 const ROUTE_TIMEOUT_MS = 3500;
 
 type RouteLoadState = 'idle' | 'loading' | 'ready' | 'error' | 'needs_origin';
 
+function formatLastKnownAge(timestamp: string | null): string {
+  if (!timestamp) return 'from an earlier session';
+  const ageMs = Date.now() - new Date(timestamp).getTime();
+  if (!Number.isFinite(ageMs) || ageMs < 0) return 'from an earlier session';
+  const minutes = Math.max(1, Math.round(ageMs / 60_000));
+  if (minutes < 60) return `from ${minutes} minute${minutes === 1 ? '' : 's'} ago`;
+  const hours = Math.round(minutes / 60);
+  return `from ${hours} hour${hours === 1 ? '' : 's'} ago`;
+}
+
 export function useDirectionsViewModel(destination: Place | null) {
   const currentLocation = useAppStore((s) => s.currentLocation);
+  const currentLocationSource = useAppStore((s) => s.currentLocationSource);
+  const lastKnownLocation = useAppStore((s) => s.lastKnownLocation);
+  const lastKnownLocationUpdatedAt = useAppStore((s) => s.lastKnownLocationUpdatedAt);
+  const setCurrentLocation = useAppStore((s) => s.setCurrentLocation);
+  const setHasLocationPermission = useAppStore((s) => s.setHasLocationPermission);
   const settings = useAppStore((s) => s.settings);
   const {
     startNavigation,
@@ -44,7 +60,7 @@ export function useDirectionsViewModel(destination: Place | null) {
   }, [currentLocation]);
 
   const originLabel = useCurrentStart
-    ? (currentLocation ? 'My current location' : 'Choose starting point')
+    ? (currentLocation ? (currentLocationSource === 'remembered' ? 'Last known location' : 'My current location') : 'Choose starting point')
     : (manualStart?.name ?? 'Choose starting point');
 
   const calculateRoute = useCallback(async () => {
@@ -198,14 +214,49 @@ export function useDirectionsViewModel(destination: Place | null) {
     setManualStart(start);
   };
 
-  const chooseCurrentLocation = () => {
-    if (!currentLocation) {
+  const chooseCurrentLocation = async (): Promise<boolean> => {
+    const resolved = await LocationAccessService.resolveCurrentLocation(true);
+    setHasLocationPermission(resolved.permissionState.granted);
+
+    if (!resolved.ok || !resolved.coordinate) {
+      setUseCurrentStart(false);
       setLoadState('needs_origin');
-      setErrorMessage('Current location unavailable. Choose starting point manually.');
-      return;
+      setErrorMessage(resolved.message ?? 'Current location unavailable. Choose starting point manually.');
+      return false;
     }
+
+    setCurrentLocation(resolved.coordinate, resolved.source ?? 'live');
+    if (!RoutingService.isInsideVenue(resolved.coordinate)) {
+      setUseCurrentStart(false);
+      setLoadState('needs_origin');
+      setErrorMessage('You are outside the Ijtema area. Choose a start point inside the ground or use the nearest gate.');
+      return false;
+    }
+
     setUseCurrentStart(true);
     setManualStart(null);
+    return true;
+  };
+
+  const chooseRememberedLocation = (): boolean => {
+    if (!lastKnownLocation || !RoutingService.isInsideVenue(lastKnownLocation)) {
+      setUseCurrentStart(false);
+      setLoadState('needs_origin');
+      setErrorMessage('No remembered location inside the Ijtema ground is available. Choose a start point manually.');
+      return false;
+    }
+
+    setUseCurrentStart(false);
+    setManualStart({
+      id: 'LAST_KNOWN_LOCATION',
+      name: 'Last known location',
+      category: 'CustomPoint',
+      description: `Using last known location ${formatLastKnownAge(lastKnownLocationUpdatedAt)}.`,
+      coordinate: lastKnownLocation,
+      snappedCoordinate: lastKnownLocation,
+    });
+    setErrorMessage(`Using last known location ${formatLastKnownAge(lastKnownLocationUpdatedAt)}.`);
+    return true;
   };
 
   const handleStartNavigation = (navigation: NativeStackNavigationProp<RootStackParamList, 'Directions'>) => {
@@ -232,6 +283,7 @@ export function useDirectionsViewModel(destination: Place | null) {
     manualStart,
     setManualStartPlace,
     chooseCurrentLocation,
+    chooseRememberedLocation,
     calculateRoute,
     useCurrentStart,
   };

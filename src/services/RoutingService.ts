@@ -191,8 +191,11 @@ export class RoutingService {
     const landmarkNode = LANDMARK_NEAREST_NODE[placeId];
     if (landmarkNode) return [landmarkNode];
 
-    // Raw graph node?
-    if (IJTEMA_DATA.nodes[placeId]) return [placeId];
+    // Raw graph node or off-graph POI node?
+    if (IJTEMA_DATA.nodes[placeId]) {
+      const node = IJTEMA_DATA.nodes[placeId];
+      return [node.nearestRoadNode ?? placeId];
+    }
 
     // Fallback — nearest graph node
     return [this.findNearestNode(placeCoord)];

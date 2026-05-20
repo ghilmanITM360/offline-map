@@ -19,6 +19,7 @@ import {
   DEFAULT_DOWNLOAD_STATE,
   FavoritePlace,
   OfflineMapStatus,
+  LocationSource,
 } from '../models/types';
 
 export type RouteSelectionMode = 'idle' | 'selectingStart' | 'selectingDestination';
@@ -44,8 +45,10 @@ interface AppState {
 
   // --- GPS ---
   currentLocation: Coordinate | null;
-  setCurrentLocation: (loc: Coordinate | null) => void;
+  currentLocationSource: LocationSource | null;
+  setCurrentLocation: (loc: Coordinate | null, source?: LocationSource) => void;
   lastKnownLocation: Coordinate | null;
+  lastKnownLocationUpdatedAt: string | null;
   setLastKnownLocation: (loc: Coordinate | null) => void;
   snappedLocation: Coordinate | null;
   setSnappedLocation: (loc: Coordinate | null) => void;
@@ -173,12 +176,17 @@ export const useAppStore = create<AppState>()(
 
       // --- GPS ---
       currentLocation: null,
-      setCurrentLocation: (loc) => {
-        set({ currentLocation: loc });
-        if (loc) set({ lastKnownLocation: loc });
+      currentLocationSource: null,
+      setCurrentLocation: (loc, source = 'live') => {
+        const now = new Date().toISOString();
+        set({ currentLocation: loc, currentLocationSource: loc ? source : null });
+        if (loc && source !== 'remembered' && source !== 'manual') {
+          set({ lastKnownLocation: loc, lastKnownLocationUpdatedAt: now });
+        }
       },
       lastKnownLocation: null,
-      setLastKnownLocation: (loc) => set({ lastKnownLocation: loc }),
+      lastKnownLocationUpdatedAt: null,
+      setLastKnownLocation: (loc) => set({ lastKnownLocation: loc, lastKnownLocationUpdatedAt: loc ? new Date().toISOString() : null }),
       snappedLocation: null,
       setSnappedLocation: (loc) => set({ snappedLocation: loc }),
 
@@ -286,6 +294,7 @@ export const useAppStore = create<AppState>()(
         recentSearches: state.recentSearches,
         favorites: state.favorites,
         lastKnownLocation: state.lastKnownLocation,
+        lastKnownLocationUpdatedAt: state.lastKnownLocationUpdatedAt,
         showGraphNodes: state.showGraphNodes,
         showRastaNames: state.showRastaNames,
         showBlockPolygons: state.showBlockPolygons,

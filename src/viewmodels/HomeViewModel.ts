@@ -4,6 +4,7 @@
  */
 
 import { useState, useRef, useMemo, useEffect, useCallback } from 'react';
+import { Alert } from 'react-native';
 import MapView, { Region } from 'react-native-maps';
 import BottomSheet from '@gorhom/bottom-sheet';
 import { useAppStore } from '../store/useAppStore';
@@ -11,12 +12,26 @@ import { Place } from '../models/types';
 import { SearchService } from '../services/SearchService';
 import { GPSManagerService } from '../services/GPSManagerService';
 import { RoutingService } from '../services/RoutingService';
+import { LocationAccessService } from '../services/LocationAccessService';
+import { RoutePointService } from '../services/RoutePointService';
+
+function formatLastKnownAge(timestamp: string | null): string {
+  if (!timestamp) return 'from an earlier session';
+  const ageMs = Date.now() - new Date(timestamp).getTime();
+  if (!Number.isFinite(ageMs) || ageMs < 0) return 'from an earlier session';
+  const minutes = Math.max(1, Math.round(ageMs / 60_000));
+  if (minutes < 60) return `from ${minutes} minute${minutes === 1 ? '' : 's'} ago`;
+  const hours = Math.round(minutes / 60);
+  return `from ${hours} hour${hours === 1 ? '' : 's'} ago`;
+}
 
 export function useHomeViewModel() {
   const mapRef = useRef<MapView>(null);
   const bottomSheetRef = useRef<BottomSheet>(null);
 
   const currentLocation = useAppStore((s) => s.currentLocation);
+  const lastKnownLocation = useAppStore((s) => s.lastKnownLocation);
+  const lastKnownLocationUpdatedAt = useAppStore((s) => s.lastKnownLocationUpdatedAt);
   const hasLocationPermission = useAppStore((s) => s.hasLocationPermission);
   const settings = useAppStore((s) => s.settings);
   const recentSearches = useAppStore((s) => s.recentSearches);
@@ -27,6 +42,9 @@ export function useHomeViewModel() {
   const searchResults = useAppStore((s) => s.searchResults);
   const isNavigating = useAppStore((s) => s.isNavigating);
   const updateSettings = useAppStore((s) => s.updateSettings);
+  const setCurrentLocation = useAppStore((s) => s.setCurrentLocation);
+  const setSnappedLocation = useAppStore((s) => s.setSnappedLocation);
+  const setHasLocationPermission = useAppStore((s) => s.setHasLocationPermission);
   const addRecentSearch = useAppStore((s) => s.addRecentSearch);
   const setSelectedPlace = useAppStore((s) => s.setSelectedPlace);
   const setSearchQuery = useAppStore((s) => s.setSearchQuery);
@@ -120,19 +138,66 @@ export function useHomeViewModel() {
     );
   };
 
-  const handleRecenter = () => {
-    if (currentLocation && mapRef.current) {
+  const handleRecenter = useCallback(async () => {
+    const recenterTo = (location: typeof currentLocation) => {
+      if (!location || !mapRef.current) return;
       updateSettings({ autoFollowLocation: true });
       mapRef.current.animateToRegion(
         {
-          ...currentLocation,
+          ...location,
           latitudeDelta: 0.005,
           longitudeDelta: 0.005,
         },
         1000
       );
+      const nearestNode = RoutingService.findNearestNode(location);
+      setSnappedLocation(RoutePointService.nodeToCoordinate(nearestNode));
+      setVenueStatus(RoutingService.getVenueStatus(location));
+    };
+
+    const resolved = await LocationAccessService.resolveCurrentLocation(true);
+    setHasLocationPermission(resolved.permissionState.granted);
+
+    if (resolved.ok && resolved.coordinate) {
+      setCurrentLocation(resolved.coordinate, resolved.source ?? 'live');
+      recenterTo(resolved.coordinate);
+
+      if (!RoutingService.isInsideVenue(resolved.coordinate)) {
+        Alert.alert(
+          'Outside Ijtema area',
+          'You are outside the mapped venue. We centered on your position, but routes should start from a point inside the ground.',
+        );
+      } else if (resolved.source === 'device_last_known') {
+        Alert.alert('Using last known location', resolved.message ?? 'Live GPS was unavailable, so the device last known location is being shown.');
+      }
+      return;
     }
-  };
+
+    const canUseRemembered = lastKnownLocation && RoutingService.isInsideVenue(lastKnownLocation);
+    const actions = [
+      { text: 'Choose start manually', style: 'default' as const },
+      ...(!resolved.permissionState.canAskAgain && !resolved.permissionState.granted
+        ? [{ text: 'Open Settings', onPress: () => { void LocationAccessService.openAppSettings(); } }]
+        : []),
+      ...(canUseRemembered
+        ? [{
+            text: 'Use remembered location',
+            onPress: () => {
+              setCurrentLocation(lastKnownLocation, 'remembered');
+              recenterTo(lastKnownLocation);
+              Alert.alert('Using last known location', `Last known location ${formatLastKnownAge(lastKnownLocationUpdatedAt)}.`);
+            },
+          }]
+        : []),
+      { text: 'OK', style: 'cancel' as const },
+    ];
+
+    Alert.alert(
+      'Location unavailable',
+      resolved.message ?? 'Current location could not be found. Use a remembered location or choose a start manually in Directions.',
+      actions,
+    );
+  }, [lastKnownLocation, lastKnownLocationUpdatedAt, setCurrentLocation, setHasLocationPermission, setSnappedLocation, updateSettings]);
 
   // Phase 11 — compass reset (north-up, pitch 0)
   const handleCompassReset = useCallback(() => {

@@ -18,8 +18,9 @@ import {
   Alert,
   Keyboard,
   BackHandler,
+  Animated,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import MapView, { Marker, Polygon, Polyline, PROVIDER_GOOGLE, LocalTile } from 'react-native-maps';
 import {
   Menu,
@@ -76,6 +77,7 @@ function getDisplayName(item: Place | SearchResult): string {
 export function HomeScreen() {
   const nav = useNavigation<HomeScreenNavigationProp>();
   const currentLocation = useAppStore((s) => s.currentLocation);
+  const currentLocationSource = useAppStore((s) => s.currentLocationSource);
   const favorites = useAppStore((s) => s.favorites);
   const showGraphNodes = useAppStore((s) => s.showGraphNodes);
   const setShowGraphNodes = useAppStore((s) => s.setShowGraphNodes);
@@ -90,7 +92,12 @@ export function HomeScreen() {
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const searchInputRef = useRef<TextInput>(null);
   const theme = useTheme();
+  const insets = useSafeAreaInsets();
   const hasGoogleMapsKey = MapConfigService.isGoogleMapsKeyConfigured();
+  const [outsideBannerDismissed, setOutsideBannerDismissed] = useState(false);
+  const searchFocusAnim = useRef(new Animated.Value(0)).current;
+  const warningAnim = useRef(new Animated.Value(0)).current;
+  const userPulseAnim = useRef(new Animated.Value(0)).current;
 
   const dismissSearch = useCallback(() => {
     setIsSearchFocused(false);
@@ -146,6 +153,9 @@ export function HomeScreen() {
   const entryPoints = selectedPlace?.category === 'Block'
     ? PlaceDetailService.getEntryPoints(selectedPlace.id)
     : [];
+  const blockGates = selectedPlace?.category === 'Block'
+    ? PlaceDetailService.getBlockGates(selectedPlace.id)
+    : [];
 
   const selectedPlaceMarkerCoordinate = (() => {
     if (!selectedPlace) return null;
@@ -163,6 +173,34 @@ export function HomeScreen() {
     : null;
 
   const isFav = selectedPlace ? favorites.some((f) => f.placeId === selectedPlace.id) : false;
+  const showOutsideBanner = !!currentLocation && !venueStatus.insideVenue && !outsideBannerDismissed;
+
+  useEffect(() => {
+    Animated.timing(searchFocusAnim, {
+      toValue: isSearchFocused ? 1 : 0,
+      duration: 160,
+      useNativeDriver: false,
+    }).start();
+  }, [isSearchFocused, searchFocusAnim]);
+
+  useEffect(() => {
+    Animated.timing(warningAnim, {
+      toValue: showOutsideBanner ? 1 : 0,
+      duration: 180,
+      useNativeDriver: true,
+    }).start();
+  }, [showOutsideBanner, warningAnim]);
+
+  useEffect(() => {
+    const pulse = Animated.loop(
+      Animated.sequence([
+        Animated.timing(userPulseAnim, { toValue: 1, duration: 1100, useNativeDriver: true }),
+        Animated.timing(userPulseAnim, { toValue: 0, duration: 0, useNativeDriver: true }),
+      ]),
+    );
+    pulse.start();
+    return () => pulse.stop();
+  }, [userPulseAnim]);
 
   const handleToggleFav = () => {
     if (!selectedPlace) return;
@@ -366,6 +404,30 @@ export function HomeScreen() {
               </View>
             </Marker>
           )}
+
+          {currentLocation && (
+            <Marker coordinate={currentLocation} anchor={{ x: 0.5, y: 0.5 }}>
+              <View style={styles.userMarkerWrap}>
+                <Animated.View
+                  style={[
+                    styles.userMarkerPulse,
+                    {
+                      opacity: userPulseAnim.interpolate({ inputRange: [0, 1], outputRange: [0.38, 0] }),
+                      transform: [{ scale: userPulseAnim.interpolate({ inputRange: [0, 1], outputRange: [1, 2.3] }) }],
+                    },
+                  ]}
+                />
+                <View style={styles.userMarker}>
+                  <Navigation size={12} color="#FFFFFF" />
+                </View>
+                {currentLocationSource === 'remembered' && (
+                  <View style={styles.rememberedLabel}>
+                    <Text style={styles.rememberedLabelText}>last known</Text>
+                  </View>
+                )}
+              </View>
+            </Marker>
+          )}
           </MapView>
         ) : (
           <View style={styles.mapFallback}>
@@ -375,7 +437,19 @@ export function HomeScreen() {
         )}
 
         <SafeAreaView style={styles.topOverlay} pointerEvents="box-none">
-          <View style={[styles.searchBarContainer, { backgroundColor: theme.searchBar }]}>
+          <Animated.View
+            style={[
+              styles.searchBarContainer,
+              {
+                backgroundColor: theme.searchBar,
+                borderColor: searchFocusAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: ['rgba(218,220,224,0)', '#1A73E8'],
+                }),
+                transform: [{ scale: searchFocusAnim.interpolate({ inputRange: [0, 1], outputRange: [1, 1.01] }) }],
+              },
+            ]}
+          >
             <Pressable
               onPress={() => { dismissSearch(); nav.dispatch(DrawerActions.openDrawer()); }}
               style={styles.iconButton}
@@ -411,7 +485,7 @@ export function HomeScreen() {
                 <Mic size={22} color="#4285F4" />
               </Pressable>
             )}
-          </View>
+          </Animated.View>
 
           {isSearchFocused && (searchResults.length > 0 || (searchQuery.length === 0 && recentSearches.length > 0)) && (
             <View style={[styles.searchResultsContainer, { backgroundColor: theme.card, borderColor: theme.border }]}>
@@ -463,11 +537,25 @@ export function HomeScreen() {
           </View>
         )}
 
-        {currentLocation && !venueStatus.insideVenue && (
-          <View style={styles.outsideVenueBanner}>
-            <Text style={styles.outsideVenueText}>You are outside the Ijtema area</Text>
-            <Text style={styles.outsideVenueSubtext}>Choose a destination first, then set start manually in Directions.</Text>
-          </View>
+        {showOutsideBanner && (
+          <Animated.View
+            style={[
+              styles.outsideVenueBanner,
+              {
+                top: Math.max(insets.top, Platform.OS === 'android' ? StatusBar.currentHeight ?? 0 : 0) + 118,
+                opacity: warningAnim,
+                transform: [{ translateY: warningAnim.interpolate({ inputRange: [0, 1], outputRange: [-8, 0] }) }],
+              },
+            ]}
+          >
+            <View style={styles.outsideVenueTextWrap}>
+              <Text style={styles.outsideVenueText}>Outside Ijtema area</Text>
+              <Text style={styles.outsideVenueSubtext}>Routes should start inside the ground.</Text>
+            </View>
+            <Pressable style={styles.bannerCloseButton} onPress={() => setOutsideBannerDismissed(true)}>
+              <X size={16} color="#FFFFFF" />
+            </Pressable>
+          </Animated.View>
         )}
 
         {__DEV__ && developerModeEnabled && showRouteDiagnostics && (
@@ -497,7 +585,12 @@ export function HomeScreen() {
 
         {!isSearchFocused && (
           <>
-            <View style={styles.rightControls}>
+            <View
+              style={[
+                styles.rightControls,
+                { top: Math.max(insets.top, Platform.OS === 'android' ? StatusBar.currentHeight ?? 0 : 0) + (showOutsideBanner ? 190 : 142) },
+              ]}
+            >
               <Pressable style={styles.controlButton} onPress={openLayerOptions}>
                 <Layers size={22} color="#5F6368" />
               </Pressable>
@@ -515,8 +608,8 @@ export function HomeScreen() {
               </View>
             </View>
 
-            <View style={styles.bottomControls}>
-              <Pressable style={styles.recenterButton} onPress={handleRecenter}>
+            <View style={[styles.bottomControls, { bottom: Math.max(insets.bottom, 16) + 96 }]}>
+              <Pressable style={styles.recenterButton} onPress={() => { void handleRecenter(); }}>
                 <LocateFixed size={24} color="#4285F4" />
               </Pressable>
             </View>
@@ -555,6 +648,9 @@ export function HomeScreen() {
                       <Text style={[styles.placeUrdu, { color: theme.primary }]}>{selectedPlace.urduName}</Text>
                     )}
                     <Text style={[styles.placeCategory, { color: theme.subtext }]}>{selectedPlace.category}</Text>
+                    {selectedPlace.category === 'Block' && (IJTEMA_DATA.blocks as any)[selectedPlace.id]?.role && (
+                      <Text style={styles.placeRole}>{(IJTEMA_DATA.blocks as any)[selectedPlace.id].role}</Text>
+                    )}
                   </View>
                   <Pressable onPress={() => { setSelectedPlace(null); bottomSheetRef.current?.close(); }}>
                     <X size={24} color="#5F6368" />
@@ -606,6 +702,35 @@ export function HomeScreen() {
                             {ep.friendlyName}
                           </Text>
                           <Text style={styles.entranceUrdu}>{ep.urduName}</Text>
+                        </Pressable>
+                      ))}
+                    </ScrollView>
+                  </View>
+                )}
+
+                {blockGates.length > 0 && (
+                  <View style={styles.entranceSection}>
+                    <Text style={styles.sectionLabel}>Member Masjid Gates</Text>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                      {blockGates.map((gate) => (
+                        <Pressable
+                          key={gate.id}
+                          style={styles.gateChip}
+                          onPress={() => {
+                            handlePlaceSelect({
+                              id: gate.id,
+                              name: gate.name,
+                              urduName: gate.urduName,
+                              category: 'Gate',
+                              description: `${gate.name} entrance for Block 2 / Member Masjid.`,
+                              coordinate: gate.coordinate,
+                              routingNodeId: IJTEMA_DATA.nodes[gate.id]?.nearestRoadNode,
+                            });
+                          }}
+                        >
+                          <Text style={styles.entranceNodeText}>{gate.id}</Text>
+                          <Text style={styles.entranceChipText}>{gate.name.replace('Member Masjid Gate ', 'Gate ')}</Text>
+                          {gate.urduName && <Text style={styles.entranceUrdu}>{gate.urduName}</Text>}
                         </Pressable>
                       ))}
                     </ScrollView>
@@ -704,6 +829,7 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     paddingHorizontal: 8,
     height: 52,
+    borderWidth: 1,
     elevation: 4,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -750,7 +876,7 @@ const styles = StyleSheet.create({
   searchResultName: { fontSize: 15, color: '#202124', fontWeight: '500' },
   searchResultCategory: { fontSize: 13, color: '#70757A', marginTop: 1 },
   chipsContainer: { marginTop: 10 },
-  chipsContent: { paddingHorizontal: 12, paddingBottom: 8 },
+  chipsContent: { paddingLeft: 12, paddingRight: 88, paddingBottom: 8 },
   chip: {
     backgroundColor: '#FFFFFF',
     paddingHorizontal: 18,
@@ -766,7 +892,7 @@ const styles = StyleSheet.create({
   activeChip: { backgroundColor: '#E8F0FE', borderColor: '#1A73E8' },
   chipText: { fontSize: 14, color: '#3C4043', fontWeight: '500' },
   activeChipText: { color: '#1A73E8' },
-  rightControls: { position: 'absolute', top: 160, right: 12, zIndex: 5 },
+  rightControls: { position: 'absolute', right: 12, zIndex: 5 },
   controlButton: {
     backgroundColor: '#FFFFFF',
     width: 44,
@@ -784,7 +910,7 @@ const styles = StyleSheet.create({
   },
   zoomButton: { width: 44, height: 44, justifyContent: 'center', alignItems: 'center' },
   zoomDivider: { height: 1, backgroundColor: '#DADCE0', marginHorizontal: 8 },
-  bottomControls: { position: 'absolute', bottom: 24, right: 12, zIndex: 5 },
+  bottomControls: { position: 'absolute', right: 12, zIndex: 5 },
   recenterButton: {
     backgroundColor: '#FFFFFF',
     width: 56,
@@ -821,18 +947,22 @@ const styles = StyleSheet.create({
   mapWarningText: { color: '#7C4A03', fontSize: 12, fontWeight: '600' },
   outsideVenueBanner: {
     position: 'absolute',
-    top: 220,
     left: 12,
-    right: 12,
+    right: 76,
     backgroundColor: '#F29900',
-    borderRadius: 8,
-    paddingHorizontal: 14,
+    borderRadius: 10,
+    paddingLeft: 12,
+    paddingRight: 8,
     paddingVertical: 8,
     zIndex: 10,
+    flexDirection: 'row',
     alignItems: 'center',
+    minHeight: 48,
   },
+  outsideVenueTextWrap: { flex: 1 },
   outsideVenueText: { color: '#FFFFFF', fontSize: 13, fontWeight: '600' },
-  outsideVenueSubtext: { color: '#FFFFFF', fontSize: 11, marginTop: 4 },
+  outsideVenueSubtext: { color: '#FFFFFF', fontSize: 11, marginTop: 2 },
+  bannerCloseButton: { padding: 6, marginLeft: 4 },
   diagnosticsBanner: {
     position: 'absolute',
     top: 260,
@@ -861,6 +991,37 @@ const styles = StyleSheet.create({
   },
   rastaLabelText: { color: '#FFFFFF', fontSize: 10, fontWeight: '600' },
   selectedMarker: { alignItems: 'center', justifyContent: 'center' },
+  userMarkerWrap: {
+    width: 76,
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  userMarkerPulse: {
+    position: 'absolute',
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: '#1A73E8',
+  },
+  userMarker: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#1A73E8',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+  },
+  rememberedLabel: {
+    marginTop: 2,
+    backgroundColor: 'rgba(26,115,232,0.92)',
+    borderRadius: 7,
+    paddingHorizontal: 5,
+    paddingVertical: 2,
+  },
+  rememberedLabelText: { color: '#FFFFFF', fontSize: 9, fontWeight: '700' },
   debugCard: {
     position: 'absolute',
     bottom: 96,
@@ -886,6 +1047,7 @@ const styles = StyleSheet.create({
   placeName: { fontSize: 24, fontWeight: 'bold', color: '#202124' },
   placeUrdu: { fontSize: 18, color: '#2E7D32', marginTop: 2 },
   placeCategory: { fontSize: 14, color: '#70757A', marginTop: 4 },
+  placeRole: { fontSize: 13, color: '#1A73E8', fontWeight: '700', marginTop: 4 },
   infoChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 },
   infoChip: {
     flexDirection: 'row',
@@ -906,6 +1068,16 @@ const styles = StyleSheet.create({
     backgroundColor: '#F1F3F4',
     marginRight: 8,
     minWidth: 120,
+  },
+  gateChip: {
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 14,
+    backgroundColor: '#FFF5F5',
+    borderWidth: 1,
+    borderColor: '#EA4335',
+    marginRight: 8,
+    minWidth: 132,
   },
   entranceChipActive: { backgroundColor: '#E8F0FE', borderWidth: 1.5, borderColor: '#1A73E8' },
   entranceNodeText: { fontSize: 13, color: '#202124', fontWeight: '800', marginBottom: 2 },

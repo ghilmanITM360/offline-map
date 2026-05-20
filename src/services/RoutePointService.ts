@@ -23,6 +23,9 @@ export class RoutePointService {
 
   static getDestinationCoordinate(place?: Place | null): Coordinate | null {
     if (!place) return null;
+    if (place.category !== 'Block') {
+      return place.coordinate;
+    }
     const explicitNode = this.getExplicitRoutingNode(place);
     const explicitCoord = this.nodeToCoordinate(explicitNode);
     return place.resolvedRoutingCoordinate ?? place.snappedCoordinate ?? explicitCoord ?? place.coordinate;

@@ -23,19 +23,29 @@ export interface MapStatus {
 
 export class OfflineMapService {
   private static db: SQLite.SQLiteDatabase | null = null;
+  private static initPromise: Promise<void> | null = null;
 
   static async init() {
     if (this.db) return;
-    this.db = await SQLite.openDatabaseAsync(DB_NAME);
-    await this.db.execAsync(`
-      CREATE TABLE IF NOT EXISTS map_data (id TEXT PRIMARY KEY, data TEXT, download_date TEXT);
-      CREATE TABLE IF NOT EXISTS tiles (z INTEGER, x INTEGER, y INTEGER, local_uri TEXT, PRIMARY KEY (z, x, y));
-    `);
+    if (!this.initPromise) {
+      this.initPromise = (async () => {
+        this.db = await SQLite.openDatabaseAsync(DB_NAME);
+        await this.db.execAsync(`
+          CREATE TABLE IF NOT EXISTS map_data (id TEXT PRIMARY KEY, data TEXT, download_date TEXT);
+          CREATE TABLE IF NOT EXISTS tiles (z INTEGER, x INTEGER, y INTEGER, local_uri TEXT, PRIMARY KEY (z, x, y));
+        `);
 
-    // Ensure tile directory exists
-    if (!getTileDir().exists) { // fixed: use Directory.exists instead of deprecated legacy helpers
-      getTileDir().create({ idempotent: true, intermediates: true }); // fixed: create tiles directory through new API
+        if (!getTileDir().exists) {
+          getTileDir().create({ idempotent: true, intermediates: true });
+        }
+      })().catch((error) => {
+        this.db = null;
+        throw error;
+      }).finally(() => {
+        this.initPromise = null;
+      });
     }
+    await this.initPromise;
   }
 
   /**
@@ -71,11 +81,17 @@ export class OfflineMapService {
   }
 
   static async getStoredTileCount(): Promise<number> {
-    await this.init();
-    const countRow = await this.db!.getFirstAsync<{ cnt: number }>(
-      'SELECT COUNT(*) AS cnt FROM tiles;'
-    );
-    return countRow?.cnt ?? 0;
+    try {
+      await this.init();
+      if (!this.db) return 0;
+      const countRow = await this.db.getFirstAsync<{ cnt: number }>(
+        'SELECT COUNT(*) AS cnt FROM tiles;'
+      );
+      return countRow?.cnt ?? 0;
+    } catch (error) {
+      console.warn('[OfflineMapService] getStoredTileCount failed', error);
+      return 0;
+    }
   }
 
   /**
@@ -141,13 +157,33 @@ export class OfflineMapService {
   }
 
   static async deleteMapData() {
-    await this.init();
-    await this.db!.runAsync('DELETE FROM map_data WHERE id = ?;', ['ijtema_2026']);
-    await this.db!.runAsync('DELETE FROM tiles;');
+    try {
+      await this.init();
+      if (this.db) {
+        await this.db.runAsync('DELETE FROM map_data WHERE id = ?;', ['ijtema_2026']);
+        await this.db.runAsync('DELETE FROM tiles;');
+      }
+    } catch (error) {
+      console.warn('[OfflineMapService] SQLite cleanup skipped or failed', error);
+    }
 
-    // Delete tile directory
-    if (getTileDir().exists) { // fixed: use Directory.exists for cleanup
-      getTileDir().delete(); // fixed: delete tiles with the new Directory API
+    try {
+      if (getTileDir().exists) {
+        getTileDir().delete();
+      }
+    } catch (error) {
+      console.warn('[OfflineMapService] Tile directory cleanup skipped or failed', error);
+    }
+  }
+
+  static async closeDatabase(): Promise<void> {
+    if (!this.db) return;
+    try {
+      await this.db.closeAsync();
+    } catch (error) {
+      console.warn('[OfflineMapService] closeDatabase failed', error);
+    } finally {
+      this.db = null;
     }
   }
 }

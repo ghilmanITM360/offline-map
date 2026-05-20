@@ -10,6 +10,7 @@ import { ConnectivityService } from '../services/ConnectivityService';
 import { RootStackParamList } from '../navigation/RootNavigator';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { OfflineMapStatusService } from '../services/OfflineMapStatusService';
+import { OfflineDataService } from '../services/OfflineDataService';
 
 const REDIRECT_DELAY_MS = 1200;
 
@@ -292,14 +293,8 @@ export function useDownloadMapViewModel() {
 
   const repairDownload = useCallback(async () => {
     logDownload('repair requested');
-    await OfflineMapService.deleteMapData();
-    await OfflineMapStatusService.clearManifest();
-    await OfflineMapStatusService.setDownloadedFlag(false);
-    resetDownloadState();
+    await OfflineDataService.deleteAllMapData();
     safeSetDownloadState({ phase: 'idle', errorMessage: null, progress: 0, downloadedTiles: 0, totalTiles: 0 });
-    setOfflineMapAvailable(false);
-    updateOfflineData({ isDownloaded: false, sizeMB: 0, downloadDate: undefined });
-    setOfflineMapStatus('not_downloaded', null);
   }, [resetDownloadState, safeSetDownloadState, setOfflineMapAvailable, setOfflineMapStatus, updateOfflineData]);
 
   return {

@@ -9,6 +9,7 @@ import {
   Text,
   StyleSheet,
   Pressable,
+  ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -87,7 +88,7 @@ export function DownloadMapScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.content}>
+      <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.header}>
           <Text style={styles.title}>Offline Maps</Text>
           <Text style={styles.urduTitle}>آف لائن نقشہ</Text>
@@ -213,7 +214,7 @@ export function DownloadMapScreen() {
             <Text style={styles.skipText}>Skip - Use online mode</Text>
           </Pressable>
         )}
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -224,8 +225,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#F5F5F5',
   },
   content: {
-    flex: 1,
     padding: 24,
+    flexGrow: 1,
     justifyContent: 'center',
   },
   header: {
@@ -414,6 +415,10 @@ const styles = StyleSheet.create({
   skipButton: {
     marginTop: 20,
     alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 48,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
   },
   skipText: {
     color: '#1A73E8',

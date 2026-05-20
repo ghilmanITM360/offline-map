@@ -10,6 +10,8 @@ export interface Coordinate {
   accuracy?: number;
 }
 
+export type LocationSource = 'live' | 'device_last_known' | 'remembered' | 'manual';
+
 export type MapMode = 'standard' | 'satellite' | 'hybrid';
 
 export interface Node {
@@ -54,6 +56,7 @@ export interface Block {
   aliases: string[];
   entry_nodes: string[];
   corners?: Coordinate[];
+  role?: string;
 }
 
 export interface Place {

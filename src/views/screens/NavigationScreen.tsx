@@ -4,10 +4,10 @@
  */
 
 import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Pressable, Modal, BackHandler, Platform } from 'react-native';
+import { View, Text, StyleSheet, Pressable, Modal, BackHandler, Platform, Alert, Animated } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE, LocalTile, Camera } from 'react-native-maps';
-import { X, Navigation, Volume2, VolumeX, ArrowLeft, ArrowRight, MapPin, RefreshCw } from 'lucide-react-native';
+import { X, Navigation, Volume2, VolumeX, ArrowLeft, ArrowRight, MapPin, RefreshCw, LocateFixed } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Paths } from 'expo-file-system'; // fixed: use Paths API instead of deprecated documentDirectory
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -40,9 +40,11 @@ export function NavigationScreen() {
   const insets = useSafeAreaInsets();
   const offlineData = useAppStore((s) => s.offlineData);
   const settings = useAppStore((s) => s.settings);
+  const currentLocationSource = useAppStore((s) => s.currentLocationSource);
   const theme = useTheme();
   const navBg = theme.background;
   const hasGoogleMapsKey = MapConfigService.isGoogleMapsKeyConfigured();
+  const userPulseAnim = useRef(new Animated.Value(0)).current;
 
   const {
     destination,
@@ -59,12 +61,30 @@ export function NavigationScreen() {
     isWeakGps,
     handleExit,
   } = useNavigationViewModel();
+  const startCoordinate = route?.coordinates[0] ?? null;
 
-  // Disable Android hardware back button during navigation
   useEffect(() => {
-    const sub = BackHandler.addEventListener('hardwareBackPress', () => true);
+    const pulse = Animated.loop(
+      Animated.sequence([
+        Animated.timing(userPulseAnim, { toValue: 1, duration: 1100, useNativeDriver: true }),
+        Animated.timing(userPulseAnim, { toValue: 0, duration: 0, useNativeDriver: true }),
+      ]),
+    );
+    pulse.start();
+    return () => pulse.stop();
+  }, [userPulseAnim]);
+
+  // Confirm exit on Android hardware back button
+  useEffect(() => {
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      Alert.alert('Exit navigation?', 'Do you want to stop navigation and return to map?', [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Exit', style: 'destructive', onPress: () => handleExit(nav) },
+      ]);
+      return true;
+    });
     return () => sub.remove();
-  }, []);
+  }, [handleExit, nav]);
 
   // Guard — if destination disappears, exit
   useEffect(() => {
@@ -151,13 +171,39 @@ export function NavigationScreen() {
           </>
         )}
 
+        {startCoordinate && (
+          <Marker coordinate={startCoordinate} title="Start" pinColor="#1A73E8" />
+        )}
+
         {destination && destinationCoordinate && (
-          <Marker coordinate={destinationCoordinate} title={destination.name} pinColor="#2E7D32" />
+          <Marker coordinate={destinationCoordinate} title={destination.name} anchor={{ x: 0.5, y: 1 }}>
+            <View style={styles.destinationMarker}>
+              <MapPin size={34} color="#EA4335" fill="#EA4335" />
+            </View>
+          </Marker>
         )}
 
         {snappedLocation && (
           <Marker coordinate={snappedLocation} flat anchor={{ x: 0.5, y: 0.5 }}>
-            <View style={styles.snappedDot} />
+            <View style={styles.userMarkerWrap}>
+              <Animated.View
+                style={[
+                  styles.userMarkerPulse,
+                  {
+                    opacity: userPulseAnim.interpolate({ inputRange: [0, 1], outputRange: [0.38, 0] }),
+                    transform: [{ scale: userPulseAnim.interpolate({ inputRange: [0, 1], outputRange: [1, 2.4] }) }],
+                  },
+                ]}
+              />
+              <View style={styles.userMarker}>
+                <Navigation size={12} color="#FFFFFF" />
+              </View>
+              {currentLocationSource === 'remembered' && (
+                <View style={styles.rememberedLabel}>
+                  <Text style={styles.rememberedLabelText}>last known</Text>
+                </View>
+              )}
+            </View>
           </Marker>
         )}
         </MapView>
@@ -229,6 +275,29 @@ export function NavigationScreen() {
             </Pressable>
           </View>
         </View>
+      )}
+
+      {snappedLocation && (
+        <Pressable
+          style={[styles.recenterButton, { bottom: Math.max(insets.bottom, 12) + 140 }]}
+          onPress={() => {
+            if (!mapRef.current) return;
+            mapRef.current.animateCamera(
+              {
+                center: {
+                  latitude: snappedLocation.latitude,
+                  longitude: snappedLocation.longitude,
+                },
+                zoom: 18,
+                heading: settings.keepNorthFixed ? 0 : (snappedLocation.heading ?? 0),
+                pitch: 30,
+              },
+              { duration: 500 },
+            );
+          }}
+        >
+          <LocateFixed size={20} color="#1A73E8" />
+        </Pressable>
       )}
 
       {/* Arrival overlay */}
@@ -396,13 +465,55 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
   },
-  snappedDot: {
-    width: 16,
-    height: 16,
-    borderRadius: 8,
+  userMarker: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     backgroundColor: '#1A73E8',
-    borderWidth: 3,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2.5,
     borderColor: '#FFFFFF',
+  },
+  userMarkerWrap: {
+    width: 76,
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  userMarkerPulse: {
+    position: 'absolute',
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: '#1A73E8',
+  },
+  rememberedLabel: {
+    marginTop: 2,
+    backgroundColor: 'rgba(26,115,232,0.92)',
+    borderRadius: 7,
+    paddingHorizontal: 5,
+    paddingVertical: 2,
+  },
+  rememberedLabelText: { color: '#FFFFFF', fontSize: 9, fontWeight: '700' },
+  destinationMarker: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  recenterButton: {
+    position: 'absolute',
+    right: 16,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.18,
+    shadowRadius: 5,
   },
   arrivedOverlay: {
     flex: 1,
