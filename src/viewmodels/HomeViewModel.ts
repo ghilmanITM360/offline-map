@@ -140,7 +140,8 @@ export function useHomeViewModel() {
 
   const handleRecenter = useCallback(async () => {
     const recenterTo = (location: typeof currentLocation) => {
-      if (!location || !mapRef.current) return;
+      if (!location) return false;
+      if (!mapRef.current) return false;
       updateSettings({ autoFollowLocation: true });
       mapRef.current.animateToRegion(
         {
@@ -153,50 +154,77 @@ export function useHomeViewModel() {
       const nearestNode = RoutingService.findNearestNode(location);
       setSnappedLocation(RoutePointService.nodeToCoordinate(nearestNode));
       setVenueStatus(RoutingService.getVenueStatus(location));
+      return true;
     };
 
-    const resolved = await LocationAccessService.resolveCurrentLocation(true);
-    setHasLocationPermission(resolved.permissionState.granted);
+    try {
+      const resolved = await LocationAccessService.resolveCurrentLocation(true);
+      setHasLocationPermission(resolved.permissionState.granted);
 
-    if (resolved.ok && resolved.coordinate) {
-      setCurrentLocation(resolved.coordinate, resolved.source ?? 'live');
-      recenterTo(resolved.coordinate);
+      if (resolved.ok && resolved.coordinate) {
+        setCurrentLocation(resolved.coordinate, resolved.source ?? 'live');
+        const centered = recenterTo(resolved.coordinate);
+        if (!centered) {
+          Alert.alert('Map still loading', 'Location updated. Try recenter again in a moment.');
+        }
 
-      if (!RoutingService.isInsideVenue(resolved.coordinate)) {
-        Alert.alert(
-          'Outside Ijtema area',
-          'You are outside the mapped venue. We centered on your position, but routes should start from a point inside the ground.',
-        );
-      } else if (resolved.source === 'device_last_known') {
-        Alert.alert('Using last known location', resolved.message ?? 'Live GPS was unavailable, so the device last known location is being shown.');
+        if (!RoutingService.isInsideVenue(resolved.coordinate)) {
+          Alert.alert(
+            'Outside Ijtema area',
+            'You are outside the mapped venue. We centered on your position, but routes should start from a point inside the ground.',
+          );
+        } else if (resolved.source === 'device_last_known') {
+          Alert.alert('Using last known location', resolved.message ?? 'Live GPS was unavailable, so the device last known location is being shown.');
+        }
+        return;
       }
-      return;
+
+      const canUseRemembered = lastKnownLocation && RoutingService.isInsideVenue(lastKnownLocation);
+      const actions = [
+        {
+          text: 'Choose start manually',
+          style: 'default' as const,
+          onPress: () => {
+            Alert.alert('Manual start', 'Open Directions from a place and choose your start point manually.');
+          },
+        },
+        ...(!resolved.permissionState.canAskAgain && !resolved.permissionState.granted
+          ? [{
+              text: 'Open Settings',
+              onPress: () => {
+                void (async () => {
+                  const opened = await LocationAccessService.openAppSettings();
+                  if (!opened) {
+                    Alert.alert('Unable to open settings', 'Open Android app settings manually and allow location permission for this app.');
+                  }
+                })();
+              },
+            }]
+          : []),
+        ...(canUseRemembered
+          ? [{
+              text: 'Use remembered location',
+              onPress: () => {
+                setCurrentLocation(lastKnownLocation, 'remembered');
+                const centered = recenterTo(lastKnownLocation);
+                if (!centered) {
+                  Alert.alert('Map still loading', 'Remembered location selected. Try recenter again in a moment.');
+                }
+                Alert.alert('Using last known location', `Last known location ${formatLastKnownAge(lastKnownLocationUpdatedAt)}.`);
+              },
+            }]
+          : []),
+        { text: 'OK', style: 'cancel' as const },
+      ];
+
+      Alert.alert(
+        'Location unavailable',
+        resolved.message ?? 'Current location could not be found. Use a remembered location or choose a start manually in Directions.',
+        actions,
+      );
+    } catch {
+      Alert.alert('Location error', 'Could not read location right now. Please try again.');
     }
-
-    const canUseRemembered = lastKnownLocation && RoutingService.isInsideVenue(lastKnownLocation);
-    const actions = [
-      { text: 'Choose start manually', style: 'default' as const },
-      ...(!resolved.permissionState.canAskAgain && !resolved.permissionState.granted
-        ? [{ text: 'Open Settings', onPress: () => { void LocationAccessService.openAppSettings(); } }]
-        : []),
-      ...(canUseRemembered
-        ? [{
-            text: 'Use remembered location',
-            onPress: () => {
-              setCurrentLocation(lastKnownLocation, 'remembered');
-              recenterTo(lastKnownLocation);
-              Alert.alert('Using last known location', `Last known location ${formatLastKnownAge(lastKnownLocationUpdatedAt)}.`);
-            },
-          }]
-        : []),
-      { text: 'OK', style: 'cancel' as const },
-    ];
-
-    Alert.alert(
-      'Location unavailable',
-      resolved.message ?? 'Current location could not be found. Use a remembered location or choose a start manually in Directions.',
-      actions,
-    );
   }, [lastKnownLocation, lastKnownLocationUpdatedAt, setCurrentLocation, setHasLocationPermission, setSnappedLocation, updateSettings]);
 
   // Phase 11 — compass reset (north-up, pitch 0)

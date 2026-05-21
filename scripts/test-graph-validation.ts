@@ -18,6 +18,8 @@ assert(
 near(IJTEMA_DATA.blocks.B2.center.latitude, 24.9685, 'B2 latitude');
 near(IJTEMA_DATA.blocks.B2.center.longitude, 66.9999166667, 'B2 longitude');
 assert(IJTEMA_DATA.blocks.B2.role?.includes('Member Masjid'), 'B2 should be marked as Member Masjid');
+assert(IJTEMA_DATA.blocks.B2.entry_nodes.includes('S13'), 'B2 should include west entry node S13 for Member Masjid side access');
+assert(IJTEMA_DATA.blocks.B2.entry_nodes.includes('S14'), 'B2 should include west entry node S14 for Member Masjid side access');
 
 const expectedGates = {
   C1: { lat: 24.9675833333, lng: 66.9993333333 },
@@ -40,5 +42,6 @@ for (const [id, expected] of Object.entries(expectedGates)) {
 
 assert(SearchService.search('Member Masjid').some((place) => place.id === 'B2'), 'Member Masjid should find Block 2');
 assert(SearchService.search('B2').some((place) => place.id === 'B2'), 'B2 should find Block 2');
+assert(SearchService.getPlaceById('LM_MEDICAL_MAIN') !== null, 'Landmark place lookup should resolve known landmark IDs');
 
 console.log(`Graph validation passed with ${result.warnings.length} warnings.`);

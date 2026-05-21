@@ -24,6 +24,34 @@ export interface MapStatus {
 export class OfflineMapService {
   private static db: SQLite.SQLiteDatabase | null = null;
   private static initPromise: Promise<void> | null = null;
+  private static operationQueue: Promise<void> = Promise.resolve();
+
+  private static runExclusive<T>(operation: () => Promise<T>): Promise<T> {
+    let release!: () => void;
+    const waitForTurn = this.operationQueue;
+    const nextTurn = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+
+    this.operationQueue = waitForTurn.then(() => nextTurn, () => nextTurn);
+
+    return (async () => {
+      await waitForTurn;
+      try {
+        return await operation();
+      } finally {
+        release();
+      }
+    })();
+  }
+
+  private static async getDatabaseOrThrow(): Promise<SQLite.SQLiteDatabase> {
+    await this.init();
+    if (!this.db) {
+      throw new Error('Offline map database is unavailable');
+    }
+    return this.db;
+  }
 
   static async init() {
     if (this.db) return;
@@ -54,27 +82,28 @@ export class OfflineMapService {
    */
   static async getMapStatus(): Promise<MapStatus> {
     try {
-      await this.init();
+      return await this.runExclusive(async () => {
+        const db = await this.getDatabaseOrThrow();
+        const row = await db.getFirstAsync<{ data: string; download_date: string | null }>(
+          'SELECT data, download_date FROM map_data WHERE id = ?;',
+          ['ijtema_2026']
+        );
+        if (!row) return { isDownloaded: false, tileCount: 0, sizeMB: 0, downloadDate: null };
 
-      const row = await this.db!.getFirstAsync<{ data: string; download_date: string | null }>(
-        'SELECT data, download_date FROM map_data WHERE id = ?;',
-        ['ijtema_2026']
-      );
-      if (!row) return { isDownloaded: false, tileCount: 0, sizeMB: 0, downloadDate: null };
+        if (!getTileDir().exists) return { isDownloaded: false, tileCount: 0, sizeMB: 0, downloadDate: null };
 
-      if (!getTileDir().exists) return { isDownloaded: false, tileCount: 0, sizeMB: 0, downloadDate: null }; // fixed: use Directory.exists
+        const countRow = await db.getFirstAsync<{ cnt: number }>('SELECT COUNT(*) AS cnt FROM tiles;');
+        const tileCount = countRow?.cnt ?? 0;
+        if (tileCount === 0) return { isDownloaded: false, tileCount: 0, sizeMB: 0, downloadDate: null };
 
-      const tileCount = await this.getStoredTileCount();
-      if (tileCount === 0) return { isDownloaded: false, tileCount: 0, sizeMB: 0, downloadDate: null };
-
-      // Rough size estimate
-      const sizeMB = parseFloat((tileCount * 0.08).toFixed(1));
-      return {
-        isDownloaded: true,
-        tileCount,
-        sizeMB,
-        downloadDate: row.download_date ?? null,
-      };
+        const sizeMB = parseFloat((tileCount * 0.08).toFixed(1));
+        return {
+          isDownloaded: true,
+          tileCount,
+          sizeMB,
+          downloadDate: row.download_date ?? null,
+        };
+      });
     } catch {
       return { isDownloaded: false, tileCount: 0, sizeMB: 0, downloadDate: null };
     }
@@ -82,12 +111,13 @@ export class OfflineMapService {
 
   static async getStoredTileCount(): Promise<number> {
     try {
-      await this.init();
-      if (!this.db) return 0;
-      const countRow = await this.db.getFirstAsync<{ cnt: number }>(
-        'SELECT COUNT(*) AS cnt FROM tiles;'
-      );
-      return countRow?.cnt ?? 0;
+      return await this.runExclusive(async () => {
+        const db = await this.getDatabaseOrThrow();
+        const countRow = await db.getFirstAsync<{ cnt: number }>(
+          'SELECT COUNT(*) AS cnt FROM tiles;'
+        );
+        return countRow?.cnt ?? 0;
+      });
     } catch (error) {
       console.warn('[OfflineMapService] getStoredTileCount failed', error);
       return 0;
@@ -100,47 +130,57 @@ export class OfflineMapService {
    */
   static async tileExists(z: number, x: number, y: number): Promise<boolean> {
     try {
-      await this.init();
-      const row = await this.db!.getFirstAsync<{ local_uri: string }>(
-        'SELECT local_uri FROM tiles WHERE z = ? AND x = ? AND y = ?;',
-        [z, x, y]
-      );
-      if (!row) return false;
-      return new File(row.local_uri).exists; // fixed: confirm file presence with the new File API
+      return await this.runExclusive(async () => {
+        const db = await this.getDatabaseOrThrow();
+        const row = await db.getFirstAsync<{ local_uri: string }>(
+          'SELECT local_uri FROM tiles WHERE z = ? AND x = ? AND y = ?;',
+          [z, x, y]
+        );
+        if (!row) return false;
+        return new File(row.local_uri).exists;
+      });
     } catch {
       return false;
     }
   }
 
   static async saveMapData() {
-    await this.init();
-    const dataString = JSON.stringify(IJTEMA_DATA);
-    await this.db!.runAsync(
-      'INSERT OR REPLACE INTO map_data (id, data, download_date) VALUES (?, ?, ?);',
-      ['ijtema_2026', dataString, new Date().toISOString()]
-    );
+    await this.runExclusive(async () => {
+      const db = await this.getDatabaseOrThrow();
+      const dataString = JSON.stringify(IJTEMA_DATA);
+      await db.runAsync(
+        'INSERT OR REPLACE INTO map_data (id, data, download_date) VALUES (?, ?, ?);',
+        ['ijtema_2026', dataString, new Date().toISOString()]
+      );
+    });
   }
 
   static async getMapData() {
-    await this.init();
-    const result = await this.db!.getFirstAsync<{ data: string }>(
-      'SELECT data FROM map_data WHERE id = ?;',
-      ['ijtema_2026']
-    );
-    return result ? JSON.parse(result.data) : null;
+    return this.runExclusive(async () => {
+      const db = await this.getDatabaseOrThrow();
+      const result = await db.getFirstAsync<{ data: string }>(
+        'SELECT data FROM map_data WHERE id = ?;',
+        ['ijtema_2026']
+      );
+      return result ? JSON.parse(result.data) : null;
+    });
   }
 
   static async downloadTile(z: number, x: number, y: number): Promise<string | null> {
     const url = `https://tile.openstreetmap.org/${z}/${x}/${y}.png`;
-    const file = new File(getTileDir(), `${z}_${x}_${y}.png`); // fixed: construct tile destination from Paths-backed directory
+    const file = new File(getTileDir(), `${z}_${x}_${y}.png`);
 
     try {
-      const downloadedFile = await File.downloadFileAsync(url, file, { idempotent: true }); // fixed: use modern download API
-      await this.db!.runAsync(
-        'INSERT OR REPLACE INTO tiles (z, x, y, local_uri) VALUES (?, ?, ?, ?);',
-        [z, x, y, downloadedFile.uri]
-      );
-      return downloadedFile.exists ? downloadedFile.uri : null; // fixed: only report success when the file exists on disk
+      const downloadedFile = await File.downloadFileAsync(url, file, { idempotent: true });
+      if (!downloadedFile.exists) return null;
+      return await this.runExclusive(async () => {
+        const db = await this.getDatabaseOrThrow();
+        await db.runAsync(
+          'INSERT OR REPLACE INTO tiles (z, x, y, local_uri) VALUES (?, ?, ?, ?);',
+          [z, x, y, downloadedFile.uri]
+        );
+        return downloadedFile.uri;
+      });
     } catch (error) {
       console.error(`Failed to download tile ${z}/${x}/${y}:`, error);
       return null;
@@ -148,24 +188,26 @@ export class OfflineMapService {
   }
 
   static async getLocalTileUri(z: number, x: number, y: number): Promise<string | null> {
-    await this.init();
-    const result = await this.db!.getFirstAsync<{ local_uri: string }>(
-      'SELECT local_uri FROM tiles WHERE z = ? AND x = ? AND y = ?;',
-      [z, x, y]
-    );
-    return result ? result.local_uri : null;
+    return this.runExclusive(async () => {
+      const db = await this.getDatabaseOrThrow();
+      const result = await db.getFirstAsync<{ local_uri: string }>(
+        'SELECT local_uri FROM tiles WHERE z = ? AND x = ? AND y = ?;',
+        [z, x, y]
+      );
+      return result ? result.local_uri : null;
+    });
   }
 
   static async deleteMapData() {
-    try {
-      await this.init();
-      if (this.db) {
-        await this.db.runAsync('DELETE FROM map_data WHERE id = ?;', ['ijtema_2026']);
-        await this.db.runAsync('DELETE FROM tiles;');
+    await this.runExclusive(async () => {
+      try {
+        const db = await this.getDatabaseOrThrow();
+        await db.runAsync('DELETE FROM map_data WHERE id = ?;', ['ijtema_2026']);
+        await db.runAsync('DELETE FROM tiles;');
+      } catch (error) {
+        console.warn('[OfflineMapService] SQLite cleanup skipped or failed', error);
       }
-    } catch (error) {
-      console.warn('[OfflineMapService] SQLite cleanup skipped or failed', error);
-    }
+    });
 
     try {
       if (getTileDir().exists) {
@@ -177,13 +219,15 @@ export class OfflineMapService {
   }
 
   static async closeDatabase(): Promise<void> {
-    if (!this.db) return;
-    try {
-      await this.db.closeAsync();
-    } catch (error) {
-      console.warn('[OfflineMapService] closeDatabase failed', error);
-    } finally {
-      this.db = null;
-    }
+    await this.runExclusive(async () => {
+      if (!this.db) return;
+      try {
+        await this.db.closeAsync();
+      } catch (error) {
+        console.warn('[OfflineMapService] closeDatabase failed', error);
+      } finally {
+        this.db = null;
+      }
+    });
   }
 }

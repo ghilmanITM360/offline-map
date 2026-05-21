@@ -93,7 +93,7 @@ export class InstructionService {
         urduText,
         distance,
         type,
-        coordinate: { latitude: currentNode.lat, longitude: currentNode.lng },
+        coordinate: { latitude: nextNode.lat, longitude: nextNode.lng },
       });
     }
 

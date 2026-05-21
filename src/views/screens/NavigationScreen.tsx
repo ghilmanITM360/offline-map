@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, StyleSheet, Pressable, Modal, BackHandler, Platform, Alert, Animated } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE, LocalTile, Camera } from 'react-native-maps';
@@ -45,6 +45,7 @@ export function NavigationScreen() {
   const navBg = theme.background;
   const hasGoogleMapsKey = MapConfigService.isGoogleMapsKeyConfigured();
   const userPulseAnim = useRef(new Animated.Value(0)).current;
+  const [isAutoFollowing, setIsAutoFollowing] = useState(true);
 
   const {
     destination,
@@ -91,9 +92,13 @@ export function NavigationScreen() {
     if (!destination) nav.goBack();
   }, [destination]);
 
+  useEffect(() => {
+    setIsAutoFollowing(true);
+  }, [destination]);
+
   // Heading-up camera following
   useEffect(() => {
-    if (snappedLocation && mapRef.current) {
+    if (isAutoFollowing && snappedLocation && mapRef.current) {
       const camera: Partial<Camera> = {
         center: {
           latitude: snappedLocation.latitude,
@@ -105,7 +110,7 @@ export function NavigationScreen() {
       };
       mapRef.current.animateCamera(camera as Camera, { duration: 800 });
     }
-  }, [settings.keepNorthFixed, snappedLocation]); // fixed: react to north-up setting changes while navigating
+  }, [isAutoFollowing, settings.keepNorthFixed, snappedLocation]); // fixed: react to north-up setting changes while navigating
 
   const currentStep = instructions[currentStepIndex];
   const nextStep = instructions[currentStepIndex + 1];
@@ -122,9 +127,10 @@ export function NavigationScreen() {
           ref={mapRef}
           style={styles.map}
           provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined} // fixed: avoid forcing Google provider on iOS
-          showsUserLocation={true}
+          showsUserLocation={false}
           showsMyLocationButton={false}
           rotateEnabled={!settings.keepNorthFixed} // fixed: disable free rotation when north-up mode is enabled
+          onPanDrag={() => setIsAutoFollowing(false)}
           initialRegion={{
             latitude: currentLocation?.latitude ?? 24.9685,
             longitude: currentLocation?.longitude ?? 67.0015,
@@ -172,7 +178,14 @@ export function NavigationScreen() {
         )}
 
         {startCoordinate && (
-          <Marker coordinate={startCoordinate} title="Start" pinColor="#1A73E8" />
+          <Marker coordinate={startCoordinate} title="Start" anchor={{ x: 0.5, y: 0.5 }}>
+            <View style={styles.startMarkerWrap}>
+              <View style={styles.startMarkerDot} />
+              <View style={styles.startMarkerLabel}>
+                <Text style={styles.startMarkerLabelText}>START</Text>
+              </View>
+            </View>
+          </Marker>
         )}
 
         {destination && destinationCoordinate && (
@@ -282,6 +295,7 @@ export function NavigationScreen() {
           style={[styles.recenterButton, { bottom: Math.max(insets.bottom, 12) + 140 }]}
           onPress={() => {
             if (!mapRef.current) return;
+            setIsAutoFollowing(true);
             mapRef.current.animateCamera(
               {
                 center: {
@@ -499,6 +513,29 @@ const styles = StyleSheet.create({
   destinationMarker: {
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  startMarkerWrap: {
+    alignItems: 'center',
+  },
+  startMarkerDot: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: '#0B8043',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+  },
+  startMarkerLabel: {
+    marginTop: 3,
+    backgroundColor: 'rgba(11,128,67,0.92)',
+    borderRadius: 7,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  startMarkerLabelText: {
+    color: '#FFFFFF',
+    fontSize: 9,
+    fontWeight: '700',
   },
   recenterButton: {
     position: 'absolute',

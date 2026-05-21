@@ -239,6 +239,9 @@ export class SearchService {
     const rasta = this.searchByCategory('rastas').find((place) => place.id === id);
     if (rasta) return rasta;
 
+    const landmark = LANDMARK_PLACES.find((place) => place.id === id);
+    if (landmark) return landmark;
+
     return null;
   }
 

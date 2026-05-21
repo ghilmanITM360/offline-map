@@ -679,7 +679,7 @@ export const IJTEMA_DATA: {
 
 export const BLOCK_ENTRY_MAP_STRICT: Record<string, string[]> = {
   B1: ['P1', 'S13'],
-  B2: ['P1', 'P8'],
+  B2: ['S13', 'P1', 'P8', 'S14'],
   B3: ['P8', 'S14'],
   B4: ['P2', 'S1'],
   B5: ['P2', 'P6'],

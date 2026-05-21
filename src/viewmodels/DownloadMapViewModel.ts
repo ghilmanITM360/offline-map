@@ -37,6 +37,8 @@ export function useDownloadMapViewModel() {
   const isMountedRef = useRef(true);
   const redirectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const completionLockRef = useRef(false);
+  const downloadInProgressRef = useRef(false);
+  const downloadWorkerRef = useRef<Promise<void> | null>(null);
 
   useEffect(() => {
     return () => {
@@ -135,6 +137,14 @@ export function useDownloadMapViewModel() {
 
   const startDownload = useCallback(
     async (navigation: NativeStackNavigationProp<RootStackParamList, 'DownloadMap'>) => {
+      if (downloadInProgressRef.current) {
+        pausedRef.current = false;
+        safeSetDownloadState({ phase: 'downloading', errorMessage: null });
+        setOfflineMapStatus('downloading', 'Download already running');
+        return;
+      }
+
+      downloadInProgressRef.current = true;
       completionLockRef.current = false;
       cancelledRef.current = false;
       pausedRef.current = false;
@@ -153,83 +163,91 @@ export function useDownloadMapViewModel() {
           errorMessage: 'No internet connection. Please connect and try again.',
         });
         setOfflineMapStatus('not_downloaded', 'Internet is required to download the map.');
+        downloadInProgressRef.current = false;
         return;
       }
 
-      try {
-        await OfflineMapService.init();
-        await OfflineMapService.saveMapData();
+      const worker = (async () => {
+        try {
+          await OfflineMapService.saveMapData();
 
-        const allTiles = OfflineMapStatusService.getTileList();
-        const totalTiles = allTiles.length;
-        let alreadyDone = 0;
+          const allTiles = OfflineMapStatusService.getTileList();
+          const totalTiles = allTiles.length;
+          let alreadyDone = 0;
 
-        for (const t of allTiles) {
-          const exists = await OfflineMapService.tileExists(t.z, t.x, t.y);
-          if (exists) alreadyDone += 1;
-        }
-
-        await OfflineMapStatusService.markDownloading(alreadyDone);
-
-        safeSetDownloadState({
-          phase: 'downloading',
-          totalTiles,
-          downloadedTiles: alreadyDone,
-          progress: Math.min(alreadyDone / totalTiles, 1),
-          resumable: alreadyDone > 0,
-        });
-
-        let downloaded = alreadyDone;
-        for (const tile of allTiles) {
-          if (cancelledRef.current) return;
-
-          while (pausedRef.current) {
-            await new Promise((resolve) => setTimeout(resolve, 700));
-            if (cancelledRef.current) return;
+          for (const t of allTiles) {
+            const exists = await OfflineMapService.tileExists(t.z, t.x, t.y);
+            if (exists) alreadyDone += 1;
           }
 
-          const exists = await OfflineMapService.tileExists(tile.z, tile.x, tile.y);
-          if (exists) {
-            continue;
-          }
+          await OfflineMapStatusService.markDownloading(alreadyDone);
 
-          const downloadedUri = await OfflineMapService.downloadTile(tile.z, tile.x, tile.y);
-          if (!downloadedUri) {
-            throw new Error(`Tile download failed for ${tile.z}/${tile.x}/${tile.y}`);
-          }
-
-          const confirmed = await OfflineMapService.tileExists(tile.z, tile.x, tile.y);
-          if (!confirmed) {
-            throw new Error(`Tile save verification failed for ${tile.z}/${tile.x}/${tile.y}`);
-          }
-
-          downloaded += 1;
-          logDownload('tile saved', { tile: `${tile.z}/${tile.x}/${tile.y}`, downloaded, totalTiles });
           safeSetDownloadState({
-            downloadedTiles: downloaded,
-            progress: Math.min(downloaded / totalTiles, 1),
+            phase: 'downloading',
+            totalTiles,
+            downloadedTiles: alreadyDone,
+            progress: Math.min(alreadyDone / totalTiles, 1),
+            resumable: alreadyDone > 0,
           });
 
-          if (downloaded % 10 === 0 || downloaded === totalTiles) {
-            await OfflineMapStatusService.markDownloading(downloaded);
+          let downloaded = alreadyDone;
+          for (const tile of allTiles) {
+            if (cancelledRef.current) return;
+
+            while (pausedRef.current) {
+              await new Promise((resolve) => setTimeout(resolve, 700));
+              if (cancelledRef.current) return;
+            }
+
+            const exists = await OfflineMapService.tileExists(tile.z, tile.x, tile.y);
+            if (exists) {
+              continue;
+            }
+
+            const downloadedUri = await OfflineMapService.downloadTile(tile.z, tile.x, tile.y);
+            if (!downloadedUri) {
+              throw new Error(`Tile download failed for ${tile.z}/${tile.x}/${tile.y}`);
+            }
+
+            const confirmed = await OfflineMapService.tileExists(tile.z, tile.x, tile.y);
+            if (!confirmed) {
+              throw new Error(`Tile save verification failed for ${tile.z}/${tile.x}/${tile.y}`);
+            }
+
+            downloaded += 1;
+            logDownload('tile saved', { tile: `${tile.z}/${tile.x}/${tile.y}`, downloaded, totalTiles });
+            safeSetDownloadState({
+              downloadedTiles: downloaded,
+              progress: Math.min(downloaded / totalTiles, 1),
+            });
+
+            if (downloaded % 10 === 0 || downloaded === totalTiles) {
+              await OfflineMapStatusService.markDownloading(downloaded);
+            }
           }
-        }
 
-        if (downloaded !== totalTiles) {
-          throw new Error(`Incomplete download: expected ${totalTiles} but saved ${downloaded}`);
-        }
+          if (downloaded !== totalTiles) {
+            throw new Error(`Incomplete download: expected ${totalTiles} but saved ${downloaded}`);
+          }
 
-        await completeDownloadFlow(navigation, downloaded, totalTiles);
-      } catch (error) {
-        console.error('Download error:', error);
-        await OfflineMapStatusService.markCorrupt('Map download interrupted or incomplete');
-        setOfflineMapStatus('corrupt', 'Download incomplete. Repair and download again.');
-        safeSetDownloadState({
-          phase: 'error',
-          errorMessage: 'Download failed. Tap retry to continue.',
-          resumable: true,
-        });
-      }
+          await completeDownloadFlow(navigation, downloaded, totalTiles);
+        } catch (error) {
+          console.error('Download error:', error);
+          await OfflineMapStatusService.markCorrupt('Map download interrupted or incomplete');
+          setOfflineMapStatus('corrupt', 'Download incomplete. Repair and download again.');
+          safeSetDownloadState({
+            phase: 'error',
+            errorMessage: 'Download failed. Tap retry to continue.',
+            resumable: true,
+          });
+        } finally {
+          downloadInProgressRef.current = false;
+          downloadWorkerRef.current = null;
+        }
+      })();
+
+      downloadWorkerRef.current = worker;
+      await worker;
     },
     [completeDownloadFlow, safeSetDownloadState, setOfflineMapStatus],
   );
@@ -243,9 +261,14 @@ export function useDownloadMapViewModel() {
   const resumeDownload = useCallback(
     (navigation: NativeStackNavigationProp<RootStackParamList, 'DownloadMap'>) => {
       pausedRef.current = false;
+      if (downloadInProgressRef.current) {
+        safeSetDownloadState({ phase: 'downloading', errorMessage: null });
+        setOfflineMapStatus('downloading', 'Resuming download...');
+        return;
+      }
       void startDownload(navigation);
     },
-    [startDownload],
+    [safeSetDownloadState, setOfflineMapStatus, startDownload],
   );
 
   const cancelDownload = useCallback(() => {
@@ -264,6 +287,11 @@ export function useDownloadMapViewModel() {
 
   const retryDownload = useCallback(
     (navigation: NativeStackNavigationProp<RootStackParamList, 'DownloadMap'>) => {
+      if (downloadInProgressRef.current) {
+        pausedRef.current = false;
+        safeSetDownloadState({ phase: 'downloading', errorMessage: null });
+        return;
+      }
       cancelledRef.current = false;
       pausedRef.current = false;
       completionLockRef.current = false;
@@ -293,6 +321,9 @@ export function useDownloadMapViewModel() {
 
   const repairDownload = useCallback(async () => {
     logDownload('repair requested');
+    cancelledRef.current = true;
+    pausedRef.current = false;
+    await downloadWorkerRef.current?.catch(() => undefined);
     await OfflineDataService.deleteAllMapData();
     safeSetDownloadState({ phase: 'idle', errorMessage: null, progress: 0, downloadedTiles: 0, totalTiles: 0 });
   }, [resetDownloadState, safeSetDownloadState, setOfflineMapAvailable, setOfflineMapStatus, updateOfflineData]);

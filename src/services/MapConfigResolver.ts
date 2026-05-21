@@ -1,0 +1,104 @@
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+export type RuntimePlatform = 'android' | 'ios' | 'other';
+export type RuntimeStatusSource = 'expo_config' | 'env' | 'none';
+
+export type ExpoConfigLike = {
+  android?: {
+    package?: string;
+    config?: {
+      googleMaps?: {
+        apiKey?: string;
+      };
+    };
+  };
+  ios?: {
+    config?: {
+      googleMapsApiKey?: string;
+    };
+  };
+};
+
+export type RuntimeEnv = {
+  [key: string]: string | undefined;
+  EXPO_PUBLIC_GOOGLE_MAPS_ANDROID_API_KEY?: string;
+  EXPO_PUBLIC_GOOGLE_MAPS_IOS_API_KEY?: string;
+};
+
+export type GoogleMapsRuntimeStatus = {
+  platform: RuntimePlatform;
+  expectedEnvVariable: string;
+  keyPresent: boolean;
+  source: RuntimeStatusSource;
+  packageName: string | null;
+  keyPreview: string | null;
+};
+
+export const GOOGLE_MAPS_KEY_NOT_CONFIGURED_MESSAGE =
+  'Google Maps key is not configured. Offline venue data still works.';
+export const GOOGLE_MAPS_LOAD_FAILED_MESSAGE =
+  'Map failed to load. Check Google Cloud restrictions and Maps SDK for Android.';
+
+function hasEnvKey(value: string | undefined): boolean {
+  return typeof value === 'string' && value.trim().length > 0;
+}
+
+function maskKey(key: string | undefined): string | null {
+  if (!hasEnvKey(key)) return null;
+  const trimmed = key!.trim();
+  if (trimmed.length <= 10) return '***';
+  return `${trimmed.slice(0, 6)}...${trimmed.slice(-4)}`;
+}
+
+function resolveExpectedEnvVariable(platform: RuntimePlatform): string {
+  return platform === 'ios'
+    ? 'EXPO_PUBLIC_GOOGLE_MAPS_IOS_API_KEY'
+    : 'EXPO_PUBLIC_GOOGLE_MAPS_ANDROID_API_KEY';
+}
+
+function resolveExpoConfigKey(platform: RuntimePlatform, expoConfig: ExpoConfigLike | null | undefined): string | undefined {
+  if (platform === 'android') {
+    return expoConfig?.android?.config?.googleMaps?.apiKey;
+  }
+  if (platform === 'ios') {
+    return expoConfig?.ios?.config?.googleMapsApiKey;
+  }
+  return undefined;
+}
+
+function resolveEnvKey(platform: RuntimePlatform, env: RuntimeEnv): string | undefined {
+  if (platform === 'ios') {
+    return env.EXPO_PUBLIC_GOOGLE_MAPS_IOS_API_KEY;
+  }
+  return env.EXPO_PUBLIC_GOOGLE_MAPS_ANDROID_API_KEY;
+}
+
+export function getGoogleMapsRuntimeStatusFromInputs(params: {
+  platform: RuntimePlatform;
+  expoConfig?: ExpoConfigLike | null;
+  env?: RuntimeEnv;
+}): GoogleMapsRuntimeStatus {
+  const platform = params.platform;
+  const expoConfig = params.expoConfig ?? null;
+  const env = params.env ?? {};
+  const expectedEnvVariable = resolveExpectedEnvVariable(platform);
+  const configKey = resolveExpoConfigKey(platform, expoConfig);
+  const envKey = resolveEnvKey(platform, env);
+  const configHasKey = hasEnvKey(configKey);
+  const envHasKey = hasEnvKey(envKey);
+  const source: RuntimeStatusSource = configHasKey ? 'expo_config' : envHasKey ? 'env' : 'none';
+  const packageName = platform === 'android' ? (expoConfig?.android?.package ?? null) : null;
+  const keyPreview = maskKey(configHasKey ? configKey : envKey);
+
+  return {
+    platform,
+    expectedEnvVariable,
+    keyPresent: configHasKey || envHasKey,
+    source,
+    packageName,
+    keyPreview,
+  };
+}

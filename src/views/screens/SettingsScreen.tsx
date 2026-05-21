@@ -88,15 +88,21 @@ export function SettingsScreen() {
     onPress,
     description,
     danger,
-  }: SettingItemProps) => (
-    <Pressable
-      android_ripple={{ color: `${theme.primary}22` }}
-      style={({ pressed }) => [
-        styles.settingItem,
-        { borderBottomColor: theme.border, opacity: pressed ? 0.72 : 1 },
-      ]}
-      onPress={onPress}
-    >
+  }: SettingItemProps) => {
+    const rowPressHandler = type === 'toggle' ? onToggle : onPress;
+    return (
+      <Pressable
+        android_ripple={{ color: `${theme.primary}22` }}
+        style={({ pressed }) => [
+          styles.settingItem,
+          {
+            borderBottomColor: theme.border,
+            opacity: type !== 'toggle' && !onPress ? 0.88 : (pressed ? 0.72 : 1),
+          },
+        ]}
+        disabled={type !== 'toggle' && !onPress}
+        onPress={rowPressHandler}
+      >
       <View style={styles.settingMain}>
         <View style={styles.settingLabelContainer}>
           <Icon size={22} color={danger ? theme.danger : theme.primary} />
@@ -122,8 +128,9 @@ export function SettingsScreen() {
           </Text>
         )}
       </View>
-    </Pressable>
-  );
+      </Pressable>
+    );
+  };
 
   const handleVersionTap = () => {
     const nextCount = versionTapCount + 1;
@@ -216,7 +223,7 @@ export function SettingsScreen() {
                   return;
                 }
                 if (!hasGoogleMapsKey) {
-                  Alert.alert('Map key missing', 'Configure Google Maps API key to enable reliable satellite map mode.');
+                  Alert.alert('Map key not configured', MapConfigService.getMissingGoogleMapsMessage());
                   return;
                 }
                 updateSettingValue('mapMode', 'satellite');

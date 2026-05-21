@@ -14,6 +14,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Animated,
+  Keyboard,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import MapView, { Marker, Polygon, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
@@ -185,6 +186,8 @@ export function DirectionsScreen() {
               onChangeText={setStartSearch}
               placeholder="Search start point"
               placeholderTextColor="#888"
+              returnKeyType="search"
+              onSubmitEditing={Keyboard.dismiss}
             />
 
             {startCandidates.length > 0 && (
@@ -196,7 +199,7 @@ export function DirectionsScreen() {
                     onPress={() => {
                       setManualStartPlace(candidate);
                       setStartSearch(candidate.name);
-                      void calculateRoute();
+                      Keyboard.dismiss();
                     }}
                   >
                     <MapPin size={16} color="#5F6368" />

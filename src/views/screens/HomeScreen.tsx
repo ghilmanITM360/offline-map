@@ -93,8 +93,11 @@ export function HomeScreen() {
   const searchInputRef = useRef<TextInput>(null);
   const theme = useTheme();
   const insets = useSafeAreaInsets();
-  const hasGoogleMapsKey = MapConfigService.isGoogleMapsKeyConfigured();
+  const mapRuntimeStatus = MapConfigService.getRuntimeStatus();
+  const hasGoogleMapsKey = mapRuntimeStatus.keyPresent;
   const [outsideBannerDismissed, setOutsideBannerDismissed] = useState(false);
+  const [mapReady, setMapReadyState] = useState(false);
+  const [mapLoadFailed, setMapLoadFailed] = useState(false);
   const searchFocusAnim = useRef(new Animated.Value(0)).current;
   const warningAnim = useRef(new Animated.Value(0)).current;
   const userPulseAnim = useRef(new Animated.Value(0)).current;
@@ -174,6 +177,12 @@ export function HomeScreen() {
 
   const isFav = selectedPlace ? favorites.some((f) => f.placeId === selectedPlace.id) : false;
   const showOutsideBanner = !!currentLocation && !venueStatus.insideVenue && !outsideBannerDismissed;
+  const showMapWarningBanner = !hasGoogleMapsKey || mapLoadFailed;
+  const topInsetBase = Math.max(insets.top, Platform.OS === 'android' ? StatusBar.currentHeight ?? 0 : 0);
+  const offlineTop = topInsetBase + 140;
+  const mapWarningTop = offlineTop + (isOffline ? 42 : 0) + 8;
+  const outsideBannerTop = mapWarningTop + (showMapWarningBanner ? 56 : 0) + 8;
+  const rightControlsTop = outsideBannerTop + (showOutsideBanner ? 60 : 12);
 
   useEffect(() => {
     Animated.timing(searchFocusAnim, {
@@ -201,6 +210,21 @@ export function HomeScreen() {
     pulse.start();
     return () => pulse.stop();
   }, [userPulseAnim]);
+
+  useEffect(() => {
+    if (!hasGoogleMapsKey) {
+      setMapLoadFailed(false);
+      return;
+    }
+    if (mapReady) {
+      setMapLoadFailed(false);
+      return;
+    }
+    const timeout = setTimeout(() => {
+      setMapLoadFailed(true);
+    }, 7000);
+    return () => clearTimeout(timeout);
+  }, [hasGoogleMapsKey, mapReady]);
 
   const handleToggleFav = () => {
     if (!selectedPlace) return;
@@ -295,7 +319,15 @@ export function HomeScreen() {
             showsUserLocation
             showsMyLocationButton={false}
             showsCompass={false}
-            onMapReady={() => setIsMapReady(true)}
+            onMapReady={() => {
+              setIsMapReady(true);
+              setMapReadyState(true);
+              setMapLoadFailed(false);
+            }}
+            onMapLoaded={() => {
+              setMapReadyState(true);
+              setMapLoadFailed(false);
+            }}
             onPress={() => {
               if (isSearchFocused) {
                 dismissSearch();
@@ -525,15 +557,21 @@ export function HomeScreen() {
         </SafeAreaView>
 
         {isOffline && (
-          <View style={styles.offlineIndicator}>
+          <View style={[styles.offlineIndicator, { top: offlineTop }]}>
             <WifiOff size={14} color="#FFFFFF" />
             <Text style={styles.offlineText}>Offline</Text>
           </View>
         )}
 
         {!hasGoogleMapsKey && (
-          <View style={styles.mapWarningBanner}>
+          <View style={[styles.mapWarningBanner, { top: mapWarningTop }]}>
             <Text style={styles.mapWarningText}>{MapConfigService.getMissingGoogleMapsMessage()}</Text>
+          </View>
+        )}
+
+        {hasGoogleMapsKey && mapLoadFailed && (
+          <View style={[styles.mapWarningBanner, { top: mapWarningTop }]}>
+            <Text style={styles.mapWarningText}>{MapConfigService.getMapLoadFailedMessage()}</Text>
           </View>
         )}
 
@@ -542,7 +580,7 @@ export function HomeScreen() {
             style={[
               styles.outsideVenueBanner,
               {
-                top: Math.max(insets.top, Platform.OS === 'android' ? StatusBar.currentHeight ?? 0 : 0) + 118,
+                top: outsideBannerTop,
                 opacity: warningAnim,
                 transform: [{ translateY: warningAnim.interpolate({ inputRange: [0, 1], outputRange: [-8, 0] }) }],
               },
@@ -588,7 +626,7 @@ export function HomeScreen() {
             <View
               style={[
                 styles.rightControls,
-                { top: Math.max(insets.top, Platform.OS === 'android' ? StatusBar.currentHeight ?? 0 : 0) + (showOutsideBanner ? 190 : 142) },
+                { top: rightControlsTop },
               ]}
             >
               <Pressable style={styles.controlButton} onPress={openLayerOptions}>

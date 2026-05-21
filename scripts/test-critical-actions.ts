@@ -27,6 +27,10 @@ assert(
   'Home current-location failure should offer remembered-location fallback',
 );
 assert(
+  homeVm.includes("text: 'Choose start manually'") && homeVm.includes("onPress: () =>"),
+  'Home current-location failure action should not include a dead \"Choose start manually\" option',
+);
+assert(
   homeVm.includes('Outside Ijtema area'),
   'Home current-location action should explain outside-venue fallback',
 );
@@ -72,10 +76,18 @@ assert(
   settingsScreen.includes('Tap Manage'),
   'Settings Location Permission should explain Manage behavior',
 );
+assert(
+  settingsScreen.includes("disabled={type !== 'toggle' && !onPress}"),
+  'Settings info-only rows should be visually and interactively non-actionable',
+);
 
 assert(
   offlineDataService.includes('deleteAllMapData'),
   'Offline data deletion should be centralized in OfflineDataService.deleteAllMapData',
+);
+assert(
+  offlineMapService.includes('runExclusive') || offlineMapService.includes('operationQueue'),
+  'Offline map DB operations should be serialized to avoid close/query races',
 );
 assert(
   offlineMapService.includes('if (this.db)') && offlineMapService.includes('closeDatabase'),
@@ -130,6 +142,10 @@ assert(
 assert(
   navScreen.includes('handleExit(nav)'),
   'Navigation exit action must be wired',
+);
+assert(
+  readFileSync('src/viewmodels/DownloadMapViewModel.ts', 'utf8').includes('downloadInProgressRef'),
+  'Download flow should guard against re-entrant resume/retry worker starts',
 );
 
 assert(rootNavigator.includes("name=\"AppGuide\""), 'App Guide route should be registered');

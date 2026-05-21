@@ -215,27 +215,41 @@ export function useDirectionsViewModel(destination: Place | null) {
   };
 
   const chooseCurrentLocation = async (): Promise<boolean> => {
-    const resolved = await LocationAccessService.resolveCurrentLocation(true);
-    setHasLocationPermission(resolved.permissionState.granted);
+    try {
+      const resolved = await LocationAccessService.resolveCurrentLocation(true);
+      setHasLocationPermission(resolved.permissionState.granted);
 
-    if (!resolved.ok || !resolved.coordinate) {
+      if (!resolved.ok || !resolved.coordinate) {
+        let blockedMessage: string | null = null;
+        if (!resolved.permissionState.granted && !resolved.permissionState.canAskAgain) {
+          const opened = await LocationAccessService.openAppSettings();
+          if (!opened) {
+            blockedMessage = 'Location permission is blocked. Open app settings and allow location, then try again.';
+          }
+        }
+        setUseCurrentStart(false);
+        setLoadState('needs_origin');
+        setErrorMessage(blockedMessage ?? resolved.message ?? 'Current location unavailable. Choose starting point manually.');
+        return false;
+      }
+
+      setCurrentLocation(resolved.coordinate, resolved.source ?? 'live');
+      if (!RoutingService.isInsideVenue(resolved.coordinate)) {
+        setUseCurrentStart(false);
+        setLoadState('needs_origin');
+        setErrorMessage('You are outside the Ijtema area. Choose a start point inside the ground or use the nearest gate.');
+        return false;
+      }
+
+      setUseCurrentStart(true);
+      setManualStart(null);
+      return true;
+    } catch {
       setUseCurrentStart(false);
       setLoadState('needs_origin');
-      setErrorMessage(resolved.message ?? 'Current location unavailable. Choose starting point manually.');
+      setErrorMessage('Current location is temporarily unavailable. Choose start point manually.');
       return false;
     }
-
-    setCurrentLocation(resolved.coordinate, resolved.source ?? 'live');
-    if (!RoutingService.isInsideVenue(resolved.coordinate)) {
-      setUseCurrentStart(false);
-      setLoadState('needs_origin');
-      setErrorMessage('You are outside the Ijtema area. Choose a start point inside the ground or use the nearest gate.');
-      return false;
-    }
-
-    setUseCurrentStart(true);
-    setManualStart(null);
-    return true;
   };
 
   const chooseRememberedLocation = (): boolean => {

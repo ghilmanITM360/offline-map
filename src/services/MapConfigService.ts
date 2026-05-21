@@ -5,41 +5,56 @@
 
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
+import {
+  getGoogleMapsRuntimeStatusFromInputs,
+  GOOGLE_MAPS_KEY_NOT_CONFIGURED_MESSAGE,
+  GOOGLE_MAPS_LOAD_FAILED_MESSAGE,
+  GoogleMapsRuntimeStatus,
+  RuntimePlatform,
+} from './MapConfigResolver';
 
-function hasEnvKey(value: string | undefined): boolean {
-  return typeof value === 'string' && value.trim().length > 0;
+let didLogDevDiagnostics = false;
+
+function resolvePlatform(value: string): RuntimePlatform {
+  if (value === 'android' || value === 'ios') return value;
+  return 'other';
 }
 
-function hasConfiguredKey(): boolean {
-  const expoConfig = Constants.expoConfig;
-
-  if (Platform.OS === 'android') {
-    return (
-      Boolean(expoConfig?.android?.config?.googleMaps?.apiKey) ||
-      hasEnvKey(process.env.EXPO_PUBLIC_GOOGLE_MAPS_ANDROID_API_KEY)
-    );
+function logDevDiagnostics(status: GoogleMapsRuntimeStatus): void {
+  if (!__DEV__ || didLogDevDiagnostics || status.platform !== 'android') return;
+  didLogDevDiagnostics = true;
+  const envLoaded =
+    typeof process.env.EXPO_PUBLIC_GOOGLE_MAPS_ANDROID_API_KEY !== 'undefined' ||
+    typeof process.env.EXPO_PUBLIC_GOOGLE_MAPS_IOS_API_KEY !== 'undefined';
+  console.log('[MapConfig] .env loaded:', envLoaded);
+  console.log('[MapConfig] Android Maps key present:', status.keyPresent);
+  console.log('[MapConfig] Android package:', status.packageName ?? 'unknown');
+  if (status.keyPreview) {
+    console.log('[MapConfig] Android key preview:', status.keyPreview);
   }
-
-  if (Platform.OS === 'ios') {
-    return (
-      Boolean(expoConfig?.ios?.config?.googleMapsApiKey) ||
-      hasEnvKey(process.env.EXPO_PUBLIC_GOOGLE_MAPS_IOS_API_KEY)
-    );
-  }
-
-  return false;
 }
 
 export class MapConfigService {
   static isGoogleMapsKeyConfigured(): boolean {
-    return hasConfiguredKey();
+    const status = this.getRuntimeStatus();
+    return status.keyPresent;
+  }
+
+  static getRuntimeStatus(): GoogleMapsRuntimeStatus {
+    const status = getGoogleMapsRuntimeStatusFromInputs({
+      platform: resolvePlatform(Platform.OS),
+      expoConfig: Constants.expoConfig,
+      env: process.env,
+    });
+    logDevDiagnostics(status);
+    return status;
   }
 
   static getMissingGoogleMapsMessage(): string {
-    if (Platform.OS === 'android') {
-      return 'Google Maps API key missing. Base map may be limited until EXPO_PUBLIC_GOOGLE_MAPS_ANDROID_API_KEY is configured.';
-    }
+    return GOOGLE_MAPS_KEY_NOT_CONFIGURED_MESSAGE;
+  }
 
-    return 'Google Maps API key missing. Base map may be limited until EXPO_PUBLIC_GOOGLE_MAPS_IOS_API_KEY is configured.';
+  static getMapLoadFailedMessage(): string {
+    return GOOGLE_MAPS_LOAD_FAILED_MESSAGE;
   }
 }

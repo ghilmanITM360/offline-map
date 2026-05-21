@@ -59,40 +59,44 @@ export function useSettingsViewModel() {
   }, [setHasLocationPermission]);
 
   const handleReRequestPermission = async () => {
-    const state = await refreshLocationPermissionState();
-    if (state.granted && !state.servicesEnabled) {
-      const opened = await LocationAccessService.openLocationSettings();
-      if (!opened) {
-        Alert.alert('Location services are off', 'Open device location settings and turn location on.');
+    try {
+      const state = await refreshLocationPermissionState();
+      if (state.granted && !state.servicesEnabled) {
+        const opened = await LocationAccessService.openLocationSettings();
+        if (!opened) {
+          Alert.alert('Location services are off', 'Open device location settings and turn location on.');
+        }
+        return;
       }
-      return;
-    }
 
-    if (state.granted) {
+      if (state.granted) {
+        const opened = await LocationAccessService.openAppSettings();
+        if (!opened) {
+          Alert.alert('Location enabled', 'Location permission is granted. Manage it from Android app settings.');
+        }
+        return;
+      }
+
+      if (state.canAskAgain) {
+        const asked = await Location.requestForegroundPermissionsAsync();
+        const granted = asked.status === 'granted';
+        setHasLocationPermission(granted);
+        await refreshLocationPermissionState();
+        if (!granted) {
+          Alert.alert('Location permission required', 'Please allow location to use current-position navigation.');
+        }
+        return;
+      }
+
       const opened = await LocationAccessService.openAppSettings();
       if (!opened) {
-        Alert.alert('Location enabled', 'Location permission is granted. Manage it from Android app settings.');
+        Alert.alert(
+          'Unable to open settings',
+          'Open Android app settings manually and allow location permission for this app.',
+        );
       }
-      return;
-    }
-
-    if (state.canAskAgain) {
-      const asked = await Location.requestForegroundPermissionsAsync();
-      const granted = asked.status === 'granted';
-      setHasLocationPermission(granted);
-      await refreshLocationPermissionState();
-      if (!granted) {
-        Alert.alert('Location permission required', 'Please allow location to use current-position navigation.');
-      }
-      return;
-    }
-
-    const opened = await LocationAccessService.openAppSettings();
-    if (!opened) {
-      Alert.alert(
-        'Unable to open settings',
-        'Open Android app settings manually and allow location permission for this app.',
-      );
+    } catch {
+      Alert.alert('Permission error', 'Could not open location permission controls right now.');
     }
   };
 

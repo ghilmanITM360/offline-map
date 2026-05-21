@@ -40,85 +40,101 @@ export class LocationAccessService {
   }
 
   static async resolveCurrentLocation(allowPrompt = true): Promise<LocationResolveResult> {
-    let permission = await Location.getForegroundPermissionsAsync();
-    if (permission.status !== 'granted' && allowPrompt) {
-      permission = await Location.requestForegroundPermissionsAsync();
-    }
-
-    let servicesEnabled = true;
     try {
-      servicesEnabled = await Location.hasServicesEnabledAsync();
-    } catch {
-      servicesEnabled = true;
-    }
+      let permission = await Location.getForegroundPermissionsAsync();
+      if (permission.status !== 'granted' && allowPrompt) {
+        permission = await Location.requestForegroundPermissionsAsync();
+      }
 
-    const permissionState: LocationPermissionState = {
-      granted: permission.status === 'granted',
-      canAskAgain: permission.canAskAgain,
-      status: permission.status,
-      servicesEnabled,
-    };
+      let servicesEnabled = true;
+      try {
+        servicesEnabled = await Location.hasServicesEnabledAsync();
+      } catch {
+        servicesEnabled = true;
+      }
 
-    if (!permissionState.granted) {
-      return {
-        ok: false,
-        coordinate: null,
-        source: null,
-        permissionState,
-        message: permissionState.canAskAgain
-          ? 'Location permission is required to use your current position.'
-          : 'Location permission is denied. Open app settings to allow location access.',
+      const permissionState: LocationPermissionState = {
+        granted: permission.status === 'granted',
+        canAskAgain: permission.canAskAgain,
+        status: permission.status,
+        servicesEnabled,
       };
-    }
 
-    if (!permissionState.servicesEnabled) {
-      return {
-        ok: false,
-        coordinate: null,
-        source: null,
-        permissionState,
-        message: 'Device location is turned off. Enable location services and try again.',
-      };
-    }
+      if (!permissionState.granted) {
+        return {
+          ok: false,
+          coordinate: null,
+          source: null,
+          permissionState,
+          message: permissionState.canAskAgain
+            ? 'Location permission is required to use your current position.'
+            : 'Location permission is denied. Open app settings to allow location access.',
+        };
+      }
 
-    try {
-      const current = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.Balanced,
-      });
-      return {
-        ok: true,
-        coordinate: {
-          latitude: current.coords.latitude,
-          longitude: current.coords.longitude,
-          heading: current.coords.heading ?? 0,
-          accuracy: current.coords.accuracy ?? 0,
-        },
-        source: 'live',
-        permissionState,
-        message: null,
-      };
-    } catch {
-      const lastKnown = await Location.getLastKnownPositionAsync();
-      if (lastKnown) {
+      if (!permissionState.servicesEnabled) {
+        return {
+          ok: false,
+          coordinate: null,
+          source: null,
+          permissionState,
+          message: 'Device location is turned off. Enable location services and try again.',
+        };
+      }
+
+      try {
+        const current = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.Balanced,
+        });
         return {
           ok: true,
           coordinate: {
-            latitude: lastKnown.coords.latitude,
-            longitude: lastKnown.coords.longitude,
-            heading: lastKnown.coords.heading ?? 0,
-            accuracy: lastKnown.coords.accuracy ?? 0,
+            latitude: current.coords.latitude,
+            longitude: current.coords.longitude,
+            heading: current.coords.heading ?? 0,
+            accuracy: current.coords.accuracy ?? 0,
           },
-          source: 'device_last_known',
+          source: 'live',
           permissionState,
-          message: 'Using device last known location because live GPS is unavailable.',
+          message: null,
+        };
+      } catch {
+        const lastKnown = await Location.getLastKnownPositionAsync();
+        if (lastKnown) {
+          return {
+            ok: true,
+            coordinate: {
+              latitude: lastKnown.coords.latitude,
+              longitude: lastKnown.coords.longitude,
+              heading: lastKnown.coords.heading ?? 0,
+              accuracy: lastKnown.coords.accuracy ?? 0,
+            },
+            source: 'device_last_known',
+            permissionState,
+            message: 'Using device last known location because live GPS is unavailable.',
+          };
+        }
+        return {
+          ok: false,
+          coordinate: null,
+          source: null,
+          permissionState,
+          message: 'Current location is unavailable. Choose start manually.',
         };
       }
+    } catch {
+      const permissionState: LocationPermissionState = {
+        granted: false,
+        canAskAgain: true,
+        status: Location.PermissionStatus.DENIED,
+        servicesEnabled: true,
+      };
       return {
         ok: false,
         coordinate: null,
         source: null,
         permissionState,
-        message: 'Current location is unavailable. Choose start manually.',
+        message: 'Location service is temporarily unavailable. Please try again.',
       };
     }
   }
@@ -135,7 +151,7 @@ export class LocationAccessService {
   static async openLocationSettings(): Promise<boolean> {
     try {
       if (Platform.OS === 'android') {
-        await Linking.openURL('android.settings.LOCATION_SOURCE_SETTINGS');
+        await Linking.sendIntent('android.settings.LOCATION_SOURCE_SETTINGS');
         return true;
       }
       await Linking.openSettings();

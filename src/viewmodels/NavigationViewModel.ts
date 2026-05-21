@@ -52,6 +52,8 @@ export function useNavigationViewModel() {
   const rerouteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastRerouteAtRef = useRef(0);
   const settingsRef = useRef(settings);
+  const latestGpsCoordRef = useRef<Coordinate | null>(null);
+  const latestGpsAccuracyRef = useRef(0);
 
   useEffect(() => { routeRef.current = route; }, [route]);
   useEffect(() => { instructionsRef.current = instructions; }, [instructions]);
@@ -128,6 +130,7 @@ export function useNavigationViewModel() {
   // GPS listener — registered once with the shared GPSManagerService
   const handleGPS = useCallback(
     (coord: Coordinate) => {
+      latestGpsCoordRef.current = coord;
       const snapped = SnapToRoadService.snapVisualToRoad(coord, 20);
       setSnappedLocation(snapped);
 
@@ -137,6 +140,7 @@ export function useNavigationViewModel() {
       const dest = destinationRef.current;
       const currentSettings = settingsRef.current;
       const gpsAccuracy = coord.accuracy ?? 0;
+      latestGpsAccuracyRef.current = gpsAccuracy;
       setIsWeakGps(gpsAccuracy > WEAK_GPS_THRESHOLD_M);
 
       // --- Step advancement ---
@@ -202,9 +206,11 @@ export function useNavigationViewModel() {
               rerouteTimerRef.current = null;
               // Re-check still off-route after grace period
               const latestRoute = routeRef.current;
-              if (latestRoute && RerouteService.isOffRoute(coord, latestRoute, gpsAccuracy)) {
-                const resolvedStart = SnapToRoadService.resolveRoutingNode(coord);
-                const destNodeIds = RoutingService.resolveDestinationNodesFromPlace(dest, coord);
+              const latestCoord = latestGpsCoordRef.current ?? coord;
+              const latestAccuracy = latestGpsAccuracyRef.current;
+              if (latestRoute && RerouteService.isOffRoute(latestCoord, latestRoute, latestAccuracy)) {
+                const resolvedStart = SnapToRoadService.resolveRoutingNode(latestCoord);
+                const destNodeIds = RoutingService.resolveDestinationNodesFromPlace(dest, latestCoord);
                 const newRoute = RoutingService.calculateRoute(
                   resolvedStart.snappedCoordinate,
                   destNodeIds,
