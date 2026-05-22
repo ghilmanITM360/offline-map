@@ -6,7 +6,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, StyleSheet, Pressable, Modal, BackHandler, Platform, Alert, Animated } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import MapView, { Marker, Polyline, PROVIDER_GOOGLE, LocalTile, Camera } from 'react-native-maps';
+import MapView, { Marker, Polyline, PROVIDER_GOOGLE, LocalTile, Camera, Polygon } from 'react-native-maps';
 import { X, Navigation, Volume2, VolumeX, ArrowLeft, ArrowRight, MapPin, RefreshCw, LocateFixed } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Paths } from 'expo-file-system'; // fixed: use Paths API instead of deprecated documentDirectory
@@ -17,8 +17,9 @@ import { InstructionService } from '../../services/InstructionService';
 import { RoutePointService } from '../../services/RoutePointService';
 import { useTheme } from '../../services/useTheme';
 import { MapConfigService } from '../../services/MapConfigService';
+import { RoutingService } from '../../services/RoutingService';
 import { RootStackParamList } from '../../navigation/RootNavigator';
-import { IJTEMA_DATA } from '../../constants/data';
+import { IJTEMA_DATA, MAP_BOUNDS } from '../../constants/data';
 
 type NavigationScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Navigation'>; // fixed: type stack navigation on the navigation screen
 
@@ -45,7 +46,10 @@ export function NavigationScreen() {
   const navBg = theme.background;
   const hasGoogleMapsKey = MapConfigService.isGoogleMapsKeyConfigured();
   const userPulseAnim = useRef(new Animated.Value(0)).current;
-  const [isAutoFollowing, setIsAutoFollowing] = useState(true);
+  const [isAutoFollowing, setIsAutoFollowing] = useState(settings.autoFollowLocation);
+  const [mapReady, setMapReady] = useState(false);
+  const [initialCameraFitDone, setInitialCameraFitDone] = useState(false);
+  const [cameraFitReason, setCameraFitReason] = useState<'route' | 'venue' | 'user' | null>(null);
 
   const {
     destination,
@@ -60,9 +64,17 @@ export function NavigationScreen() {
     arrived,
     reroutePending,
     isWeakGps,
+    rerouteStatusMessage,
     handleExit,
   } = useNavigationViewModel();
   const startCoordinate = route?.coordinates[0] ?? null;
+  const venueBoundary = [
+    { latitude: MAP_BOUNDS.minLat, longitude: MAP_BOUNDS.minLng },
+    { latitude: MAP_BOUNDS.minLat, longitude: MAP_BOUNDS.maxLng },
+    { latitude: MAP_BOUNDS.maxLat, longitude: MAP_BOUNDS.maxLng },
+    { latitude: MAP_BOUNDS.maxLat, longitude: MAP_BOUNDS.minLng },
+  ];
+  const graphOnlyFallbackUsed = !hasGoogleMapsKey;
 
   useEffect(() => {
     const pulse = Animated.loop(
@@ -93,12 +105,39 @@ export function NavigationScreen() {
   }, [destination]);
 
   useEffect(() => {
-    setIsAutoFollowing(true);
-  }, [destination]);
+    setIsAutoFollowing(settings.autoFollowLocation);
+  }, [destination, settings.autoFollowLocation]);
+
+  useEffect(() => {
+    setInitialCameraFitDone(false);
+  }, [route?.id]);
+
+  useEffect(() => {
+    if (!mapReady || initialCameraFitDone || !mapRef.current) return;
+    if (route?.coordinates && route.coordinates.length > 1) {
+      mapRef.current.fitToCoordinates(route.coordinates, {
+        edgePadding: { top: 90, right: 64, bottom: 220, left: 64 },
+        animated: true,
+      });
+      setCameraFitReason('route');
+      setInitialCameraFitDone(true);
+      return;
+    }
+    mapRef.current.fitToCoordinates(venueBoundary, {
+      edgePadding: { top: 48, right: 48, bottom: 160, left: 48 },
+      animated: true,
+    });
+    setCameraFitReason('venue');
+    setInitialCameraFitDone(true);
+  }, [initialCameraFitDone, mapReady, route?.coordinates]);
 
   // Heading-up camera following
   useEffect(() => {
     if (isAutoFollowing && snappedLocation && mapRef.current) {
+      const snappedInsideVenue = RoutingService.isInsideVenue(snappedLocation);
+      if (!snappedInsideVenue && route?.coordinates && route.coordinates.length > 1) {
+        return;
+      }
       const camera: Partial<Camera> = {
         center: {
           latitude: snappedLocation.latitude,
@@ -109,8 +148,9 @@ export function NavigationScreen() {
         pitch: 30,
       };
       mapRef.current.animateCamera(camera as Camera, { duration: 800 });
+      setCameraFitReason('user');
     }
-  }, [isAutoFollowing, settings.keepNorthFixed, snappedLocation]); // fixed: react to north-up setting changes while navigating
+  }, [isAutoFollowing, route?.coordinates, settings.keepNorthFixed, snappedLocation]); // fixed: react to north-up setting changes while navigating
 
   const currentStep = instructions[currentStepIndex];
   const nextStep = instructions[currentStepIndex + 1];
@@ -122,25 +162,61 @@ export function NavigationScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: navBg }]}>
-      {hasGoogleMapsKey ? (
-        <MapView
-          ref={mapRef}
-          style={styles.map}
-          provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined} // fixed: avoid forcing Google provider on iOS
-          showsUserLocation={false}
-          showsMyLocationButton={false}
-          rotateEnabled={!settings.keepNorthFixed} // fixed: disable free rotation when north-up mode is enabled
-          onPanDrag={() => setIsAutoFollowing(false)}
-          initialRegion={{
-            latitude: currentLocation?.latitude ?? 24.9685,
-            longitude: currentLocation?.longitude ?? 67.0015,
-            latitudeDelta: 0.002,
-            longitudeDelta: 0.002,
-          }}
-        >
+      <MapView
+        ref={mapRef}
+        style={styles.map}
+        provider={Platform.OS === 'android' && hasGoogleMapsKey ? PROVIDER_GOOGLE : undefined} // fixed: allow graph-only rendering without Google key
+        mapType={hasGoogleMapsKey ? (offlineData.isDownloaded ? 'none' : settings.mapMode) : 'none'}
+        showsUserLocation={false}
+        showsMyLocationButton={false}
+        rotateEnabled={!settings.keepNorthFixed} // fixed: disable free rotation when north-up mode is enabled
+        onMapReady={() => {
+          setMapReady(true);
+          if (__DEV__) {
+            console.log('[Navigation][Render]', {
+              mapReady: true,
+              graphOverlayReady: true,
+              routePolylineCount: route?.coordinates?.length ?? 0,
+              startMarkerReady: !!startCoordinate,
+              userMarkerReady: !!snappedLocation,
+              destinationMarkerReady: !!destinationCoordinate,
+              graphOnlyFallbackUsed,
+              cameraFitReason,
+            });
+          }
+        }}
+        onPanDrag={() => setIsAutoFollowing(false)}
+        initialRegion={{
+          latitude: currentLocation?.latitude ?? 24.9685,
+          longitude: currentLocation?.longitude ?? 67.0015,
+          latitudeDelta: 0.002,
+          longitudeDelta: 0.002,
+        }}
+      >
         {offlineData.isDownloaded && (
           <LocalTile pathTemplate={getTilePath()} tileSize={256} zIndex={-1} />
         )}
+
+        {/* Venue boundary */}
+        <Polygon
+          coordinates={venueBoundary}
+          fillColor="rgba(232,245,233,0.06)"
+          strokeColor="rgba(46,125,50,0.48)"
+          strokeWidth={2}
+          zIndex={0}
+        />
+
+        {/* Block polygons */}
+        {Object.values(IJTEMA_DATA.blocks).map((block) => (
+          <Polygon
+            key={`nav_block_${block.id}`}
+            coordinates={block.corners ?? block.polygon}
+            fillColor={block.id === destination?.id ? 'rgba(46,125,50,0.2)' : 'rgba(46,125,50,0.08)'}
+            strokeColor={block.id === destination?.id ? '#2E7D32' : 'rgba(95,99,104,0.45)'}
+            strokeWidth={block.id === destination?.id ? 2 : 1}
+            zIndex={0}
+          />
+        ))}
 
         {IJTEMA_DATA.edges.map((edge, idx) => {
           const from = IJTEMA_DATA.nodes[edge.from];
@@ -219,11 +295,15 @@ export function NavigationScreen() {
             </View>
           </Marker>
         )}
-        </MapView>
-      ) : (
-        <View style={styles.mapUnavailable}>
-          <Text style={styles.mapUnavailableTitle}>Map unavailable</Text>
+      </MapView>
+      {!hasGoogleMapsKey && (
+        <View style={styles.mapUnavailableBanner}>
           <Text style={styles.mapUnavailableText}>{MapConfigService.getMissingGoogleMapsMessage()}</Text>
+        </View>
+      )}
+      {!mapReady && (
+        <View style={styles.mapLoadingOverlay}>
+          <Text style={styles.mapLoadingText}>Venue map loading...</Text>
         </View>
       )}
 
@@ -232,6 +312,11 @@ export function NavigationScreen() {
         {isWeakGps && (
           <View style={styles.weakGpsBanner}>
             <Text style={styles.weakGpsText}>Weak GPS signal detected. Route updates may be slower.</Text>
+          </View>
+        )}
+        {rerouteStatusMessage && !reroutePending && (
+          <View style={styles.rerouteHintBanner}>
+            <Text style={styles.rerouteHintText}>{rerouteStatusMessage}</Text>
           </View>
         )}
         {reroutePending ? (
@@ -346,6 +431,30 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     backgroundColor: '#E8EAED',
   },
+  mapUnavailableBanner: {
+    position: 'absolute',
+    left: 12,
+    right: 12,
+    top: 58,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 10,
+    backgroundColor: 'rgba(255,255,255,0.9)',
+    borderWidth: 1,
+    borderColor: '#DADCE0',
+  },
+  mapLoadingOverlay: {
+    position: 'absolute',
+    inset: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(248,249,250,0.42)',
+  },
+  mapLoadingText: {
+    color: '#202124',
+    fontSize: 14,
+    fontWeight: '700',
+  },
   mapUnavailableTitle: {
     color: '#202124',
     fontSize: 18,
@@ -374,6 +483,22 @@ const styles = StyleSheet.create({
   },
   weakGpsText: {
     color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  rerouteHintBanner: {
+    marginHorizontal: 12,
+    marginTop: 4,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    backgroundColor: '#FFF8E1',
+    borderWidth: 1,
+    borderColor: '#FBC02D',
+  },
+  rerouteHintText: {
+    color: '#8D6E63',
     fontSize: 12,
     fontWeight: '700',
     textAlign: 'center',

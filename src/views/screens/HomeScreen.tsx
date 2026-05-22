@@ -24,7 +24,6 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import MapView, { Marker, Polygon, Polyline, PROVIDER_GOOGLE, LocalTile } from 'react-native-maps';
 import {
   Menu,
-  Mic,
   Navigation,
   LocateFixed,
   Plus,
@@ -106,6 +105,12 @@ export function HomeScreen() {
     setIsSearchFocused(false);
     searchInputRef.current?.blur();
     Keyboard.dismiss();
+  }, []);
+
+  const logHomeControl = useCallback((pressed: string, action: string) => {
+    if (__DEV__) {
+      console.log(`[HomeControl] pressed=${pressed} action=${action}`);
+    }
   }, []);
 
   const {
@@ -226,6 +231,12 @@ export function HomeScreen() {
     return () => clearTimeout(timeout);
   }, [hasGoogleMapsKey, mapReady]);
 
+  useEffect(() => {
+    if (venueStatus.insideVenue) {
+      setOutsideBannerDismissed(false);
+    }
+  }, [venueStatus.insideVenue]);
+
   const handleToggleFav = () => {
     if (!selectedPlace) return;
     FavoriteService.toggleFavorite(selectedPlace);
@@ -290,7 +301,10 @@ export function HomeScreen() {
           <Pressable
             key={cat.id}
             style={[styles.chip, activeCategory === cat.id && styles.activeChip]}
-            onPress={() => handleCategoryPress(cat.id)}
+            onPress={() => {
+              logHomeControl('category_chip', `filter_${cat.id}`);
+              handleCategoryPress(cat.id);
+            }}
           >
             <Text style={[styles.chipText, activeCategory === cat.id && styles.activeChipText]}>
               {cat.label}
@@ -319,6 +333,7 @@ export function HomeScreen() {
             showsUserLocation
             showsMyLocationButton={false}
             showsCompass={false}
+            rotateEnabled={!settings.keepNorthFixed}
             onMapReady={() => {
               setIsMapReady(true);
               setMapReadyState(true);
@@ -483,7 +498,11 @@ export function HomeScreen() {
             ]}
           >
             <Pressable
-              onPress={() => { dismissSearch(); nav.dispatch(DrawerActions.openDrawer()); }}
+              onPress={() => {
+                dismissSearch();
+                logHomeControl('menu', 'open_drawer');
+                nav.dispatch(DrawerActions.openDrawer());
+              }}
               style={styles.iconButton}
             >
               <Menu size={24} color={theme.subtext} />
@@ -500,22 +519,17 @@ export function HomeScreen() {
               onSubmitEditing={Keyboard.dismiss}
             />
             {searchQuery.length > 0 ? (
-              <Pressable onPress={clearSearch} style={styles.iconButton}>
+              <Pressable
+                onPress={() => {
+                  logHomeControl('search_clear', 'clear_query');
+                  clearSearch();
+                }}
+                style={styles.iconButton}
+              >
                 <X size={20} color="#5F6368" />
               </Pressable>
             ) : (
-              <Pressable
-                style={styles.iconButton}
-                onPress={() =>
-                  Alert.alert(
-                    'Voice Search',
-                    'Voice search is not available in the offline edition. Please type your destination in the search bar.',
-                    [{ text: 'OK' }],
-                  )
-                }
-              >
-                <Mic size={22} color="#4285F4" />
-              </Pressable>
+              <View style={styles.iconButtonSpacer} />
             )}
           </Animated.View>
 
@@ -590,7 +604,13 @@ export function HomeScreen() {
               <Text style={styles.outsideVenueText}>Outside Ijtema area</Text>
               <Text style={styles.outsideVenueSubtext}>Routes should start inside the ground.</Text>
             </View>
-            <Pressable style={styles.bannerCloseButton} onPress={() => setOutsideBannerDismissed(true)}>
+            <Pressable
+              style={styles.bannerCloseButton}
+              onPress={() => {
+                logHomeControl('outside_banner_close', 'dismissed');
+                setOutsideBannerDismissed(true);
+              }}
+            >
               <X size={16} color="#FFFFFF" />
             </Pressable>
           </Animated.View>
@@ -629,25 +649,63 @@ export function HomeScreen() {
                 { top: rightControlsTop },
               ]}
             >
-              <Pressable style={styles.controlButton} onPress={openLayerOptions}>
+              <Pressable
+                style={styles.controlButton}
+                onPress={() => {
+                  logHomeControl('layer', 'open_options');
+                  openLayerOptions();
+                }}
+              >
                 <Layers size={22} color="#5F6368" />
               </Pressable>
-              <Pressable style={styles.controlButton} onPress={handleCompassReset}>
-                <Compass size={22} color="#5F6368" />
+              <Pressable
+                style={[
+                  styles.controlButton,
+                  settings.keepNorthFixed && styles.controlButtonActive,
+                ]}
+                onPress={() => {
+                  logHomeControl('compass', 'reset_north_up');
+                  handleCompassReset();
+                }}
+              >
+                <Compass size={22} color={settings.keepNorthFixed ? '#1A73E8' : '#5F6368'} />
               </Pressable>
+              <View style={styles.controlHelperBadge}>
+                <Text style={styles.controlHelperText}>
+                  {settings.keepNorthFixed ? 'North-up' : 'Free rotate'}
+                </Text>
+              </View>
               <View style={styles.zoomControls}>
-                <Pressable style={styles.zoomButton} onPress={handleZoomIn}>
+                <Pressable
+                  style={styles.zoomButton}
+                  onPress={() => {
+                    logHomeControl('zoom_in', 'map_zoom_in');
+                    handleZoomIn();
+                  }}
+                >
                   <Plus size={22} color="#5F6368" />
                 </Pressable>
                 <View style={styles.zoomDivider} />
-                <Pressable style={styles.zoomButton} onPress={handleZoomOut}>
+                <Pressable
+                  style={styles.zoomButton}
+                  onPress={() => {
+                    logHomeControl('zoom_out', 'map_zoom_out');
+                    handleZoomOut();
+                  }}
+                >
                   <Minus size={22} color="#5F6368" />
                 </Pressable>
               </View>
             </View>
 
             <View style={[styles.bottomControls, { bottom: Math.max(insets.bottom, 16) + 96 }]}>
-              <Pressable style={styles.recenterButton} onPress={() => { void handleRecenter(); }}>
+              <Pressable
+                style={styles.recenterButton}
+                onPress={() => {
+                  logHomeControl('recenter', 'resolve_location_and_center');
+                  void handleRecenter();
+                }}
+              >
                 <LocateFixed size={24} color="#4285F4" />
               </Pressable>
             </View>
@@ -875,6 +933,7 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
   },
   iconButton: { padding: 10 },
+  iconButtonSpacer: { width: 40, height: 40 },
   searchInput: {
     flex: 1,
     fontSize: 16,
@@ -940,6 +999,25 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 12,
     elevation: 3,
+  },
+  controlButtonActive: {
+    borderWidth: 1,
+    borderColor: '#1A73E8',
+    backgroundColor: '#E8F0FE',
+  },
+  controlHelperBadge: {
+    backgroundColor: 'rgba(255,255,255,0.95)',
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    marginBottom: 10,
+    alignSelf: 'center',
+    elevation: 2,
+  },
+  controlHelperText: {
+    color: '#5F6368',
+    fontSize: 10,
+    fontWeight: '700',
   },
   zoomControls: {
     backgroundColor: '#FFFFFF',

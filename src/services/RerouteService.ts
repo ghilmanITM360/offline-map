@@ -7,24 +7,114 @@ import { Coordinate, RoutePreview } from '../models/types';
 import { getDistance } from 'geolib';
 
 export class RerouteService {
+  static getDynamicOffRouteThresholdMeters(gpsAccuracyM = 0): number {
+    const threshold = Math.max(30, gpsAccuracyM * 1.5);
+    return Math.min(80, Math.round(threshold));
+  }
+
+  static shouldHoldRouteForWeakGps(gpsAccuracyM = 0): boolean {
+    return gpsAccuracyM > 50;
+  }
+
+  static shouldTriggerReroute(input: {
+    consecutiveOffRouteCount: number;
+    offRouteDurationMs: number;
+    cooldownRemainingMs: number;
+    movedDistanceSinceLastAcceptedM: number;
+  }): boolean {
+    if (input.cooldownRemainingMs > 0) return false;
+    if (input.movedDistanceSinceLastAcceptedM < 12) return false;
+    return input.consecutiveOffRouteCount >= 3 || input.offRouteDurationMs >= 9000;
+  }
+
+  static clampMonotonicProgress(
+    previousProgressMeters: number,
+    candidateProgressMeters: number,
+    maxBacktrackMeters = 15,
+  ): number {
+    if (candidateProgressMeters + maxBacktrackMeters < previousProgressMeters) {
+      return previousProgressMeters;
+    }
+    return candidateProgressMeters;
+  }
+
+  static projectProgressMetersOnRoute(coord: Coordinate, route: RoutePreview): {
+    progressMeters: number;
+    snappedCoordinate: Coordinate;
+    distanceToRouteMeters: number;
+  } {
+    if (route.coordinates.length < 2) {
+      return {
+        progressMeters: 0,
+        snappedCoordinate: coord,
+        distanceToRouteMeters: Infinity,
+      };
+    }
+
+    let cumulativeMeters = 0;
+    let best = {
+      progressMeters: 0,
+      snappedCoordinate: coord,
+      distanceToRouteMeters: Infinity,
+    };
+
+    for (let i = 0; i < route.coordinates.length - 1; i++) {
+      const a = route.coordinates[i];
+      const b = route.coordinates[i + 1];
+      const projection = this.projectPointToSegment(coord, a, b);
+      const segmentMeters = getDistance(
+        { latitude: a.latitude, longitude: a.longitude },
+        { latitude: b.latitude, longitude: b.longitude },
+      );
+      const progressMeters = cumulativeMeters + segmentMeters * projection.t;
+      if (projection.distanceToSegmentMeters < best.distanceToRouteMeters) {
+        best = {
+          progressMeters,
+          snappedCoordinate: {
+            latitude: projection.point.latitude,
+            longitude: projection.point.longitude,
+            heading: coord.heading,
+            accuracy: coord.accuracy,
+          },
+          distanceToRouteMeters: projection.distanceToSegmentMeters,
+        };
+      }
+      cumulativeMeters += segmentMeters;
+    }
+
+    return best;
+  }
+
   /**
    * Returns true when the user is off the current route.
-   * Threshold is 20 m normally; expands to 50 m when GPS accuracy is poor (> 40 m).
+   * Threshold is dynamic by GPS accuracy with floor/cap controls.
    */
   static isOffRoute(coord: Coordinate, route: RoutePreview, gpsAccuracyM = 0): boolean {
-    const threshold = gpsAccuracyM > 40 ? 50 : 20;
+    const threshold = this.getDynamicOffRouteThresholdMeters(gpsAccuracyM);
+    const distance = this.getDistanceToRouteMeters(coord, route);
+    return distance > threshold;
+  }
+
+  static getDistanceToRouteMeters(coord: Coordinate, route: RoutePreview): number {
+    let minDistance = Infinity;
 
     for (let i = 0; i < route.coordinates.length - 1; i++) {
       const p1 = route.coordinates[i];
       const p2 = route.coordinates[i + 1];
       const dist = this.getDistanceToSegment(coord, p1, p2);
-      if (dist <= threshold) return false;
+      if (dist < minDistance) {
+        minDistance = dist;
+      }
     }
 
-    return true;
+    return minDistance;
   }
 
-  private static getDistanceToSegment(p: Coordinate, a: Coordinate, b: Coordinate): number {
+  private static projectPointToSegment(p: Coordinate, a: Coordinate, b: Coordinate): {
+    point: Coordinate;
+    t: number;
+    distanceToSegmentMeters: number;
+  } {
     const x = p.longitude;
     const y = p.latitude;
     const x1 = a.longitude;
@@ -38,27 +128,26 @@ export class RerouteService {
     const D = y2 - y1;
 
     const dot = A * C + B * D;
-    const len_sq = C * C + D * D;
-    let param = -1;
-    if (len_sq !== 0) param = dot / len_sq;
+    const lenSq = C * C + D * D;
+    const rawT = lenSq !== 0 ? dot / lenSq : 0;
+    const t = Math.max(0, Math.min(1, rawT));
 
-    let xx: number;
-    let yy: number;
+    const point = {
+      latitude: y1 + D * t,
+      longitude: x1 + C * t,
+    };
 
-    if (param < 0) {
-      xx = x1;
-      yy = y1;
-    } else if (param > 1) {
-      xx = x2;
-      yy = y2;
-    } else {
-      xx = x1 + param * C;
-      yy = y1 + param * D;
-    }
+    return {
+      point,
+      t,
+      distanceToSegmentMeters: getDistance(
+        { latitude: p.latitude, longitude: p.longitude },
+        { latitude: point.latitude, longitude: point.longitude },
+      ),
+    };
+  }
 
-    return getDistance(
-      { latitude: y, longitude: x },
-      { latitude: yy, longitude: xx }
-    );
+  private static getDistanceToSegment(p: Coordinate, a: Coordinate, b: Coordinate): number {
+    return this.projectPointToSegment(p, a, b).distanceToSegmentMeters;
   }
 }

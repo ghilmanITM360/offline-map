@@ -45,6 +45,7 @@ export function DownloadMapScreen() {
     cancelDownload,
     retryDownload,
     continueToMain,
+    continueWithVenueMapOnly,
     repairDownload,
   } = useDownloadMapViewModel();
 
@@ -60,6 +61,12 @@ export function DownloadMapScreen() {
   const isError = phase === 'error';
   const isComplete = phase === 'complete';
   const isCorrupt = offlineMapStatus === 'corrupt' || offlineMapStatus === 'needs_update';
+  const showVenueMapOnlyAction = isIdle || isError || isCorrupt;
+  const blockingMessage = isError
+    ? (errorMessage ?? offlineMapStatusMessage ?? 'Download failed.')
+    : isCorrupt
+      ? (offlineMapStatusMessage ?? 'Map data looks incomplete. Repair and re-download is required.')
+      : null;
 
   useEffect(() => {
     let timeout: ReturnType<typeof setTimeout> | null = null;
@@ -144,10 +151,10 @@ export function DownloadMapScreen() {
             </View>
           )}
 
-          {(isError || offlineMapStatusMessage) && (
+          {blockingMessage && (
             <View style={styles.errorBox}>
               <AlertTriangle size={20} color="#D32F2F" />
-              <Text style={styles.errorText}>{errorMessage ?? offlineMapStatusMessage}</Text>
+              <Text style={styles.errorText}>{blockingMessage}</Text>
             </View>
           )}
 
@@ -205,6 +212,16 @@ export function DownloadMapScreen() {
           <Wifi size={18} color="#666" />
           <Text style={styles.infoText}>Wi-Fi recommended. Estimated download: {estimatedSizeMb} MB.</Text>
         </View>
+
+        {showVenueMapOnlyAction && (
+          <Pressable style={styles.skipButton} onPress={() => continueWithVenueMapOnly(navigation)}>
+            <Text style={styles.skipText}>Use venue map only</Text>
+          </Pressable>
+        )}
+
+        {showVenueMapOnlyAction && (
+          <Text style={styles.fallbackHint}>Background map unavailable. Ijtema routes still work.</Text>
+        )}
 
         {(isIdle || isError) && hasInternet && (
           <Pressable
@@ -424,5 +441,11 @@ const styles = StyleSheet.create({
     color: '#1A73E8',
     fontSize: 14,
     fontWeight: '600',
+  },
+  fallbackHint: {
+    marginTop: 8,
+    textAlign: 'center',
+    color: '#616161',
+    fontSize: 12,
   },
 });

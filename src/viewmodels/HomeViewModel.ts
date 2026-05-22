@@ -15,6 +15,8 @@ import { RoutingService } from '../services/RoutingService';
 import { LocationAccessService } from '../services/LocationAccessService';
 import { RoutePointService } from '../services/RoutePointService';
 
+declare const __DEV__: boolean;
+
 function formatLastKnownAge(timestamp: string | null): string {
   if (!timestamp) return 'from an earlier session';
   const ageMs = Date.now() - new Date(timestamp).getTime();
@@ -60,6 +62,10 @@ export function useHomeViewModel() {
   });
 
   const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const devLogControl = (pressed: string, action: string, details?: Record<string, unknown>) => {
+    if (!__DEV__) return;
+    console.log('[HomeControl]', { pressed, action, ...(details ?? {}) });
+  };
 
   const snapPoints = useMemo(() => ['15%', '50%', '92%'], []);
   const categoryChips = useMemo(() => SearchService.getAvailableCategoryChips(), []);
@@ -163,6 +169,10 @@ export function useHomeViewModel() {
 
       if (resolved.ok && resolved.coordinate) {
         setCurrentLocation(resolved.coordinate, resolved.source ?? 'live');
+        devLogControl('recenter', 'location_resolved', {
+          source: resolved.source ?? 'live',
+          insideVenue: RoutingService.isInsideVenue(resolved.coordinate),
+        });
         const centered = recenterTo(resolved.coordinate);
         if (!centered) {
           Alert.alert('Map still loading', 'Location updated. Try recenter again in a moment.');
@@ -222,7 +232,13 @@ export function useHomeViewModel() {
         resolved.message ?? 'Current location could not be found. Use a remembered location or choose a start manually in Directions.',
         actions,
       );
+      devLogControl('recenter', 'location_unavailable', {
+        message: resolved.message ?? 'unavailable',
+        canAskAgain: resolved.permissionState.canAskAgain,
+        granted: resolved.permissionState.granted,
+      });
     } catch {
+      devLogControl('recenter', 'location_error');
       Alert.alert('Location error', 'Could not read location right now. Please try again.');
     }
   }, [lastKnownLocation, lastKnownLocationUpdatedAt, setCurrentLocation, setHasLocationPermission, setSnappedLocation, updateSettings]);
@@ -231,6 +247,7 @@ export function useHomeViewModel() {
   const handleCompassReset = useCallback(() => {
     mapRef.current?.animateCamera({ heading: 0, pitch: 0 }, { duration: 500 });
     updateSettings({ keepNorthFixed: true });
+    devLogControl('compass', 'north_up_reset');
   }, [updateSettings]);
 
   const handleZoomIn = () => {

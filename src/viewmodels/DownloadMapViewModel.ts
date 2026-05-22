@@ -13,8 +13,35 @@ import { OfflineMapStatusService } from '../services/OfflineMapStatusService';
 import { OfflineDataService } from '../services/OfflineDataService';
 
 const REDIRECT_DELAY_MS = 1200;
+const TILE_DOWNLOAD_MAX_RETRIES = 2;
+
+type DownloadFailureDescriptor = {
+  userMessage: string;
+  statusMessage: string;
+  resumable: boolean;
+};
+
+function statusMessageForFailureType(failureType: string, downloadedTiles: number): string {
+  switch (failureType) {
+    case 'dns_failed':
+      return 'DNS failed. Try another network or mobile data.';
+    case 'tile_server_unreachable':
+      return 'Map tile server could not be reached.';
+    case 'http_403':
+      return 'Map server rejected download.';
+    case 'http_404':
+      return 'Map tile not found on server.';
+    case 'timeout':
+      return 'Download timed out. Try again.';
+    default:
+      return downloadedTiles > 0
+        ? 'Download interrupted. Tap Try Again to resume.'
+        : 'Download failed. Check internet and try again.';
+  }
+}
 
 function logDownload(stage: string, details?: unknown) {
+  if (!__DEV__) return;
   if (details !== undefined) {
     console.log(`[OfflineDownload] ${stage}`, details);
     return;
@@ -69,6 +96,18 @@ export function useDownloadMapViewModel() {
     [],
   );
 
+  const applyFailureState = useCallback(
+    (descriptor: DownloadFailureDescriptor) => {
+      safeSetDownloadState({
+        phase: 'error',
+        errorMessage: descriptor.userMessage,
+        resumable: descriptor.resumable,
+      });
+      setOfflineMapStatus('not_downloaded', descriptor.statusMessage);
+    },
+    [safeSetDownloadState, setOfflineMapStatus],
+  );
+
   const completeDownloadFlow = useCallback(
     async (
       navigation: NativeStackNavigationProp<RootStackParamList, 'DownloadMap'>,
@@ -86,6 +125,7 @@ export function useDownloadMapViewModel() {
 
         await OfflineMapStatusService.markDownloaded(downloadedTiles);
         await OfflineMapStatusService.setDownloadedFlag(true);
+        await OfflineMapStatusService.setGraphOnlyMode(false);
         logDownload('manifest saved');
 
         const validation = await OfflineMapStatusService.validateAtStartup();
@@ -152,15 +192,17 @@ export function useDownloadMapViewModel() {
         clearTimeout(redirectTimeoutRef.current);
       }
 
-      safeSetDownloadState({ phase: 'connecting', errorMessage: null });
+      safeSetDownloadState({ phase: 'connecting', errorMessage: null, resumable: false });
       setOfflineMapStatus('downloading', 'Preparing download...');
       logDownload('download started');
 
-      const connected = await ConnectivityService.isConnected();
-      if (!connected) {
+      const connectivity = await ConnectivityService.getSnapshot();
+      logDownload('network snapshot', connectivity);
+      if (!(connectivity.isConnected && connectivity.isInternetReachable)) {
         safeSetDownloadState({
           phase: 'error',
           errorMessage: 'No internet connection. Please connect and try again.',
+          resumable: false,
         });
         setOfflineMapStatus('not_downloaded', 'Internet is required to download the map.');
         downloadInProgressRef.current = false;
@@ -168,11 +210,42 @@ export function useDownloadMapViewModel() {
       }
 
       const worker = (async () => {
+        let downloaded = 0;
+        let totalTiles = 0;
         try {
-          await OfflineMapService.saveMapData();
-
           const allTiles = OfflineMapStatusService.getTileList();
-          const totalTiles = allTiles.length;
+          totalTiles = allTiles.length;
+          const firstThreeTiles = allTiles.slice(0, 3).map((tile) => `${tile.z}/${tile.x}/${tile.y}`);
+          const firstTile = allTiles[0];
+          const firstTileUrl = firstTile
+            ? OfflineMapService.getTileUrl(firstTile.z, firstTile.x, firstTile.y)
+            : null;
+          logDownload('tile plan', {
+            expectedTiles: totalTiles,
+            zoomLevels: Array.from(new Set(allTiles.map((tile) => tile.z))),
+            firstThreeTiles,
+            firstTileUrl,
+            sourceMode: OfflineMapService.getTileSourceMode(),
+          });
+
+          if (!firstTile) {
+            throw new Error('Tile list is empty; unable to start offline download.');
+          }
+
+          const diagnostics = await OfflineMapService.runNetworkDiagnostics(firstTile);
+          logDownload('network diagnostics', diagnostics);
+          if (!diagnostics.ok) {
+            applyFailureState({
+              userMessage: diagnostics.userMessage ?? 'Map download failed. Check internet connection and try again.',
+              statusMessage: diagnostics.userMessage ?? 'Download failed.',
+              resumable: false,
+            });
+            return;
+          }
+
+          await OfflineMapService.saveMapData();
+          logDownload('map data prepared');
+
           let alreadyDone = 0;
 
           for (const t of allTiles) {
@@ -190,7 +263,7 @@ export function useDownloadMapViewModel() {
             resumable: alreadyDone > 0,
           });
 
-          let downloaded = alreadyDone;
+          downloaded = alreadyDone;
           for (const tile of allTiles) {
             if (cancelledRef.current) return;
 
@@ -204,9 +277,33 @@ export function useDownloadMapViewModel() {
               continue;
             }
 
-            const downloadedUri = await OfflineMapService.downloadTile(tile.z, tile.x, tile.y);
-            if (!downloadedUri) {
-              throw new Error(`Tile download failed for ${tile.z}/${tile.x}/${tile.y}`);
+            const downloadResult = await OfflineMapService.downloadTileWithDiagnostics(tile.z, tile.x, tile.y, {
+              retries: TILE_DOWNLOAD_MAX_RETRIES,
+            });
+            if (!downloadResult.ok || !downloadResult.uri) {
+              const statusSuffix = downloadResult.statusCode ? `HTTP ${downloadResult.statusCode}` : 'network error';
+              logDownload('tile failed', {
+                tile: `${tile.z}/${tile.x}/${tile.y}`,
+                url: downloadResult.url,
+                statusCode: downloadResult.statusCode,
+                failureStage: downloadResult.failureStage,
+                failureType: downloadResult.failureType,
+                attempts: downloadResult.attempts,
+                message: downloadResult.errorMessage,
+                usedSource: downloadResult.usedSource,
+              });
+              const failureType = downloadResult.failureType ?? 'unknown';
+              const userMessage = OfflineMapService.getFailureUserMessage(failureType);
+              throw new Error(
+                JSON.stringify({
+                  type: 'tile_download_failure',
+                  userMessage,
+                  statusMessage: statusMessageForFailureType(failureType, downloaded),
+                  detail:
+                    `Tile download failed for ${tile.z}/${tile.x}/${tile.y} (${statusSuffix}). ` +
+                    `URL: ${downloadResult.url}. ${downloadResult.errorMessage ?? ''}`.trim(),
+                }),
+              );
             }
 
             const confirmed = await OfflineMapService.tileExists(tile.z, tile.x, tile.y);
@@ -232,14 +329,30 @@ export function useDownloadMapViewModel() {
 
           await completeDownloadFlow(navigation, downloaded, totalTiles);
         } catch (error) {
-          console.error('Download error:', error);
-          await OfflineMapStatusService.markCorrupt('Map download interrupted or incomplete');
-          setOfflineMapStatus('corrupt', 'Download incomplete. Repair and download again.');
-          safeSetDownloadState({
-            phase: 'error',
-            errorMessage: 'Download failed. Tap retry to continue.',
-            resumable: true,
-          });
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          logDownload('download failed', { errorMessage, downloaded, totalTiles });
+          await OfflineMapStatusService.markDownloading(downloaded);
+          let userMessage = 'Map download failed. Check internet connection and try again.';
+          let statusMessage = downloaded > 0
+            ? 'Download interrupted. Tap Try Again to resume.'
+            : 'Download failed. Check internet and try again.';
+          let resumable = downloaded > 0;
+
+          try {
+            const parsed = JSON.parse(errorMessage) as Partial<{
+              type: string;
+              userMessage: string;
+              statusMessage: string;
+            }>;
+            if (parsed.type === 'tile_download_failure') {
+              if (parsed.userMessage) userMessage = parsed.userMessage;
+              if (parsed.statusMessage) statusMessage = parsed.statusMessage;
+            }
+          } catch {
+            // keep fallback generic message
+          }
+
+          applyFailureState({ userMessage, statusMessage, resumable });
         } finally {
           downloadInProgressRef.current = false;
           downloadWorkerRef.current = null;
@@ -249,7 +362,7 @@ export function useDownloadMapViewModel() {
       downloadWorkerRef.current = worker;
       await worker;
     },
-    [completeDownloadFlow, safeSetDownloadState, setOfflineMapStatus],
+    [applyFailureState, completeDownloadFlow, safeSetDownloadState, setOfflineMapStatus],
   );
 
   const pauseDownload = useCallback(() => {
@@ -295,10 +408,22 @@ export function useDownloadMapViewModel() {
       cancelledRef.current = false;
       pausedRef.current = false;
       completionLockRef.current = false;
+      setOfflineMapStatus('not_downloaded', null);
       safeSetDownloadState({ phase: 'idle', errorMessage: null });
       void startDownload(navigation);
     },
-    [safeSetDownloadState, startDownload],
+    [safeSetDownloadState, setOfflineMapStatus, startDownload],
+  );
+
+  const continueWithVenueMapOnly = useCallback(
+    async (navigation: NativeStackNavigationProp<RootStackParamList, 'DownloadMap'>) => {
+      await OfflineMapStatusService.setDownloadedFlag(false);
+      await OfflineMapStatusService.setGraphOnlyMode(true);
+      setOfflineMapStatus('not_downloaded', 'Background map unavailable. Ijtema routes still work.');
+      safeSetDownloadState({ phase: 'idle', errorMessage: null, resumable: false });
+      triggerNavigationToMain(navigation);
+    },
+    [safeSetDownloadState, setOfflineMapStatus, triggerNavigationToMain],
   );
 
   const continueToMain = useCallback(
@@ -324,9 +449,19 @@ export function useDownloadMapViewModel() {
     cancelledRef.current = true;
     pausedRef.current = false;
     await downloadWorkerRef.current?.catch(() => undefined);
+    const manifest = await OfflineMapStatusService.readManifest();
+    const savedTiles = await OfflineMapService.getStoredTileCount();
+    logDownload('repair snapshot', {
+      manifestStatus: manifest?.status ?? 'none',
+      expectedTiles: manifest?.tileCountExpected ?? OfflineMapStatusService.getExpectedTileCount(),
+      savedTiles,
+    });
     await OfflineDataService.deleteAllMapData();
+    await OfflineMapStatusService.clearManifest();
+    await OfflineMapStatusService.setDownloadedFlag(false);
+    setOfflineMapStatus('not_downloaded', 'Repair complete. You can download map data again.');
     safeSetDownloadState({ phase: 'idle', errorMessage: null, progress: 0, downloadedTiles: 0, totalTiles: 0 });
-  }, [resetDownloadState, safeSetDownloadState, setOfflineMapAvailable, setOfflineMapStatus, updateOfflineData]);
+  }, [safeSetDownloadState, setOfflineMapStatus]);
 
   return {
     downloadState,
@@ -336,6 +471,7 @@ export function useDownloadMapViewModel() {
     cancelDownload,
     retryDownload,
     continueToMain,
+    continueWithVenueMapOnly,
     repairDownload,
   };
 }

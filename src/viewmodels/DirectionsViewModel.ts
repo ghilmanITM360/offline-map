@@ -16,6 +16,7 @@ import { LocationAccessService } from '../services/LocationAccessService';
 const ROUTE_TIMEOUT_MS = 3500;
 
 type RouteLoadState = 'idle' | 'loading' | 'ready' | 'error' | 'needs_origin';
+export type StartSource = 'live_gps' | 'remembered_location' | 'manual_place';
 
 function formatLastKnownAge(timestamp: string | null): string {
   if (!timestamp) return 'from an earlier session';
@@ -50,18 +51,25 @@ export function useDirectionsViewModel(destination: Place | null) {
   const [loadState, setLoadState] = useState<RouteLoadState>('idle');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [manualStart, setManualStart] = useState<Place | null>(null);
-  const [useCurrentStart, setUseCurrentStart] = useState(true);
+  const [startSource, setStartSource] = useState<StartSource>(currentLocation ? 'live_gps' : 'manual_place');
+  const [isEditingManualStart, setIsEditingManualStart] = useState(false);
 
   useEffect(() => {
-    if (!currentLocation) {
-      setUseCurrentStart(false);
+    if (!currentLocation && startSource === 'live_gps') {
       setLoadState('needs_origin');
     }
-  }, [currentLocation]);
+  }, [currentLocation, startSource]);
 
-  const originLabel = useCurrentStart
-    ? (currentLocation ? (currentLocationSource === 'remembered' ? 'Last known location' : 'My current location') : 'Choose starting point')
-    : (manualStart?.name ?? 'Choose starting point');
+  const rememberedLocationAgeLabel = formatLastKnownAge(lastKnownLocationUpdatedAt);
+  const rememberedLocationAvailable = !!lastKnownLocation;
+  const rememberedLocationInsideVenue = !!lastKnownLocation && RoutingService.isInsideVenue(lastKnownLocation);
+
+  const startSourceLabel =
+    startSource === 'live_gps'
+      ? (currentLocation ? (currentLocationSource === 'remembered' ? 'Last known location' : 'My current location') : 'Choose starting point')
+      : startSource === 'remembered_location'
+      ? `Last known location (${rememberedLocationAgeLabel})`
+      : (manualStart?.name ?? 'Choose starting point');
 
   const calculateRoute = useCallback(async () => {
     if (!destination) {
@@ -70,7 +78,12 @@ export function useDirectionsViewModel(destination: Place | null) {
       return;
     }
 
-    const originCoord = useCurrentStart ? currentLocation : manualStart?.coordinate;
+    const originCoord =
+      startSource === 'live_gps'
+        ? currentLocation
+        : startSource === 'remembered_location'
+        ? lastKnownLocation
+        : manualStart?.coordinate;
     if (!originCoord) {
       setLoadState('needs_origin');
       setErrorMessage('Choose starting point to continue.');
@@ -81,7 +94,7 @@ export function useDirectionsViewModel(destination: Place | null) {
       return;
     }
 
-    if (useCurrentStart && !RoutingService.isInsideVenue(originCoord)) {
+    if (startSource === 'live_gps' && !RoutingService.isInsideVenue(originCoord)) {
       setLoadState('needs_origin');
       setErrorMessage('You are outside the Ijtema area. Choose a start point inside the ground or use the nearest gate.');
       setRoute(null);
@@ -91,7 +104,7 @@ export function useDirectionsViewModel(destination: Place | null) {
       return;
     }
 
-    if (!useCurrentStart && !RoutingService.isInsideVenue(originCoord)) {
+    if (startSource !== 'live_gps' && !RoutingService.isInsideVenue(originCoord)) {
       setLoadState('needs_origin');
       setErrorMessage('Selected start is outside the Ijtema area. Choose a start point inside the ground.');
       setRoute(null);
@@ -101,7 +114,7 @@ export function useDirectionsViewModel(destination: Place | null) {
       return;
     }
 
-    if (manualStart && destination && manualStart.id === destination.id) {
+    if (startSource === 'manual_place' && manualStart && destination && manualStart.id === destination.id) {
       setLoadState('error');
       setErrorMessage('Start and destination are the same. Choose a different starting point.');
       setRoute(null);
@@ -118,7 +131,7 @@ export function useDirectionsViewModel(destination: Place | null) {
       const routePromise = new Promise<RouteAlternative[]>((resolve) => {
         const walkingSpeedMs = settings.walkingSpeed ?? 1.4;
         const destNodeIds = RoutingService.resolveDestinationNodesFromPlace(destination, originCoord);
-        const startNodeIdOverride = manualStart?.routingNodeId;
+        const startNodeIdOverride = startSource === 'manual_place' ? manualStart?.routingNodeId : undefined;
         const nodePlan = RoutingService.explainRouteNodeResolution(originCoord, destNodeIds, startNodeIdOverride);
         const hasNonSamePair = nodePlan.startNodeIds.some((startNodeId) =>
           nodePlan.targetNodeIds.some((destNodeId) => destNodeId !== startNodeId),
@@ -142,7 +155,7 @@ export function useDirectionsViewModel(destination: Place | null) {
 
       if (!best) {
         const destNodeIds = RoutingService.resolveDestinationNodesFromPlace(destination, originCoord);
-        const startNodeIdOverride = manualStart?.routingNodeId;
+        const startNodeIdOverride = startSource === 'manual_place' ? manualStart?.routingNodeId : undefined;
         const nodePlan = RoutingService.explainRouteNodeResolution(originCoord, destNodeIds, startNodeIdOverride);
         const sameOnly =
           nodePlan.startNodeIds.length > 0 &&
@@ -191,7 +204,7 @@ export function useDirectionsViewModel(destination: Place | null) {
       setLoadState('error');
       setErrorMessage('Route calculation failed. Please retry.');
     }
-  }, [currentLocation, destination, manualStart, setActiveRoute, setRouteAlternatives, setRouteInstructions, setSelectedRouteIndex, settings.walkingSpeed, useCurrentStart]);
+  }, [currentLocation, destination, lastKnownLocation, manualStart, setActiveRoute, setRouteAlternatives, setRouteInstructions, setSelectedRouteIndex, settings.walkingSpeed, startSource]);
 
   useEffect(() => {
     void calculateRoute();
@@ -210,8 +223,9 @@ export function useDirectionsViewModel(destination: Place | null) {
   };
 
   const setManualStartPlace = (start: Place) => {
-    setUseCurrentStart(false);
+    setStartSource('manual_place');
     setManualStart(start);
+    setIsEditingManualStart(false);
   };
 
   const chooseCurrentLocation = async (): Promise<boolean> => {
@@ -227,7 +241,8 @@ export function useDirectionsViewModel(destination: Place | null) {
             blockedMessage = 'Location permission is blocked. Open app settings and allow location, then try again.';
           }
         }
-        setUseCurrentStart(false);
+        setStartSource('manual_place');
+        setIsEditingManualStart(true);
         setLoadState('needs_origin');
         setErrorMessage(blockedMessage ?? resolved.message ?? 'Current location unavailable. Choose starting point manually.');
         return false;
@@ -235,17 +250,20 @@ export function useDirectionsViewModel(destination: Place | null) {
 
       setCurrentLocation(resolved.coordinate, resolved.source ?? 'live');
       if (!RoutingService.isInsideVenue(resolved.coordinate)) {
-        setUseCurrentStart(false);
+        setStartSource('manual_place');
+        setIsEditingManualStart(true);
         setLoadState('needs_origin');
         setErrorMessage('You are outside the Ijtema area. Choose a start point inside the ground or use the nearest gate.');
         return false;
       }
 
-      setUseCurrentStart(true);
+      setStartSource('live_gps');
+      setIsEditingManualStart(false);
       setManualStart(null);
       return true;
     } catch {
-      setUseCurrentStart(false);
+      setStartSource('manual_place');
+      setIsEditingManualStart(true);
       setLoadState('needs_origin');
       setErrorMessage('Current location is temporarily unavailable. Choose start point manually.');
       return false;
@@ -254,23 +272,25 @@ export function useDirectionsViewModel(destination: Place | null) {
 
   const chooseRememberedLocation = (): boolean => {
     if (!lastKnownLocation || !RoutingService.isInsideVenue(lastKnownLocation)) {
-      setUseCurrentStart(false);
+      setStartSource('manual_place');
+      setIsEditingManualStart(true);
       setLoadState('needs_origin');
       setErrorMessage('No remembered location inside the Ijtema ground is available. Choose a start point manually.');
       return false;
     }
 
-    setUseCurrentStart(false);
-    setManualStart({
-      id: 'LAST_KNOWN_LOCATION',
-      name: 'Last known location',
-      category: 'CustomPoint',
-      description: `Using last known location ${formatLastKnownAge(lastKnownLocationUpdatedAt)}.`,
-      coordinate: lastKnownLocation,
-      snappedCoordinate: lastKnownLocation,
-    });
+    setCurrentLocation(lastKnownLocation, 'remembered');
+    setStartSource('remembered_location');
+    setIsEditingManualStart(false);
+    setManualStart(null);
     setErrorMessage(`Using last known location ${formatLastKnownAge(lastKnownLocationUpdatedAt)}.`);
     return true;
+  };
+
+  const chooseManualStart = () => {
+    setStartSource('manual_place');
+    setIsEditingManualStart(true);
+    setErrorMessage(null);
   };
 
   const handleStartNavigation = (navigation: NativeStackNavigationProp<RootStackParamList, 'Directions'>) => {
@@ -290,15 +310,23 @@ export function useDirectionsViewModel(destination: Place | null) {
     selectedIndex,
     selectAlternative,
     instructions,
-    originLabel,
+    startSourceLabel,
+    startSource,
+    rememberedLocationAgeLabel,
+    rememberedLocationAvailable,
+    rememberedLocationInsideVenue,
     handleStartNavigation,
     loadState,
     errorMessage,
     manualStart,
+    chooseManualStart,
+    isEditingManualStart,
+    setIsEditingManualStart,
     setManualStartPlace,
     chooseCurrentLocation,
     chooseRememberedLocation,
     calculateRoute,
-    useCurrentStart,
+    showRememberedStartAction: rememberedLocationAvailable,
+    showManualStartSearch: isEditingManualStart || startSource === 'manual_place',
   };
 }

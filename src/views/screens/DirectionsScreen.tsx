@@ -37,8 +37,10 @@ export function DirectionsScreen() {
   const routeParams = useRoute<RouteProp<RootStackParamList, 'Directions'>>();
   const { destination } = routeParams.params;
   const distanceUnit = useAppStore((s) => s.settings.distanceUnit);
+  const mapMode = useAppStore((s) => s.settings.mapMode);
   const clearRoutePlanner = useAppStore((s) => s.clearRoutePlanner);
   const currentLocation = useAppStore((s) => s.currentLocation);
+  const lastKnownLocation = useAppStore((s) => s.lastKnownLocation);
   const hasGoogleMapsKey = MapConfigService.isGoogleMapsKeyConfigured();
   const insets = useSafeAreaInsets();
   const previewMapRef = useRef<MapView>(null);
@@ -51,19 +53,31 @@ export function DirectionsScreen() {
     selectedIndex,
     selectAlternative,
     instructions,
-    originLabel,
+    startSourceLabel,
+    startSource,
+    rememberedLocationAgeLabel,
+    rememberedLocationInsideVenue,
     handleStartNavigation,
     loadState,
     errorMessage,
     manualStart,
+    chooseManualStart,
+    setIsEditingManualStart,
     setManualStartPlace,
     chooseCurrentLocation,
     chooseRememberedLocation,
     calculateRoute,
-    useCurrentStart,
+    showRememberedStartAction,
+    showManualStartSearch,
   } = useDirectionsViewModel(destination);
 
-  const startCoordinate = route?.coordinates[0] ?? (useCurrentStart ? (currentLocation ?? null) : (manualStart?.coordinate ?? null));
+  const startCoordinate =
+    route?.coordinates[0] ??
+    (startSource === 'live_gps'
+      ? (currentLocation ?? null)
+      : startSource === 'remembered_location'
+      ? (lastKnownLocation ?? null)
+      : (manualStart?.coordinate ?? null));
   const endNodeId = route?.nodes[route.nodes.length - 1];
   const destinationCoordinate =
     RoutePointService.nodeToCoordinate(endNodeId) ?? RoutePointService.getDestinationCoordinate(destination);
@@ -78,7 +92,8 @@ export function DirectionsScreen() {
   const showNeedStartMessage = loadState === 'needs_origin';
   const showLoading = loadState === 'loading';
   const showError = loadState === 'error';
-  const outsideVenue = useCurrentStart && currentLocation ? !RoutingService.isInsideVenue(currentLocation) : false;
+  const outsideVenue =
+    startSource === 'live_gps' && currentLocation ? !RoutingService.isInsideVenue(currentLocation) : false;
 
   useEffect(() => {
     Animated.timing(routeCardAnim, {
@@ -149,48 +164,74 @@ export function DirectionsScreen() {
               <View style={styles.dotOrigin} />
               <TextInput
                 style={styles.input}
-                value={originLabel}
+                value={startSourceLabel}
                 editable={false}
                 placeholder="Choose starting point"
               />
             </View>
+            <Text style={styles.startSourceHelper}>
+              {startSource === 'live_gps'
+                ? 'Live GPS location now'
+                : startSource === 'remembered_location'
+                ? `Last saved ${rememberedLocationAgeLabel}`
+                : 'Choose start manually'}
+            </Text>
 
             <View style={styles.startActionsRow}>
               <Pressable
-                style={[styles.startActionBtn, useCurrentStart && styles.startActionBtnActive]}
+                style={[styles.startActionBtn, startSource === 'live_gps' && styles.startActionBtnActive]}
                 onPress={() => {
                   void (async () => {
                     await chooseCurrentLocation();
                   })();
                 }}
               >
-                <LocateFixed size={16} color={useCurrentStart ? '#FFFFFF' : '#1A73E8'} />
-                <Text style={[styles.startActionText, useCurrentStart && styles.startActionTextActive]}>Use My Current Location</Text>
+                <LocateFixed size={16} color={startSource === 'live_gps' ? '#FFFFFF' : '#1A73E8'} />
+                <Text style={[styles.startActionText, startSource === 'live_gps' && styles.startActionTextActive]}>Use My Current Location</Text>
               </Pressable>
+              {showRememberedStartAction && (
+                <Pressable
+                  style={[styles.startActionBtn, startSource === 'remembered_location' && styles.startActionBtnActive]}
+                  onPress={() => {
+                    chooseRememberedLocation();
+                  }}
+                >
+                  <MapPin size={16} color={startSource === 'remembered_location' ? '#FFFFFF' : '#1A73E8'} />
+                  <Text style={[styles.startActionText, startSource === 'remembered_location' && styles.startActionTextActive]}>
+                    Use Last Known Location
+                  </Text>
+                </Pressable>
+              )}
               <Pressable
-                style={styles.startActionBtn}
-                onPress={() => {
-                  if (chooseRememberedLocation()) {
-                    setStartSearch('Last known location');
-                  }
-                }}
+                style={[styles.startActionBtn, startSource === 'manual_place' && styles.startActionBtnActive]}
+                onPress={chooseManualStart}
               >
-                <MapPin size={16} color="#1A73E8" />
-                <Text style={styles.startActionText}>Use Remembered</Text>
+                <Navigation size={16} color={startSource === 'manual_place' ? '#FFFFFF' : '#1A73E8'} />
+                <Text style={[styles.startActionText, startSource === 'manual_place' && styles.startActionTextActive]}>
+                  Choose start manually
+                </Text>
               </Pressable>
             </View>
+            {showRememberedStartAction && !rememberedLocationInsideVenue && (
+              <Text style={styles.startWarningText}>
+                Last known location is outside Ijtema and cannot be used for routing.
+              </Text>
+            )}
 
-            <TextInput
-              style={styles.searchStartInput}
-              value={startSearch}
-              onChangeText={setStartSearch}
-              placeholder="Search start point"
-              placeholderTextColor="#888"
-              returnKeyType="search"
-              onSubmitEditing={Keyboard.dismiss}
-            />
+            {showManualStartSearch && (
+              <TextInput
+                style={styles.searchStartInput}
+                value={startSearch}
+                onChangeText={setStartSearch}
+                placeholder="Search start point"
+                placeholderTextColor="#888"
+                returnKeyType="search"
+                onSubmitEditing={Keyboard.dismiss}
+                onFocus={() => setIsEditingManualStart(true)}
+              />
+            )}
 
-            {startCandidates.length > 0 && (
+            {showManualStartSearch && startCandidates.length > 0 && (
               <View style={styles.startSearchResults}>
                 {startCandidates.map((candidate: Place) => (
                   <Pressable
@@ -199,6 +240,7 @@ export function DirectionsScreen() {
                     onPress={() => {
                       setManualStartPlace(candidate);
                       setStartSearch(candidate.name);
+                      setIsEditingManualStart(false);
                       Keyboard.dismiss();
                     }}
                   >
@@ -240,6 +282,7 @@ export function DirectionsScreen() {
                 ref={previewMapRef}
                 style={styles.mapPreview}
                 provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined}
+                mapType={mapMode}
                 initialRegion={{
                   latitude: (MAP_BOUNDS.minLat + MAP_BOUNDS.maxLat) / 2,
                   longitude: (MAP_BOUNDS.minLng + MAP_BOUNDS.maxLng) / 2,
@@ -497,6 +540,19 @@ const styles = StyleSheet.create({
     marginTop: 8,
     marginBottom: 8,
     gap: 8,
+  },
+  startSourceHelper: {
+    marginTop: 6,
+    marginBottom: 2,
+    color: '#5F6368',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  startWarningText: {
+    marginBottom: 6,
+    color: '#B45309',
+    fontSize: 12,
+    fontWeight: '600',
   },
   startActionBtn: {
     flexDirection: 'row',

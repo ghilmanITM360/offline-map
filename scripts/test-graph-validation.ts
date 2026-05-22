@@ -42,6 +42,10 @@ for (const [id, expected] of Object.entries(expectedGates)) {
 
 assert(SearchService.search('Member Masjid').some((place) => place.id === 'B2'), 'Member Masjid should find Block 2');
 assert(SearchService.search('B2').some((place) => place.id === 'B2'), 'B2 should find Block 2');
+assert(
+  SearchService.searchByCategory('masjids').some((place) => place.id === 'B2'),
+  'Masjids category should include Member Masjid (Block 2)',
+);
 assert(SearchService.getPlaceById('LM_MEDICAL_MAIN') !== null, 'Landmark place lookup should resolve known landmark IDs');
 
 console.log(`Graph validation passed with ${result.warnings.length} warnings.`);

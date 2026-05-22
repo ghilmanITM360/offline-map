@@ -11,8 +11,6 @@ import {
   Home, 
   Settings, 
   Download, 
-  Star, 
-  History, 
   HelpCircle, 
   Info, 
   Map as MapIcon
@@ -33,8 +31,6 @@ export function CustomDrawer(props: DrawerContentComponentProps) {
   const menuItems = [
     { label: 'Home', icon: Home, route: 'Home' },
     { label: 'Offline Maps', icon: Download, route: 'DownloadMap', badge: offlineData.isDownloaded ? 'Downloaded' : 'Not Downloaded' },
-    { label: 'Saved Blocks', icon: Star, route: 'Home' },
-    { label: 'Recent Searches', icon: History, route: 'Home' },
     { label: 'Settings', icon: Settings, route: 'Settings' },
   ];
 

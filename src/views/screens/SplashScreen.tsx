@@ -36,11 +36,12 @@ export function SplashScreen() {
       });
 
       // Run all checks in parallel
-      const [mapStatus, startupStatus, permissionResult, isConnected] = await Promise.all([
+      const [mapStatus, startupStatus, permissionResult, isConnected, graphOnlyModeEnabled] = await Promise.all([
         OfflineMapService.getMapStatus(),
         OfflineMapStatusService.validateAtStartup(),
         Location.getForegroundPermissionsAsync(),
         ConnectivityService.isConnected(),
+        OfflineMapStatusService.isGraphOnlyModeEnabled(),
         minVisibleMs,
       ]);
 
@@ -79,6 +80,11 @@ export function SplashScreen() {
 
       if (startupStatus.status === 'corrupt' || startupStatus.status === 'needs_update') {
         navigation.replace('DownloadMap');
+        return;
+      }
+
+      if (graphOnlyModeEnabled && startupStatus.status === 'not_downloaded') {
+        navigation.replace('Main');
         return;
       }
 

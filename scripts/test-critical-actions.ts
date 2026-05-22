@@ -13,6 +13,7 @@ const offlineDataService = readFileSync('src/services/OfflineDataService.ts', 'u
 const appStore = readFileSync('src/store/useAppStore.ts', 'utf8');
 const locationAccess = readFileSync('src/services/LocationAccessService.ts', 'utf8');
 const rootNavigator = readFileSync('src/navigation/RootNavigator.tsx', 'utf8');
+const customDrawer = readFileSync('src/views/components/CustomDrawer.tsx', 'utf8');
 
 assert(
   homeVm.includes('LocationAccessService.resolveCurrentLocation'),
@@ -80,6 +81,13 @@ assert(
   settingsScreen.includes("disabled={type !== 'toggle' && !onPress}"),
   'Settings info-only rows should be visually and interactively non-actionable',
 );
+assert(settingsScreen.includes('Voice Language'), 'Settings should label speech locale as Voice Language');
+assert(!settingsScreen.includes('Dark Mode'), 'Dark Mode should be hidden until app-wide support is complete');
+assert(settingsScreen.includes('Auto-follow Location'), 'Settings should expose Auto-follow toggle');
+assert(settingsScreen.includes('North-up Map'), 'Settings should expose North-up toggle');
+assert(settingsScreen.includes('Auto-reroute'), 'Settings should expose Auto-reroute toggle');
+assert(settingsScreen.includes('Distance Unit'), 'Settings should expose Distance Unit selector');
+assert(settingsScreen.includes('Walking Speed'), 'Settings should expose Walking Speed selector');
 
 assert(
   offlineDataService.includes('deleteAllMapData'),
@@ -120,12 +128,36 @@ assert(
   'Navigation destination marker should be red',
 );
 assert(
+  navScreen.includes('Venue boundary') || navScreen.includes('venueBoundary'),
+  'Navigation should always render venue boundary context',
+);
+assert(
+  navScreen.includes('graphOnlyFallbackUsed'),
+  'Navigation should include graph-only fallback diagnostics',
+);
+assert(
+  navScreen.includes('fitToCoordinates') && navScreen.includes('cameraFitReason'),
+  'Navigation should fit route/venue bounds and track fit reasons',
+);
+assert(
   navScreen.includes('title="Start"'),
   'Navigation should render a start marker when route exists',
 );
 assert(
   navScreen.includes('LocateFixed'),
   'Navigation should expose recenter control',
+);
+assert(
+  navScreen.includes('settings.autoFollowLocation'),
+  'Navigation auto-follow behavior should honor Settings auto-follow toggle',
+);
+assert(
+  navScreen.includes('settings.keepNorthFixed'),
+  'Navigation heading behavior should honor North-up setting',
+);
+assert(
+  navScreen.includes('InstructionService.formatDistance') && directionsScreen.includes('InstructionService.formatDistance'),
+  'Distance unit setting should affect both navigation and directions distance text',
 );
 assert(
   navScreen.includes('userMarkerPulse') && homeScreen.includes('userMarkerPulse'),
@@ -135,6 +167,7 @@ assert(
   homeScreen.includes('searchFocusAnim') && homeScreen.includes('warningAnim'),
   'Home should include search focus and warning banner animations',
 );
+assert(homeScreen.includes('rotateEnabled={!settings.keepNorthFixed}'), 'Home map should honor North-up behavior');
 assert(
   navScreen.includes('setIsMuted(!isMuted)'),
   'Navigation mute button must toggle mute state',
@@ -149,5 +182,12 @@ assert(
 );
 
 assert(rootNavigator.includes("name=\"AppGuide\""), 'App Guide route should be registered');
+assert(customDrawer.includes("label: 'Home'"), 'Drawer should include Home');
+assert(customDrawer.includes("label: 'Offline Maps'"), 'Drawer should include Offline Maps');
+assert(customDrawer.includes("label: 'Settings'"), 'Drawer should include Settings');
+assert(customDrawer.includes("label: 'Help & Feedback'"), 'Drawer should include Help & Feedback');
+assert(customDrawer.includes("label: 'About Ijtema Map'"), 'Drawer should include About Ijtema Map');
+assert(!customDrawer.includes("label: 'Saved Blocks'"), 'Drawer should hide Saved Blocks until implemented');
+assert(!customDrawer.includes("label: 'Recent Searches'"), 'Drawer should hide Recent Searches until implemented');
 
 console.log('Critical action handler checks passed.');

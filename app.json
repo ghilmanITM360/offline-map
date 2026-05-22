@@ -19,9 +19,14 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
+      "permissions": [
+        "INTERNET",
+        "ACCESS_NETWORK_STATE"
+      ],
       "package": "com.aicrafted.karachiijtema"
     },
     "ios": {
+      "bundleIdentifier": "com.aicrafted.karachiijtema",
       "supportsTablet": true
     },
     "web": {

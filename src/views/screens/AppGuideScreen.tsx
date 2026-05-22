@@ -6,60 +6,134 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ChevronLeft, Download, Search, Navigation, LocateFixed, Route, WifiOff, Shield } from 'lucide-react-native';
+import {
+  ChevronLeft,
+  Download,
+  Search,
+  Navigation,
+  LocateFixed,
+  Route,
+  WifiOff,
+  Shield,
+  Layers,
+  MapPin,
+  Settings,
+  TriangleAlert,
+  LifeBuoy,
+  Circle,
+} from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
 
-const GUIDE_SECTIONS = [
+type GuideSection = {
+  key: string;
+  icon: React.ComponentType<{ size?: number; color?: string }>;
+  title: string;
+  urduTitle: string;
+  body: string;
+};
+
+const GUIDE_SECTIONS: GuideSection[] = [
   {
-    key: 'download',
+    key: 'welcome',
+    icon: Navigation,
+    title: '1. Welcome',
+    urduTitle: '۱۔ خوش آمدید',
+    body:
+      'Ijtema Map helps you find internal walking routes inside Karachi Ijtema ground. This app is for venue navigation, not city-wide driving routes.',
+  },
+  {
+    key: 'offline',
     icon: Download,
-    title: '1. Download Offline Map',
-    urduTitle: '۱۔ آف لائن نقشہ ڈاؤن لوڈ کریں',
-    body: 'Download the map once before visiting the Ijtema ground. Wi-Fi is recommended. After download, the app can work without internet.',
+    title: '2. Offline Maps',
+    urduTitle: '۲۔ آف لائن نقشہ',
+    body:
+      'Download map data before entering the crowded area. If tile download fails, internal venue routing can still work in venue-only mode.',
   },
   {
     key: 'search',
     icon: Search,
-    title: '2. Find a Block or Rasta',
-    urduTitle: '۲۔ بلاک یا راستہ تلاش کریں',
-    body: 'Use the search bar to find blocks, rastas, gates, masjids, or terminals. You can also tap a place on the map.',
+    title: '3. Search Places',
+    urduTitle: '۳۔ تلاش کریں',
+    body:
+      'Use search to find Blocks, Rastas, Gates, Masjids, Terminals, and Help points. Category chips help you filter quickly.',
   },
   {
-    key: 'directions',
-    icon: Navigation,
-    title: '3. Get Directions',
-    urduTitle: '۳۔ راستہ حاصل کریں',
-    body: 'Select a place first and tap Directions. Choose Use My Current Location or select your starting point manually.',
-  },
-  {
-    key: 'gps',
-    icon: LocateFixed,
-    title: '4. If GPS Does Not Work',
-    urduTitle: '۴۔ اگر جی پی ایس کام نہ کرے',
-    body: 'Choose your starting point manually. GPS can be weak in crowded areas or under tents. Follow the shown rasta route.',
+    key: 'destination',
+    icon: MapPin,
+    title: '4. Choose Destination',
+    urduTitle: '۴۔ منزل منتخب کریں',
+    body:
+      'Tap a search result or map place to set destination. Red marker means destination. Review details, then open Directions.',
   },
   {
     key: 'start',
-    icon: Route,
-    title: '5. Start Navigation',
-    urduTitle: '۵۔ نیویگیشن شروع کریں',
-    body: 'Review the route, then tap Start Navigation. Follow the steps and map line carefully.',
+    icon: LocateFixed,
+    title: '5. Choose Start Source',
+    urduTitle: '۵۔ آغاز کا مقام',
+    body:
+      'Use My Current Location = live GPS now. Use Last Known Location = saved previous valid location. Choose start manually = pick your own start point.',
   },
   {
-    key: 'offline',
-    icon: WifiOff,
-    title: '6. Offline Use',
-    urduTitle: '۶۔ آف لائن استعمال',
-    body: 'Without internet, search and routes still work from saved data. Some background/satellite details need downloaded tiles.',
+    key: 'directions',
+    icon: Route,
+    title: '6. Directions Screen',
+    urduTitle: '۶۔ ڈائریکشن اسکرین',
+    body:
+      'Directions shows FROM, TO, route preview, ETA, distance, and step list. If GPS fails or is outside venue, choose manual start and retry.',
+  },
+  {
+    key: 'navigation',
+    icon: Navigation,
+    title: '7. Navigation Screen',
+    urduTitle: '۷۔ نیویگیشن اسکرین',
+    body:
+      'Blue marker = your current/active position. Green marker = start. Red marker = destination. Blue route line = internal path. Follow instruction card and bottom summary.',
+  },
+  {
+    key: 'controls',
+    icon: Layers,
+    title: '8. Map Controls',
+    urduTitle: '۸۔ نقشہ کنٹرولز',
+    body:
+      'Layer button changes map style. Compass button resets north-up view. Zoom buttons change level. Recenter button jumps back to your position.',
+  },
+  {
+    key: 'settings',
+    icon: Settings,
+    title: '9. Settings Meaning',
+    urduTitle: '۹۔ سیٹنگز کی وضاحت',
+    body:
+      'Voice Language changes speech only. Map Style, Auto-follow, North-up, Voice Instructions, Auto-reroute, Distance Unit, and Walking Speed all affect navigation behavior.',
+  },
+  {
+    key: 'gps',
+    icon: TriangleAlert,
+    title: '10. GPS & Permission Problems',
+    urduTitle: '۱۰۔ جی پی ایس مسائل',
+    body:
+      'If permission is denied, open Manage in Settings. If signal is weak, pause and wait. If outside Ijtema warning appears, select a start point inside the venue.',
   },
   {
     key: 'safety',
     icon: Shield,
-    title: '7. Safety',
-    urduTitle: '۷۔ حفاظت',
-    body: 'Do not look at your phone while walking in a crowd. Stop safely before checking directions. Follow official volunteers/security first.',
+    title: '11. Safety Tips',
+    urduTitle: '۱۱۔ حفاظتی ہدایات',
+    body:
+      'Keep phone charged. Stop walking before reading screen. Follow official volunteers and announcements first in heavy crowd conditions.',
+  },
+  {
+    key: 'troubleshoot',
+    icon: LifeBuoy,
+    title: '12. Troubleshooting',
+    urduTitle: '۱۲۔ مسئلہ حل',
+    body:
+      'Map not visible: verify key and map mode. Route not calculating: change start point. GPS not working: use last known or manual start. Offline download failed: retry on stable network.',
   },
 ];
+
+function LegendDot({ color }: { color: string }) {
+  return <Circle size={12} color={color} fill={color} />;
+}
 
 export function AppGuideScreen() {
   const navigation = useNavigation<any>();
@@ -74,7 +148,31 @@ export function AppGuideScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.subtitle}>How to Use App • ایپ گائیڈ</Text>
+        <Text style={styles.subtitle}>How to Use App Offline • ایپ گائیڈ</Text>
+
+        <View style={styles.quickCard}>
+          <Text style={styles.quickTitle}>Quick Marker Legend</Text>
+          <View style={styles.legendRow}>
+            <LegendDot color="#1A73E8" />
+            <Text style={styles.legendText}>Blue: Current / active location</Text>
+          </View>
+          <View style={styles.legendRow}>
+            <LegendDot color="#2E7D32" />
+            <Text style={styles.legendText}>Green: Start marker</Text>
+          </View>
+          <View style={styles.legendRow}>
+            <LegendDot color="#EA4335" />
+            <Text style={styles.legendText}>Red: Destination marker</Text>
+          </View>
+        </View>
+
+        <View style={styles.quickCard}>
+          <Text style={styles.quickTitle}>Start Source Mini Guide</Text>
+          <Text style={styles.quickBody}>Use My Current Location: Live GPS location now.</Text>
+          <Text style={styles.quickBody}>Use Last Known Location: Last saved valid location (not live).</Text>
+          <Text style={styles.quickBody}>Choose start manually: Pick block/rasta/gate yourself.</Text>
+        </View>
+
         {GUIDE_SECTIONS.map((section) => {
           const Icon = section.icon;
           return (
@@ -92,6 +190,13 @@ export function AppGuideScreen() {
             </View>
           );
         })}
+
+        <View style={styles.footerCard}>
+          <WifiOff size={16} color="#7C4A03" />
+          <Text style={styles.footerText}>
+            Background map unavailable? Ijtema routes can still work using internal venue data.
+          </Text>
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -125,6 +230,35 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#4B5563',
     marginBottom: 4,
+  },
+  quickCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#E6EBF2',
+  },
+  quickTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#1F2937',
+    marginBottom: 8,
+  },
+  quickBody: {
+    fontSize: 13,
+    lineHeight: 19,
+    color: '#374151',
+    marginBottom: 4,
+  },
+  legendRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 6,
+    gap: 8,
+  },
+  legendText: {
+    fontSize: 13,
+    color: '#374151',
   },
   card: {
     backgroundColor: '#FFFFFF',
@@ -164,5 +298,23 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 19,
     color: '#374151',
+  },
+  footerCard: {
+    marginTop: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 12,
+    backgroundColor: '#FFF3CD',
+    borderWidth: 1,
+    borderColor: '#F9E6A2',
+  },
+  footerText: {
+    flex: 1,
+    fontSize: 12,
+    color: '#7C4A03',
+    fontWeight: '600',
   },
 });

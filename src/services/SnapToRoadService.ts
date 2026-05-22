@@ -115,7 +115,10 @@ export class SnapToRoadService {
   }
 
   private static findNearestNode(coord: Coordinate): string {
-    return this.findNearestNodeFromSet(coord, Object.keys(IJTEMA_DATA.nodes));
+    const onGraphNodeIds = Object.entries(IJTEMA_DATA.nodes)
+      .filter(([, node]) => !node.nearestRoadNode)
+      .map(([nodeId]) => nodeId);
+    return this.findNearestNodeFromSet(coord, onGraphNodeIds);
   }
 
   private static findNearestNodeFromSet(coord: Coordinate, nodeIds: string[]): string {

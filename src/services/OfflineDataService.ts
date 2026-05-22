@@ -19,6 +19,7 @@ export class OfflineDataService {
         await OfflineMapService.closeDatabase();
         await OfflineMapStatusService.clearManifest();
         await OfflineMapStatusService.setDownloadedFlag(false);
+        await OfflineMapStatusService.setGraphOnlyMode(false);
       } finally {
         const {
           setOfflineMapAvailable,

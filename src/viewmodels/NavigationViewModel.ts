@@ -16,9 +16,11 @@ import { getDistance } from 'geolib';
 import { Coordinate, RoutePreview } from '../models/types';
 
 const ARRIVAL_THRESHOLD_M = 20;
-const REROUTE_GRACE_MS = 3000; // 3 s grace period before rerouting
-const REROUTE_COOLDOWN_MS = 15000;
-const WEAK_GPS_THRESHOLD_M = 40;
+const OFF_ROUTE_PENDING_MS = 9000;
+const OFF_ROUTE_CONSECUTIVE_REQUIRED = 3;
+const REROUTE_COOLDOWN_MS = 25000;
+const MIN_MOVEMENT_FOR_REROUTE_M = 12;
+const WEAK_GPS_THRESHOLD_M = 50;
 
 export function useNavigationViewModel() {
   const {
@@ -42,6 +44,7 @@ export function useNavigationViewModel() {
   const [remainingDistance, setRemainingDistance] = useState(0);
   const [arrived, setArrived] = useState(false);
   const [isWeakGps, setIsWeakGps] = useState(false);
+  const [rerouteStatusMessage, setRerouteStatusMessage] = useState<string | null>(null);
 
   // Refs to avoid stale closures inside the GPS callback
   const routeRef = useRef<RoutePreview | null>(null);
@@ -51,6 +54,11 @@ export function useNavigationViewModel() {
   const arrivedRef = useRef(false);
   const rerouteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastRerouteAtRef = useRef(0);
+  const offRouteSinceRef = useRef<number | null>(null);
+  const consecutiveOffRouteCountRef = useRef(0);
+  const lastAcceptedLocationRef = useRef<Coordinate | null>(null);
+  const progressMetersRef = useRef(0);
+  const currentSegmentIndexRef = useRef(0);
   const settingsRef = useRef(settings);
   const latestGpsCoordRef = useRef<Coordinate | null>(null);
   const latestGpsAccuracyRef = useRef(0);
@@ -65,6 +73,11 @@ export function useNavigationViewModel() {
     setArrived(false);
     setCurrentStepIndex(0);
     currentStepIndexRef.current = 0;
+    offRouteSinceRef.current = null;
+    consecutiveOffRouteCountRef.current = 0;
+    progressMetersRef.current = 0;
+    currentSegmentIndexRef.current = 0;
+    setRerouteStatusMessage(null);
   }, [destination]);
 
   // Capture the GPS location at the moment navigation starts so route generation
@@ -88,6 +101,8 @@ export function useNavigationViewModel() {
       setInstructions(generated);
       instructionsRef.current = generated;
       setRemainingDistance(activeRoute.totalDistance);
+      progressMetersRef.current = 0;
+      currentSegmentIndexRef.current = 0;
       if (settingsRef.current.voiceInstructions) {
         const isMutedNow = useAppStore.getState().isMuted;
         if (!isMutedNow && generated[0]) {
@@ -117,6 +132,8 @@ export function useNavigationViewModel() {
       setInstructions(generated);
       instructionsRef.current = generated;
       setRemainingDistance(routedWithSpeed.totalDistance);
+      progressMetersRef.current = 0;
+      currentSegmentIndexRef.current = 0;
       // Speak the first instruction; mute state is checked via ref so this
       // effect never re-runs when the user toggles mute.
       if (!settingsRef.current.voiceInstructions) return;
@@ -131,8 +148,6 @@ export function useNavigationViewModel() {
   const handleGPS = useCallback(
     (coord: Coordinate) => {
       latestGpsCoordRef.current = coord;
-      const snapped = SnapToRoadService.snapVisualToRoad(coord, 20);
-      setSnappedLocation(snapped);
 
       const stepIdx = currentStepIndexRef.current;
       const steps = instructionsRef.current;
@@ -140,8 +155,37 @@ export function useNavigationViewModel() {
       const dest = destinationRef.current;
       const currentSettings = settingsRef.current;
       const gpsAccuracy = coord.accuracy ?? 0;
+      const holdRouteForWeakGps = RerouteService.shouldHoldRouteForWeakGps(gpsAccuracy);
       latestGpsAccuracyRef.current = gpsAccuracy;
       setIsWeakGps(gpsAccuracy > WEAK_GPS_THRESHOLD_M);
+      if (holdRouteForWeakGps) {
+        setRerouteStatusMessage('GPS signal is weak. Route is being held stable.');
+      } else if (rerouteStatusMessage === 'GPS signal is weak. Route is being held stable.') {
+        setRerouteStatusMessage(null);
+      }
+
+      let snapped = SnapToRoadService.snapVisualToRoad(coord, 20);
+      if (currentRoute && currentRoute.coordinates.length > 1) {
+        const projected = RerouteService.projectProgressMetersOnRoute(coord, currentRoute);
+        const clampedProgress = RerouteService.clampMonotonicProgress(progressMetersRef.current, projected.progressMeters);
+        const routeDistance = currentRoute.totalDistance;
+        progressMetersRef.current = Math.max(0, Math.min(routeDistance, clampedProgress));
+        const projectionChanged = projected.distanceToRouteMeters <= RerouteService.getDynamicOffRouteThresholdMeters(gpsAccuracy);
+        if (projectionChanged || holdRouteForWeakGps) {
+          snapped = projected.snappedCoordinate;
+        }
+        const segmentCount = Math.max(1, currentRoute.segments.length);
+        const segmentLengthApprox = routeDistance / segmentCount;
+        currentSegmentIndexRef.current = Math.min(
+          segmentCount - 1,
+          Math.max(0, Math.floor(progressMetersRef.current / Math.max(1, segmentLengthApprox))),
+        );
+        setRemainingDistance(Math.max(0, routeDistance - progressMetersRef.current));
+      } else {
+        const remaining = steps.slice(currentStepIndexRef.current).reduce((sum, s) => sum + s.distance, 0);
+        setRemainingDistance(remaining);
+      }
+      setSnappedLocation(snapped);
 
       // --- Step advancement ---
       if (steps.length > 0 && stepIdx < steps.length - 1) {
@@ -161,10 +205,6 @@ export function useNavigationViewModel() {
           }
         }
       }
-
-      // --- Remaining distance ---
-      const remaining = steps.slice(currentStepIndexRef.current).reduce((sum, s) => sum + s.distance, 0);
-      setRemainingDistance(remaining);
 
       // --- Arrival detection ---
       if (dest && !arrivedRef.current) {
@@ -189,60 +229,123 @@ export function useNavigationViewModel() {
         }
       }
 
-      // --- Off-route detection with grace period ---
+      // --- Off-route detection with hysteresis ---
       if (currentRoute && dest && currentSettings.autoReroute && !arrivedRef.current) {
-        // Accuracy-aware threshold: wider tolerance when GPS is weak
+        const now = Date.now();
+        const cooldownRemainingMs = Math.max(0, REROUTE_COOLDOWN_MS - (now - lastRerouteAtRef.current));
+        const movedDistanceSinceLastAcceptedM = lastAcceptedLocationRef.current
+          ? getDistance(
+              { latitude: lastAcceptedLocationRef.current.latitude, longitude: lastAcceptedLocationRef.current.longitude },
+              { latitude: snapped.latitude, longitude: snapped.longitude },
+            )
+          : Number.POSITIVE_INFINITY;
+
         const offRoute = RerouteService.isOffRoute(coord, currentRoute, gpsAccuracy);
-        const inCooldown = Date.now() - lastRerouteAtRef.current < REROUTE_COOLDOWN_MS;
-        if (inCooldown) {
+        const offRouteDurationMs = offRouteSinceRef.current ? now - offRouteSinceRef.current : 0;
+
+        if (__DEV__) {
+          console.log('[Navigation][Reroute]', {
+            latitude: coord.latitude,
+            longitude: coord.longitude,
+            accuracy: gpsAccuracy,
+            dynamicThreshold: RerouteService.getDynamicOffRouteThresholdMeters(gpsAccuracy),
+            offRoute,
+            consecutiveOffRouteCount: consecutiveOffRouteCountRef.current,
+            offRouteDurationMs,
+            cooldownRemainingMs,
+            movedDistanceSinceLastAcceptedM,
+            currentSegmentIndex: currentSegmentIndexRef.current,
+            projectedProgressMeters: progressMetersRef.current,
+            holdRouteForWeakGps,
+          });
+        }
+
+        if (cooldownRemainingMs > 0 || holdRouteForWeakGps) {
+          consecutiveOffRouteCountRef.current = 0;
+          offRouteSinceRef.current = null;
+          setReroutePending(false);
           return;
         }
 
         if (offRoute) {
-          if (!rerouteTimerRef.current) {
-            // Start grace period
-            setReroutePending(true);
-            rerouteTimerRef.current = setTimeout(() => {
-              rerouteTimerRef.current = null;
-              // Re-check still off-route after grace period
-              const latestRoute = routeRef.current;
-              const latestCoord = latestGpsCoordRef.current ?? coord;
-              const latestAccuracy = latestGpsAccuracyRef.current;
-              if (latestRoute && RerouteService.isOffRoute(latestCoord, latestRoute, latestAccuracy)) {
-                const resolvedStart = SnapToRoadService.resolveRoutingNode(latestCoord);
-                const destNodeIds = RoutingService.resolveDestinationNodesFromPlace(dest, latestCoord);
-                const newRoute = RoutingService.calculateRoute(
-                  resolvedStart.snappedCoordinate,
-                  destNodeIds,
-                  resolvedStart.nodeId,
-                  settingsRef.current.walkingSpeed ?? 1.4,
-                );
-                if (newRoute) {
-                  lastRerouteAtRef.current = Date.now();
-                  setRoute(newRoute);
-                  routeRef.current = newRoute;
-                  const newInstructions = InstructionService.generateInstructions(newRoute.nodes);
-                  setInstructions(newInstructions);
-                  instructionsRef.current = newInstructions;
-                  setCurrentStepIndex(0);
-                  currentStepIndexRef.current = 0;
-                  if (!isMuted && settingsRef.current.voiceInstructions) { // fixed: respect voice settings for reroute prompts
-                    VoiceService.speak(
-                      settingsRef.current.language === 'ur'
-                        ? 'راستہ دوبارہ بن رہا ہے۔ چلتے رہیں۔'
-                        : 'Recalculating. Please continue walking.',
-                      settingsRef.current.language
-                    );
-                  }
-                }
-                setReroutePending(false);
-              } else {
-                setReroutePending(false);
-              }
-            }, REROUTE_GRACE_MS);
+          if (!offRouteSinceRef.current) {
+            offRouteSinceRef.current = now;
           }
+          consecutiveOffRouteCountRef.current += 1;
+
+          const shouldTrigger = RerouteService.shouldTriggerReroute({
+            consecutiveOffRouteCount: consecutiveOffRouteCountRef.current,
+            offRouteDurationMs,
+            cooldownRemainingMs,
+            movedDistanceSinceLastAcceptedM,
+          });
+          if (
+            movedDistanceSinceLastAcceptedM < MIN_MOVEMENT_FOR_REROUTE_M ||
+            !shouldTrigger ||
+            (offRouteDurationMs < OFF_ROUTE_PENDING_MS && consecutiveOffRouteCountRef.current < OFF_ROUTE_CONSECUTIVE_REQUIRED)
+          ) {
+            setRerouteStatusMessage('You may be off route. Keep moving or stop to recalculate.');
+            return;
+          }
+
+          if (rerouteTimerRef.current) return;
+
+          setReroutePending(true);
+          setRerouteStatusMessage('Recalculating...');
+          rerouteTimerRef.current = setTimeout(() => {
+            rerouteTimerRef.current = null;
+            const latestRoute = routeRef.current;
+            const latestCoord = latestGpsCoordRef.current ?? coord;
+            const latestAccuracy = latestGpsAccuracyRef.current;
+
+            if (!latestRoute || !RerouteService.isOffRoute(latestCoord, latestRoute, latestAccuracy)) {
+              setReroutePending(false);
+              setRerouteStatusMessage(null);
+              return;
+            }
+
+            const resolvedStart = SnapToRoadService.resolveRoutingNode(latestCoord);
+            const destNodeIds = RoutingService.resolveDestinationNodesFromPlace(dest, latestCoord);
+            const newRoute = RoutingService.calculateRoute(
+              resolvedStart.snappedCoordinate,
+              destNodeIds,
+              resolvedStart.nodeId,
+              settingsRef.current.walkingSpeed ?? 1.4,
+            );
+
+            if (newRoute) {
+              lastRerouteAtRef.current = Date.now();
+              setRoute(newRoute);
+              routeRef.current = newRoute;
+              const newInstructions = InstructionService.generateInstructions(newRoute.nodes);
+              setInstructions(newInstructions);
+              instructionsRef.current = newInstructions;
+              setCurrentStepIndex(0);
+              currentStepIndexRef.current = 0;
+              progressMetersRef.current = 0;
+              currentSegmentIndexRef.current = 0;
+              lastAcceptedLocationRef.current = resolvedStart.snappedCoordinate;
+              if (!isMuted && settingsRef.current.voiceInstructions) {
+                VoiceService.speak(
+                  settingsRef.current.language === 'ur'
+                    ? 'راستہ دوبارہ بن رہا ہے۔ چلتے رہیں۔'
+                    : 'Recalculating. Please continue walking.',
+                  settingsRef.current.language,
+                );
+              }
+              setRerouteStatusMessage(null);
+            } else {
+              setRerouteStatusMessage('Could not find a better route. continuing current route.');
+            }
+            setReroutePending(false);
+          }, 250);
         } else {
-          // Back on route — cancel pending reroute
+          lastAcceptedLocationRef.current = snapped;
+          consecutiveOffRouteCountRef.current = 0;
+          offRouteSinceRef.current = null;
+          if (rerouteStatusMessage === 'You may be off route. Keep moving or stop to recalculate.') {
+            setRerouteStatusMessage(null);
+          }
           if (rerouteTimerRef.current) {
             clearTimeout(rerouteTimerRef.current);
             rerouteTimerRef.current = null;
@@ -251,7 +354,7 @@ export function useNavigationViewModel() {
         }
       }
     },
-    [isMuted, setReroutePending]
+    [isMuted, rerouteStatusMessage, setReroutePending]
   );
 
   useEffect(() => {
@@ -289,6 +392,7 @@ export function useNavigationViewModel() {
     arrived,
     reroutePending,
     isWeakGps,
+    rerouteStatusMessage,
     handleExit,
   };
 }

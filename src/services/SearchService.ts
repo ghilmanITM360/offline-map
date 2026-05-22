@@ -196,6 +196,17 @@ export class SearchService {
     } else if (cat === 'masjids') {
       this.searchNodesByType('masjid').forEach((place) => results.push(place));
       LANDMARK_PLACES.filter((landmark) => landmark.category === 'Masjid').forEach((landmark) => results.push(landmark));
+      Object.entries(IJTEMA_DATA.blocks).forEach(([id, block]) => {
+        const role = (block.role ?? '').toLowerCase();
+        const aliasHit = (block.aliases ?? []).some((alias) => alias.toLowerCase().includes('masjid') || alias.toLowerCase().includes('mosque'));
+        if (!role.includes('masjid') && !aliasHit) return;
+        const place = this.blockToPlace(id, block);
+        results.push({
+          ...place,
+          category: 'Masjid',
+          description: `${place.name} (Member Masjid area)`,
+        });
+      });
     } else if (cat === 'terminals') {
       Object.entries(IJTEMA_DATA.nodes).forEach(([id, node]) => {
         if (node.name?.toLowerCase().includes('terminal') || id.startsWith('T')) {

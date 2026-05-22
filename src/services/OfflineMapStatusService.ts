@@ -10,6 +10,7 @@ import { OfflineMapService } from './OfflineMapService';
 
 export const OFFLINE_MAP_MANIFEST_KEY = 'ijtema.offline_map.manifest.v1';
 export const OFFLINE_MAP_DOWNLOADED_FLAG_KEY = 'ijtema.offline_map.downloaded.v1';
+export const OFFLINE_MAP_GRAPH_ONLY_MODE_KEY = 'ijtema.offline_map.graph_only_mode.v1';
 export const OFFLINE_MAP_ID = 'ijtema_2026';
 export const OFFLINE_MAP_MANIFEST_VERSION = 1;
 export const OFFLINE_MAP_ZOOM_LEVELS = [14, 15, 16, 17, 18];
@@ -80,6 +81,14 @@ export class OfflineMapStatusService {
     await AsyncStorage.setItem(OFFLINE_MAP_DOWNLOADED_FLAG_KEY, isDownloaded ? 'true' : 'false');
   }
 
+  static async setGraphOnlyMode(enabled: boolean): Promise<void> {
+    await AsyncStorage.setItem(OFFLINE_MAP_GRAPH_ONLY_MODE_KEY, enabled ? 'true' : 'false');
+  }
+
+  static async isGraphOnlyModeEnabled(): Promise<boolean> {
+    return (await AsyncStorage.getItem(OFFLINE_MAP_GRAPH_ONLY_MODE_KEY)) === 'true';
+  }
+
   static async getDownloadedFlag(): Promise<boolean> {
     return (await AsyncStorage.getItem(OFFLINE_MAP_DOWNLOADED_FLAG_KEY)) === 'true';
   }
@@ -130,6 +139,7 @@ export class OfflineMapStatusService {
     };
 
     await this.writeManifest(manifest);
+    await this.setGraphOnlyMode(false);
     return manifest;
   }
 

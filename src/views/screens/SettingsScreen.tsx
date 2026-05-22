@@ -26,7 +26,6 @@ import {
   RefreshCw,
   Volume2,
   Globe,
-  Moon,
   Compass,
   Calendar,
   Footprints,
@@ -191,21 +190,14 @@ export function SettingsScreen() {
         <View style={[styles.section, { backgroundColor: theme.card, borderColor: theme.border }]}>
           <Text style={[styles.sectionTitle, { color: theme.primary }]}>Appearance</Text>
           <SettingItem
-            icon={Moon}
-            label="Dark Mode"
-            value={settings.darkMode}
-            onToggle={() => handleToggle('darkMode')}
-            description="Switch to dark background"
-          />
-          <SettingItem
             icon={Globe}
-            label="Language"
+            label="Voice Language"
             value={settings.language === 'en' ? 'English (voice)' : 'اردو (voice)'}
             type="text"
             onPress={() =>
               updateSettingValue('language', settings.language === 'en' ? 'ur' : 'en')
             }
-            description="Changes voice instruction language. Full app translation is not enabled yet"
+            description="Changes voice instruction language. Full app translation is not available yet"
           />
         </View>
 
