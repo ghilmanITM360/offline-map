@@ -19,7 +19,7 @@ Release-only rule:
 | B-002 | Home map | App open | Zoom around venue | Block labels are readable | P1 | Manual | NOT TESTED |
 | B-003 | Home map | App open | Inspect rasta overlays | Rasta 01-11 visible | P0 | Covered by `test:map-rendering-v2` | NOT TESTED |
 | B-004 | Home map | App open | Inspect Shahr-e-Pindal overlays | North/South/West labels visible | P0 | Covered by `test:map-rendering-v2` | NOT TESTED |
-| B-005 | Home map | App open | Inspect gates | Coordinate gates render; missing gates do not render fake markers | P0 | Covered by `test:map-rendering-v2` | NOT TESTED |
+| B-005 | Home map | App open | Inspect gates | Active gates render; nonexistent gates 06/09/10/11/12 do not appear and no fake markers render | P0 | Covered by `test:map-rendering-v2` | NOT TESTED |
 | B-006 | Home map | Select Block 42 | Tap/search/select block | Selected block highlight is visible | P0 | Covered by `test:map-rendering-v2` | NOT TESTED |
 | B-007 | Home map | Google key/tile unavailable | Open Home | Graph-only fallback shows blocks, rastas, gates | P0 | Covered by `test:offline-v2` | NOT TESTED |
 | C-001 | Search | Home open | Search `Block 1` | Block 1 appears from v2 data | P0 | Covered by `test:search-v2` | NOT TESTED |
@@ -47,7 +47,7 @@ Release-only rule:
 | D-010 | Directions | Start/destination selectable | Rasta 09 -> Block 3 | Route exists, positive distance/ETA | P0 | Covered by `test:route-smoke-v2` | NOT TESTED |
 | D-011 | Directions | Outside west start | Outside west coordinate -> Block 28 | Route starts at nearest connected official gate | P0 | Covered by `test:entry-gate-routing` and `test:directions-v2` | NOT TESTED |
 | D-012 | Directions | Gate 18 selected | Gate 18 -> Block 28 | Blocked with connector verification message | P0 | Covered by `test:navigation-v2` | NOT TESTED |
-| D-013 | Directions | Gate 15 selected | Gate 15 -> Block 28 | Blocked because coordinate is missing | P0 | Covered by `test:navigation-v2` | NOT TESTED |
+| D-013 | Directions | Gate 15 selected | Gate 15 -> Block 28 | Route exists with positive distance/ETA and Start Navigation is available | P0 | Covered by `test:navigation-v2` | NOT TESTED |
 | E-001 | Active navigation | Gate 21 -> Block 28 route ready | Tap Start Navigation | V2 NavigationScreen opens | P0 | Covered by `test:navigation-v2` source/state checks | NOT TESTED |
 | E-002 | Active navigation | V2 nav open | Inspect map | Route line visible | P0 | Covered by `test:navigation-v2` source/layer checks | NOT TESTED |
 | E-003 | Active navigation | V2 nav open | Inspect map | Start marker visible | P0 | Covered by `test:navigation-v2` source/layer checks | NOT TESTED |
@@ -85,6 +85,7 @@ Release-only rule:
 | I-004 | Regression | Navigation open | Press Android back | Exit confirmation works | P1 | Manual | NOT TESTED |
 | I-005 | Regression | Search focused | Open/close keyboard | Keyboard does not break layout | P1 | Manual | NOT TESTED |
 | I-006 | Regression | Settings changed | Restart app | Settings persist | P1 | Covered by source-level tests | NOT TESTED |
+| I-007 | Regression | Search open | Search nonexistent gates 06/09/10/11/12 | No result appears in normal UI because these gates are excluded from latest dataset | P1 | Manual | NOT TESTED |
 | J-001 | Scale/readiness | Low-end emulator/device | Pan/zoom Home | Acceptable rendering performance | P1 | Manual | NOT TESTED |
 | J-002 | Scale/readiness | Home open | Repeat 50 searches | No crash or infinite loader | P1 | Manual | NOT TESTED |
 | J-003 | Scale/readiness | Directions open | Repeat 25 route calculations | No crash; results stay plausible | P1 | Manual | NOT TESTED |

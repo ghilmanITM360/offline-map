@@ -3,6 +3,7 @@ import { IJTEMA_MAP_BOUNDS } from '../src/data/ijtema';
 import { RoutingServiceV2, RoutingStartV2, RoutingDestinationV2 } from '../src/services/RoutingServiceV2';
 
 const rawInternalIdPattern = /\b(?:R\d+-\d+|SPNP-\d+|SPSP-\d+|SPWP-\d+|P\d+|B\d+_C\d+)\b/;
+const hiddenConnectorLeakPattern = /\b(?:NPC(?:-\d+)?|NORTH_PERIMETER_CONNECTOR|Rasta 12)\b/i;
 
 const checks: Array<{
   label: string;
@@ -11,6 +12,9 @@ const checks: Array<{
 }> = [
   { label: 'Gate 05 -> Block 2', start: { type: 'gate', gateId: 'GATE_05' }, destination: { type: 'block', blockId: 'B2' } },
   { label: 'Gate 05 -> Block 36', start: { type: 'gate', gateId: 'GATE_05' }, destination: { type: 'block', blockId: 'B36' } },
+  { label: 'Gate 20 -> Block 1', start: { type: 'gate', gateId: 'GATE_20' }, destination: { type: 'block', blockId: 'B1' } },
+  { label: 'Gate 20 -> Block 28', start: { type: 'gate', gateId: 'GATE_20' }, destination: { type: 'block', blockId: 'B28' } },
+  { label: 'Gate 20 -> Block 42', start: { type: 'gate', gateId: 'GATE_20' }, destination: { type: 'block', blockId: 'B42' } },
   { label: 'Gate 21 -> Block 28', start: { type: 'gate', gateId: 'GATE_21' }, destination: { type: 'block', blockId: 'B28' } },
   { label: 'Gate 22 -> Block 26', start: { type: 'gate', gateId: 'GATE_22' }, destination: { type: 'block', blockId: 'B26' } },
   { label: 'Gate 08 -> Block 24', start: { type: 'gate', gateId: 'GATE_08' }, destination: { type: 'block', blockId: 'B24' } },
@@ -50,6 +54,7 @@ for (const check of checks) {
 
   const instructionText = route.instructions.map((instruction) => instruction.text).join('\n');
   assert(!rawInternalIdPattern.test(instructionText), `${check.label} instructions expose raw internal IDs:\n${instructionText}`);
+  assert(!hiddenConnectorLeakPattern.test(instructionText), `${check.label} instructions must not expose hidden connector labels:\n${instructionText}`);
 
   if (check.start.type === 'outside_coordinate') {
     assert.equal(route.startResolution?.mode, 'outside', `${check.label} should use outside start resolution`);

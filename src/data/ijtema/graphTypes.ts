@@ -9,6 +9,7 @@ export type GraphNodeType = 'rasta_point' | 'gate' | 'block_entry' | 'special_ro
 
 export type GraphEdgePathType =
   | 'rasta'
+  | 'perimeter_connector'
   | 'gate_connector'
   | 'block_connector'
   | 'special_route'

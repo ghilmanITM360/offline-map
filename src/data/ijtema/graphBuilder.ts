@@ -6,6 +6,7 @@
 import { IJTEMA_BLOCKS } from './blocks';
 import { IJTEMA_CENTRAL_POINTS } from './centralPoints';
 import { IJTEMA_GATES } from './gates';
+import { IJTEMA_PERIMETER_CONNECTORS, PerimeterConnector } from './perimeterConnectors';
 import { IJTEMA_RASTAS } from './rastas';
 import { IJTEMA_SPECIAL_ROUTES } from './specialRoutes';
 import {
@@ -57,6 +58,7 @@ const emptyTypeCounts = (): Record<GraphNodeType, number> => ({
 
 const emptyEdgeCounts = (): Record<GraphEdgePathType, number> => ({
   rasta: 0,
+  perimeter_connector: 0,
   gate_connector: 0,
   block_connector: 0,
   special_route: 0,
@@ -309,6 +311,48 @@ const countEdgesByPathType = (edges: GraphEdge[]): Record<GraphEdgePathType, num
   return counts;
 };
 
+const addPerimeterConnector = (
+  nodes: Record<string, GraphNode>,
+  edges: GraphEdge[],
+  edgeKeys: Set<string>,
+  connector: PerimeterConnector,
+): void => {
+  const label: LocalizedLabel = {
+    en: 'Perimeter connector',
+    ur: 'رابطہ راستہ',
+    romanUrdu: 'Perimeter connector',
+  };
+
+  for (const point of connector.points) {
+    addNode(nodes, {
+      id: point.id,
+      coordinate: point.coordinate,
+      type: 'rasta_point',
+      name: { en: point.developerLabel, ur: point.developerLabel, romanUrdu: point.developerLabel },
+      developerLabel: point.developerLabel,
+      sourceId: connector.id,
+    });
+  }
+
+  for (let i = 0; i < connector.points.length - 1; i += 1) {
+    const from = connector.points[i];
+    const to = connector.points[i + 1];
+    addEdge(
+      edges,
+      {
+        from: from.id,
+        to: to.id,
+        distanceM: Math.round(distanceMeters(from.coordinate, to.coordinate)),
+        bidirectional: true,
+        pathType: 'perimeter_connector',
+        name: label,
+        developerLabel: `${from.id} -> ${to.id}`,
+      },
+      edgeKeys,
+    );
+  }
+};
+
 export const buildNavigationGraphV2 = (): { graph: NavigationGraphV2; report: NavigationGraphV2Report } => {
   const nodes: Record<string, GraphNode> = {};
   const edges: GraphEdge[] = [];
@@ -321,6 +365,10 @@ export const buildNavigationGraphV2 = (): { graph: NavigationGraphV2; report: Na
   for (const rasta of IJTEMA_RASTAS) {
     rasta.points.forEach((point) => addNode(nodes, pointNode(point)));
     addSequentialEdges(edges, edgeKeys, rasta, rasta.points, 'rasta');
+  }
+
+  for (const connector of IJTEMA_PERIMETER_CONNECTORS) {
+    addPerimeterConnector(nodes, edges, edgeKeys, connector);
   }
 
   for (const route of IJTEMA_SPECIAL_ROUTES) {

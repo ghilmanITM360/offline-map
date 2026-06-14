@@ -25,8 +25,8 @@ const BROAD_KARACHI_BOUNDS = {
 };
 
 const internalPointIdPattern = /\b(?:R\d+-\d+|SPNP(?:-\d+)?|SPSP(?:-\d+)?|SPWP(?:-\d+)?|P\d+)\b/;
-const requiredMissingGates = [6, 9, 10, 11, 12, 15];
-const requiredProvidedGates = [1, 2, 3, 4, 5, 7, 8, 13, 14, 16, 17, 18, 19, 20, 21, 22];
+const activeGateNumbers = [1, 2, 3, 4, 5, 7, 8, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22];
+const nonexistentGateNumbers = [6, 9, 10, 11, 12];
 const outsideRoutingDoc = readFileSync(join(process.cwd(), 'docs/OUTSIDE_IJTEMA_ROUTING_RULE.md'), 'utf8');
 
 const hasGraphConnection = (gate: Gate): boolean => (IJTEMA_NAVIGATION_GRAPH_V2.adjacency[gate.id] ?? []).length > 0;
@@ -165,16 +165,18 @@ assert.equal(IJTEMA_BLOCKS.length, 42, 'Exactly 42 block records must exist');
 IJTEMA_BLOCKS.forEach(assertBlock);
 assertNoDuplicateIds(IJTEMA_BLOCKS.map((block) => block.id), 'block');
 
-assert.equal(IJTEMA_GATES.length, 22, 'Gate records 01-22 must exist');
-assert.equal(IJTEMA_GATES.filter((gate) => gate.status !== 'missing_coordinate').length, 16, '16 gates have provided coordinates');
-assert.equal(IJTEMA_GATES.filter((gate) => gate.status === 'missing_coordinate').length, 6, '6 gates are explicitly missing coordinates');
-assert.equal(IJTEMA_GATES.filter((gate) => gate.routingStatus === 'routable').length, 16, '16 provided gates must be routable');
-assert.equal(IJTEMA_GATES.filter((gate) => gate.routingStatus === 'missing_coordinate').length, 6, '6 missing gates must be non-routable');
-assert.equal(IJTEMA_GATES.filter((gate) => gate.canStartRouteFromOutside).length, 16, 'Only provided gates can start outside routes');
-requiredProvidedGates.forEach((number) => assert(IJTEMA_GATES.some((gate) => gate.number === number && gate.status !== 'missing_coordinate'), `Gate ${number} must be provided`));
-requiredMissingGates.forEach((number) => assert(IJTEMA_GATES.some((gate) => gate.number === number && gate.status === 'missing_coordinate'), `Gate ${number} must be missing_coordinate`));
+assert.equal(IJTEMA_GATES.length, 17, 'Only 17 active gates from latest dataset must exist');
+assert.equal(IJTEMA_GATES.filter((gate) => gate.status !== 'missing_coordinate').length, 17, 'All active gates must have supplied coordinates');
+assert.equal(IJTEMA_GATES.filter((gate) => gate.status === 'missing_coordinate').length, 0, 'No active gate should stay missing-coordinate');
+assert.equal(IJTEMA_GATES.filter((gate) => gate.routingStatus === 'routable').length, 17, 'All active gates must be eligible for graph-connector validation');
+assert.equal(IJTEMA_GATES.filter((gate) => gate.routingStatus === 'missing_coordinate').length, 0, 'No active gate should remain missing-coordinate');
+assert.equal(IJTEMA_GATES.filter((gate) => gate.canStartRouteFromOutside).length, 17, 'All active gates must support outside-start resolution');
+activeGateNumbers.forEach((number) => assert(IJTEMA_GATES.some((gate) => gate.number === number && gate.status !== 'missing_coordinate'), `Gate ${number} must be active`));
+nonexistentGateNumbers.forEach((number) => assert(!IJTEMA_GATES.some((gate) => gate.number === number), `Gate ${number} must be excluded as nonexistent`));
 assert.equal(IJTEMA_GATES.find((gate) => gate.number === 13)?.status, 'needs_verification', 'Gate 13 must remain marked needs_verification');
 assert.equal(IJTEMA_GATES.find((gate) => gate.number === 14)?.status, 'needs_verification', 'Gate 14 must remain marked needs_verification');
+assert.deepEqual(IJTEMA_GATES.find((gate) => gate.number === 14)?.coordinate, { lat: 24.965507, lng: 67.007728 }, 'Gate 14 must use corrected coordinate');
+assert.deepEqual(IJTEMA_GATES.find((gate) => gate.number === 15)?.coordinate, { lat: 24.968126, lng: 67.008578 }, 'Gate 15 must use latest coordinate');
 IJTEMA_GATES.forEach(assertGate);
 assertNoDuplicateIds(IJTEMA_GATES.map((gate) => gate.id), 'gate');
 
@@ -237,10 +239,9 @@ assert.equal(IJTEMA_SPECIAL_ROUTES.find((route) => route.id === 'SHAHR_E_PINDAL_
 IJTEMA_SPECIAL_ROUTES.forEach(assertSpecialRoute);
 assertNoDuplicateIds(specialRouteIds, 'special route');
 assertNoDuplicateIds(IJTEMA_SPECIAL_ROUTES.flatMap((route) => route.points.map((point) => point.id)), 'special route point');
-const prpRoute = IJTEMA_SPECIAL_ROUTES.find((route) => route.id === 'PAIDAL_RASTA');
-if (prpRoute) {
-  prpRoute.points.forEach((point) => assert(point.name.en.startsWith('Paidal Rasta Point'), `${point.id} must have Paidal Rasta user label`));
-}
+const spwpRoute = IJTEMA_SPECIAL_ROUTES.find((route) => route.id === 'SHAHR_E_PINDAL_WEST');
+assert(spwpRoute?.aliases.includes('PRP'), 'Shahr-e-Pindal West must expose PRP alias');
+assert(spwpRoute?.aliases.includes('Paidal Rasta'), 'Shahr-e-Pindal West must expose Paidal Rasta alias');
 
 assert.equal(IJTEMA_CENTRAL_POINTS.length, 12, 'P1-P12 central points must exist');
 IJTEMA_CENTRAL_POINTS.forEach((point) => {
@@ -252,13 +253,16 @@ IJTEMA_CENTRAL_POINTS.forEach((point) => {
 });
 assertNoDuplicateIds(IJTEMA_CENTRAL_POINTS.map((point) => point.id), 'central point');
 
-assertIssueDocumented('MISSING_GATE_COORDINATES');
-assertIssueDocumented('B24_DUPLICATE_C2_C3');
 assertIssueDocumented('RASTA_09_SOURCE_POINT_ID_TYPO');
 assertIssueDocumented('SPNP_03_DUPLICATE_SOURCE_ID');
-assertIssueDocumented('SPSP_03_DUPLICATE_SOURCE_ID');
 assertIssueDocumented('GATE_13_14_NEAR_DUPLICATE');
 assertIssueDocumented('POLYGON_CORNER_ORDER_NORMALIZED');
+
+const b24 = IJTEMA_BLOCKS.find((block) => block.id === 'B24');
+assert(b24, 'B24 must exist');
+assert.deepEqual(b24.center, { lat: 24.9668611, lng: 67.0056111 }, 'B24 center must match corrected dataset');
+assert.deepEqual(b24.entryPoints.c2, { lat: 24.966382, lng: 67.006228 }, 'B24 C2 must match corrected dataset');
+assert.deepEqual(b24.entryPoints.c3, { lat: 24.967281, lng: 67.005029 }, 'B24 C3 must match corrected dataset');
 
 const allIds = [
   ...IJTEMA_BLOCKS.map((block) => block.id),

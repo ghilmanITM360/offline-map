@@ -32,10 +32,14 @@ assert.equal(manualGateStart.gate?.id, 'GATE_05', 'manual routable gate should b
 assert.deepEqual(manualGateStart.candidateNodes, ['GATE_05'], 'manual routable gate should be the only start candidate');
 
 const missingGateStart = EntryGateRoutingService.resolveRouteStartForUser(outsideWest, { manualGateId: 'GATE_06' });
-assert.equal(missingGateStart.mode, 'outside', 'missing manual gate keeps outside flow');
-assert.equal(missingGateStart.startType, 'unresolved', 'missing-coordinate manual gate must not resolve');
-assert.equal(missingGateStart.candidateNodes.length, 0, 'missing-coordinate manual gate must not be a start candidate');
-assert(missingGateStart.error?.includes('not routable'), 'missing-coordinate manual gate should explain non-routable status');
+assert.equal(missingGateStart.mode, 'outside', 'nonexistent manual gate keeps outside flow');
+assert.equal(missingGateStart.startType, 'unresolved', 'nonexistent manual gate must not resolve');
+assert.equal(missingGateStart.candidateNodes.length, 0, 'nonexistent manual gate must not be a start candidate');
+assert(missingGateStart.error?.includes('not routable'), 'nonexistent manual gate should explain non-routable status');
+
+const gate15Start = EntryGateRoutingService.resolveRouteStartForUser(outsideWest, { manualGateId: 'GATE_15' });
+assert.equal(gate15Start.startType, 'selected_official_gate', 'manual Gate 15 must be accepted');
+assert.equal(gate15Start.gate?.id, 'GATE_15', 'manual Gate 15 must resolve to Gate 15');
 
 const forcedOutsideStart = EntryGateRoutingService.resolveRouteStartForUser(outsideDeclaredInsideBounds, { forceOutside: true });
 assert.equal(forcedOutsideStart.mode, 'outside', 'forced outside coordinate inside broad bounds must remain outside flow');
@@ -58,9 +62,9 @@ assert(
 const nearestGate = EntryGateRoutingService.findNearestOfficialEntryGateForOutsideUser(outsideWest);
 assert(nearestGate, 'nearest gate helper must return a routable gate for outside user');
 assert.equal(nearestGate.routingStatus, 'routable', 'nearest gate helper must only return routable gates');
-assert.notEqual(nearestGate.id, 'GATE_06', 'nearest gate helper must not return missing gates');
+assert.notEqual(nearestGate.id, 'GATE_06', 'nearest gate helper must not return nonexistent gates');
 
 const missingGateNumbers = IJTEMA_GATES.filter((gate) => gate.routingStatus === 'missing_coordinate').map((gate) => gate.number);
-assert.deepEqual(missingGateNumbers, [6, 9, 10, 11, 12, 15], 'missing-coordinate gates must remain non-routable');
+assert.deepEqual(missingGateNumbers, [], 'active gate list must not keep missing-coordinate placeholders');
 
 console.log('Entry gate routing checks passed.');

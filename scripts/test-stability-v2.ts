@@ -31,12 +31,12 @@ assert(navigationScreen.includes('NavigationScreenV2Disabled'), 'Disabled/mismat
 const gate15 = SearchService.search('Gate 15')[0];
 const gate18 = SearchService.search('Gate 18')[0];
 const block28 = SearchService.search('Block 28')[0];
-assert.equal(gate15.routingStatus, 'missing_coordinate', 'Missing Gate 15 fixture must stay blocked');
+assert.equal(gate15.routingStatus, 'routable', 'Gate 15 fixture must stay routable');
 assert.equal(gate18.routingStatus, 'needs_connector_verification', 'Disconnected Gate 18 fixture must stay blocked');
 assert.equal(
   V2DirectionsService.calculatePreview({ startPlace: gate15, destination: block28, currentLocation: null }).status,
-  'unavailable',
-  'Missing-coordinate gates must not route silently',
+  'ready',
+  'Gate 15 must stay routable after latest data update',
 );
 assert.equal(
   V2DirectionsService.calculatePreview({ startPlace: gate18, destination: block28, currentLocation: null }).status,

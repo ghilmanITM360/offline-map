@@ -7,23 +7,6 @@ import { DataIssue } from './types';
 
 export const DATA_ISSUES: DataIssue[] = [
   {
-    id: 'MISSING_GATE_COORDINATES',
-    severity: 'warning',
-    category: 'missing_coordinate',
-    affectedIds: ['GATE_06', 'GATE_09', 'GATE_10', 'GATE_11', 'GATE_12', 'GATE_15'],
-    summary: 'The supplied dataset claims Gates 01-22, but six gate coordinates are not present.',
-    resolution:
-      'Represented as status=missing_coordinate and routingStatus=missing_coordinate with no synthetic coordinate or outside-route start capability.',
-  },
-  {
-    id: 'B24_DUPLICATE_C2_C3',
-    severity: 'warning',
-    category: 'geometry',
-    affectedIds: ['B24'],
-    summary: 'The supplied B24 text has identical C2 and C3 coordinates, which would make the source corner set degenerate.',
-    resolution: 'Kept the supplied entry points for auditability and used the existing verified app B24 polygon for rendering.',
-  },
-  {
     id: 'RASTA_09_SOURCE_POINT_ID_TYPO',
     severity: 'info',
     category: 'source_typo',
@@ -40,14 +23,6 @@ export const DATA_ISSUES: DataIssue[] = [
     resolution: 'Preserved coordinate order and normalized the sequence to SPNP-01 through SPNP-07.',
   },
   {
-    id: 'SPSP_03_DUPLICATE_SOURCE_ID',
-    severity: 'warning',
-    category: 'duplicate_source_id',
-    affectedIds: ['SPSP-03', 'SPSP-04', 'SPSP-05', 'SPSP-06', 'SPSP-07', 'SPSP-08'],
-    summary: 'The supplied Shahr-e-Pindal South list repeats SPSP-03 for two different coordinates.',
-    resolution: 'Preserved coordinate order and normalized the sequence to SPSP-01 through SPSP-08.',
-  },
-  {
     id: 'GATE_13_14_NEAR_DUPLICATE',
     severity: 'warning',
     category: 'near_duplicate',
@@ -61,14 +36,6 @@ export const DATA_ISSUES: DataIssue[] = [
     category: 'geometry',
     affectedIds: ['B1-B42'],
     summary: 'Several supplied C1/C2/C3/C4 corner orders are access-point oriented rather than polygon-winding oriented.',
-    resolution: 'Generated renderable polygons by sorting supplied corners around each block center, with B24 using a verified fallback polygon.',
-  },
-  {
-    id: 'PRP_POINTS_NOT_PROVIDED',
-    severity: 'info',
-    category: 'source_gap',
-    affectedIds: ['PRP'],
-    summary: 'The source description mentions PRP/Paidal Rasta Points, but no PRP coordinates were supplied in the text dataset.',
-    resolution: 'No fake PRP points were created. Add PRP as a special route when coordinates are provided.',
+    resolution: 'Generated renderable polygons by sorting supplied corners around each block center.',
   },
 ];

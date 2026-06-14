@@ -117,6 +117,7 @@ const friendlyNodeName = (nodeId: string): string => {
 const instructionTextForEdge = (edge: GraphEdge): string => {
   if (edge.pathType === 'gate_connector') return `Continue from ${edge.name.en}`;
   if (edge.pathType === 'block_connector') return `Continue to ${edge.name.en}`;
+  if (edge.pathType === 'perimeter_connector') return 'Continue along the connector path';
   if (edge.pathType === 'intersection_connector' || edge.pathType === 'central_connector') return 'Continue through the junction';
   return `Continue on ${edge.name.en}`;
 };
@@ -124,6 +125,7 @@ const instructionTextForEdge = (edge: GraphEdge): string => {
 const instructionUrduForEdge = (edge: GraphEdge): string => {
   if (edge.pathType === 'gate_connector') return `${edge.name.ur ?? edge.name.en} سے آگے بڑھیں`;
   if (edge.pathType === 'block_connector') return `${edge.name.ur ?? edge.name.en} تک جائیں`;
+  if (edge.pathType === 'perimeter_connector') return 'رابطہ راستے پر چلتے رہیں';
   if (edge.pathType === 'intersection_connector' || edge.pathType === 'central_connector') return 'جنکشن سے آگے بڑھیں';
   return `${edge.name.ur ?? edge.name.en} پر چلتے رہیں`;
 };

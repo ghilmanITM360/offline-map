@@ -379,7 +379,36 @@ export class SearchService {
       }
     }
 
+    const matchPriority = (place: V2Place): number => {
+      const aliases = place.aliases ?? [];
+      const normalizedUrduName = place.urduName ? normalizeUrdu(place.urduName).toLowerCase() : '';
+      const normalizedAliases = aliases.map((alias) => normalizeUrdu(alias).toLowerCase());
+
+      if (
+        place.id.toLowerCase() === normalised ||
+        place.name.toLowerCase() === normalised ||
+        normalizedUrduName === normalised ||
+        normalizedAliases.some((alias) => alias === normalised)
+      ) {
+        return 0;
+      }
+
+      if (
+        place.name.toLowerCase().startsWith(normalised) ||
+        normalizedUrduName.startsWith(normalised) ||
+        normalizedAliases.some((alias) => alias.startsWith(normalised))
+      ) {
+        return 1;
+      }
+
+      return 2;
+    };
+
     results.sort((a, b) => {
+      const priorityA = matchPriority(a);
+      const priorityB = matchPriority(b);
+      if (priorityA !== priorityB) return priorityA - priorityB;
+
       const rankA = CATEGORY_RANK[a.category] ?? 5;
       const rankB = CATEGORY_RANK[b.category] ?? 5;
       if (rankA !== rankB) return rankA - rankB;

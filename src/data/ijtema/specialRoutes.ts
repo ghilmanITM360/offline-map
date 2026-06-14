@@ -79,7 +79,7 @@ export const IJTEMA_SPECIAL_ROUTES: SpecialRoute[] = [
       ur: 'شہرِ پنڈال مغرب',
       romanUrdu: 'Shahr-e-Pindal West',
     },
-    ['Shahr-e-Pindal West', 'Shahr Pindal West', 'شہر پنڈال مغرب', 'SPWP'],
+    ['Shahr-e-Pindal West', 'Shahr Pindal West', 'شہر پنڈال مغرب', 'SPWP', 'PRP', 'Paidal Rasta', 'Paidal Rasta West'],
     [c(24.971665, 66.998982), c(24.970904, 66.999025), c(24.969414, 66.999095), c(24.967439, 66.999083), c(24.965637, 66.999134)],
   ),
 ];

@@ -118,15 +118,15 @@ assert.equal(
   'Gate 21 -> Block 28 can start v2 navigation when navigation flag is true',
 );
 
-const missingGate15 = SearchService.search('Gate 15')[0];
-assert.equal(missingGate15?.routingStatus, 'missing_coordinate', 'Gate 15 fixture must be missing-coordinate');
-const missingGatePreview = V2DirectionsService.calculatePreview({
-  startPlace: missingGate15,
+const gate15 = SearchService.search('Gate 15')[0];
+assert.equal(gate15?.routingStatus, 'routable', 'Gate 15 fixture must be routable with latest data');
+const gate15Preview = V2DirectionsService.calculatePreview({
+  startPlace: gate15,
   destination: block28,
   currentLocation: null,
   walkingSpeedMs: 1.4,
 });
-assert.equal(missingGatePreview.status, 'unavailable', 'Missing gates cannot start navigation');
+assert.equal(gate15Preview.status, 'ready', 'Gate 15 must support active-navigation preview');
 
 const disconnectedGate18 = SearchService.search('Gate 18')[0];
 assert.equal(disconnectedGate18?.routingStatus, 'needs_connector_verification', 'Gate 18 fixture must need connector verification');

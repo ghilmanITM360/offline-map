@@ -49,6 +49,7 @@ assert(block1, 'Block 1 fixture must exist');
 assert(block42, 'Block 42 fixture must exist');
 assert(gate18, 'Gate 18 fixture must exist');
 assert(gate15, 'Gate 15 fixture must exist');
+assert.equal(gate15.routingStatus, 'routable', 'Gate 15 fixture must become routable with latest data');
 
 const outsideWestPreview = V2DirectionsService.calculatePreview({
   startPlace: null,
@@ -108,11 +109,7 @@ const missingGatePreview = V2DirectionsService.calculatePreview({
   currentLocation: null,
   walkingSpeedMs: 1.4,
 });
-assert.equal(missingGatePreview.status, 'unavailable', 'Gate 15 must stay blocked.');
-assert.equal(
-  missingGatePreview.message,
-  'This gate has no verified location yet.',
-  'Gate 15 must show missing-coordinate user copy.',
-);
+assert.equal(missingGatePreview.status, 'ready', 'Gate 15 must route when selected explicitly.');
+assert.equal(missingGatePreview.route?.startLabel, 'Gate 15', 'Gate 15 preview must keep friendly gate label.');
 
 console.log('Outside location routing v2 checks passed.');

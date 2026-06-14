@@ -99,14 +99,14 @@ const disconnectedGate18 = V2DirectionsService.calculatePreview({
 assert.equal(disconnectedGate18.status, 'unavailable', 'Disconnected Gate 18 route start must fail gracefully');
 assert.equal(disconnectedGate18.message, 'This gate is not ready for navigation. Please choose another nearby gate.', 'Disconnected Gate 18 must explain blocked start clearly');
 
-const missingGate15 = V2DirectionsService.calculatePreview({
+const gate15Preview = V2DirectionsService.calculatePreview({
   startPlace: SearchService.search('Gate 15')[0],
   destination: SearchService.search('Block 26')[0],
   currentLocation: null,
   walkingSpeedMs: 1.4,
 });
-assert.equal(missingGate15.status, 'unavailable', 'Missing Gate 15 must not route');
-assert.equal(missingGate15.message, 'This gate has no verified location yet.', 'Missing Gate 15 must explain unavailable coordinate');
+assert.equal(gate15Preview.status, 'ready', 'Gate 15 must route with latest coordinate set');
+assert.equal(gate15Preview.route?.startLabel, 'Gate 15', 'Gate 15 preview must keep friendly gate label');
 
 const shahrRoutePreview = V2DirectionsService.calculatePreview({
   startPlace: SearchService.search('Gate 08')[0],

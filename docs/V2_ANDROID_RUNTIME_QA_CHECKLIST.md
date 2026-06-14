@@ -36,7 +36,7 @@ EXPO_PUBLIC_USE_IJTEMA_V2_NAVIGATION=true
 - Rasta 01-11 are visible.
 - Shahr-e-Pindal North, South, and West are visible.
 - Gates with coordinates are visible.
-- Missing-coordinate gates do not create fake markers.
+- Nonexistent gates 06/09/10/11/12 do not create fake markers or normal search results.
 - Graph-only fallback is visible if Google/base tiles are unavailable.
 
 ## C. Search Test
@@ -44,6 +44,7 @@ EXPO_PUBLIC_USE_IJTEMA_V2_NAVIGATION=true
 - Search `Block 28`.
 - Search `Block 42`.
 - Search `Gate 21`.
+- Search `Gate 15`.
 - Search `Rasta 09`.
 - Search `Shahr-e-Pindal North`.
 - Test Urdu search if the Android keyboard/input method supports it.
@@ -51,11 +52,12 @@ EXPO_PUBLIC_USE_IJTEMA_V2_NAVIGATION=true
 ## D. Directions Preview
 
 - Gate 21 -> Block 28 previews a routable v2 route.
+- Gate 15 -> representative block previews a routable v2 route.
 - Gate 05 -> Block 36 previews a routable v2 route.
 - Gate 13 -> Block 42 previews a routable v2 route.
 - Outside west coordinate -> nearest connected official gate -> Block 28 previews a routable v2 route.
 - Disconnected Gate 18 shows: `This gate needs connector verification before navigation.`
-- Missing Gate 15 does not route or start navigation.
+- Gates 06/09/10/11/12 do not appear as active gate choices.
 
 ## E. Active Navigation
 

@@ -48,6 +48,31 @@ for (const rasta of IJTEMA_RASTAS) {
 const rasta9NodeIds = nodeIds.filter((id) => id.startsWith('R9-')).sort();
 assert.deepEqual(rasta9NodeIds, ['R9-01', 'R9-02', 'R9-03', 'R9-04', 'R9-05', 'R9-06', 'R9-07', 'R9-08', 'R9-09'], 'Rasta 09 must use normalized R9 IDs');
 
+const perimeterNodeIds = nodeIds.filter((id) => id.startsWith('NPC-')).sort();
+assert.deepEqual(perimeterNodeIds, ['NPC-01', 'NPC-02'], 'Hidden north perimeter connector must keep two internal bridge nodes');
+assert(
+  graph.edges.some((edge) => edge.from === 'NPC-01' && edge.to === 'NPC-02' && edge.pathType === 'perimeter_connector'),
+  'Hidden north perimeter bridge must use perimeter_connector path type instead of public rasta path type',
+);
+assert(
+  graph.edges.some(
+    (edge) =>
+      edge.pathType === 'intersection_connector' &&
+      ((edge.from === 'NPC-01' && edge.to === 'R7-01') || (edge.from === 'R7-01' && edge.to === 'NPC-01')) &&
+      edge.distanceM <= 12,
+  ),
+  'Hidden north perimeter bridge must connect into Rasta 07 near R7-01',
+);
+assert(
+  graph.edges.some(
+    (edge) =>
+      edge.pathType === 'intersection_connector' &&
+      ((edge.from === 'NPC-02' && edge.to === 'R8-01') || (edge.from === 'R8-01' && edge.to === 'NPC-02')) &&
+      edge.distanceM <= 12,
+  ),
+  'Hidden north perimeter bridge must connect into Rasta 08 near R8-01',
+);
+
 for (const route of IJTEMA_SPECIAL_ROUTES) {
   for (let i = 0; i < route.points.length - 1; i += 1) {
     const from = route.points[i].id;

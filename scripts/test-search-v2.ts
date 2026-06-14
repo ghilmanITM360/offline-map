@@ -58,9 +58,13 @@ withFlags({ EXPO_PUBLIC_USE_IJTEMA_V2_MAP: 'true' }, () => {
   assert.equal(gate21.isStartRoutable, true, 'Connected Gate 21 must be start-routable');
 
   const gate15 = SearchService.search('Gate 15')[0];
-  assert.equal(gate15?.id, 'GATE_15', 'Exact missing gate search may show unavailable Gate 15');
-  assert.equal(gate15.isRoutable, false, 'Missing Gate 15 must not be routable');
-  assert.equal(gate15.coordinate, undefined, 'Missing Gate 15 must not have a fake marker coordinate');
+  assert.equal(gate15?.id, 'GATE_15', 'Search must find active Gate 15');
+  assert.equal(gate15.isRoutable, true, 'Gate 15 must be routable when graph-connected');
+  assert.equal(gate15.coordinate?.latitude, 24.968126, 'Gate 15 must expose latest latitude');
+  assert.equal(gate15.coordinate?.longitude, 67.008578, 'Gate 15 must expose latest longitude');
+
+  const prp = SearchService.search('PRP')[0];
+  assert.equal(prp?.id, 'SHAHR_E_PINDAL_WEST', 'PRP alias must resolve to Shahr-e-Pindal West');
 
   const gate18 = SearchService.search('Gate 18')[0];
   assert.equal(gate18?.id, 'GATE_18', 'Search must find provided but disconnected Gate 18');
@@ -72,6 +76,13 @@ withFlags({ EXPO_PUBLIC_USE_IJTEMA_V2_MAP: 'true' }, () => {
   const rasta09 = SearchService.search('Rasta 09')[0];
   assert.equal(rasta09?.id, 'R9', 'Search must find Rasta 09');
   assert.equal(rasta09.polyline?.length, 9, 'Rasta 09 must expose its v2 polyline');
+
+  assert.equal(SearchService.search('Rasta 12').length, 0, 'Hidden perimeter bridge must not appear as public Rasta 12');
+  assert.equal(
+    SearchService.search('North Perimeter Connector').length,
+    0,
+    'Hidden perimeter bridge must not appear in normal search by internal connector name',
+  );
 
   const shahrNorth = SearchService.search('شہر پنڈال شمال')[0];
   assert.equal(shahrNorth?.id, 'SHAHR_E_PINDAL_NORTH', 'Search must find Shahr-e-Pindal North using Urdu alias');
