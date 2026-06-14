@@ -4,7 +4,6 @@
  */
 
 import { Node, Edge, Block, Place } from '../models/types';
-import { IJTEMA_MAP_BOUNDS } from '../data/ijtema/mapBounds';
 import { validateIjtemaGraph } from '../data/ijtema/validation';
 
 export const IJTEMA_DATA: {
@@ -78,7 +77,7 @@ export const IJTEMA_DATA: {
     { from: "S1", to: "S2",  distance_m: 95,  isRasta: true, name: "North Boundary Road" },
     { from: "S2", to: "S3",  distance_m: 109, isRasta: true, name: "North Boundary Road" },
     { from: "S3", to: "S4",  distance_m: 123, isRasta: true, name: "North Boundary Road" },
-    { from: "S4", to: "S5",  distance_m: 222, isRasta: true, name: "North Boundary Road" },
+    { from: "S4", to: "S5",  distance_m: 93,  isRasta: true, name: "North Boundary Road" },
     { from: "S5", to: "S6",  distance_m: 151, isRasta: true, name: "North Boundary Road" },
 
     // === South boundary road (T1 → S7 → S8 → S9 → S10 → S11 → S12) ===
@@ -101,7 +100,7 @@ export const IJTEMA_DATA: {
     { from: "P8", to: "S7", distance_m: 198, isRasta: true, name: "Rasta 01" },
 
     // === Rasta-02 N-S (S2 → P6 → P9 → S8) ===
-    { from: "S2", to: "P6", distance_m: 108, isRasta: true, name: "Rasta 02" },
+    { from: "S2", to: "P6", distance_m: 257, isRasta: true, name: "Rasta 02" },
     { from: "P6", to: "P9", distance_m: 111, isRasta: true, name: "Rasta 02" },
     { from: "P9", to: "S8", distance_m: 198, isRasta: true, name: "Rasta 02" },
 
@@ -130,7 +129,7 @@ export const IJTEMA_DATA: {
     { from: "P5",  to: "S16", distance_m: 151, isRasta: true, name: "Rasta 09" },
 
     // === Rasta-10 link (P7 → S17) ===
-    { from: "P7", to: "S17", distance_m: 295, isRasta: true, name: "Rasta 10" },
+    { from: "P7", to: "S17", distance_m: 151, isRasta: true, name: "Rasta 10" },
 
     // === Rasta-11 E-W (S14 → P8 → P9 → P10 → P11 → P12 → S15) ===
     { from: "S14", to: "P8",  distance_m: 149, isRasta: true, name: "Rasta 11" },
@@ -732,7 +731,6 @@ export const IJTEMA_BLOCK_ENTRY_MAP = BLOCK_ENTRY_MAP_STRICT;
 export const IJTEMA_RASTAS = Array.from(
   new Set(IJTEMA_DATA.edges.filter((edge) => edge.name?.startsWith('Rasta')).map((edge) => edge.name!)),
 );
-export const MAP_BOUNDS = IJTEMA_MAP_BOUNDS;
 
 export const GRAPH_VALIDATION = validateIjtemaGraph(IJTEMA_DATA);
 if (!GRAPH_VALIDATION.isValid) {
@@ -884,6 +882,22 @@ export const LANDMARK_PLACES: Place[] = [
     aliases: ['parking', 'car park', 'پارکنگ', 'گاڑی'],
   },
 ];
+
+const LEGACY_MAP_BOUND_COORDINATES = [
+  ...Object.values(IJTEMA_DATA.nodes).map((node) => ({
+    latitude: node.lat,
+    longitude: node.lng,
+  })),
+  ...Object.values(IJTEMA_DATA.blocks).flatMap((block) => [block.center, ...block.polygon]),
+  ...LANDMARK_PLACES.map((place) => place.coordinate),
+];
+
+export const MAP_BOUNDS = {
+  minLat: Math.min(...LEGACY_MAP_BOUND_COORDINATES.map((coordinate) => coordinate.latitude)),
+  maxLat: Math.max(...LEGACY_MAP_BOUND_COORDINATES.map((coordinate) => coordinate.latitude)),
+  minLng: Math.min(...LEGACY_MAP_BOUND_COORDINATES.map((coordinate) => coordinate.longitude)),
+  maxLng: Math.max(...LEGACY_MAP_BOUND_COORDINATES.map((coordinate) => coordinate.longitude)),
+};
 
 /** Nearest road-node IDs for each off-graph landmark (used by RoutingService). */
 export const LANDMARK_NEAREST_NODE: Record<string, string> = {

@@ -12,6 +12,8 @@ import {
   Place,
   Coordinate,
   RoutePreview,
+  V2ActiveRoute,
+  V2NavigationInstruction,
   RouteAlternative,
   NavigationInstruction,
   SearchResult,
@@ -21,8 +23,35 @@ import {
   OfflineMapStatus,
   LocationSource,
 } from '../models/types';
+import { MapFeatureFlagsService } from '../services/MapFeatureFlagsService';
+import { V2PlaceAdapter } from '../services/V2PlaceAdapter';
 
 export type RouteSelectionMode = 'idle' | 'selectingStart' | 'selectingDestination';
+
+function sanitizePersistedPlace(place: Place | null | undefined): Place | null {
+  if (!place) return null;
+  if (!MapFeatureFlagsService.useIjtemaV2Map()) return place;
+  return place.sourceVersion === 'v2' ? place : null;
+}
+
+function sanitizePersistedPlaces(places: Place[] | undefined): Place[] {
+  if (!Array.isArray(places)) return [];
+  return places
+    .map((place) => sanitizePersistedPlace(place))
+    .filter((place): place is Place => Boolean(place));
+}
+
+function sanitizePersistedFavorite(favorite: FavoritePlace): FavoritePlace | null {
+  if (!MapFeatureFlagsService.useIjtemaV2Map()) return favorite;
+  return V2PlaceAdapter.getPlaceById(favorite.placeId) ? favorite : null;
+}
+
+function sanitizePersistedFavorites(favorites: FavoritePlace[] | undefined): FavoritePlace[] {
+  if (!Array.isArray(favorites)) return [];
+  return favorites
+    .map((favorite) => sanitizePersistedFavorite(favorite))
+    .filter((favorite): favorite is FavoritePlace => Boolean(favorite));
+}
 
 interface AppState {
   // --- Offline map ---
@@ -62,12 +91,12 @@ interface AppState {
   // --- Navigation ---
   isNavigating: boolean;
   destination: Place | null;
-  startNavigation: (destination: Place, route?: RoutePreview | null, instructions?: NavigationInstruction[]) => void;
+  startNavigation: (destination: Place, route?: RoutePreview | V2ActiveRoute | null, instructions?: Array<NavigationInstruction | V2NavigationInstruction>) => void;
   stopNavigation: () => void;
-  activeRoute: RoutePreview | null;
-  setActiveRoute: (route: RoutePreview | null) => void;
-  routeInstructions: NavigationInstruction[];
-  setRouteInstructions: (instructions: NavigationInstruction[]) => void;
+  activeRoute: RoutePreview | V2ActiveRoute | null;
+  setActiveRoute: (route: RoutePreview | V2ActiveRoute | null) => void;
+  routeInstructions: Array<NavigationInstruction | V2NavigationInstruction>;
+  setRouteInstructions: (instructions: Array<NavigationInstruction | V2NavigationInstruction>) => void;
   reroutePending: boolean;
   setReroutePending: (val: boolean) => void;
 
@@ -161,7 +190,7 @@ export const useAppStore = create<AppState>()(
       // --- Settings ---
       settings: {
         mapMode: 'standard',
-        autoFollowLocation: true,
+        autoFollowLocation: false,
         keepNorthFixed: false,
         darkMode: false,
         voiceInstructions: true,
@@ -284,6 +313,19 @@ export const useAppStore = create<AppState>()(
     {
       name: 'ijtema-app-store',
       storage: createJSONStorage(() => AsyncStorage),
+      version: 2,
+      migrate: (persistedState) => {
+        if (!persistedState || typeof persistedState !== 'object') return persistedState;
+        const state = persistedState as Partial<AppState>;
+        return {
+          ...state,
+          recentSearches: sanitizePersistedPlaces(state.recentSearches),
+          favorites: sanitizePersistedFavorites(state.favorites),
+          selectedPlace: sanitizePersistedPlace(state.selectedPlace),
+          routePlannerOrigin: sanitizePersistedPlace(state.routePlannerOrigin),
+          routePlannerDest: sanitizePersistedPlace(state.routePlannerDest),
+        };
+      },
       // Only persist these keys — runtime GPS and transient UI state are not persisted
       partialize: (state) => ({
         offlineData: state.offlineData,
@@ -291,8 +333,8 @@ export const useAppStore = create<AppState>()(
         offlineMapStatusMessage: state.offlineMapStatusMessage,
         downloadState: state.downloadState,
         settings: state.settings,
-        recentSearches: state.recentSearches,
-        favorites: state.favorites,
+        recentSearches: sanitizePersistedPlaces(state.recentSearches),
+        favorites: sanitizePersistedFavorites(state.favorites),
         lastKnownLocation: state.lastKnownLocation,
         lastKnownLocationUpdatedAt: state.lastKnownLocationUpdatedAt,
         showGraphNodes: state.showGraphNodes,

@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useMemo, useState, useEffect, useRef } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -13,51 +13,92 @@ import {
   TextInput,
   KeyboardAvoidingView,
   Platform,
-  Animated,
   Keyboard,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import MapView, { Marker, Polygon, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
-import { ChevronLeft, ArrowRight, MapPin, Navigation, Clock, Footprints, LocateFixed, RefreshCw } from 'lucide-react-native';
+import { ChevronLeft, Clock, Footprints, LocateFixed, MapPin, Navigation, RefreshCw } from 'lucide-react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+
 import { useDirectionsViewModel } from '../../viewmodels/DirectionsViewModel';
 import { InstructionService } from '../../services/InstructionService';
-import { RoutePointService } from '../../services/RoutePointService';
-import { useAppStore } from '../../store/useAppStore';
-import { RootStackParamList } from '../../navigation/RootNavigator';
-import { IJTEMA_DATA, MAP_BOUNDS } from '../../constants/data';
 import { SearchService } from '../../services/SearchService';
-import { Place } from '../../models/types';
-import { MapConfigService } from '../../services/MapConfigService';
+import { useAppStore } from '../../store/useAppStore';
+import { Place, RoutePreview } from '../../models/types';
+import { RootStackParamList } from '../../navigation/RootNavigator';
 import { RoutingService } from '../../services/RoutingService';
 
+type DirectionsNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Directions'>;
+
+type RoutePreviewWithV2Meta = RoutePreview & {
+  startResolution?: {
+    startType?: 'internal_snap' | 'nearest_official_gate' | 'selected_official_gate' | 'unresolved';
+    gate?: {
+      name?: {
+        en?: string;
+      };
+    };
+  };
+  startLabel?: string;
+  destinationLabel?: string;
+};
+
+function StartOption({
+  icon,
+  title,
+  subtitle,
+  active,
+  disabled,
+  onPress,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  subtitle: string;
+  active?: boolean;
+  disabled?: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      style={[
+        styles.startOption,
+        active && styles.startOptionActive,
+        disabled && styles.startOptionDisabled,
+      ]}
+      disabled={disabled}
+      onPress={onPress}
+    >
+      <View style={[styles.startOptionIcon, active && styles.startOptionIconActive]}>{icon}</View>
+      <View style={styles.startOptionBody}>
+        <Text style={[styles.startOptionTitle, active && styles.startOptionTitleActive, disabled && styles.startOptionTitleDisabled]}>
+          {title}
+        </Text>
+        <Text style={[styles.startOptionSubtitle, disabled && styles.startOptionSubtitleDisabled]}>{subtitle}</Text>
+      </View>
+    </Pressable>
+  );
+}
+
 export function DirectionsScreen() {
-  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList, 'Directions'>>();
+  const navigation = useNavigation<DirectionsNavigationProp>();
   const routeParams = useRoute<RouteProp<RootStackParamList, 'Directions'>>();
   const { destination } = routeParams.params;
-  const distanceUnit = useAppStore((s) => s.settings.distanceUnit);
-  const mapMode = useAppStore((s) => s.settings.mapMode);
-  const clearRoutePlanner = useAppStore((s) => s.clearRoutePlanner);
+  const insets = useSafeAreaInsets();
+
   const currentLocation = useAppStore((s) => s.currentLocation);
   const lastKnownLocation = useAppStore((s) => s.lastKnownLocation);
-  const hasGoogleMapsKey = MapConfigService.isGoogleMapsKeyConfigured();
-  const insets = useSafeAreaInsets();
-  const previewMapRef = useRef<MapView>(null);
-  const routeCardAnim = useRef(new Animated.Value(0)).current;
+  const distanceUnit = useAppStore((s) => s.settings.distanceUnit);
+  const walkingSpeed = useAppStore((s) => s.settings.walkingSpeed ?? 1.4);
+
   const [startSearch, setStartSearch] = useState('');
 
   const {
     route,
-    alternatives,
-    selectedIndex,
-    selectAlternative,
-    instructions,
-    startSourceLabel,
     startSource,
     rememberedLocationAgeLabel,
+    rememberedLocationAvailable,
     rememberedLocationInsideVenue,
-    handleStartNavigation,
+    currentRouteOriginInsideVenue,
     loadState,
     errorMessage,
     manualStart,
@@ -67,84 +108,61 @@ export function DirectionsScreen() {
     chooseCurrentLocation,
     chooseRememberedLocation,
     calculateRoute,
-    showRememberedStartAction,
     showManualStartSearch,
   } = useDirectionsViewModel(destination);
 
-  const startCoordinate =
-    route?.coordinates[0] ??
-    (startSource === 'live_gps'
-      ? (currentLocation ?? null)
-      : startSource === 'remembered_location'
-      ? (lastKnownLocation ?? null)
-      : (manualStart?.coordinate ?? null));
-  const endNodeId = route?.nodes[route.nodes.length - 1];
-  const destinationCoordinate =
-    RoutePointService.nodeToCoordinate(endNodeId) ?? RoutePointService.getDestinationCoordinate(destination);
-
   const startCandidates = useMemo(() => {
-    if (startSearch.trim().length < 2) return [];
+    if (!showManualStartSearch || startSearch.trim().length < 2) return [];
     return SearchService.search(startSearch, currentLocation ?? undefined)
       .filter((candidate) => candidate.id !== destination.id)
       .slice(0, 8);
-  }, [currentLocation, destination.id, startSearch]);
+  }, [currentLocation, destination.id, showManualStartSearch, startSearch]);
 
-  const showNeedStartMessage = loadState === 'needs_origin';
+  const startCoordinate =
+    startSource === 'live_gps'
+      ? currentLocation
+      : startSource === 'remembered_location'
+      ? lastKnownLocation
+      : manualStart?.coordinate ?? null;
+  const outsideStart =
+    destination.sourceVersion === 'v2' &&
+    startSource !== 'manual_place' &&
+    !!startCoordinate &&
+    !RoutingService.isInsideVenue(startCoordinate);
+  const routeMeta = route as RoutePreviewWithV2Meta | null;
+  const entryGateName = routeMeta?.startResolution?.gate?.name?.en ?? null;
+  const routeDistance = route ? InstructionService.formatDistance(route.totalDistance, distanceUnit) : null;
+  const routeEta = route ? `${route.estimatedTimeMin} min` : null;
+  const routeStatusMessage = outsideStart
+    ? "You are outside Ijtema. We'll enter through nearest official gate."
+    : startSource === 'remembered_location' && rememberedLocationAvailable
+    ? `Using last known location ${rememberedLocationAgeLabel}.`
+    : startSource === 'manual_place' && manualStart
+    ? `Starting from ${manualStart.name}.`
+    : startSource === 'live_gps'
+    ? 'Using live GPS location now.'
+    : 'Choose a start point to continue.';
+
+  const routeEntrySummary = entryGateName
+    ? `Enter through ${entryGateName}`
+    : routeMeta?.startResolution?.startType === 'internal_snap'
+    ? 'Starting from nearest path inside Ijtema.'
+    : routeMeta?.startLabel
+    ? `Starting from ${routeMeta.startLabel}`
+    : 'Offline route ready.';
+
+  const showRouteReady = loadState === 'ready' && !!route;
   const showLoading = loadState === 'loading';
   const showError = loadState === 'error';
-  const outsideVenue =
-    startSource === 'live_gps' && currentLocation ? !RoutingService.isInsideVenue(currentLocation) : false;
-
-  useEffect(() => {
-    Animated.timing(routeCardAnim, {
-      toValue: route && loadState === 'ready' ? 1 : 0,
-      duration: 180,
-      useNativeDriver: true,
-    }).start();
-  }, [loadState, route, routeCardAnim]);
-
-  useEffect(() => {
-    if (!hasGoogleMapsKey || !previewMapRef.current) return;
-
-    if (route?.coordinates && route.coordinates.length > 1) {
-      previewMapRef.current.fitToCoordinates(route.coordinates, {
-        edgePadding: { top: 52, right: 52, bottom: 52, left: 52 },
-        animated: true,
-      });
-      return;
-    }
-
-    if (destinationCoordinate) {
-      previewMapRef.current.animateToRegion(
-        {
-          latitude: destinationCoordinate.latitude,
-          longitude: destinationCoordinate.longitude,
-          latitudeDelta: 0.004,
-          longitudeDelta: 0.004,
-        },
-        400,
-      );
-      return;
-    }
-
-    previewMapRef.current.animateToRegion(
-      {
-        latitude: (MAP_BOUNDS.minLat + MAP_BOUNDS.maxLat) / 2,
-        longitude: (MAP_BOUNDS.minLng + MAP_BOUNDS.maxLng) / 2,
-        latitudeDelta: MAP_BOUNDS.maxLat - MAP_BOUNDS.minLat + 0.003,
-        longitudeDelta: MAP_BOUNDS.maxLng - MAP_BOUNDS.minLng + 0.003,
-      },
-      400,
-    );
-  }, [destinationCoordinate, hasGoogleMapsKey, route?.coordinates]);
+  const showStartHint = !showLoading && !showError && !showRouteReady;
 
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
-          <ChevronLeft size={28} color="#333" />
+          <ChevronLeft size={28} color="#202124" />
         </Pressable>
-        <Text style={styles.headerTitle}>Directions</Text>
+        <Text style={styles.headerTitle}>Get Directions</Text>
       </View>
 
       <KeyboardAvoidingView
@@ -154,308 +172,178 @@ export function DirectionsScreen() {
       >
         <ScrollView
           style={styles.scroll}
-          contentContainerStyle={[styles.scrollContent, { paddingBottom: Math.max(insets.bottom, 18) + 28 }]}
+          contentContainerStyle={[styles.scrollContent, { paddingBottom: Math.max(insets.bottom, 18) + 20 }]}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"
         >
-          <View style={styles.inputCard}>
-            <Text style={styles.fieldLabel}>FROM</Text>
-            <View style={styles.inputRow}>
-              <View style={styles.dotOrigin} />
-              <TextInput
-                style={styles.input}
-                value={startSourceLabel}
-                editable={false}
-                placeholder="Choose starting point"
-              />
-            </View>
-            <Text style={styles.startSourceHelper}>
-              {startSource === 'live_gps'
-                ? 'Live GPS location now'
-                : startSource === 'remembered_location'
-                ? `Last saved ${rememberedLocationAgeLabel}`
-                : 'Choose start manually'}
-            </Text>
-
-            <View style={styles.startActionsRow}>
-              <Pressable
-                style={[styles.startActionBtn, startSource === 'live_gps' && styles.startActionBtnActive]}
-                onPress={() => {
-                  void (async () => {
-                    await chooseCurrentLocation();
-                  })();
-                }}
-              >
-                <LocateFixed size={16} color={startSource === 'live_gps' ? '#FFFFFF' : '#1A73E8'} />
-                <Text style={[styles.startActionText, startSource === 'live_gps' && styles.startActionTextActive]}>Use My Current Location</Text>
-              </Pressable>
-              {showRememberedStartAction && (
-                <Pressable
-                  style={[styles.startActionBtn, startSource === 'remembered_location' && styles.startActionBtnActive]}
-                  onPress={() => {
-                    chooseRememberedLocation();
-                  }}
-                >
-                  <MapPin size={16} color={startSource === 'remembered_location' ? '#FFFFFF' : '#1A73E8'} />
-                  <Text style={[styles.startActionText, startSource === 'remembered_location' && styles.startActionTextActive]}>
-                    Use Last Known Location
-                  </Text>
-                </Pressable>
-              )}
-              <Pressable
-                style={[styles.startActionBtn, startSource === 'manual_place' && styles.startActionBtnActive]}
-                onPress={chooseManualStart}
-              >
-                <Navigation size={16} color={startSource === 'manual_place' ? '#FFFFFF' : '#1A73E8'} />
-                <Text style={[styles.startActionText, startSource === 'manual_place' && styles.startActionTextActive]}>
-                  Choose start manually
-                </Text>
-              </Pressable>
-            </View>
-            {showRememberedStartAction && !rememberedLocationInsideVenue && (
-              <Text style={styles.startWarningText}>
-                Last known location is outside Ijtema and cannot be used for routing.
-              </Text>
-            )}
-
-            {showManualStartSearch && (
-              <TextInput
-                style={styles.searchStartInput}
-                value={startSearch}
-                onChangeText={setStartSearch}
-                placeholder="Search start point"
-                placeholderTextColor="#888"
-                returnKeyType="search"
-                onSubmitEditing={Keyboard.dismiss}
-                onFocus={() => setIsEditingManualStart(true)}
-              />
-            )}
-
-            {showManualStartSearch && startCandidates.length > 0 && (
-              <View style={styles.startSearchResults}>
-                {startCandidates.map((candidate: Place) => (
-                  <Pressable
-                    key={candidate.id}
-                    style={styles.startSearchItem}
-                    onPress={() => {
-                      setManualStartPlace(candidate);
-                      setStartSearch(candidate.name);
-                      setIsEditingManualStart(false);
-                      Keyboard.dismiss();
-                    }}
-                  >
-                    <MapPin size={16} color="#5F6368" />
-                    <View style={styles.startSearchTextWrap}>
-                      <Text style={styles.startSearchName}>{candidate.name}</Text>
-                      <Text style={styles.startSearchCategory}>{candidate.category}</Text>
-                    </View>
-                  </Pressable>
-                ))}
+          <View style={styles.card}>
+            <Text style={styles.cardLabel}>Going to</Text>
+            <View style={styles.destinationRow}>
+              <View style={styles.destinationIconWrap}>
+                <MapPin size={20} color="#2E7D32" />
               </View>
-            )}
-
-            <Text style={styles.fieldLabelTo}>TO</Text>
-            <View style={styles.inputRow}>
-              <MapPin size={20} color="#2E7D32" />
-              <TextInput
-                style={styles.input}
-                value={destination?.name || ''}
-                placeholder="Choose destination"
-                editable={false}
-              />
+              <View style={styles.destinationBody}>
+                <Text style={styles.destinationName}>{destination.name}</Text>
+                <Text style={styles.destinationCategory}>{destination.category}</Text>
+              </View>
             </View>
-            <Pressable style={styles.changeDestinationButton} onPress={() => navigation.goBack()}>
-              <Text style={styles.changeDestinationText}>Change Destination</Text>
+            <Pressable style={styles.linkButton} onPress={() => navigation.goBack()}>
+              <Text style={styles.linkButtonText}>Change destination</Text>
             </Pressable>
           </View>
 
-          {outsideVenue && (
-            <View style={styles.warningCard}>
-              <Text style={styles.warningTitle}>You are outside the Ijtema area.</Text>
-              <Text style={styles.warningDesc}>Choose a starting point inside the ground or use the nearest gate.</Text>
-            </View>
-          )}
+          <View style={styles.card}>
+            <Text style={styles.sectionTitle}>Where are you starting from?</Text>
 
-          <View style={styles.mapPreviewWrap}>
-            {hasGoogleMapsKey ? (
-              <MapView
-                ref={previewMapRef}
-                style={styles.mapPreview}
-                provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined}
-                mapType={mapMode}
-                initialRegion={{
-                  latitude: (MAP_BOUNDS.minLat + MAP_BOUNDS.maxLat) / 2,
-                  longitude: (MAP_BOUNDS.minLng + MAP_BOUNDS.maxLng) / 2,
-                  latitudeDelta: MAP_BOUNDS.maxLat - MAP_BOUNDS.minLat + 0.003,
-                  longitudeDelta: MAP_BOUNDS.maxLng - MAP_BOUNDS.minLng + 0.003,
-                }}
-                scrollEnabled
-                zoomEnabled
-                rotateEnabled={false}
-                pitchEnabled={false}
-              >
-                {Object.values(IJTEMA_DATA.blocks).map((block) => (
-                  <Polygon
-                    key={`preview_block_${block.id}`}
-                    coordinates={block.corners ?? block.polygon}
-                    fillColor={block.id === destination.id ? 'rgba(46,125,50,0.34)' : 'rgba(46,125,50,0.12)'}
-                    strokeColor={block.id === destination.id ? '#2E7D32' : '#5F6368'}
-                    strokeWidth={block.id === destination.id ? 2.5 : 1}
-                  />
-                ))}
-                {IJTEMA_DATA.edges.map((edge, idx) => {
-                  const from = IJTEMA_DATA.nodes[edge.from];
-                  const to = IJTEMA_DATA.nodes[edge.to];
-                  if (!from || !to) return null;
-                  const coords = [
-                    { latitude: from.lat, longitude: from.lng },
-                    { latitude: to.lat, longitude: to.lng },
-                  ];
-                  return (
-                    <React.Fragment key={`preview_edge_${edge.from}_${edge.to}_${idx}`}>
-                      <Polyline coordinates={coords} strokeColor="rgba(60,64,67,0.44)" strokeWidth={6} zIndex={1} />
-                      <Polyline coordinates={coords} strokeColor="rgba(255,255,255,0.88)" strokeWidth={3.8} zIndex={2} />
-                    </React.Fragment>
-                  );
-                })}
-                {route && (
-                  <>
-                    <Polyline coordinates={route.coordinates} strokeColor="rgba(13,71,161,0.72)" strokeWidth={9} zIndex={20} />
-                    <Polyline coordinates={route.coordinates} strokeColor="#1A73E8" strokeWidth={5} zIndex={21} />
-                  </>
+            <StartOption
+              active={startSource === 'live_gps'}
+              icon={<LocateFixed size={18} color={startSource === 'live_gps' ? '#FFFFFF' : '#1A73E8'} />}
+              title="Use my current location"
+              subtitle="Find nearest official gate automatically"
+              onPress={() => {
+                void chooseCurrentLocation();
+              }}
+            />
+
+            <StartOption
+              active={startSource === 'remembered_location'}
+              disabled={!rememberedLocationAvailable}
+              icon={<MapPin size={18} color={startSource === 'remembered_location' ? '#FFFFFF' : '#1A73E8'} />}
+              title="Use last known location"
+              subtitle={
+                !rememberedLocationAvailable
+                  ? 'No saved location yet'
+                  : rememberedLocationInsideVenue
+                  ? `We will start from nearest path (${rememberedLocationAgeLabel})`
+                  : `We'll enter through nearest official gate (${rememberedLocationAgeLabel})`
+              }
+              onPress={() => {
+                chooseRememberedLocation();
+              }}
+            />
+
+            <StartOption
+              active={startSource === 'manual_place'}
+              icon={<Navigation size={18} color={startSource === 'manual_place' ? '#FFFFFF' : '#1A73E8'} />}
+              title="Choose start manually"
+              subtitle="Select gate, rasta, block, or point"
+              onPress={chooseManualStart}
+            />
+
+            {showManualStartSearch && (
+              <View style={styles.manualSection}>
+                <TextInput
+                  style={styles.searchInput}
+                  value={startSearch}
+                  onChangeText={setStartSearch}
+                  placeholder="Search start point: gate, rasta, block"
+                  placeholderTextColor="#80868B"
+                  returnKeyType="search"
+                  onSubmitEditing={Keyboard.dismiss}
+                  onFocus={() => setIsEditingManualStart(true)}
+                />
+
+                {startCandidates.length > 0 && (
+                  <View style={styles.searchResults}>
+                    {startCandidates.map((candidate: Place) => (
+                      <Pressable
+                        key={candidate.id}
+                        style={styles.searchItem}
+                        onPress={() => {
+                          setManualStartPlace(candidate);
+                          setStartSearch(candidate.name);
+                          setIsEditingManualStart(false);
+                          Keyboard.dismiss();
+                        }}
+                      >
+                        <MapPin size={16} color="#5F6368" />
+                        <View style={styles.searchItemBody}>
+                          <Text style={styles.searchItemName}>{candidate.name}</Text>
+                          <Text style={styles.searchItemMeta}>{candidate.category}</Text>
+                        </View>
+                      </Pressable>
+                    ))}
+                  </View>
                 )}
-                {startCoordinate && <Marker coordinate={startCoordinate} pinColor="#1A73E8" title="Start" />}
-                {destinationCoordinate && (
-                  <Marker coordinate={destinationCoordinate} pinColor="#EA4335" title={destination.name} />
+
+                {startSearch.trim().length >= 2 && startCandidates.length === 0 && (
+                  <Text style={styles.emptySearchText}>No start points found.</Text>
                 )}
-              </MapView>
-            ) : (
-              <View style={styles.mapUnavailable}>
-                <Text style={styles.mapUnavailableTitle}>Map preview unavailable</Text>
-                <Text style={styles.mapUnavailableText}>{MapConfigService.getMissingGoogleMapsMessage()}</Text>
               </View>
             )}
           </View>
 
-          {alternatives.length > 1 && (
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              style={styles.altTabScrollView}
-              contentContainerStyle={styles.altTabContent}
-            >
-              {alternatives.map((alt, idx) => (
-                <Pressable
-                  key={alt.label}
-                  style={[styles.altTab, selectedIndex === idx && styles.altTabActive]}
-                  onPress={() => selectAlternative(idx)}
-                >
-                  <Text style={[styles.altTabLabel, selectedIndex === idx && styles.altTabLabelActive]}>
-                    {alt.label}
-                  </Text>
-                  <Text style={[styles.altTabTime, selectedIndex === idx && styles.altTabTimeActive]}>
-                    {alt.route.estimatedTimeMin} min
-                  </Text>
-                </Pressable>
-              ))}
-            </ScrollView>
-          )}
-
-          {showNeedStartMessage && (
-            <View style={styles.infoCard}>
-              <Text style={styles.infoTitle}>Choose starting point</Text>
-              <Text style={styles.infoDesc}>
-                GPS is unavailable right now. Use remembered location if shown, or select a starting point manually to continue.
+          {showStartHint && (
+            <View style={[styles.statusCard, outsideStart ? styles.statusCardWarning : styles.statusCardNeutral]}>
+              <Text style={[styles.statusTitle, outsideStart && styles.statusTitleWarning]}>
+                {outsideStart ? 'Outside Ijtema' : 'Start ready'}
               </Text>
+              <Text style={styles.statusText}>
+                {outsideStart
+                  ? "You are outside Ijtema. Route will enter through nearest connected official gate."
+                  : routeStatusMessage}
+              </Text>
+              {startSource === 'live_gps' && currentRouteOriginInsideVenue === false && (
+                <Text style={styles.statusHint}>We will snap to nearest connected gate first, then continue inside venue.</Text>
+              )}
             </View>
           )}
 
           {showLoading && (
-            <View style={styles.infoCard}>
-              <Text style={styles.infoTitle}>Calculating route...</Text>
-              <Text style={styles.infoDesc}>Please wait while we find the best walking path.</Text>
+            <View style={[styles.statusCard, styles.statusCardInfo]}>
+              <View style={styles.statusRow}>
+                <RefreshCw size={18} color="#1A73E8" />
+                <Text style={styles.statusTitle}>Finding best offline route...</Text>
+              </View>
+              <Text style={styles.statusText}>{routeStatusMessage}</Text>
             </View>
           )}
 
           {showError && (
-            <View style={styles.errorCard}>
-              <Text style={styles.errorTitle}>{errorMessage ?? 'Could not calculate route.'}</Text>
-              <Pressable style={styles.retryButton} onPress={() => void calculateRoute()}>
-                <RefreshCw size={16} color="#FFFFFF" />
+            <View style={[styles.statusCard, styles.statusCardError]}>
+              <Text style={[styles.statusTitle, styles.statusTitleError]}>Route problem</Text>
+              <Text style={styles.statusText}>{errorMessage}</Text>
+              <Pressable
+                style={styles.retryButton}
+                onPress={() => {
+                  void calculateRoute();
+                }}
+              >
+                <RefreshCw size={18} color="#FFFFFF" />
                 <Text style={styles.retryButtonText}>Retry</Text>
               </Pressable>
             </View>
           )}
 
-          {route && loadState === 'ready' && (
-            <Animated.View
-              style={[
-                styles.routeCard,
-                {
-                  opacity: routeCardAnim,
-                  transform: [{ translateY: routeCardAnim.interpolate({ inputRange: [0, 1], outputRange: [10, 0] }) }],
-                },
-              ]}
-            >
-              <View style={styles.routeInfo}>
-                <View style={styles.routeMetrics}>
-                  <View style={styles.routeMetric}>
-                    <Clock size={16} color="#2E7D32" />
-                    <Text style={styles.routeTime}>{route.estimatedTimeMin} min</Text>
-                  </View>
-                  <View style={styles.routeMetric}>
-                    <Footprints size={16} color="#5F6368" />
-                    <Text style={styles.routeDistance}>
-                      {InstructionService.formatDistance(route.totalDistance, distanceUnit)}
-                    </Text>
-                  </View>
+          {showRouteReady && (
+            <View style={[styles.statusCard, styles.statusCardSuccess]}>
+              <Text style={styles.statusTitle}>Route ready</Text>
+              <Text style={styles.statusText}>{routeEntrySummary}</Text>
+
+              <View style={styles.metricsRow}>
+                <View style={styles.metricPill}>
+                  <Clock size={15} color="#1A73E8" />
+                  <Text style={styles.metricText}>ETA: {routeEta}</Text>
                 </View>
-                <Pressable
-                  style={styles.startButton}
-                  onPress={() => handleStartNavigation(navigation)}
-                >
-                  <Navigation size={20} color="#FFFFFF" />
-                  <Text style={styles.startButtonText}>Start Navigation</Text>
-                </Pressable>
+                <View style={styles.metricPill}>
+                  <Navigation size={15} color="#1A73E8" />
+                  <Text style={styles.metricText}>Distance: {routeDistance}</Text>
+                </View>
+                <View style={styles.metricPill}>
+                  <Footprints size={15} color="#1A73E8" />
+                  <Text style={styles.metricText}>Walking speed: {walkingSpeed.toFixed(1)} m/s</Text>
+                </View>
               </View>
-            </Animated.View>
-          )}
 
-          <View style={styles.stepsSection}>
-            <Text style={styles.stepsTitle}>Steps</Text>
-            {instructions.length === 0 ? (
-              <Text style={styles.emptyStepsText}>
-                {route ? 'No step instructions generated for this route.' : 'Select a valid start and destination to see route steps.'}
-              </Text>
-            ) : (
-              instructions.map((step, index) => (
-                <View key={`${step.type}_${index}`} style={styles.stepItem}>
-                  {step.type === 'arrival' ? (
-                    <MapPin size={20} color="#2E7D32" />
-                  ) : (
-                    <ArrowRight size={20} color="#666" />
-                  )}
-                  <Text style={styles.stepText}>{step.text}</Text>
-                  {step.distance > 0 && (
-                    <Text style={styles.stepDist}>
-                      {InstructionService.formatDistance(step.distance, distanceUnit)}
-                    </Text>
-                  )}
-                </View>
-              ))
-            )}
-          </View>
-
-          {route && loadState === 'ready' && (
-            <Pressable
-              style={styles.clearRouteButton}
-              onPress={() => {
-                clearRoutePlanner();
-                navigation.goBack();
-              }}
-            >
-              <Text style={styles.clearRouteText}>Clear route</Text>
-            </Pressable>
+              <Pressable
+                style={styles.primaryButton}
+                onPress={() => {
+                  navigation.goBack();
+                }}
+              >
+                <Text style={styles.primaryButtonText}>Show route on map</Text>
+              </Pressable>
+            </View>
           )}
         </ScrollView>
       </KeyboardAvoidingView>
@@ -466,353 +354,286 @@ export function DirectionsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#F5F7FA',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
-    borderBottomColor: '#EEEEEE',
+    borderBottomColor: '#E5E7EB',
   },
   backButton: {
-    padding: 4,
+    paddingVertical: 6,
+    paddingRight: 12,
   },
   headerTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginLeft: 12,
-    color: '#333',
+    fontSize: 32,
+    fontWeight: '800',
+    color: '#202124',
   },
-  scroll: { flex: 1 },
+  scroll: {
+    flex: 1,
+  },
   scrollContent: {
-    paddingHorizontal: 16,
-    paddingTop: 14,
+    padding: 16,
     gap: 14,
   },
-  inputCard: {
-    borderRadius: 14,
+  card: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    padding: 18,
     borderWidth: 1,
     borderColor: '#E5E7EB',
-    backgroundColor: '#F8FAFC',
-    padding: 12,
+    gap: 14,
   },
-  fieldLabel: {
-    color: '#5F6368',
+  cardLabel: {
+    fontSize: 13,
     fontWeight: '700',
-    fontSize: 12,
-    marginBottom: 8,
+    color: '#6B7280',
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
   },
-  fieldLabelTo: {
-    color: '#5F6368',
-    fontWeight: '700',
-    fontSize: 12,
-    marginTop: 8,
-    marginBottom: 8,
-  },
-  inputRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    height: 46,
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
-  },
-  dotOrigin: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: '#4285F4',
-    marginRight: 10,
-  },
-  input: {
-    flex: 1,
-    fontSize: 15,
-    color: '#333',
-    marginLeft: 10,
-  },
-  startActionsRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginTop: 8,
-    marginBottom: 8,
-    gap: 8,
-  },
-  startSourceHelper: {
-    marginTop: 6,
-    marginBottom: 2,
-    color: '#5F6368',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  startWarningText: {
-    marginBottom: 6,
-    color: '#B45309',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  startActionBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#1A73E8',
-    borderRadius: 9,
-    paddingHorizontal: 10,
-    paddingVertical: 7,
-    gap: 6,
-  },
-  startActionBtnActive: {
-    backgroundColor: '#1A73E8',
-  },
-  startActionText: {
-    color: '#1A73E8',
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  startActionTextActive: {
-    color: '#FFFFFF',
-  },
-  searchStartInput: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
-    paddingHorizontal: 12,
-    height: 42,
-    fontSize: 14,
-    color: '#333',
-    marginBottom: 8,
-  },
-  startSearchResults: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
-    marginBottom: 4,
-    overflow: 'hidden',
-  },
-  startSearchItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#ECECEC',
-    gap: 8,
-  },
-  startSearchTextWrap: {
-    flex: 1,
-  },
-  startSearchName: {
-    fontSize: 14,
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: '800',
     color: '#202124',
-    fontWeight: '600',
   },
-  startSearchCategory: {
-    fontSize: 12,
-    color: '#666',
-  },
-  changeDestinationButton: {
-    alignSelf: 'flex-start',
-    marginTop: 10,
-  },
-  changeDestinationText: {
-    color: '#1A73E8',
-    fontWeight: '700',
-    fontSize: 13,
-  },
-  warningCard: {
-    backgroundColor: '#FEF3C7',
-    borderColor: '#F59E0B',
+  destinationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
     borderWidth: 1,
-    borderRadius: 12,
-    padding: 12,
-  },
-  warningTitle: {
-    color: '#92400E',
-    fontWeight: '700',
-    fontSize: 14,
-  },
-  warningDesc: {
-    color: '#92400E',
-    fontSize: 13,
-    marginTop: 4,
-  },
-  mapPreviewWrap: {
-    height: 230,
+    borderColor: '#E5E7EB',
     borderRadius: 18,
-    overflow: 'hidden',
-    backgroundColor: '#E8EAED',
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.16,
-    shadowRadius: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 16,
   },
-  mapPreview: {
-    flex: 1,
-  },
-  mapUnavailable: {
-    flex: 1,
+  destinationIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#E8F5E9',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 16,
-    backgroundColor: '#E8EAED',
   },
-  mapUnavailableTitle: {
-    fontSize: 16,
+  destinationBody: {
+    flex: 1,
+    gap: 3,
+  },
+  destinationName: {
+    fontSize: 18,
     fontWeight: '700',
     color: '#202124',
-    marginBottom: 6,
   },
-  mapUnavailableText: {
+  destinationCategory: {
     fontSize: 13,
     color: '#5F6368',
-    textAlign: 'center',
-    lineHeight: 18,
   },
-  altTabScrollView: { marginTop: 2 },
-  altTabContent: { gap: 10, paddingVertical: 4 },
-  altTab: {
-    alignItems: 'center',
-    paddingHorizontal: 18,
-    paddingVertical: 10,
-    borderRadius: 20,
+  linkButton: {
+    alignSelf: 'flex-start',
+  },
+  linkButtonText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#1A73E8',
+  },
+  startOption: {
+    flexDirection: 'row',
+    gap: 14,
     borderWidth: 1.5,
-    borderColor: '#DADCE0',
-    backgroundColor: '#FFFFFF',
-    minWidth: 90,
-  },
-  altTabActive: {
-    backgroundColor: '#E8F5E9',
-    borderColor: '#2E7D32',
-  },
-  altTabLabel: { fontSize: 13, fontWeight: '600', color: '#5F6368' },
-  altTabLabelActive: { color: '#2E7D32' },
-  altTabTime: { fontSize: 12, color: '#70757A', marginTop: 2 },
-  altTabTimeActive: { color: '#2E7D32' },
-  routeCard: {
-    backgroundColor: '#E8F5E9',
-    borderRadius: 12,
-    padding: 16,
-  },
-  routeInfo: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    borderColor: '#D7E3FC',
+    borderRadius: 20,
+    paddingHorizontal: 14,
+    paddingVertical: 14,
     alignItems: 'center',
+    backgroundColor: '#FFFFFF',
   },
-  routeMetrics: { gap: 6 },
-  routeMetric: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  routeTime: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: '#2E7D32',
+  startOptionActive: {
+    backgroundColor: '#E8F0FE',
+    borderColor: '#1A73E8',
   },
-  routeDistance: {
-    fontSize: 15,
-    color: '#666',
+  startOptionDisabled: {
+    opacity: 0.56,
   },
-  startButton: {
-    backgroundColor: '#2E7D32',
+  startOptionIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#EEF3FD',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  startOptionIconActive: {
+    backgroundColor: '#1A73E8',
+  },
+  startOptionBody: {
+    flex: 1,
+    gap: 4,
+  },
+  startOptionTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#1A73E8',
+  },
+  startOptionTitleActive: {
+    color: '#174EA6',
+  },
+  startOptionTitleDisabled: {
+    color: '#6B7280',
+  },
+  startOptionSubtitle: {
+    fontSize: 13,
+    lineHeight: 18,
+    color: '#5F6368',
+  },
+  startOptionSubtitleDisabled: {
+    color: '#80868B',
+  },
+  manualSection: {
+    gap: 10,
+  },
+  searchInput: {
+    borderWidth: 1,
+    borderColor: '#DADCE0',
+    borderRadius: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 13,
+    fontSize: 16,
+    color: '#202124',
+    backgroundColor: '#FFFFFF',
+  },
+  searchResults: {
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 16,
+    overflow: 'hidden',
+    backgroundColor: '#FFFFFF',
+  },
+  searchItem: {
     flexDirection: 'row',
+    gap: 12,
     alignItems: 'center',
     paddingHorizontal: 14,
     paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F3F4',
+  },
+  searchItemBody: {
+    flex: 1,
+    gap: 2,
+  },
+  searchItemName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#202124',
+  },
+  searchItemMeta: {
+    fontSize: 13,
+    color: '#5F6368',
+  },
+  emptySearchText: {
+    fontSize: 14,
+    color: '#5F6368',
+  },
+  statusCard: {
     borderRadius: 24,
-    elevation: 2,
+    padding: 18,
+    gap: 10,
+    borderWidth: 1,
+  },
+  statusCardNeutral: {
+    backgroundColor: '#FFFFFF',
+    borderColor: '#E5E7EB',
+  },
+  statusCardWarning: {
+    backgroundColor: '#FFF6E5',
+    borderColor: '#F9AB00',
+  },
+  statusCardInfo: {
+    backgroundColor: '#EEF3FD',
+    borderColor: '#D7E3FC',
+  },
+  statusCardError: {
+    backgroundColor: '#FDECEC',
+    borderColor: '#F28B82',
+  },
+  statusCardSuccess: {
+    backgroundColor: '#FFFFFF',
+    borderColor: '#D7E3FC',
+  },
+  statusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 8,
   },
-  startButtonText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: 'bold',
+  statusTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#202124',
   },
-  infoCard: {
-    backgroundColor: '#E8F0FE',
-    borderRadius: 10,
-    padding: 12,
+  statusTitleWarning: {
+    color: '#B06000',
   },
-  infoTitle: {
-    color: '#1A73E8',
-    fontWeight: '700',
-    fontSize: 14,
+  statusTitleError: {
+    color: '#C5221F',
   },
-  infoDesc: {
+  statusText: {
+    fontSize: 15,
+    lineHeight: 22,
     color: '#3C4043',
+  },
+  statusHint: {
     fontSize: 13,
-    marginTop: 4,
+    lineHeight: 18,
+    color: '#5F6368',
   },
-  errorCard: {
-    backgroundColor: '#FCE8E6',
-    borderRadius: 10,
-    padding: 12,
+  metricsRow: {
+    gap: 10,
   },
-  errorTitle: {
-    color: '#B3261E',
-    fontWeight: '700',
+  metricPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#EEF3FD',
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  metricText: {
     fontSize: 14,
+    fontWeight: '600',
+    color: '#174EA6',
+  },
+  primaryButton: {
+    marginTop: 6,
+    backgroundColor: '#1A73E8',
+    borderRadius: 18,
+    paddingVertical: 15,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  primaryButtonText: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#FFFFFF',
   },
   retryButton: {
-    marginTop: 10,
-    backgroundColor: '#D32F2F',
+    marginTop: 4,
     alignSelf: 'flex-start',
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
+    backgroundColor: '#D93025',
+    borderRadius: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
   },
   retryButtonText: {
-    color: '#FFFFFF',
-    fontWeight: '700',
-    fontSize: 12,
-  },
-  stepsSection: {
-    marginTop: 2,
-  },
-  stepsTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 8,
-  },
-  emptyStepsText: {
-    color: '#666',
-    fontSize: 14,
-    paddingVertical: 8,
-  },
-  stepItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
-  },
-  stepText: {
     fontSize: 15,
-    color: '#444',
-    marginLeft: 14,
-    flex: 1,
-  },
-  stepDist: {
-    fontSize: 13,
-    color: '#999',
-  },
-  clearRouteButton: {
-    marginTop: 8,
-    alignSelf: 'flex-start',
-    backgroundColor: '#FCE8E6',
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-  },
-  clearRouteText: {
-    color: '#D32F2F',
-    fontSize: 12,
-    fontWeight: '700',
+    fontWeight: '800',
+    color: '#FFFFFF',
   },
 });

@@ -6,6 +6,8 @@
 import { IJTEMA_DATA, LANDMARK_PLACES } from '../constants/data';
 import { Place } from '../models/types';
 import { FuzzySearchService } from './FuzzySearchService';
+import { MapFeatureFlagsService } from './MapFeatureFlagsService';
+import { V2PlaceAdapter, V2Place } from './V2PlaceAdapter';
 
 declare const __DEV__: boolean;
 
@@ -27,6 +29,7 @@ function blockNumber(blockId: string): string {
 const CATEGORY_RANK: Record<string, number> = {
   Block: 0,
   Rasta: 1,
+  SpecialRoute: 1,
   Gate: 2,
   Masjid: 3,
   Terminal: 4,
@@ -38,6 +41,10 @@ const CATEGORY_RANK: Record<string, number> = {
 
 const DEBUG_NODE_SEARCH_ENABLED = typeof __DEV__ !== 'undefined' && __DEV__;
 
+export interface SearchOptions {
+  developerMode?: boolean;
+}
+
 export interface SearchCategoryChip {
   id: string;
   label: string;
@@ -48,14 +55,19 @@ const CATEGORY_CHIPS: SearchCategoryChip[] = [
   { id: 'blocks', label: 'Blocks' },
   { id: 'rastas', label: 'Rastas' },
   { id: 'gates', label: 'Gates' },
+  { id: 'special_routes', label: 'Shahr-e-Pindal' },
   { id: 'masjids', label: 'Masjids' },
   { id: 'terminals', label: 'Terminals' },
   { id: 'help', label: 'Help' },
 ];
 
 export class SearchService {
-  static search(query: string, userLocation?: { latitude: number; longitude: number }): Place[] {
+  static search(query: string, userLocation?: { latitude: number; longitude: number }, options: SearchOptions = {}): Place[] {
     if (!query || query.trim().length === 0) return [];
+
+    if (MapFeatureFlagsService.useIjtemaV2Map()) {
+      return this.searchV2(query, userLocation, options);
+    }
 
     const raw = query.trim();
     const normalised = normalizeUrdu(raw).toLowerCase();
@@ -144,6 +156,10 @@ export class SearchService {
   }
 
   static searchByCategory(category: string): Place[] {
+    if (MapFeatureFlagsService.useIjtemaV2Map()) {
+      return this.searchByCategoryV2(category);
+    }
+
     const cat = category.toLowerCase();
     if (cat === 'all') {
       const grouped = new Map<string, Place>();
@@ -241,6 +257,11 @@ export class SearchService {
   }
 
   static getPlaceById(id: string): Place | null {
+    if (MapFeatureFlagsService.useIjtemaV2Map()) {
+      const v2Place = V2PlaceAdapter.getPlaceById(id);
+      return v2Place ?? null;
+    }
+
     const block = (IJTEMA_DATA.blocks as any)[id];
     if (block) return this.blockToPlace(id, block);
 
@@ -318,5 +339,77 @@ export class SearchService {
       results.push(this.nodeToPlace(id, node));
     });
     return results;
+  }
+
+  private static searchV2(query: string, userLocation?: { latitude: number; longitude: number }, options: SearchOptions = {}): Place[] {
+    const raw = query.trim();
+    const normalised = normalizeUrdu(raw).toLowerCase();
+    const places = V2PlaceAdapter.getAllPlaces({
+      developerMode: options.developerMode,
+      includeUnavailableGates: true,
+    });
+    const exactGateNumber = normalised.match(/^(?:gate\s*|g)0?([1-9]|1\d|2[0-2])$/)?.[1];
+    const exactBlockNumber = normalised.match(/^(?:block\s*|b)?0?([1-9]|[1-3]\d|4[0-2])$/)?.[1];
+
+    const results: V2Place[] = [];
+    for (const place of places) {
+      const aliases = place.aliases ?? [];
+      const isMissingGate = place.category === 'Gate' && place.routingStatus === 'missing_coordinate';
+      const gateNumber = place.category === 'Gate' ? Number(place.id.replace('GATE_', '')) : null;
+      const blockNumber = place.category === 'Block' ? Number(place.id.replace('B', '')) : null;
+
+      if (exactGateNumber && gateNumber !== Number(exactGateNumber)) continue;
+      if (exactBlockNumber && blockNumber !== Number(exactBlockNumber)) continue;
+
+      const matchesName = FuzzySearchService.matches(normalised, place.name.toLowerCase());
+      const matchesUrdu = place.urduName ? normalizeUrdu(place.urduName).toLowerCase().includes(normalised) || place.urduName.includes(raw) : false;
+      const matchesAlias = aliases.some((alias) => {
+        const normalizedAlias = normalizeUrdu(alias).toLowerCase();
+        return FuzzySearchService.matches(normalised, normalizedAlias) || normalizedAlias.includes(normalised);
+      });
+      const matchesId = place.id.toLowerCase() === normalised;
+      const exactMissingGateHit = isMissingGate && exactGateNumber && gateNumber === Number(exactGateNumber);
+
+      if ((isMissingGate && !exactMissingGateHit) || !(matchesName || matchesUrdu || matchesAlias || matchesId || exactMissingGateHit)) {
+        continue;
+      }
+
+      if (!results.find((existing) => existing.id === place.id)) {
+        results.push(place);
+      }
+    }
+
+    results.sort((a, b) => {
+      const rankA = CATEGORY_RANK[a.category] ?? 5;
+      const rankB = CATEGORY_RANK[b.category] ?? 5;
+      if (rankA !== rankB) return rankA - rankB;
+      if (userLocation && a.coordinate && b.coordinate) {
+        const distA = Math.abs(a.coordinate.latitude - userLocation.latitude) +
+                      Math.abs(a.coordinate.longitude - userLocation.longitude);
+        const distB = Math.abs(b.coordinate.latitude - userLocation.latitude) +
+                      Math.abs(b.coordinate.longitude - userLocation.longitude);
+        return distA - distB;
+      }
+      return 0;
+    });
+
+    return results;
+  }
+
+  private static searchByCategoryV2(category: string): Place[] {
+    const cat = category.toLowerCase();
+    if (cat === 'all') {
+      const grouped = new Map<string, Place>();
+      ['blocks', 'rastas', 'gates', 'special_routes'].forEach((categoryId) => {
+        V2PlaceAdapter.getPlacesByCategory(categoryId).forEach((place) => grouped.set(place.id, place));
+      });
+      return Array.from(grouped.values());
+    }
+
+    if (cat === 'blocks' || cat === 'rastas' || cat === 'gates' || cat === 'special_routes') {
+      return V2PlaceAdapter.getPlacesByCategory(cat);
+    }
+
+    return [];
   }
 }

@@ -18,7 +18,14 @@ assert(home.includes('__DEV__ && developerModeEnabled'), 'Developer controls mus
 assert(home.includes('right: 76'), 'Outside-area warning should leave room for right-side map controls');
 assert(home.includes('paddingRight: 88'), 'Category chips should have trailing padding so the last chip is not hidden behind controls');
 assert(home.includes('setOutsideBannerDismissed'), 'Outside-area warning should be compact and dismissible');
-assert(home.includes('Offline map not downloaded.'), 'Home screen should show offline-not-downloaded state');
+assert(
+  home.includes('Offline routing will enter through nearest connected official gate.'),
+  'Home outside-area banner should explain nearest-gate offline routing',
+);
+assert(
+  home.includes('Background map not downloaded. Ijtema routes still work.'),
+  'Home screen should explain that missing background tiles do not block Ijtema routing',
+);
 assert(home.includes('categoryChips'), 'Home categories should be data-driven, not hardcoded two chips');
 assert(home.includes('Member Masjid Gates'), 'Block detail sheet should show Member Masjid gates');
 assert(home.includes('userMarkerPulse'), 'Home should render a pulsing user marker');

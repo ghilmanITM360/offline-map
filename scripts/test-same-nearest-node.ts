@@ -3,6 +3,10 @@ import { IJTEMA_DATA } from '../src/constants/data';
 import { RoutingService } from '../src/services/RoutingService';
 import { InstructionService } from '../src/services/InstructionService';
 
+process.env.EXPO_PUBLIC_USE_IJTEMA_V2_MAP = 'false';
+process.env.EXPO_PUBLIC_USE_IJTEMA_V2_ROUTING = 'false';
+process.env.EXPO_PUBLIC_USE_IJTEMA_V2_NAVIGATION = 'false';
+
 function placeForBlock(blockId: string) {
   const block = IJTEMA_DATA.blocks[blockId];
   return {

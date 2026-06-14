@@ -2,6 +2,10 @@ import { strict as assert } from 'node:assert';
 import { IJTEMA_DATA } from '../src/constants/data';
 import { RoutingService } from '../src/services/RoutingService';
 
+process.env.EXPO_PUBLIC_USE_IJTEMA_V2_MAP = 'false';
+process.env.EXPO_PUBLIC_USE_IJTEMA_V2_ROUTING = 'false';
+process.env.EXPO_PUBLIC_USE_IJTEMA_V2_NAVIGATION = 'false';
+
 type Coord = { latitude: number; longitude: number };
 
 const blockIds = Object.keys(IJTEMA_DATA.blocks);

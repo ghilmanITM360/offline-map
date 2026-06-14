@@ -106,11 +106,11 @@ export function SettingsScreen() {
         <View style={styles.settingLabelContainer}>
           <Icon size={22} color={danger ? theme.danger : theme.primary} />
           <View style={styles.textContainer}>
-            <Text style={[styles.settingLabel, { color: danger ? theme.danger : theme.text }]}>
+            <Text style={[styles.settingLabel, { color: danger ? theme.danger : theme.text }]} numberOfLines={1} ellipsizeMode="tail">
               {label}
             </Text>
             {description && (
-              <Text style={[styles.settingDescription, { color: theme.subtext }]}>{description}</Text>
+              <Text style={[styles.settingDescription, { color: theme.subtext }]} numberOfLines={2} ellipsizeMode="tail">{description}</Text>
             )}
           </View>
         </View>
@@ -122,7 +122,7 @@ export function SettingsScreen() {
             thumbColor={value ? theme.primary : '#F4F4F4'}
           />
         ) : (
-          <Text style={[styles.settingValue, { color: danger ? theme.danger : theme.primary }]}>
+          <Text style={[styles.settingValue, { color: danger ? theme.danger : theme.primary }]} numberOfLines={1} ellipsizeMode="tail">
             {value}
           </Text>
         )}
@@ -436,12 +436,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    gap: 12,
   },
   settingLabelContainer: { flexDirection: 'row', alignItems: 'center', flex: 1 },
   textContainer: { marginLeft: 16, flex: 1 },
   settingLabel: { fontSize: 16, fontWeight: '500' },
   settingDescription: { fontSize: 12, marginTop: 2 },
-  settingValue: { fontSize: 14, fontWeight: '600' },
+  settingValue: { fontSize: 14, fontWeight: '600', maxWidth: 132, textAlign: 'right' },
   footer: { padding: 32, alignItems: 'center' },
   version: { fontSize: 14, fontWeight: '500' },
   copyright: { fontSize: 12, marginTop: 4 },

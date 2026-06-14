@@ -4,6 +4,10 @@ import { validateIjtemaGraph } from '../src/data/ijtema/validation';
 import { SearchService } from '../src/services/SearchService';
 import { RoutingService } from '../src/services/RoutingService';
 
+process.env.EXPO_PUBLIC_USE_IJTEMA_V2_MAP = 'false';
+process.env.EXPO_PUBLIC_USE_IJTEMA_V2_ROUTING = 'false';
+process.env.EXPO_PUBLIC_USE_IJTEMA_V2_NAVIGATION = 'false';
+
 function near(actual: number, expected: number, label: string) {
   assert(Math.abs(actual - expected) < 0.000001, `${label}: expected ${expected}, got ${actual}`);
 }

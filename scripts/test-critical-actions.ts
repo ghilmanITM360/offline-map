@@ -35,6 +35,10 @@ assert(
   homeVm.includes('Outside Ijtema area'),
   'Home current-location action should explain outside-venue fallback',
 );
+assert(
+  homeScreen.includes('Offline routing will enter through nearest connected official gate.'),
+  'Home outside-area banner should match nearest-gate routing policy',
+);
 
 assert(
   directionsVm.includes('async (): Promise<boolean>'),
@@ -49,8 +53,8 @@ assert(
   'Directions should expose remembered-location fallback state',
 );
 assert(
-  directionsVm.includes('outside the Ijtema area'),
-  'Directions should reject outside-venue current-location start',
+  directionsVm.includes('forceOutside') && directionsVm.includes("We'll enter through nearest official gate."),
+  'Directions should accept outside starts and route through nearest official gate',
 );
 
 assert(
@@ -119,8 +123,10 @@ assert(
   'Directions should support keyboard-safe scrolling',
 );
 assert(
-  directionsScreen.includes('pinColor="#EA4335"'),
-  'Directions destination marker should be red',
+  directionsScreen.includes('Get Directions') &&
+    directionsScreen.includes('Show route on map') &&
+    directionsScreen.includes('Find nearest official gate automatically'),
+  'Directions should use layman-friendly start-selection flow',
 );
 
 assert(
@@ -156,8 +162,8 @@ assert(
   'Navigation heading behavior should honor North-up setting',
 );
 assert(
-  navScreen.includes('InstructionService.formatDistance') && directionsScreen.includes('InstructionService.formatDistance'),
-  'Distance unit setting should affect both navigation and directions distance text',
+  navScreen.includes('InstructionService.formatDistance') && homeScreen.includes('InstructionService.formatDistance'),
+  'Distance unit setting should affect both navigation and Home route preview distance text',
 );
 assert(
   navScreen.includes('userMarkerPulse') && homeScreen.includes('userMarkerPulse'),

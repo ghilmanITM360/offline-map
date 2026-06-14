@@ -14,25 +14,23 @@ export class OfflineDataService {
     if (this.deleteInFlight) return this.deleteInFlight;
 
     this.deleteInFlight = (async () => {
-      try {
-        await OfflineMapService.deleteMapData();
-        await OfflineMapService.closeDatabase();
-        await OfflineMapStatusService.clearManifest();
-        await OfflineMapStatusService.setDownloadedFlag(false);
-        await OfflineMapStatusService.setGraphOnlyMode(false);
-      } finally {
-        const {
-          setOfflineMapAvailable,
-          setOfflineMapStatus,
-          updateOfflineData,
-          resetDownloadState,
-        } = useAppStore.getState();
+      await OfflineMapService.deleteMapData();
+      await OfflineMapService.closeDatabase();
+      await OfflineMapStatusService.clearManifest();
+      await OfflineMapStatusService.setDownloadedFlag(false);
+      await OfflineMapStatusService.setGraphOnlyMode(false);
 
-        setOfflineMapAvailable(false);
-        setOfflineMapStatus('not_downloaded', null);
-        updateOfflineData({ isDownloaded: false, sizeMB: 0, downloadDate: undefined });
-        resetDownloadState();
-      }
+      const {
+        setOfflineMapAvailable,
+        setOfflineMapStatus,
+        updateOfflineData,
+        resetDownloadState,
+      } = useAppStore.getState();
+
+      setOfflineMapAvailable(false);
+      setOfflineMapStatus('not_downloaded', null);
+      updateOfflineData({ isDownloaded: false, sizeMB: 0, downloadDate: undefined });
+      resetDownloadState();
     })().finally(() => {
       this.deleteInFlight = null;
     });

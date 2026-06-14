@@ -10,6 +10,7 @@ import {
 } from '../src/services/MapConfigResolver';
 
 const appConfig = readFileSync('app.config.js', 'utf8');
+const androidBuildGradle = readFileSync('android/app/build.gradle', 'utf8');
 const appJson = JSON.parse(readFileSync('app.json', 'utf8')) as {
   expo?: { android?: { permissions?: string[] } };
 };
@@ -197,6 +198,30 @@ const statusWithEnv = getGoogleMapsRuntimeStatusFromInputs({
 assert.equal(statusWithEnv.keyPresent, true, 'Map config should report keyPresent=true when EXPO_PUBLIC_GOOGLE_MAPS_ANDROID_API_KEY is set');
 assert.equal(statusWithEnv.source, 'env', 'Map config should report env as source when only env key is provided');
 
+const statusWithExpoExtra = getGoogleMapsRuntimeStatusFromInputs({
+  platform: 'android',
+  expoConfig: {
+    android: {
+      package: 'com.aicrafted.karachiijtema',
+    },
+    extra: {
+      googleMapsAndroidApiKey: 'TEST_ANDROID_1234567890',
+      hasAndroidGoogleMapsKey: true,
+    },
+  } as any,
+  env: {},
+});
+assert.equal(
+  statusWithExpoExtra.keyPresent,
+  true,
+  'Map config should report keyPresent=true when Expo embedded config extra contains Android key',
+);
+assert.equal(
+  statusWithExpoExtra.source,
+  'expo_config',
+  'Map config should report expo_config as source when Expo embedded config extra contains Android key',
+);
+
 const statusWithoutEnv = getGoogleMapsRuntimeStatusFromInputs({
   platform: 'android',
   expoConfig: null,
@@ -221,10 +246,35 @@ assert(
     homeScreen.includes('hasGoogleMapsKey && mapLoadFailed'),
   'Home warning logic should show missing-key text only when key is missing, and map-failed text when key exists but map fails',
 );
+assert(
+  homeScreen.includes("provider={Platform.OS === 'android' && hasGoogleMapsKey ? PROVIDER_GOOGLE : undefined}"),
+  'Home should keep MapView renderable without a Google key by disabling the Google provider',
+);
+assert(
+  homeScreen.includes("mapType={hasGoogleMapsKey ? (isOffline ? 'none' : mapType) : 'none'}"),
+  'Home should render graph-only MapView with mapType none when Google tiles are unavailable',
+);
+assert(homeScreen.includes('venueBoundary'), 'Home graph-only fallback should render venue boundary context');
+assert(
+  !homeScreen.includes('<Text style={styles.mapFallbackTitle}>Map unavailable</Text>'),
+  'Home should not replace the venue graph with a Map unavailable placeholder when Google key is missing',
+);
 
 assert(
   appConfig.includes('process.env.EXPO_PUBLIC_GOOGLE_MAPS_ANDROID_API_KEY'),
   'app.config.js must use process.env.EXPO_PUBLIC_GOOGLE_MAPS_ANDROID_API_KEY',
+);
+assert(
+  (appConfig.includes(".env.local") || appConfig.includes('.env.local')) &&
+    (appConfig.includes(".env'") || appConfig.includes('.env"') || appConfig.includes('.env,')) &&
+    (appConfig.includes('readFileSync') || appConfig.includes('existsSync')),
+  'app.config.js must load local .env and .env.local values for direct Gradle release builds',
+);
+assert(
+  androidBuildGradle.includes('EXPO_PUBLIC_GOOGLE_MAPS_ANDROID_API_KEY') &&
+    androidBuildGradle.includes('.env') &&
+    androidBuildGradle.includes('.env.local'),
+  'android/app/build.gradle must resolve EXPO_PUBLIC_GOOGLE_MAPS_ANDROID_API_KEY from local .env files for direct Gradle release builds',
 );
 assert(
   appConfig.includes("package: androidPackageName") && appConfig.includes("const androidPackageName = 'com.aicrafted.karachiijtema';"),
