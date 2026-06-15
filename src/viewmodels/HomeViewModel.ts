@@ -101,11 +101,17 @@ export function useHomeViewModel() {
   };
 
   const snapPoints = useMemo(() => ['15%', '50%', '92%'], []);
-  const categoryChips = useMemo(() => SearchService.getAvailableCategoryChips(), []);
+  const categoryChips = useMemo(() => {
+    return SearchService.getAvailableCategoryChips().map((chip) => {
+      if (chip.id === 'all') return chip;
+      const count = SearchService.searchByCategory(chip.id).length;
+      return count > 0 ? { ...chip, label: `${chip.label} (${count})` } : chip;
+    });
+  }, []);
   const searchPlaceholder = useMemo(() => {
     const labels = categoryChips.map((chip) => chip.label).filter((label) => label !== 'All');
-    if (labels.length >= 4) return 'Search blocks, rastas, gates, masjids...';
-    return labels.length > 0 ? `Search ${labels.join(', ').toLowerCase()}...` : 'Search places...';
+    if (labels.length >= 4) return 'Search blocks, rastas, gates';
+    return labels.length > 0 ? `Search ${labels.join(', ').toLowerCase()}` : 'Search places';
   }, [categoryChips]);
 
   const initialRegion: Region = {
@@ -335,6 +341,8 @@ export function useHomeViewModel() {
   };
 
   const handleCategoryPress = (category: string) => {
+    setSelectedPlace(null);
+    bottomSheetRef.current?.close();
     if (activeCategory === category) {
       setActiveCategory(null);
       setSearchResults([]);

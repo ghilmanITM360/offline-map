@@ -16,6 +16,7 @@ import { LocationAccessService } from '../services/LocationAccessService';
 import { MapFeatureFlagsService } from '../services/MapFeatureFlagsService';
 import { V2DirectionsService } from '../services/V2DirectionsService';
 import { V2NavigationAdapter } from '../services/V2NavigationAdapter';
+import { EntryGateRoutingService } from '../services/EntryGateRoutingService';
 
 const ROUTE_TIMEOUT_MS = 3500;
 const DIRECTIONS_RECALCULATE_ORIGIN_MOVEMENT_M = 20;
@@ -125,7 +126,7 @@ export function useDirectionsViewModel(destination: Place | null) {
       const forceOutside =
         startSource !== 'manual_place' &&
         hasOriginCoord &&
-        !RoutingService.isInsideVenue(originCoord);
+        !EntryGateRoutingService.isInsideIjtemaArea(originCoord);
 
       const preview = V2DirectionsService.calculatePreview({
         startPlace: startSource === 'manual_place' ? manualStart : null,

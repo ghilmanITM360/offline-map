@@ -15,6 +15,76 @@ const graph = IJTEMA_NAVIGATION_GRAPH_V2;
 const nodeIds = Object.keys(graph.nodes);
 const edgeIds = graph.edges.map((edge) => edge.id);
 
+const pointInPolygon = (point: { lat: number; lng: number }, polygon: Array<{ lat: number; lng: number }>): boolean => {
+  let inside = false;
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    const current = polygon[i];
+    const previous = polygon[j];
+    const intersects =
+      current.lng > point.lng !== previous.lng > point.lng &&
+      point.lat < ((previous.lat - current.lat) * (point.lng - current.lng)) / (previous.lng - current.lng) + current.lat;
+    if (intersects) inside = !inside;
+  }
+  return inside;
+};
+
+const orientation = (
+  a: { lat: number; lng: number },
+  b: { lat: number; lng: number },
+  c: { lat: number; lng: number },
+): number => {
+  const value = (b.lng - a.lng) * (c.lat - b.lat) - (b.lat - a.lat) * (c.lng - b.lng);
+  if (Math.abs(value) < 1e-12) return 0;
+  return value > 0 ? 1 : 2;
+};
+
+const onSegment = (
+  a: { lat: number; lng: number },
+  b: { lat: number; lng: number },
+  c: { lat: number; lng: number },
+): boolean =>
+  b.lng <= Math.max(a.lng, c.lng) + 1e-12 &&
+  b.lng + 1e-12 >= Math.min(a.lng, c.lng) &&
+  b.lat <= Math.max(a.lat, c.lat) + 1e-12 &&
+  b.lat + 1e-12 >= Math.min(a.lat, c.lat);
+
+const segmentsIntersect = (
+  a: { lat: number; lng: number },
+  b: { lat: number; lng: number },
+  c: { lat: number; lng: number },
+  d: { lat: number; lng: number },
+): boolean => {
+  const o1 = orientation(a, b, c);
+  const o2 = orientation(a, b, d);
+  const o3 = orientation(c, d, a);
+  const o4 = orientation(c, d, b);
+
+  if (o1 !== o2 && o3 !== o4) return true;
+  if (o1 === 0 && onSegment(a, c, b)) return true;
+  if (o2 === 0 && onSegment(a, d, b)) return true;
+  if (o3 === 0 && onSegment(c, a, d)) return true;
+  if (o4 === 0 && onSegment(c, b, d)) return true;
+  return false;
+};
+
+const segmentCrossesPolygonInterior = (
+  start: { lat: number; lng: number },
+  end: { lat: number; lng: number },
+  polygon: Array<{ lat: number; lng: number }>,
+): boolean => {
+  for (let index = 1; index < 8; index += 1) {
+    const t = index / 8;
+    if (pointInPolygon({ lat: start.lat + (end.lat - start.lat) * t, lng: start.lng + (end.lng - start.lng) * t }, polygon)) {
+      return true;
+    }
+  }
+
+  return polygon.some((point, index) => {
+    const next = polygon[(index + 1) % polygon.length];
+    return segmentsIntersect(start, end, point, next);
+  });
+};
+
 assert(nodeIds.length > 0, 'v2 graph must have nodes');
 assert(graph.edges.length > 0, 'v2 graph must have edges');
 assert.equal(graph.metadata.source, 'ijtema_v2', 'v2 graph metadata source');
@@ -30,6 +100,20 @@ for (const edge of graph.edges) {
   assert(edge.name.en.trim().length > 0, `${edge.id} must have a friendly English name`);
   assert(edge.name.ur?.trim().length, `${edge.id} must have a friendly Urdu name`);
   assert(!internalIdPattern.test(edge.name.en), `${edge.id} normal edge name must not expose internal IDs`);
+}
+
+for (const edge of graph.edges.filter((item) => item.pathType === 'block_connector')) {
+  const from = graph.nodes[edge.from].coordinate;
+  const to = graph.nodes[edge.to].coordinate;
+  const sourceBlockId = graph.nodes[edge.from].sourceId;
+
+  for (const block of IJTEMA_BLOCKS) {
+    if (block.id === sourceBlockId) continue;
+    assert(
+      !segmentCrossesPolygonInterior(from, to, block.polygon),
+      `${edge.id} must not cross ${block.id} interior (${edge.from} -> ${edge.to}).`,
+    );
+  }
 }
 
 for (const rasta of IJTEMA_RASTAS) {

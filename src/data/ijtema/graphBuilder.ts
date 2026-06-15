@@ -295,6 +295,69 @@ const findNearestFromList = (coordinate: Coordinate, candidates: GraphNode[]): {
   return nearest;
 };
 
+const pointInPolygon = (point: Coordinate, polygon: Coordinate[]): boolean => {
+  let inside = false;
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    const current = polygon[i];
+    const previous = polygon[j];
+    const intersects =
+      current.lng > point.lng !== previous.lng > point.lng &&
+      point.lat < ((previous.lat - current.lat) * (point.lng - current.lng)) / (previous.lng - current.lng) + current.lat;
+    if (intersects) inside = !inside;
+  }
+  return inside;
+};
+
+const orientation = (a: Coordinate, b: Coordinate, c: Coordinate): number => {
+  const value = (b.lng - a.lng) * (c.lat - b.lat) - (b.lat - a.lat) * (c.lng - b.lng);
+  if (Math.abs(value) < 1e-12) return 0;
+  return value > 0 ? 1 : 2;
+};
+
+const onSegment = (a: Coordinate, b: Coordinate, c: Coordinate): boolean =>
+  b.lng <= Math.max(a.lng, c.lng) + 1e-12 &&
+  b.lng + 1e-12 >= Math.min(a.lng, c.lng) &&
+  b.lat <= Math.max(a.lat, c.lat) + 1e-12 &&
+  b.lat + 1e-12 >= Math.min(a.lat, c.lat);
+
+const segmentsIntersect = (a: Coordinate, b: Coordinate, c: Coordinate, d: Coordinate): boolean => {
+  const o1 = orientation(a, b, c);
+  const o2 = orientation(a, b, d);
+  const o3 = orientation(c, d, a);
+  const o4 = orientation(c, d, b);
+
+  if (o1 !== o2 && o3 !== o4) return true;
+  if (o1 === 0 && onSegment(a, c, b)) return true;
+  if (o2 === 0 && onSegment(a, d, b)) return true;
+  if (o3 === 0 && onSegment(c, a, d)) return true;
+  if (o4 === 0 && onSegment(c, b, d)) return true;
+  return false;
+};
+
+const segmentCrossesPolygonInterior = (start: Coordinate, end: Coordinate, polygon: Coordinate[]): boolean => {
+  for (let index = 1; index < 8; index += 1) {
+    const t = index / 8;
+    if (pointInPolygon({ lat: start.lat + (end.lat - start.lat) * t, lng: start.lng + (end.lng - start.lng) * t }, polygon)) {
+      return true;
+    }
+  }
+
+  return polygon.some((point, index) => segmentsIntersect(start, end, point, polygon[(index + 1) % polygon.length]));
+};
+
+const crossesOtherBlock = (from: Coordinate, to: Coordinate, sourceBlockId: string): boolean =>
+  IJTEMA_BLOCKS.some((block) => block.id !== sourceBlockId && segmentCrossesPolygonInterior(from, to, block.polygon));
+
+const findNearestBlockConnectorNode = (
+  coordinate: Coordinate,
+  candidates: GraphNode[],
+  sourceBlockId: string,
+): { node: GraphNode; distanceM: number } | undefined =>
+  candidates
+    .map((node) => ({ node, distanceM: distanceMeters(coordinate, node.coordinate) }))
+    .sort((left, right) => left.distanceM - right.distanceM)
+    .find((candidate) => !crossesOtherBlock(coordinate, candidate.node.coordinate, sourceBlockId));
+
 const countNodesByType = (nodes: Record<string, GraphNode>): Record<GraphNodeType, number> => {
   const counts = emptyTypeCounts();
   for (const node of Object.values(nodes)) {
@@ -459,7 +522,7 @@ export const buildNavigationGraphV2 = (): { graph: NavigationGraphV2; report: Na
   for (const block of IJTEMA_BLOCKS) {
     for (const entryId of getBlockEntryNodeIds(block.id)) {
       const entryNode = nodes[entryId];
-      const nearest = findNearestFromList(entryNode.coordinate, walkableConnectorNodes);
+      const nearest = findNearestBlockConnectorNode(entryNode.coordinate, walkableConnectorNodes, block.id);
       const report: BlockEntryConnectorReport = {
         blockId: block.id,
         entryId,

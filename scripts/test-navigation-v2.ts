@@ -128,6 +128,28 @@ const gate15Preview = V2DirectionsService.calculatePreview({
 });
 assert.equal(gate15Preview.status, 'ready', 'Gate 15 must support active-navigation preview');
 
+const block33 = SearchService.search('Block 33')[0];
+const block38 = SearchService.search('Block 38')[0];
+assert.equal(block33?.id, 'B33', 'Block 33 fixture must exist');
+assert.equal(block38?.id, 'B38', 'Block 38 fixture must exist');
+const blockStartPreview = V2DirectionsService.calculatePreview({
+  startPlace: block33,
+  destination: block38,
+  currentLocation: null,
+  walkingSpeedMs: 1.4,
+});
+assert.equal(blockStartPreview.status, 'ready', 'Block 33 -> Block 38 preview must route');
+const blockStartActive = V2NavigationAdapter.fromPreview({
+  previewRoute: blockStartPreview.route!,
+  destination: block38,
+  startPlace: block33,
+});
+assert.deepEqual(
+  blockStartActive.origin.coordinate,
+  blockStartPreview.route?.coordinates[0],
+  'Manual block start origin must use selected route entry, not block center.',
+);
+
 const disconnectedGate18 = SearchService.search('Gate 18')[0];
 assert.equal(disconnectedGate18?.routingStatus, 'needs_connector_verification', 'Gate 18 fixture must need connector verification');
 const disconnectedGatePreview = V2DirectionsService.calculatePreview({

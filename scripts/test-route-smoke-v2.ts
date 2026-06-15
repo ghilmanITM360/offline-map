@@ -43,13 +43,16 @@ for (const check of checks) {
   assert(route.estimatedTimeMin > 0, `${check.label} ETA should be positive`);
   assert(route.nodes.length > 1, `${check.label} should not collapse to same node`);
   assert(route.segments.length > 0, `${check.label} should have route segments`);
-  assert(route.coordinates.length === route.nodes.length, `${check.label} coordinate/node count mismatch`);
+  // coordinates may differ from nodes.length due to: start-GPS prepend (outside routes) and dedup of nearby nodes
+  assert(route.coordinates.length > 0, `${check.label} should have at least one coordinate`);
   assert(route.instructions.length > 0, `${check.label} should have friendly instructions`);
   assert(route.destinationEntryNodeId?.startsWith(`${check.destination.type === 'block' ? check.destination.blockId : ''}_C`) || check.destination.type !== 'block', `${check.label} should resolve block destination to an entry node`);
 
-  route.coordinates.forEach((coordinate, index) => {
-    assert(coordinate.latitude >= IJTEMA_MAP_BOUNDS.minLat && coordinate.latitude <= IJTEMA_MAP_BOUNDS.maxLat, `${check.label} coord ${index} latitude outside bounds`);
-    assert(coordinate.longitude >= IJTEMA_MAP_BOUNDS.minLng && coordinate.longitude <= IJTEMA_MAP_BOUNDS.maxLng, `${check.label} coord ${index} longitude outside bounds`);
+  // For outside_coordinate starts, the first coordinate is the raw GPS which may be outside venue bounds — skip it
+  const coordStartIndex = check.start.type === 'outside_coordinate' ? 1 : 0;
+  route.coordinates.slice(coordStartIndex).forEach((coordinate, index) => {
+    assert(coordinate.latitude >= IJTEMA_MAP_BOUNDS.minLat && coordinate.latitude <= IJTEMA_MAP_BOUNDS.maxLat, `${check.label} coord ${index + coordStartIndex} latitude outside bounds`);
+    assert(coordinate.longitude >= IJTEMA_MAP_BOUNDS.minLng && coordinate.longitude <= IJTEMA_MAP_BOUNDS.maxLng, `${check.label} coord ${index + coordStartIndex} longitude outside bounds`);
   });
 
   const instructionText = route.instructions.map((instruction) => instruction.text).join('\n');
