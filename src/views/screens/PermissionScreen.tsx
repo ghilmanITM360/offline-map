@@ -4,7 +4,7 @@
  */
 
 import React from 'react';
-import { View, Text, StyleSheet, Pressable, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, Pressable, ActivityIndicator, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { MapPin, ShieldCheck } from 'lucide-react-native';
@@ -16,50 +16,52 @@ export function PermissionScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.content}>
-        <View style={styles.iconContainer}>
-          <MapPin size={80} color="#2E7D32" />
-        </View>
-        <Text style={styles.title}>Location Access</Text>
-        <Text style={styles.description}>
-          To provide accurate navigation and show your current position on the map, we need your location permission.
-        </Text>
-        
-        <View style={styles.featureList}>
-          <View style={styles.featureItem}>
-            <ShieldCheck size={24} color="#2E7D32" />
-            <Text style={styles.featureText}>Real-time GPS tracking</Text>
+      <ScrollView contentContainerStyle={styles.contentContainer}>
+        <View style={styles.content}>
+          <View style={styles.iconContainer}>
+            <MapPin size={72} color="#2E7D32" />
           </View>
-          <View style={styles.featureItem}>
-            <ShieldCheck size={24} color="#2E7D32" />
-            <Text style={styles.featureText}>Voice-guided directions</Text>
-          </View>
-          <View style={styles.featureItem}>
-            <ShieldCheck size={24} color="#2E7D32" />
-            <Text style={styles.featureText}>Offline map support</Text>
-          </View>
-        </View>
+          <Text style={styles.title}>Location Access</Text>
+          <Text style={styles.description}>
+            To provide accurate navigation and show your current position on the map, we need your location permission.
+          </Text>
 
-        <Pressable 
-          style={[styles.button, loading && styles.buttonDisabled]} 
-          onPress={() => requestPermission(navigation)}
-          disabled={loading}
-        >
-          {loading ? (
-            <ActivityIndicator color="#FFF" />
-          ) : (
-            <Text style={styles.buttonText}>Grant Permission</Text>
-          )}
-        </Pressable>
-        
-        <Pressable 
-          style={styles.skipButton} 
-          onPress={() => skipPermission(navigation)}
-          disabled={loading}
-        >
-          <Text style={styles.skipText}>Maybe Later</Text>
-        </Pressable>
-      </View>
+          <View style={styles.featureList}>
+            <View style={styles.featureItem}>
+              <ShieldCheck size={24} color="#2E7D32" />
+              <Text style={styles.featureText}>Real-time GPS tracking</Text>
+            </View>
+            <View style={styles.featureItem}>
+              <ShieldCheck size={24} color="#2E7D32" />
+              <Text style={styles.featureText}>Voice-guided directions</Text>
+            </View>
+            <View style={styles.featureItem}>
+              <ShieldCheck size={24} color="#2E7D32" />
+              <Text style={styles.featureText}>Offline map support</Text>
+            </View>
+          </View>
+
+          <Pressable
+            style={[styles.button, loading && styles.buttonDisabled]}
+            onPress={() => requestPermission(navigation)}
+            disabled={loading}
+          >
+            {loading ? (
+              <ActivityIndicator color="#FFF" />
+            ) : (
+              <Text style={styles.buttonText}>Grant Permission</Text>
+            )}
+          </Pressable>
+
+          <Pressable
+            style={styles.skipButton}
+            onPress={() => skipPermission(navigation)}
+            disabled={loading}
+          >
+            <Text style={styles.skipText}>Maybe Later</Text>
+          </Pressable>
+        </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -69,20 +71,23 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#FFFFFF',
   },
-  content: {
-    flex: 1,
-    padding: 30,
+  contentContainer: {
+    flexGrow: 1,
     justifyContent: 'center',
+    paddingVertical: 24,
+  },
+  content: {
+    padding: 30,
     alignItems: 'center',
   },
   iconContainer: {
-    width: 150,
-    height: 150,
-    borderRadius: 75,
+    width: 132,
+    height: 132,
+    borderRadius: 66,
     backgroundColor: '#E8F5E9',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 40,
+    marginBottom: 28,
   },
   title: {
     fontSize: 28,
@@ -95,11 +100,11 @@ const styles = StyleSheet.create({
     color: '#666',
     textAlign: 'center',
     lineHeight: 24,
-    marginBottom: 40,
+    marginBottom: 28,
   },
   featureList: {
     width: '100%',
-    marginBottom: 50,
+    marginBottom: 34,
   },
   featureItem: {
     flexDirection: 'row',

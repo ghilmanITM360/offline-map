@@ -25,6 +25,13 @@ const INTERSECTION_NAMES: Record<string, { en: string; ur: string }> = {
   P12: { en: 'Rasta 11 & Rasta 05 Junction',  ur: 'راستہ ۱۱ اور راستہ ۰۵ چوراہا' },
 };
 
+const GATE_NAMES: Record<string, { en: string; ur: string }> = {
+  C1: { en: 'Member Masjid south-west gate', ur: 'ممبر مسجد جنوب مغربی گیٹ' },
+  C2: { en: 'Member Masjid south-east gate', ur: 'ممبر مسجد جنوب مشرقی گیٹ' },
+  C3: { en: 'Member Masjid north-west gate', ur: 'ممبر مسجد شمال مغربی گیٹ' },
+  C4: { en: 'Member Masjid north-east gate', ur: 'ممبر مسجد شمال مشرقی گیٹ' },
+};
+
 export class InstructionService {
   static generateInstructions(nodeIds: string[]): NavigationInstruction[] {
     if (nodeIds.length === 0) return []; // fixed: guard against empty routes before reading the last node
@@ -46,10 +53,11 @@ export class InstructionService {
       let type: 'straight' | 'left' | 'right' | 'arrival' = 'straight';
 
       const nextNameUr = this.getFriendlyName(nextId, 'ur');
+      const nextName = this.getFriendlyName(nextId, 'en');
       const edgeName = this.getEdgeName(currentId, nextId);
 
       if (i === 0) {
-        text = `Start on ${edgeName}. Continue ${distance} meters to ${nextId}.`;
+        text = `Start on ${edgeName}. Continue ${distance} meters to ${nextName}.`;
         urduText = `${edgeName} پر چلیں۔ ${nextNameUr} تک ${distance} میٹر جائیں`;
       } else {
         const prevId = nodeIds[i - 1];
@@ -73,7 +81,7 @@ export class InstructionService {
         const atNameUr = this.getFriendlyName(currentId, 'ur');
 
         if (Math.abs(diff) < 30) {
-          text = `Continue ${distance} meters on ${edgeName} to ${nextId}.`;
+          text = `Continue ${distance} meters on ${edgeName} to ${nextName}.`;
           urduText = `${nextNameUr} تک ${distance} میٹر سیدھا جائیں`;
           type = 'straight';
         } else if (diff > 0) {
@@ -134,6 +142,9 @@ export class InstructionService {
     // Check intersection lookup table first
     const inter = INTERSECTION_NAMES[nodeId];
     if (inter) return lang === 'ur' ? inter.ur : inter.en;
+
+    const gate = GATE_NAMES[nodeId];
+    if (gate) return lang === 'ur' ? gate.ur : gate.en;
 
     const node = (IJTEMA_DATA.nodes as any)[nodeId];
     if (!node) return lang === 'ur' ? 'منزل' : 'destination';

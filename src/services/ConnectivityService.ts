@@ -13,12 +13,20 @@ export interface ConnectivitySnapshot {
 
 export class ConnectivityService {
   static async getSnapshot(): Promise<ConnectivitySnapshot> {
-    const state = await Network.getNetworkStateAsync();
-    return {
-      isConnected: !!state.isConnected,
-      isInternetReachable: !!state.isInternetReachable,
-      type: state.type ?? 'unknown',
-    };
+    try {
+      const state = await Network.getNetworkStateAsync();
+      return {
+        isConnected: !!state.isConnected,
+        isInternetReachable: !!state.isInternetReachable,
+        type: state.type ?? 'unknown',
+      };
+    } catch {
+      return {
+        isConnected: false,
+        isInternetReachable: false,
+        type: 'unknown',
+      };
+    }
   }
 
   static async isConnected(): Promise<boolean> {

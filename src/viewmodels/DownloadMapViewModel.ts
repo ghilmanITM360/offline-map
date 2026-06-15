@@ -196,15 +196,26 @@ export function useDownloadMapViewModel() {
       setOfflineMapStatus('downloading', 'Preparing download...');
       logDownload('download started');
 
-      const connectivity = await ConnectivityService.getSnapshot();
-      logDownload('network snapshot', connectivity);
-      if (!(connectivity.isConnected && connectivity.isInternetReachable)) {
-        safeSetDownloadState({
-          phase: 'error',
-          errorMessage: 'No internet connection. Please connect and try again.',
+      let connectivity;
+      try {
+        connectivity = await ConnectivityService.getSnapshot();
+        logDownload('network snapshot', connectivity);
+      } catch (error) {
+        logDownload('network snapshot failed', error);
+        applyFailureState({
+          userMessage: 'No internet connection. Please connect and try again.',
+          statusMessage: 'Internet is required to download the map.',
           resumable: false,
         });
-        setOfflineMapStatus('not_downloaded', 'Internet is required to download the map.');
+        downloadInProgressRef.current = false;
+        return;
+      }
+      if (!(connectivity.isConnected && connectivity.isInternetReachable)) {
+        applyFailureState({
+          userMessage: 'No internet connection. Please connect and try again.',
+          statusMessage: 'Internet is required to download the map.',
+          resumable: false,
+        });
         downloadInProgressRef.current = false;
         return;
       }

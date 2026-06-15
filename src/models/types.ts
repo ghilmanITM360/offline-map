@@ -68,6 +68,7 @@ export interface Place {
     | 'Masjid'
     | 'Gate'
     | 'Rasta'
+    | 'SpecialRoute'
     | 'Terminal'
     | 'Help'
     | 'Intersection'
@@ -88,6 +89,15 @@ export interface Place {
   snappedCoordinate?: Coordinate;
   thumbnail?: string;
   aliases?: string[];
+  sourceVersion?: 'v1' | 'v2';
+  secondaryLabel?: string;
+  polygon?: Coordinate[];
+  polyline?: Coordinate[];
+  routingStatus?: 'routable' | 'missing_coordinate' | 'needs_connector_verification' | 'visual_only';
+  isRoutable?: boolean;
+  isStartRoutable?: boolean;
+  unavailableReason?: string;
+  developerLabel?: string;
 }
 
 export interface UserSettings {
@@ -199,6 +209,13 @@ export interface NavigationInstruction {
   coordinate: Coordinate;
 }
 
+export interface V2NavigationInstruction extends NavigationInstruction {
+  distanceM: number;
+  routeIndex: number;
+  spokenText?: string;
+  developerLabel?: string;
+}
+
 export interface SearchResult {
   id: string;
   title: string;
@@ -233,6 +250,7 @@ export interface OfflineTile {
 
 export interface RoutePreview {
   id: string;
+  sourceVersion?: 'v1' | 'v2';
   coordinates: Coordinate[];
   nodes: string[];
   totalDistance: number;
@@ -242,3 +260,41 @@ export interface RoutePreview {
   totalTime?: number;
   instructions?: NavigationInstruction[];
 }
+
+export interface V2ActiveRoute extends RoutePreview {
+  sourceVersion: 'v2';
+  routeId: string;
+  origin: {
+    coordinate: Coordinate;
+    label: string;
+    type: 'inside_snap' | 'official_gate' | 'manual_place';
+    gateId?: string;
+  };
+  destination: {
+    coordinate: Coordinate;
+    label: string;
+    type: 'block' | 'gate' | 'rasta' | 'special_route';
+    blockId?: string;
+    gateId?: string;
+    rastaId?: string;
+    entryNodeId?: string;
+  };
+  edges: Array<{
+    from: string;
+    to: string;
+    distanceM: number;
+    pathType: string;
+    label: string;
+  }>;
+  totalDistanceM: number;
+  etaMinutes: number;
+  instructions: V2NavigationInstruction[];
+  metadata: {
+    startedOutside: boolean;
+    entryGateId?: string;
+    usesOfficialGateEntry: boolean;
+    graphVersion: string;
+  };
+}
+
+export type ActiveNavigationRoute = RoutePreview | V2ActiveRoute;

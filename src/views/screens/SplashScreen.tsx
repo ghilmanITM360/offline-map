@@ -30,72 +30,81 @@ export function SplashScreen() {
     }).start();
 
     const checkStatus = async () => {
-      // Minimum visible time so the logo is seen
-      const minVisibleMs = new Promise<void>((resolve) => {
-        minVisibleTimeoutRef.current = setTimeout(resolve, 1500); // fixed: keep a handle so the delay can be cancelled on unmount
-      });
-
-      // Run all checks in parallel
-      const [mapStatus, startupStatus, permissionResult, isConnected, graphOnlyModeEnabled] = await Promise.all([
-        OfflineMapService.getMapStatus(),
-        OfflineMapStatusService.validateAtStartup(),
-        Location.getForegroundPermissionsAsync(),
-        ConnectivityService.isConnected(),
-        OfflineMapStatusService.isGraphOnlyModeEnabled(),
-        minVisibleMs,
-      ]);
-
-      const permissionGranted = permissionResult.status === 'granted';
-      if (!isMountedRef.current) {
-        return; // fixed: stop after async work if the splash screen already unmounted
-      }
-
-      const { downloadState, setDownloadState } = useAppStore.getState(); // fixed: reconcile persisted download progress with actual disk state on cold start
-      if (downloadState.phase === 'downloading' || downloadState.phase === 'connecting') {
-        setDownloadState({ phase: 'idle' }); // fixed: clear stale in-memory downloading state after cold start
-      }
-
-      // Sync real map status into persisted Zustand state
-      if (mapStatus.isDownloaded) {
-        updateOfflineData({
-          isDownloaded: true,
-          downloadDate: mapStatus.downloadDate ?? undefined,
-          sizeMB: mapStatus.sizeMB,
+      try {
+        // Minimum visible time so the logo is seen
+        const minVisibleMs = new Promise<void>((resolve) => {
+          minVisibleTimeoutRef.current = setTimeout(resolve, 1500); // fixed: keep a handle so the delay can be cancelled on unmount
         });
-      }
-      setOfflineMapStatus(startupStatus.status, startupStatus.reason ?? null);
 
-      setHasLocationPermission(permissionGranted);
+        // Run all checks in parallel
+        const [mapStatus, startupStatus, permissionResult, isConnected, graphOnlyModeEnabled] = await Promise.all([
+          OfflineMapService.getMapStatus(),
+          OfflineMapStatusService.validateAtStartup(),
+          Location.getForegroundPermissionsAsync(),
+          ConnectivityService.isConnected(),
+          OfflineMapStatusService.isGraphOnlyModeEnabled(),
+          minVisibleMs,
+        ]);
 
-      // Routing logic — check permission and map independently
-      if (!permissionGranted) {
-        navigation.replace('Permission');
-        return;
-      }
+        const permissionGranted = permissionResult.status === 'granted';
+        if (!isMountedRef.current) {
+          return; // fixed: stop after async work if the splash screen already unmounted
+        }
 
-      if (startupStatus.status === 'downloaded') {
-        navigation.replace('Main');
-        return;
-      }
+        const { downloadState, setDownloadState } = useAppStore.getState(); // fixed: reconcile persisted download progress with actual disk state on cold start
+        if (downloadState.phase === 'downloading' || downloadState.phase === 'connecting') {
+          setDownloadState({ phase: 'idle' }); // fixed: clear stale in-memory downloading state after cold start
+        }
 
-      if (startupStatus.status === 'corrupt' || startupStatus.status === 'needs_update') {
+        // Sync real map status into persisted Zustand state
+        if (mapStatus.isDownloaded) {
+          updateOfflineData({
+            isDownloaded: true,
+            downloadDate: mapStatus.downloadDate ?? undefined,
+            sizeMB: mapStatus.sizeMB,
+          });
+        }
+        setOfflineMapStatus(startupStatus.status, startupStatus.reason ?? null);
+
+        setHasLocationPermission(permissionGranted);
+
+        // Routing logic — check permission and map independently
+        if (!permissionGranted) {
+          navigation.replace('Permission');
+          return;
+        }
+
+        if (startupStatus.status === 'downloaded') {
+          navigation.replace('Main');
+          return;
+        }
+
+        if (startupStatus.status === 'corrupt' || startupStatus.status === 'needs_update') {
+          navigation.replace('DownloadMap');
+          return;
+        }
+
+        if (graphOnlyModeEnabled && startupStatus.status === 'not_downloaded') {
+          navigation.replace('Main');
+          return;
+        }
+
+        if (!isConnected && startupStatus.status === 'not_downloaded') {
+          // No internet AND no map — go to Main in graph-only mode
+          navigation.replace('Main');
+          return;
+        }
+
+        // Have internet, no map yet — go to download
         navigation.replace('DownloadMap');
-        return;
-      }
-
-      if (graphOnlyModeEnabled && startupStatus.status === 'not_downloaded') {
+      } catch {
+        if (!isMountedRef.current) return;
+        const { setDownloadState } = useAppStore.getState();
+        setDownloadState({ phase: 'idle' });
+        updateOfflineData({ isDownloaded: false, sizeMB: 0, downloadDate: undefined });
+        setOfflineMapStatus('not_downloaded', 'Startup checks failed. Using venue map only.');
         navigation.replace('Main');
-        return;
       }
-
-      if (!isConnected && startupStatus.status === 'not_downloaded') {
-        // No internet AND no map — go to Main in graph-only mode
-        navigation.replace('Main');
-        return;
-      }
-
-      // Have internet, no map yet — go to download
-      navigation.replace('DownloadMap');
     };
 
     void checkStatus();

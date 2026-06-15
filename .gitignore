@@ -4,6 +4,11 @@ dist/
 coverage/
 .DS_Store
 *.log
+.idea/
+android-runtime-artifacts/
+screenshots/
+*.apk
+*.aab
 .env
 .env.local
 .env.*

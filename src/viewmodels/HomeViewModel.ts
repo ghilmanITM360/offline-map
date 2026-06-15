@@ -14,8 +14,18 @@ import { GPSManagerService } from '../services/GPSManagerService';
 import { RoutingService } from '../services/RoutingService';
 import { LocationAccessService } from '../services/LocationAccessService';
 import { RoutePointService } from '../services/RoutePointService';
+import { EntryGateRoutingService } from '../services/EntryGateRoutingService';
+import { MapFeatureFlagsService } from '../services/MapFeatureFlagsService';
+import { IJTEMA_MAP_REGION } from '../data/ijtema';
 
 declare const __DEV__: boolean;
+
+const DEFAULT_HOME_MAP_ZOOM = 15.5;
+
+function estimateZoomFromRegion(region: Region): number {
+  const zoom = Math.log2(360 / Math.max(region.longitudeDelta, 0.000001));
+  return Number.isFinite(zoom) ? zoom : DEFAULT_HOME_MAP_ZOOM;
+}
 
 function formatLastKnownAge(timestamp: string | null): string {
   if (!timestamp) return 'from an earlier session';
@@ -25,6 +35,28 @@ function formatLastKnownAge(timestamp: string | null): string {
   if (minutes < 60) return `from ${minutes} minute${minutes === 1 ? '' : 's'} ago`;
   const hours = Math.round(minutes / 60);
   return `from ${hours} hour${hours === 1 ? '' : 's'} ago`;
+}
+
+function getHomeVenueStatus(coord: { latitude: number; longitude: number }): { insideVenue: boolean; insideBlock: string | null } {
+  return MapFeatureFlagsService.useIjtemaV2Map()
+    ? EntryGateRoutingService.getVenueStatus(coord)
+    : RoutingService.getVenueStatus(coord);
+}
+
+function isInsideHomeVenue(coord: { latitude: number; longitude: number }): boolean {
+  return MapFeatureFlagsService.useIjtemaV2Map()
+    ? EntryGateRoutingService.isInsideIjtemaArea(coord)
+    : RoutingService.isInsideVenue(coord);
+}
+
+function getHomeSnappedCoordinate(coord: { latitude: number; longitude: number }) {
+  if (MapFeatureFlagsService.useIjtemaV2Map()) {
+    const resolved = EntryGateRoutingService.resolveRouteStartForUser(coord);
+    return resolved.candidateNodes.length > 0 ? resolved.coordinate : coord;
+  }
+
+  const nearestNode = RoutingService.findNearestNode(coord);
+  return RoutePointService.nodeToCoordinate(nearestNode);
 }
 
 export function useHomeViewModel() {
@@ -55,6 +87,7 @@ export function useHomeViewModel() {
   const isOffline = !hasInternet;
   const [isMapReady, setIsMapReady] = useState(false);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
+  const [mapZoomLevel, setMapZoomLevel] = useState(DEFAULT_HOME_MAP_ZOOM);
   // Venue status — updated on GPS changes
   const [venueStatus, setVenueStatus] = useState<{ insideVenue: boolean; insideBlock: string | null }>({
     insideVenue: false,
@@ -76,11 +109,12 @@ export function useHomeViewModel() {
   }, [categoryChips]);
 
   const initialRegion: Region = {
-    latitude: 24.9685,
-    longitude: 67.0015,
+    latitude: IJTEMA_MAP_REGION.latitude,
+    longitude: IJTEMA_MAP_REGION.longitude,
     latitudeDelta: 0.01,
     longitudeDelta: 0.01,
   };
+  const shouldTrackLiveLocation = hasLocationPermission && isMapReady && !isNavigating;
 
   const handleGPS = useCallback(
     (coord: { latitude: number; longitude: number }) => {
@@ -95,18 +129,23 @@ export function useHomeViewModel() {
         );
       }
       // Phase 4 — update venue/block status on each GPS tick
-      setVenueStatus(RoutingService.getVenueStatus(coord));
+      setVenueStatus((previous) => {
+        const next = getHomeVenueStatus(coord);
+        return previous.insideVenue === next.insideVenue && previous.insideBlock === next.insideBlock
+          ? previous
+          : next;
+      });
     },
     [isNavigating, settings.autoFollowLocation],
   );
 
   useEffect(() => {
-    if (!hasLocationPermission) return;
-    GPSManagerService.addListener(handleGPS);
+    if (!shouldTrackLiveLocation) return;
+    GPSManagerService.addListener(handleGPS, 'follow');
     return () => {
       GPSManagerService.removeListener(handleGPS);
     };
-  }, [handleGPS, hasLocationPermission]);
+  }, [handleGPS, shouldTrackLiveLocation]);
 
   // Phase 8 — debounced search (200ms)
   const handleSearch = useCallback(
@@ -134,6 +173,10 @@ export function useHomeViewModel() {
     setSearchQuery('');
     setSearchResults([]);
     bottomSheetRef.current?.snapToIndex(1);
+    if (!place.coordinate) {
+      Alert.alert('Place unavailable', place.unavailableReason ?? `${place.name} is not available on the map yet.`);
+      return;
+    }
     mapRef.current?.animateToRegion(
       {
         ...place.coordinate,
@@ -148,7 +191,6 @@ export function useHomeViewModel() {
     const recenterTo = (location: typeof currentLocation) => {
       if (!location) return false;
       if (!mapRef.current) return false;
-      updateSettings({ autoFollowLocation: true });
       mapRef.current.animateToRegion(
         {
           ...location,
@@ -157,9 +199,8 @@ export function useHomeViewModel() {
         },
         1000
       );
-      const nearestNode = RoutingService.findNearestNode(location);
-      setSnappedLocation(RoutePointService.nodeToCoordinate(nearestNode));
-      setVenueStatus(RoutingService.getVenueStatus(location));
+      setSnappedLocation(getHomeSnappedCoordinate(location));
+      setVenueStatus(getHomeVenueStatus(location));
       return true;
     };
 
@@ -171,17 +212,17 @@ export function useHomeViewModel() {
         setCurrentLocation(resolved.coordinate, resolved.source ?? 'live');
         devLogControl('recenter', 'location_resolved', {
           source: resolved.source ?? 'live',
-          insideVenue: RoutingService.isInsideVenue(resolved.coordinate),
+          insideVenue: isInsideHomeVenue(resolved.coordinate),
         });
         const centered = recenterTo(resolved.coordinate);
         if (!centered) {
           Alert.alert('Map still loading', 'Location updated. Try recenter again in a moment.');
         }
 
-        if (!RoutingService.isInsideVenue(resolved.coordinate)) {
+        if (!isInsideHomeVenue(resolved.coordinate)) {
           Alert.alert(
             'Outside Ijtema area',
-            'You are outside the mapped venue. We centered on your position, but routes should start from a point inside the ground.',
+            'You are outside the mapped venue. We centered on your position. Offline routing will enter through the nearest connected official gate.',
           );
         } else if (resolved.source === 'device_last_known') {
           Alert.alert('Using last known location', resolved.message ?? 'Live GPS was unavailable, so the device last known location is being shown.');
@@ -189,7 +230,8 @@ export function useHomeViewModel() {
         return;
       }
 
-      const canUseRemembered = lastKnownLocation && RoutingService.isInsideVenue(lastKnownLocation);
+      const canUseRemembered = lastKnownLocation
+        && (MapFeatureFlagsService.useIjtemaV2Map() || isInsideHomeVenue(lastKnownLocation));
       const actions = [
         {
           text: 'Choose start manually',
@@ -219,6 +261,14 @@ export function useHomeViewModel() {
                 const centered = recenterTo(lastKnownLocation);
                 if (!centered) {
                   Alert.alert('Map still loading', 'Remembered location selected. Try recenter again in a moment.');
+                  return;
+                }
+                if (!isInsideHomeVenue(lastKnownLocation)) {
+                  Alert.alert(
+                    'Using last known location',
+                    `Last known location ${formatLastKnownAge(lastKnownLocationUpdatedAt)}. Offline routing will enter through nearest connected official gate.`,
+                  );
+                  return;
                 }
                 Alert.alert('Using last known location', `Last known location ${formatLastKnownAge(lastKnownLocationUpdatedAt)}.`);
               },
@@ -241,7 +291,7 @@ export function useHomeViewModel() {
       devLogControl('recenter', 'location_error');
       Alert.alert('Location error', 'Could not read location right now. Please try again.');
     }
-  }, [lastKnownLocation, lastKnownLocationUpdatedAt, setCurrentLocation, setHasLocationPermission, setSnappedLocation, updateSettings]);
+  }, [lastKnownLocation, lastKnownLocationUpdatedAt, setCurrentLocation, setHasLocationPermission, setSnappedLocation]);
 
   // Phase 11 — compass reset (north-up, pitch 0)
   const handleCompassReset = useCallback(() => {
@@ -255,6 +305,7 @@ export function useHomeViewModel() {
       if (camera.zoom !== undefined) {
         camera.zoom += 1;
         mapRef.current?.animateCamera(camera);
+        setMapZoomLevel(camera.zoom);
       }
     });
   };
@@ -264,9 +315,14 @@ export function useHomeViewModel() {
       if (camera.zoom !== undefined) {
         camera.zoom -= 1;
         mapRef.current?.animateCamera(camera);
+        setMapZoomLevel(camera.zoom);
       }
     });
   };
+
+  const handleMapRegionChangeComplete = useCallback((region: Region) => {
+    setMapZoomLevel(estimateZoomFromRegion(region));
+  }, []);
 
   const toggleMapType = () => {
     updateSettings({ mapMode: settings.mapMode === 'standard' ? 'satellite' : 'standard' });
@@ -307,6 +363,7 @@ export function useHomeViewModel() {
     categoryChips,
     searchPlaceholder,
     settings,
+    mapZoomLevel,
     updateSettings,
     venueStatus,
     setIsMapReady,
@@ -316,6 +373,7 @@ export function useHomeViewModel() {
     handleCompassReset,
     handleZoomIn,
     handleZoomOut,
+    handleMapRegionChangeComplete,
     toggleMapType,
     clearSearch,
     handleCategoryPress,

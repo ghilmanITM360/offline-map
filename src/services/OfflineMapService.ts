@@ -5,7 +5,16 @@
 
 import * as SQLite from 'expo-sqlite';
 import { Directory, File, Paths } from 'expo-file-system';
-import { IJTEMA_DATA } from '../constants/data';
+import {
+  IJTEMA_BLOCKS,
+  IJTEMA_CENTRAL_POINTS,
+  DATA_ISSUES,
+  IJTEMA_GATES,
+  IJTEMA_MAP_BOUNDS,
+  IJTEMA_NAVIGATION_GRAPH_V2,
+  IJTEMA_RASTAS,
+  IJTEMA_SPECIAL_ROUTES,
+} from '../data/ijtema';
 import { ConnectivityService } from './ConnectivityService';
 
 const DB_NAME = 'offline_maps.db';
@@ -67,6 +76,22 @@ const TILE_DOWNLOAD_RETRIES_DEFAULT = 2;
 const TILE_DOWNLOAD_RETRY_DELAY_MS_DEFAULT = 600;
 const MOCK_TILE_1PX_TRANSPARENT_BASE64 =
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGNgYAAAAAMAASsJTYQAAAAASUVORK5CYII=';
+const V2_OFFLINE_MAP_DATA_VERSION = 'ijtema-v2-2026-06-07';
+
+function getV2OfflineMapPayload() {
+  return {
+    sourceVersion: 'v2',
+    version: V2_OFFLINE_MAP_DATA_VERSION,
+    blocks: IJTEMA_BLOCKS,
+    gates: IJTEMA_GATES,
+    rastas: IJTEMA_RASTAS,
+    specialRoutes: IJTEMA_SPECIAL_ROUTES,
+    centralPoints: IJTEMA_CENTRAL_POINTS,
+    bounds: IJTEMA_MAP_BOUNDS,
+    navigationGraph: IJTEMA_NAVIGATION_GRAPH_V2,
+    dataIssues: DATA_ISSUES,
+  };
+}
 
 function debugOfflineMap(message: string, details?: unknown) {
   if (!__DEV__) return;
@@ -207,7 +232,7 @@ export class OfflineMapService {
   static async saveMapData() {
     await this.runExclusive(async () => {
       const db = await this.getDatabaseOrThrow();
-      const dataString = JSON.stringify(IJTEMA_DATA);
+      const dataString = JSON.stringify(getV2OfflineMapPayload());
       await db.runAsync(
         'INSERT OR REPLACE INTO map_data (id, data, download_date) VALUES (?, ?, ?);',
         ['ijtema_2026', dataString, new Date().toISOString()]
@@ -606,6 +631,7 @@ export class OfflineMapService {
   }
 
   static async deleteMapData() {
+    const errors: unknown[] = [];
     await this.runExclusive(async () => {
       try {
         const db = await this.getDatabaseOrThrow();
@@ -613,6 +639,7 @@ export class OfflineMapService {
         await db.runAsync('DELETE FROM tiles;');
       } catch (error) {
         console.warn('[OfflineMapService] SQLite cleanup skipped or failed', error);
+        errors.push(error);
       }
     });
 
@@ -622,6 +649,11 @@ export class OfflineMapService {
       }
     } catch (error) {
       console.warn('[OfflineMapService] Tile directory cleanup skipped or failed', error);
+      errors.push(error);
+    }
+
+    if (errors.length > 0) {
+      throw new Error(`Offline map delete failed in ${errors.length} cleanup step(s).`);
     }
   }
 

@@ -2,7 +2,47 @@ apply plugin: "com.android.application"
 apply plugin: "org.jetbrains.kotlin.android"
 apply plugin: "com.facebook.react"
 
-def projectRoot = rootDir.getAbsoluteFile().getParentFile().getAbsolutePath()
+def projectRootDir = rootDir.getAbsoluteFile().getParentFile()
+def projectRoot = projectRootDir.getAbsolutePath()
+
+def readLocalEnvValue = { String envKey ->
+    [".env.local", ".env"].findResult { fileName ->
+        def envFile = new File(projectRootDir, fileName)
+        if (!envFile.exists()) return null
+
+        envFile.readLines().findResult { rawLine ->
+            def line = rawLine.trim()
+            if (!line || line.startsWith("#")) return null
+            if (line.startsWith("export ")) {
+                line = line.substring(7).trim()
+            }
+
+            def separatorIndex = line.indexOf("=")
+            if (separatorIndex <= 0) return null
+
+            def key = line.substring(0, separatorIndex).trim()
+            if (key != envKey) return null
+
+            def value = line.substring(separatorIndex + 1).trim()
+            if (
+                (value.startsWith("\"") && value.endsWith("\"")) ||
+                (value.startsWith("'") && value.endsWith("'"))
+            ) {
+                value = value.substring(1, value.length() - 1)
+            }
+            return value
+        }
+    }
+}
+
+def googleMapsApiKey = (
+    System.getenv("EXPO_PUBLIC_GOOGLE_MAPS_ANDROID_API_KEY")
+        ?: (findProperty("EXPO_PUBLIC_GOOGLE_MAPS_ANDROID_API_KEY") ?: "")
+)?.trim()
+
+if (!googleMapsApiKey) {
+    googleMapsApiKey = (readLocalEnvValue("EXPO_PUBLIC_GOOGLE_MAPS_ANDROID_API_KEY") ?: "").trim()
+}
 
 /**
  * This is the configuration block to customize your React Native Android app.
@@ -94,6 +134,7 @@ android {
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
         versionName "1.0.0"
+        manifestPlaceholders = [googleMapsApiKey: googleMapsApiKey]
 
         buildConfigField "String", "REACT_NATIVE_RELEASE_LEVEL", "\"${findProperty('reactNativeReleaseLevel') ?: 'stable'}\""
     }

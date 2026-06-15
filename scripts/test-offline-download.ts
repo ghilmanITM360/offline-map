@@ -133,7 +133,7 @@ for (const z of zoomLevels) {
   }
 }
 
-assert.equal(generatedTiles.length, 79, 'Tile list generation must remain 79 tiles for configured bounds and zoom levels');
+assert.equal(generatedTiles.length, 214, 'Tile list generation must cover the expanded v2 bounds for configured zoom levels');
 const first = generatedTiles[0];
 const firstUrl = `https://tile.openstreetmap.org/${first.z}/${first.x}/${first.y}.png`;
 assert.equal(first.z, 14, 'First tile should start from zoom 14');

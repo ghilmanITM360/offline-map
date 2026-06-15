@@ -47,7 +47,7 @@ const GUIDE_SECTIONS: GuideSection[] = [
     title: '2. Offline Maps',
     urduTitle: '۲۔ آف لائن نقشہ',
     body:
-      'Download map data before entering the crowded area. If tile download fails, internal venue routing can still work in venue-only mode.',
+      'Download map data before entering the crowded area. Internal search and directions work from bundled Ijtema data, so if tile download fails, internal venue routing can still work in venue-only mode.',
   },
   {
     key: 'search',
@@ -71,7 +71,7 @@ const GUIDE_SECTIONS: GuideSection[] = [
     title: '5. Choose Start Source',
     urduTitle: '۵۔ آغاز کا مقام',
     body:
-      'Use My Current Location = live GPS now. Use Last Known Location = saved previous valid location. Choose start manually = pick your own start point.',
+      'Use My Current Location = live GPS now. Use Last Known Location = saved previous valid location. Choose start manually = pick your own start point. If you start outside Ijtema, routes enter from the nearest connected official gate.',
   },
   {
     key: 'directions',
@@ -79,7 +79,7 @@ const GUIDE_SECTIONS: GuideSection[] = [
     title: '6. Directions Screen',
     urduTitle: '۶۔ ڈائریکشن اسکرین',
     body:
-      'Directions shows FROM, TO, route preview, ETA, distance, and step list. If GPS fails or is outside venue, choose manual start and retry.',
+      'Directions helps you choose where you are starting from. Pick current location, last known location, or manual start. When route is ready, tap Show route on map to see blue line, distance, and ETA on Home.',
   },
   {
     key: 'navigation',
@@ -111,7 +111,7 @@ const GUIDE_SECTIONS: GuideSection[] = [
     title: '10. GPS & Permission Problems',
     urduTitle: '۱۰۔ جی پی ایس مسائل',
     body:
-      'If permission is denied, open Manage in Settings. If signal is weak, pause and wait. If outside Ijtema warning appears, select a start point inside the venue.',
+      'If permission is denied, open Manage in Settings. If signal is weak, pause and wait. If you are outside Ijtema, the app will enter through the nearest connected official gate automatically.',
   },
   {
     key: 'safety',
@@ -127,7 +127,7 @@ const GUIDE_SECTIONS: GuideSection[] = [
     title: '12. Troubleshooting',
     urduTitle: '۱۲۔ مسئلہ حل',
     body:
-      'Map not visible: verify key and map mode. Route not calculating: change start point. GPS not working: use last known or manual start. Offline download failed: retry on stable network.',
+      'Map not visible: use venue map only. Route not calculating: retry or change start point. GPS not working: use last known or manual start. If a gate needs connector verification or is not ready for navigation, choose another connected official gate.',
   },
 ];
 
