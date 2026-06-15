@@ -55,7 +55,7 @@ const CATEGORY_CHIPS: SearchCategoryChip[] = [
   { id: 'blocks', label: 'Blocks' },
   { id: 'rastas', label: 'Rastas' },
   { id: 'gates', label: 'Gates' },
-  { id: 'special_routes', label: 'Shahr-e-Pindal' },
+  { id: 'special_routes', label: 'Pindal' },
   { id: 'masjids', label: 'Masjids' },
   { id: 'terminals', label: 'Terminals' },
   { id: 'help', label: 'Help' },

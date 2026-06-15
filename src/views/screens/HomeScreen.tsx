@@ -236,8 +236,8 @@ export function HomeScreen() {
     : null;
   const showPreviewStartMarker = Boolean(
     activePreviewRoute &&
-    previewStartCoordinate &&
-    (routePlannerOrigin || activePreviewRoute.startResolution?.mode === 'outside' || !currentLocation),
+    routePlannerOrigin &&
+    previewStartCoordinate
   );
   const previewRouteSummary = useMemo(() => {
     if (!activePreviewRoute) return null;
@@ -257,8 +257,9 @@ export function HomeScreen() {
       developerMode: __DEV__ && developerModeEnabled,
       graphOnlyFallback: graphOnlyFallbackUsed,
       zoomLevel: mapZoomLevel,
+      mapFilter: activeCategory,
     }),
-    [developerModeEnabled, graphOnlyFallbackUsed, mapZoomLevel, selectedPlace],
+    [activeCategory, developerModeEnabled, graphOnlyFallbackUsed, mapZoomLevel, selectedPlace],
   );
   const effectiveInitialRegion = useV2Map
     ? {
@@ -277,13 +278,15 @@ export function HomeScreen() {
     : null;
 
   const isFav = selectedPlace ? favorites.some((f) => f.placeId === selectedPlace.id) : false;
-  const showOutsideBanner = !!currentLocation && !venueStatus.insideVenue && !outsideBannerDismissed;
+  const showOutsideBanner = !!currentLocation && !venueStatus.insideVenue && !outsideBannerDismissed && !activePreviewRoute && !isSearchFocused && searchQuery.length === 0 && !activeCategory;
   const showMapWarningBanner = !hasGoogleMapsKey || mapLoadFailed;
   const topInsetBase = Math.max(insets.top, Platform.OS === 'android' ? StatusBar.currentHeight ?? 0 : 0);
   const offlineTop = topInsetBase + 140;
   const mapWarningTop = offlineTop + (isOffline ? 42 : 0) + 8;
   const outsideBannerTop = mapWarningTop + (showMapWarningBanner ? 56 : 0) + 8;
   const rightControlsTop = outsideBannerTop + (showOutsideBanner ? 60 : 12);
+  const routePreviewCardHeight = activePreviewRoute ? 184 : 0;
+  const rightControlsBottom = Math.max(insets.bottom, 16) + routePreviewCardHeight + 16;
 
   useEffect(() => {
     Animated.timing(searchFocusAnim, {
@@ -458,7 +461,7 @@ export function HomeScreen() {
             provider={Platform.OS === 'android' && hasGoogleMapsKey ? PROVIDER_GOOGLE : undefined}
             initialRegion={effectiveInitialRegion}
             mapType={hasGoogleMapsKey ? (isOffline ? 'none' : mapType) : 'none'}
-            showsUserLocation
+            showsUserLocation={false}
             showsMyLocationButton={false}
             showsCompass={false}
             rotateEnabled={!settings.keepNorthFixed}
@@ -509,108 +512,156 @@ export function HomeScreen() {
 
           {useV2Map ? (
             <>
-              {v2MapLayers.rastas.map((rasta) => (
-                <React.Fragment key={`v2_rasta_${rasta.id}`}>
-                  <Polyline
-                    coordinates={rasta.polyline}
-                    strokeColor={rasta.isSelected ? 'rgba(26,115,232,0.48)' : 'rgba(60,64,67,0.44)'}
-                    strokeWidth={rasta.isSelected ? 9 : 7}
-                    zIndex={rasta.isSelected ? 8 : 2}
+              {v2MapLayers.rastas.map((rasta) => {
+                const focused = v2MapLayers.activeMapFilter === 'rastas';
+                return (
+                  <React.Fragment key={`v2_rasta_${rasta.id}`}>
+                    <Polyline
+                      coordinates={rasta.polyline}
+                      strokeColor={rasta.isSelected ? 'rgba(26,115,232,0.55)' : focused ? 'rgba(230,81,0,0.55)' : 'rgba(60,64,67,0.44)'}
+                      strokeWidth={rasta.isSelected ? 11 : focused ? 12 : 7}
+                      zIndex={rasta.isSelected ? 8 : focused ? 4 : 2}
+                    />
+                    <Polyline
+                      coordinates={rasta.polyline}
+                      strokeColor={rasta.isSelected ? '#1A73E8' : focused ? '#E65100' : 'rgba(255,255,255,0.9)'}
+                      strokeWidth={rasta.isSelected ? 6 : focused ? 7 : 4}
+                      zIndex={rasta.isSelected ? 9 : focused ? 5 : 3}
+                    />
+                  </React.Fragment>
+                );
+              })}
+
+              {v2MapLayers.visibleRastaLabels.map((rasta) => {
+                const focused = v2MapLayers.activeMapFilter === 'rastas';
+                return (
+                  <Marker key={`v2_rasta_label_${rasta.id}`} coordinate={rasta.labelCoordinate} anchor={{ x: 0.5, y: 0.5 }} zIndex={7} tracksViewChanges={false}>
+                    <View style={[styles.rastaLabel, focused && styles.rastaLabelFocused, rasta.isSelected && styles.v2SelectedLabel]}>
+                      <Text style={[styles.rastaLabelText, focused && styles.rastaLabelTextFocused]}>{rasta.label}</Text>
+                    </View>
+                  </Marker>
+                );
+              })}
+
+              {v2MapLayers.specialRoutes.map((route) => {
+                const focused = v2MapLayers.activeMapFilter === 'special_routes';
+                return (
+                  <React.Fragment key={`v2_special_${route.id}`}>
+                    <Polyline
+                      coordinates={route.polyline}
+                      strokeColor={route.isSelected ? '#6A0DAD' : focused ? 'rgba(106,13,173,0.65)' : 'rgba(142,36,170,0.55)'}
+                      strokeWidth={route.isSelected ? 7 : focused ? 8 : 3}
+                      zIndex={route.isSelected ? 10 : focused ? 6 : 4}
+                    />
+                    {focused && (
+                      <Polyline
+                        coordinates={route.polyline}
+                        strokeColor="rgba(255,255,255,0.55)"
+                        strokeWidth={3}
+                        zIndex={route.isSelected ? 11 : 7}
+                      />
+                    )}
+                  </React.Fragment>
+                );
+              })}
+
+              {v2MapLayers.visibleSpecialRouteLabels.map((route) => {
+                const focused = v2MapLayers.activeMapFilter === 'special_routes';
+                return (
+                  <Marker key={`v2_special_label_${route.id}`} coordinate={route.labelCoordinate} anchor={{ x: 0.5, y: 0.5 }} zIndex={9} tracksViewChanges={false}>
+                    <View style={[styles.v2RouteLabel, focused && styles.v2RouteLabelFocused, route.isSelected && styles.v2SelectedLabel]}>
+                      <Text style={[styles.v2RouteLabelText, focused && styles.v2RouteLabelTextFocused]}>{route.label}</Text>
+                    </View>
+                  </Marker>
+                );
+              })}
+
+              {showBlockPolygons && v2MapLayers.blocks.map((block) => {
+                const focused = v2MapLayers.activeMapFilter === 'blocks';
+                return (
+                  <Polygon
+                    key={`v2_block_${block.id}`}
+                    coordinates={block.polygon}
+                    fillColor={block.isSelected ? 'rgba(26,115,232,0.42)' : focused ? 'rgba(46,125,50,0.30)' : 'rgba(46,125,50,0.14)'}
+                    strokeColor={block.isSelected ? '#1A73E8' : focused ? '#1B5E20' : '#2E7D32'}
+                    strokeWidth={block.isSelected ? 3 : focused ? 2 : 1.2}
+                    tappable
+                    onPress={() => {
+                      const place = V2PlaceAdapter.getPlaceById(block.id);
+                      if (!place) return;
+                      dismissSearch();
+                      handlePlaceSelect(place);
+                    }}
                   />
-                  <Polyline
-                    coordinates={rasta.polyline}
-                    strokeColor={rasta.isSelected ? '#1A73E8' : 'rgba(255,255,255,0.9)'}
-                    strokeWidth={rasta.isSelected ? 5 : 4}
-                    zIndex={rasta.isSelected ? 9 : 3}
-                  />
-                </React.Fragment>
-              ))}
+                );
+              })}
 
-              {v2MapLayers.visibleRastaLabels.map((rasta) => (
-                <Marker key={`v2_rasta_label_${rasta.id}`} coordinate={rasta.labelCoordinate} anchor={{ x: 0.5, y: 0.5 }} tracksViewChanges={false}>
-                  <View style={[styles.rastaLabel, rasta.isSelected && styles.v2SelectedLabel]}>
-                    <Text style={styles.rastaLabelText}>{rasta.label}</Text>
-                  </View>
-                </Marker>
-              ))}
+              {v2MapLayers.visibleBlockLabels.map((block) => {
+                const focused = v2MapLayers.activeMapFilter === 'blocks';
+                return (
+                  <Marker key={`v2_block_label_${block.id}`} coordinate={block.center} anchor={{ x: 0.5, y: 0.5 }} zIndex={8} tracksViewChanges={false}>
+                    <View style={[styles.v2BlockLabel, focused && styles.v2BlockLabelFocused, block.isSelected && styles.v2SelectedBlockLabel]}>
+                      <Text style={[styles.v2BlockLabelText, focused && styles.v2BlockLabelTextFocused, block.isSelected && styles.v2SelectedBlockLabelText]}>
+                        {block.label}
+                      </Text>
+                    </View>
+                  </Marker>
+                );
+              })}
 
-              {v2MapLayers.specialRoutes.map((route) => (
-                <React.Fragment key={`v2_special_${route.id}`}>
-                  <Polyline
-                    coordinates={route.polyline}
-                    strokeColor={route.isSelected ? '#8E24AA' : 'rgba(142,36,170,0.55)'}
-                    strokeWidth={route.isSelected ? 5 : 3}
-                    zIndex={route.isSelected ? 10 : 4}
-                  />
-                </React.Fragment>
-              ))}
-
-              {v2MapLayers.visibleSpecialRouteLabels.map((route) => (
-                <Marker key={`v2_special_label_${route.id}`} coordinate={route.labelCoordinate} anchor={{ x: 0.5, y: 0.5 }} tracksViewChanges={false}>
-                  <View style={[styles.v2RouteLabel, route.isSelected && styles.v2SelectedLabel]}>
-                    <Text style={styles.v2RouteLabelText}>{route.label}</Text>
-                  </View>
-                </Marker>
-              ))}
-
-              {showBlockPolygons && v2MapLayers.blocks.map((block) => (
-                <Polygon
-                  key={`v2_block_${block.id}`}
-                  coordinates={block.polygon}
-                  fillColor={block.isSelected ? 'rgba(26,115,232,0.38)' : 'rgba(46,125,50,0.14)'}
-                  strokeColor={block.isSelected ? '#1A73E8' : '#2E7D32'}
-                  strokeWidth={block.isSelected ? 3 : 1.2}
-                  tappable
-                  onPress={() => {
-                    const place = V2PlaceAdapter.getPlaceById(block.id);
-                    if (!place) return;
-                    dismissSearch();
-                    handlePlaceSelect(place);
-                  }}
-                />
-              ))}
-
-              {v2MapLayers.visibleBlockLabels.map((block) => (
-                <Marker key={`v2_block_label_${block.id}`} coordinate={block.center} anchor={{ x: 0.5, y: 0.5 }} tracksViewChanges={false}>
-                  <View style={[styles.v2BlockLabel, block.isSelected && styles.v2SelectedBlockLabel]}>
-                    <Text style={[styles.v2BlockLabelText, block.isSelected && styles.v2SelectedBlockLabelText]}>
-                      {block.label}
-                    </Text>
-                  </View>
-                </Marker>
-              ))}
-
-              {v2MapLayers.visibleGateMarkers.map((gate) => (
-                <Marker
-                  key={`v2_gate_${gate.id}`}
-                  coordinate={gate.coordinate}
-                  anchor={{ x: 0.5, y: 1 }}
-                  tracksViewChanges={false}
-                  onPress={() => {
-                    const place = V2PlaceAdapter.getPlaceById(gate.id);
-                    if (!place) return;
-                    dismissSearch();
-                    handlePlaceSelect(place);
-                  }}
-                >
-                  <View style={[styles.v2GateMarker, gate.needsConnectorVerification && styles.v2GateMarkerWarning]}>
-                    <Text style={styles.v2GateMarkerText}>{gate.label}</Text>
-                  </View>
-                </Marker>
-              ))}
+              {v2MapLayers.visibleGateMarkers.map((gate) => {
+                const focused = v2MapLayers.activeMapFilter === 'gates';
+                const gateNum = gate.label.replace('Gate ', '');
+                const showFull = gate.isSelected || mapZoomLevel >= 16.5;
+                const showCompact = !showFull && mapZoomLevel >= 14;
+                const showNumber = !showFull && !showCompact;
+                const displayLabel = showFull ? gate.label : showCompact ? `G${gateNum}` : gateNum;
+                const isCompact = !showFull;
+                return (
+                  <Marker
+                    key={`v2_gate_${gate.id}`}
+                    coordinate={gate.coordinate}
+                    anchor={{ x: 0.5, y: 0.5 }}
+                    zIndex={gate.isSelected ? 16 : focused ? 14 : 12}
+                    tracksViewChanges={focused || gate.isSelected}
+                    onPress={() => {
+                      const place = V2PlaceAdapter.getPlaceById(gate.id);
+                      if (!place) return;
+                      dismissSearch();
+                      handlePlaceSelect(place);
+                    }}
+                  >
+                    <View style={[
+                      isCompact ? styles.v2GateMarkerCompact : styles.v2GateMarker,
+                      isCompact && focused && styles.v2GateMarkerCompactFocused,
+                      !isCompact && focused && styles.v2GateMarkerFocused,
+                      gate.needsConnectorVerification && styles.v2GateMarkerWarning,
+                      gate.isSelected && styles.v2GateMarkerSelected,
+                    ]}>
+                      <Text style={[
+                        isCompact ? styles.v2GateMarkerTextCompact : styles.v2GateMarkerText,
+                        !isCompact && focused && styles.v2GateMarkerTextFocused,
+                        showNumber && styles.v2GateMarkerTextNumber,
+                      ]}>{displayLabel}</Text>
+                    </View>
+                  </Marker>
+                );
+              })}
 
               {activePreviewRoute && activePreviewRoute.coordinates.length > 1 && (
                 <>
+                  {/* White outline underneath for contrast */}
                   <Polyline
                     coordinates={activePreviewRoute.coordinates}
-                    strokeColor="rgba(26,115,232,0.36)"
-                    strokeWidth={9}
+                    strokeColor="rgba(255,255,255,0.95)"
+                    strokeWidth={11}
                     zIndex={14}
                   />
+                  {/* Blue route line on top */}
                   <Polyline
                     coordinates={activePreviewRoute.coordinates}
                     strokeColor="#1A73E8"
-                    strokeWidth={5}
+                    strokeWidth={6}
                     zIndex={15}
                   />
                 </>
@@ -730,7 +781,8 @@ export function HomeScreen() {
             );
           })}
 
-          {selectedPlace && selectedPlaceMarkerCoordinate && (
+          {/* Selected place pin — hidden during route preview to avoid duplicate destination marker */}
+          {selectedPlace && selectedPlaceMarkerCoordinate && !activePreviewRoute && (
             <Marker coordinate={selectedPlaceMarkerCoordinate}>
               <View style={styles.selectedMarker}>
                 <MapPin size={32} color="#EA4335" fill="#EA4335" />
@@ -738,7 +790,8 @@ export function HomeScreen() {
             </Marker>
           )}
 
-          {!selectedPlace && previewDestinationCoordinate && (
+          {/* Route preview destination pin — shown when route is active */}
+          {previewDestinationCoordinate && activePreviewRoute && (
             <Marker coordinate={previewDestinationCoordinate}>
               <View style={styles.selectedMarker}>
                 <MapPin size={30} color="#EA4335" fill="#EA4335" />
@@ -813,6 +866,8 @@ export function HomeScreen() {
               onFocus={() => setIsSearchFocused(true)}
               returnKeyType="search"
               onSubmitEditing={Keyboard.dismiss}
+              multiline={false}
+              numberOfLines={1}
             />
             {searchQuery.length > 0 ? (
               <Pressable
@@ -998,7 +1053,7 @@ export function HomeScreen() {
               </View>
             </View>
 
-            <View style={[styles.bottomControls, { bottom: Math.max(insets.bottom, 16) + 96 }]}>
+            <View style={[styles.bottomControls, { bottom: rightControlsBottom + 80 }]}>
               <Pressable
                 style={styles.recenterButton}
                 onPress={() => {
@@ -1294,6 +1349,9 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#202124',
     paddingHorizontal: 4,
+    height: 52,
+    // Prevent multiline overflow that causes "..." artifacts below placeholder
+    textAlignVertical: 'center',
   },
   searchResultsContainer: {
     backgroundColor: '#FFFFFF',
@@ -1331,20 +1389,19 @@ const styles = StyleSheet.create({
   chipsContent: { paddingLeft: 12, paddingRight: 88, paddingBottom: 8 },
   chip: {
     backgroundColor: '#FFFFFF',
-    paddingHorizontal: 18,
+    paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 20,
     marginRight: 8,
     elevation: 2,
     borderWidth: 1,
     borderColor: '#DADCE0',
-    minWidth: 72,
-    maxWidth: 150,
+    minWidth: 64,
     alignItems: 'center',
   },
-  activeChip: { backgroundColor: '#E8F0FE', borderColor: '#1A73E8' },
-  chipText: { fontSize: 14, color: '#3C4043', fontWeight: '500' },
-  activeChipText: { color: '#1A73E8' },
+  activeChip: { backgroundColor: '#1A73E8', borderColor: '#1A73E8' },
+  chipText: { fontSize: 13, color: '#3C4043', fontWeight: '500' },
+  activeChipText: { color: '#FFFFFF', fontWeight: '700' },
   rightControls: { position: 'absolute', right: 12, zIndex: 5 },
   controlButton: {
     backgroundColor: '#FFFFFF',
@@ -1498,20 +1555,111 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   v2GateMarker: {
-    backgroundColor: '#2E7D32',
-    borderRadius: 12,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderWidth: 1,
+    backgroundColor: '#1565C0',
+    borderRadius: 14,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderWidth: 1.5,
     borderColor: '#FFFFFF',
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.35,
+    shadowRadius: 3,
   },
   v2GateMarkerWarning: {
-    backgroundColor: '#B45309',
+    backgroundColor: '#E65100',
   },
   v2GateMarkerText: {
     color: '#FFFFFF',
-    fontSize: 9,
+    fontSize: 12,
     fontWeight: '800',
+    letterSpacing: 0.3,
+  },
+  v2GateMarkerFocused: {
+    backgroundColor: '#0D47A1',
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+    elevation: 8,
+  },
+  v2GateMarkerSelected: {
+    backgroundColor: '#1A237E',
+    borderWidth: 2.5,
+    borderColor: '#FFD700',
+  },
+  v2GateMarkerTextFocused: {
+    fontSize: 14,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+  },
+  v2GateMarkerCompact: {
+    backgroundColor: '#1565C0',
+    borderRadius: 14,
+    width: 28,
+    height: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: '#FFFFFF',
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 2,
+  },
+  v2GateMarkerCompactFocused: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    borderWidth: 2,
+    elevation: 8,
+  },
+  v2GateMarkerTextCompact: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '800',
+    textAlign: 'center',
+  },
+  v2GateMarkerTextNumber: {
+    fontSize: 12,
+    fontWeight: '900',
+  },
+  rastaLabelFocused: {
+    backgroundColor: '#E65100',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 10,
+    elevation: 4,
+  },
+  rastaLabelTextFocused: {
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  v2RouteLabelFocused: {
+    backgroundColor: '#6A0DAD',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 10,
+    elevation: 4,
+  },
+  v2RouteLabelTextFocused: {
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  v2BlockLabelFocused: {
+    backgroundColor: '#1B5E20',
+    borderColor: '#1B5E20',
+    minWidth: 66,
+    minHeight: 32,
+    elevation: 4,
+  },
+  v2BlockLabelTextFocused: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '900',
   },
   selectedMarker: { alignItems: 'center', justifyContent: 'center' },
   previewStartMarker: {

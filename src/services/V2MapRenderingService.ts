@@ -51,6 +51,7 @@ export interface V2GateLayer {
 export interface V2HomeMapLayers {
   useV2Map: boolean;
   graphOnlyFallbackSupported: boolean;
+  activeMapFilter: string;
   venueBoundary: Coordinate[];
   blocks: V2BlockLayer[];
   gates: V2GateLayer[];
@@ -70,12 +71,14 @@ export interface V2MapLayerOptions {
   developerMode?: boolean;
   graphOnlyFallback?: boolean;
   zoomLevel?: number;
+  mapFilter?: string | null;
 }
 
 type V2BaseLayers = Omit<
   V2HomeMapLayers,
   | 'useV2Map'
   | 'graphOnlyFallbackSupported'
+  | 'activeMapFilter'
   | 'selectedMarkerCoordinate'
   | 'developerLabels'
   | 'visibleBlockLabels'
@@ -89,6 +92,7 @@ const MEDIUM_ZOOM = 15;
 const HIGH_ZOOM = 16.5;
 const DEFAULT_ZOOM = 15;
 const MAJOR_GATE_IDS = new Set(['GATE_05', 'GATE_08', 'GATE_13', 'GATE_21', 'GATE_22']);
+const MAP_FILTERS = new Set(['all', 'blocks', 'rastas', 'gates', 'special_routes']);
 
 const midpoint = (points: Coordinate[]): Coordinate => points[Math.floor(points.length / 2)] ?? points[0];
 
@@ -107,6 +111,13 @@ function pickByZoom<T extends { id: string }>(
     return items.filter((item, index) => item.id === selectedId || index % mediumEvery === 0);
   }
   return items.filter((item, index) => item.id === selectedId || lowZoomPredicate(item, index));
+}
+
+function normalizeMapFilter(filter: string | null | undefined): string {
+  if (!filter) return 'all';
+  const normalized = filter.toLowerCase();
+  if (normalized === 'specialroutes' || normalized === 'shahr-e-pindal') return 'special_routes';
+  return MAP_FILTERS.has(normalized) ? normalized : 'all';
 }
 
 export class V2MapRenderingService {
@@ -216,69 +227,69 @@ export class V2MapRenderingService {
     const selectedId = options.selectedPlaceId ?? options.selectedPlace?.id ?? null;
     const baseLayers = this.getBaseLayers();
     const zoomLevel = options.zoomLevel ?? DEFAULT_ZOOM;
+    const mapFilter = normalizeMapFilter(options.mapFilter);
+
+    const showBlocks = mapFilter === 'all' || mapFilter === 'blocks';
+    const showGates = mapFilter === 'all' || mapFilter === 'gates';
+    const showRastas = mapFilter === 'all' || mapFilter === 'rastas';
+    const showSpecialRoutes = mapFilter === 'all' || mapFilter === 'special_routes';
+
+    const blocks = showBlocks
+      ? baseLayers.blocks.map((block) => ({
+          ...block,
+          isSelected: selectedId === block.id,
+          pulse: selectedId === block.id,
+        }))
+      : [];
+    const gates = showGates
+      ? baseLayers.gates.map((gate) => ({
+          ...gate,
+          isSelected: selectedId === gate.id,
+        }))
+      : [];
+    const rastas = showRastas
+      ? baseLayers.rastas.map((rasta) => ({
+          ...rasta,
+          isSelected: selectedId === rasta.id,
+        }))
+      : [];
+    const specialRoutes = showSpecialRoutes
+      ? baseLayers.specialRoutes.map((route) => ({
+          ...route,
+          isSelected: selectedId === route.id,
+        }))
+      : [];
+
+    const visibleBlockLabels = mapFilter === 'blocks'
+      ? blocks
+      : pickByZoom(blocks, zoomLevel, selectedId, 4, () => false);
+    const visibleGateMarkers = mapFilter === 'gates'
+      ? gates
+      : pickByZoom(gates, zoomLevel, selectedId, 2, (gate) => MAJOR_GATE_IDS.has(gate.id));
+    const visibleRastaLabels = mapFilter === 'rastas'
+      ? rastas
+      : zoomLevel < LOW_ZOOM
+      ? rastas.filter((rasta) => rasta.id === selectedId).map((rasta) => ({ ...rasta, isSelected: true }))
+      : pickByZoom(rastas, zoomLevel, selectedId, 2, (_, index) => index % 3 === 0);
+    const visibleSpecialRouteLabels = mapFilter === 'special_routes'
+      ? specialRoutes
+      : zoomLevel < MEDIUM_ZOOM
+      ? specialRoutes.filter((route) => route.id === selectedId).map((route) => ({ ...route, isSelected: true }))
+      : specialRoutes;
 
     return {
       useV2Map: MapFeatureFlagsService.useIjtemaV2Map(),
       graphOnlyFallbackSupported: Boolean(options.graphOnlyFallback),
+      activeMapFilter: mapFilter,
       venueBoundary: baseLayers.venueBoundary,
-      blocks: baseLayers.blocks.map((block) => ({
-        ...block,
-        isSelected: selectedId === block.id,
-        pulse: selectedId === block.id,
-      })),
-      visibleBlockLabels: pickByZoom(
-        baseLayers.blocks.map((block) => ({
-          ...block,
-          isSelected: selectedId === block.id,
-          pulse: selectedId === block.id,
-        })),
-        zoomLevel,
-        selectedId,
-        4,
-        () => false,
-      ),
-      gates: baseLayers.gates.map((gate) => ({
-        ...gate,
-        isSelected: selectedId === gate.id,
-      })),
-      visibleGateMarkers: pickByZoom(
-        baseLayers.gates.map((gate) => ({
-          ...gate,
-          isSelected: selectedId === gate.id,
-        })),
-        zoomLevel,
-        selectedId,
-        2,
-        (gate) => MAJOR_GATE_IDS.has(gate.id),
-      ),
-      rastas: baseLayers.rastas.map((rasta) => ({
-        ...rasta,
-        isSelected: selectedId === rasta.id,
-      })),
-      visibleRastaLabels:
-        zoomLevel < LOW_ZOOM
-          ? baseLayers.rastas.filter((rasta) => rasta.id === selectedId).map((rasta) => ({ ...rasta, isSelected: true }))
-          : pickByZoom(
-              baseLayers.rastas.map((rasta) => ({
-                ...rasta,
-                isSelected: selectedId === rasta.id,
-              })),
-              zoomLevel,
-              selectedId,
-              2,
-              (_, index) => index % 3 === 0,
-            ),
-      specialRoutes: baseLayers.specialRoutes.map((route) => ({
-        ...route,
-        isSelected: selectedId === route.id,
-      })),
-      visibleSpecialRouteLabels:
-        zoomLevel < MEDIUM_ZOOM
-          ? baseLayers.specialRoutes.filter((route) => route.id === selectedId).map((route) => ({ ...route, isSelected: true }))
-          : baseLayers.specialRoutes.map((route) => ({
-              ...route,
-              isSelected: selectedId === route.id,
-            })),
+      blocks,
+      visibleBlockLabels,
+      gates,
+      visibleGateMarkers,
+      rastas,
+      visibleRastaLabels,
+      specialRoutes,
+      visibleSpecialRouteLabels,
       developerLabels: options.developerMode ? this.getDeveloperLabels() : [],
       selectedMarkerCoordinate: options.selectedPlace ? V2PlaceAdapter.getMarkerCoordinate(options.selectedPlace) : null,
     };
