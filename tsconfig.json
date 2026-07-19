@@ -8,5 +8,5 @@
     "types": ["react", "react-native"]
   },
   "include": ["App.tsx", "src/**/*.ts", "src/**/*.tsx"],
-  "exclude": ["scripts"]
+  "exclude": ["scripts", "src/__tests__"]
 }

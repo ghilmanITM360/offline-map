@@ -59,7 +59,14 @@ export interface Block {
   role?: string;
 }
 
-export interface Place {
+/**
+ * Fields shared by every Place regardless of source version. `sourceVersion`
+ * (and, for v2, `sourceKind`) are deliberately excluded here and required on
+ * each variant below — this is what makes silent v1-fallback impossible to
+ * construct: every Place literal must explicitly declare which map system it
+ * came from.
+ */
+export interface PlaceCommon {
   id: string;
   name: string;
   urduName?: string;
@@ -89,7 +96,6 @@ export interface Place {
   snappedCoordinate?: Coordinate;
   thumbnail?: string;
   aliases?: string[];
-  sourceVersion?: 'v1' | 'v2';
   secondaryLabel?: string;
   polygon?: Coordinate[];
   polyline?: Coordinate[];
@@ -97,8 +103,31 @@ export interface Place {
   isRoutable?: boolean;
   isStartRoutable?: boolean;
   unavailableReason?: string;
+  /**
+   * Presentational-only warning shown when this place is selected (e.g. a gate
+   * whose source coordinate is flagged `needs_verification`). Must never be used
+   * to gate routing/navigation logic — that stays on `routingStatus` /
+   * `isRoutable` / `canStartRouteFromOutside`. See docs/OUTSIDE_IJTEMA_ROUTING_RULE.md.
+   */
+  verificationWarning?: string;
   developerLabel?: string;
 }
+
+/** Place sourced from the legacy `IJTEMA_DATA` / `LANDMARK_PLACES` (v1) map data. */
+export interface V1Place extends PlaceCommon {
+  sourceVersion: 'v1';
+}
+
+/** What kind of v2 focused-data entity a V2Place was adapted from. */
+export type V2PlaceSourceKind = 'block' | 'gate' | 'rasta' | 'special_route';
+
+/** Place sourced from the authoritative `src/data/ijtema/*` (v2) map data. */
+export interface V2Place extends PlaceCommon {
+  sourceVersion: 'v2';
+  sourceKind: V2PlaceSourceKind;
+}
+
+export type Place = V1Place | V2Place;
 
 export interface UserSettings {
   mapMode: MapMode;
@@ -248,9 +277,14 @@ export interface OfflineTile {
   path: string;
 }
 
-export interface RoutePreview {
+/**
+ * Fields shared by every route preview regardless of source version.
+ * `sourceVersion` is required on each variant below so a route can never be
+ * silently treated as v1 by omission — see `Place`/`PlaceCommon` above for
+ * the same pattern.
+ */
+export interface RoutePreviewCommon {
   id: string;
-  sourceVersion?: 'v1' | 'v2';
   coordinates: Coordinate[];
   nodes: string[];
   totalDistance: number;
@@ -261,8 +295,22 @@ export interface RoutePreview {
   instructions?: NavigationInstruction[];
 }
 
-export interface V2ActiveRoute extends RoutePreview {
+/** Route preview produced by the legacy A*-based `RoutingService` (v1). */
+export interface V1RoutePreview extends RoutePreviewCommon {
+  sourceVersion: 'v1';
+}
+
+/** Route preview produced by the authoritative graph-based `RoutingServiceV2` (v2). */
+export interface V2RoutePreview extends RoutePreviewCommon {
   sourceVersion: 'v2';
+  /** How many leading entries of `coordinates` belong to the outside (pre-gate) leg — 0 when there is none. */
+  outsideLegCoordinateCount?: number;
+  outsideLegSanityCapExceeded?: boolean;
+}
+
+export type RoutePreview = V1RoutePreview | V2RoutePreview;
+
+export interface V2ActiveRoute extends V2RoutePreview {
   routeId: string;
   origin: {
     coordinate: Coordinate;

@@ -117,6 +117,7 @@ function placeForBlock(blockId: string): Place {
     description: block.role ?? block.name,
     coordinate: block.center,
     aliases: block.aliases,
+    sourceVersion: 'v1',
   };
 }
 

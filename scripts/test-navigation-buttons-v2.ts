@@ -1,16 +1,6 @@
 import { strict as assert } from 'node:assert';
 import { readFileSync } from 'node:fs';
 
-function getSection(source: string, startToken: string, endToken: string): string {
-  const start = source.indexOf(startToken);
-  assert(start >= 0, `Missing section start: ${startToken}`);
-
-  const end = source.indexOf(endToken, start);
-  assert(end >= 0, `Missing section end: ${endToken}`);
-
-  return source.slice(start, end);
-}
-
 function getReturnObject(source: string): string {
   const returnStart = source.lastIndexOf('return {');
   assert(returnStart >= 0, 'View model return object must exist.');
@@ -21,67 +11,69 @@ function getReturnObject(source: string): string {
   return source.slice(returnStart, returnEnd);
 }
 
-const navigationScreenSource = readFileSync('src/views/screens/NavigationScreen.tsx', 'utf8');
+// v2 live navigation now runs in-place on HomeScreen's persistent MapView — the buttons/banners
+// that used to live in NavigationScreenV2 now live in NavigationChromeV2 (chrome/UI) and
+// useNavigationOverlayV2 (stateful wiring), backed by the same NavigationViewModelV2. See
+// docs/MAP_EXPERIENCE_AUDIT.md.
+const navigationChromeSource = readFileSync('src/views/components/navigation/NavigationChromeV2.tsx', 'utf8');
+const navigationOverlaySource = readFileSync('src/viewmodels/useNavigationOverlayV2.ts', 'utf8');
 const navigationViewModelSource = readFileSync('src/viewmodels/NavigationViewModelV2.ts', 'utf8');
-
-const navigationScreenV2Source = getSection(
-  navigationScreenSource,
-  'function NavigationScreenV2() {',
-  '\nconst styles = StyleSheet.create({',
-);
 
 const navigationVmReturnSource = getReturnObject(navigationViewModelSource);
 
 assert(
-  navigationScreenV2Source.includes('useNavigationViewModelV2()'),
-  'Navigation v2 screen must stay wired to v2 navigation view model.',
+  navigationOverlaySource.includes('useNavigationViewModelV2()'),
+  'v2 navigation overlay must stay wired to v2 navigation view model.',
 );
 assert(
-  navigationScreenV2Source.includes('BackHandler.addEventListener(\'hardwareBackPress\''),
+  navigationOverlaySource.includes('BackHandler.addEventListener(\'hardwareBackPress\''),
   'Navigation v2 Android back handler must stay registered.',
 );
 assert(
-  navigationScreenV2Source.includes('onPress: () => handleExit(nav)'),
+  navigationOverlaySource.includes('onPress: () => vm.handleExit()'),
   'Navigation v2 Android back confirm must exit through shared handler.',
 );
 assert(
-  navigationScreenV2Source.includes('<Pressable style={styles.exitButton} onPress={() => handleExit(nav)}>'),
+  navigationChromeSource.includes('style={styles.exitButton}') && navigationChromeSource.includes('onPress={() => handleExit()}'),
   'Navigation v2 Exit button must stay wired to shared exit handler.',
 );
 assert(
-  navigationScreenV2Source.includes('<Pressable style={styles.arrivedButton} onPress={() => handleExit(nav)}>'),
+  navigationChromeSource.includes('<Pressable style={styles.arrivedButton} onPress={() => handleExit()}>'),
   'Navigation v2 arrival Done button must stay wired to shared exit handler.',
 );
 assert(
-  navigationScreenV2Source.includes('style={[styles.recenterButton, { bottom: Math.max(insets.bottom, 12) + 140 }]}'),
+  navigationChromeSource.includes('style={[styles.recenterButton, { bottom: Math.max(insets.bottom, 12) + 140 }]}'),
   'Navigation v2 recenter control must stay rendered while navigating.',
 );
 assert(
-  navigationScreenV2Source.includes('setIsAutoFollowing(true);') &&
-    navigationScreenV2Source.includes('center: snappedLocation') &&
-    navigationScreenV2Source.includes('heading: settings.keepNorthFixed ? 0 : (snappedLocation.heading ?? 0)'),
-  'Navigation v2 recenter control must resume auto-follow and camera recenter.',
+  navigationChromeSource.includes('onPress={() => setIsAutoFollowing(true)}'),
+  'Navigation v2 recenter control must resume auto-follow.',
 );
 assert(
-  navigationScreenV2Source.includes('{isWeakGps && (') &&
-    navigationScreenV2Source.includes('Weak GPS signal detected. Route updates may be slower.'),
+  navigationOverlaySource.includes('center: snappedLocation') &&
+    navigationOverlaySource.includes('heading: settings.keepNorthFixed ? 0 : (snappedLocation.heading ?? 0)'),
+  'Navigation v2 auto-follow effect must keep camera recenter on the snapped location.',
+);
+assert(
+  navigationChromeSource.includes('{isWeakGps && (') &&
+    navigationChromeSource.includes('Weak GPS signal detected. Route updates may be slower.'),
   'Navigation v2 weak GPS banner must stay visible from view model state.',
 );
 assert(
-  navigationScreenV2Source.includes('{rerouteStatusMessage && !reroutePending && (') &&
-    navigationScreenV2Source.includes('<Text style={styles.rerouteHintText}>{rerouteStatusMessage}</Text>'),
+  navigationChromeSource.includes('{rerouteStatusMessage && !reroutePending && (') &&
+    navigationChromeSource.includes('<Text style={styles.rerouteHintText}>{rerouteStatusMessage}</Text>'),
   'Navigation v2 reroute status message must stay rendered when reroute settles.',
 );
 assert(
-  navigationScreenV2Source.includes('{reroutePending ? (') &&
-    navigationScreenV2Source.includes('<Text style={styles.rerouteText}>Recalculating...</Text>'),
+  navigationChromeSource.includes('{reroutePending ? (') &&
+    navigationChromeSource.includes('<Text style={styles.rerouteText}>Recalculating...</Text>'),
   'Navigation v2 reroute pending state must stay visible.',
 );
 
 for (const field of ['reroutePending', 'isWeakGps', 'rerouteStatusMessage', 'handleExit']) {
   assert(
-    navigationScreenV2Source.includes(`${field},`),
-    `Navigation v2 screen must keep ${field} from view model.`,
+    navigationChromeSource.includes(`${field},`),
+    `NavigationChromeV2 must destructure ${field} from the overlay.`,
   );
   assert(
     navigationVmReturnSource.includes(`${field},`),
@@ -99,8 +91,12 @@ assert(
   'Navigation v2 view model must keep weak GPS state updates.',
 );
 assert(
-  navigationViewModelSource.includes('navigation.reset({ index: 0, routes: [{ name: \'Main\' }] });'),
-  'Navigation v2 exit handler must still reset back to main flow.',
+  navigationViewModelSource.includes('Speech.stop();') && navigationViewModelSource.includes('stopNavigation();'),
+  'Navigation v2 exit handler must stop speech and clear navigation state.',
+);
+assert(
+  !navigationViewModelSource.includes('navigation.reset('),
+  'Navigation v2 exit handler must not reset the navigation stack — v2 nav runs on the persistent Home map, so exiting just clears state instead of destroying and remounting it.',
 );
 
 console.log('Navigation buttons v2 checks passed.');

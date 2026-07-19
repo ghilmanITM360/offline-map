@@ -143,6 +143,12 @@ interface AppState {
   setShowRastaNames: (val: boolean) => void;
   showBlockPolygons: boolean;
   setShowBlockPolygons: (val: boolean) => void;
+  showGatesLayer: boolean;
+  setShowGatesLayer: (val: boolean) => void;
+  showRastasLayer: boolean;
+  setShowRastasLayer: (val: boolean) => void;
+  showSpecialRoutesLayer: boolean;
+  setShowSpecialRoutesLayer: (val: boolean) => void;
   showRouteDiagnostics: boolean;
   setShowRouteDiagnostics: (val: boolean) => void;
   developerModeEnabled: boolean;
@@ -305,6 +311,12 @@ export const useAppStore = create<AppState>()(
       setShowRastaNames: (val) => set({ showRastaNames: val }),
       showBlockPolygons: true,
       setShowBlockPolygons: (val) => set({ showBlockPolygons: val }),
+      showGatesLayer: true,
+      setShowGatesLayer: (val) => set({ showGatesLayer: val }),
+      showRastasLayer: true,
+      setShowRastasLayer: (val) => set({ showRastasLayer: val }),
+      showSpecialRoutesLayer: true,
+      setShowSpecialRoutesLayer: (val) => set({ showSpecialRoutesLayer: val }),
       showRouteDiagnostics: false,
       setShowRouteDiagnostics: (val) => set({ showRouteDiagnostics: val }),
       developerModeEnabled: false,
@@ -340,6 +352,9 @@ export const useAppStore = create<AppState>()(
         showGraphNodes: state.showGraphNodes,
         showRastaNames: state.showRastaNames,
         showBlockPolygons: state.showBlockPolygons,
+        showGatesLayer: state.showGatesLayer,
+        showRastasLayer: state.showRastasLayer,
+        showSpecialRoutesLayer: state.showSpecialRoutesLayer,
         showRouteDiagnostics: state.showRouteDiagnostics,
         developerModeEnabled: state.developerModeEnabled,
       }),

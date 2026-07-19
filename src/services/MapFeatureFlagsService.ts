@@ -26,4 +26,8 @@ export class MapFeatureFlagsService {
   static useIjtemaV2Navigation(): boolean {
     return readFlag(process.env.EXPO_PUBLIC_USE_IJTEMA_V2_NAVIGATION);
   }
+
+  static useOutsideStreetGraph(): boolean {
+    return readFlag(process.env.EXPO_PUBLIC_USE_IJTEMA_OUTSIDE_STREET_GRAPH, false);
+  }
 }

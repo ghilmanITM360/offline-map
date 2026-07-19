@@ -95,7 +95,9 @@ function originMetadata(input: V2NavigationAdapterInput): V2ActiveRoute['origin'
 
   if (input.startPlace) {
     return {
-      coordinate: V2PlaceAdapter.getMarkerCoordinate(input.startPlace) ?? input.previewRoute.coordinates[0],
+      coordinate: input.startPlace.category === 'Gate'
+        ? V2PlaceAdapter.getMarkerCoordinate(input.startPlace) ?? input.previewRoute.coordinates[0]
+        : input.previewRoute.coordinates[0],
       label: input.startPlace.name,
       type: input.startPlace.category === 'Gate' ? 'official_gate' : 'manual_place',
       gateId,

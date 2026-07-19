@@ -8,6 +8,9 @@ const settings = readFileSync('src/views/screens/SettingsScreen.tsx', 'utf8');
 const guide = readFileSync('src/views/screens/AppGuideScreen.tsx', 'utf8');
 const drawer = readFileSync('src/views/components/CustomDrawer.tsx', 'utf8');
 const permission = readFileSync('src/views/screens/PermissionScreen.tsx', 'utf8');
+// v2 live navigation chrome now renders in-place on Home (see docs/MAP_EXPERIENCE_AUDIT.md) —
+// include it so the raw-ID leak check below still covers it.
+const navigationChromeV2 = readFileSync('src/views/components/navigation/NavigationChromeV2.tsx', 'utf8');
 
 const rawIdPattern = /\b(?:R\d+-\d+|SPNP-\d+|SPSP-\d+|SPWP-\d+|B\d+_C\d+|P\d+)\b/;
 
@@ -15,6 +18,7 @@ const visibleUserText = [
   home.replace(/__DEV__ && developerModeEnabled[\s\S]*?<\/React.Fragment>/g, ''),
   directions,
   navigation.replace(/developerMode[\s\S]*?graphOnlyFallback/g, 'graphOnlyFallback'),
+  navigationChromeV2,
   settings.replace(/__DEV__[\s\S]*?Developer Mode[\s\S]*?\)/g, ''),
   guide,
   drawer,
@@ -47,7 +51,9 @@ assert(directions.includes('Route ready'), 'Directions must show route-ready sta
 assert(directions.includes('Find nearest official gate automatically'), 'Directions must explain current-location routing behavior');
 assert(directions.includes('Change destination'), 'Directions must keep destination-change action');
 
-assert(navigation.includes('<NavigationScreenV2 />') && navigation.includes('<NavigationScreenV1 />'), 'Navigation screen must isolate v2 and v1 render paths');
+// v2 live navigation now runs in-place on HomeScreen's persistent MapView (useNavigationOverlayV2) —
+// NavigationScreen itself only renders the legacy v1 path, plus a defensive disabled-v2 fallback.
+assert(navigation.includes('<NavigationScreenV1 />') && navigation.includes('<NavigationScreenV2Disabled />'), 'Navigation screen must isolate the v1 render path from the disabled-v2 fallback');
 assert(navigation.includes('NavigationScreenV2Disabled'), 'Navigation must block v2 routes when v2 navigation flag is off');
 assert(navigation.includes('mapType={hasGoogleMapsKey && hasInternet ?') && navigation.includes(": 'none'"), 'Navigation must render graph-only map when base map is unavailable or internet is offline');
 assert(navigation.includes('route.coordinates'), 'Navigation must render route polyline from active route coordinates');

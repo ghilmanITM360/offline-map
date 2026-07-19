@@ -45,6 +45,43 @@ if (!googleMapsApiKey) {
 }
 
 /**
+ * Production (release) signing configuration.
+ *
+ * Credentials are never hardcoded here. They are resolved, in order, from:
+ *   1. android/keystore.properties (gitignored — copy from keystore.properties.example)
+ *   2. ANDROID_RELEASE_STORE_FILE / ANDROID_RELEASE_STORE_PASSWORD /
+ *      ANDROID_RELEASE_KEY_ALIAS / ANDROID_RELEASE_KEY_PASSWORD environment variables
+ *
+ * See docs/SECURITY_AUDIT.md (C3) for the `keytool` command used to generate the keystore
+ * itself and where to place it. Until a developer configures one of the above, `release`
+ * build types fall back to the debug signingConfig so `./gradlew assembleRelease` keeps
+ * working out of the box for local/dev builds.
+ */
+def keystorePropertiesFile = rootProject.file("keystore.properties")
+def keystoreProperties = new Properties()
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+}
+
+def resolveReleaseSigningValue = { String propertyKey, String envKey ->
+    def fromProperties = keystoreProperties.getProperty(propertyKey)
+    if (fromProperties) return fromProperties
+    return System.getenv(envKey)
+}
+
+def releaseStoreFilePath = resolveReleaseSigningValue("storeFile", "ANDROID_RELEASE_STORE_FILE")
+def releaseStorePassword = resolveReleaseSigningValue("storePassword", "ANDROID_RELEASE_STORE_PASSWORD")
+def releaseKeyAlias = resolveReleaseSigningValue("keyAlias", "ANDROID_RELEASE_KEY_ALIAS")
+def releaseKeyPassword = resolveReleaseSigningValue("keyPassword", "ANDROID_RELEASE_KEY_PASSWORD")
+
+def hasReleaseSigningConfig = (releaseStoreFilePath && releaseStorePassword && releaseKeyAlias && releaseKeyPassword) as boolean
+
+if (!hasReleaseSigningConfig) {
+    println "WARNING: No production keystore configured (android/keystore.properties or ANDROID_RELEASE_* env vars)." +
+        " Release builds will be signed with the debug keystore until this is set up — see docs/SECURITY_AUDIT.md (C3)."
+}
+
+/**
  * This is the configuration block to customize your React Native Android app.
  * By default you don't need to apply any configuration, just uncomment the lines you need.
  */
@@ -145,15 +182,25 @@ android {
             keyAlias 'androiddebugkey'
             keyPassword 'android'
         }
+        if (hasReleaseSigningConfig) {
+            release {
+                storeFile file(releaseStoreFilePath)
+                storePassword releaseStorePassword
+                keyAlias releaseKeyAlias
+                keyPassword releaseKeyPassword
+            }
+        }
     }
     buildTypes {
         debug {
             signingConfig signingConfigs.debug
         }
         release {
-            // Caution! In production, you need to generate your own keystore file.
-            // see https://reactnative.dev/docs/signed-apk-android.
-            signingConfig signingConfigs.debug
+            // Uses a real production keystore once one is configured (see
+            // android/keystore.properties.example and docs/SECURITY_AUDIT.md C3).
+            // Falls back to the debug signingConfig only when no release credentials
+            // are present, so local/CI builds without a production keystore still work.
+            signingConfig hasReleaseSigningConfig ? signingConfigs.release : signingConfigs.debug
             def enableShrinkResources = findProperty('android.enableShrinkResourcesInReleaseBuilds') ?: 'false'
             shrinkResources enableShrinkResources.toBoolean()
             minifyEnabled enableMinifyInReleaseBuilds

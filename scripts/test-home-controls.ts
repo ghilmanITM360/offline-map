@@ -4,14 +4,21 @@ import { readFileSync } from 'node:fs';
 const home = readFileSync('src/views/screens/HomeScreen.tsx', 'utf8');
 const homeVm = readFileSync('src/viewmodels/HomeViewModel.ts', 'utf8');
 const rendering = readFileSync('src/services/V2MapRenderingService.ts', 'utf8');
+// The block/rasta/special-route/gate Polygon/Marker/Polyline JSX moved out of HomeScreen.tsx
+// into shared layer components (src/views/components/map/*) — see docs/MAP_EXPERIENCE_AUDIT.md.
+const blockLayer = readFileSync('src/views/components/map/BlockLayer.tsx', 'utf8');
+const rastaLayer = readFileSync('src/views/components/map/RastaLayer.tsx', 'utf8');
+const specialRouteLayer = readFileSync('src/views/components/map/SpecialRouteLayer.tsx', 'utf8');
+const gateLayer = readFileSync('src/views/components/map/GateLayer.tsx', 'utf8');
+const mapControlsSource = readFileSync('src/views/components/map/MapControls.tsx', 'utf8');
 
 assert(home.includes('MapView'), 'Home must render a map surface');
 assert(home.includes('V2MapRenderingService.getHomeLayers'), 'Home must source production layers from v2 rendering service');
-assert(home.includes('v2MapLayers.blocks.map'), 'Home must render v2 block polygons');
-assert(home.includes('v2MapLayers.rastas.map'), 'Home must render v2 rasta lines');
-assert(home.includes('v2MapLayers.specialRoutes.map'), 'Home must render Shahr-e-Pindal routes');
-assert(home.includes('v2MapLayers.visibleGateMarkers.map'), 'Home must render zoom-aware official gate markers with coordinates');
-assert(home.includes('gate.needsConnectorVerification'), 'Home must visibly distinguish disconnected gates');
+assert(home.includes('blocks={showBlockPolygons ? v2MapLayers.visibleBlocks : []}') && blockLayer.includes('blocks.map('), 'Home must render zoom-aware v2 block polygons');
+assert(home.includes('rastas={v2MapLayers.visibleRastas}') && rastaLayer.includes('rastas.map('), 'Home must render zoom-aware v2 rasta lines');
+assert(home.includes('routes={v2MapLayers.specialRoutes}') && specialRouteLayer.includes('routes.map('), 'Home must render Shahr-e-Pindal routes');
+assert(home.includes('gates={v2MapLayers.visibleGateMarkers}') && gateLayer.includes('gates.map('), 'Home must render zoom-aware official gate markers with coordinates');
+assert(gateLayer.includes('gate.needsConnectorVerification'), 'Home must visibly distinguish disconnected gates');
 assert(home.includes('graphOnlyFallbackUsed'), 'Home must track graph-only fallback');
 assert(home.includes("mapType={hasGoogleMapsKey ? (isOffline ? 'none' : mapType) : 'none'}"), 'Home must not require base tiles for graph-only map');
 
@@ -28,7 +35,19 @@ assert(home.includes('setIsSearchFocused') && home.includes('Keyboard.dismiss'),
 assert(home.includes('BackHandler.addEventListener'), 'Android back should close search before exiting Home');
 assert(home.includes('showsHorizontalScrollIndicator={false}'), 'Category chips must use horizontal scrolling instead of clipping');
 assert(home.includes('rightControlsTop'), 'Floating controls must account for top banners');
-assert(home.includes('outsideBannerTop'), 'Outside warning must not cover map controls');
+assert(
+  home.includes('bannerStackHeight') && home.includes('showOutsideBanner ? 20 : 12'),
+  'Outside warning must not cover map controls',
+);
+assert(home.includes('onLayout={(e) => setBannerStackHeight'), 'Banner stack height must be measured, not a hardcoded guess');
+assert(home.includes('onLayout={(e) => setRoutePreviewCardMeasuredHeight'), 'Route preview card height must be measured, not a hardcoded guess');
+assert(
+  mapControlsSource.includes("variant: 'browse' | 'nav'") && mapControlsSource.includes("variant === 'browse'"),
+  'MapControls must share one component across browse and nav modes',
+);
+assert(home.includes('<MapControls'), 'Home must render the shared MapControls component');
+assert(home.includes('variant="browse"'), 'Home browse controls must use the shared MapControls component');
+assert(home.includes('variant="nav"'), 'Home nav-overlay controls must use the shared MapControls component');
 
 assert(homeVm.includes('MapFeatureFlagsService.useIjtemaV2Map'), 'Home VM must use v2 production default flag');
 assert(homeVm.includes('EntryGateRoutingService.getVenueStatus'), 'Home VM must use v2 venue status policy');
