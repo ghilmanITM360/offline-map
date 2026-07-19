@@ -5,13 +5,10 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { getDistance } from 'geolib';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAppStore } from '../store/useAppStore';
 import { RoutingService } from '../services/RoutingService';
 import { InstructionService, Instruction } from '../services/InstructionService';
-import { RoutePointService } from '../services/RoutePointService';
 import { Place, RouteAlternative, RoutePreview } from '../models/types';
-import { RootStackParamList } from '../navigation/RootNavigator';
 import { LocationAccessService } from '../services/LocationAccessService';
 import { MapFeatureFlagsService } from '../services/MapFeatureFlagsService';
 import { V2DirectionsService } from '../services/V2DirectionsService';
@@ -43,7 +40,6 @@ export function useDirectionsViewModel(destination: Place | null) {
   const setHasLocationPermission = useAppStore((s) => s.setHasLocationPermission);
   const settings = useAppStore((s) => s.settings);
   const {
-    startNavigation,
     setRouteAlternatives,
     setSelectedRouteIndex,
     setActiveRoute,
@@ -396,45 +392,6 @@ export function useDirectionsViewModel(destination: Place | null) {
     setErrorMessage(null);
   };
 
-  const handleStartNavigation = (navigation: NativeStackNavigationProp<RootStackParamList, 'Directions'>) => {
-    if (destination && route) {
-      if (destination.sourceVersion === 'v2') {
-        if (
-          !MapFeatureFlagsService.useIjtemaV2Map() ||
-          !MapFeatureFlagsService.useIjtemaV2Routing() ||
-          !MapFeatureFlagsService.useIjtemaV2Navigation()
-        ) {
-          setErrorMessage('V2 active navigation requires v2 map, routing, and navigation feature flags.');
-          return;
-        }
-
-        const startCheck = V2NavigationAdapter.canStartActiveNavigation({ route: route as any, destination });
-        if (!startCheck.canStart) {
-          setErrorMessage(startCheck.message);
-          return;
-        }
-        const activeRoute = V2NavigationAdapter.fromPreview({
-          previewRoute: route as any,
-          destination,
-          startPlace: startSource === 'manual_place' ? manualStart : null,
-          currentLocation: startSource === 'manual_place' ? null : (
-            startSource === 'remembered_location' ? lastKnownLocation : routeOriginLocation
-          ),
-        });
-        startNavigation(destination, activeRoute, activeRoute.instructions);
-        navigation.navigate('Navigation');
-        return;
-      }
-
-      const endNodeId = route.nodes[route.nodes.length - 1];
-      const resolvedDestination = endNodeId
-        ? RoutePointService.enrichPlaceWithRoutingNode(destination, endNodeId)
-        : destination;
-      startNavigation(resolvedDestination, route, instructions);
-      navigation.navigate('Navigation');
-    }
-  };
-
   return {
     route,
     alternatives,
@@ -447,7 +404,6 @@ export function useDirectionsViewModel(destination: Place | null) {
     rememberedLocationAvailable,
     rememberedLocationInsideVenue,
     currentRouteOriginInsideVenue,
-    handleStartNavigation,
     loadState,
     errorMessage,
     manualStart,

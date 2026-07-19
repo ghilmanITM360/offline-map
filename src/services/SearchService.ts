@@ -204,6 +204,7 @@ export class SearchService {
           resolvedRoutingNodeId: preferredNodeId,
           resolvedRoutingCoordinate: { latitude: node.lat, longitude: node.lng },
           aliases: [`rasta ${rastaNumber}`, `road ${rastaNumber}`, `r${rastaNumber}`],
+          sourceVersion: 'v1',
         });
       });
     } else if (cat === 'gates') {
@@ -289,6 +290,7 @@ export class SearchService {
       description: `Block ${num} — part of Karachi Ijtema ground.`,
       coordinate: block.center,
       aliases: block.aliases,
+      sourceVersion: 'v1',
     };
   }
 
@@ -329,6 +331,7 @@ export class SearchService {
           }
         : { latitude: node.lat, longitude: node.lng },
       aliases: node.type === 'gate' ? [id.toLowerCase(), id, node.name ?? id, 'gate', 'masjid gate'] : undefined,
+      sourceVersion: 'v1',
     };
   }
 

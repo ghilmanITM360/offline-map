@@ -16,19 +16,17 @@ import {
   getBlockEntryNodeIds,
 } from '../data/ijtema';
 import { Coordinate as V2Coordinate } from '../data/ijtema/types';
-import { Coordinate, Place } from '../models/types';
+import { Coordinate, Place, V2Place, V2PlaceSourceKind } from '../models/types';
 
 export interface V2PlaceAdapterOptions {
   developerMode?: boolean;
   includeUnavailableGates?: boolean;
 }
 
-export type V2PlaceKind = 'block' | 'gate' | 'rasta' | 'special_route';
+/** @deprecated use V2PlaceSourceKind from '../models/types' */
+export type V2PlaceKind = V2PlaceSourceKind;
 
-export interface V2Place extends Place {
-  sourceVersion: 'v2';
-  sourceKind: V2PlaceKind;
-}
+export type { V2Place } from '../models/types';
 
 const disconnectedGateIds = new Set(['GATE_03', 'GATE_17', 'GATE_18', 'GATE_19']);
 
@@ -56,6 +54,15 @@ const gateUnavailableReason = (gate: Gate): string | undefined => {
   }
   return undefined;
 };
+
+/**
+ * Presentational-only warning for gates whose source coordinate is flagged
+ * `needs_verification` (see src/data/ijtema/dataIssues.ts GATE_13_14_NEAR_DUPLICATE).
+ * Deliberately does not touch routingStatus/isRoutable/canStartRouteFromOutside —
+ * this must never block or alter routing, only inform the user on selection.
+ */
+const gateVerificationWarning = (gate: Gate): string | undefined =>
+  gate.status === 'needs_verification' ? 'This gate needs verification before navigation.' : undefined;
 
 export class V2PlaceAdapter {
   private static allPlacesCache = new Map<string, V2Place[]>();
@@ -117,6 +124,7 @@ export class V2PlaceAdapter {
       isRoutable: isConnected,
       isStartRoutable: isConnected,
       unavailableReason,
+      verificationWarning: gateVerificationWarning(gate),
       developerLabel: options.developerMode ? `${gate.id}${disconnectedGateIds.has(gate.id) ? ' disconnected' : ''}` : undefined,
     };
   }

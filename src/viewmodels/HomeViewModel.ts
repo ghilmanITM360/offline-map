@@ -17,15 +17,9 @@ import { RoutePointService } from '../services/RoutePointService';
 import { EntryGateRoutingService } from '../services/EntryGateRoutingService';
 import { MapFeatureFlagsService } from '../services/MapFeatureFlagsService';
 import { IJTEMA_MAP_REGION } from '../data/ijtema';
+import { DEFAULT_MAP_ZOOM as DEFAULT_HOME_MAP_ZOOM, estimateZoomFromRegion } from '../utils/mapZoom';
 
 declare const __DEV__: boolean;
-
-const DEFAULT_HOME_MAP_ZOOM = 15.5;
-
-function estimateZoomFromRegion(region: Region): number {
-  const zoom = Math.log2(360 / Math.max(region.longitudeDelta, 0.000001));
-  return Number.isFinite(zoom) ? zoom : DEFAULT_HOME_MAP_ZOOM;
-}
 
 function formatLastKnownAge(timestamp: string | null): string {
   if (!timestamp) return 'from an earlier session';
@@ -193,7 +187,7 @@ export function useHomeViewModel() {
     );
   };
 
-  const handleRecenter = useCallback(async () => {
+  const handleRecenter = useCallback(async (): Promise<boolean> => {
     const recenterTo = (location: typeof currentLocation) => {
       if (!location) return false;
       if (!mapRef.current) return false;
@@ -233,7 +227,7 @@ export function useHomeViewModel() {
         } else if (resolved.source === 'device_last_known') {
           Alert.alert('Using last known location', resolved.message ?? 'Live GPS was unavailable, so the device last known location is being shown.');
         }
-        return;
+        return centered;
       }
 
       const canUseRemembered = lastKnownLocation
@@ -293,9 +287,11 @@ export function useHomeViewModel() {
         canAskAgain: resolved.permissionState.canAskAgain,
         granted: resolved.permissionState.granted,
       });
+      return false;
     } catch {
       devLogControl('recenter', 'location_error');
       Alert.alert('Location error', 'Could not read location right now. Please try again.');
+      return false;
     }
   }, [lastKnownLocation, lastKnownLocationUpdatedAt, setCurrentLocation, setHasLocationPermission, setSnappedLocation]);
 

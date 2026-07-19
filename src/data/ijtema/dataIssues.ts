@@ -38,4 +38,14 @@ export const DATA_ISSUES: DataIssue[] = [
     summary: 'Several supplied C1/C2/C3/C4 corner orders are access-point oriented rather than polygon-winding oriented.',
     resolution: 'Generated renderable polygons by sorting supplied corners around each block center.',
   },
+  {
+    id: 'RASTA_06_OUT_OF_ORDER_POINTS',
+    severity: 'info',
+    category: 'geometry',
+    affectedIds: ['R6-01', 'R6-02', 'R6-03', 'R6-04', 'R6-05', 'R6-06', 'R6-07', 'R6-08', 'R6-09'],
+    summary:
+      'The supplied Rasta 06 coordinate list had its two northernmost points appended at the end instead of the start, producing an anomalous ~863m straight-line graph edge between the old R6-07/R6-08.',
+    resolution:
+      'Reordered the coordinate array north-to-south (point IDs are sequence-derived, so R6-01..R6-09 now follow the corrected order) so adjacent graph edges match the physical path; no coordinate values were changed.',
+  },
 ];

@@ -1,12 +1,15 @@
 import { strict as assert } from 'node:assert';
 import { readFileSync } from 'node:fs';
 
+import { IJTEMA_DATA } from '../src/constants/data';
+import { RoutingService } from '../src/services/RoutingService';
 import { SearchService } from '../src/services/SearchService';
 import { V2DirectionsService } from '../src/services/V2DirectionsService';
 import { V2NavigationAdapter } from '../src/services/V2NavigationAdapter';
 
 const searchSource = readFileSync('src/services/SearchService.ts', 'utf8');
 const directionsVmSource = readFileSync('src/viewmodels/DirectionsViewModel.ts', 'utf8');
+const homeScreenSource = readFileSync('src/views/screens/HomeScreen.tsx', 'utf8');
 const navigationScreenSource = readFileSync('src/views/screens/NavigationScreen.tsx', 'utf8');
 const navigationV1Source = readFileSync('src/viewmodels/NavigationViewModel.ts', 'utf8');
 const storeSource = readFileSync('src/store/useAppStore.ts', 'utf8');
@@ -14,8 +17,10 @@ const legacyDataSource = readFileSync('src/constants/data.ts', 'utf8');
 
 assert(searchSource.includes('MapFeatureFlagsService.useIjtemaV2Map()'), 'SearchService must centralize v1 rollback behind the v2 map flag');
 assert(directionsVmSource.includes("destination.sourceVersion === 'v2'"), 'DirectionsViewModel must branch v2 destinations away from v1 routing');
-assert(directionsVmSource.includes('V2NavigationAdapter.fromPreview'), 'DirectionsViewModel must adapt v2 previews before active navigation');
-assert(navigationScreenSource.includes("activeRoute.sourceVersion === 'v2'"), 'NavigationScreen must identify v2 active routes');
+// v2 active navigation now starts from Home's route preview card (the single consolidated
+// start-navigation path), not from a per-screen Directions handler.
+assert(homeScreenSource.includes('V2NavigationAdapter.fromPreview'), 'Home start-navigation handler must adapt v2 previews before active navigation');
+assert(navigationScreenSource.includes("activeRoute?.sourceVersion === 'v2'"), 'NavigationScreen must identify v2 active routes');
 assert(navigationScreenSource.includes('NavigationScreenV2Disabled'), 'NavigationScreen must not send disabled v2 active routes into v1 runtime');
 assert(!navigationV1Source.includes('V2NavigationAdapter'), 'Legacy NavigationViewModel must remain v1-only');
 assert(!legacyDataSource.includes('../data/ijtema/mapBounds'), 'Legacy data constants must not import v2 map bounds');
@@ -54,5 +59,28 @@ assert.equal(
   false,
   'V2 active route must not start when v2 navigation rollback flag is off',
 );
+
+// A v2-produced route must never carry sourceVersion 'v1', and a v1-produced
+// route must never carry sourceVersion 'v2' — the two routing stacks must not
+// bleed into each other's tagging.
+assert(preview.route, 'V2DirectionsService preview must return a route for this isolation check');
+assert.equal(preview.route!.sourceVersion, 'v2', 'RoutingServiceV2-derived route must be tagged sourceVersion "v2"');
+assert.notEqual(preview.route!.sourceVersion, 'v1', 'RoutingServiceV2-derived route must never carry sourceVersion "v1"');
+
+const v1BlockIds = Object.keys(IJTEMA_DATA.blocks);
+const v1From = IJTEMA_DATA.blocks.B1 ?? IJTEMA_DATA.blocks[v1BlockIds[0]];
+const v1To = IJTEMA_DATA.blocks.B24 ?? IJTEMA_DATA.blocks[v1BlockIds[v1BlockIds.length - 1]];
+const v1DestNodes = RoutingService.resolveDestinationNodesFromPlace({
+  id: v1To.id,
+  name: v1To.name,
+  category: 'Block',
+  description: v1To.name,
+  coordinate: v1To.center,
+  sourceVersion: 'v1',
+});
+const v1Route = RoutingService.calculateRoute(v1From.center, v1DestNodes, undefined, 1.4);
+assert(v1Route, 'RoutingService must return a route for this isolation check');
+assert.equal(v1Route!.sourceVersion, 'v1', 'RoutingService-derived route must be tagged sourceVersion "v1"');
+assert.notEqual(v1Route!.sourceVersion, 'v2', 'RoutingService-derived route must never carry sourceVersion "v2"');
 
 console.log('V1/V2 isolation checks passed.');

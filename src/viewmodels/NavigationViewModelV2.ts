@@ -6,7 +6,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { getDistance } from 'geolib';
 import * as Speech from 'expo-speech';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAppStore } from '../store/useAppStore';
 import {
   Coordinate,
@@ -14,7 +13,6 @@ import {
   V2ActiveRoute,
   V2NavigationInstruction,
 } from '../models/types';
-import { RootStackParamList } from '../navigation/RootNavigator';
 import { RerouteService } from '../services/RerouteService';
 import { GPSManagerService } from '../services/GPSManagerService';
 import { RoutingServiceV2 } from '../services/RoutingServiceV2';
@@ -56,12 +54,14 @@ function placeFromV2Destination(route: V2ActiveRoute, existingDestination: Place
     description: route.destination.label,
     coordinate: route.destination.coordinate,
     sourceVersion: 'v2',
+    sourceKind: route.destination.type,
   };
 }
 
 export function useNavigationViewModelV2() {
   const destinationFromStore = useAppStore((s) => s.destination);
   const activeRoute = useAppStore((s) => s.activeRoute);
+  const isNavigating = useAppStore((s) => s.isNavigating);
   const routeInstructions = useAppStore((s) => s.routeInstructions);
   const currentLocation = useAppStore((s) => s.currentLocation);
   const settings = useAppStore((s) => s.settings);
@@ -73,7 +73,10 @@ export function useNavigationViewModelV2() {
   const setReroutePending = useAppStore((s) => s.setReroutePending);
   const reroutePending = useAppStore((s) => s.reroutePending);
 
-  const route = isV2ActiveRoute(activeRoute) ? activeRoute : null;
+  // activeRoute is 'v2'-shaped for both directions previews and live navigation — isNavigating
+  // (true only between startNavigation()/stopNavigation()) gates this hook's GPS/reroute/speech
+  // side effects so they don't run while the user is merely previewing a route.
+  const route = isNavigating && isV2ActiveRoute(activeRoute) ? activeRoute : null;
   const instructions = useMemo(
     () => (routeInstructions.length > 0 ? routeInstructions : route?.instructions ?? []) as V2NavigationInstruction[],
     [route?.instructions, routeInstructions],
@@ -112,7 +115,12 @@ export function useNavigationViewModelV2() {
     return () => {
       GPSManagerService.removeListener(handleLiveLocation);
     };
-  }, [handleLiveLocation, route]);
+    // Keyed on isNavigating (not `route`) so a mid-navigation reroute — which
+    // replaces `route` via setActiveRoute — doesn't tear down and re-add the
+    // shared GPSManagerService listener. That remove+add cycle can race the
+    // singleton's async reconcile loop and leave watchPositionAsync stopped
+    // for the rest of the session (GPS updates silently stop propagating).
+  }, [handleLiveLocation, isNavigating]);
 
   const attemptReroute = useCallback((coordinate: Coordinate) => {
     if (!route || !settings.autoReroute) return;
@@ -212,10 +220,9 @@ export function useNavigationViewModelV2() {
     }
   }, [attemptReroute, currentLocation, currentStepIndex, etaMinutes, instructions, isMuted, route, settings.voiceInstructions, settings.walkingSpeed]);
 
-  const handleExit = useCallback((navigation: NativeStackNavigationProp<RootStackParamList, 'Navigation'>) => {
+  const handleExit = useCallback(() => {
     Speech.stop();
     stopNavigation();
-    navigation.reset({ index: 0, routes: [{ name: 'Main' }] });
   }, [stopNavigation]);
 
   return {

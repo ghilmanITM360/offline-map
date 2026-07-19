@@ -42,7 +42,7 @@ function routeMessageForUnavailablePlace(place: Place): string {
   return place.unavailableReason ?? 'No safe offline route found between these points.';
 }
 
-function destinationFromPlace(place: Place): RoutingDestinationV2 | null {
+export function destinationFromPlace(place: Place): RoutingDestinationV2 | null {
   if (place.category === 'Block') return { type: 'block', blockId: place.id };
   if (place.category === 'Gate') return { type: 'gate', gateId: place.id };
   if (place.category === 'Rasta') return { type: 'rasta', rastaId: place.id };

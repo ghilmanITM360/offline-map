@@ -439,6 +439,7 @@ export class RoutingService {
 
     return {
       id: `route_${Date.now()}`,
+      sourceVersion: 'v1',
       coordinates,
       nodes: path,
       totalDistance,

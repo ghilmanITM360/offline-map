@@ -172,6 +172,6 @@ export class InstructionService {
       const feet = Math.round(meters * 3.28084);
       return `${feet} ft`;
     }
-    return `${meters} m`;
+    return `${Math.round(meters)} m`;
   }
 }

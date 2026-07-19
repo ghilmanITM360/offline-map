@@ -19,7 +19,7 @@ assert(
   'Route preview line must use thicker visible blue inner stroke.',
 );
 assert(
-  home.includes('rightControlsBottom') && home.includes('routePreviewCardHeight'),
+  home.includes('rightControlsBottom') && home.includes('routePreviewCardMeasuredHeight'),
   'Map controls must reserve bottom space for route preview card.',
 );
 

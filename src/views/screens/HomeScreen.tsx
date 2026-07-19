@@ -19,6 +19,7 @@ import {
   Keyboard,
   BackHandler,
   Animated,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import MapView, { Marker, Polygon, Polyline, PROVIDER_GOOGLE, LocalTile } from 'react-native-maps';
@@ -26,10 +27,6 @@ import {
   Menu,
   Navigation,
   LocateFixed,
-  Plus,
-  Minus,
-  Compass,
-  Layers,
   Star,
   MapPin,
   ChevronRight,
@@ -38,6 +35,8 @@ import {
   Clock,
   Share2,
   Info,
+  Check,
+  AlertTriangle,
 } from 'lucide-react-native';
 import BottomSheet, { BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import { useNavigation, DrawerActions, CompositeNavigationProp } from '@react-navigation/native';
@@ -57,10 +56,25 @@ import { DrawerParamList, RootStackParamList } from '../../navigation/RootNaviga
 import { RoutingService } from '../../services/RoutingService';
 import { MapConfigService } from '../../services/MapConfigService';
 import { MapFeatureFlagsService } from '../../services/MapFeatureFlagsService';
-import { V2MapRenderingService } from '../../services/V2MapRenderingService';
+import { V2MapRenderingService, MEDIUM_ZOOM, HIGH_ZOOM } from '../../services/V2MapRenderingService';
 import { V2NavigationAdapter } from '../../services/V2NavigationAdapter';
+import { RoutingServiceV2 } from '../../services/RoutingServiceV2';
+import { destinationFromPlace } from '../../services/V2DirectionsService';
+import { MapLocalizationService } from '../../services/MapLocalizationService';
 import { V2PlaceAdapter } from '../../services/V2PlaceAdapter';
-import { IJTEMA_MAP_REGION } from '../../data/ijtema';
+import { IJTEMA_MAP_BOUNDS, IJTEMA_MAP_REGION } from '../../data/ijtema';
+import { VenueBoundary } from '../components/map/VenueBoundary';
+import { SatelliteDimOverlay } from '../components/map/SatelliteDimOverlay';
+import { RastaLayer } from '../components/map/RastaLayer';
+import { SpecialRouteLayer } from '../components/map/SpecialRouteLayer';
+import { BlockLayer } from '../components/map/BlockLayer';
+import { GateLayer } from '../components/map/GateLayer';
+import { MapControls } from '../components/map/MapControls';
+import { LayersSheet } from '../components/map/LayersSheet';
+import { useNavigationOverlayV2 } from '../../viewmodels/useNavigationOverlayV2';
+import { NavigationMapLayersV2 } from '../components/navigation/NavigationMapLayersV2';
+import { NavigationChromeV2 } from '../components/navigation/NavigationChromeV2';
+import { DirectionsScreen } from './DirectionsScreen';
 
 declare const __DEV__: boolean;
 
@@ -71,12 +85,37 @@ type HomeScreenNavigationProp = CompositeNavigationProp<
 
 const getTilePath = (): string => `${Paths.document.uri}tiles/{z}_{x}_{y}.png`;
 
+// Static — derived only from the fixed MAP_BOUNDS constant, so it never needs to be
+// recomputed per render.
+const VENUE_BOUNDARY = [
+  { latitude: MAP_BOUNDS.minLat, longitude: MAP_BOUNDS.minLng },
+  { latitude: MAP_BOUNDS.minLat, longitude: MAP_BOUNDS.maxLng },
+  { latitude: MAP_BOUNDS.maxLat, longitude: MAP_BOUNDS.maxLng },
+  { latitude: MAP_BOUNDS.maxLat, longitude: MAP_BOUNDS.minLng },
+];
+
+// Phase 11 (task #38): padded 50% beyond the venue bounds so the satellite dim scrim also
+// covers the approach streets/gates just outside the venue, not only the interior.
+const SATELLITE_DIM_LAT_PAD = (IJTEMA_MAP_BOUNDS.maxLat - IJTEMA_MAP_BOUNDS.minLat) * 0.5;
+const SATELLITE_DIM_LNG_PAD = (IJTEMA_MAP_BOUNDS.maxLng - IJTEMA_MAP_BOUNDS.minLng) * 0.5;
+const SATELLITE_DIM_BOUNDARY = [
+  { latitude: IJTEMA_MAP_BOUNDS.minLat - SATELLITE_DIM_LAT_PAD, longitude: IJTEMA_MAP_BOUNDS.minLng - SATELLITE_DIM_LNG_PAD },
+  { latitude: IJTEMA_MAP_BOUNDS.minLat - SATELLITE_DIM_LAT_PAD, longitude: IJTEMA_MAP_BOUNDS.maxLng + SATELLITE_DIM_LNG_PAD },
+  { latitude: IJTEMA_MAP_BOUNDS.maxLat + SATELLITE_DIM_LAT_PAD, longitude: IJTEMA_MAP_BOUNDS.maxLng + SATELLITE_DIM_LNG_PAD },
+  { latitude: IJTEMA_MAP_BOUNDS.maxLat + SATELLITE_DIM_LAT_PAD, longitude: IJTEMA_MAP_BOUNDS.minLng - SATELLITE_DIM_LNG_PAD },
+];
+
 function isPlace(item: Place | SearchResult): item is Place {
   return 'name' in item;
 }
 
 function getDisplayName(item: Place | SearchResult): string {
   return isPlace(item) ? item.name : item.title;
+}
+
+function getSecondaryDisplayName(item: Place | SearchResult): string | undefined {
+  if (!isPlace(item)) return undefined;
+  return MapLocalizationService.getSecondaryLabel({ en: item.name, ur: item.urduName });
 }
 
 type V2PreviewRoute = RoutePreview & {
@@ -87,6 +126,8 @@ type V2PreviewRoute = RoutePreview & {
     coordinate: { latitude: number; longitude: number };
     gate?: { id: string; name: { en: string } };
   };
+  outsideLegCoordinateCount?: number;
+  outsideLegSanityCapExceeded?: boolean;
 };
 
 function isV2PreviewRoute(route: unknown): route is V2PreviewRoute {
@@ -115,11 +156,18 @@ export function HomeScreen() {
   const setShowRastaNames = useAppStore((s) => s.setShowRastaNames);
   const showBlockPolygons = useAppStore((s) => s.showBlockPolygons);
   const setShowBlockPolygons = useAppStore((s) => s.setShowBlockPolygons);
+  const showGatesLayer = useAppStore((s) => s.showGatesLayer);
+  const setShowGatesLayer = useAppStore((s) => s.setShowGatesLayer);
+  const showRastasLayer = useAppStore((s) => s.showRastasLayer);
+  const setShowRastasLayer = useAppStore((s) => s.setShowRastasLayer);
+  const showSpecialRoutesLayer = useAppStore((s) => s.showSpecialRoutesLayer);
+  const setShowSpecialRoutesLayer = useAppStore((s) => s.setShowSpecialRoutesLayer);
   const showRouteDiagnostics = useAppStore((s) => s.showRouteDiagnostics);
   const setShowRouteDiagnostics = useAppStore((s) => s.setShowRouteDiagnostics);
   const developerModeEnabled = useAppStore((s) => s.developerModeEnabled);
   const startNavigation = useAppStore((s) => s.startNavigation);
   const [selectedEntryIdx, setSelectedEntryIdx] = useState(0);
+  const [directionsDestination, setDirectionsDestination] = useState<Place | null>(null);
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const searchInputRef = useRef<TextInput>(null);
   const theme = useTheme();
@@ -129,11 +177,19 @@ export function HomeScreen() {
   const useV2Map = MapFeatureFlagsService.useIjtemaV2Map();
   const graphOnlyFallbackUsed = !hasGoogleMapsKey;
   const [outsideBannerDismissed, setOutsideBannerDismissed] = useState(false);
+  const [mapLabelsTransitioning, setMapLabelsTransitioning] = useState(false);
+  const [layersSheetVisible, setLayersSheetVisible] = useState(false);
   const [mapReady, setMapReadyState] = useState(false);
   const [mapLoadFailed, setMapLoadFailed] = useState(false);
+  const [bannerStackHeight, setBannerStackHeight] = useState(0);
+  const [topOverlayHeight, setTopOverlayHeight] = useState(0);
+  const [routePreviewCardMeasuredHeight, setRoutePreviewCardMeasuredHeight] = useState(184);
+  const [isMapDragging, setIsMapDragging] = useState(false);
+  const [recenterState, setRecenterState] = useState<'idle' | 'loading' | 'success' | 'failure'>('idle');
   const searchFocusAnim = useRef(new Animated.Value(0)).current;
   const warningAnim = useRef(new Animated.Value(0)).current;
   const userPulseAnim = useRef(new Animated.Value(0)).current;
+  const chipsAnim = useRef(new Animated.Value(1)).current;
 
   const dismissSearch = useCallback(() => {
     setIsSearchFocused(false);
@@ -179,6 +235,15 @@ export function HomeScreen() {
     settings,
   } = useHomeViewModel();
 
+  const navOverlay = useNavigationOverlayV2({
+    mapRef,
+    mapReady,
+    mapZoomLevel,
+    hasGoogleMapsKey,
+    userPulseAnim,
+  });
+  const showNavOverlay = navOverlay.active && MapFeatureFlagsService.useIjtemaV2Navigation();
+
   useEffect(() => {
     setSelectedEntryIdx(0);
   }, [selectedPlace?.id]);
@@ -194,14 +259,20 @@ export function HomeScreen() {
     return () => handler.remove();
   }, [isSearchFocused, dismissSearch]);
 
-  const entryPoints = selectedPlace?.category === 'Block' && selectedPlace.sourceVersion !== 'v2'
-    ? PlaceDetailService.getEntryPoints(selectedPlace.id)
-    : [];
-  const blockGates = selectedPlace?.category === 'Block' && selectedPlace.sourceVersion !== 'v2'
-    ? PlaceDetailService.getBlockGates(selectedPlace.id)
-    : [];
+  const entryPoints = useMemo(
+    () => (selectedPlace?.category === 'Block' && selectedPlace.sourceVersion !== 'v2'
+      ? PlaceDetailService.getEntryPoints(selectedPlace.id)
+      : []),
+    [selectedPlace],
+  );
+  const blockGates = useMemo(
+    () => (selectedPlace?.category === 'Block' && selectedPlace.sourceVersion !== 'v2'
+      ? PlaceDetailService.getBlockGates(selectedPlace.id)
+      : []),
+    [selectedPlace],
+  );
 
-  const selectedPlaceMarkerCoordinate = (() => {
+  const selectedPlaceMarkerCoordinate = useMemo(() => {
     if (!selectedPlace) return null;
     if (selectedPlace.sourceVersion === 'v2') {
       return V2PlaceAdapter.getMarkerCoordinate(selectedPlace);
@@ -210,21 +281,25 @@ export function HomeScreen() {
       return RoutePointService.nodeToCoordinate(entryPoints[selectedEntryIdx].nodeId) ?? selectedPlace.coordinate;
     }
     return RoutePointService.getDestinationCoordinate(selectedPlace);
-  })();
-  const venueBoundary = [
-    { latitude: MAP_BOUNDS.minLat, longitude: MAP_BOUNDS.minLng },
-    { latitude: MAP_BOUNDS.minLat, longitude: MAP_BOUNDS.maxLng },
-    { latitude: MAP_BOUNDS.maxLat, longitude: MAP_BOUNDS.maxLng },
-    { latitude: MAP_BOUNDS.maxLat, longitude: MAP_BOUNDS.minLng },
-  ];
-  const overlayPlaces = (isSearchFocused || searchQuery.length > 1)
-    ? searchResults.filter((item) => (item as any).coordinate && (item as any).id !== selectedPlace?.id)
-    : [];
+  }, [selectedPlace, entryPoints, selectedEntryIdx]);
+  const overlayPlaces = useMemo(
+    () => ((isSearchFocused || searchQuery.length > 1)
+      ? searchResults.filter((item) => (item as any).coordinate && (item as any).id !== selectedPlace?.id)
+      : []),
+    [isSearchFocused, searchQuery, searchResults, selectedPlace],
+  );
   const activePreviewRoute = useMemo(() => {
     if (isNavigating) return null;
     if (!routePlannerDest || routePlannerDest.sourceVersion !== 'v2') return null;
     return isV2PreviewRoute(activeRoute) ? activeRoute : null;
   }, [activeRoute, isNavigating, routePlannerDest]);
+  const { outside: previewOutsideLegCoordinates, inside: previewInsideLegCoordinates } = useMemo(
+    () => V2MapRenderingService.splitOutsideInsideCoordinates(
+      activePreviewRoute?.coordinates ?? [],
+      activePreviewRoute?.outsideLegCoordinateCount,
+    ),
+    [activePreviewRoute],
+  );
   const previewDestination = activePreviewRoute ? routePlannerDest : null;
   const previewDestinationCoordinate = previewDestination
     ? V2PlaceAdapter.getMarkerCoordinate(previewDestination) ?? activePreviewRoute?.coordinates[activePreviewRoute.coordinates.length - 1] ?? null
@@ -243,13 +318,16 @@ export function HomeScreen() {
     if (!activePreviewRoute) return null;
     if (activePreviewRoute.startResolution?.mode === 'outside') {
       const gateLabel = activePreviewRoute.startResolution.gate?.name.en;
-      return gateLabel
-        ? `Outside Ijtema. Enter through ${gateLabel}.`
-        : 'Outside Ijtema. Enter through nearest connected official gate.';
+      // Recommended gate renders as its own badge row (see previewRecommendedGate below)
+      // when one is resolved — keep this text limited to the no-gate-yet case.
+      return gateLabel ? 'Outside Ijtema.' : 'Outside Ijtema. Enter through nearest connected official gate.';
     }
     if (routePlannerOrigin) return `Start from ${routePlannerOrigin.name}.`;
     return currentLocationSource === 'remembered' ? 'Start from last known location.' : 'Start from current location.';
   }, [activePreviewRoute, currentLocationSource, routePlannerOrigin]);
+  const previewRecommendedGate = activePreviewRoute?.startResolution?.mode === 'outside'
+    ? activePreviewRoute.startResolution.gate?.name.en ?? null
+    : null;
   const v2MapLayers = useMemo(
     () => V2MapRenderingService.getHomeLayers({
       selectedPlaceId: selectedPlace?.id,
@@ -258,8 +336,20 @@ export function HomeScreen() {
       graphOnlyFallback: graphOnlyFallbackUsed,
       zoomLevel: mapZoomLevel,
       mapFilter: activeCategory,
+      showGatesLayer,
+      showRastasLayer,
+      showSpecialRoutesLayer,
     }),
-    [activeCategory, developerModeEnabled, graphOnlyFallbackUsed, mapZoomLevel, selectedPlace],
+    [
+      activeCategory,
+      developerModeEnabled,
+      graphOnlyFallbackUsed,
+      mapZoomLevel,
+      selectedPlace,
+      showGatesLayer,
+      showRastasLayer,
+      showSpecialRoutesLayer,
+    ],
   );
   const effectiveInitialRegion = useV2Map
     ? {
@@ -279,14 +369,29 @@ export function HomeScreen() {
 
   const isFav = selectedPlace ? favorites.some((f) => f.placeId === selectedPlace.id) : false;
   const showOutsideBanner = !!currentLocation && !venueStatus.insideVenue && !outsideBannerDismissed && !activePreviewRoute && !isSearchFocused && searchQuery.length === 0 && !activeCategory;
+  const nearestEntryGate = useMemo(() => {
+    if (!currentLocation || venueStatus.insideVenue) return null;
+    // Destination-aware whenever a place is already selected, so this banner can
+    // never disagree with the gate Directions would actually route through for the
+    // same position + destination (see RoutingServiceV2.recommendOutsideEntryGate).
+    const destination = selectedPlace && selectedPlace.sourceVersion === 'v2' ? destinationFromPlace(selectedPlace) : null;
+    return RoutingServiceV2.recommendOutsideEntryGate(currentLocation, destination) ?? null;
+  }, [currentLocation, venueStatus.insideVenue, selectedPlace]);
   const showMapWarningBanner = !hasGoogleMapsKey || mapLoadFailed;
   const topInsetBase = Math.max(insets.top, Platform.OS === 'android' ? StatusBar.currentHeight ?? 0 : 0);
-  const offlineTop = topInsetBase + 140;
-  const mapWarningTop = offlineTop + (isOffline ? 42 : 0) + 8;
-  const outsideBannerTop = mapWarningTop + (showMapWarningBanner ? 56 : 0) + 8;
-  const rightControlsTop = outsideBannerTop + (showOutsideBanner ? 60 : 12);
-  const routePreviewCardHeight = activePreviewRoute ? 184 : 0;
-  const rightControlsBottom = Math.max(insets.bottom, 16) + routePreviewCardHeight + 16;
+  // Phase 7 (task #34): rightControlsTop/rightControlsBottom used to be a chain of hardcoded
+  // per-banner height guesses (42/56/60) that could drift out of sync with real rendered
+  // content (text wrapping, font scaling). Both now derive from onLayout-measured heights of
+  // the actual stacked banners / route-preview card instead.
+  // bannerStackTop used to be a hardcoded `topInsetBase + 140` guess at the combined
+  // search bar + chip row height, which under-measured on some font scales/screen sizes
+  // and let the banner overlap the chip row. Now derived from the search+chip overlay's
+  // own onLayout height (topOverlayHeight), same measure-don't-guess pattern as
+  // bannerStackHeight/routePreviewCardMeasuredHeight below. Falls back to the old
+  // constant only for the one frame before the first layout pass reports a height.
+  const bannerStackTop = topOverlayHeight > 0 ? topOverlayHeight + 8 : topInsetBase + 140;
+  const rightControlsTop = bannerStackTop + bannerStackHeight + (bannerStackHeight > 0 ? (showOutsideBanner ? 20 : 12) : 12);
+  const rightControlsBottom = Math.max(insets.bottom, 16) + (activePreviewRoute ? routePreviewCardMeasuredHeight + 16 : 0) + 16;
 
   useEffect(() => {
     Animated.timing(searchFocusAnim, {
@@ -303,6 +408,17 @@ export function HomeScreen() {
       useNativeDriver: true,
     }).start();
   }, [showOutsideBanner, warningAnim]);
+
+  // Google-Maps-style: category chip row fades out while the user is actively panning
+  // the map (decluttering the view for the map itself) and fades back in once the pan
+  // settles, matching handleMapRegionChangeComplete's existing onRegionChangeComplete hook.
+  useEffect(() => {
+    Animated.timing(chipsAnim, {
+      toValue: isMapDragging ? 0 : 1,
+      duration: 150,
+      useNativeDriver: true,
+    }).start();
+  }, [isMapDragging, chipsAnim]);
 
   useEffect(() => {
     const pulse = Animated.loop(
@@ -337,9 +453,60 @@ export function HomeScreen() {
   }, [venueStatus.insideVenue]);
 
   useEffect(() => {
-    if (!activePreviewRoute) return;
+    if (!activePreviewRoute || directionsDestination) return;
     bottomSheetRef.current?.close();
-  }, [activePreviewRoute, bottomSheetRef]);
+  }, [activePreviewRoute, directionsDestination, bottomSheetRef]);
+
+  useEffect(() => {
+    if (!showNavOverlay) return;
+    setDirectionsDestination(null);
+    bottomSheetRef.current?.close();
+  }, [showNavOverlay, bottomSheetRef]);
+
+  // Gate/block/rasta label markers only need tracksViewChanges=true while their
+  // visual state (map filter focus, which place is selected, or which zoom-LOD
+  // tier is active) is actively transitioning. Keeping it true continuously forces
+  // ongoing Android re-rasterization of every label marker on unrelated re-renders
+  // (e.g. GPS updates), so we open a short window on change and then drop back to
+  // false. Zoom tier matters here, not just filter/selection: a label marker that
+  // mounts (block/rasta labels newly entering the zoom-filtered array) or changes
+  // rendered size (gate full/compact/number text swap) with tracksViewChanges
+  // already false can freeze on Android with a stale or blank snapshot — this is
+  // what caused "missing block/rasta labels" and clipped gate labels ("Ga").
+  const zoomLodTier = mapZoomLevel >= HIGH_ZOOM ? 'high' : mapZoomLevel >= MEDIUM_ZOOM ? 'medium' : 'low';
+  const mapLabelVisualSignature = `${v2MapLayers.activeMapFilter}|${selectedPlace?.id ?? ''}|${zoomLodTier}`;
+  const prevMapLabelVisualSignatureRef = useRef(mapLabelVisualSignature);
+  useEffect(() => {
+    if (prevMapLabelVisualSignatureRef.current === mapLabelVisualSignature) return;
+    prevMapLabelVisualSignatureRef.current = mapLabelVisualSignature;
+    setMapLabelsTransitioning(true);
+    const timeout = setTimeout(() => setMapLabelsTransitioning(false), 400);
+    return () => clearTimeout(timeout);
+  }, [mapLabelVisualSignature]);
+
+  // The change-detection effect above only opens a window when the signature
+  // changes after mount — labels already present at first paint (e.g. app opens
+  // already zoomed past MEDIUM_ZOOM) need the same one-time snapshot window, or
+  // they mount directly with tracksViewChanges=false and can freeze blank/clipped.
+  useEffect(() => {
+    setMapLabelsTransitioning(true);
+    const timeout = setTimeout(() => setMapLabelsTransitioning(false), 400);
+    return () => clearTimeout(timeout);
+  }, []);
+
+  const recenterResetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const handleRecenterPress = useCallback(async () => {
+    if (recenterState === 'loading') return;
+    if (recenterResetTimerRef.current) clearTimeout(recenterResetTimerRef.current);
+    logHomeControl('recenter', 'resolve_location_and_center');
+    setRecenterState('loading');
+    const ok = await handleRecenter();
+    setRecenterState(ok ? 'success' : 'failure');
+    recenterResetTimerRef.current = setTimeout(() => setRecenterState('idle'), 1200);
+  }, [handleRecenter, logHomeControl, recenterState]);
+  useEffect(() => () => {
+    if (recenterResetTimerRef.current) clearTimeout(recenterResetTimerRef.current);
+  }, []);
 
   const handleToggleFav = () => {
     if (!selectedPlace) return;
@@ -353,11 +520,24 @@ export function HomeScreen() {
         : place.category === 'Block' && entryPoints[selectedEntryIdx]
         ? RoutePointService.enrichPlaceWithRoutingNode(place, entryPoints[selectedEntryIdx].nodeId)
         : place;
-    nav.navigate('Directions', { destination });
+    setDirectionsDestination(destination);
+    bottomSheetRef.current?.snapToIndex(1);
   };
+
+  const handleCloseDirections = useCallback(() => {
+    setDirectionsDestination(null);
+  }, []);
 
   const handleStartPreviewNavigation = useCallback(() => {
     if (!activePreviewRoute || !previewDestination) return;
+    const startCheck = V2NavigationAdapter.canStartActiveNavigation({
+      route: activePreviewRoute as any,
+      destination: previewDestination,
+    });
+    if (!startCheck.canStart) {
+      Alert.alert('Cannot start navigation', startCheck.message);
+      return;
+    }
     const resolvedRoute = V2NavigationAdapter.fromPreview({
       previewRoute: activePreviewRoute as any,
       destination: previewDestination,
@@ -365,14 +545,14 @@ export function HomeScreen() {
       currentLocation: routePlannerOrigin ? null : currentLocation,
     });
     startNavigation(previewDestination, resolvedRoute, resolvedRoute.instructions);
-    nav.navigate('Navigation');
-  }, [activePreviewRoute, currentLocation, nav, previewDestination, routePlannerOrigin, startNavigation]);
+  }, [activePreviewRoute, currentLocation, previewDestination, routePlannerOrigin, startNavigation]);
 
   const handleChangePreviewStart = useCallback(() => {
     if (!previewDestination) return;
     setSelectedPlace(previewDestination);
-    nav.navigate('Directions', { destination: previewDestination });
-  }, [nav, previewDestination, setSelectedPlace]);
+    setDirectionsDestination(previewDestination);
+    bottomSheetRef.current?.snapToIndex(1);
+  }, [bottomSheetRef, previewDestination, setSelectedPlace]);
 
   const handleClearPreviewRoute = useCallback(() => {
     clearRoutePlanner();
@@ -383,38 +563,14 @@ export function HomeScreen() {
     handlePlaceSelect(place);
   };
 
-  const openLayerOptions = () => {
-    const options: { text: string; onPress?: () => void; style?: 'default' | 'cancel' }[] = [
-      {
-        text: showBlockPolygons ? 'Hide Blocks Layer' : 'Show Blocks Layer',
-        onPress: () => setShowBlockPolygons(!showBlockPolygons),
-      },
-      {
-        text: mapType === 'standard' ? 'Switch to Satellite' : 'Switch to Standard',
-        onPress: () => {
-          if (mapType === 'standard') {
-            if (isOffline) {
-              Alert.alert('Satellite unavailable offline', 'Satellite requires internet or downloaded satellite tiles.');
-              return;
-            }
-            updateSettings({ mapMode: 'satellite' });
-            return;
-          }
-          updateSettings({ mapMode: 'standard' });
-        },
-      },
-      ...(developerModeEnabled
-        ? [
-            {
-              text: showRastaNames ? 'Hide Rasta Labels' : 'Show Rasta Labels',
-              onPress: () => setShowRastaNames(!showRastaNames),
-            },
-          ]
-        : []),
-      { text: 'Cancel', style: 'cancel' },
-    ];
+  const openLayerOptions = () => setLayersSheetVisible(true);
 
-    Alert.alert('Map Layers', 'Choose what to show on the map.', options);
+  const handleMapTypeChange = (nextMapType: 'standard' | 'satellite') => {
+    if (nextMapType === 'satellite' && isOffline) {
+      Alert.alert('Satellite unavailable offline', 'Satellite requires internet or downloaded satellite tiles.');
+      return;
+    }
+    updateSettings({ mapMode: nextMapType });
   };
 
   const renderChips = () => {
@@ -485,7 +641,14 @@ export function HomeScreen() {
               setMapReadyState(true);
               setMapLoadFailed(false);
             }}
-            onRegionChangeComplete={handleMapRegionChangeComplete}
+            onRegionChangeComplete={(region) => {
+              setIsMapDragging(false);
+              handleMapRegionChangeComplete(region);
+            }}
+            onPanDrag={() => {
+              navOverlay.setIsAutoFollowing(false);
+              setIsMapDragging(true);
+            }}
             onPress={() => {
               if (isSearchFocused) {
                 dismissSearch();
@@ -502,151 +665,61 @@ export function HomeScreen() {
             <LocalTile pathTemplate={getTilePath()} tileSize={256} zIndex={-1} />
           )}
 
-          <Polygon
-            coordinates={useV2Map ? v2MapLayers.venueBoundary : venueBoundary}
-            fillColor="rgba(232,245,233,0.06)"
-            strokeColor="rgba(46,125,50,0.48)"
-            strokeWidth={2}
-            zIndex={0}
-          />
+          {mapType === 'satellite' && hasGoogleMapsKey && !isOffline && <SatelliteDimOverlay bounds={SATELLITE_DIM_BOUNDARY} />}
 
-          {useV2Map ? (
-            <>
-              {v2MapLayers.rastas.map((rasta) => {
-                const focused = v2MapLayers.activeMapFilter === 'rastas';
-                return (
-                  <React.Fragment key={`v2_rasta_${rasta.id}`}>
-                    <Polyline
-                      coordinates={rasta.polyline}
-                      strokeColor={rasta.isSelected ? 'rgba(26,115,232,0.55)' : focused ? 'rgba(230,81,0,0.55)' : 'rgba(60,64,67,0.44)'}
-                      strokeWidth={rasta.isSelected ? 11 : focused ? 12 : 7}
-                      zIndex={rasta.isSelected ? 8 : focused ? 4 : 2}
-                    />
-                    <Polyline
-                      coordinates={rasta.polyline}
-                      strokeColor={rasta.isSelected ? '#1A73E8' : focused ? '#E65100' : 'rgba(255,255,255,0.9)'}
-                      strokeWidth={rasta.isSelected ? 6 : focused ? 7 : 4}
-                      zIndex={rasta.isSelected ? 9 : focused ? 5 : 3}
-                    />
-                  </React.Fragment>
-                );
-              })}
+          <VenueBoundary coordinates={useV2Map ? v2MapLayers.venueBoundary : VENUE_BOUNDARY} />
 
-              {v2MapLayers.visibleRastaLabels.map((rasta) => {
-                const focused = v2MapLayers.activeMapFilter === 'rastas';
-                return (
-                  <Marker key={`v2_rasta_label_${rasta.id}`} coordinate={rasta.labelCoordinate} anchor={{ x: 0.5, y: 0.5 }} zIndex={7} tracksViewChanges={false}>
-                    <View style={[styles.rastaLabel, focused && styles.rastaLabelFocused, rasta.isSelected && styles.v2SelectedLabel]}>
-                      <Text style={[styles.rastaLabelText, focused && styles.rastaLabelTextFocused]}>{rasta.label}</Text>
-                    </View>
-                  </Marker>
-                );
-              })}
+          {showNavOverlay && <NavigationMapLayersV2 overlay={navOverlay} />}
 
-              {v2MapLayers.specialRoutes.map((route) => {
-                const focused = v2MapLayers.activeMapFilter === 'special_routes';
-                return (
-                  <React.Fragment key={`v2_special_${route.id}`}>
-                    <Polyline
-                      coordinates={route.polyline}
-                      strokeColor={route.isSelected ? '#6A0DAD' : focused ? 'rgba(106,13,173,0.65)' : 'rgba(142,36,170,0.55)'}
-                      strokeWidth={route.isSelected ? 7 : focused ? 8 : 3}
-                      zIndex={route.isSelected ? 10 : focused ? 6 : 4}
-                    />
-                    {focused && (
-                      <Polyline
-                        coordinates={route.polyline}
-                        strokeColor="rgba(255,255,255,0.55)"
-                        strokeWidth={3}
-                        zIndex={route.isSelected ? 11 : 7}
-                      />
-                    )}
-                  </React.Fragment>
-                );
-              })}
+          {!showNavOverlay && (useV2Map ? (
+            <React.Fragment key={`v2_layers_${v2MapLayers.activeMapFilter}`}>
+              <RastaLayer
+                rastas={v2MapLayers.visibleRastas}
+                labels={v2MapLayers.visibleRastaLabels}
+                variant="home"
+                focused={v2MapLayers.activeMapFilter === 'rastas'}
+                transitioning={mapLabelsTransitioning}
+                keyPrefix="v2_rasta"
+              />
 
-              {v2MapLayers.visibleSpecialRouteLabels.map((route) => {
-                const focused = v2MapLayers.activeMapFilter === 'special_routes';
-                return (
-                  <Marker key={`v2_special_label_${route.id}`} coordinate={route.labelCoordinate} anchor={{ x: 0.5, y: 0.5 }} zIndex={9} tracksViewChanges={false}>
-                    <View style={[styles.v2RouteLabel, focused && styles.v2RouteLabelFocused, route.isSelected && styles.v2SelectedLabel]}>
-                      <Text style={[styles.v2RouteLabelText, focused && styles.v2RouteLabelTextFocused]}>{route.label}</Text>
-                    </View>
-                  </Marker>
-                );
-              })}
+              <SpecialRouteLayer
+                routes={v2MapLayers.specialRoutes}
+                labels={v2MapLayers.visibleSpecialRouteLabels}
+                variant="home"
+                focused={v2MapLayers.activeMapFilter === 'special_routes'}
+                transitioning={mapLabelsTransitioning}
+                keyPrefix="v2_special"
+              />
 
-              {showBlockPolygons && v2MapLayers.blocks.map((block) => {
-                const focused = v2MapLayers.activeMapFilter === 'blocks';
-                return (
-                  <Polygon
-                    key={`v2_block_${block.id}`}
-                    coordinates={block.polygon}
-                    fillColor={block.isSelected ? 'rgba(26,115,232,0.42)' : focused ? 'rgba(46,125,50,0.30)' : 'rgba(46,125,50,0.14)'}
-                    strokeColor={block.isSelected ? '#1A73E8' : focused ? '#1B5E20' : '#2E7D32'}
-                    strokeWidth={block.isSelected ? 3 : focused ? 2 : 1.2}
-                    tappable
-                    onPress={() => {
-                      const place = V2PlaceAdapter.getPlaceById(block.id);
-                      if (!place) return;
-                      dismissSearch();
-                      handlePlaceSelect(place);
-                    }}
-                  />
-                );
-              })}
+              <BlockLayer
+                blocks={showBlockPolygons ? v2MapLayers.visibleBlocks : []}
+                labels={v2MapLayers.visibleBlockLabels}
+                variant="home"
+                focused={v2MapLayers.activeMapFilter === 'blocks'}
+                transitioning={mapLabelsTransitioning}
+                keyPrefix="v2_block"
+                onPressBlock={(blockId) => {
+                  const place = V2PlaceAdapter.getPlaceById(blockId);
+                  if (!place) return;
+                  dismissSearch();
+                  handlePlaceSelect(place);
+                }}
+              />
 
-              {v2MapLayers.visibleBlockLabels.map((block) => {
-                const focused = v2MapLayers.activeMapFilter === 'blocks';
-                return (
-                  <Marker key={`v2_block_label_${block.id}`} coordinate={block.center} anchor={{ x: 0.5, y: 0.5 }} zIndex={8} tracksViewChanges={false}>
-                    <View style={[styles.v2BlockLabel, focused && styles.v2BlockLabelFocused, block.isSelected && styles.v2SelectedBlockLabel]}>
-                      <Text style={[styles.v2BlockLabelText, focused && styles.v2BlockLabelTextFocused, block.isSelected && styles.v2SelectedBlockLabelText]}>
-                        {block.label}
-                      </Text>
-                    </View>
-                  </Marker>
-                );
-              })}
-
-              {v2MapLayers.visibleGateMarkers.map((gate) => {
-                const focused = v2MapLayers.activeMapFilter === 'gates';
-                const gateNum = gate.label.replace('Gate ', '');
-                const showFull = gate.isSelected || mapZoomLevel >= 16.5;
-                const showCompact = !showFull && mapZoomLevel >= 14;
-                const showNumber = !showFull && !showCompact;
-                const displayLabel = showFull ? gate.label : showCompact ? `G${gateNum}` : gateNum;
-                const isCompact = !showFull;
-                return (
-                  <Marker
-                    key={`v2_gate_${gate.id}`}
-                    coordinate={gate.coordinate}
-                    anchor={{ x: 0.5, y: 0.5 }}
-                    zIndex={gate.isSelected ? 16 : focused ? 14 : 12}
-                    tracksViewChanges={focused || gate.isSelected}
-                    onPress={() => {
-                      const place = V2PlaceAdapter.getPlaceById(gate.id);
-                      if (!place) return;
-                      dismissSearch();
-                      handlePlaceSelect(place);
-                    }}
-                  >
-                    <View style={[
-                      isCompact ? styles.v2GateMarkerCompact : styles.v2GateMarker,
-                      isCompact && focused && styles.v2GateMarkerCompactFocused,
-                      !isCompact && focused && styles.v2GateMarkerFocused,
-                      gate.needsConnectorVerification && styles.v2GateMarkerWarning,
-                      gate.isSelected && styles.v2GateMarkerSelected,
-                    ]}>
-                      <Text style={[
-                        isCompact ? styles.v2GateMarkerTextCompact : styles.v2GateMarkerText,
-                        !isCompact && focused && styles.v2GateMarkerTextFocused,
-                        showNumber && styles.v2GateMarkerTextNumber,
-                      ]}>{displayLabel}</Text>
-                    </View>
-                  </Marker>
-                );
-              })}
+              <GateLayer
+                gates={v2MapLayers.visibleGateMarkers}
+                variant="home"
+                focused={v2MapLayers.activeMapFilter === 'gates'}
+                zoomLevel={mapZoomLevel}
+                transitioning={mapLabelsTransitioning}
+                keyPrefix="v2_gate"
+                onPressGate={(gateId) => {
+                  const place = V2PlaceAdapter.getPlaceById(gateId);
+                  if (!place) return;
+                  dismissSearch();
+                  handlePlaceSelect(place);
+                }}
+              />
 
               {activePreviewRoute && activePreviewRoute.coordinates.length > 1 && (
                 <>
@@ -657,24 +730,33 @@ export function HomeScreen() {
                     strokeWidth={11}
                     zIndex={14}
                   />
+                  {previewOutsideLegCoordinates.length > 1 && (
+                    <Polyline
+                      coordinates={previewOutsideLegCoordinates}
+                      strokeColor="#E67C00"
+                      strokeWidth={5}
+                      lineDashPattern={[8, 6]}
+                      zIndex={15}
+                    />
+                  )}
                   {/* Blue route line on top */}
                   <Polyline
-                    coordinates={activePreviewRoute.coordinates}
+                    coordinates={previewInsideLegCoordinates}
                     strokeColor="#1A73E8"
                     strokeWidth={6}
-                    zIndex={15}
+                    zIndex={16}
                   />
                 </>
               )}
 
               {__DEV__ && developerModeEnabled && v2MapLayers.developerLabels.map((label) => (
-                <Marker key={`v2_dev_${label.id}`} coordinate={label.coordinate} anchor={{ x: 0.5, y: 0.5 }}>
+                <Marker key={`v2_dev_${label.id}`} coordinate={label.coordinate} anchor={{ x: 0.5, y: 0.5 }} tracksViewChanges={false}>
                   <View style={styles.debugNode}>
                     <Text style={styles.debugNodeText}>{label.text}</Text>
                   </View>
                 </Marker>
               ))}
-            </>
+            </React.Fragment>
           ) : IJTEMA_DATA.edges.map((edge, idx) => {
             const from = IJTEMA_DATA.nodes[edge.from];
             const to = IJTEMA_DATA.nodes[edge.to];
@@ -700,9 +782,9 @@ export function HomeScreen() {
                 />
               </React.Fragment>
             );
-          })}
+          }))}
 
-          {!useV2Map && showBlockPolygons && Object.entries(IJTEMA_DATA.blocks).map(([id, block]) => {
+          {!showNavOverlay && !useV2Map && showBlockPolygons && Object.entries(IJTEMA_DATA.blocks).map(([id, block]) => {
             const isSelected = selectedPlace?.id === id;
             return block.corners ? (
               <Polygon
@@ -721,19 +803,21 @@ export function HomeScreen() {
                     category: 'Block',
                     coordinate: block.center,
                     description: `${block.name} of the Karachi Ijtema ground.`,
+                    sourceVersion: 'v1',
                   });
                 }}
               />
             ) : null;
           })}
 
-          {!useV2Map && showGraphNodes && __DEV__ && developerModeEnabled && Object.entries(IJTEMA_DATA.nodes).map(([nodeId, node]) => {
+          {!showNavOverlay && !useV2Map && showGraphNodes && __DEV__ && developerModeEnabled && Object.entries(IJTEMA_DATA.nodes).map(([nodeId, node]) => {
             const color = nodeId.startsWith('P') ? '#D32F2F' : nodeId.startsWith('S') ? '#00ACC1' : '#616161';
             return (
               <Marker
                 key={`node_${nodeId}`}
                 coordinate={{ latitude: node.lat, longitude: node.lng }}
                 anchor={{ x: 0.5, y: 0.5 }}
+                tracksViewChanges={false}
               >
                 <View style={[styles.debugNode, { backgroundColor: color }]}>
                   <Text style={styles.debugNodeText}>{nodeId}</Text>
@@ -742,7 +826,7 @@ export function HomeScreen() {
             );
           })}
 
-          {!useV2Map && showRastaNames && __DEV__ && developerModeEnabled && Array.from(new Map(
+          {!showNavOverlay && !useV2Map && showRastaNames && __DEV__ && developerModeEnabled && Array.from(new Map(
             IJTEMA_DATA.edges
               .filter((edge) => !!edge.name)
               .map((edge) => [edge.name!, edge]),
@@ -752,7 +836,7 @@ export function HomeScreen() {
             if (!from || !to || !edge.name) return null;
             const mid = { latitude: (from.lat + to.lat) / 2, longitude: (from.lng + to.lng) / 2 };
             return (
-              <Marker key={`rasta_${edge.name}`} coordinate={mid} anchor={{ x: 0.5, y: 0.5 }}>
+              <Marker key={`rasta_${edge.name}`} coordinate={mid} anchor={{ x: 0.5, y: 0.5 }} tracksViewChanges={false}>
                 <View style={styles.rastaLabel}>
                   <Text style={styles.rastaLabelText}>{edge.name}</Text>
                 </View>
@@ -760,7 +844,7 @@ export function HomeScreen() {
             );
           })}
 
-          {overlayPlaces.map((item) => {
+          {!showNavOverlay && overlayPlaces.map((item) => {
             const overlayItem = item as Place | SearchResult;
             const coordinate = overlayItem.coordinate;
             const label = getDisplayName(overlayItem);
@@ -769,6 +853,7 @@ export function HomeScreen() {
                 key={`search_overlay_${overlayItem.id}`}
                 coordinate={coordinate}
                 anchor={{ x: 0.5, y: 1 }}
+                tracksViewChanges={false}
                 onPress={() => {
                   if (isPlace(overlayItem)) handlePlaceSelect(overlayItem);
                 }}
@@ -782,8 +867,8 @@ export function HomeScreen() {
           })}
 
           {/* Selected place pin — hidden during route preview to avoid duplicate destination marker */}
-          {selectedPlace && selectedPlaceMarkerCoordinate && !activePreviewRoute && (
-            <Marker coordinate={selectedPlaceMarkerCoordinate}>
+          {!showNavOverlay && selectedPlace && selectedPlaceMarkerCoordinate && !activePreviewRoute && (
+            <Marker coordinate={selectedPlaceMarkerCoordinate} tracksViewChanges={false}>
               <View style={styles.selectedMarker}>
                 <MapPin size={32} color="#EA4335" fill="#EA4335" />
               </View>
@@ -792,15 +877,15 @@ export function HomeScreen() {
 
           {/* Route preview destination pin — shown when route is active */}
           {previewDestinationCoordinate && activePreviewRoute && (
-            <Marker coordinate={previewDestinationCoordinate}>
+            <Marker coordinate={previewDestinationCoordinate} tracksViewChanges={false}>
               <View style={styles.selectedMarker}>
                 <MapPin size={30} color="#EA4335" fill="#EA4335" />
               </View>
             </Marker>
           )}
 
-          {currentLocation && (
-            <Marker coordinate={currentLocation} anchor={{ x: 0.5, y: 0.5 }}>
+          {!showNavOverlay && currentLocation && (
+            <Marker coordinate={currentLocation} anchor={{ x: 0.5, y: 0.5 }} tracksViewChanges={false}>
               <View style={styles.userMarkerWrap}>
                 <Animated.View
                   style={[
@@ -824,7 +909,7 @@ export function HomeScreen() {
           )}
 
           {showPreviewStartMarker && previewStartCoordinate && (
-            <Marker coordinate={previewStartCoordinate} anchor={{ x: 0.5, y: 1 }}>
+            <Marker coordinate={previewStartCoordinate} anchor={{ x: 0.5, y: 1 }} tracksViewChanges={false}>
               <View style={styles.previewStartMarker}>
                 <Navigation size={13} color="#FFFFFF" />
               </View>
@@ -832,7 +917,14 @@ export function HomeScreen() {
           )}
           </MapView>
 
-        <SafeAreaView style={styles.topOverlay} pointerEvents="box-none">
+        {showNavOverlay && <NavigationChromeV2 overlay={navOverlay} hasGoogleMapsKey={hasGoogleMapsKey} />}
+
+        {!showNavOverlay && !directionsDestination && (
+        <SafeAreaView
+          style={styles.topOverlay}
+          pointerEvents="box-none"
+          onLayout={(e) => setTopOverlayHeight(e.nativeEvent.layout.height)}
+        >
           <Animated.View
             style={[
               styles.searchBarContainer,
@@ -893,6 +985,7 @@ export function HomeScreen() {
                 {(searchQuery.length > 0 ? searchResults : recentSearches).map((item) => (
                   <Pressable
                     key={(item as any).id}
+                    testID={`search-result-${(item as any).id}`}
                     style={styles.searchResultItem}
                     onPress={() => handleSearchResultSelect(item as any)}
                   >
@@ -904,9 +997,16 @@ export function HomeScreen() {
                       )}
                     </View>
                     <View style={styles.searchResultText}>
-                      <Text style={styles.searchResultName} numberOfLines={1} ellipsizeMode="tail">
-                        {getDisplayName(item)}
-                      </Text>
+                      <View style={styles.searchResultNameRow}>
+                        <Text style={styles.searchResultName} numberOfLines={1} ellipsizeMode="tail">
+                          {getDisplayName(item)}
+                        </Text>
+                        {getSecondaryDisplayName(item) && (
+                          <Text style={styles.searchResultNameUrdu} numberOfLines={1} ellipsizeMode="tail">
+                            {getSecondaryDisplayName(item)}
+                          </Text>
+                        )}
+                      </View>
                       <Text style={styles.searchResultCategory} numberOfLines={1} ellipsizeMode="tail">
                         {(item as any).category}
                       </Text>
@@ -919,59 +1019,68 @@ export function HomeScreen() {
           )}
 
           {!isSearchFocused && (
-            <>
+            <Animated.View style={{ opacity: chipsAnim }} pointerEvents={isMapDragging ? 'none' : 'box-none'}>
               {renderChips()}
-            </>
+            </Animated.View>
           )}
         </SafeAreaView>
-
-        {isOffline && (
-          <View style={[styles.offlineIndicator, { top: offlineTop }]}>
-            <WifiOff size={14} color="#FFFFFF" />
-            <Text style={styles.offlineText}>Offline</Text>
-          </View>
         )}
 
-        {!hasGoogleMapsKey && (
-          <View style={[styles.mapWarningBanner, { top: mapWarningTop }]}>
-            <Text style={styles.mapWarningText}>{MapConfigService.getMissingGoogleMapsMessage()}</Text>
-          </View>
-        )}
-
-        {hasGoogleMapsKey && mapLoadFailed && (
-          <View style={[styles.mapWarningBanner, { top: mapWarningTop }]}>
-            <Text style={styles.mapWarningText}>{MapConfigService.getMapLoadFailedMessage()}</Text>
-          </View>
-        )}
-
-        {showOutsideBanner && (
-          <Animated.View
-            style={[
-              styles.outsideVenueBanner,
-              {
-                top: outsideBannerTop,
-                opacity: warningAnim,
-                transform: [{ translateY: warningAnim.interpolate({ inputRange: [0, 1], outputRange: [-8, 0] }) }],
-              },
-            ]}
+        {!showNavOverlay && (isOffline || showMapWarningBanner || showOutsideBanner) && (
+          <View
+            style={[styles.bannerStack, { top: bannerStackTop }]}
+            onLayout={(e) => setBannerStackHeight(e.nativeEvent.layout.height)}
           >
-            <View style={styles.outsideVenueTextWrap}>
-              <Text style={styles.outsideVenueText}>Outside Ijtema area</Text>
-              <Text style={styles.outsideVenueSubtext}>Offline routing will enter through nearest connected official gate.</Text>
-            </View>
-            <Pressable
-              style={styles.bannerCloseButton}
-              onPress={() => {
-                logHomeControl('outside_banner_close', 'dismissed');
-                setOutsideBannerDismissed(true);
-              }}
-            >
-              <X size={16} color="#FFFFFF" />
-            </Pressable>
-          </Animated.View>
+            {isOffline && (
+              <View style={[styles.offlineIndicator, styles.bannerStackItem]}>
+                <WifiOff size={14} color="#FFFFFF" />
+                <Text style={styles.offlineText}>Offline</Text>
+              </View>
+            )}
+
+            {!hasGoogleMapsKey && (
+              <View style={[styles.mapWarningBanner, styles.bannerStackItem]}>
+                <Text style={styles.mapWarningText}>{MapConfigService.getMissingGoogleMapsMessage()}</Text>
+              </View>
+            )}
+
+            {hasGoogleMapsKey && mapLoadFailed && (
+              <View style={[styles.mapWarningBanner, styles.bannerStackItem]}>
+                <Text style={styles.mapWarningText}>{MapConfigService.getMapLoadFailedMessage()}</Text>
+              </View>
+            )}
+
+            {showOutsideBanner && (
+              <Animated.View
+                style={[
+                  styles.outsideVenueBanner,
+                  styles.bannerStackItem,
+                  {
+                    opacity: warningAnim,
+                    transform: [{ translateY: warningAnim.interpolate({ inputRange: [0, 1], outputRange: [-8, 0] }) }],
+                  },
+                ]}
+              >
+                <View style={styles.outsideVenueTextWrap}>
+                  <Text style={styles.outsideVenueText} numberOfLines={1} ellipsizeMode="tail">
+                    {nearestEntryGate ? `Outside Ijtema · Enter through ${nearestEntryGate.name.en}` : 'Outside Ijtema · Nearest gate unavailable'}
+                  </Text>
+                </View>
+                <Pressable
+                  style={styles.bannerCloseButton}
+                  onPress={() => {
+                    logHomeControl('outside_banner_close', 'dismissed');
+                    setOutsideBannerDismissed(true);
+                  }}
+                >
+                  <X size={16} color="#FFFFFF" />
+                </Pressable>
+              </Animated.View>
+            )}
+          </View>
         )}
 
-        {__DEV__ && developerModeEnabled && showRouteDiagnostics && (
+        {!showNavOverlay && __DEV__ && developerModeEnabled && showRouteDiagnostics && (
           <View style={styles.diagnosticsBanner}>
             <Text style={styles.diagnosticsText}>
               {GRAPH_VALIDATION.isValid ? 'Graph validation: PASS' : 'Graph validation: FAIL'}
@@ -987,7 +1096,7 @@ export function HomeScreen() {
           </View>
         )}
 
-        {isOffline && !offlineData.isDownloaded && (
+        {!showNavOverlay && isOffline && !offlineData.isDownloaded && (
           <View style={styles.emptyOfflineState}>
             <Text style={styles.emptyOfflineTitle}>Background map not downloaded. Ijtema routes still work.</Text>
             <Pressable style={styles.emptyOfflineButton} onPress={() => nav.navigate('DownloadMap')}>
@@ -996,7 +1105,7 @@ export function HomeScreen() {
           </View>
         )}
 
-        {!isSearchFocused && (
+        {!showNavOverlay && !isSearchFocused && (
           <>
             <View
               style={[
@@ -1004,64 +1113,43 @@ export function HomeScreen() {
                 { top: rightControlsTop },
               ]}
             >
-              <Pressable
-                style={styles.controlButton}
-                onPress={() => {
+              <MapControls
+                variant="browse"
+                keepNorthFixed={settings.keepNorthFixed}
+                onLayers={() => {
                   logHomeControl('layer', 'open_options');
                   openLayerOptions();
                 }}
-              >
-                <Layers size={22} color="#5F6368" />
-              </Pressable>
-              <Pressable
-                style={[
-                  styles.controlButton,
-                  settings.keepNorthFixed && styles.controlButtonActive,
-                ]}
-                onPress={() => {
+                onCompassReset={() => {
                   logHomeControl('compass', 'reset_north_up');
                   handleCompassReset();
                 }}
-              >
-                <Compass size={22} color={settings.keepNorthFixed ? '#1A73E8' : '#5F6368'} />
-              </Pressable>
-              <View style={styles.controlHelperBadge}>
-                <Text style={styles.controlHelperText}>
-                  {settings.keepNorthFixed ? 'North-up' : 'Free rotate'}
-                </Text>
-              </View>
-              <View style={styles.zoomControls}>
-                <Pressable
-                  style={styles.zoomButton}
-                  onPress={() => {
-                    logHomeControl('zoom_in', 'map_zoom_in');
-                    handleZoomIn();
-                  }}
-                >
-                  <Plus size={22} color="#5F6368" />
-                </Pressable>
-                <View style={styles.zoomDivider} />
-                <Pressable
-                  style={styles.zoomButton}
-                  onPress={() => {
-                    logHomeControl('zoom_out', 'map_zoom_out');
-                    handleZoomOut();
-                  }}
-                >
-                  <Minus size={22} color="#5F6368" />
-                </Pressable>
-              </View>
+                onZoomIn={() => {
+                  logHomeControl('zoom_in', 'map_zoom_in');
+                  handleZoomIn();
+                }}
+                onZoomOut={() => {
+                  logHomeControl('zoom_out', 'map_zoom_out');
+                  handleZoomOut();
+                }}
+              />
             </View>
 
             <View style={[styles.bottomControls, { bottom: rightControlsBottom + 80 }]}>
               <Pressable
                 style={styles.recenterButton}
-                onPress={() => {
-                  logHomeControl('recenter', 'resolve_location_and_center');
-                  void handleRecenter();
-                }}
+                disabled={recenterState === 'loading'}
+                onPress={() => void handleRecenterPress()}
               >
-                <LocateFixed size={24} color="#4285F4" />
+                {recenterState === 'loading' ? (
+                  <ActivityIndicator size="small" color="#4285F4" />
+                ) : recenterState === 'success' ? (
+                  <Check size={24} color="#2E7D32" />
+                ) : recenterState === 'failure' ? (
+                  <AlertTriangle size={22} color="#EA4335" />
+                ) : (
+                  <LocateFixed size={24} color="#4285F4" />
+                )}
               </Pressable>
             </View>
 
@@ -1081,8 +1169,32 @@ export function HomeScreen() {
           </>
         )}
 
-        {!isSearchFocused && activePreviewRoute && previewDestination && (
-          <View style={[styles.routePreviewCard, { bottom: Math.max(insets.bottom, 16) + 16 }]}>
+        {showNavOverlay && (
+          <View style={[styles.navControls, { bottom: Math.max(insets.bottom, 12) + 12 + 140 + 56 + 16 }]}>
+            <MapControls
+              variant="nav"
+              keepNorthFixed={settings.keepNorthFixed}
+              onCompassReset={() => {
+                logHomeControl('nav_compass', 'reset_north_up');
+                handleCompassReset();
+              }}
+              onZoomIn={() => {
+                logHomeControl('nav_zoom_in', 'map_zoom_in');
+                handleZoomIn();
+              }}
+              onZoomOut={() => {
+                logHomeControl('nav_zoom_out', 'map_zoom_out');
+                handleZoomOut();
+              }}
+            />
+          </View>
+        )}
+
+        {!isSearchFocused && !directionsDestination && activePreviewRoute && previewDestination && (
+          <View
+            style={[styles.routePreviewCard, { bottom: Math.max(insets.bottom, 16) + 16 }]}
+            onLayout={(e) => setRoutePreviewCardMeasuredHeight(e.nativeEvent.layout.height)}
+          >
             <View style={styles.routePreviewCardHeader}>
               <View style={styles.routePreviewTitleWrap}>
                 <Text style={styles.routePreviewEyebrow}>Route to</Text>
@@ -1096,6 +1208,12 @@ export function HomeScreen() {
             <Text style={styles.routePreviewDistance}>
               {InstructionService.formatDistance(activePreviewRoute.totalDistance, settings.distanceUnit)}
             </Text>
+            {previewRecommendedGate && (
+              <View style={styles.routePreviewGateBadge}>
+                <MapPin size={14} color="#1B5E20" />
+                <Text style={styles.routePreviewGateBadgeText}>Enter through {previewRecommendedGate}</Text>
+              </View>
+            )}
             <Text style={styles.routePreviewSummary} numberOfLines={2}>
               {previewRouteSummary}
             </Text>
@@ -1119,9 +1237,15 @@ export function HomeScreen() {
           index={-1}
           snapPoints={snapPoints}
           enablePanDownToClose
+          keyboardBehavior="interactive"
+          keyboardBlurBehavior="restore"
+          android_keyboardInputMode="adjustResize"
           handleIndicatorStyle={[styles.sheetIndicator, { backgroundColor: theme.border }]}
           backgroundStyle={{ backgroundColor: theme.card }}
         >
+          {directionsDestination ? (
+            <DirectionsScreen destination={directionsDestination} onClose={handleCloseDirections} />
+          ) : (
           <BottomSheetScrollView contentContainerStyle={styles.sheetContent}>
             {selectedPlace ? (
               <View>
@@ -1140,6 +1264,14 @@ export function HomeScreen() {
                     <X size={24} color="#5F6368" />
                   </Pressable>
                 </View>
+
+                {(selectedPlace.verificationWarning || selectedPlace.unavailableReason) && (
+                  <View style={styles.placeWarningBanner}>
+                    <Text style={styles.placeWarningBannerText}>
+                      {selectedPlace.verificationWarning ?? selectedPlace.unavailableReason}
+                    </Text>
+                  </View>
+                )}
 
                 <View style={styles.infoChips}>
                   {walkingTimeMin !== null && (
@@ -1209,6 +1341,7 @@ export function HomeScreen() {
                               description: `${gate.name} entrance for Block 2 / Member Masjid.`,
                               coordinate: gate.coordinate,
                               routingNodeId: IJTEMA_DATA.nodes[gate.id]?.nearestRoadNode,
+                              sourceVersion: 'v1',
                             });
                           }}
                         >
@@ -1272,7 +1405,23 @@ export function HomeScreen() {
               </View>
             )}
           </BottomSheetScrollView>
+          )}
         </BottomSheet>
+
+        <LayersSheet
+          visible={layersSheetVisible}
+          onClose={() => setLayersSheetVisible(false)}
+          mapType={mapType}
+          onMapTypeChange={handleMapTypeChange}
+          showBlockPolygons={showBlockPolygons}
+          onToggleBlocks={setShowBlockPolygons}
+          showGatesLayer={showGatesLayer}
+          onToggleGates={setShowGatesLayer}
+          showRastasLayer={showRastasLayer}
+          onToggleRastas={setShowRastasLayer}
+          showSpecialRoutesLayer={showSpecialRoutesLayer}
+          onToggleSpecialRoutes={setShowSpecialRoutesLayer}
+        />
       </View>
     </KeyboardAvoidingView>
   );
@@ -1383,7 +1532,9 @@ const styles = StyleSheet.create({
   },
   searchResultIcon: { width: 40, alignItems: 'center' },
   searchResultText: { flex: 1, marginLeft: 4, minWidth: 0 },
-  searchResultName: { fontSize: 15, color: '#202124', fontWeight: '500' },
+  searchResultNameRow: { flexDirection: 'row', alignItems: 'baseline' },
+  searchResultName: { fontSize: 15, color: '#202124', fontWeight: '500', flexShrink: 1 },
+  searchResultNameUrdu: { fontSize: 13, color: '#70757A', marginLeft: 6, flexShrink: 1 },
   searchResultCategory: { fontSize: 13, color: '#70757A', marginTop: 1 },
   chipsContainer: { marginTop: 10 },
   chipsContent: { paddingLeft: 12, paddingRight: 88, paddingBottom: 8 },
@@ -1403,42 +1554,7 @@ const styles = StyleSheet.create({
   chipText: { fontSize: 13, color: '#3C4043', fontWeight: '500' },
   activeChipText: { color: '#FFFFFF', fontWeight: '700' },
   rightControls: { position: 'absolute', right: 12, zIndex: 5 },
-  controlButton: {
-    backgroundColor: '#FFFFFF',
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 12,
-    elevation: 3,
-  },
-  controlButtonActive: {
-    borderWidth: 1,
-    borderColor: '#1A73E8',
-    backgroundColor: '#E8F0FE',
-  },
-  controlHelperBadge: {
-    backgroundColor: 'rgba(255,255,255,0.95)',
-    borderRadius: 12,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    marginBottom: 10,
-    alignSelf: 'center',
-    elevation: 2,
-  },
-  controlHelperText: {
-    color: '#5F6368',
-    fontSize: 10,
-    fontWeight: '700',
-  },
-  zoomControls: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 22,
-    elevation: 3,
-  },
-  zoomButton: { width: 44, height: 44, justifyContent: 'center', alignItems: 'center' },
-  zoomDivider: { height: 1, backgroundColor: '#DADCE0', marginHorizontal: 8 },
+  navControls: { position: 'absolute', right: 16, zIndex: 5 },
   bottomControls: { position: 'absolute', right: 12, zIndex: 5 },
   recenterButton: {
     backgroundColor: '#FFFFFF',
@@ -1449,48 +1565,42 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     elevation: 6,
   },
+  bannerStack: { position: 'absolute', left: 0, right: 0, zIndex: 10 },
+  bannerStackItem: { marginBottom: 8 },
   offlineIndicator: {
-    position: 'absolute',
-    top: 140,
-    left: 12,
+    alignSelf: 'flex-start',
+    marginLeft: 12,
     backgroundColor: 'rgba(32, 33, 36, 0.9)',
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 16,
-    zIndex: 10,
   },
   offlineText: { color: '#FFFFFF', fontSize: 12, fontWeight: '600', marginLeft: 6 },
   mapWarningBanner: {
-    position: 'absolute',
-    top: 172,
-    left: 12,
-    right: 12,
+    marginHorizontal: 12,
     backgroundColor: '#FFF3CD',
     borderRadius: 8,
     paddingHorizontal: 10,
     paddingVertical: 8,
-    zIndex: 11,
   },
   mapWarningText: { color: '#7C4A03', fontSize: 12, fontWeight: '600' },
   outsideVenueBanner: {
-    position: 'absolute',
-    left: 12,
-    right: 76,
+    marginLeft: 12,
+    marginRight: 76,
     backgroundColor: '#F29900',
-    borderRadius: 10,
-    paddingLeft: 12,
+    borderRadius: 20,
+    paddingLeft: 14,
     paddingRight: 8,
-    paddingVertical: 8,
-    zIndex: 10,
+    paddingVertical: 10,
     flexDirection: 'row',
     alignItems: 'center',
-    minHeight: 48,
+    minHeight: 40,
+    elevation: 3,
   },
   outsideVenueTextWrap: { flex: 1 },
   outsideVenueText: { color: '#FFFFFF', fontSize: 13, fontWeight: '600' },
-  outsideVenueSubtext: { color: '#FFFFFF', fontSize: 11, marginTop: 2 },
   bannerCloseButton: { padding: 6, marginLeft: 4 },
   diagnosticsBanner: {
     position: 'absolute',
@@ -1519,148 +1629,6 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
   },
   rastaLabelText: { color: '#FFFFFF', fontSize: 10, fontWeight: '600' },
-  v2RouteLabel: {
-    backgroundColor: 'rgba(142,36,170,0.82)',
-    borderRadius: 8,
-    paddingHorizontal: 7,
-    paddingVertical: 3,
-  },
-  v2RouteLabelText: { color: '#FFFFFF', fontSize: 10, fontWeight: '700' },
-  v2SelectedLabel: {
-    borderWidth: 1,
-    borderColor: '#FFFFFF',
-  },
-  v2BlockLabel: {
-    minWidth: 58,
-    minHeight: 28,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.9)',
-    borderWidth: 1,
-    borderColor: '#2E7D32',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-  },
-  v2SelectedBlockLabel: {
-    backgroundColor: '#1A73E8',
-    borderColor: '#FFFFFF',
-  },
-  v2BlockLabelText: {
-    color: '#2E7D32',
-    fontSize: 11,
-    fontWeight: '800',
-  },
-  v2SelectedBlockLabelText: {
-    color: '#FFFFFF',
-  },
-  v2GateMarker: {
-    backgroundColor: '#1565C0',
-    borderRadius: 14,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderWidth: 1.5,
-    borderColor: '#FFFFFF',
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.35,
-    shadowRadius: 3,
-  },
-  v2GateMarkerWarning: {
-    backgroundColor: '#E65100',
-  },
-  v2GateMarkerText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '800',
-    letterSpacing: 0.3,
-  },
-  v2GateMarkerFocused: {
-    backgroundColor: '#0D47A1',
-    paddingHorizontal: 14,
-    paddingVertical: 9,
-    borderRadius: 16,
-    borderWidth: 2,
-    borderColor: '#FFFFFF',
-    elevation: 8,
-  },
-  v2GateMarkerSelected: {
-    backgroundColor: '#1A237E',
-    borderWidth: 2.5,
-    borderColor: '#FFD700',
-  },
-  v2GateMarkerTextFocused: {
-    fontSize: 14,
-    fontWeight: '900',
-    letterSpacing: 0.5,
-  },
-  v2GateMarkerCompact: {
-    backgroundColor: '#1565C0',
-    borderRadius: 14,
-    width: 28,
-    height: 28,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1.5,
-    borderColor: '#FFFFFF',
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 2,
-  },
-  v2GateMarkerCompactFocused: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    borderWidth: 2,
-    elevation: 8,
-  },
-  v2GateMarkerTextCompact: {
-    color: '#FFFFFF',
-    fontSize: 11,
-    fontWeight: '800',
-    textAlign: 'center',
-  },
-  v2GateMarkerTextNumber: {
-    fontSize: 12,
-    fontWeight: '900',
-  },
-  rastaLabelFocused: {
-    backgroundColor: '#E65100',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 10,
-    elevation: 4,
-  },
-  rastaLabelTextFocused: {
-    fontSize: 12,
-    fontWeight: '800',
-  },
-  v2RouteLabelFocused: {
-    backgroundColor: '#6A0DAD',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 10,
-    elevation: 4,
-  },
-  v2RouteLabelTextFocused: {
-    fontSize: 12,
-    fontWeight: '800',
-  },
-  v2BlockLabelFocused: {
-    backgroundColor: '#1B5E20',
-    borderColor: '#1B5E20',
-    minWidth: 66,
-    minHeight: 32,
-    elevation: 4,
-  },
-  v2BlockLabelTextFocused: {
-    color: '#FFFFFF',
-    fontSize: 13,
-    fontWeight: '900',
-  },
   selectedMarker: { alignItems: 'center', justifyContent: 'center' },
   previewStartMarker: {
     width: 28,
@@ -1793,6 +1761,17 @@ const styles = StyleSheet.create({
   secondaryAction: { alignItems: 'center', gap: 4 },
   secondaryActionText: { fontSize: 12, color: '#1A73E8', fontWeight: '500' },
   placeDesc: { fontSize: 14, color: '#5F6368', lineHeight: 22 },
+  placeWarningBanner: {
+    backgroundColor: '#FFF3E0',
+    borderWidth: 1,
+    borderColor: '#E65100',
+    borderRadius: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    marginTop: 4,
+    marginBottom: 12,
+  },
+  placeWarningBannerText: { fontSize: 13, color: '#E65100', fontWeight: '600', lineHeight: 18 },
   emptySheet: { alignItems: 'center', padding: 60 },
   emptySheetText: { color: '#70757A', fontSize: 15 },
   emptyOfflineState: {
@@ -1869,6 +1848,22 @@ const styles = StyleSheet.create({
     color: '#202124',
     fontSize: 13,
     lineHeight: 18,
+  },
+  routePreviewGateBadge: {
+    marginTop: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: 6,
+    backgroundColor: 'rgba(46,125,50,0.12)',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  routePreviewGateBadgeText: {
+    color: '#1B5E20',
+    fontSize: 13,
+    fontWeight: '700',
   },
   routePreviewPrimaryButton: {
     marginTop: 12,

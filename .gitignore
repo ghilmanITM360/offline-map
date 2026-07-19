@@ -14,3 +14,7 @@ screenshots/
 .env.*
 !.env.example
 .expo/
+*.keystore
+*.jks
+release.keystore
+android/keystore.properties

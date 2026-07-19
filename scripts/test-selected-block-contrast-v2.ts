@@ -1,0 +1,26 @@
+import { strict as assert } from 'node:assert';
+import { readFileSync } from 'node:fs';
+
+// Phase 9 (task #36): the task asked for selected-block rendering to have a blue border,
+// light fill, and an EN/UR label bubble — all three already existed (border+fill from the
+// task #26 extraction, the bubble's Urdu secondary line from task #31). The one real gap:
+// the label bubble's Urdu text only switched to white when the "blocks" filter chip was
+// focused (`v2BlockLabelUrduFocused`), not when the block itself was individually selected —
+// so a selected block's blue bubble (`v2SelectedBlockLabel`, background #1A73E8) rendered its
+// Urdu line in dark green (#2E7D32), which is very low contrast against blue.
+
+const blockLayer = readFileSync('src/views/components/map/BlockLayer.tsx', 'utf8');
+const mapLayerStyles = readFileSync('src/views/components/map/mapLayerStyles.ts', 'utf8');
+
+assert(
+  blockLayer.includes("styles.v2BlockLabelUrdu, focused && styles.v2BlockLabelUrduFocused, block.isSelected && styles.v2SelectedBlockLabelText"),
+  'Selected block Urdu label text must switch to the selected (white) text color, not stay dark green on the blue selected bubble',
+);
+assert(mapLayerStyles.includes('v2SelectedBlockLabelText'), 'v2SelectedBlockLabelText style must exist');
+
+// Border+fill+bubble were already in place before this phase — assert they still are.
+assert(blockLayer.includes("fillColor={block.isSelected ? 'rgba(26,115,232,0.42)'"), 'Selected block must keep its light blue fill');
+assert(blockLayer.includes("strokeColor={block.isSelected ? '#1A73E8'"), 'Selected block must keep its blue border');
+assert(blockLayer.includes('MapLocalizationService.getSecondaryLabel(block.name)'), 'Selected block label bubble must keep showing the Urdu secondary line');
+
+console.log('Selected block contrast v2 checks passed.');

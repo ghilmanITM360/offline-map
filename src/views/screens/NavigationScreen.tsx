@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, StyleSheet, Pressable, Modal, BackHandler, Platform, Alert, Animated } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE, LocalTile, Camera, Polygon } from 'react-native-maps';
@@ -13,19 +13,20 @@ import { Paths } from 'expo-file-system'; // fixed: use Paths API instead of dep
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAppStore } from '../../store/useAppStore';
 import { useNavigationViewModel } from '../../viewmodels/NavigationViewModel';
-import { useNavigationViewModelV2 } from '../../viewmodels/NavigationViewModelV2';
 import { InstructionService } from '../../services/InstructionService';
 import { RoutePointService } from '../../services/RoutePointService';
 import { useTheme } from '../../services/useTheme';
 import { MapConfigService } from '../../services/MapConfigService';
 import { RoutingService } from '../../services/RoutingService';
-import { MapFeatureFlagsService } from '../../services/MapFeatureFlagsService';
-import { V2MapRenderingService } from '../../services/V2MapRenderingService';
 import { RootStackParamList } from '../../navigation/RootNavigator';
 import { IJTEMA_DATA, MAP_BOUNDS } from '../../constants/data';
 import { IJTEMA_MAP_REGION } from '../../data/ijtema';
 
 type NavigationScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Navigation'>; // fixed: type stack navigation on the navigation screen
+
+// Exit/mute are 44px, recenter is exactly 48px — at or below the 48dp Android minimum touch
+// target with zero margin. hitSlop widens the tappable area without changing layout.
+const TOUCH_TARGET_HIT_SLOP = { top: 8, bottom: 8, left: 8, right: 8 };
 
 const getTilePath = (): string => `${Paths.document.uri}tiles/{z}_{x}_{y}.png`; // fixed: lazy getter defers Paths.document access to render time so the native module is ready
 
@@ -39,18 +40,18 @@ function StepIcon({ type, size = 32 }: { type: string; size?: number }) {
   }
 }
 
+// v2 navigation now runs in-place on HomeScreen's persistent MapView (useNavigationOverlayV2) —
+// this route is pushed only for legacy v1 routes. A v2 activeRoute landing here is unreachable
+// through normal app flow, but stays as a defensive fallback (e.g. a stale deep link).
 export function NavigationScreen() {
   const activeRoute = useAppStore((s) => s.activeRoute);
   const isV2ActiveRoute = activeRoute?.sourceVersion === 'v2';
-  const useV2Navigation = Boolean(
-    activeRoute && activeRoute.sourceVersion === 'v2' && MapFeatureFlagsService.useIjtemaV2Navigation(),
-  );
 
-  if (isV2ActiveRoute && !useV2Navigation) {
+  if (isV2ActiveRoute) {
     return <NavigationScreenV2Disabled />;
   }
 
-  return useV2Navigation ? <NavigationScreenV2 /> : <NavigationScreenV1 />;
+  return <NavigationScreenV1 />;
 }
 
 function NavigationScreenV2Disabled() {
@@ -380,7 +381,12 @@ function NavigationScreenV1() {
                 </Text>
               )}
             </View>
-            <Pressable onPress={() => setIsMuted(!isMuted)} style={styles.muteButton}>
+            <Pressable
+              testID="nav-mute-toggle"
+              onPress={() => setIsMuted(!isMuted)}
+              style={styles.muteButton}
+              hitSlop={TOUCH_TARGET_HIT_SLOP}
+            >
               {isMuted ? <VolumeX size={24} color="#FFFFFF" /> : <Volume2 size={24} color="#FFFFFF" />}
             </Pressable>
           </View>
@@ -405,7 +411,12 @@ function NavigationScreenV1() {
               </Text>
               <Text style={styles.destName} numberOfLines={1}>{destination?.name}</Text>
             </View>
-            <Pressable style={styles.exitButton} onPress={() => handleExit(nav)}>
+            <Pressable
+              testID="nav-exit-button"
+              style={styles.exitButton}
+              onPress={() => handleExit(nav)}
+              hitSlop={TOUCH_TARGET_HIT_SLOP}
+            >
               <X size={20} color="#FFFFFF" />
               <Text style={styles.exitText}>Exit</Text>
             </Pressable>
@@ -415,7 +426,9 @@ function NavigationScreenV1() {
 
       {snappedLocation && (
         <Pressable
+          testID="nav-recenter-button"
           style={[styles.recenterButton, { bottom: Math.max(insets.bottom, 12) + 140 }]}
+          hitSlop={TOUCH_TARGET_HIT_SLOP}
           onPress={() => {
             if (!mapRef.current) return;
             setIsAutoFollowing(true);
@@ -445,370 +458,6 @@ function NavigationScreenV1() {
             <Text style={styles.arrivedTitle}>You've Arrived!</Text>
             <Text style={styles.arrivedUrdu}>منزل پر پہنچ گئے</Text>
             <Text style={styles.arrivedSubtitle}>{destination?.name}</Text>
-            <Pressable style={styles.arrivedButton} onPress={() => handleExit(nav)}>
-              <Text style={styles.arrivedButtonText}>Done</Text>
-            </Pressable>
-          </View>
-        </View>
-      </Modal>
-    </View>
-  );
-}
-
-function NavigationScreenV2() {
-  const nav = useNavigation<NavigationScreenNavigationProp>();
-  const mapRef = useRef<MapView>(null);
-  const insets = useSafeAreaInsets();
-  const offlineData = useAppStore((s) => s.offlineData);
-  const settings = useAppStore((s) => s.settings);
-  const hasInternet = useAppStore((s) => s.hasInternet);
-  const currentLocationSource = useAppStore((s) => s.currentLocationSource);
-  const developerMode = useAppStore((s) => s.developerModeEnabled);
-  const theme = useTheme();
-  const hasGoogleMapsKey = MapConfigService.isGoogleMapsKeyConfigured();
-  const userPulseAnim = useRef(new Animated.Value(0)).current;
-  const [isAutoFollowing, setIsAutoFollowing] = useState(settings.autoFollowLocation);
-  const [mapReady, setMapReady] = useState(false);
-  const [initialCameraFitDone, setInitialCameraFitDone] = useState(false);
-
-  const {
-    destination,
-    currentLocation,
-    snappedLocation,
-    route,
-    instructions,
-    currentStepIndex,
-    isMuted,
-    setIsMuted,
-    remainingDistance,
-    etaMinutes,
-    arrived,
-    reroutePending,
-    isWeakGps,
-    rerouteStatusMessage,
-    handleExit,
-  } = useNavigationViewModelV2();
-
-  const v2MapLayers = useMemo(
-    () => V2MapRenderingService.getHomeLayers({
-      selectedPlaceId: route?.destination.blockId ?? destination?.id,
-      selectedPlace: destination,
-      developerMode: __DEV__ && developerMode,
-      graphOnlyFallback: !hasGoogleMapsKey || !hasInternet,
-    }),
-    [destination, developerMode, hasGoogleMapsKey, hasInternet, route?.destination.blockId],
-  );
-
-  useEffect(() => {
-    const pulse = Animated.loop(
-      Animated.sequence([
-        Animated.timing(userPulseAnim, { toValue: 1, duration: 1100, useNativeDriver: true }),
-        Animated.timing(userPulseAnim, { toValue: 0, duration: 0, useNativeDriver: true }),
-      ]),
-    );
-    pulse.start();
-    return () => pulse.stop();
-  }, [userPulseAnim]);
-
-  useEffect(() => {
-    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
-      Alert.alert('Exit navigation?', 'Do you want to stop navigation and return to map?', [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Exit', style: 'destructive', onPress: () => handleExit(nav) },
-      ]);
-      return true;
-    });
-    return () => sub.remove();
-  }, [handleExit, nav]);
-
-  useEffect(() => {
-    if (!route) nav.goBack();
-  }, [nav, route]);
-
-  useEffect(() => {
-    setInitialCameraFitDone(false);
-  }, [route?.routeId]);
-
-  useEffect(() => {
-    if (!mapReady || initialCameraFitDone || !mapRef.current) return;
-    if (route?.coordinates && route.coordinates.length > 1) {
-      mapRef.current.fitToCoordinates(route.coordinates, {
-        edgePadding: { top: 90, right: 64, bottom: 220, left: 64 },
-        animated: true,
-      });
-      setInitialCameraFitDone(true);
-      return;
-    }
-    mapRef.current.fitToCoordinates(v2MapLayers.venueBoundary, {
-      edgePadding: { top: 48, right: 48, bottom: 160, left: 48 },
-      animated: true,
-    });
-    setInitialCameraFitDone(true);
-  }, [initialCameraFitDone, mapReady, route?.coordinates, v2MapLayers.venueBoundary]);
-
-  useEffect(() => {
-    if (isAutoFollowing && snappedLocation && mapRef.current) {
-      mapRef.current.animateCamera(
-        {
-          center: snappedLocation,
-          zoom: 18,
-          heading: settings.keepNorthFixed ? 0 : (snappedLocation.heading ?? 0),
-          pitch: 30,
-        } as Camera,
-        { duration: 800 },
-      );
-    }
-  }, [isAutoFollowing, settings.keepNorthFixed, snappedLocation]);
-
-  if (!route) return null;
-
-  const currentStep = instructions[currentStepIndex];
-  const nextStep = instructions[currentStepIndex + 1];
-  const startCoordinate = route.origin.coordinate;
-  const destinationCoordinate = route.destination.coordinate;
-  const graphOnlyFallbackUsed = (!hasGoogleMapsKey || !hasInternet) && v2MapLayers.graphOnlyFallbackSupported;
-  const arrivalTime = new Date(Date.now() + Math.max(etaMinutes, 0) * 60_000).toLocaleTimeString([], {
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-
-  return (
-    <View style={[styles.container, { backgroundColor: theme.background }]}>
-      <MapView
-        ref={mapRef}
-        style={styles.map}
-        provider={Platform.OS === 'android' && hasGoogleMapsKey ? PROVIDER_GOOGLE : undefined}
-        mapType={hasGoogleMapsKey && hasInternet ? (offlineData.isDownloaded ? 'none' : settings.mapMode) : 'none'}
-        showsUserLocation={false}
-        showsMyLocationButton={false}
-        rotateEnabled={!settings.keepNorthFixed}
-        onMapReady={() => {
-          setMapReady(true);
-          if (__DEV__) {
-            console.log('[NavigationV2][Render]', {
-              mapReady: true,
-              graphOverlayReady: true,
-              routePolylineCount: route.coordinates.length,
-              startMarkerReady: !!startCoordinate,
-              userMarkerReady: !!snappedLocation,
-              destinationMarkerReady: !!destinationCoordinate,
-              selectedBlockHighlightReady: v2MapLayers.blocks.some((block) => block.isSelected),
-              graphOnlyFallbackUsed,
-            });
-          }
-        }}
-        onPanDrag={() => setIsAutoFollowing(false)}
-        initialRegion={{
-          latitude: currentLocation?.latitude ?? IJTEMA_MAP_REGION.latitude,
-          longitude: currentLocation?.longitude ?? IJTEMA_MAP_REGION.longitude,
-          latitudeDelta: IJTEMA_MAP_REGION.latitudeDelta,
-          longitudeDelta: IJTEMA_MAP_REGION.longitudeDelta,
-        }}
-      >
-        {offlineData.isDownloaded && <LocalTile pathTemplate={getTilePath()} tileSize={256} zIndex={-1} />}
-
-        <Polygon
-          coordinates={v2MapLayers.venueBoundary}
-          fillColor="rgba(232,245,233,0.06)"
-          strokeColor="rgba(46,125,50,0.48)"
-          strokeWidth={2}
-          zIndex={0}
-        />
-
-        {v2MapLayers.rastas.map((rasta) => (
-          <React.Fragment key={`nav_v2_rasta_${rasta.id}`}>
-            <Polyline coordinates={rasta.polyline} strokeColor="rgba(60,64,67,0.38)" strokeWidth={7} zIndex={1} />
-            <Polyline coordinates={rasta.polyline} strokeColor={rasta.isSelected ? '#1A73E8' : 'rgba(255,255,255,0.86)'} strokeWidth={rasta.isSelected ? 5 : 4} zIndex={2} />
-          </React.Fragment>
-        ))}
-
-        {v2MapLayers.specialRoutes.map((specialRoute) => (
-          <Polyline
-            key={`nav_v2_special_${specialRoute.id}`}
-            coordinates={specialRoute.polyline}
-            strokeColor={specialRoute.isSelected ? '#8E24AA' : 'rgba(142,36,170,0.48)'}
-            strokeWidth={specialRoute.isSelected ? 5 : 3}
-            zIndex={3}
-          />
-        ))}
-
-        {v2MapLayers.blocks.map((block) => (
-          <Polygon
-            key={`nav_v2_block_${block.id}`}
-            coordinates={block.polygon}
-            fillColor={block.isSelected ? 'rgba(46,125,50,0.26)' : 'rgba(46,125,50,0.08)'}
-            strokeColor={block.isSelected ? '#2E7D32' : 'rgba(95,99,104,0.45)'}
-            strokeWidth={block.isSelected ? 2.5 : 1}
-            zIndex={4}
-          />
-        ))}
-
-        {v2MapLayers.gates.map((gate) => (
-          <Marker key={`nav_v2_gate_${gate.id}`} coordinate={gate.coordinate} anchor={{ x: 0.5, y: 1 }} tracksViewChanges={false}>
-            <View style={[styles.previewGateLabel, gate.needsConnectorVerification && styles.previewGateLabelWarning]}>
-              <Text style={styles.previewLabelText}>{gate.label.replace('Gate ', 'G')}</Text>
-            </View>
-          </Marker>
-        ))}
-
-        <Polyline
-          coordinates={route.coordinates}
-          strokeColor="rgba(13,71,161,0.72)"
-          strokeWidth={11}
-          lineDashPattern={reroutePending ? [10, 5] : undefined}
-          zIndex={20}
-        />
-        <Polyline
-          coordinates={route.coordinates}
-          strokeColor="#1A73E8"
-          strokeWidth={7}
-          lineDashPattern={reroutePending ? [10, 5] : undefined}
-          zIndex={21}
-        />
-
-        <Marker coordinate={startCoordinate} title={route.origin.label} anchor={{ x: 0.5, y: 0.5 }}>
-          <View style={styles.startMarkerWrap}>
-            <View style={styles.startMarkerDot} />
-            <View style={styles.startMarkerLabel}>
-              <Text style={styles.startMarkerLabelText}>START</Text>
-            </View>
-          </View>
-        </Marker>
-
-        <Marker coordinate={destinationCoordinate} title={route.destination.label} anchor={{ x: 0.5, y: 1 }}>
-          <View style={styles.destinationMarker}>
-            <MapPin size={34} color="#EA4335" fill="#EA4335" />
-          </View>
-        </Marker>
-
-        {snappedLocation && (
-          <Marker coordinate={snappedLocation} flat anchor={{ x: 0.5, y: 0.5 }}>
-            <View style={styles.userMarkerWrap}>
-              <Animated.View
-                style={[
-                  styles.userMarkerPulse,
-                  {
-                    opacity: userPulseAnim.interpolate({ inputRange: [0, 1], outputRange: [0.38, 0] }),
-                    transform: [{ scale: userPulseAnim.interpolate({ inputRange: [0, 1], outputRange: [1, 2.4] }) }],
-                  },
-                ]}
-              />
-              <View style={styles.userMarker}>
-                <Navigation size={12} color="#FFFFFF" />
-              </View>
-              {currentLocationSource === 'remembered' && (
-                <View style={styles.rememberedLabel}>
-                  <Text style={styles.rememberedLabelText}>last known</Text>
-                </View>
-              )}
-            </View>
-          </Marker>
-        )}
-      </MapView>
-
-      {!hasGoogleMapsKey && (
-        <View style={styles.mapUnavailableBanner}>
-          <Text style={styles.mapUnavailableText}>
-            {graphOnlyFallbackUsed ? 'Graph-only v2 map is active. Base map tiles are unavailable.' : MapConfigService.getMissingGoogleMapsMessage()}
-          </Text>
-        </View>
-      )}
-      {route.metadata.startedOutside && route.metadata.entryGateId && (
-        <View style={styles.v2EntryGateBanner}>
-          <Text style={styles.v2EntryGateText}>Route starts from {route.origin.label}.</Text>
-        </View>
-      )}
-      {!mapReady && (
-        <View style={styles.mapLoadingOverlay}>
-          <Text style={styles.mapLoadingText}>Venue map loading...</Text>
-        </View>
-      )}
-
-      <SafeAreaView style={styles.topBar}>
-        {isWeakGps && (
-          <View style={styles.weakGpsBanner}>
-            <Text style={styles.weakGpsText}>Weak GPS signal detected. Route updates may be slower.</Text>
-          </View>
-        )}
-        {rerouteStatusMessage && !reroutePending && (
-          <View style={styles.rerouteHintBanner}>
-            <Text style={styles.rerouteHintText}>{rerouteStatusMessage}</Text>
-          </View>
-        )}
-        {reroutePending ? (
-          <View style={[styles.instructionCard, styles.rerouteCard]}>
-            <RefreshCw size={28} color="#FFFFFF" />
-            <Text style={styles.rerouteText}>Recalculating...</Text>
-          </View>
-        ) : currentStep && !arrived ? (
-          <View style={styles.instructionCard}>
-            <View style={styles.instructionIcon}>
-              <StepIcon type={currentStep.type} size={32} />
-            </View>
-            <View style={styles.instructionTextContainer}>
-              <Text style={styles.instructionDistance}>
-                {currentStep.distanceM > 0 ? InstructionService.formatDistance(currentStep.distanceM, settings.distanceUnit) : ''}
-              </Text>
-              <Text style={styles.instructionText} numberOfLines={2} ellipsizeMode="tail">{currentStep.text}</Text>
-              {nextStep && (
-                <Text style={styles.nextStepText} numberOfLines={1}>
-                  Then: {nextStep.text}
-                </Text>
-              )}
-            </View>
-            <Pressable onPress={() => setIsMuted(!isMuted)} style={styles.muteButton}>
-              {isMuted ? <VolumeX size={24} color="#FFFFFF" /> : <Volume2 size={24} color="#FFFFFF" />}
-            </Pressable>
-          </View>
-        ) : null}
-      </SafeAreaView>
-
-      {!arrived && (
-        <View style={[styles.bottomBar, { paddingBottom: Math.max(insets.bottom, 12) }]}>
-          <View style={styles.tripInfo}>
-            <View style={styles.tripTextWrap}>
-              <Text style={styles.timeRemaining}>{etaMinutes} min</Text>
-              <Text style={styles.distanceRemaining}>
-                {InstructionService.formatDistance(remainingDistance, settings.distanceUnit)} · ETA {arrivalTime}
-              </Text>
-              <Text style={styles.destName} numberOfLines={1}>{route.destination.label}</Text>
-            </View>
-            <Pressable style={styles.exitButton} onPress={() => handleExit(nav)}>
-              <X size={20} color="#FFFFFF" />
-              <Text style={styles.exitText}>Exit</Text>
-            </Pressable>
-          </View>
-        </View>
-      )}
-
-      {snappedLocation && (
-        <Pressable
-          style={[styles.recenterButton, { bottom: Math.max(insets.bottom, 12) + 140 }]}
-          onPress={() => {
-            if (!mapRef.current) return;
-            setIsAutoFollowing(true);
-            mapRef.current.animateCamera(
-              {
-                center: snappedLocation,
-                zoom: 18,
-                heading: settings.keepNorthFixed ? 0 : (snappedLocation.heading ?? 0),
-                pitch: 30,
-              } as Camera,
-              { duration: 500 },
-            );
-          }}
-        >
-          <LocateFixed size={20} color="#1A73E8" />
-        </Pressable>
-      )}
-
-      <Modal visible={arrived} transparent animationType="slide">
-        <View style={styles.arrivedOverlay}>
-          <View style={styles.arrivedCard}>
-            <MapPin size={52} color="#2E7D32" />
-            <Text style={styles.arrivedTitle}>You've Arrived!</Text>
-            <Text style={styles.arrivedUrdu}>منزل پر پہنچ گئے</Text>
-            <Text style={styles.arrivedSubtitle}>{route.destination.label}</Text>
             <Pressable style={styles.arrivedButton} onPress={() => handleExit(nav)}>
               <Text style={styles.arrivedButtonText}>Done</Text>
             </Pressable>
@@ -900,20 +549,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     textAlign: 'center',
     lineHeight: 20,
-  },
-  previewGateLabel: {
-    backgroundColor: 'rgba(26,115,232,0.92)',
-    borderRadius: 7,
-    paddingHorizontal: 6,
-    paddingVertical: 3,
-  },
-  previewGateLabelWarning: {
-    backgroundColor: 'rgba(245,124,0,0.95)',
-  },
-  previewLabelText: {
-    color: '#FFFFFF',
-    fontSize: 10,
-    fontWeight: '800',
   },
   v2EntryGateBanner: {
     position: 'absolute',

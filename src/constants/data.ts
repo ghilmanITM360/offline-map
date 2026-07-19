@@ -757,6 +757,7 @@ export const LANDMARK_PLACES: Place[] = [
     description: 'Central prayer hall for the Ijtema ground.',
     coordinate: { latitude: 24.9682, longitude: 67.0030 },
     aliases: ['masjid', 'mosque', 'مسجد', 'prayer', 'مرکزی مسجد'],
+    sourceVersion: 'v1',
   },
   {
     id: 'LM_MASJID_NORTH',
@@ -766,6 +767,7 @@ export const LANDMARK_PLACES: Place[] = [
     description: 'Masjid near the north boundary.',
     coordinate: { latitude: 24.9700, longitude: 67.0025 },
     aliases: ['north masjid', 'شمالی مسجد', 'مسجد'],
+    sourceVersion: 'v1',
   },
   // ── Gates ─────────────────────────────────────────────────────────────────
   {
@@ -776,6 +778,7 @@ export const LANDMARK_PLACES: Place[] = [
     description: 'Primary entry gate from the north side near T2.',
     coordinate: { latitude: 24.9708, longitude: 66.9992 },
     aliases: ['main gate', 'north gate', 'گیٹ', 'اہم گیٹ', 'شمالی گیٹ'],
+    sourceVersion: 'v1',
   },
   {
     id: 'LM_GATE_MAIN_SOUTH',
@@ -785,6 +788,7 @@ export const LANDMARK_PLACES: Place[] = [
     description: 'Primary entry gate from the south side near T1.',
     coordinate: { latitude: 24.9657, longitude: 66.9992 },
     aliases: ['south gate', 'main south', 'جنوبی گیٹ'],
+    sourceVersion: 'v1',
   },
   {
     id: 'LM_GATE_EAST',
@@ -794,6 +798,7 @@ export const LANDMARK_PLACES: Place[] = [
     description: 'Entry gate from the east boundary road.',
     coordinate: { latitude: 24.9680, longitude: 67.0064 },
     aliases: ['east gate', 'مشرقی گیٹ', 'گیٹ'],
+    sourceVersion: 'v1',
   },
   // ── Food / Water ───────────────────────────────────────────────────────────
   {
@@ -804,6 +809,7 @@ export const LANDMARK_PLACES: Place[] = [
     description: 'Main langar and food distribution point.',
     coordinate: { latitude: 24.9676, longitude: 67.0018 },
     aliases: ['food', 'langar', 'کھانا', 'لنگر', 'لنگر خانہ', 'meal'],
+    sourceVersion: 'v1',
   },
   {
     id: 'LM_WATER_NORTH',
@@ -813,6 +819,7 @@ export const LANDMARK_PLACES: Place[] = [
     description: 'Drinking water distribution near north boundary.',
     coordinate: { latitude: 24.9698, longitude: 67.0035 },
     aliases: ['water', 'پانی', 'drinking water'],
+    sourceVersion: 'v1',
   },
   {
     id: 'LM_WATER_SOUTH',
@@ -822,6 +829,7 @@ export const LANDMARK_PLACES: Place[] = [
     description: 'Drinking water distribution near south boundary.',
     coordinate: { latitude: 24.9661, longitude: 67.0040 },
     aliases: ['water', 'پانی', 'drinking water'],
+    sourceVersion: 'v1',
   },
   // ── Medical ────────────────────────────────────────────────────────────────
   {
@@ -832,6 +840,7 @@ export const LANDMARK_PLACES: Place[] = [
     description: 'First aid and emergency medical services.',
     coordinate: { latitude: 24.9685, longitude: 67.0008 },
     aliases: ['medical', 'first aid', 'hospital', 'doctor', 'طبی', 'طبی مرکز', 'emergency'],
+    sourceVersion: 'v1',
   },
   // ── Lost & Found ────────────────────────────────────────────────────────────
   {
@@ -842,6 +851,7 @@ export const LANDMARK_PLACES: Place[] = [
     description: 'Report or collect lost items here.',
     coordinate: { latitude: 24.9683, longitude: 67.0012 },
     aliases: ['lost', 'found', 'lost and found', 'گمشدہ', 'گمشدہ و پایا'],
+    sourceVersion: 'v1',
   },
   // ── Volunteer / Admin ─────────────────────────────────────────────────────
   {
@@ -852,6 +862,7 @@ export const LANDMARK_PLACES: Place[] = [
     description: 'Main volunteer and organizer coordination point.',
     coordinate: { latitude: 24.9688, longitude: 67.0020 },
     aliases: ['volunteer', 'help', 'organizer', 'رضاکار', 'رضاکار خیمہ'],
+    sourceVersion: 'v1',
   },
   // ── Terminals / Parking ───────────────────────────────────────────────────
   {
@@ -862,6 +873,7 @@ export const LANDMARK_PLACES: Place[] = [
     description: 'Bus terminal on the north-west corner (T2).',
     coordinate: { latitude: 24.9708, longitude: 66.9991 },
     aliases: ['bus', 'terminal', 'T2', 'north bus', 'بس', 'ٹرمینل', 'شمالی بس ٹرمینل'],
+    sourceVersion: 'v1',
   },
   {
     id: 'LM_BUS_SOUTH',
@@ -871,6 +883,7 @@ export const LANDMARK_PLACES: Place[] = [
     description: 'Bus terminal on the south-west corner (T1).',
     coordinate: { latitude: 24.9656, longitude: 66.9992 },
     aliases: ['bus', 'terminal', 'T1', 'south bus', 'بس', 'ٹرمینل', 'جنوبی بس ٹرمینل'],
+    sourceVersion: 'v1',
   },
   {
     id: 'LM_PARKING',
@@ -880,6 +893,7 @@ export const LANDMARK_PLACES: Place[] = [
     description: 'Main vehicle parking near the west terminal road.',
     coordinate: { latitude: 24.9675, longitude: 66.9985 },
     aliases: ['parking', 'car park', 'پارکنگ', 'گاڑی'],
+    sourceVersion: 'v1',
   },
 ];
 

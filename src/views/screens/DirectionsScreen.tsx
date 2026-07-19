@@ -9,26 +9,20 @@ import {
   Text,
   StyleSheet,
   Pressable,
-  ScrollView,
   TextInput,
   KeyboardAvoidingView,
   Platform,
   Keyboard,
 } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import { ChevronLeft, Clock, Footprints, LocateFixed, MapPin, Navigation, RefreshCw } from 'lucide-react-native';
-import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { useDirectionsViewModel } from '../../viewmodels/DirectionsViewModel';
 import { InstructionService } from '../../services/InstructionService';
 import { SearchService } from '../../services/SearchService';
 import { useAppStore } from '../../store/useAppStore';
 import { Place, RoutePreview } from '../../models/types';
-import { RootStackParamList } from '../../navigation/RootNavigator';
 import { RoutingService } from '../../services/RoutingService';
-
-type DirectionsNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Directions'>;
 
 type RoutePreviewWithV2Meta = RoutePreview & {
   startResolution?: {
@@ -79,12 +73,7 @@ function StartOption({
   );
 }
 
-export function DirectionsScreen() {
-  const navigation = useNavigation<DirectionsNavigationProp>();
-  const routeParams = useRoute<RouteProp<RootStackParamList, 'Directions'>>();
-  const { destination } = routeParams.params;
-  const insets = useSafeAreaInsets();
-
+export function DirectionsScreen({ destination, onClose }: { destination: Place; onClose: () => void }) {
   const currentLocation = useAppStore((s) => s.currentLocation);
   const lastKnownLocation = useAppStore((s) => s.lastKnownLocation);
   const distanceUnit = useAppStore((s) => s.settings.distanceUnit);
@@ -157,9 +146,9 @@ export function DirectionsScreen() {
   const showStartHint = !showLoading && !showError && !showRouteReady;
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
       <View style={styles.header}>
-        <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
+        <Pressable onPress={onClose} style={styles.backButton}>
           <ChevronLeft size={28} color="#202124" />
         </Pressable>
         <Text style={styles.headerTitle}>Get Directions</Text>
@@ -170,9 +159,9 @@ export function DirectionsScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 12 : 0}
       >
-        <ScrollView
+        <BottomSheetScrollView
           style={styles.scroll}
-          contentContainerStyle={[styles.scrollContent, { paddingBottom: Math.max(insets.bottom, 18) + 20 }]}
+          contentContainerStyle={[styles.scrollContent, { paddingBottom: 24 }]}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"
         >
@@ -187,7 +176,15 @@ export function DirectionsScreen() {
                 <Text style={styles.destinationCategory}>{destination.category}</Text>
               </View>
             </View>
-            <Pressable style={styles.linkButton} onPress={() => navigation.goBack()}>
+            {(destination.verificationWarning || destination.unavailableReason) && (
+              <View style={[styles.statusCard, styles.statusCardWarning, styles.destinationWarningCard]}>
+                <Text style={[styles.statusTitle, styles.statusTitleWarning]}>Heads up</Text>
+                <Text style={styles.statusText}>
+                  {destination.verificationWarning ?? destination.unavailableReason}
+                </Text>
+              </View>
+            )}
+            <Pressable style={styles.linkButton} onPress={onClose}>
               <Text style={styles.linkButtonText}>Change destination</Text>
             </Pressable>
           </View>
@@ -337,17 +334,15 @@ export function DirectionsScreen() {
 
               <Pressable
                 style={styles.primaryButton}
-                onPress={() => {
-                  navigation.goBack();
-                }}
+                onPress={onClose}
               >
                 <Text style={styles.primaryButtonText}>Show route on map</Text>
               </Pressable>
             </View>
           )}
-        </ScrollView>
+        </BottomSheetScrollView>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -543,6 +538,12 @@ const styles = StyleSheet.create({
     padding: 18,
     gap: 10,
     borderWidth: 1,
+  },
+  destinationWarningCard: {
+    marginTop: 14,
+    padding: 12,
+    borderRadius: 16,
+    gap: 4,
   },
   statusCardNeutral: {
     backgroundColor: '#FFFFFF',

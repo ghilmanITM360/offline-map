@@ -15,6 +15,7 @@ function placeForBlock(blockId: string) {
     category: 'Block' as const,
     description: block.name,
     coordinate: block.center,
+    sourceVersion: 'v1' as const,
   };
 }
 

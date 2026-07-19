@@ -19,10 +19,14 @@ import {
 import {
   Coordinate as AppCoordinate,
   NavigationInstruction,
-  RoutePreview,
   RouteSegment,
+  V2RoutePreview,
 } from '../models/types';
 import { EntryGateRoutingService, RouteStartResolutionV2 } from './EntryGateRoutingService';
+import { MinHeap } from '../utils/MinHeap';
+import { MapFeatureFlagsService } from './MapFeatureFlagsService';
+import { isWithinStreetGraphRadius, selectStreetGraphOutsidePath } from './OutsideStreetRoutingService';
+import { generateStreetInstructions } from './StreetInstructionService';
 
 export type RoutingStartV2 =
   | { type: 'gate'; gateId: string }
@@ -44,7 +48,7 @@ export interface CalculateRouteV2Options {
   walkingSpeedMs?: number;
 }
 
-export interface RoutePreviewV2 extends RoutePreview {
+export interface RoutePreviewV2 extends V2RoutePreview {
   instructions: NavigationInstruction[];
   startLabel: string;
   destinationLabel: string;
@@ -52,6 +56,9 @@ export interface RoutePreviewV2 extends RoutePreview {
   destinationEntryNodeId?: string;
   routeCostM?: number;
   startConnectorDistanceM?: number;
+  /** How many leading entries of `coordinates` belong to the outside (pre-gate) leg — 0 when the leg is a plain beeline. */
+  outsideLegCoordinateCount?: number;
+  outsideLegSanityCapExceeded?: boolean;
 }
 
 interface RouteCandidateSet {
@@ -74,6 +81,13 @@ interface SelectedRoutePath {
   startCoordinate?: AppCoordinate;
   startConnectorDistanceM: number;
   routeCostM: number;
+  /** Road-following outside-leg coordinates (street graph), when used instead of a straight beeline. */
+  outsideLegCoordinates?: Array<{ lat: number; lng: number }>;
+  outsideLegSanityCapExceeded?: boolean;
+  /** Real decision-point sequence for turn-by-turn generation (subset of outsideLegCoordinates) — street-graph routes only. */
+  outsideLegTopologyCoordinates?: AppCoordinate[];
+  outsideLegTopologyDistancesM?: number[];
+  outsideLegTopologyNames?: Array<string | undefined>;
 }
 
 const DEFAULT_WALKING_SPEED_MS = 1.4;
@@ -273,6 +287,17 @@ const resolveDestinationCandidates = (destination: RoutingDestinationV2): RouteC
   };
 };
 
+const heuristicCostM = (fromNodeId: string, toNodeId: string): number => {
+  const from = IJTEMA_NAVIGATION_GRAPH_V2.nodes[fromNodeId];
+  const to = IJTEMA_NAVIGATION_GRAPH_V2.nodes[toNodeId];
+  if (!from || !to) return 0;
+  return distanceMeters(from.coordinate, to.coordinate);
+};
+
+// Binary-heap A* (haversine heuristic). Admissible because every edge's
+// weighted distance (distanceM * (weightMultiplier ?? 1)) is >= straight-line
+// distance between its endpoints — no weightMultiplier below 1 is used anywhere
+// in the v2 graph today.
 const calculateShortestPath = (startNodeId: string, destinationNodeId: string): ShortestPathResult | undefined => {
   if (startNodeId === destinationNodeId) {
     return {
@@ -283,40 +308,36 @@ const calculateShortestPath = (startNodeId: string, destinationNodeId: string): 
     };
   }
 
-  const distances: Record<string, number> = { [startNodeId]: 0 };
+  const gScore: Record<string, number> = { [startNodeId]: 0 };
   const previousNode: Record<string, string | undefined> = {};
   const previousEdge: Record<string, GraphEdge | undefined> = {};
-  const unvisited = new Set(Object.keys(IJTEMA_NAVIGATION_GRAPH_V2.nodes));
+  const closed = new Set<string>();
 
-  while (unvisited.size > 0) {
-    let current: string | undefined;
-    let currentDistance = Infinity;
+  const open = new MinHeap<string>();
+  open.push(startNodeId, heuristicCostM(startNodeId, destinationNodeId));
 
-    for (const nodeId of unvisited) {
-      const distance = distances[nodeId] ?? Infinity;
-      if (distance < currentDistance) {
-        current = nodeId;
-        currentDistance = distance;
-      }
-    }
-
-    if (!current || currentDistance === Infinity) break;
+  while (!open.isEmpty()) {
+    const current = open.pop()!.value;
+    if (closed.has(current)) continue;
     if (current === destinationNodeId) break;
-    unvisited.delete(current);
+    closed.add(current);
+
+    const currentDistance = gScore[current] ?? Infinity;
 
     for (const edge of IJTEMA_NAVIGATION_GRAPH_V2.adjacency[current] ?? []) {
-      if (!unvisited.has(edge.to)) continue;
+      if (closed.has(edge.to)) continue;
       const weight = edge.distanceM * (edge.weightMultiplier ?? 1);
       const nextDistance = currentDistance + weight;
-      if (nextDistance < (distances[edge.to] ?? Infinity)) {
-        distances[edge.to] = nextDistance;
+      if (nextDistance < (gScore[edge.to] ?? Infinity)) {
+        gScore[edge.to] = nextDistance;
         previousNode[edge.to] = current;
         previousEdge[edge.to] = edge;
+        open.push(edge.to, nextDistance + heuristicCostM(edge.to, destinationNodeId));
       }
     }
   }
 
-  if (distances[destinationNodeId] === undefined) return undefined;
+  if (gScore[destinationNodeId] === undefined) return undefined;
 
   const nodes: string[] = [];
   const edges: GraphEdge[] = [];
@@ -335,7 +356,7 @@ const calculateShortestPath = (startNodeId: string, destinationNodeId: string): 
     nodes,
     edges,
     distanceM: edges.reduce((sum, edge) => sum + edge.distanceM, 0),
-    costM: distances[destinationNodeId],
+    costM: gScore[destinationNodeId],
   };
 };
 
@@ -364,6 +385,22 @@ const routeSegmentsFromPath = (path: ShortestPathResult): RouteSegment[] =>
     name: edge.name.en,
   }));
 
+const renumberAndRewriteEntry = (
+  instructions: NavigationInstruction[],
+  outsideStepCount: number,
+  gateLabel: string,
+): NavigationInstruction[] =>
+  instructions.map((instruction, index) => ({
+    ...instruction,
+    id: instruction.id === 'v2-start' ? 'v2-entry-start' : instruction.id.replace(/^v2-step-(\d+)$/, (_match, step) => `v2-step-${Number(step) + outsideStepCount}`),
+    ...(index === 0
+      ? {
+          text: `Enter through ${gateLabel}.`,
+          urduText: `${gateLabel} سے داخل ہوں۔`,
+        }
+      : {}),
+  }));
+
 const prependOutsideApproachInstruction = (
   instructions: NavigationInstruction[],
   selected: SelectedRoutePath,
@@ -373,6 +410,23 @@ const prependOutsideApproachInstruction = (
   }
 
   const gateLabel = selected.startResolution.gate?.name.en ?? selected.startLabel;
+
+  // Road-following outside leg: real turn-by-turn from the street graph,
+  // one instruction per topology hop instead of a single distance blob.
+  if (selected.outsideLegTopologyCoordinates && selected.outsideLegTopologyDistancesM && selected.outsideLegTopologyNames) {
+    const streetSteps = generateStreetInstructions(
+      selected.outsideLegTopologyCoordinates,
+      selected.outsideLegTopologyDistancesM,
+      selected.outsideLegTopologyNames,
+      gateLabel,
+    );
+    if (streetSteps.length > 0) {
+      return [...streetSteps, ...renumberAndRewriteEntry(instructions, streetSteps.length, gateLabel)];
+    }
+    // Fall through to the beeline-style single instruction if street
+    // instruction generation produced nothing (e.g. malformed topology data).
+  }
+
   return [
     {
       id: 'v2-outside-approach',
@@ -382,16 +436,7 @@ const prependOutsideApproachInstruction = (
       type: 'straight',
       coordinate: selected.startCoordinate,
     },
-    ...instructions.map((instruction, index) => ({
-      ...instruction,
-      id: instruction.id === 'v2-start' ? 'v2-entry-start' : instruction.id.replace(/^v2-step-(\d+)$/, (_match, step) => `v2-step-${Number(step) + 1}`),
-      ...(index === 0
-        ? {
-            text: `Enter through ${gateLabel}.`,
-            urduText: `${gateLabel} سے داخل ہوں۔`,
-          }
-        : {}),
-    })),
+    ...renumberAndRewriteEntry(instructions, 1, gateLabel),
   ];
 };
 
@@ -408,14 +453,141 @@ const appendCoordinate = (coordinates: AppCoordinate[], coordinate: AppCoordinat
   coordinates.push(coordinate);
 };
 
-const pathCoordinates = (path: ShortestPathResult, startCoordinate?: AppCoordinate): AppCoordinate[] => {
+const pathCoordinates = (
+  path: ShortestPathResult,
+  startCoordinate?: AppCoordinate,
+  outsideLegCoordinates?: Array<{ lat: number; lng: number }>,
+): { coordinates: AppCoordinate[]; outsideLegCoordinateCount: number } => {
   const coordinates: AppCoordinate[] = [];
   if (startCoordinate) appendCoordinate(coordinates, startCoordinate);
+  outsideLegCoordinates?.forEach((coordinate) =>
+    appendCoordinate(coordinates, { latitude: coordinate.lat, longitude: coordinate.lng }),
+  );
+  const outsideLegCoordinateCount = coordinates.length;
   path.nodes.forEach((nodeId) => appendCoordinate(coordinates, toAppCoordinate(IJTEMA_NAVIGATION_GRAPH_V2.nodes[nodeId])));
-  return coordinates;
+  return { coordinates, outsideLegCoordinateCount };
 };
 
-const selectOutsidePath = (
+interface OutsideGateSeed {
+  gate: Gate;
+  connectorDistanceM: number;
+  seedCostM: number;
+}
+
+const resolveOutsideGateSeeds = (
+  startPoint: { lat: number; lng: number },
+  gates: Gate[],
+): OutsideGateSeed[] =>
+  gates
+    .filter((gate) => gate.coordinate && gate.routingStatus === 'routable' && gate.canStartRouteFromOutside)
+    .filter((gate) => getConnectedCandidates([gate.id]).length > 0)
+    .map((gate) => {
+      const connectorDistanceM = Math.round(distanceMeters(startPoint, gate.coordinate!));
+      return { gate, connectorDistanceM, seedCostM: connectorDistanceM + gatePenaltyM(gate) };
+    });
+
+const heuristicToNearestDestination = (nodeId: string, destinationNodeIds: string[]): number => {
+  const node = IJTEMA_NAVIGATION_GRAPH_V2.nodes[nodeId];
+  if (!node) return 0;
+  let min = Infinity;
+  for (const destinationId of destinationNodeIds) {
+    const destination = IJTEMA_NAVIGATION_GRAPH_V2.nodes[destinationId];
+    if (!destination) continue;
+    const distance = distanceMeters(node.coordinate, destination.coordinate);
+    if (distance < min) min = distance;
+  }
+  return min === Infinity ? 0 : min;
+};
+
+// Multi-source A*: seeds the heap with every candidate gate simultaneously
+// (priority = connector distance + gate penalty) instead of running a full
+// graph search once per gate. First destination pop is optimal because the
+// heuristic (straight-line distance to the nearest destination candidate) is
+// admissible for every source, same invariant as single-source A*.
+const findBestOutsidePath = (
+  seeds: OutsideGateSeed[],
+  destinationNodeIds: string[],
+): { path: ShortestPathResult; seed: OutsideGateSeed } | undefined => {
+  if (seeds.length === 0 || destinationNodeIds.length === 0) return undefined;
+
+  const destinationSet = new Set(destinationNodeIds);
+  const gScore: Record<string, number> = {};
+  const previousNode: Record<string, string | undefined> = {};
+  const previousEdge: Record<string, GraphEdge | undefined> = {};
+  const sourceGateId: Record<string, string> = {};
+  const closed = new Set<string>();
+  const open = new MinHeap<string>();
+
+  for (const seed of seeds) {
+    const nodeId = seed.gate.id;
+    if (seed.seedCostM < (gScore[nodeId] ?? Infinity)) {
+      gScore[nodeId] = seed.seedCostM;
+      sourceGateId[nodeId] = seed.gate.id;
+      open.push(nodeId, seed.seedCostM + heuristicToNearestDestination(nodeId, destinationNodeIds));
+    }
+  }
+
+  let destinationNodeId: string | undefined;
+
+  while (!open.isEmpty()) {
+    const current = open.pop()!.value;
+    if (closed.has(current)) continue;
+    closed.add(current);
+
+    if (destinationSet.has(current)) {
+      destinationNodeId = current;
+      break;
+    }
+
+    const currentDistance = gScore[current] ?? Infinity;
+
+    for (const edge of IJTEMA_NAVIGATION_GRAPH_V2.adjacency[current] ?? []) {
+      if (closed.has(edge.to)) continue;
+      const weight = edge.distanceM * (edge.weightMultiplier ?? 1);
+      const nextDistance = currentDistance + weight;
+      if (nextDistance < (gScore[edge.to] ?? Infinity)) {
+        gScore[edge.to] = nextDistance;
+        previousNode[edge.to] = current;
+        previousEdge[edge.to] = edge;
+        sourceGateId[edge.to] = sourceGateId[current];
+        open.push(edge.to, nextDistance + heuristicToNearestDestination(edge.to, destinationNodeIds));
+      }
+    }
+  }
+
+  if (!destinationNodeId) return undefined;
+
+  const seed = seeds.find((candidate) => candidate.gate.id === sourceGateId[destinationNodeId!]);
+  if (!seed) return undefined;
+
+  const nodes: string[] = [];
+  const edges: GraphEdge[] = [];
+  let cursor: string | undefined = destinationNodeId;
+  while (cursor) {
+    nodes.unshift(cursor);
+    const edge = previousEdge[cursor];
+    if (edge) edges.unshift(edge);
+    cursor = previousNode[cursor];
+  }
+
+  if (nodes[0] !== seed.gate.id) return undefined;
+
+  return {
+    path: {
+      nodes,
+      edges,
+      distanceM: edges.reduce((sum, edge) => sum + edge.distanceM, 0),
+      costM: gScore[destinationNodeId] - seed.seedCostM,
+    },
+    seed,
+  };
+};
+
+// Beeline fallback: always available offline, no dependency on the bundled
+// street graph. Used beyond the street graph's radius, when the flag is off,
+// or as a safety net if street-graph routing fails for any reason — see
+// Decision 1 in docs/OFFLINE_OUTSIDE_ROUTING_FINAL_SPEC.md.
+const selectOutsidePathViaBeeline = (
   start: Extract<RoutingStartV2, { type: 'outside_coordinate' }>,
   destinationNodeIds: string[],
 ): SelectedRoutePath | undefined => {
@@ -423,38 +595,108 @@ const selectOutsidePath = (
   const gates = start.manualGateId
     ? IJTEMA_GATES.filter((gate) => gate.id === start.manualGateId)
     : IJTEMA_GATES;
-  let selected: SelectedRoutePath | undefined;
 
-  for (const gate of gates) {
-    if (!gate.coordinate || gate.routingStatus !== 'routable' || !gate.canStartRouteFromOutside) continue;
-    if (getConnectedCandidates([gate.id]).length === 0) continue;
+  const seeds = resolveOutsideGateSeeds(startPoint, gates);
+  const best = findBestOutsidePath(seeds, destinationNodeIds);
+  if (!best) return undefined;
 
-    const path = findBestPath([gate.id], destinationNodeIds);
-    if (!path) continue;
+  const { path, seed } = best;
+  const routeCostM = seed.seedCostM + path.costM;
+  const startResolution: RouteStartResolutionV2 = {
+    mode: 'outside',
+    startType: start.manualGateId ? 'selected_official_gate' : 'nearest_official_gate',
+    coordinate: { latitude: seed.gate.coordinate!.lat, longitude: seed.gate.coordinate!.lng },
+    candidateNodes: [seed.gate.id],
+    gate: seed.gate,
+  };
 
-    const connectorDistanceM = Math.round(distanceMeters(startPoint, gate.coordinate));
-    const routeCostM = connectorDistanceM + path.costM + gatePenaltyM(gate);
-    const startResolution: RouteStartResolutionV2 = {
-      mode: 'outside',
-      startType: start.manualGateId ? 'selected_official_gate' : 'nearest_official_gate',
-      coordinate: { latitude: gate.coordinate!.lat, longitude: gate.coordinate!.lng },
-      candidateNodes: [gate.id],
-      gate,
-    };
+  return {
+    path,
+    startLabel: seed.gate.name.en,
+    startResolution,
+    startCoordinate: start.coordinate,
+    startConnectorDistanceM: seed.connectorDistanceM,
+    routeCostM,
+  };
+};
 
-    if (!selected || routeCostM < selected.routeCostM) {
-      selected = {
-        path,
-        startLabel: gate.name.en,
-        startResolution,
-        startCoordinate: start.coordinate,
-        startConnectorDistanceM: connectorDistanceM,
-        routeCostM,
-      };
-    }
+// Road-following outside leg over the bundled OSM street graph, behind
+// EXPO_PUBLIC_USE_IJTEMA_OUTSIDE_STREET_GRAPH. Reuses the same internal-graph
+// findBestPath from the selected gate onward — only the outside-of-venue leg
+// changes.
+const selectOutsidePathViaStreetGraph = (
+  start: Extract<RoutingStartV2, { type: 'outside_coordinate' }>,
+  destinationNodeIds: string[],
+): SelectedRoutePath | undefined => {
+  const gates = start.manualGateId
+    ? IJTEMA_GATES.filter((gate) => gate.id === start.manualGateId)
+    : IJTEMA_GATES;
+  const candidateGates = gates
+    .filter((gate) => gate.coordinate && gate.routingStatus === 'routable' && gate.canStartRouteFromOutside)
+    // Reject internally-disconnected gates (e.g. GATE_03) up front, same as
+    // resolveOutsideGateSeeds does for the beeline path — otherwise the
+    // street-graph search below can "win" with a gate that has no path
+    // through the internal graph, discarding the whole street-following
+    // result to full beeline instead of trying the next-best connected gate.
+    .filter((gate) => getConnectedCandidates([gate.id]).length > 0);
+  if (candidateGates.length === 0) return undefined;
+
+  const streetResult = selectStreetGraphOutsidePath(appToV2Coordinate(start.coordinate), candidateGates);
+  if (!streetResult) return undefined;
+
+  const internalPath = findBestPath([streetResult.gate.id], destinationNodeIds);
+  if (!internalPath) return undefined;
+
+  if (streetResult.sanityCapExceeded) {
+    // Production enforcement per Decision 2 in FINAL_SPEC: warn-log + flag,
+    // never reject the route. scripts/test-outside-street-routing-v2.ts and
+    // the street-graph generator's own validation are where this is a hard
+    // gate instead.
+    console.warn(
+      `[OutsideStreetRouting] Sanity cap exceeded for ${streetResult.gate.id}: graph-routed ${streetResult.graphRoutedDistanceM.toFixed(1)}m`,
+    );
   }
 
-  return selected;
+  const routeCostM = streetResult.totalDistanceM + internalPath.costM + gatePenaltyM(streetResult.gate);
+  const startResolution: RouteStartResolutionV2 = {
+    mode: 'outside',
+    startType: start.manualGateId ? 'selected_official_gate' : 'nearest_official_gate',
+    coordinate: { latitude: streetResult.gate.coordinate!.lat, longitude: streetResult.gate.coordinate!.lng },
+    candidateNodes: [streetResult.gate.id],
+    gate: streetResult.gate,
+  };
+
+  return {
+    path: internalPath,
+    startLabel: streetResult.gate.name.en,
+    startResolution,
+    startCoordinate: start.coordinate,
+    startConnectorDistanceM: Math.round(streetResult.totalDistanceM),
+    routeCostM,
+    outsideLegCoordinates: streetResult.coordinates,
+    outsideLegSanityCapExceeded: streetResult.sanityCapExceeded,
+    outsideLegTopologyCoordinates: streetResult.topologyCoordinates.map((coordinate) => ({
+      latitude: coordinate.lat,
+      longitude: coordinate.lng,
+    })),
+    outsideLegTopologyDistancesM: streetResult.topologyEdgeDistancesM,
+    outsideLegTopologyNames: streetResult.topologyEdgeNames,
+  };
+};
+
+const selectOutsidePath = (
+  start: Extract<RoutingStartV2, { type: 'outside_coordinate' }>,
+  destinationNodeIds: string[],
+): SelectedRoutePath | undefined => {
+  if (MapFeatureFlagsService.useOutsideStreetGraph() && isWithinStreetGraphRadius(appToV2Coordinate(start.coordinate))) {
+    const streetPath = selectOutsidePathViaStreetGraph(start, destinationNodeIds);
+    if (streetPath) return streetPath;
+    // Street-graph routing found nothing usable (e.g. a locally disconnected
+    // pocket) — beeline is always available offline, so fall through rather
+    // than surface a dead end.
+  }
+
+  return selectOutsidePathViaBeeline(start, destinationNodeIds);
 };
 
 const selectDefaultPath = (start: RoutingStartV2, destinationNodeIds: string[]): SelectedRoutePath | undefined => {
@@ -484,6 +726,25 @@ const selectDefaultPath = (start: RoutingStartV2, destinationNodeIds: string[]):
 };
 
 export class RoutingServiceV2 {
+  /**
+   * Single source of truth for "which official gate should an outside user enter
+   * through" — reuses the exact same outside-path selection (`selectOutsidePath`)
+   * that `calculateRoute` uses, so a caller with a known destination can never
+   * disagree with the route that would actually be computed for it. Falls back to
+   * nearest-gate-by-distance only when no destination is known yet (nothing to
+   * optimise total cost against).
+   */
+  static recommendOutsideEntryGate(coordinate: AppCoordinate, destination?: RoutingDestinationV2 | null): Gate | undefined {
+    if (destination) {
+      const destinationCandidates = resolveDestinationCandidates(destination);
+      if (destinationCandidates.nodeIds.length > 0) {
+        const selected = selectOutsidePath({ type: 'outside_coordinate', coordinate }, destinationCandidates.nodeIds);
+        if (selected?.startResolution?.gate) return selected.startResolution.gate;
+      }
+    }
+    return EntryGateRoutingService.findNearestOfficialEntryGateForOutsideUser(coordinate);
+  }
+
   static calculateRoute(options: CalculateRouteV2Options): RoutePreviewV2 | null {
     const walkingSpeedMs = options.walkingSpeedMs ?? DEFAULT_WALKING_SPEED_MS;
     const destinationCandidates = resolveDestinationCandidates(options.destination);
@@ -498,13 +759,18 @@ export class RoutingServiceV2 {
     if (!selected) return null;
 
     const { path } = selected;
-    const coordinates = pathCoordinates(path, selected.startCoordinate);
+    const { coordinates, outsideLegCoordinateCount } = pathCoordinates(
+      path,
+      selected.startCoordinate,
+      selected.outsideLegCoordinates,
+    );
     const totalDistance = Math.round(selected.startConnectorDistanceM + path.distanceM);
     const estimatedTimeMin = Math.max(1, Math.ceil(totalDistance / walkingSpeedMs / 60));
     const instructions = prependOutsideApproachInstruction(generateInstructions(path, destinationCandidates.label), selected);
 
     return {
       id: `v2_route_${path.nodes[0]}_${path.nodes[path.nodes.length - 1]}`.replace(/[^A-Za-z0-9_]+/g, '_'),
+      sourceVersion: 'v2',
       coordinates,
       polyline: coordinates,
       nodes: path.nodes,
@@ -519,6 +785,12 @@ export class RoutingServiceV2 {
       destinationEntryNodeId: options.destination.type === 'block' ? path.nodes[path.nodes.length - 1] : undefined,
       routeCostM: Math.round(selected.routeCostM),
       startConnectorDistanceM: selected.startConnectorDistanceM,
+      // Non-zero only for a true outside-venue start (mode 'outside') — an
+      // inside_coordinate start also carries a leading startCoordinate in
+      // `coordinates` but that's a "you're inside, walk to the graph" leg,
+      // not the outside/inside split this field describes.
+      outsideLegCoordinateCount: selected.startResolution?.mode === 'outside' ? outsideLegCoordinateCount : 0,
+      outsideLegSanityCapExceeded: selected.outsideLegSanityCapExceeded ?? false,
     };
   }
 }

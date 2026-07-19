@@ -36,8 +36,8 @@ assert(
   'Home current-location action should explain outside-venue fallback',
 );
 assert(
-  homeScreen.includes('Offline routing will enter through nearest connected official gate.'),
-  'Home outside-area banner should match nearest-gate routing policy',
+  homeScreen.includes('RoutingServiceV2.recommendOutsideEntryGate') && homeScreen.includes('Enter through ${nearestEntryGate.name.en}'),
+  'Home outside-area banner should name the actual nearest routable gate, not a generic message',
 );
 
 assert(

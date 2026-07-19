@@ -25,6 +25,7 @@ for (const fromId of blockIds) {
       category: 'Block',
       description: toBlock.name,
       coordinate: toBlock.center,
+      sourceVersion: 'v1',
     });
 
     const alternatives = RoutingService.calculateRoutes(origin, destNodeIds, 1.4);
@@ -72,6 +73,7 @@ for (const [fromId, toId] of historicalProblemPairs) {
       category: 'Block',
       description: to.name,
       coordinate: to.center,
+      sourceVersion: 'v1',
     }, from.center),
     undefined,
     1.4,
@@ -89,6 +91,7 @@ const destinationNodeIds = RoutingService.resolveDestinationNodesFromPlace({
   category: 'Block',
   description: destinationBlock.name,
   coordinate: destinationBlock.center,
+  sourceVersion: 'v1',
 });
 
 const slowRoute = RoutingService.calculateRoute(start, destinationNodeIds, undefined, 0.8);
