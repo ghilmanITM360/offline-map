@@ -4,27 +4,22 @@
  */
 
 import React from 'react';
-import { Text, View } from 'react-native';
-import { Marker, Polygon } from 'react-native-maps';
+import { Polygon } from 'react-native-maps';
 
-import { MapLocalizationService } from '../../../services/MapLocalizationService';
 import { V2BlockLayer } from '../../../services/V2MapRenderingService';
-import { mapLayerStyles as styles } from './mapLayerStyles';
 
 interface BlockLayerProps {
   blocks: V2BlockLayer[];
-  /** Home-only: labels are not rendered during navigation. */
-  labels?: V2BlockLayer[];
   variant: 'home' | 'nav';
   /** Home-only: true when the "blocks" map filter is active. */
   focused?: boolean;
-  /** Home-only: suppresses tracksViewChanges thrash mid label-LOD transition — see GateLayer. */
-  transitioning?: boolean;
   onPressBlock?: (blockId: string) => void;
   keyPrefix: string;
 }
 
-function BlockLayerImpl({ blocks, labels = [], variant, focused = false, transitioning = false, onPressBlock, keyPrefix }: BlockLayerProps) {
+// Block labels render via MapLabelOverlay (see HomeScreen's mapLabelItems), not as
+// Marker children here — see GateLayer.tsx for why (Android marker-snapshot clipping).
+function BlockLayerImpl({ blocks, variant, focused = false, onPressBlock, keyPrefix }: BlockLayerProps) {
   if (variant === 'nav') {
     return (
       <>
@@ -56,35 +51,6 @@ function BlockLayerImpl({ blocks, labels = [], variant, focused = false, transit
           onPress={() => onPressBlock?.(block.id)}
         />
       ))}
-
-      {labels.map((block) => {
-        const urduName = MapLocalizationService.getSecondaryLabel(block.name);
-        return (
-          <Marker
-            // Keyed on focused/isSelected, not just block.id — those flags resize
-            // the pill (see v2BlockLabelFocused), and react-native-maps Android can
-            // keep an already-mounted marker's rasterized bounds frozen at the
-            // smaller size, clipping the label. Forcing a remount avoids that (see
-            // the identical fix + comment on GateLayer's full-label Marker).
-            key={`${keyPrefix}_label_${block.id}_${focused ? 'f' : 'u'}_${block.isSelected ? 's' : 'u'}`}
-            coordinate={block.center}
-            anchor={{ x: 0.5, y: 0.5 }}
-            zIndex={8}
-            tracksViewChanges={transitioning}
-          >
-            <View style={[styles.v2BlockLabel, focused && styles.v2BlockLabelFocused, block.isSelected && styles.v2SelectedBlockLabel]}>
-              <Text style={[styles.v2BlockLabelText, focused && styles.v2BlockLabelTextFocused, block.isSelected && styles.v2SelectedBlockLabelText]}>
-                {block.label}
-              </Text>
-              {urduName && (
-                <Text style={[styles.v2BlockLabelUrdu, focused && styles.v2BlockLabelUrduFocused, block.isSelected && styles.v2SelectedBlockLabelText]}>
-                  {urduName}
-                </Text>
-              )}
-            </View>
-          </Marker>
-        );
-      })}
     </>
   );
 }

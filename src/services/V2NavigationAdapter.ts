@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import { getDistance } from 'geolib';
 import {
   IJTEMA_NAVIGATION_GRAPH_V2,
 } from '../data/ijtema';
@@ -111,14 +112,38 @@ function originMetadata(input: V2NavigationAdapterInput): V2ActiveRoute['origin'
   };
 }
 
+// Nearest-coordinate search, scanning forward from `searchFrom` to keep the
+// mapping monotonic (a route can pass close to an earlier point again, e.g.
+// near a junction — we must never resolve routeIndex backward).
+function nearestCoordinateIndex(coordinates: Coordinate[], target: Coordinate, searchFrom: number): number {
+  let bestIndex = searchFrom;
+  let bestDistance = Infinity;
+  for (let i = searchFrom; i < coordinates.length; i += 1) {
+    const distance = getDistance(coordinates[i], target);
+    if (distance < bestDistance) {
+      bestDistance = distance;
+      bestIndex = i;
+    }
+  }
+  return bestIndex;
+}
+
 function activeInstructions(previewRoute: RoutePreviewV2): V2NavigationInstruction[] {
+  let searchFrom = 0;
   return previewRoute.instructions.map((instruction, index) => {
     const developerNode = previewRoute.nodes[Math.min(index, previewRoute.nodes.length - 1)] ?? previewRoute.nodes[0];
+    // routeIndex must point at instruction.coordinate's actual position in
+    // previewRoute.coordinates — the instructions array and coordinates array
+    // have different lengths/pacing (one instruction per turn vs. one entry
+    // per rendering point), so the instruction's own array position is not a
+    // usable index into coordinates.
+    const routeIndex = nearestCoordinateIndex(previewRoute.coordinates, instruction.coordinate, searchFrom);
+    searchFrom = routeIndex;
     return {
       ...instruction,
       text: instruction.text.replace(RAW_ID_PATTERN, 'route point'),
       distanceM: instruction.distance,
-      routeIndex: Math.min(index, previewRoute.coordinates.length - 1),
+      routeIndex,
       spokenText: instruction.text.replace(RAW_ID_PATTERN, 'route point'),
       developerLabel: developerNode,
     };

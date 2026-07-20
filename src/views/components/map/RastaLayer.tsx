@@ -4,26 +4,24 @@
  */
 
 import React from 'react';
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
 import { Marker, Polyline } from 'react-native-maps';
 
-import { MapLocalizationService } from '../../../services/MapLocalizationService';
 import { V2PolylineLayer } from '../../../services/V2MapRenderingService';
 import { mapLayerStyles as styles } from './mapLayerStyles';
 
 interface RastaLayerProps {
   rastas: V2PolylineLayer[];
-  labels: V2PolylineLayer[];
   /** 'home' renders focus/selection-aware styling; 'nav' renders the simpler read-only style. */
   variant: 'home' | 'nav';
   /** Home-only: true when the "rastas" map filter is active. */
   focused?: boolean;
-  /** Home-only: suppresses tracksViewChanges thrash mid label-LOD transition — see GateLayer. */
-  transitioning?: boolean;
   keyPrefix: string;
 }
 
-function RastaLayerImpl({ rastas, labels, variant, focused = false, transitioning = false, keyPrefix }: RastaLayerProps) {
+// Rasta labels render via MapLabelOverlay (see HomeScreen's mapLabelItems), not as
+// Marker children here — see GateLayer.tsx for why (Android marker-snapshot clipping).
+function RastaLayerImpl({ rastas, variant, focused = false, keyPrefix }: RastaLayerProps) {
   if (variant === 'nav') {
     return (
       <>
@@ -74,25 +72,6 @@ function RastaLayerImpl({ rastas, labels, variant, focused = false, transitionin
               </>
             )}
           </React.Fragment>
-        );
-      })}
-
-      {labels.map((rasta) => {
-        const urduName = MapLocalizationService.getSecondaryLabel(rasta.name);
-        return (
-          <Marker
-            // Keyed on focused/isSelected — see BlockLayer's identical fix + comment.
-            key={`${keyPrefix}_label_${rasta.id}_${focused ? 'f' : 'u'}_${rasta.isSelected ? 's' : 'u'}`}
-            coordinate={rasta.labelCoordinate}
-            anchor={{ x: 0.5, y: 0.5 }}
-            zIndex={7}
-            tracksViewChanges={transitioning}
-          >
-            <View style={[styles.rastaLabel, focused && styles.rastaLabelFocused, rasta.isSelected && styles.v2SelectedLabel]}>
-              <Text style={[styles.rastaLabelText, focused && styles.rastaLabelTextFocused]}>{rasta.label}</Text>
-              {urduName && <Text style={styles.rastaLabelUrdu}>{urduName}</Text>}
-            </View>
-          </Marker>
         );
       })}
     </>

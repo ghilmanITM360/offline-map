@@ -4,10 +4,15 @@
  */
 
 import React from 'react';
-import { Pressable, Text, View } from 'react-native';
-import { Compass, Layers, Minus, Plus } from 'lucide-react-native';
+import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { AlertTriangle, Check, Compass, Layers, LocateFixed, Minus, Plus } from 'lucide-react-native';
 
 import { mapControlStyles as styles } from './mapControlStyles';
+
+export interface MapControlsRecenter {
+  state: 'idle' | 'loading' | 'success' | 'failure';
+  onPress: () => void;
+}
 
 interface MapControlsProps {
   /** 'browse' shows the Layers button + north-up/free-rotate helper badge; 'nav' omits both
@@ -18,14 +23,20 @@ interface MapControlsProps {
   onCompassReset: () => void;
   onZoomIn: () => void;
   onZoomOut: () => void;
+  /** Renders the recenter/"current location" button as the last item in this same
+   * stack (Google Maps ordering: Layers → Compass → Zoom+ → Zoom− → Current
+   * location) so it can never end up positioned independently of the rest of the
+   * cluster and collide with it. Omit to render no recenter button (e.g. nav mode,
+   * which has its own separate recenter button elsewhere in its chrome). */
+  recenter?: MapControlsRecenter;
 }
 
-/** Shared floating Compass + Zoom (+ Layers, browse-only) control cluster, rendered
- * identically by HomeScreen's browse mode and its live-navigation overlay — previously
- * two independently hand-rolled copies of the same buttons. Purely presentational: the
- * caller owns absolute positioning (top/bottom/right differ by mode and by what other
- * chrome is on screen), this component only renders the stack's contents. */
-export function MapControls({ variant, keepNorthFixed, onLayers, onCompassReset, onZoomIn, onZoomOut }: MapControlsProps) {
+/** Shared floating Layers/Compass/Zoom/Recenter control stack, rendered identically
+ * by HomeScreen's browse mode and its live-navigation overlay. Purely presentational
+ * and owns the full vertical arrangement (single source of truth for inter-button
+ * spacing) — the caller only owns the stack's own absolute position (bottom/right
+ * offset), not the layout of what's inside it. */
+export function MapControls({ variant, keepNorthFixed, onLayers, onCompassReset, onZoomIn, onZoomOut, recenter }: MapControlsProps) {
   return (
     <>
       {variant === 'browse' && (
@@ -53,6 +64,21 @@ export function MapControls({ variant, keepNorthFixed, onLayers, onCompassReset,
           <Minus size={22} color="#5F6368" />
         </Pressable>
       </View>
+      {recenter && (
+        <View style={styles.recenterButtonWrap}>
+          <Pressable style={styles.recenterButton} disabled={recenter.state === 'loading'} onPress={recenter.onPress}>
+            {recenter.state === 'loading' ? (
+              <ActivityIndicator size="small" color="#4285F4" />
+            ) : recenter.state === 'success' ? (
+              <Check size={24} color="#2E7D32" />
+            ) : recenter.state === 'failure' ? (
+              <AlertTriangle size={22} color="#EA4335" />
+            ) : (
+              <LocateFixed size={24} color="#4285F4" />
+            )}
+          </Pressable>
+        </View>
+      )}
     </>
   );
 }

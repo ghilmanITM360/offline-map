@@ -38,7 +38,8 @@
         {
           "locationAlwaysPermission": "Allow Karachi Ijtema Nav to use your location even when the app is in the background."
         }
-      ]
+      ],
+      "./plugins/withAndroidManifestGradlePlaceholder.js"
     ]
   }
 }

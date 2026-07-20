@@ -23,9 +23,9 @@ import {
   V2RoutePreview,
 } from '../models/types';
 import { EntryGateRoutingService, RouteStartResolutionV2 } from './EntryGateRoutingService';
-import { MinHeap } from '../utils/MinHeap';
+import { AStarNeighbor, reconstructAStarPath, runAStar } from '../utils/AStar';
 import { MapFeatureFlagsService } from './MapFeatureFlagsService';
-import { isWithinStreetGraphRadius, selectStreetGraphOutsidePath } from './OutsideStreetRoutingService';
+import { gatePenaltyM, isWithinStreetGraphRadius, selectStreetGraphOutsidePath } from './OutsideStreetRoutingService';
 import { generateStreetInstructions } from './StreetInstructionService';
 
 export type RoutingStartV2 =
@@ -91,7 +91,6 @@ interface SelectedRoutePath {
 }
 
 const DEFAULT_WALKING_SPEED_MS = 1.4;
-const NEEDS_VERIFICATION_GATE_PENALTY_M = 120;
 const COORDINATE_DEDUP_TOLERANCE_M = 2;
 
 const toAppCoordinate = (node: GraphNode): AppCoordinate => ({
@@ -294,10 +293,17 @@ const heuristicCostM = (fromNodeId: string, toNodeId: string): number => {
   return distanceMeters(from.coordinate, to.coordinate);
 };
 
-// Binary-heap A* (haversine heuristic). Admissible because every edge's
-// weighted distance (distanceM * (weightMultiplier ?? 1)) is >= straight-line
-// distance between its endpoints — no weightMultiplier below 1 is used anywhere
-// in the v2 graph today.
+// Every weighted edge (distanceM * (weightMultiplier ?? 1)) is >= its
+// straight-line endpoint distance — no weightMultiplier below 1 is used
+// anywhere in the v2 graph today — so haversine-based heuristics below stay
+// admissible.
+const internalGraphNeighbors = (nodeId: string): AStarNeighbor<GraphEdge>[] =>
+  (IJTEMA_NAVIGATION_GRAPH_V2.adjacency[nodeId] ?? []).map((edge) => ({
+    to: edge.to,
+    weight: edge.distanceM * (edge.weightMultiplier ?? 1),
+    edge,
+  }));
+
 const calculateShortestPath = (startNodeId: string, destinationNodeId: string): ShortestPathResult | undefined => {
   if (startNodeId === destinationNodeId) {
     return {
@@ -308,55 +314,22 @@ const calculateShortestPath = (startNodeId: string, destinationNodeId: string): 
     };
   }
 
-  const gScore: Record<string, number> = { [startNodeId]: 0 };
-  const previousNode: Record<string, string | undefined> = {};
-  const previousEdge: Record<string, GraphEdge | undefined> = {};
-  const closed = new Set<string>();
+  const result = runAStar<GraphEdge>({
+    seeds: [{ id: startNodeId, gScore: 0 }],
+    heuristic: (nodeId) => heuristicCostM(nodeId, destinationNodeId),
+    neighbors: internalGraphNeighbors,
+    isGoal: (nodeId) => nodeId === destinationNodeId,
+  });
+  if (!result) return undefined;
 
-  const open = new MinHeap<string>();
-  open.push(startNodeId, heuristicCostM(startNodeId, destinationNodeId));
-
-  while (!open.isEmpty()) {
-    const current = open.pop()!.value;
-    if (closed.has(current)) continue;
-    if (current === destinationNodeId) break;
-    closed.add(current);
-
-    const currentDistance = gScore[current] ?? Infinity;
-
-    for (const edge of IJTEMA_NAVIGATION_GRAPH_V2.adjacency[current] ?? []) {
-      if (closed.has(edge.to)) continue;
-      const weight = edge.distanceM * (edge.weightMultiplier ?? 1);
-      const nextDistance = currentDistance + weight;
-      if (nextDistance < (gScore[edge.to] ?? Infinity)) {
-        gScore[edge.to] = nextDistance;
-        previousNode[edge.to] = current;
-        previousEdge[edge.to] = edge;
-        open.push(edge.to, nextDistance + heuristicCostM(edge.to, destinationNodeId));
-      }
-    }
-  }
-
-  if (gScore[destinationNodeId] === undefined) return undefined;
-
-  const nodes: string[] = [];
-  const edges: GraphEdge[] = [];
-  let cursor: string | undefined = destinationNodeId;
-
-  while (cursor) {
-    nodes.unshift(cursor);
-    const edge = previousEdge[cursor];
-    if (edge) edges.unshift(edge);
-    cursor = previousNode[cursor];
-  }
-
+  const { nodes, edges } = reconstructAStarPath(result, result.goalId);
   if (nodes[0] !== startNodeId || nodes.length < 2) return undefined;
 
   return {
     nodes,
     edges,
     distanceM: edges.reduce((sum, edge) => sum + edge.distanceM, 0),
-    costM: gScore[destinationNodeId],
+    costM: result.gScore[result.goalId],
   };
 };
 
@@ -440,8 +413,6 @@ const prependOutsideApproachInstruction = (
   ];
 };
 
-const gatePenaltyM = (gate: Gate | undefined): number => (gate?.status === 'needs_verification' ? NEEDS_VERIFICATION_GATE_PENALTY_M : 0);
-
 const appendCoordinate = (coordinates: AppCoordinate[], coordinate: AppCoordinate): void => {
   const previous = coordinates[coordinates.length - 1];
   if (
@@ -463,8 +434,18 @@ const pathCoordinates = (
   outsideLegCoordinates?.forEach((coordinate) =>
     appendCoordinate(coordinates, { latitude: coordinate.lat, longitude: coordinate.lng }),
   );
-  const outsideLegCoordinateCount = coordinates.length;
-  path.nodes.forEach((nodeId) => appendCoordinate(coordinates, toAppCoordinate(IJTEMA_NAVIGATION_GRAPH_V2.nodes[nodeId])));
+
+  // path.nodes[0] is the shared boundary node (the entry gate for an
+  // outside-venue route). Append it explicitly and read back its real index —
+  // appendCoordinate may dedup it onto the outside leg's already-appended gate
+  // coordinate (street-graph legs end on the gate's exact coordinate too), in
+  // which case the boundary is the existing last index, not a new one.
+  if (path.nodes.length > 0) {
+    appendCoordinate(coordinates, toAppCoordinate(IJTEMA_NAVIGATION_GRAPH_V2.nodes[path.nodes[0]]));
+  }
+  const outsideLegCoordinateCount = Math.max(0, coordinates.length - 1);
+
+  path.nodes.slice(1).forEach((nodeId) => appendCoordinate(coordinates, toAppCoordinate(IJTEMA_NAVIGATION_GRAPH_V2.nodes[nodeId])));
   return { coordinates, outsideLegCoordinateCount };
 };
 
@@ -503,7 +484,12 @@ const heuristicToNearestDestination = (nodeId: string, destinationNodeIds: strin
 // (priority = connector distance + gate penalty) instead of running a full
 // graph search once per gate. First destination pop is optimal because the
 // heuristic (straight-line distance to the nearest destination candidate) is
-// admissible for every source, same invariant as single-source A*.
+// admissible for every source, same invariant as single-source A*. The
+// winning seed is recovered by walking the reconstructed path back to its
+// root — seeds are never reached via a relaxation (they're pre-seeded
+// directly into gScore), so the root of any path is always the seed it
+// actually originated from, even if the path passes through another gate's
+// node along the way.
 const findBestOutsidePath = (
   seeds: OutsideGateSeed[],
   destinationNodeIds: string[],
@@ -511,73 +497,26 @@ const findBestOutsidePath = (
   if (seeds.length === 0 || destinationNodeIds.length === 0) return undefined;
 
   const destinationSet = new Set(destinationNodeIds);
-  const gScore: Record<string, number> = {};
-  const previousNode: Record<string, string | undefined> = {};
-  const previousEdge: Record<string, GraphEdge | undefined> = {};
-  const sourceGateId: Record<string, string> = {};
-  const closed = new Set<string>();
-  const open = new MinHeap<string>();
 
-  for (const seed of seeds) {
-    const nodeId = seed.gate.id;
-    if (seed.seedCostM < (gScore[nodeId] ?? Infinity)) {
-      gScore[nodeId] = seed.seedCostM;
-      sourceGateId[nodeId] = seed.gate.id;
-      open.push(nodeId, seed.seedCostM + heuristicToNearestDestination(nodeId, destinationNodeIds));
-    }
-  }
+  const result = runAStar<GraphEdge>({
+    seeds: seeds.map((seed) => ({ id: seed.gate.id, gScore: seed.seedCostM })),
+    heuristic: (nodeId) => heuristicToNearestDestination(nodeId, destinationNodeIds),
+    neighbors: internalGraphNeighbors,
+    isGoal: (nodeId) => destinationSet.has(nodeId),
+  });
+  if (!result) return undefined;
 
-  let destinationNodeId: string | undefined;
+  const { nodes, edges } = reconstructAStarPath(result, result.goalId);
 
-  while (!open.isEmpty()) {
-    const current = open.pop()!.value;
-    if (closed.has(current)) continue;
-    closed.add(current);
-
-    if (destinationSet.has(current)) {
-      destinationNodeId = current;
-      break;
-    }
-
-    const currentDistance = gScore[current] ?? Infinity;
-
-    for (const edge of IJTEMA_NAVIGATION_GRAPH_V2.adjacency[current] ?? []) {
-      if (closed.has(edge.to)) continue;
-      const weight = edge.distanceM * (edge.weightMultiplier ?? 1);
-      const nextDistance = currentDistance + weight;
-      if (nextDistance < (gScore[edge.to] ?? Infinity)) {
-        gScore[edge.to] = nextDistance;
-        previousNode[edge.to] = current;
-        previousEdge[edge.to] = edge;
-        sourceGateId[edge.to] = sourceGateId[current];
-        open.push(edge.to, nextDistance + heuristicToNearestDestination(edge.to, destinationNodeIds));
-      }
-    }
-  }
-
-  if (!destinationNodeId) return undefined;
-
-  const seed = seeds.find((candidate) => candidate.gate.id === sourceGateId[destinationNodeId!]);
+  const seed = seeds.find((candidate) => candidate.gate.id === nodes[0]);
   if (!seed) return undefined;
-
-  const nodes: string[] = [];
-  const edges: GraphEdge[] = [];
-  let cursor: string | undefined = destinationNodeId;
-  while (cursor) {
-    nodes.unshift(cursor);
-    const edge = previousEdge[cursor];
-    if (edge) edges.unshift(edge);
-    cursor = previousNode[cursor];
-  }
-
-  if (nodes[0] !== seed.gate.id) return undefined;
 
   return {
     path: {
       nodes,
       edges,
       distanceM: edges.reduce((sum, edge) => sum + edge.distanceM, 0),
-      costM: gScore[destinationNodeId] - seed.seedCostM,
+      costM: result.gScore[result.goalId] - seed.seedCostM,
     },
     seed,
   };

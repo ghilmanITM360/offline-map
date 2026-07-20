@@ -47,7 +47,11 @@ export function usePermissionViewModel() {
             { text: 'Open Settings', onPress: () => { void Linking.openSettings(); } },
           ]); // fixed: route permanently denied users to the system settings app
         } else {
-          Alert.alert('Location permission is required for navigation.'); // fixed: use platform alert instead of global alert()
+          Alert.alert(
+            "Location isn't on yet",
+            'We need this to show your position on the map and guide you to your destination. You can allow it below, or continue without it for now.',
+            [{ text: 'OK' }],
+          );
         }
       }
     } catch (error) {
@@ -57,8 +61,15 @@ export function usePermissionViewModel() {
     }
   };
 
-  const skipPermission = async (navigation: any) => {
-    await navigateNext(navigation);
+  const skipPermission = (navigation: any) => {
+    Alert.alert(
+      'Continue without location?',
+      'You can still explore the map, but live navigation will not work until location is enabled. You can turn it on anytime from Settings.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Continue Without Location', onPress: () => { void navigateNext(navigation); } },
+      ],
+    );
   };
 
   return {

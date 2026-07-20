@@ -22,7 +22,7 @@ import { InstructionService } from '../../services/InstructionService';
 import { SearchService } from '../../services/SearchService';
 import { useAppStore } from '../../store/useAppStore';
 import { Place, RoutePreview } from '../../models/types';
-import { RoutingService } from '../../services/RoutingService';
+import { EntryGateRoutingService } from '../../services/EntryGateRoutingService';
 
 type RoutePreviewWithV2Meta = RoutePreview & {
   startResolution?: {
@@ -73,7 +73,17 @@ function StartOption({
   );
 }
 
-export function DirectionsScreen({ destination, onClose }: { destination: Place; onClose: () => void }) {
+export function DirectionsScreen({
+  destination,
+  onClose,
+  onStartLegacyNavigation,
+}: {
+  destination: Place;
+  onClose: () => void;
+  /** Legacy (v1) destinations only — pushes the 'Navigation' stack screen. v2 destinations
+   * start navigation through HomeScreen's own route-preview card instead (onClose reveals it). */
+  onStartLegacyNavigation: () => void;
+}) {
   const currentLocation = useAppStore((s) => s.currentLocation);
   const lastKnownLocation = useAppStore((s) => s.lastKnownLocation);
   const distanceUnit = useAppStore((s) => s.settings.distanceUnit);
@@ -97,6 +107,7 @@ export function DirectionsScreen({ destination, onClose }: { destination: Place;
     chooseCurrentLocation,
     chooseRememberedLocation,
     calculateRoute,
+    handleStartNavigation,
     showManualStartSearch,
   } = useDirectionsViewModel(destination);
 
@@ -117,7 +128,7 @@ export function DirectionsScreen({ destination, onClose }: { destination: Place;
     destination.sourceVersion === 'v2' &&
     startSource !== 'manual_place' &&
     !!startCoordinate &&
-    !RoutingService.isInsideVenue(startCoordinate);
+    !EntryGateRoutingService.isInsideIjtemaArea(startCoordinate);
   const routeMeta = route as RoutePreviewWithV2Meta | null;
   const entryGateName = routeMeta?.startResolution?.gate?.name?.en ?? null;
   const routeDistance = route ? InstructionService.formatDistance(route.totalDistance, distanceUnit) : null;
@@ -334,9 +345,21 @@ export function DirectionsScreen({ destination, onClose }: { destination: Place;
 
               <Pressable
                 style={styles.primaryButton}
-                onPress={onClose}
+                onPress={() => {
+                  if (destination.sourceVersion === 'v2') {
+                    // v2 destinations start navigation from HomeScreen's
+                    // route-preview card (its own "Start Navigation" button) —
+                    // this just reveals the map behind the sheet.
+                    onClose();
+                    return;
+                  }
+                  handleStartNavigation();
+                  onStartLegacyNavigation();
+                }}
               >
-                <Text style={styles.primaryButtonText}>Show route on map</Text>
+                <Text style={styles.primaryButtonText}>
+                  {destination.sourceVersion === 'v2' ? 'Show route on map' : 'Start Navigation'}
+                </Text>
               </Pressable>
             </View>
           )}

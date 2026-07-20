@@ -1,5 +1,20 @@
 # Real-Device UX Audit — Android Emulator, First-Time-User Pass
 
+> **Related work (2026-07-20):** a separate routing/navigation *correctness*
+> fix pass landed the same day — see `docs/ROUTING_NAVIGATION_FIX_REPORT.md`.
+> That work fixed 6 routing/state bugs (outside-leg polyline splitting one
+> node past the gate, turn-by-turn instruction timing desync, street-graph
+> gate selection ignoring verification status, legacy destinations having no
+> working "Start Navigation" button, inconsistent inside/outside venue checks,
+> dead gate-selection code) plus two cleanup items, all verified via the
+> existing automated test suite (typecheck, lint, ~90 routing/UI script tests,
+> jest component tests) — **not** via a live device pass like this document's
+> findings. In particular, the "Start Navigation" restoration for legacy
+> destinations and the outside→inside polyline color transition are worth a
+> follow-up on-device look using this audit's own methodology (screenshot
+> evidence, no claimed verification without one) before being treated as
+> equivalent in rigor to the findings below.
+
 **Verdict: FAIL — not production-ready.** The app is functionally correct end-to-end (search → directions → outside-gate routing → live navigation all completed successfully with a real computed route), but the on-screen experience does not read as a finished, Google-Maps-quality product. A first-time elderly user would be confused by an orange banner overlapping the filter row, would see a native "Gat[e]" clipped label on every zoomed-in gate, would see a dev-only "Open debugger to view warnings" toast sitting permanently at the bottom of the screen, and would have to scroll past a duplicated search bar to find the "Show route on map" button. None of these break the app outright, but together they make the screen look unfinished, which is the harshest fair reading of "does it look like Google Maps" — it does not.
 
 Audit performed on Android emulator `emulator-5554`, cold-launched (`force-stop` + `monkey` launch) against a fresh Metro bundle, package `com.aicrafted.karachiijtema`, dated 2026-07-20. The host machine was under heavy load for part of this session (`load average` peaked at 61, causing several `System UI isn't responding` ANRs and a ~30s GPS-resolution delay) — this is called out per-finding below and is not attributed to the app where it is clearly a `com.android.systemui`/host artifact, matching the same host-resource-exhaustion pattern already logged in `docs/TARGETED_FIX_SPRINT_REPORT.md`.

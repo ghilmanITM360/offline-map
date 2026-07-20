@@ -48,7 +48,7 @@ const navigationScreen = readFileSync('src/views/screens/NavigationScreen.tsx', 
 // (NavigationMapLayersV2), not on a separate NavigationScreen — see docs/MAP_EXPERIENCE_AUDIT.md.
 const navigationMapLayersV2 = readFileSync('src/views/components/navigation/NavigationMapLayersV2.tsx', 'utf8');
 const offlineMapService = readFileSync('src/services/OfflineMapService.ts', 'utf8');
-assert(downloadScreen.includes('Use venue map only'), 'Offline tile failure must allow venue-map-only mode');
+assert(downloadScreen.includes('Use Venue Map Only'), 'Offline tile failure must allow venue-map-only mode');
 assert(
   downloadScreen.includes('Background map unavailable. Ijtema routes still work.') ||
     downloadViewModel.includes('Background map unavailable. Ijtema routes still work.'),
@@ -57,7 +57,10 @@ assert(
 assert(navigationScreen.includes("mapType={hasGoogleMapsKey && hasInternet ? (offlineData.isDownloaded ? 'none' : settings.mapMode) : 'none'}"), 'Navigation must not require live tiles when base map is unavailable or internet is offline');
 assert(navigationMapLayersV2.includes('mapLayers.blocks'), 'V2 navigation graph-only map must render block context');
 assert(navigationMapLayersV2.includes('mapLayers.rastas'), 'V2 navigation graph-only map must render rasta lines');
-assert(navigationMapLayersV2.includes('route.coordinates'), 'V2 navigation graph-only map must render active route');
+// Phase 8 (docs/ROUTING_NAVIGATION_FIX_REPORT.md): route.coordinates was moved
+// into a useMemo above the `!route` early return (Rules of Hooks), so the
+// reference is now optional-chained (`route?.coordinates`).
+assert(navigationMapLayersV2.includes('route?.coordinates'), 'V2 navigation graph-only map must render active route');
 assert(!offlineMapService.includes("import { IJTEMA_DATA }"), 'Offline saved map payload must not import legacy IJTEMA_DATA');
 assert(offlineMapService.includes('IJTEMA_BLOCKS'), 'Offline saved map payload must include v2 blocks');
 assert(offlineMapService.includes('IJTEMA_GATES'), 'Offline saved map payload must include v2 gates');

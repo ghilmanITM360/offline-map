@@ -4,6 +4,7 @@
  */
 
 import { useRef, useCallback, useEffect } from 'react';
+import { Paths } from 'expo-file-system';
 import { useAppStore } from '../store/useAppStore';
 import { OfflineMapService } from '../services/OfflineMapService';
 import { ConnectivityService } from '../services/ConnectivityService';
@@ -14,6 +15,9 @@ import { OfflineDataService } from '../services/OfflineDataService';
 
 const REDIRECT_DELAY_MS = 1200;
 const TILE_DOWNLOAD_MAX_RETRIES = 2;
+const BYTES_PER_TILE_ESTIMATE = 0.08 * 1024 * 1024;
+const STORAGE_SAFETY_MARGIN_BYTES = 20 * 1024 * 1024;
+const CONNECTIVITY_CHECK_EVERY_N_TILES = 5;
 
 type DownloadFailureDescriptor = {
   userMessage: string;
@@ -24,19 +28,21 @@ type DownloadFailureDescriptor = {
 function statusMessageForFailureType(failureType: string, downloadedTiles: number): string {
   switch (failureType) {
     case 'dns_failed':
-      return 'DNS failed. Try another network or mobile data.';
+      return 'Unable to connect. Please check your internet connection or try a different network.';
     case 'tile_server_unreachable':
-      return 'Map tile server could not be reached.';
     case 'http_403':
-      return 'Map server rejected download.';
     case 'http_404':
-      return 'Map tile not found on server.';
+      return 'Unable to download the map right now. Please try again in a moment.';
     case 'timeout':
-      return 'Download timed out. Try again.';
+      return 'The download took too long. Please check your connection and try again.';
+    case 'connection_lost':
+      return 'Internet connection was lost. Tap Try Again to resume where it left off.';
+    case 'storage_full':
+      return 'Not enough storage to save the map. Please free up space and try again.';
     default:
       return downloadedTiles > 0
         ? 'Download interrupted. Tap Try Again to resume.'
-        : 'Download failed. Check internet and try again.';
+        : 'Download failed. Please check your internet connection and try again.';
   }
 }
 
@@ -220,6 +226,27 @@ export function useDownloadMapViewModel() {
         return;
       }
 
+      if (downloadState.downloadedTiles === 0) {
+        try {
+          const expectedTiles = OfflineMapStatusService.getExpectedTileCount();
+          const neededBytes = expectedTiles * BYTES_PER_TILE_ESTIMATE + STORAGE_SAFETY_MARGIN_BYTES;
+          const availableBytes = Paths.availableDiskSpace;
+          if (availableBytes > 0 && availableBytes < neededBytes) {
+            const neededMb = Math.max(1, Math.round((neededBytes / (1024 * 1024)) * 10) / 10);
+            applyFailureState({
+              userMessage: `Not enough storage. This map needs about ${neededMb} MB free.`,
+              statusMessage: 'Not enough storage to download the map.',
+              resumable: false,
+            });
+            downloadInProgressRef.current = false;
+            return;
+          }
+        } catch {
+          // If the free-space check itself fails, proceed — the per-tile write will still
+          // surface a clear "not enough storage" message if the disk is actually full.
+        }
+      }
+
       const worker = (async () => {
         let downloaded = 0;
         let totalTiles = 0;
@@ -275,6 +302,7 @@ export function useDownloadMapViewModel() {
           });
 
           downloaded = alreadyDone;
+          let tileIndex = 0;
           for (const tile of allTiles) {
             if (cancelledRef.current) return;
 
@@ -286,6 +314,22 @@ export function useDownloadMapViewModel() {
             const exists = await OfflineMapService.tileExists(tile.z, tile.x, tile.y);
             if (exists) {
               continue;
+            }
+
+            tileIndex += 1;
+            if (tileIndex % CONNECTIVITY_CHECK_EVERY_N_TILES === 0) {
+              const midSnapshot = await ConnectivityService.getSnapshot();
+              if (!(midSnapshot.isConnected && midSnapshot.isInternetReachable)) {
+                logDownload('connection lost mid-download', { downloaded, tile: `${tile.z}/${tile.x}/${tile.y}` });
+                throw new Error(
+                  JSON.stringify({
+                    type: 'tile_download_failure',
+                    userMessage: 'Internet connection was lost. Please reconnect and tap Try Again.',
+                    statusMessage: statusMessageForFailureType('connection_lost', downloaded),
+                    detail: 'Connectivity snapshot reported disconnected mid-download.',
+                  }),
+                );
+              }
             }
 
             const downloadResult = await OfflineMapService.downloadTileWithDiagnostics(tile.z, tile.x, tile.y, {
@@ -373,7 +417,7 @@ export function useDownloadMapViewModel() {
       downloadWorkerRef.current = worker;
       await worker;
     },
-    [applyFailureState, completeDownloadFlow, safeSetDownloadState, setOfflineMapStatus],
+    [applyFailureState, completeDownloadFlow, downloadState.downloadedTiles, safeSetDownloadState, setOfflineMapStatus],
   );
 
   const pauseDownload = useCallback(() => {
@@ -430,7 +474,20 @@ export function useDownloadMapViewModel() {
     async (navigation: NativeStackNavigationProp<RootStackParamList, 'DownloadMap'>) => {
       await OfflineMapStatusService.setDownloadedFlag(false);
       await OfflineMapStatusService.setGraphOnlyMode(true);
+      await OfflineMapStatusService.setSkippedOnlineMode(false);
       setOfflineMapStatus('not_downloaded', 'Background map unavailable. Ijtema routes still work.');
+      safeSetDownloadState({ phase: 'idle', errorMessage: null, resumable: false });
+      triggerNavigationToMain(navigation);
+    },
+    [safeSetDownloadState, setOfflineMapStatus, triggerNavigationToMain],
+  );
+
+  const continueWithOnlineMode = useCallback(
+    async (navigation: NativeStackNavigationProp<RootStackParamList, 'DownloadMap'>) => {
+      await OfflineMapStatusService.setDownloadedFlag(false);
+      await OfflineMapStatusService.setGraphOnlyMode(false);
+      await OfflineMapStatusService.setSkippedOnlineMode(true);
+      setOfflineMapStatus('not_downloaded', 'Using online mode. You can download the offline map anytime from Settings.');
       safeSetDownloadState({ phase: 'idle', errorMessage: null, resumable: false });
       triggerNavigationToMain(navigation);
     },
@@ -483,6 +540,7 @@ export function useDownloadMapViewModel() {
     retryDownload,
     continueToMain,
     continueWithVenueMapOnly,
+    continueWithOnlineMode,
     repairDownload,
   };
 }
