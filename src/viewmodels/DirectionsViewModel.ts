@@ -14,6 +14,7 @@ import { MapFeatureFlagsService } from '../services/MapFeatureFlagsService';
 import { V2DirectionsService } from '../services/V2DirectionsService';
 import { V2NavigationAdapter } from '../services/V2NavigationAdapter';
 import { EntryGateRoutingService } from '../services/EntryGateRoutingService';
+import { RoutePointService } from '../services/RoutePointService';
 
 const ROUTE_TIMEOUT_MS = 3500;
 const DIRECTIONS_RECALCULATE_ORIGIN_MOVEMENT_M = 20;
@@ -46,6 +47,7 @@ export function useDirectionsViewModel(destination: Place | null) {
     setRouteInstructions,
     setRoutePlannerDest,
     setRoutePlannerOrigin,
+    startNavigation,
   } = useAppStore.getState();
 
   const [route, setRoute] = useState<RoutePreview | null>(null);
@@ -79,10 +81,19 @@ export function useDirectionsViewModel(destination: Place | null) {
     });
   }, [currentLocation, startSource]);
 
+  // v2 destinations use precise venue polygon/polyline geometry everywhere in
+  // this flow, matching the routing decision itself (EntryGateRoutingService);
+  // legacy (v1) destinations keep the coarse rectangle, which is what the v1
+  // graph's own coverage is actually defined by.
+  const isInsideVenueForDestination = (coordinate: NonNullable<typeof currentLocation>): boolean =>
+    destination?.sourceVersion === 'v2'
+      ? EntryGateRoutingService.isInsideIjtemaArea(coordinate)
+      : RoutingService.isInsideVenue(coordinate);
+
   const rememberedLocationAgeLabel = formatLastKnownAge(lastKnownLocationUpdatedAt);
   const rememberedLocationAvailable = !!lastKnownLocation;
-  const rememberedLocationInsideVenue = !!lastKnownLocation && RoutingService.isInsideVenue(lastKnownLocation);
-  const currentRouteOriginInsideVenue = !!routeOriginLocation && RoutingService.isInsideVenue(routeOriginLocation);
+  const rememberedLocationInsideVenue = !!lastKnownLocation && isInsideVenueForDestination(lastKnownLocation);
+  const currentRouteOriginInsideVenue = !!routeOriginLocation && isInsideVenueForDestination(routeOriginLocation);
 
   const startSourceLabel =
     startSource === 'live_gps'
@@ -351,7 +362,7 @@ export function useDirectionsViewModel(destination: Place | null) {
       setIsEditingManualStart(false);
       setManualStart(null);
       setErrorMessage(
-        destination?.sourceVersion === 'v2' && !RoutingService.isInsideVenue(resolved.coordinate)
+        destination?.sourceVersion === 'v2' && !EntryGateRoutingService.isInsideIjtemaArea(resolved.coordinate)
           ? "You are outside Ijtema. We'll enter through nearest official gate."
           : null,
       );
@@ -379,7 +390,7 @@ export function useDirectionsViewModel(destination: Place | null) {
     setIsEditingManualStart(false);
     setManualStart(null);
     setErrorMessage(
-      RoutingService.isInsideVenue(lastKnownLocation)
+      isInsideVenueForDestination(lastKnownLocation)
         ? `Using last known location ${formatLastKnownAge(lastKnownLocationUpdatedAt)}.`
         : "You are outside Ijtema. We'll enter through nearest official gate.",
     );
@@ -390,6 +401,18 @@ export function useDirectionsViewModel(destination: Place | null) {
     setStartSource('manual_place');
     setIsEditingManualStart(true);
     setErrorMessage(null);
+  };
+
+  // Legacy (v1) destinations only — v2 destinations start navigation through
+  // HomeScreen's route-preview card (handleStartPreviewNavigation), which
+  // reuses this same store action for the v2-shaped route instead.
+  const handleStartNavigation = () => {
+    if (!destination || !route || destination.sourceVersion === 'v2') return;
+    const endNodeId = route.nodes[route.nodes.length - 1];
+    const resolvedDestination = endNodeId
+      ? RoutePointService.enrichPlaceWithRoutingNode(destination, endNodeId)
+      : destination;
+    startNavigation(resolvedDestination, route, instructions);
   };
 
   return {
@@ -414,6 +437,7 @@ export function useDirectionsViewModel(destination: Place | null) {
     chooseCurrentLocation,
     chooseRememberedLocation,
     calculateRoute,
+    handleStartNavigation,
     showRememberedStartAction: rememberedLocationAvailable,
     showManualStartSearch: isEditingManualStart || startSource === 'manual_place',
     canStartNavigation: destination?.sourceVersion === 'v2' ? v2NavigationStartCheck.canStart : Boolean(route),

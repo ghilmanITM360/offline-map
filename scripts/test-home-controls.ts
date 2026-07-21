@@ -34,12 +34,11 @@ assert(home.includes('bottomSheetRef.current?.'), 'Selected place bottom sheet m
 assert(home.includes('setIsSearchFocused') && home.includes('Keyboard.dismiss'), 'Search focus and keyboard dismissal must be handled');
 assert(home.includes('BackHandler.addEventListener'), 'Android back should close search before exiting Home');
 assert(home.includes('showsHorizontalScrollIndicator={false}'), 'Category chips must use horizontal scrolling instead of clipping');
-assert(home.includes('rightControlsTop'), 'Floating controls must account for top banners');
-assert(
-  home.includes('bannerStackHeight') && home.includes('showOutsideBanner ? 20 : 12'),
-  'Outside warning must not cover map controls',
-);
-assert(home.includes('onLayout={(e) => setBannerStackHeight'), 'Banner stack height must be measured, not a hardcoded guess');
+// The Layers/Compass/Zoom/Recenter cluster is one bottom-anchored stack (controlStackBottom)
+// instead of a top-anchored group that had to account for banner stacking height — see
+// docs/TARGETED_FIX_SPRINT_REPORT.md Phase 5 / test-map-controls-v2.ts for the full rationale.
+assert(home.includes('controlStackBottom'), 'Floating controls must derive their position from the single bottom-anchored control-stack offset');
+assert(home.includes('onLayout={(e) => setTopOverlayHeight'), 'Top overlay (search+chip row) height must be measured, not a hardcoded guess');
 assert(home.includes('onLayout={(e) => setRoutePreviewCardMeasuredHeight'), 'Route preview card height must be measured, not a hardcoded guess');
 assert(
   mapControlsSource.includes("variant: 'browse' | 'nav'") && mapControlsSource.includes("variant === 'browse'"),

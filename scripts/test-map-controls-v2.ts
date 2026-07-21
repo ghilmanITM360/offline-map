@@ -25,18 +25,26 @@ for (const styleKey of ['controlButton:', 'controlButtonActive:', 'controlHelper
   assert(mapControlStyles.includes(styleKey), `mapControlStyles.ts must define ${styleKey.replace(':', '')}`);
 }
 
-// Real layout: top-right controls position derives from a measured banner-stack height,
-// not a chain of hardcoded per-banner guesses.
-assert(home.includes('onLayout={(e) => setBannerStackHeight(e.nativeEvent.layout.height)}'), 'Banner stack height must be measured via onLayout');
-assert(home.includes('bannerStackTop + bannerStackHeight'), 'rightControlsTop must derive from the measured banner stack height');
+// Real layout: the banner stack's own top offset derives from the measured search+chip
+// overlay height, not a chain of hardcoded per-banner guesses.
+assert(home.includes('onLayout={(e) => setTopOverlayHeight(e.nativeEvent.layout.height)}'), 'Top overlay height must be measured via onLayout');
+assert(home.includes('topOverlayHeight > 0 ? topOverlayHeight + 8'), 'bannerStackTop must derive from the measured top-overlay height');
 for (const deadOffsetGuess of ['isOffline ? 42', 'showMapWarningBanner ? 56', 'showOutsideBanner ? 60']) {
   assert(!home.includes(deadOffsetGuess), `Hardcoded banner-height guess "${deadOffsetGuess}" must be gone`);
 }
 
-// Real layout: recenter button clearance derives from a measured route-preview-card height,
+// Real layout: the whole Layers/Compass/Zoom/Recenter cluster is a single bottom-anchored
+// stack (see MapControls' recenter prop) instead of a top-anchored compass/zoom group plus
+// an independently bottom-anchored recenter button — that old split is exactly what let a
+// route-preview card push the recenter button into the zoom controls (neither side's offset
+// accounted for the other's extent). A single shared bottom value can't collide with itself.
+assert((home.match(/<View style=\{\[styles\.controlStack, \{ bottom: controlStackBottom \}\]\}>/g) ?? []).length >= 1, 'HomeScreen must position the control stack via a single controlStackBottom value');
+assert(home.includes('recenter={'), 'HomeScreen must pass the recenter button into MapControls\' single stack, not render it separately');
+
+// Real layout: recenter clearance derives from a measured route-preview-card height,
 // not a hardcoded 184px guess.
 assert(home.includes('onLayout={(e) => setRoutePreviewCardMeasuredHeight(e.nativeEvent.layout.height)}'), 'Route preview card height must be measured via onLayout');
-assert(home.includes('routePreviewCardMeasuredHeight + 16'), 'rightControlsBottom must derive from the measured route-preview-card height');
+assert(home.includes('routePreviewCardMeasuredHeight + 16'), 'controlStackBottom must derive from the measured route-preview-card height');
 assert(!home.includes('activePreviewRoute ? 184 : 0'), 'Hardcoded route-preview-card height guess (184) must be gone');
 
 console.log('Map controls v2 checks passed.');

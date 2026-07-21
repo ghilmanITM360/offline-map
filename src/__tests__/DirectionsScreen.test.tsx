@@ -39,6 +39,15 @@ const destination: Place = {
   sourceVersion: 'v1',
 };
 
+const v2Destination: Place = {
+  id: 'B2',
+  name: 'Block 2',
+  category: 'Block',
+  description: 'Block 2 of the Karachi Ijtema ground.',
+  coordinate: { latitude: 24.901, longitude: 67.102 },
+  sourceVersion: 'v2',
+};
+
 const candidatePlace: Place = {
   id: 'GATE_01',
   name: 'Gate 1',
@@ -65,23 +74,26 @@ function baseViewModel(overrides: Record<string, unknown> = {}) {
     chooseCurrentLocation: jest.fn(async () => true),
     chooseRememberedLocation: jest.fn(() => true),
     calculateRoute: jest.fn(async () => {}),
+    handleStartNavigation: jest.fn(),
     showManualStartSearch: false,
     ...overrides,
   };
 }
 
 let onCloseSpy: jest.Mock;
+let onStartLegacyNavigationSpy: jest.Mock;
 
 beforeEach(() => {
   jest.clearAllMocks();
   onCloseSpy = jest.fn();
+  onStartLegacyNavigationSpy = jest.fn();
   mockedSearchServiceSearch.mockReturnValue([]);
 });
 
 describe('DirectionsScreen — start option selection', () => {
   test('renders the destination being routed to', async () => {
     mockedUseDirectionsViewModel.mockReturnValue(baseViewModel());
-    await render(<DirectionsScreen destination={destination} onClose={onCloseSpy} />);
+    await render(<DirectionsScreen destination={destination} onClose={onCloseSpy} onStartLegacyNavigation={onStartLegacyNavigationSpy} />);
 
     expect(screen.getByText('Block 1')).toBeOnTheScreen();
   });
@@ -90,7 +102,7 @@ describe('DirectionsScreen — start option selection', () => {
     const chooseCurrentLocation = jest.fn(async () => true);
     mockedUseDirectionsViewModel.mockReturnValue(baseViewModel({ chooseCurrentLocation }));
     const user = userEvent.setup();
-    await render(<DirectionsScreen destination={destination} onClose={onCloseSpy} />);
+    await render(<DirectionsScreen destination={destination} onClose={onCloseSpy} onStartLegacyNavigation={onStartLegacyNavigationSpy} />);
 
     await user.press(screen.getByText('Use my current location'));
 
@@ -103,7 +115,7 @@ describe('DirectionsScreen — start option selection', () => {
       baseViewModel({ chooseRememberedLocation, rememberedLocationAvailable: true }),
     );
     const user = userEvent.setup();
-    await render(<DirectionsScreen destination={destination} onClose={onCloseSpy} />);
+    await render(<DirectionsScreen destination={destination} onClose={onCloseSpy} onStartLegacyNavigation={onStartLegacyNavigationSpy} />);
 
     await user.press(screen.getByText('Use last known location'));
 
@@ -114,7 +126,7 @@ describe('DirectionsScreen — start option selection', () => {
     mockedUseDirectionsViewModel.mockReturnValue(
       baseViewModel({ rememberedLocationAvailable: false }),
     );
-    await render(<DirectionsScreen destination={destination} onClose={onCloseSpy} />);
+    await render(<DirectionsScreen destination={destination} onClose={onCloseSpy} onStartLegacyNavigation={onStartLegacyNavigationSpy} />);
 
     expect(screen.getByText('No saved location yet')).toBeOnTheScreen();
   });
@@ -123,7 +135,7 @@ describe('DirectionsScreen — start option selection', () => {
     const chooseManualStart = jest.fn();
     mockedUseDirectionsViewModel.mockReturnValue(baseViewModel({ chooseManualStart }));
     const user = userEvent.setup();
-    await render(<DirectionsScreen destination={destination} onClose={onCloseSpy} />);
+    await render(<DirectionsScreen destination={destination} onClose={onCloseSpy} onStartLegacyNavigation={onStartLegacyNavigationSpy} />);
 
     await user.press(screen.getByText('Choose start manually'));
 
@@ -132,7 +144,7 @@ describe('DirectionsScreen — start option selection', () => {
 
   test('active start option is visually reflected via accessible state', async () => {
     mockedUseDirectionsViewModel.mockReturnValue(baseViewModel({ startSource: 'remembered_location' }));
-    await render(<DirectionsScreen destination={destination} onClose={onCloseSpy} />);
+    await render(<DirectionsScreen destination={destination} onClose={onCloseSpy} onStartLegacyNavigation={onStartLegacyNavigationSpy} />);
 
     // The status card reflects the active start source's message — real, user-visible output,
     // not an internal implementation detail.
@@ -147,7 +159,7 @@ describe('DirectionsScreen — manual start search ("Search")', () => {
       baseViewModel({ startSource: 'manual_place', showManualStartSearch: true }),
     );
     const user = userEvent.setup();
-    await render(<DirectionsScreen destination={destination} onClose={onCloseSpy} />);
+    await render(<DirectionsScreen destination={destination} onClose={onCloseSpy} onStartLegacyNavigation={onStartLegacyNavigationSpy} />);
 
     const input = screen.getByPlaceholderText('Search start point: gate, rasta, block');
     await user.type(input, 'Gate');
@@ -162,7 +174,7 @@ describe('DirectionsScreen — manual start search ("Search")', () => {
       baseViewModel({ startSource: 'manual_place', showManualStartSearch: true }),
     );
     const user = userEvent.setup();
-    await render(<DirectionsScreen destination={destination} onClose={onCloseSpy} />);
+    await render(<DirectionsScreen destination={destination} onClose={onCloseSpy} onStartLegacyNavigation={onStartLegacyNavigationSpy} />);
 
     const input = screen.getByPlaceholderText('Search start point: gate, rasta, block');
     await user.type(input, 'zzz');
@@ -177,7 +189,7 @@ describe('DirectionsScreen — manual start search ("Search")', () => {
       baseViewModel({ startSource: 'manual_place', showManualStartSearch: true, setManualStartPlace }),
     );
     const user = userEvent.setup();
-    await render(<DirectionsScreen destination={destination} onClose={onCloseSpy} />);
+    await render(<DirectionsScreen destination={destination} onClose={onCloseSpy} onStartLegacyNavigation={onStartLegacyNavigationSpy} />);
 
     const input = screen.getByPlaceholderText('Search start point: gate, rasta, block');
     await user.type(input, 'Gate');
@@ -202,13 +214,13 @@ describe('DirectionsScreen — route ready CTA', () => {
         },
       }),
     );
-    await render(<DirectionsScreen destination={destination} onClose={onCloseSpy} />);
+    await render(<DirectionsScreen destination={destination} onClose={onCloseSpy} onStartLegacyNavigation={onStartLegacyNavigationSpy} />);
 
     expect(screen.getByText('Route ready')).toBeOnTheScreen();
     expect(screen.getByText('ETA: 4 min')).toBeOnTheScreen();
   });
 
-  test('pressing "Show route on map" closes the sheet (real handler, not a no-op)', async () => {
+  test('pressing "Show route on map" closes the sheet for a v2 destination (real handler, not a no-op)', async () => {
     mockedUseDirectionsViewModel.mockReturnValue(
       baseViewModel({
         loadState: 'ready',
@@ -221,11 +233,41 @@ describe('DirectionsScreen — route ready CTA', () => {
       }),
     );
     const user = userEvent.setup();
-    await render(<DirectionsScreen destination={destination} onClose={onCloseSpy} />);
+    await render(
+      <DirectionsScreen destination={v2Destination} onClose={onCloseSpy} onStartLegacyNavigation={onStartLegacyNavigationSpy} />,
+    );
 
     await user.press(screen.getByText('Show route on map'));
 
     expect(onCloseSpy).toHaveBeenCalledTimes(1);
+    expect(onStartLegacyNavigationSpy).not.toHaveBeenCalled();
+  });
+
+  // Regression: a legacy (v1) destination used to have no working navigation
+  // entry point at all — the primary button unconditionally closed the sheet.
+  // See docs/ROUTING_NAVIGATION_FIX_REPORT.md Phase 4.
+  test('pressing "Start Navigation" starts navigation for a legacy (v1) destination', async () => {
+    const handleStartNavigation = jest.fn();
+    mockedUseDirectionsViewModel.mockReturnValue(
+      baseViewModel({
+        loadState: 'ready',
+        route: {
+          nodes: ['A', 'B'],
+          coordinates: [],
+          totalDistance: 250,
+          estimatedTimeMin: 4,
+        },
+        handleStartNavigation,
+      }),
+    );
+    const user = userEvent.setup();
+    await render(<DirectionsScreen destination={destination} onClose={onCloseSpy} onStartLegacyNavigation={onStartLegacyNavigationSpy} />);
+
+    await user.press(screen.getByText('Start Navigation'));
+
+    expect(handleStartNavigation).toHaveBeenCalledTimes(1);
+    expect(onStartLegacyNavigationSpy).toHaveBeenCalledTimes(1);
+    expect(onCloseSpy).not.toHaveBeenCalled();
   });
 
   test('shows an error state with a retry button that invokes calculateRoute', async () => {
@@ -234,7 +276,7 @@ describe('DirectionsScreen — route ready CTA', () => {
       baseViewModel({ loadState: 'error', errorMessage: 'Could not calculate route.', calculateRoute }),
     );
     const user = userEvent.setup();
-    await render(<DirectionsScreen destination={destination} onClose={onCloseSpy} />);
+    await render(<DirectionsScreen destination={destination} onClose={onCloseSpy} onStartLegacyNavigation={onStartLegacyNavigationSpy} />);
 
     expect(screen.getByText('Route problem')).toBeOnTheScreen();
     await user.press(screen.getByText('Retry'));

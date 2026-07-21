@@ -37,6 +37,15 @@ jest.mock('react-native-maps', () => {
           southWest: { latitude: 0, longitude: 0 },
         }),
       ),
+      // Deterministic linear stand-in — NOT a real Mercator/bearing projection, only
+      // meant to give MapLabelOverlay a stable, distinct {x,y} per input coordinate
+      // so tests can assert positioning/off-screen behavior without real native layout.
+      pointForCoordinate: jest.fn((coordinate: { latitude: number; longitude: number }) =>
+        Promise.resolve({
+          x: Math.round((coordinate.longitude + 180) * 2),
+          y: Math.round((90 - coordinate.latitude) * 2),
+        }),
+      ),
     }));
     return ReactActual.createElement(RNView, props, props.children);
   });

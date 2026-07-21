@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Animated, Text, View } from 'react-native';
 import { Marker, Polyline } from 'react-native-maps';
 import { Navigation, MapPin } from 'lucide-react-native';
@@ -13,27 +13,30 @@ import { NavigationOverlayV2 } from '../../../viewmodels/useNavigationOverlayV2'
 import { RastaLayer } from '../map/RastaLayer';
 import { SpecialRouteLayer } from '../map/SpecialRouteLayer';
 import { BlockLayer } from '../map/BlockLayer';
-import { GateLayer } from '../map/GateLayer';
 import { navOverlayStyles as styles } from './navOverlayStyles';
 
 /** Renders as children of the shared MapView while a v2 route is being navigated. */
 export function NavigationMapLayersV2({ overlay }: { overlay: NavigationOverlayV2 }) {
   const { route, snappedLocation, reroutePending, mapLayers, userPulseAnim, currentLocationSource } = overlay;
+  // useMemo must run unconditionally on every render (Rules of Hooks) — this
+  // sits above the `!route` early return below, matching HomeScreen's
+  // equivalent preview-path memo (activePreviewRoute?.coordinates ?? []).
+  const { outside: outsideLegCoordinates, inside: insideLegCoordinates } = useMemo(
+    () => V2MapRenderingService.splitOutsideInsideCoordinates(route?.coordinates ?? [], route?.outsideLegCoordinateCount),
+    [route?.coordinates, route?.outsideLegCoordinateCount],
+  );
   if (!route) return null;
 
   const startCoordinate = route.origin.coordinate;
   const destinationCoordinate = route.destination.coordinate;
-  const { outside: outsideLegCoordinates, inside: insideLegCoordinates } = V2MapRenderingService.splitOutsideInsideCoordinates(
-    route.coordinates,
-    route.outsideLegCoordinateCount,
-  );
 
   return (
     <>
-      <RastaLayer rastas={mapLayers.rastas} labels={[]} variant="nav" keyPrefix="hnav_v2_rasta" />
-      <SpecialRouteLayer routes={mapLayers.specialRoutes} labels={[]} variant="nav" keyPrefix="hnav_v2_special" />
+      <RastaLayer rastas={mapLayers.rastas} variant="nav" keyPrefix="hnav_v2_rasta" />
+      <SpecialRouteLayer routes={mapLayers.specialRoutes} variant="nav" keyPrefix="hnav_v2_special" />
       <BlockLayer blocks={mapLayers.blocks} variant="nav" keyPrefix="hnav_v2_block" />
-      <GateLayer gates={mapLayers.gates} variant="nav" keyPrefix="hnav_v2_gate" />
+      {/* Nav-mode gate labels render via HomeScreen's shared MapLabelOverlay (see
+          mapLabelItems), built from `overlay.mapLayers.gates` — not rendered here. */}
 
       {outsideLegCoordinates.length > 1 && (
         <>

@@ -25,11 +25,18 @@ assert(navOverlay.includes('V2MapRenderingService.getHomeLayers'), 'v2 navigatio
 assert(navMapLayers.includes('mapLayers.blocks') && navMapLayers.includes('BlockLayer'), 'v2 navigation must render block context');
 assert(navMapLayers.includes('mapLayers.rastas') && navMapLayers.includes('RastaLayer'), 'v2 navigation must render rasta lines');
 assert(navMapLayers.includes('mapLayers.specialRoutes') && navMapLayers.includes('SpecialRouteLayer'), 'v2 navigation must render special route lines');
-assert(navMapLayers.includes('mapLayers.gates') && navMapLayers.includes('GateLayer'), 'v2 navigation must render gate context');
+// Nav-mode gate labels moved out of NavigationMapLayersV2 (no more Marker-snapshot
+// GateLayer there) into HomeScreen's shared MapLabelOverlay, built from
+// navOverlay.mapLayers.gates — see docs/TARGETED_FIX_SPRINT_REPORT.md Phase 5.
+assert(!navMapLayers.includes('GateLayer'), 'v2 nav map layers must not render its own GateLayer (gate labels moved to the shared MapLabelOverlay)');
+assert(homeScreen.includes('navOverlay.mapLayers.gates.map('), 'v2 navigation must render gate context via HomeScreen\'s shared mapLabelItems/MapLabelOverlay');
 assert(navOverlay.includes('graphOnlyFallbackUsed') && navChrome.includes('graphOnlyFallbackUsed'), 'v2 navigation must expose graph-only fallback status');
 assert(navChrome.includes('Graph-only v2 map is active'), 'v2 navigation must show clear graph-only fallback message');
 
-assert(navMapLayers.includes('route.coordinates') && navMapLayers.includes('strokeColor="#1A73E8"'), 'v2 navigation must render blue route line');
+// Phase 8 (docs/ROUTING_NAVIGATION_FIX_REPORT.md): route.coordinates was moved
+// into a useMemo above the `!route` early return (Rules of Hooks), so the
+// reference is now optional-chained (`route?.coordinates`).
+assert(navMapLayers.includes('route?.coordinates') && navMapLayers.includes('strokeColor="#1A73E8"'), 'v2 navigation must render blue route line');
 assert(navMapLayers.includes('route.origin.coordinate'), 'v2 navigation must render start marker from v2 route origin');
 assert(navMapLayers.includes('route.destination.coordinate'), 'v2 navigation must render red destination marker from v2 route destination');
 assert(navMapLayers.includes('snappedLocation') && navMapLayers.includes('userMarker'), 'v2 navigation must render current/user marker');

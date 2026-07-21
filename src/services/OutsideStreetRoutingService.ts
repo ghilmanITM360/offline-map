@@ -6,7 +6,7 @@
 import { Coordinate, Gate } from '../data/ijtema/types';
 import { findNearestStreetNode, getStreetNavigationGraph } from '../data/ijtema/streetGraphBuilder';
 import { StreetGraphEdge } from '../data/ijtema/streetGraphTypes';
-import { MinHeap } from '../utils/MinHeap';
+import { AStarNeighbor, reconstructAStarPath, runAStar } from '../utils/AStar';
 import { haversineM } from '../utils/SpatialGrid';
 
 /**
@@ -18,6 +18,18 @@ import { haversineM } from '../utils/SpatialGrid';
  * hard-fails on it instead, as the "hard-fail in CI" half of that model.
  */
 export const DISTANCE_SANITY_CAP_RATIO = 1.8;
+
+/**
+ * Shared with RoutingServiceV2's beeline gate-selection path so both agree on
+ * which gates are penalized — kept here (not in RoutingServiceV2) because
+ * RoutingServiceV2 imports from this module already; defining it there and
+ * importing back would be circular.
+ */
+export const NEEDS_VERIFICATION_GATE_PENALTY_M = 120;
+export const gatePenaltyM = (gate: Gate | undefined): number => (gate?.status === 'needs_verification' ? NEEDS_VERIFICATION_GATE_PENALTY_M : 0);
+
+/** Synthetic node id for the virtual-goal-node trick below — not a real street-graph node. */
+const GATE_GOAL_SINK = '__gate_goal__';
 
 export interface StreetOutsidePathResult {
   gate: Gate;
@@ -53,8 +65,23 @@ const heuristicToNearestNode = (fromId: string, targetNodeIds: Set<string>): num
 /**
  * Single-source (user's nearest street node) multi-target (every candidate
  * gate's connector node) A* over the bounded OSM street graph. Returns the
- * cheapest gate to route through and the full polyline to reach it,
- * including preserved intermediate geometry for rendering fidelity.
+ * cheapest gate to route through — factoring in each gate's verification
+ * penalty, same as the beeline path's `gatePenaltyM` — and the full polyline
+ * to reach it, including preserved intermediate geometry for rendering
+ * fidelity.
+ *
+ * Per-target penalty ("arrival cost") + a first-match early exit don't mix
+ * directly: stopping at the first target *node* reached would ignore the
+ * possibility that a farther-but-unpenalized gate has a lower *penalized*
+ * total. Standard fix: treat "arriving at the goal via gate g" as node g plus
+ * a fixed non-negative synthetic edge of weight `gatePenaltyM(g)` to one
+ * shared virtual sink (`GATE_GOAL_SINK`). Whenever a candidate gate node is
+ * settled, relax the sink through it; keep expanding real neighbors too (a
+ * path can legitimately thread past one gate's connector toward a cheaper
+ * one). Stop only when the sink itself is popped — by then no unexplored
+ * node can beat it (non-negative weights, and the existing heuristic already
+ * lower-bounds distance-to-nearest-target, which is <= distance+penalty for
+ * any target, so it stays admissible for the penalized goal too).
  */
 export const selectStreetGraphOutsidePath = (
   userCoordinate: Coordinate,
@@ -70,50 +97,32 @@ export const selectStreetGraphOutsidePath = (
   if (targets.length === 0) return undefined;
 
   const targetNodeIds = new Set(targets.map((target) => target.connector.nodeId));
+  const targetPenalty = new Map(targets.map((target) => [target.connector.nodeId, gatePenaltyM(target.gate)]));
 
-  const gScore: Record<string, number> = { [nearestUser.node.id]: 0 };
-  const previousNode: Record<string, string | undefined> = {};
-  const previousEdge: Record<string, StreetGraphEdge | undefined> = {};
-  const closed = new Set<string>();
-  const open = new MinHeap<string>();
-  open.push(nearestUser.node.id, heuristicToNearestNode(nearestUser.node.id, targetNodeIds));
+  // Real street-graph edges, plus (only from a candidate gate's connector
+  // node) one synthetic edge to the virtual sink weighted by that gate's
+  // verification penalty — see the function doc comment above.
+  const neighbors = (nodeId: string): AStarNeighbor<StreetGraphEdge>[] => {
+    const realNeighbors = (graph.adjacency[nodeId] ?? []).map((edge) => ({ to: edge.to, weight: edge.distanceM, edge }));
+    const penalty = targetPenalty.get(nodeId);
+    return penalty === undefined ? realNeighbors : [...realNeighbors, { to: GATE_GOAL_SINK, weight: penalty }];
+  };
 
-  let reachedNodeId: string | undefined;
+  const result = runAStar<StreetGraphEdge>({
+    seeds: [{ id: nearestUser.node.id, gScore: 0 }],
+    heuristic: (nodeId) => (nodeId === GATE_GOAL_SINK ? 0 : heuristicToNearestNode(nodeId, targetNodeIds)),
+    neighbors,
+    isGoal: (nodeId) => nodeId === GATE_GOAL_SINK,
+  });
+  if (!result) return undefined;
 
-  while (!open.isEmpty()) {
-    const current = open.pop()!.value;
-    if (closed.has(current)) continue;
-    if (targetNodeIds.has(current)) {
-      reachedNodeId = current;
-      break;
-    }
-    closed.add(current);
-
-    const currentDistance = gScore[current] ?? Infinity;
-    for (const edge of graph.adjacency[current] ?? []) {
-      if (closed.has(edge.to)) continue;
-      const nextDistance = currentDistance + edge.distanceM;
-      if (nextDistance < (gScore[edge.to] ?? Infinity)) {
-        gScore[edge.to] = nextDistance;
-        previousNode[edge.to] = current;
-        previousEdge[edge.to] = edge;
-        open.push(edge.to, nextDistance + heuristicToNearestNode(edge.to, targetNodeIds));
-      }
-    }
-  }
-
+  const reachedNodeId = result.previousNode[GATE_GOAL_SINK];
   if (!reachedNodeId) return undefined;
 
   const reachedTarget = targets.find((target) => target.connector.nodeId === reachedNodeId);
   if (!reachedTarget) return undefined;
 
-  const edgesUsed: StreetGraphEdge[] = [];
-  let cursor: string | undefined = reachedNodeId;
-  while (cursor) {
-    const edge = previousEdge[cursor];
-    if (edge) edgesUsed.unshift(edge);
-    cursor = previousNode[cursor];
-  }
+  const { edges: edgesUsed } = reconstructAStarPath(result, reachedNodeId);
 
   const coordinates: Coordinate[] = [];
   const dedupToleranceM = 2;
@@ -145,7 +154,7 @@ export const selectStreetGraphOutsidePath = (
   topologyEdgeDistancesM.push(reachedTarget.connector.distanceM);
   topologyEdgeNames.push(undefined);
 
-  const graphRoutedDistanceM = gScore[reachedNodeId];
+  const graphRoutedDistanceM = result.gScore[reachedNodeId];
   const reachedNode = graph.nodes[reachedNodeId];
   const straightLineForRatio = haversineM(nearestUser.node.lat, nearestUser.node.lng, reachedNode.lat, reachedNode.lng);
   const ratio = straightLineForRatio > 0 ? graphRoutedDistanceM / straightLineForRatio : 1;

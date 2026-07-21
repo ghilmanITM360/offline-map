@@ -324,23 +324,21 @@ export class OfflineMapService {
   private static userMessageForFailureType(failureType: OfflineDownloadFailureType): string {
     switch (failureType) {
       case 'no_internet':
-        return 'No internet connection.';
+        return 'No internet connection. Please connect and try again.';
       case 'dns_failed':
-        return 'DNS failed. Try another network or mobile data.';
+        return 'Unable to connect. Please check your internet connection or try a different network.';
       case 'http_403':
-        return 'Map server rejected download.';
       case 'http_404':
-        return 'Map tile not found on server.';
-      case 'timeout':
-        return 'Download timed out. Try again.';
       case 'tile_server_unreachable':
-        return 'Map tile server could not be reached.';
+        return 'Unable to download the map right now. Please try again in a moment.';
+      case 'timeout':
+        return 'The download took too long. Please check your connection and try again.';
       case 'file_write_failed':
-        return 'Map tile write failed. Please free storage and retry.';
+        return 'Not enough storage to save the map. Please free up space and try again.';
       case 'db_write_failed':
-        return 'Map data save failed. Please retry download.';
+        return "We couldn't save the map. Please try again.";
       default:
-        return 'Map download failed. Check internet connection and try again.';
+        return 'Unable to download the map. Please check your internet connection and try again.';
     }
   }
 

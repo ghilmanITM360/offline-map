@@ -54,26 +54,23 @@ assert(
   'Every V2PolylineLayer (special route) must carry a bilingual LocalizedLabel name with a real Urdu value',
 );
 
-const blockLayerSource = readFileSync('src/views/components/map/BlockLayer.tsx', 'utf8');
-const gateLayerSource = readFileSync('src/views/components/map/GateLayer.tsx', 'utf8');
-const rastaLayerSource = readFileSync('src/views/components/map/RastaLayer.tsx', 'utf8');
-const specialRouteLayerSource = readFileSync('src/views/components/map/SpecialRouteLayer.tsx', 'utf8');
+// Label text (including the Urdu secondary line) no longer renders inside the layer
+// components — it moved into HomeScreen's mapLabelItems, which feeds the single
+// shared MapLabelOverlay (see docs/TARGETED_FIX_SPRINT_REPORT.md Phase 5).
+const homeScreenSource = readFileSync('src/views/screens/HomeScreen.tsx', 'utf8');
 
-assert(
-  blockLayerSource.includes('MapLocalizationService.getSecondaryLabel'),
-  'BlockLayer must render the Urdu secondary label via MapLocalizationService',
-);
-assert(
-  gateLayerSource.includes('MapLocalizationService.getSecondaryLabel'),
-  'GateLayer must render the Urdu secondary label via MapLocalizationService',
-);
-assert(
-  rastaLayerSource.includes('MapLocalizationService.getSecondaryLabel'),
-  'RastaLayer must render the Urdu secondary label via MapLocalizationService',
-);
-assert(
-  specialRouteLayerSource.includes('MapLocalizationService.getSecondaryLabel'),
-  'SpecialRouteLayer must render the Urdu secondary label via MapLocalizationService',
-);
+const secondaryLabelCallSites = [
+  { name: 'gate', pattern: /secondaryText:\s*[^,]*MapLocalizationService\.getSecondaryLabel\(gate\.name\)/ },
+  { name: 'block', pattern: /secondaryText:\s*MapLocalizationService\.getSecondaryLabel\(block\.name\)/ },
+  { name: 'rasta', pattern: /secondaryText:\s*MapLocalizationService\.getSecondaryLabel\(rasta\.name\)/ },
+  { name: 'special route', pattern: /secondaryText:\s*MapLocalizationService\.getSecondaryLabel\(route\.name\)/ },
+];
+
+for (const { name, pattern } of secondaryLabelCallSites) {
+  assert(
+    pattern.test(homeScreenSource),
+    `HomeScreen's mapLabelItems must render the ${name} Urdu secondary label via MapLocalizationService`,
+  );
+}
 
 console.log('Map localization v2 checks passed.');

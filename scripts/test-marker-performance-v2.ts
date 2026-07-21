@@ -4,40 +4,10 @@ import { readFileSync } from 'node:fs';
 const home = readFileSync('src/views/screens/HomeScreen.tsx', 'utf8');
 // The block/gate/rasta/special-route Marker/Polygon/Polyline JSX moved out of HomeScreen.tsx
 // into shared layer components (src/views/components/map/*) — see docs/MAP_EXPERIENCE_AUDIT.md.
+// Label text itself no longer renders as a Marker at all (see MapLabelOverlay.tsx and
+// scripts/test-map-label-overlay-v2.ts) — only small fixed-size dot markers remain here.
 const gateLayer = readFileSync('src/views/components/map/GateLayer.tsx', 'utf8');
-const rastaLayer = readFileSync('src/views/components/map/RastaLayer.tsx', 'utf8');
-const blockLayer = readFileSync('src/views/components/map/BlockLayer.tsx', 'utf8');
-const specialRouteLayer = readFileSync('src/views/components/map/SpecialRouteLayer.tsx', 'utf8');
 const navMapLayers = readFileSync('src/views/components/navigation/NavigationMapLayersV2.tsx', 'utf8');
-
-// --- mapLabelsTransitioning bounded-transition-window state ---------------
-// Phase 5 (map label system): this flag was gate-only (gateMarkersTransitioning)
-// and keyed only on filter + selection, so block/rasta/special-route labels never
-// got a tracksViewChanges=true window at all — a label mounting or resizing with
-// tracksViewChanges already false can freeze blank/clipped on Android. Renamed and
-// broadened to mapLabelsTransitioning, shared by all four label layers, and keyed
-// additionally on zoom-LOD tier (not just filter/selection) since that's when
-// block/rasta labels actually mount/unmount.
-
-assert(
-  /const \[mapLabelsTransitioning, setMapLabelsTransitioning\] = useState\(false\)/.test(home),
-  'Home must track map label transitions with a bounded-window state flag.',
-);
-
-assert(
-  home.includes("const mapLabelVisualSignature = `${v2MapLayers.activeMapFilter}|${selectedPlace?.id ?? ''}|${zoomLodTier}`;"),
-  'Home must derive the map label visual signature from active filter + selected place id + zoom-LOD tier.',
-);
-
-assert(
-  /setMapLabelsTransitioning\(true\)[\s\S]{0,120}setTimeout\(\(\) => setMapLabelsTransitioning\(false\), 400\)/.test(home),
-  'Map label transition window must flip on for exactly 400ms after the visual signature changes.',
-);
-
-assert(
-  home.includes('transitioning={mapLabelsTransitioning}'),
-  'Home must pass the bounded transition-window state into GateLayer.',
-);
 
 // --- user-location marker: tracksViewChanges must be permanently false ----
 
@@ -64,32 +34,9 @@ assert(
   'Gate markers must not hardcode tracksViewChanges to always-true.',
 );
 assert(
-  gateLayer.includes('tracksViewChanges={transitioning}'),
-  'Home-variant gate markers must key tracksViewChanges off the bounded transition-window state passed in as a prop.',
+  gateLayer.includes('tracksViewChanges={false}'),
+  'Gate dot markers have no dynamic-size label content anymore (see MapLabelOverlay.tsx), so tracksViewChanges must be permanently false.',
 );
-
-// --- block/rasta/special-route labels: same bounded transition-window, not a
-// permanent false --- Phase 5: these used to hardcode tracksViewChanges={false}
-// with no refresh path at all, which is what let them mount and never render
-// (see GateLayer.tsx's "KNOWN ISSUE" comment for the parallel gate-side bug).
-// Label marker `key`s now also encode focused/isSelected (see BlockLayer.tsx
-// comment) so react-native-maps remounts them fresh when their rendered size
-// changes — hence the open-ended key=\{`...\$\{block.id\}...`\} match instead of
-// an exact-close.
-const transitionTrackedLabelPatterns: Array<{ name: string; source: string; pattern: RegExp }> = [
-  { name: 'rasta label marker', source: rastaLayer, pattern: /<Marker[\s\S]*?key=\{`\$\{keyPrefix\}_label_\$\{rasta\.id\}[\s\S]*?`\}[\s\S]*?<\/Marker>/ },
-  { name: 'block label marker', source: blockLayer, pattern: /<Marker[\s\S]*?key=\{`\$\{keyPrefix\}_label_\$\{block\.id\}[\s\S]*?`\}[\s\S]*?<\/Marker>/ },
-  { name: 'special route label marker', source: specialRouteLayer, pattern: /<Marker[\s\S]*?key=\{`\$\{keyPrefix\}_label_\$\{route\.id\}[\s\S]*?`\}[\s\S]*?<\/Marker>/ },
-];
-
-for (const { name, source, pattern } of transitionTrackedLabelPatterns) {
-  const match = source.match(pattern);
-  assert(match, `Must render the ${name}.`);
-  assert(
-    match![0].includes('tracksViewChanges={transitioning}'),
-    `${name} must key tracksViewChanges off the bounded transition-window state passed in as a prop, not a permanent false.`,
-  );
-}
 
 // --- representative sample of other static markers fixed to false ---------
 

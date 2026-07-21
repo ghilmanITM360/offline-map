@@ -51,4 +51,14 @@ export const mapControlStyles = StyleSheet.create({
   },
   zoomButton: { width: 48, height: 48, justifyContent: 'center', alignItems: 'center' },
   zoomDivider: { height: 1, backgroundColor: '#DADCE0', marginHorizontal: 8 },
+  recenterButtonWrap: { marginTop: 8 },
+  recenterButton: {
+    backgroundColor: '#FFFFFF',
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 6,
+  },
 });

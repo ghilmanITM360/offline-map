@@ -12,6 +12,7 @@ import { useAppStore } from '../../store/useAppStore';
 import { ConnectivityService } from '../../services/ConnectivityService';
 import { OfflineMapService } from '../../services/OfflineMapService';
 import { OfflineMapStatusService } from '../../services/OfflineMapStatusService';
+import { OnboardingStatusService } from '../../services/OnboardingStatusService';
 import { RootStackParamList } from '../../navigation/RootNavigator';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
@@ -37,12 +38,14 @@ export function SplashScreen() {
         });
 
         // Run all checks in parallel
-        const [mapStatus, startupStatus, permissionResult, isConnected, graphOnlyModeEnabled] = await Promise.all([
+        const [mapStatus, startupStatus, permissionResult, isConnected, graphOnlyModeEnabled, skippedOnlineModeEnabled, hasSeenWelcome] = await Promise.all([
           OfflineMapService.getMapStatus(),
           OfflineMapStatusService.validateAtStartup(),
           Location.getForegroundPermissionsAsync(),
           ConnectivityService.isConnected(),
           OfflineMapStatusService.isGraphOnlyModeEnabled(),
+          OfflineMapStatusService.isSkippedOnlineModeEnabled(),
+          OnboardingStatusService.hasSeenWelcome(),
           minVisibleMs,
         ]);
 
@@ -68,7 +71,12 @@ export function SplashScreen() {
 
         setHasLocationPermission(permissionGranted);
 
-        // Routing logic — check permission and map independently
+        // Routing logic — check onboarding intro, permission, and map independently
+        if (!hasSeenWelcome) {
+          navigation.replace('Welcome');
+          return;
+        }
+
         if (!permissionGranted) {
           navigation.replace('Permission');
           return;
@@ -89,13 +97,19 @@ export function SplashScreen() {
           return;
         }
 
+        if (skippedOnlineModeEnabled && startupStatus.status === 'not_downloaded') {
+          // User already chose "Use Online Mode" once — don't re-prompt every launch.
+          navigation.replace('Main');
+          return;
+        }
+
         if (!isConnected && startupStatus.status === 'not_downloaded') {
           // No internet AND no map — go to Main in graph-only mode
           navigation.replace('Main');
           return;
         }
 
-        // Have internet, no map yet — go to download
+        // Have internet, no map yet, never chosen a mode before — go to download
         navigation.replace('DownloadMap');
       } catch {
         if (!isMountedRef.current) return;

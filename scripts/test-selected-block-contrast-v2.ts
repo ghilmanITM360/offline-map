@@ -11,9 +11,14 @@ import { readFileSync } from 'node:fs';
 
 const blockLayer = readFileSync('src/views/components/map/BlockLayer.tsx', 'utf8');
 const mapLayerStyles = readFileSync('src/views/components/map/mapLayerStyles.ts', 'utf8');
+// Block label rendering (including the Urdu secondary line's selected-state color) moved
+// out of BlockLayer.tsx into MapLabelOverlay.tsx's getLabelStyles, fed by HomeScreen's
+// mapLabelItems — see docs/TARGETED_FIX_SPRINT_REPORT.md Phase 5.
+const mapLabelOverlay = readFileSync('src/views/components/map/MapLabelOverlay.tsx', 'utf8');
+const home = readFileSync('src/views/screens/HomeScreen.tsx', 'utf8');
 
 assert(
-  blockLayer.includes("styles.v2BlockLabelUrdu, focused && styles.v2BlockLabelUrduFocused, block.isSelected && styles.v2SelectedBlockLabelText"),
+  mapLabelOverlay.includes('styles.v2BlockLabelUrdu, focused && styles.v2BlockLabelUrduFocused, isSelected && styles.v2SelectedBlockLabelText'),
   'Selected block Urdu label text must switch to the selected (white) text color, not stay dark green on the blue selected bubble',
 );
 assert(mapLayerStyles.includes('v2SelectedBlockLabelText'), 'v2SelectedBlockLabelText style must exist');
@@ -21,6 +26,6 @@ assert(mapLayerStyles.includes('v2SelectedBlockLabelText'), 'v2SelectedBlockLabe
 // Border+fill+bubble were already in place before this phase — assert they still are.
 assert(blockLayer.includes("fillColor={block.isSelected ? 'rgba(26,115,232,0.42)'"), 'Selected block must keep its light blue fill');
 assert(blockLayer.includes("strokeColor={block.isSelected ? '#1A73E8'"), 'Selected block must keep its blue border');
-assert(blockLayer.includes('MapLocalizationService.getSecondaryLabel(block.name)'), 'Selected block label bubble must keep showing the Urdu secondary line');
+assert(home.includes('MapLocalizationService.getSecondaryLabel(block.name)'), 'Selected block label bubble must keep showing the Urdu secondary line');
 
 console.log('Selected block contrast v2 checks passed.');

@@ -13,7 +13,6 @@ import {
   distanceMeters,
   findNearestGraphNode,
 } from '../data/ijtema';
-import { GraphEdge } from '../data/ijtema/graphTypes';
 import { Coordinate as V2Coordinate } from '../data/ijtema/types';
 import { Coordinate as AppCoordinate } from '../models/types';
 
@@ -37,13 +36,6 @@ export interface VenueStatusV2 {
 export interface ResolveRouteStartOptionsV2 {
   manualGateId?: string;
   forceOutside?: boolean;
-  /**
-   * Destination graph node IDs used for total-cost gate selection.
-   * When provided, the entry gate is chosen to minimise
-   * haversine(user→gate) + internal_graph_route(gate→destination).
-   * When omitted, falls back to nearest-gate selection.
-   */
-  destinationNodeIds?: string[];
 }
 
 const toV2Coordinate = (coordinate: AppCoordinate | V2Coordinate): V2Coordinate =>
@@ -66,48 +58,6 @@ const hasGateGraphConnection = (gate: Gate | undefined): boolean =>
   isGateRoutable(gate) && Boolean(IJTEMA_NAVIGATION_GRAPH_V2.nodes[gate.id] && IJTEMA_NAVIGATION_GRAPH_V2.adjacency[gate.id]?.length > 0);
 
 const INTERNAL_PATH_BUFFER_METERS = 35;
-
-/**
- * Returns the weighted shortest-path distance (metres) from startNodeId to
- * destinationNodeId using the V2 navigation graph, or undefined if unreachable.
- * Used internally by findBestGateForOutsideUser to evaluate total route cost
- * per candidate gate without exposing Dijkstra logic to callers.
- */
-const dijkstraCost = (startNodeId: string, destinationNodeId: string): number | undefined => {
-  if (startNodeId === destinationNodeId) return 0;
-  if (!IJTEMA_NAVIGATION_GRAPH_V2.nodes[startNodeId] || !IJTEMA_NAVIGATION_GRAPH_V2.nodes[destinationNodeId]) return undefined;
-
-  const distances: Record<string, number> = { [startNodeId]: 0 };
-  const unvisited = new Set(Object.keys(IJTEMA_NAVIGATION_GRAPH_V2.nodes));
-
-  while (unvisited.size > 0) {
-    let current: string | undefined;
-    let currentDistance = Infinity;
-
-    for (const nodeId of unvisited) {
-      const d = distances[nodeId] ?? Infinity;
-      if (d < currentDistance) {
-        current = nodeId;
-        currentDistance = d;
-      }
-    }
-
-    if (!current || currentDistance === Infinity) break;
-    if (current === destinationNodeId) break;
-    unvisited.delete(current);
-
-    for (const edge of (IJTEMA_NAVIGATION_GRAPH_V2.adjacency[current] ?? []) as GraphEdge[]) {
-      if (!unvisited.has(edge.to)) continue;
-      const weight = edge.distanceM * (edge.weightMultiplier ?? 1);
-      const next = currentDistance + weight;
-      if (next < (distances[edge.to] ?? Infinity)) {
-        distances[edge.to] = next;
-      }
-    }
-  }
-
-  return distances[destinationNodeId];
-};
 
 const isPointInPolygon = (point: V2Coordinate, polygon: V2Coordinate[]): boolean => {
   let inside = false;
@@ -201,62 +151,6 @@ export class EntryGateRoutingService {
     return nearestGate;
   }
 
-  /**
-   * Selects the entry gate that minimises TOTAL route cost for an outside user:
-   *   total_cost(gate) = haversine(userLocation → gate) + shortest_internal_path(gate → destinationNodeIds)
-   *
-   * Gate 20 (or any other gate) is only selected when it genuinely produces the
-   * minimum total cost — it receives no special-casing or preference bonus.
-   *
-   * @param coordinate     User's current GPS location (outside venue)
-   * @param destinationNodeIds  Graph node IDs that represent the destination
-   * @returns The gate with minimum total cost, or undefined if none reachable
-   */
-  static findBestGateForOutsideUser(
-    coordinate: AppCoordinate | V2Coordinate,
-    destinationNodeIds: string[],
-  ): Gate | undefined {
-    const userPoint = toV2Coordinate(coordinate);
-    const validDestNodes = destinationNodeIds.filter((id) => Boolean(IJTEMA_NAVIGATION_GRAPH_V2.nodes[id]));
-
-    if (validDestNodes.length === 0) {
-      // Fall back to nearest-gate when destination is unknown
-      return this.findNearestOfficialEntryGateForOutsideUser(coordinate);
-    }
-
-    let bestGate: Gate | undefined;
-    let bestTotalCost = Infinity;
-
-    for (const gate of IJTEMA_GATES) {
-      if (!isGateRoutable(gate) || !hasGateGraphConnection(gate)) continue;
-
-      const approachCost = distanceMeters(userPoint, gate.coordinate);
-
-      // Early prune: skip if just the approach already exceeds current best
-      if (approachCost >= bestTotalCost) continue;
-
-      // Find the cheapest internal path from this gate to any destination node
-      let cheapestInternal = Infinity;
-      for (const destNodeId of validDestNodes) {
-        const internalCost = dijkstraCost(gate.id, destNodeId);
-        if (internalCost !== undefined && internalCost < cheapestInternal) {
-          cheapestInternal = internalCost;
-        }
-      }
-
-      if (cheapestInternal === Infinity) continue; // gate not connected to destination
-
-      const totalCost = approachCost + cheapestInternal;
-      if (totalCost < bestTotalCost) {
-        bestTotalCost = totalCost;
-        bestGate = gate;
-      }
-    }
-
-    // If no gate reaches the destination via the internal graph, fall back to nearest gate
-    return bestGate ?? this.findNearestOfficialEntryGateForOutsideUser(coordinate);
-  }
-
   static resolveRouteStartForUser(
     coordinate: AppCoordinate | V2Coordinate,
     options: ResolveRouteStartOptionsV2 = {},
@@ -299,11 +193,11 @@ export class EntryGateRoutingService {
     }
 
     if (mode === 'outside') {
-      // Use total-cost gate selection when destination nodes are known; otherwise
-      // fall back to nearest-gate (e.g. for preview-without-destination calls).
-      const gate = options.destinationNodeIds && options.destinationNodeIds.length > 0
-        ? this.findBestGateForOutsideUser(v2Coordinate, options.destinationNodeIds)
-        : this.findNearestOfficialEntryGateForOutsideUser(v2Coordinate);
+      // Real outside-venue routing goes through RoutingServiceV2.selectOutsidePath
+      // directly (a heap-based multi-source A* that's already gatePenaltyM-aware),
+      // bypassing this resolver entirely — this is nearest-gate-by-distance only,
+      // used for preview-without-destination calls (e.g. the outside-venue banner).
+      const gate = this.findNearestOfficialEntryGateForOutsideUser(v2Coordinate);
 
       if (!isGateRoutable(gate) || !hasGateGraphConnection(gate)) {
         return {

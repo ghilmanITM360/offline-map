@@ -8,6 +8,7 @@ process.env.EXPO_PUBLIC_USE_IJTEMA_V2_MAP = 'true';
 const homeScreenSource = readFileSync('src/views/screens/HomeScreen.tsx', 'utf8');
 const homeViewModelSource = readFileSync('src/viewmodels/HomeViewModel.ts', 'utf8');
 const renderServiceSource = readFileSync('src/services/V2MapRenderingService.ts', 'utf8');
+const gateLayerSource = readFileSync('src/views/components/map/GateLayer.tsx', 'utf8');
 
 assert(
   renderServiceSource.includes('zoomLevel'),
@@ -22,12 +23,12 @@ assert(
   'Home map must forward region changes into zoom-aware label visibility.',
 );
 assert(
-  !homeScreenSource.includes("gate.label.replace('Gate ', 'G')"),
-  'Home gate labels must stop using clipped G-prefix boxes.',
+  !gateLayerSource.includes("gate.label.replace('Gate ', 'G')"),
+  'GateLayer must not render label text itself (moved to MapLabelOverlay to fix clipping) — see HomeScreen.tsx mapLabelItems.',
 );
 assert(
-  !homeScreenSource.includes("block.label.replace('Block ', '')"),
-  'Home block labels must stop rendering clipped block-label chips.',
+  !/<Marker[\s\S]*?<Text[\s\S]*?<\/Marker>/.test(gateLayerSource),
+  'GateLayer must not render a Text label inside a Marker — that snapshot pipeline is what clipped gate labels.',
 );
 
 const lowZoomLayers = V2MapRenderingService.getHomeLayers({

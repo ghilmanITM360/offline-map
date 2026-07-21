@@ -2,6 +2,7 @@ import { strict as assert } from 'node:assert';
 import { IJTEMA_BLOCKS } from '../src/data/ijtema/blocks';
 import { IJTEMA_GATES } from '../src/data/ijtema/gates';
 import { RoutingServiceV2 } from '../src/services/RoutingServiceV2';
+import { V2MapRenderingService } from '../src/services/V2MapRenderingService';
 
 // MapFeatureFlagsService.readFlag() re-reads process.env on every call (no
 // caching), so toggling the env var between calls below is enough — no
@@ -51,6 +52,19 @@ process.env.EXPO_PUBLIC_USE_IJTEMA_OUTSIDE_STREET_GRAPH = 'true';
     instructions.some((instruction) => instruction.text.includes('Gate 05')),
     'expected the entry instruction to reference the selected gate',
   );
+
+  // Regression: outsideLegCoordinateCount must point at the actual shared
+  // gate coordinate — not one node past it into the venue interior. See
+  // docs/ROUTING_NAVIGATION_FIX_REPORT.md Phase 1.
+  const boundaryCoordinate = route!.coordinates[route!.outsideLegCoordinateCount!];
+  assert.ok(boundaryCoordinate, 'expected a coordinate at the outside/inside boundary index');
+  assert.equal(boundaryCoordinate.latitude, gate05.coordinate!.lat, 'boundary coordinate must be the entry gate, not a node past it');
+  assert.equal(boundaryCoordinate.longitude, gate05.coordinate!.lng, 'boundary coordinate must be the entry gate, not a node past it');
+
+  const { outside, inside } = V2MapRenderingService.splitOutsideInsideCoordinates(route!.coordinates, route!.outsideLegCoordinateCount);
+  assert.deepEqual(outside[outside.length - 1], inside[0], 'outside and inside polylines must share exactly one boundary point');
+  assert.equal(outside[outside.length - 1].latitude, gate05.coordinate!.lat, 'shared boundary point must be the entry gate');
+  assert.equal(outside[outside.length - 1].longitude, gate05.coordinate!.lng, 'shared boundary point must be the entry gate');
 
   console.log(`Flag ON: outsideLegCoordinateCount=${route!.outsideLegCoordinateCount}, totalCoordinates=${route!.coordinates.length}, streetSteps=${streetSteps.length}, startLabel=${route!.startLabel}, totalDistance=${route!.totalDistance}m, sanityCapExceeded=${route!.outsideLegSanityCapExceeded}`);
 }

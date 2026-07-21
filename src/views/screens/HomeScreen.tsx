@@ -26,7 +26,6 @@ import MapView, { Marker, Polygon, Polyline, PROVIDER_GOOGLE, LocalTile } from '
 import {
   Menu,
   Navigation,
-  LocateFixed,
   Star,
   MapPin,
   ChevronRight,
@@ -35,8 +34,6 @@ import {
   Clock,
   Share2,
   Info,
-  Check,
-  AlertTriangle,
 } from 'lucide-react-native';
 import { BottomSheetModal, BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import { useNavigation, DrawerActions, CompositeNavigationProp } from '@react-navigation/native';
@@ -69,6 +66,7 @@ import { RastaLayer } from '../components/map/RastaLayer';
 import { SpecialRouteLayer } from '../components/map/SpecialRouteLayer';
 import { BlockLayer } from '../components/map/BlockLayer';
 import { GateLayer } from '../components/map/GateLayer';
+import { MapLabelOverlay, MapLabelItem, MapLabelOverlayHandle } from '../components/map/MapLabelOverlay';
 import { MapControls } from '../components/map/MapControls';
 import { LayersSheet } from '../components/map/LayersSheet';
 import { useNavigationOverlayV2 } from '../../viewmodels/useNavigationOverlayV2';
@@ -172,6 +170,7 @@ export function HomeScreen() {
   const [directionsDestination, setDirectionsDestination] = useState<Place | null>(null);
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const searchInputRef = useRef<TextInput>(null);
+  const mapLabelOverlayRef = useRef<MapLabelOverlayHandle>(null);
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const mapRuntimeStatus = MapConfigService.getRuntimeStatus();
@@ -179,11 +178,9 @@ export function HomeScreen() {
   const useV2Map = MapFeatureFlagsService.useIjtemaV2Map();
   const graphOnlyFallbackUsed = !hasGoogleMapsKey;
   const [outsideBannerDismissed, setOutsideBannerDismissed] = useState(false);
-  const [mapLabelsTransitioning, setMapLabelsTransitioning] = useState(false);
   const [layersSheetVisible, setLayersSheetVisible] = useState(false);
   const [mapReady, setMapReadyState] = useState(false);
   const [mapLoadFailed, setMapLoadFailed] = useState(false);
-  const [bannerStackHeight, setBannerStackHeight] = useState(0);
   const [topOverlayHeight, setTopOverlayHeight] = useState(0);
   const [routePreviewCardMeasuredHeight, setRoutePreviewCardMeasuredHeight] = useState(184);
   const [isMapDragging, setIsMapDragging] = useState(false);
@@ -386,6 +383,103 @@ export function HomeScreen() {
   const previewVisibleRastaLabels = routePreviewDeclutterActive ? [] : v2MapLayers.visibleRastaLabels;
   const previewVisibleSpecialRoutes = routePreviewDeclutterActive ? [] : v2MapLayers.specialRoutes;
   const previewVisibleSpecialRouteLabels = routePreviewDeclutterActive ? [] : v2MapLayers.visibleSpecialRouteLabels;
+
+  // Feeds the single shared MapLabelOverlay (see docs/TARGETED_FIX_SPRINT_REPORT.md
+  // Phase 5 for why label text moved out of Marker children). LOD text logic mirrors
+  // what GateLayer computed inline before the refactor.
+  const mapLabelItems = useMemo<MapLabelItem[]>(() => {
+    if (showNavOverlay) {
+      return navOverlay.mapLayers.gates.map((gate) => ({
+        id: `nav_gate_${gate.id}`,
+        coordinate: gate.coordinate,
+        text: gate.label.replace('Gate ', 'G'),
+        kind: 'gate' as const,
+        navPreview: true,
+        needsConnectorVerification: gate.needsConnectorVerification,
+        zPriority: 12,
+      }));
+    }
+    if (!useV2Map) return [];
+
+    const items: MapLabelItem[] = [];
+    const gateFocused = v2MapLayers.activeMapFilter === 'gates';
+    for (const gate of v2MapLayers.visibleGateMarkers) {
+      if (gate.labelSuppressed && !gate.isSelected) continue;
+      const gateNum = gate.label.replace('Gate ', '');
+      const showFull = gate.isSelected || mapZoomLevel >= HIGH_ZOOM;
+      const showCompact = !showFull && mapZoomLevel >= MEDIUM_ZOOM;
+      const displayLabel = showFull ? gate.label : showCompact ? `G${gateNum}` : gateNum;
+      items.push({
+        id: `gate_${gate.id}`,
+        coordinate: gate.coordinate,
+        text: displayLabel,
+        secondaryText: showFull ? MapLocalizationService.getSecondaryLabel(gate.name) : undefined,
+        kind: 'gate',
+        variant: showFull ? 'full' : showCompact ? 'compact' : 'number',
+        isSelected: gate.isSelected,
+        focused: gateFocused,
+        needsConnectorVerification: gate.needsConnectorVerification,
+        zPriority: gate.isSelected ? 16 : gateFocused ? 14 : 12,
+        onPress: () => {
+          const place = V2PlaceAdapter.getPlaceById(gate.id);
+          if (!place) return;
+          dismissSearch();
+          handlePlaceSelect(place);
+        },
+      });
+    }
+
+    const blockFocused = v2MapLayers.activeMapFilter === 'blocks';
+    for (const block of v2MapLayers.visibleBlockLabels) {
+      items.push({
+        id: `block_${block.id}`,
+        coordinate: block.center,
+        text: block.label,
+        secondaryText: MapLocalizationService.getSecondaryLabel(block.name),
+        kind: 'block',
+        isSelected: block.isSelected,
+        focused: blockFocused,
+        zPriority: 8,
+        onPress: () => {
+          const place = V2PlaceAdapter.getPlaceById(block.id);
+          if (!place) return;
+          dismissSearch();
+          handlePlaceSelect(place);
+        },
+      });
+    }
+
+    const rastaFocused = v2MapLayers.activeMapFilter === 'rastas';
+    for (const rasta of v2MapLayers.visibleRastaLabels) {
+      items.push({
+        id: `rasta_${rasta.id}`,
+        coordinate: rasta.labelCoordinate,
+        text: rasta.label,
+        secondaryText: MapLocalizationService.getSecondaryLabel(rasta.name),
+        kind: 'rasta',
+        isSelected: rasta.isSelected,
+        focused: rastaFocused,
+        zPriority: 7,
+      });
+    }
+
+    const routeFocused = v2MapLayers.activeMapFilter === 'special_routes';
+    for (const route of v2MapLayers.visibleSpecialRouteLabels) {
+      items.push({
+        id: `route_${route.id}`,
+        coordinate: route.labelCoordinate,
+        text: route.label,
+        secondaryText: MapLocalizationService.getSecondaryLabel(route.name),
+        kind: 'route',
+        isSelected: route.isSelected,
+        focused: routeFocused,
+        zPriority: 9,
+      });
+    }
+
+    return items;
+  }, [showNavOverlay, navOverlay.mapLayers.gates, useV2Map, v2MapLayers, mapZoomLevel, dismissSearch, handlePlaceSelect]);
+
   const effectiveInitialRegion = useV2Map
     ? {
         latitude: IJTEMA_MAP_REGION.latitude,
@@ -414,19 +508,21 @@ export function HomeScreen() {
   }, [currentLocation, venueStatus.insideVenue, selectedPlace]);
   const showMapWarningBanner = !hasGoogleMapsKey || mapLoadFailed;
   const topInsetBase = Math.max(insets.top, Platform.OS === 'android' ? StatusBar.currentHeight ?? 0 : 0);
-  // Phase 7 (task #34): rightControlsTop/rightControlsBottom used to be a chain of hardcoded
-  // per-banner height guesses (42/56/60) that could drift out of sync with real rendered
-  // content (text wrapping, font scaling). Both now derive from onLayout-measured heights of
-  // the actual stacked banners / route-preview card instead.
   // bannerStackTop used to be a hardcoded `topInsetBase + 140` guess at the combined
   // search bar + chip row height, which under-measured on some font scales/screen sizes
   // and let the banner overlap the chip row. Now derived from the search+chip overlay's
   // own onLayout height (topOverlayHeight), same measure-don't-guess pattern as
-  // bannerStackHeight/routePreviewCardMeasuredHeight below. Falls back to the old
-  // constant only for the one frame before the first layout pass reports a height.
+  // routePreviewCardMeasuredHeight below. Falls back to the old constant only for the
+  // one frame before the first layout pass reports a height.
   const bannerStackTop = topOverlayHeight > 0 ? topOverlayHeight + 8 : topInsetBase + 140;
-  const rightControlsTop = bannerStackTop + bannerStackHeight + (bannerStackHeight > 0 ? (showOutsideBanner ? 20 : 12) : 12);
-  const rightControlsBottom = Math.max(insets.bottom, 16) + (activePreviewRoute ? routePreviewCardMeasuredHeight + 16 : 0) + 16;
+  // The full Layers/Compass/Zoom/Recenter cluster is one bottom-anchored stack (see
+  // MapControls) instead of two independently-positioned pieces (a top-anchored
+  // compass/zoom group and a separately bottom-anchored recenter button) — that old
+  // split is exactly what let a route-preview card push the recenter button up into
+  // the zoom controls, since neither side's offset accounted for the other's extent.
+  // Anchoring everything from this single bottom value means the whole stack moves
+  // together and can't collide with itself.
+  const controlStackBottom = Math.max(insets.bottom, 16) + (activePreviewRoute ? routePreviewCardMeasuredHeight + 16 : 0) + 16;
 
   useEffect(() => {
     Animated.timing(searchFocusAnim, {
@@ -497,37 +593,6 @@ export function HomeScreen() {
     setDirectionsDestination(null);
     bottomSheetRef.current?.close();
   }, [showNavOverlay, bottomSheetRef]);
-
-  // Gate/block/rasta label markers only need tracksViewChanges=true while their
-  // visual state (map filter focus, which place is selected, or which zoom-LOD
-  // tier is active) is actively transitioning. Keeping it true continuously forces
-  // ongoing Android re-rasterization of every label marker on unrelated re-renders
-  // (e.g. GPS updates), so we open a short window on change and then drop back to
-  // false. Zoom tier matters here, not just filter/selection: a label marker that
-  // mounts (block/rasta labels newly entering the zoom-filtered array) or changes
-  // rendered size (gate full/compact/number text swap) with tracksViewChanges
-  // already false can freeze on Android with a stale or blank snapshot — this is
-  // what caused "missing block/rasta labels" and clipped gate labels ("Ga").
-  const zoomLodTier = mapZoomLevel >= HIGH_ZOOM ? 'high' : mapZoomLevel >= MEDIUM_ZOOM ? 'medium' : 'low';
-  const mapLabelVisualSignature = `${v2MapLayers.activeMapFilter}|${selectedPlace?.id ?? ''}|${zoomLodTier}`;
-  const prevMapLabelVisualSignatureRef = useRef(mapLabelVisualSignature);
-  useEffect(() => {
-    if (prevMapLabelVisualSignatureRef.current === mapLabelVisualSignature) return;
-    prevMapLabelVisualSignatureRef.current = mapLabelVisualSignature;
-    setMapLabelsTransitioning(true);
-    const timeout = setTimeout(() => setMapLabelsTransitioning(false), 400);
-    return () => clearTimeout(timeout);
-  }, [mapLabelVisualSignature]);
-
-  // The change-detection effect above only opens a window when the signature
-  // changes after mount — labels already present at first paint (e.g. app opens
-  // already zoomed past MEDIUM_ZOOM) need the same one-time snapshot window, or
-  // they mount directly with tracksViewChanges=false and can freeze blank/clipped.
-  useEffect(() => {
-    setMapLabelsTransitioning(true);
-    const timeout = setTimeout(() => setMapLabelsTransitioning(false), 400);
-    return () => clearTimeout(timeout);
-  }, []);
 
   const recenterResetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const handleRecenterPress = useCallback(async () => {
@@ -666,6 +731,7 @@ export function HomeScreen() {
               setMapReadyState(true);
               setMapLoadFailed(false);
               handleMapRegionChangeComplete(effectiveInitialRegion);
+              mapLabelOverlayRef.current?.requestProjection();
               if (__DEV__) {
                 console.log('[Home][Render]', {
                   mapReady: true,
@@ -680,10 +746,19 @@ export function HomeScreen() {
             onMapLoaded={() => {
               setMapReadyState(true);
               setMapLoadFailed(false);
+              mapLabelOverlayRef.current?.requestProjection();
+            }}
+            onRegionChange={() => {
+              // Continuous — fires on every camera-move tick including pure-rotation
+              // gestures, so label positions stay attached to the map while it's
+              // being panned/zoomed/rotated. Internally rAF-coalesced, so calling
+              // this on every tick is safe.
+              mapLabelOverlayRef.current?.requestProjection();
             }}
             onRegionChangeComplete={(region) => {
               setIsMapDragging(false);
               handleMapRegionChangeComplete(region);
+              mapLabelOverlayRef.current?.requestProjection();
             }}
             onPanDrag={() => {
               navOverlay.setIsAutoFollowing(false);
@@ -716,27 +791,27 @@ export function HomeScreen() {
               <RastaLayer
                 rastas={previewVisibleRastas}
                 labels={previewVisibleRastaLabels}
+                rastas={v2MapLayers.visibleRastas}
                 variant="home"
                 focused={v2MapLayers.activeMapFilter === 'rastas'}
-                transitioning={mapLabelsTransitioning}
                 keyPrefix="v2_rasta"
               />
 
               <SpecialRouteLayer
                 routes={previewVisibleSpecialRoutes}
                 labels={previewVisibleSpecialRouteLabels}
+                routes={v2MapLayers.specialRoutes}
                 variant="home"
                 focused={v2MapLayers.activeMapFilter === 'special_routes'}
-                transitioning={mapLabelsTransitioning}
                 keyPrefix="v2_special"
               />
 
               <BlockLayer
                 blocks={showBlockPolygons ? previewVisibleBlocks : []}
                 labels={previewVisibleBlockLabels}
+                blocks={showBlockPolygons ? v2MapLayers.visibleBlocks : []}
                 variant="home"
                 focused={v2MapLayers.activeMapFilter === 'blocks'}
-                transitioning={mapLabelsTransitioning}
                 keyPrefix="v2_block"
                 onPressBlock={(blockId) => {
                   const place = V2PlaceAdapter.getPlaceById(blockId);
@@ -749,9 +824,8 @@ export function HomeScreen() {
               <GateLayer
                 gates={previewVisibleGateMarkers}
                 variant="home"
+                gates={v2MapLayers.visibleGateMarkers}
                 focused={v2MapLayers.activeMapFilter === 'gates'}
-                zoomLevel={mapZoomLevel}
-                transitioning={mapLabelsTransitioning}
                 keyPrefix="v2_gate"
                 onPressGate={(gateId) => {
                   const place = V2PlaceAdapter.getPlaceById(gateId);
@@ -958,6 +1032,18 @@ export function HomeScreen() {
           </MapView>
 
         {mode === 'ACTIVE_NAVIGATION' && <NavigationChromeV2 overlay={navOverlay} hasGoogleMapsKey={hasGoogleMapsKey} />}
+        <MapLabelOverlay ref={mapLabelOverlayRef} mapRef={mapRef} items={mapLabelItems} disableTouch={isMapDragging} />
+
+        {/* Cold-start: avoid a blank map while MapView mounts/renders its first
+            frame. mapLoadFailed's 7s-timeout banner takes over if it never loads. */}
+        {hasGoogleMapsKey && !mapReady && !mapLoadFailed && (
+          <View style={styles.mapLoadingOverlay} pointerEvents="none">
+            <ActivityIndicator size="small" color="#4285F4" />
+            <Text style={styles.mapLoadingText}>Loading map...</Text>
+          </View>
+        )}
+
+        {showNavOverlay && <NavigationChromeV2 overlay={navOverlay} hasGoogleMapsKey={hasGoogleMapsKey} />}
 
         {mode !== 'ACTIVE_NAVIGATION' && mode !== 'DIRECTIONS_FORM' && (
         <SafeAreaView
@@ -1075,6 +1161,8 @@ export function HomeScreen() {
             style={[styles.bannerStack, { top: bannerStackTop }]}
             onLayout={(e) => setBannerStackHeight(e.nativeEvent.layout.height)}
           >
+        {!showNavOverlay && (isOffline || showMapWarningBanner || showOutsideBanner) && (
+          <View style={[styles.bannerStack, { top: bannerStackTop }]}>
             {isOffline && (
               <View style={[styles.offlineIndicator, styles.bannerStackItem]}>
                 <WifiOff size={14} color="#FFFFFF" />
@@ -1151,12 +1239,7 @@ export function HomeScreen() {
 
         {mode !== 'ACTIVE_NAVIGATION' && !isSearchFocused && (
           <>
-            <View
-              style={[
-                styles.rightControls,
-                { top: rightControlsTop },
-              ]}
-            >
+            <View style={[styles.controlStack, { bottom: controlStackBottom }]}>
               <MapControls
                 variant="browse"
                 keepNorthFixed={settings.keepNorthFixed}
@@ -1176,6 +1259,7 @@ export function HomeScreen() {
                   logHomeControl('zoom_out', 'map_zoom_out');
                   handleZoomOut();
                 }}
+                recenter={{ state: recenterState, onPress: () => void handleRecenterPress() }}
               />
             </View>
 
@@ -1323,7 +1407,11 @@ export function HomeScreen() {
           backgroundStyle={{ backgroundColor: theme.card }}
         >
           {directionsDestination ? (
-            <DirectionsScreen destination={directionsDestination} onClose={handleCloseDirections} />
+            <DirectionsScreen
+              destination={directionsDestination}
+              onClose={handleCloseDirections}
+              onStartLegacyNavigation={() => nav.navigate('Navigation')}
+            />
           ) : (
           <BottomSheetScrollView contentContainerStyle={styles.sheetContent}>
             {selectedPlace ? (
@@ -1514,6 +1602,18 @@ export function HomeScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F8F9FA' },
   map: { ...StyleSheet.absoluteFillObject },
+  mapLoadingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: '#F8F9FA',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+  },
+  mapLoadingText: {
+    color: '#5F6368',
+    fontSize: 13,
+    fontWeight: '600',
+  },
   mapFallback: {
     ...StyleSheet.absoluteFillObject,
     alignItems: 'center',
@@ -1650,6 +1750,13 @@ const styles = StyleSheet.create({
     elevation: 6,
   },
   bannerStack: { position: 'absolute', left: 0, right: 0, zIndex: Z.mapControls },
+  // Single bottom-anchored Layers/Compass/Zoom/Recenter stack (see MapControls) —
+  // replaces the old separately-anchored rightControls (top) + bottomControls
+  // (bottom) pair that could collide when a route-preview card shrank the gap
+  // between them.
+  controlStack: { position: 'absolute', right: 12, zIndex: 5 },
+  navControls: { position: 'absolute', right: 16, zIndex: 5 },
+  bannerStack: { position: 'absolute', left: 0, right: 0, zIndex: 10 },
   bannerStackItem: { marginBottom: 8 },
   offlineIndicator: {
     alignSelf: 'flex-start',

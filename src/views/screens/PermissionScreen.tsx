@@ -21,23 +21,23 @@ export function PermissionScreen() {
           <View style={styles.iconContainer}>
             <MapPin size={72} color="#2E7D32" />
           </View>
-          <Text style={styles.title}>Location Access</Text>
+          <Text style={styles.title}>Find your location</Text>
           <Text style={styles.description}>
-            To provide accurate navigation and show your current position on the map, we need your location permission.
+            Allow location access so we can show where you are and guide you to your destination.
           </Text>
 
           <View style={styles.featureList}>
             <View style={styles.featureItem}>
               <ShieldCheck size={24} color="#2E7D32" />
-              <Text style={styles.featureText}>Real-time GPS tracking</Text>
+              <Text style={styles.featureText}>Current location on map</Text>
             </View>
             <View style={styles.featureItem}>
               <ShieldCheck size={24} color="#2E7D32" />
-              <Text style={styles.featureText}>Voice-guided directions</Text>
+              <Text style={styles.featureText}>Walking navigation</Text>
             </View>
             <View style={styles.featureItem}>
               <ShieldCheck size={24} color="#2E7D32" />
-              <Text style={styles.featureText}>Offline map support</Text>
+              <Text style={styles.featureText}>Turn-by-turn guidance</Text>
             </View>
           </View>
 
@@ -49,7 +49,7 @@ export function PermissionScreen() {
             {loading ? (
               <ActivityIndicator color="#FFF" />
             ) : (
-              <Text style={styles.buttonText}>Grant Permission</Text>
+              <Text style={styles.buttonText}>Allow Location</Text>
             )}
           </Pressable>
 
@@ -58,7 +58,7 @@ export function PermissionScreen() {
             onPress={() => skipPermission(navigation)}
             disabled={loading}
           >
-            <Text style={styles.skipText}>Maybe Later</Text>
+            <Text style={styles.skipText}>Continue Without Location</Text>
           </Pressable>
         </View>
       </ScrollView>

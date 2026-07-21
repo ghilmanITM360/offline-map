@@ -9,6 +9,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createDrawerNavigator } from '@react-navigation/drawer';
 import { HomeScreen } from '../views/screens/HomeScreen';
 import { SplashScreen } from '../views/screens/SplashScreen';
+import { WelcomeScreen } from '../views/screens/WelcomeScreen';
 import { PermissionScreen } from '../views/screens/PermissionScreen';
 import { DownloadMapScreen } from '../views/screens/DownloadMapScreen';
 import { SettingsScreen } from '../views/screens/SettingsScreen';
@@ -31,6 +32,7 @@ export type DrawerParamList = {
 
 export type RootStackParamList = {
   Splash: undefined;
+  Welcome: undefined;
   Permission: undefined;
   DownloadMap: undefined;
   Main: NavigatorScreenParams<DrawerParamList> | undefined;
@@ -80,6 +82,7 @@ export function RootNavigator() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="Splash" component={SplashScreen} />
+      <Stack.Screen name="Welcome" component={WelcomeScreen} />
       <Stack.Screen name="Permission" component={PermissionScreen} />
       <Stack.Screen name="DownloadMap" component={DownloadMapScreen} />
       <Stack.Screen name="Main" component={MainDrawer} />

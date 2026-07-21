@@ -10,6 +10,7 @@ import {
   StyleSheet,
   Pressable,
   ScrollView,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -46,13 +47,14 @@ export function DownloadMapScreen() {
     retryDownload,
     continueToMain,
     continueWithVenueMapOnly,
+    continueWithOnlineMode,
     repairDownload,
   } = useDownloadMapViewModel();
 
   const [showContinueFallback, setShowContinueFallback] = useState(false);
   const [expectedTiles, setExpectedTiles] = useState(OfflineMapStatusService.getExpectedTileCount());
 
-  const { phase, progress, downloadedTiles, totalTiles, errorMessage } = downloadState;
+  const { phase, progress, totalTiles, errorMessage } = downloadState;
 
   const pct = Math.round(progress * 100);
   const isIdle = phase === 'idle';
@@ -93,13 +95,46 @@ export function DownloadMapScreen() {
     return Math.max(1, Math.round((tiles * 0.08) * 10) / 10);
   }, [expectedTiles, totalTiles]);
 
+  const confirmCancel = () => {
+    Alert.alert(
+      'Cancel download?',
+      'Your download progress will be lost. You can resume anytime by tapping Download Offline Map again.',
+      [
+        { text: 'Keep Downloading', style: 'cancel' },
+        { text: 'Cancel Download', style: 'destructive', onPress: cancelDownload },
+      ],
+    );
+  };
+
+  const confirmVenueMapOnly = () => {
+    Alert.alert(
+      'Use venue map only?',
+      'You can navigate inside the Ijtema area. Outside road navigation will not be available. You can download the full map anytime from Settings.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Continue', onPress: () => continueWithVenueMapOnly(navigation) },
+      ],
+    );
+  };
+
+  const confirmOnlineMode = () => {
+    Alert.alert(
+      'Continue without downloading?',
+      "You'll need internet to see the map and get directions. You can download the offline map anytime from Settings.",
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Continue', onPress: () => continueWithOnlineMode(navigation) },
+      ],
+    );
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.header}>
           <Text style={styles.title}>Offline Maps</Text>
           <Text style={styles.urduTitle}>آف لائن نقشہ</Text>
-          <Text style={styles.subtitle}>Download once. Navigate offline anytime.</Text>
+          <Text style={styles.subtitle}>Download the map once and use navigation even without internet.</Text>
         </View>
 
         <View style={styles.card}>
@@ -113,30 +148,27 @@ export function DownloadMapScreen() {
             )}
             <Text style={styles.cardTitle}>Karachi Ijtema Ground</Text>
           </View>
-          <Text style={styles.cardDesc}>
-            Zoom levels 14-18 for walking navigation.{"\n"}
-            Expected tiles: {totalTiles || expectedTiles}
-          </Text>
+
+          {isIdle && (
+            <View style={styles.benefitList}>
+              <Text style={styles.benefitItem}>✓ Works in crowded areas</Text>
+              <Text style={styles.benefitItem}>✓ Faster map loading</Text>
+              <Text style={styles.benefitItem}>✓ No mobile data required</Text>
+            </View>
+          )}
 
           {(isDownloading || isPaused || isError || isComplete) && (
             <View style={styles.progressContainer}>
               <View style={styles.progressBarBg}>
                 <View style={[styles.progressBarFill, { width: `${pct}%` }]} />
               </View>
-              <View style={styles.progressRow}>
-                <Text style={styles.progressText}>{pct}%</Text>
-                {(totalTiles > 0 || expectedTiles > 0) && (
-                  <Text style={styles.tilesText}>
-                    {downloadedTiles} / {totalTiles || expectedTiles} tiles
-                  </Text>
-                )}
-              </View>
+              <Text style={styles.progressText}>{pct}%</Text>
             </View>
           )}
 
           {isDownloading && (
             <Text style={styles.statusText}>
-              {phase === 'connecting' ? 'Connecting to tile server…' : 'Downloading map tiles…'}
+              {phase === 'connecting' ? 'Getting ready to download…' : 'Downloading map…'}
             </Text>
           )}
 
@@ -162,7 +194,7 @@ export function DownloadMapScreen() {
             {(isIdle || isCorrupt) && (
               <Pressable style={styles.primaryButton} onPress={() => startDownload(navigation)}>
                 <Download size={20} color="#FFFFFF" />
-                <Text style={styles.primaryButtonText}>Download Now</Text>
+                <Text style={styles.primaryButtonText}>Download Offline Map</Text>
               </Pressable>
             )}
 
@@ -179,7 +211,7 @@ export function DownloadMapScreen() {
                   <Play size={18} color="#FFFFFF" />
                   <Text style={styles.primaryButtonText}>Resume</Text>
                 </Pressable>
-                <Pressable style={styles.cancelButton} onPress={cancelDownload}>
+                <Pressable style={styles.cancelButton} onPress={confirmCancel}>
                   <Text style={styles.cancelButtonText}>Cancel</Text>
                 </Pressable>
               </>
@@ -208,27 +240,26 @@ export function DownloadMapScreen() {
           </View>
         </View>
 
-        <View style={styles.infoBox}>
-          <Wifi size={18} color="#666" />
-          <Text style={styles.infoText}>Wi-Fi recommended. Estimated download: {estimatedSizeMb} MB.</Text>
-        </View>
+        {isIdle && (
+          <View style={styles.infoBox}>
+            <Wifi size={18} color="#666" />
+            <Text style={styles.infoText}>Wi-Fi recommended. This map needs about {estimatedSizeMb} MB.</Text>
+          </View>
+        )}
 
         {showVenueMapOnlyAction && (
-          <Pressable style={styles.skipButton} onPress={() => continueWithVenueMapOnly(navigation)}>
-            <Text style={styles.skipText}>Use venue map only</Text>
+          <Pressable style={styles.skipButton} onPress={confirmVenueMapOnly}>
+            <Text style={styles.skipText}>Use Venue Map Only</Text>
           </Pressable>
         )}
 
         {showVenueMapOnlyAction && (
-          <Text style={styles.fallbackHint}>Background map unavailable. Ijtema routes still work.</Text>
+          <Text style={styles.fallbackHint}>You can navigate inside the Ijtema area. Outside road navigation will not be available.</Text>
         )}
 
         {(isIdle || isError) && hasInternet && (
-          <Pressable
-            style={styles.skipButton}
-            onPress={() => navigation.reset({ index: 0, routes: [{ name: 'Main' }] })}
-          >
-            <Text style={styles.skipText}>Skip - Use online mode</Text>
+          <Pressable style={styles.skipButton} onPress={confirmOnlineMode}>
+            <Text style={styles.skipText}>Use Online Mode</Text>
           </Pressable>
         )}
       </ScrollView>
@@ -285,11 +316,13 @@ const styles = StyleSheet.create({
     color: '#202124',
     marginLeft: 12,
   },
-  cardDesc: {
-    fontSize: 14,
-    color: '#666',
-    lineHeight: 22,
+  benefitList: {
     marginBottom: 20,
+  },
+  benefitItem: {
+    fontSize: 15,
+    color: '#444',
+    lineHeight: 26,
   },
   progressContainer: {
     marginBottom: 8,
@@ -305,19 +338,12 @@ const styles = StyleSheet.create({
     backgroundColor: '#2E7D32',
     borderRadius: 6,
   },
-  progressRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 8,
-  },
   progressText: {
     fontSize: 15,
     fontWeight: 'bold',
     color: '#2E7D32',
-  },
-  tilesText: {
-    fontSize: 13,
-    color: '#888',
+    textAlign: 'center',
+    marginTop: 8,
   },
   statusText: {
     fontSize: 13,

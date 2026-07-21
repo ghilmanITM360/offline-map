@@ -35,18 +35,17 @@ assert(
 assert(vm.includes('Map download failed. Check internet connection and try again.'), 'User-facing download failure message should be actionable');
 assert(
   vm.includes('No internet connection.') &&
-    vm.includes('DNS failed. Try another network or mobile data.') &&
-    vm.includes('Map tile server could not be reached.') &&
-    vm.includes('Map server rejected download.') &&
-    vm.includes('Download timed out. Try again.'),
-  'Download flow should provide specific user-facing diagnostics for network/tile failures',
+    vm.includes('Unable to connect. Please check your internet connection or try a different network.') &&
+    vm.includes('Unable to download the map right now. Please try again in a moment.') &&
+    vm.includes('The download took too long. Please check your connection and try again.'),
+  'Download flow should provide specific, plain-language user-facing diagnostics for network/tile failures',
 );
 
 assert(screen.includes('Continue to Map'), 'Fallback continue button must be present');
 assert(screen.includes('Repair Download'), 'Corrupt manifest repair UI must be present');
-assert(screen.includes('Use venue map only'), 'Download screen should allow graph-only fallback when raster tiles fail');
+assert(screen.includes('Use Venue Map Only'), 'Download screen should allow graph-only fallback when raster tiles fail');
 assert(
-  screen.includes('Background map unavailable. Ijtema routes still work.'),
+  screen.includes('You can navigate inside the Ijtema area. Outside road navigation will not be available.'),
   'Graph-only fallback message should be shown to user when tiles are unavailable',
 );
 

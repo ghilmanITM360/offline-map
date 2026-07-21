@@ -4,25 +4,21 @@
  */
 
 import React from 'react';
-import { Text, View } from 'react-native';
-import { Marker, Polyline } from 'react-native-maps';
+import { Polyline } from 'react-native-maps';
 
-import { MapLocalizationService } from '../../../services/MapLocalizationService';
 import { V2PolylineLayer } from '../../../services/V2MapRenderingService';
-import { mapLayerStyles as styles } from './mapLayerStyles';
 
 interface SpecialRouteLayerProps {
   routes: V2PolylineLayer[];
-  labels: V2PolylineLayer[];
   variant: 'home' | 'nav';
   /** Home-only: true when the "special_routes" map filter is active. */
   focused?: boolean;
-  /** Home-only: suppresses tracksViewChanges thrash mid label-LOD transition — see GateLayer. */
-  transitioning?: boolean;
   keyPrefix: string;
 }
 
-function SpecialRouteLayerImpl({ routes, labels, variant, focused = false, transitioning = false, keyPrefix }: SpecialRouteLayerProps) {
+// Route labels render via MapLabelOverlay (see HomeScreen's mapLabelItems), not as
+// Marker children here — see GateLayer.tsx for why (Android marker-snapshot clipping).
+function SpecialRouteLayerImpl({ routes, variant, focused = false, keyPrefix }: SpecialRouteLayerProps) {
   if (variant === 'nav') {
     return (
       <>
@@ -54,25 +50,6 @@ function SpecialRouteLayerImpl({ routes, labels, variant, focused = false, trans
           )}
         </React.Fragment>
       ))}
-
-      {labels.map((route) => {
-        const urduName = MapLocalizationService.getSecondaryLabel(route.name);
-        return (
-          <Marker
-            // Keyed on focused/isSelected — see BlockLayer's identical fix + comment.
-            key={`${keyPrefix}_label_${route.id}_${focused ? 'f' : 'u'}_${route.isSelected ? 's' : 'u'}`}
-            coordinate={route.labelCoordinate}
-            anchor={{ x: 0.5, y: 0.5 }}
-            zIndex={9}
-            tracksViewChanges={transitioning}
-          >
-            <View style={[styles.v2RouteLabel, focused && styles.v2RouteLabelFocused, route.isSelected && styles.v2SelectedLabel]}>
-              <Text style={[styles.v2RouteLabelText, focused && styles.v2RouteLabelTextFocused]}>{route.label}</Text>
-              {urduName && <Text style={styles.v2RouteLabelUrdu}>{urduName}</Text>}
-            </View>
-          </Marker>
-        );
-      })}
     </>
   );
 }
