@@ -36,7 +36,7 @@ export const LIGHT_THEME: AppTheme = {
   chip: '#FFFFFF',
   chipActive: '#E8F0FE',
   chipText: '#3C4043',
-  chipActiveText: '#1A73E8',
+  chipActiveText: '#174EA6', // #1A73E8 on chipActive (#E8F0FE) fails WCAG AA (3.93:1); #174EA6 passes (6.85:1)
   mapButton: '#FFFFFF',
   searchBar: '#FFFFFF',
 };
@@ -55,7 +55,7 @@ export const DARK_THEME: AppTheme = {
   chip: '#2D2D2D',
   chipActive: '#174EA6',
   chipText: '#E8EAED',
-  chipActiveText: '#8AB4F8',
+  chipActiveText: '#D2E3FC', // #8AB4F8 on chipActive (#174EA6) fails WCAG AA (3.72:1); #D2E3FC passes (6.03:1)
   mapButton: '#2D2D2D',
   searchBar: '#2D2D2D',
 };

@@ -32,8 +32,13 @@ assert(!home.includes('outsideVenueSubtext'), 'Outside-venue banner must be a si
 assert(home.includes('numberOfLines={1}') , 'Outside-venue banner text must be constrained to one line');
 
 // Compact "floating notification" sizing: smaller than the old 48px two-line card, pill-shaped.
-assert(home.includes('minHeight: 40'), 'Outside-venue banner must use compact pill sizing, not the old large card height');
-assert(!home.includes('minHeight: 48'), 'Old two-line banner height (48) must be gone');
+// Scoped to the banner's own style block — other UI (e.g. accessible touch targets
+// elsewhere on Home) legitimately uses minHeight: 48 and isn't what this guards against.
+const outsideVenueBannerStyleMatch = home.match(/outsideVenueBanner:\s*{[^}]*}/);
+assert(!!outsideVenueBannerStyleMatch, 'Home screen must define an outsideVenueBanner style block');
+const outsideVenueBannerStyle = outsideVenueBannerStyleMatch![0];
+assert(outsideVenueBannerStyle.includes('minHeight: 40'), 'Outside-venue banner must use compact pill sizing, not the old large card height');
+assert(!outsideVenueBannerStyle.includes('minHeight: 48'), 'Old two-line banner height (48) must be gone');
 
 // Sanity: the underlying gate lookup used by the banner is a real, cheap distance-only lookup
 // (not full route computation) and only returns gates that are actually routable/connected.

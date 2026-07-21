@@ -42,7 +42,7 @@ assert(
   'Navigation v2 arrival Done button must stay wired to shared exit handler.',
 );
 assert(
-  navigationChromeSource.includes('style={[styles.recenterButton, { bottom: Math.max(insets.bottom, 12) + 140 }]}'),
+  navigationChromeSource.includes('testID="nav-recenter-button"') && navigationChromeSource.includes('styles.recenterButton'),
   'Navigation v2 recenter control must stay rendered while navigating.',
 );
 assert(

@@ -40,13 +40,22 @@ export function MapControls({ variant, keepNorthFixed, onLayers, onCompassReset,
   return (
     <>
       {variant === 'browse' && (
-        <Pressable style={styles.controlButton} onPress={onLayers}>
+        <Pressable
+          style={styles.controlButton}
+          onPress={onLayers}
+          accessibilityRole="button"
+          accessibilityLabel="Map layers and filters"
+        >
           <Layers size={22} color="#5F6368" />
         </Pressable>
       )}
       <Pressable
         style={[styles.controlButton, keepNorthFixed && styles.controlButtonActive]}
         onPress={onCompassReset}
+        accessibilityRole="button"
+        accessibilityLabel={
+          keepNorthFixed ? 'Map locked north-up. Tap to allow free rotation.' : 'Map rotates freely. Tap to lock north-up.'
+        }
       >
         <Compass size={22} color={keepNorthFixed ? '#1A73E8' : '#5F6368'} />
       </Pressable>
@@ -56,11 +65,21 @@ export function MapControls({ variant, keepNorthFixed, onLayers, onCompassReset,
         </View>
       )}
       <View style={styles.zoomControls}>
-        <Pressable style={styles.zoomButton} onPress={onZoomIn}>
+        <Pressable
+          style={styles.zoomButton}
+          onPress={onZoomIn}
+          accessibilityRole="button"
+          accessibilityLabel="Zoom in"
+        >
           <Plus size={22} color="#5F6368" />
         </Pressable>
         <View style={styles.zoomDivider} />
-        <Pressable style={styles.zoomButton} onPress={onZoomOut}>
+        <Pressable
+          style={styles.zoomButton}
+          onPress={onZoomOut}
+          accessibilityRole="button"
+          accessibilityLabel="Zoom out"
+        >
           <Minus size={22} color="#5F6368" />
         </Pressable>
       </View>

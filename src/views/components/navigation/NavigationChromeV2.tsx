@@ -44,6 +44,8 @@ export function NavigationChromeV2({ overlay, hasGoogleMapsKey }: { overlay: Nav
     graphOnlyFallbackUsed,
     handleExit,
     setIsAutoFollowing,
+    bottomBarHeight,
+    setBottomBarHeight,
   } = overlay;
 
   if (!route) return null;
@@ -115,7 +117,10 @@ export function NavigationChromeV2({ overlay, hasGoogleMapsKey }: { overlay: Nav
       </SafeAreaView>
 
       {!arrived && (
-        <View style={[styles.bottomBar, { paddingBottom: Math.max(insets.bottom, 12) }]}>
+        <View
+          style={[styles.bottomBar, { paddingBottom: Math.max(insets.bottom, 12) }]}
+          onLayout={(e) => setBottomBarHeight(e.nativeEvent.layout.height)}
+        >
           <View style={styles.tripInfo}>
             <View style={styles.tripTextWrap}>
               <Text style={styles.timeRemaining}>{etaMinutes} min</Text>
@@ -140,7 +145,12 @@ export function NavigationChromeV2({ overlay, hasGoogleMapsKey }: { overlay: Nav
       {snappedLocation && (
         <Pressable
           testID="nav-recenter-button"
-          style={[styles.recenterButton, { bottom: Math.max(insets.bottom, 12) + 140 }]}
+          style={[
+            styles.recenterButton,
+            // bottomBarHeight already bakes in insets.bottom (it's the bar's own
+            // paddingBottom) — stacking insets.bottom again here would double-count it.
+            { bottom: (bottomBarHeight || Math.max(insets.bottom, 12) + 140) + 12 },
+          ]}
           onPress={() => setIsAutoFollowing(true)}
           hitSlop={NAV_TOUCH_TARGET_HIT_SLOP}
         >

@@ -83,6 +83,24 @@ jest.mock('@gorhom/bottom-sheet', () => {
   });
   BottomSheet.displayName = 'BottomSheet';
 
+  const BottomSheetModal = ReactActual.forwardRef((props: any, ref: any) => {
+    ReactActual.useImperativeHandle(ref, () => ({
+      snapToIndex: jest.fn(),
+      snapToPosition: jest.fn(),
+      close: jest.fn(),
+      expand: jest.fn(),
+      collapse: jest.fn(),
+      present: jest.fn(),
+      dismiss: jest.fn(),
+      forceClose: jest.fn(),
+    }));
+    return ReactActual.createElement(RNView, null, props.children);
+  });
+  BottomSheetModal.displayName = 'BottomSheetModal';
+
+  const BottomSheetModalProvider = (props: any) => props.children;
+  BottomSheetModalProvider.displayName = 'BottomSheetModalProvider';
+
   const BottomSheetScrollView = (props: any) =>
     ReactActual.createElement(RNView, null, props.children);
   BottomSheetScrollView.displayName = 'BottomSheetScrollView';
@@ -94,6 +112,8 @@ jest.mock('@gorhom/bottom-sheet', () => {
   return {
     __esModule: true,
     default: BottomSheet,
+    BottomSheetModal,
+    BottomSheetModalProvider,
     BottomSheetScrollView,
     BottomSheetView,
   };

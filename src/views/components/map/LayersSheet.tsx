@@ -53,6 +53,10 @@ export function LayersSheet({
 }: LayersSheetProps) {
   const insets = useSafeAreaInsets();
 
+  // Modal renders as its own native layer and already blocks touches from reaching the
+  // MapView underneath — no extra interaction-lock prop needed here. The caller (HomeScreen)
+  // additionally disables the MapView's own scroll/zoom/rotate while this is open, as
+  // belt-and-suspenders against any camera animation continuing behind the sheet.
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <Pressable style={styles.backdrop} onPress={onClose} />

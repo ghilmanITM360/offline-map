@@ -45,19 +45,19 @@ function RastaLayerImpl({ rastas, variant, focused = false, keyPrefix }: RastaLa
       {rastas.map((rasta) => {
         const start = rasta.polyline[0];
         const end = rasta.polyline[rasta.polyline.length - 1];
-        const dotColor = rasta.isSelected ? '#1A73E8' : focused ? '#E65100' : 'rgba(60,64,67,0.75)';
+        const dotColor = rasta.isSelected ? '#1A73E8' : focused ? '#202124' : 'rgba(60,64,67,0.75)';
         const dotStyle = rasta.isSelected || focused ? styles.rastaEndpointDotEmphasized : styles.rastaEndpointDot;
         return (
           <React.Fragment key={`${keyPrefix}_${rasta.id}`}>
             <Polyline
               coordinates={rasta.polyline}
-              strokeColor={rasta.isSelected ? 'rgba(26,115,232,0.55)' : focused ? 'rgba(230,81,0,0.55)' : 'rgba(60,64,67,0.44)'}
+              strokeColor={rasta.isSelected ? 'rgba(26,115,232,0.55)' : focused ? 'rgba(32,33,36,0.55)' : 'rgba(60,64,67,0.44)'}
               strokeWidth={rasta.isSelected ? 11 : focused ? 12 : 7}
               zIndex={rasta.isSelected ? 8 : focused ? 4 : 2}
             />
             <Polyline
               coordinates={rasta.polyline}
-              strokeColor={rasta.isSelected ? '#1A73E8' : focused ? '#E65100' : 'rgba(255,255,255,0.9)'}
+              strokeColor={rasta.isSelected ? '#1A73E8' : focused ? '#202124' : 'rgba(255,255,255,0.9)'}
               strokeWidth={rasta.isSelected ? 6 : focused ? 7 : 4}
               zIndex={rasta.isSelected ? 9 : focused ? 5 : 3}
             />

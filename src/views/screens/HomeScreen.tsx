@@ -35,7 +35,7 @@ import {
   Share2,
   Info,
 } from 'lucide-react-native';
-import BottomSheet, { BottomSheetScrollView } from '@gorhom/bottom-sheet';
+import { BottomSheetModal, BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import { useNavigation, DrawerActions, CompositeNavigationProp } from '@react-navigation/native';
 import { DrawerNavigationProp } from '@react-navigation/drawer';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -70,9 +70,11 @@ import { MapLabelOverlay, MapLabelItem, MapLabelOverlayHandle } from '../compone
 import { MapControls } from '../components/map/MapControls';
 import { LayersSheet } from '../components/map/LayersSheet';
 import { useNavigationOverlayV2 } from '../../viewmodels/useNavigationOverlayV2';
+import { useScreenMode } from '../../viewmodels/useScreenMode';
 import { NavigationMapLayersV2 } from '../components/navigation/NavigationMapLayersV2';
 import { NavigationChromeV2 } from '../components/navigation/NavigationChromeV2';
 import { DirectionsScreen } from './DirectionsScreen';
+import { Z } from '../styles/zLayers';
 
 declare const __DEV__: boolean;
 
@@ -290,6 +292,15 @@ export function HomeScreen() {
     if (!routePlannerDest || routePlannerDest.sourceVersion !== 'v2') return null;
     return isV2PreviewRoute(activeRoute) ? activeRoute : null;
   }, [activeRoute, isNavigating, routePlannerDest]);
+
+  const mode = useScreenMode({
+    layersSheetVisible,
+    showNavOverlay,
+    directionsDestination,
+    activePreviewRoute,
+    selectedPlace,
+  });
+
   const { outside: previewOutsideLegCoordinates, inside: previewInsideLegCoordinates } = useMemo(
     () => V2MapRenderingService.splitOutsideInsideCoordinates(
       activePreviewRoute?.coordinates ?? [],
@@ -325,6 +336,9 @@ export function HomeScreen() {
   const previewRecommendedGate = activePreviewRoute?.startResolution?.mode === 'outside'
     ? activePreviewRoute.startResolution.gate?.name.en ?? null
     : null;
+  const previewEntryGateId = activePreviewRoute?.startResolution?.mode === 'outside'
+    ? activePreviewRoute.startResolution.gate?.id ?? null
+    : null;
   const v2MapLayers = useMemo(
     () => V2MapRenderingService.getHomeLayers({
       selectedPlaceId: selectedPlace?.id,
@@ -336,18 +350,39 @@ export function HomeScreen() {
       showGatesLayer,
       showRastasLayer,
       showSpecialRoutesLayer,
+      // PLACE_SELECTED: dot-suppress (not hide) other blocks/gates competing with the
+      // selected marker for attention — see PLACE_SELECTED_COMPETING_RADIUS_M.
+      suppressCompetingMarkers: mode === 'PLACE_SELECTED',
     }),
     [
       activeCategory,
       developerModeEnabled,
       graphOnlyFallbackUsed,
       mapZoomLevel,
+      mode,
       selectedPlace,
       showGatesLayer,
       showRastasLayer,
       showSpecialRoutesLayer,
     ],
   );
+  // ROUTE_PREVIEW: hide unrelated blocks/gates/rastas/special-routes entirely — only the
+  // destination, the resolved entry gate (outside-start routes), current location, and
+  // the route line itself stay visible. Sourced from v2MapLayers.blocks/gates (the
+  // unfiltered arrays) rather than the zoom-LOD visible* fields so the destination/entry
+  // gate can't be dropped by an unrelated LOD/collision rule.
+  const routePreviewDeclutterActive = mode === 'ROUTE_PREVIEW';
+  const previewVisibleBlocks = routePreviewDeclutterActive
+    ? v2MapLayers.blocks.filter((block) => block.isSelected)
+    : v2MapLayers.visibleBlocks;
+  const previewVisibleBlockLabels = routePreviewDeclutterActive ? previewVisibleBlocks : v2MapLayers.visibleBlockLabels;
+  const previewVisibleGateMarkers = routePreviewDeclutterActive
+    ? v2MapLayers.gates.filter((gate) => gate.isSelected || gate.id === previewEntryGateId)
+    : v2MapLayers.visibleGateMarkers;
+  const previewVisibleRastas = routePreviewDeclutterActive ? [] : v2MapLayers.visibleRastas;
+  const previewVisibleRastaLabels = routePreviewDeclutterActive ? [] : v2MapLayers.visibleRastaLabels;
+  const previewVisibleSpecialRoutes = routePreviewDeclutterActive ? [] : v2MapLayers.specialRoutes;
+  const previewVisibleSpecialRouteLabels = routePreviewDeclutterActive ? [] : v2MapLayers.visibleSpecialRouteLabels;
 
   // Feeds the single shared MapLabelOverlay (see docs/TARGETED_FIX_SPRINT_REPORT.md
   // Phase 5 for why label text moved out of Marker children). LOD text logic mirrors
@@ -620,7 +655,10 @@ export function HomeScreen() {
   }, [bottomSheetRef, previewDestination, setSelectedPlace]);
 
   const handleClearPreviewRoute = useCallback(() => {
-    clearRoutePlanner();
+    Alert.alert('Cancel route?', 'You will need to choose your destination again.', [
+      { text: 'Keep route', style: 'cancel' },
+      { text: 'Cancel route', style: 'destructive', onPress: () => clearRoutePlanner() },
+    ]);
   }, [clearRoutePlanner]);
 
   const handleSearchResultSelect = (place: Place) => {
@@ -685,7 +723,9 @@ export function HomeScreen() {
             showsUserLocation={false}
             showsMyLocationButton={false}
             showsCompass={false}
-            rotateEnabled={!settings.keepNorthFixed}
+            scrollEnabled={mode !== 'MAP_SETTINGS'}
+            zoomEnabled={mode !== 'MAP_SETTINGS'}
+            rotateEnabled={mode !== 'MAP_SETTINGS' && !settings.keepNorthFixed}
             onMapReady={() => {
               setIsMapReady(true);
               setMapReadyState(true);
@@ -744,11 +784,13 @@ export function HomeScreen() {
 
           <VenueBoundary coordinates={useV2Map ? v2MapLayers.venueBoundary : VENUE_BOUNDARY} />
 
-          {showNavOverlay && <NavigationMapLayersV2 overlay={navOverlay} />}
+          {mode === 'ACTIVE_NAVIGATION' && <NavigationMapLayersV2 overlay={navOverlay} />}
 
-          {!showNavOverlay && (useV2Map ? (
+          {mode !== 'ACTIVE_NAVIGATION' && (useV2Map ? (
             <React.Fragment key={`v2_layers_${v2MapLayers.activeMapFilter}`}>
               <RastaLayer
+                rastas={previewVisibleRastas}
+                labels={previewVisibleRastaLabels}
                 rastas={v2MapLayers.visibleRastas}
                 variant="home"
                 focused={v2MapLayers.activeMapFilter === 'rastas'}
@@ -756,6 +798,8 @@ export function HomeScreen() {
               />
 
               <SpecialRouteLayer
+                routes={previewVisibleSpecialRoutes}
+                labels={previewVisibleSpecialRouteLabels}
                 routes={v2MapLayers.specialRoutes}
                 variant="home"
                 focused={v2MapLayers.activeMapFilter === 'special_routes'}
@@ -763,6 +807,8 @@ export function HomeScreen() {
               />
 
               <BlockLayer
+                blocks={showBlockPolygons ? previewVisibleBlocks : []}
+                labels={previewVisibleBlockLabels}
                 blocks={showBlockPolygons ? v2MapLayers.visibleBlocks : []}
                 variant="home"
                 focused={v2MapLayers.activeMapFilter === 'blocks'}
@@ -776,6 +822,8 @@ export function HomeScreen() {
               />
 
               <GateLayer
+                gates={previewVisibleGateMarkers}
+                variant="home"
                 gates={v2MapLayers.visibleGateMarkers}
                 focused={v2MapLayers.activeMapFilter === 'gates'}
                 keyPrefix="v2_gate"
@@ -850,7 +898,7 @@ export function HomeScreen() {
             );
           }))}
 
-          {!showNavOverlay && !useV2Map && showBlockPolygons && Object.entries(IJTEMA_DATA.blocks).map(([id, block]) => {
+          {mode !== 'ACTIVE_NAVIGATION' && !useV2Map && showBlockPolygons && Object.entries(IJTEMA_DATA.blocks).map(([id, block]) => {
             const isSelected = selectedPlace?.id === id;
             return block.corners ? (
               <Polygon
@@ -876,7 +924,7 @@ export function HomeScreen() {
             ) : null;
           })}
 
-          {!showNavOverlay && !useV2Map && showGraphNodes && __DEV__ && developerModeEnabled && Object.entries(IJTEMA_DATA.nodes).map(([nodeId, node]) => {
+          {mode !== 'ACTIVE_NAVIGATION' && !useV2Map && showGraphNodes && __DEV__ && developerModeEnabled && Object.entries(IJTEMA_DATA.nodes).map(([nodeId, node]) => {
             const color = nodeId.startsWith('P') ? '#D32F2F' : nodeId.startsWith('S') ? '#00ACC1' : '#616161';
             return (
               <Marker
@@ -892,7 +940,7 @@ export function HomeScreen() {
             );
           })}
 
-          {!showNavOverlay && !useV2Map && showRastaNames && __DEV__ && developerModeEnabled && Array.from(new Map(
+          {mode !== 'ACTIVE_NAVIGATION' && !useV2Map && showRastaNames && __DEV__ && developerModeEnabled && Array.from(new Map(
             IJTEMA_DATA.edges
               .filter((edge) => !!edge.name)
               .map((edge) => [edge.name!, edge]),
@@ -910,7 +958,7 @@ export function HomeScreen() {
             );
           })}
 
-          {!showNavOverlay && overlayPlaces.map((item) => {
+          {mode !== 'ACTIVE_NAVIGATION' && overlayPlaces.map((item) => {
             const overlayItem = item as Place | SearchResult;
             const coordinate = overlayItem.coordinate;
             const label = getDisplayName(overlayItem);
@@ -933,7 +981,7 @@ export function HomeScreen() {
           })}
 
           {/* Selected place pin — hidden during route preview to avoid duplicate destination marker */}
-          {!showNavOverlay && selectedPlace && selectedPlaceMarkerCoordinate && !activePreviewRoute && (
+          {mode !== 'ACTIVE_NAVIGATION' && selectedPlace && selectedPlaceMarkerCoordinate && !activePreviewRoute && (
             <Marker coordinate={selectedPlaceMarkerCoordinate} tracksViewChanges={false}>
               <View style={styles.selectedMarker}>
                 <MapPin size={32} color="#EA4335" fill="#EA4335" />
@@ -950,7 +998,7 @@ export function HomeScreen() {
             </Marker>
           )}
 
-          {!showNavOverlay && currentLocation && (
+          {mode !== 'ACTIVE_NAVIGATION' && currentLocation && (
             <Marker coordinate={currentLocation} anchor={{ x: 0.5, y: 0.5 }} tracksViewChanges={false}>
               <View style={styles.userMarkerWrap}>
                 <Animated.View
@@ -983,6 +1031,7 @@ export function HomeScreen() {
           )}
           </MapView>
 
+        {mode === 'ACTIVE_NAVIGATION' && <NavigationChromeV2 overlay={navOverlay} hasGoogleMapsKey={hasGoogleMapsKey} />}
         <MapLabelOverlay ref={mapLabelOverlayRef} mapRef={mapRef} items={mapLabelItems} disableTouch={isMapDragging} />
 
         {/* Cold-start: avoid a blank map while MapView mounts/renders its first
@@ -996,7 +1045,7 @@ export function HomeScreen() {
 
         {showNavOverlay && <NavigationChromeV2 overlay={navOverlay} hasGoogleMapsKey={hasGoogleMapsKey} />}
 
-        {!showNavOverlay && !directionsDestination && (
+        {mode !== 'ACTIVE_NAVIGATION' && mode !== 'DIRECTIONS_FORM' && (
         <SafeAreaView
           style={styles.topOverlay}
           pointerEvents="box-none"
@@ -1022,6 +1071,8 @@ export function HomeScreen() {
                 nav.dispatch(DrawerActions.openDrawer());
               }}
               style={styles.iconButton}
+              accessibilityRole="button"
+              accessibilityLabel="Open menu"
             >
               <Menu size={24} color={theme.subtext} />
             </Pressable>
@@ -1045,6 +1096,8 @@ export function HomeScreen() {
                   clearSearch();
                 }}
                 style={styles.iconButton}
+                accessibilityRole="button"
+                accessibilityLabel="Clear search"
               >
                 <X size={20} color="#5F6368" />
               </Pressable>
@@ -1103,6 +1156,11 @@ export function HomeScreen() {
         </SafeAreaView>
         )}
 
+        {mode !== 'ACTIVE_NAVIGATION' && (isOffline || showMapWarningBanner || showOutsideBanner) && (
+          <View
+            style={[styles.bannerStack, { top: bannerStackTop }]}
+            onLayout={(e) => setBannerStackHeight(e.nativeEvent.layout.height)}
+          >
         {!showNavOverlay && (isOffline || showMapWarningBanner || showOutsideBanner) && (
           <View style={[styles.bannerStack, { top: bannerStackTop }]}>
             {isOffline && (
@@ -1154,7 +1212,7 @@ export function HomeScreen() {
           </View>
         )}
 
-        {!showNavOverlay && __DEV__ && developerModeEnabled && showRouteDiagnostics && (
+        {mode !== 'ACTIVE_NAVIGATION' && __DEV__ && developerModeEnabled && showRouteDiagnostics && (
           <View style={styles.diagnosticsBanner}>
             <Text style={styles.diagnosticsText}>
               {GRAPH_VALIDATION.isValid ? 'Graph validation: PASS' : 'Graph validation: FAIL'}
@@ -1170,7 +1228,7 @@ export function HomeScreen() {
           </View>
         )}
 
-        {!showNavOverlay && isOffline && !offlineData.isDownloaded && (
+        {mode !== 'ACTIVE_NAVIGATION' && isOffline && !offlineData.isDownloaded && (
           <View style={styles.emptyOfflineState}>
             <Text style={styles.emptyOfflineTitle}>Background map not downloaded. Ijtema routes still work.</Text>
             <Pressable style={styles.emptyOfflineButton} onPress={() => nav.navigate('DownloadMap')}>
@@ -1179,7 +1237,7 @@ export function HomeScreen() {
           </View>
         )}
 
-        {!showNavOverlay && !isSearchFocused && (
+        {mode !== 'ACTIVE_NAVIGATION' && !isSearchFocused && (
           <>
             <View style={[styles.controlStack, { bottom: controlStackBottom }]}>
               <MapControls
@@ -1205,6 +1263,35 @@ export function HomeScreen() {
               />
             </View>
 
+            <View style={[styles.bottomControls, { bottom: rightControlsBottom + 80 }]}>
+              <Pressable
+                style={styles.recenterButton}
+                disabled={recenterState === 'loading'}
+                onPress={() => void handleRecenterPress()}
+                accessibilityRole="button"
+                accessibilityLabel={
+                  recenterState === 'loading'
+                    ? 'Finding your location'
+                    : recenterState === 'success'
+                    ? 'Location found. Centered on your position.'
+                    : recenterState === 'failure'
+                    ? 'Could not find your location. Tap to try again.'
+                    : 'Center map on my location'
+                }
+                accessibilityLiveRegion="polite"
+              >
+                {recenterState === 'loading' ? (
+                  <ActivityIndicator size="small" color="#4285F4" />
+                ) : recenterState === 'success' ? (
+                  <Check size={24} color="#2E7D32" />
+                ) : recenterState === 'failure' ? (
+                  <AlertTriangle size={22} color="#EA4335" />
+                ) : (
+                  <LocateFixed size={24} color="#4285F4" />
+                )}
+              </Pressable>
+            </View>
+
             {__DEV__ && developerModeEnabled && (
               <View style={styles.debugCard}>
                 <Pressable style={styles.debugBtn} onPress={() => setShowGraphNodes(!showGraphNodes)}>
@@ -1221,8 +1308,15 @@ export function HomeScreen() {
           </>
         )}
 
-        {showNavOverlay && (
-          <View style={[styles.navControls, { bottom: Math.max(insets.bottom, 12) + 12 + 140 + 56 + 16 }]}>
+        {mode === 'ACTIVE_NAVIGATION' && (
+          <View
+            style={[
+              styles.navControls,
+              // Stacks above the recenter button, which itself stacks above the measured
+              // trip-info bar (navOverlay.bottomBarHeight) — no more guessed 140px bar height.
+              { bottom: (navOverlay.bottomBarHeight || Math.max(insets.bottom, 12) + 140) + 12 + 56 + 16 },
+            ]}
+          >
             <MapControls
               variant="nav"
               keepNorthFixed={settings.keepNorthFixed}
@@ -1242,7 +1336,7 @@ export function HomeScreen() {
           </View>
         )}
 
-        {!isSearchFocused && !directionsDestination && activePreviewRoute && previewDestination && (
+        {mode === 'ROUTE_PREVIEW' && !isSearchFocused && activePreviewRoute && previewDestination && (
           <View
             style={[styles.routePreviewCard, { bottom: Math.max(insets.bottom, 16) + 16 }]}
             onLayout={(e) => setRoutePreviewCardMeasuredHeight(e.nativeEvent.layout.height)}
@@ -1254,7 +1348,9 @@ export function HomeScreen() {
               </View>
               <View style={styles.routePreviewMetricPill}>
                 <Clock size={14} color="#1A73E8" />
-                <Text style={styles.routePreviewMetricText}>{activePreviewRoute.estimatedTimeMin} min</Text>
+                <Text style={styles.routePreviewMetricText}>
+                  {InstructionService.formatDuration(activePreviewRoute.estimatedTimeMin)}
+                </Text>
               </View>
             </View>
             <Text style={styles.routePreviewDistance}>
@@ -1269,22 +1365,37 @@ export function HomeScreen() {
             <Text style={styles.routePreviewSummary} numberOfLines={2}>
               {previewRouteSummary}
             </Text>
-            <Pressable style={styles.routePreviewPrimaryButton} onPress={handleStartPreviewNavigation}>
+            <Pressable
+              style={styles.routePreviewPrimaryButton}
+              onPress={handleStartPreviewNavigation}
+              accessibilityRole="button"
+              accessibilityLabel={`Start walking to ${previewDestination.name}`}
+            >
               <Navigation size={16} color="#FFFFFF" />
               <Text style={styles.routePreviewPrimaryText}>Start Navigation</Text>
             </Pressable>
             <View style={styles.routePreviewActions}>
-              <Pressable style={styles.routePreviewSecondaryButton} onPress={handleChangePreviewStart}>
+              <Pressable
+                style={styles.routePreviewSecondaryButton}
+                onPress={handleChangePreviewStart}
+                accessibilityRole="button"
+                accessibilityLabel="Change starting point"
+              >
                 <Text style={styles.routePreviewSecondaryText}>Change Start</Text>
               </Pressable>
-              <Pressable style={styles.routePreviewSecondaryButton} onPress={handleClearPreviewRoute}>
-                <Text style={styles.routePreviewSecondaryText}>Clear Route</Text>
+              <Pressable
+                style={styles.routePreviewCancelButton}
+                onPress={handleClearPreviewRoute}
+                accessibilityRole="button"
+                accessibilityLabel="Cancel route"
+              >
+                <Text style={styles.routePreviewCancelText}>Cancel Route</Text>
               </Pressable>
             </View>
           </View>
         )}
 
-        <BottomSheet
+        <BottomSheetModal
           ref={bottomSheetRef}
           index={-1}
           snapPoints={snapPoints}
@@ -1462,8 +1573,13 @@ export function HomeScreen() {
             )}
           </BottomSheetScrollView>
           )}
-        </BottomSheet>
+        </BottomSheetModal>
 
+        {/* visible stays keyed to layersSheetVisible (the state that feeds mode), not
+            `mode === 'MAP_SETTINGS'` — that would be circular, same reasoning as
+            NavigationChromeV2 self-gating on `route` below. Map gesture props above are
+            the actual interaction lock; the sheet is a Modal so touches can't reach the
+            map underneath either way (see zLayers.ts). */}
         <LayersSheet
           visible={layersSheetVisible}
           onClose={() => setLayersSheetVisible(false)}
@@ -1541,7 +1657,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
-    zIndex: 10,
+    zIndex: Z.mapControls,
   },
   searchBarContainer: {
     flexDirection: 'row',
@@ -1559,8 +1675,8 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 4,
   },
-  iconButton: { padding: 10 },
-  iconButtonSpacer: { width: 40, height: 40 },
+  iconButton: { padding: 14 },
+  iconButtonSpacer: { width: 48, height: 48 },
   searchInput: {
     flex: 1,
     fontSize: 16,
@@ -1621,6 +1737,19 @@ const styles = StyleSheet.create({
   activeChip: { backgroundColor: '#1A73E8', borderColor: '#1A73E8' },
   chipText: { fontSize: 13, color: '#3C4043', fontWeight: '500' },
   activeChipText: { color: '#FFFFFF', fontWeight: '700' },
+  rightControls: { position: 'absolute', right: 12, zIndex: Z.mapControls },
+  navControls: { position: 'absolute', right: 16, zIndex: Z.mapControls },
+  bottomControls: { position: 'absolute', right: 12, zIndex: Z.mapControls },
+  recenterButton: {
+    backgroundColor: '#FFFFFF',
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 6,
+  },
+  bannerStack: { position: 'absolute', left: 0, right: 0, zIndex: Z.mapControls },
   // Single bottom-anchored Layers/Compass/Zoom/Recenter stack (see MapControls) —
   // replaces the old separately-anchored rightControls (top) + bottomControls
   // (bottom) pair that could collide when a route-preview card shrank the gap
@@ -1672,7 +1801,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(32,33,36,0.9)',
     borderRadius: 8,
     padding: 8,
-    zIndex: 12,
+    zIndex: Z.mapControls,
   },
   diagnosticsText: { color: '#FFFFFF', fontSize: 11, marginBottom: 2 },
   debugNode: {
@@ -1743,7 +1872,7 @@ const styles = StyleSheet.create({
     padding: 6,
     flexDirection: 'row',
     gap: 6,
-    zIndex: 8,
+    zIndex: Z.mapControls,
   },
   debugBtn: { backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4 },
   debugBtnText: { color: '#FFFFFF', fontSize: 11, fontWeight: '600' },
@@ -1833,7 +1962,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
     marginBottom: 12,
   },
-  placeWarningBannerText: { fontSize: 13, color: '#E65100', fontWeight: '600', lineHeight: 18 },
+  placeWarningBannerText: { fontSize: 13, color: '#7C4A03', fontWeight: '600', lineHeight: 18 }, // #E65100 on #FFF3E0 fails AA (3.79:1); #7C4A03 passes (6.75:1)
   emptySheet: { alignItems: 'center', padding: 60 },
   emptySheetText: { color: '#70757A', fontSize: 15 },
   emptyOfflineState: {
@@ -1845,7 +1974,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 16,
     alignItems: 'center',
-    zIndex: 20,
+    zIndex: Z.mapControls,
   },
   routePreviewCard: {
     position: 'absolute',
@@ -1854,7 +1983,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.98)',
     borderRadius: 18,
     padding: 14,
-    zIndex: 18,
+    zIndex: Z.mapControls,
     borderWidth: 1,
     borderColor: '#D2E3FC',
     shadowColor: '#1A73E8',
@@ -1929,6 +2058,7 @@ const styles = StyleSheet.create({
   },
   routePreviewPrimaryButton: {
     marginTop: 12,
+    minHeight: 56,
     backgroundColor: '#1A73E8',
     borderRadius: 12,
     paddingVertical: 12,
@@ -1949,7 +2079,7 @@ const styles = StyleSheet.create({
   },
   routePreviewSecondaryButton: {
     flex: 1,
-    minHeight: 40,
+    minHeight: 48,
     borderRadius: 10,
     borderWidth: 1,
     borderColor: '#DADCE0',
@@ -1962,6 +2092,20 @@ const styles = StyleSheet.create({
     color: '#3C4043',
     fontSize: 13,
     fontWeight: '700',
+  },
+  routePreviewCancelButton: {
+    flex: 1,
+    minHeight: 48,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 8,
+  },
+  routePreviewCancelText: {
+    color: '#5F6368',
+    fontSize: 13,
+    fontWeight: '600',
+    textDecorationLine: 'underline',
   },
   emptyOfflineTitle: {
     color: '#FFFFFF',

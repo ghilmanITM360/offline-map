@@ -17,7 +17,7 @@ export const mapLayerStyles = StyleSheet.create({
   },
   rastaLabelText: { color: '#FFFFFF', fontSize: 10, fontWeight: '600' },
   rastaLabelFocused: {
-    backgroundColor: '#E65100',
+    backgroundColor: '#202124',
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 10,

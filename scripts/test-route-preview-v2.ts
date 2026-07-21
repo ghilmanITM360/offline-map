@@ -23,8 +23,8 @@ assert(
   'Home screen must expose Start Navigation from route preview card.',
 );
 assert(
-  homeScreenSource.includes('Clear Route'),
-  'Home screen must expose Clear Route action.',
+  homeScreenSource.includes('Cancel Route'),
+  'Home screen must expose Cancel Route action (demoted, confirm-gated destructive action).',
 );
 assert(
   homeScreenSource.includes('Change Start'),

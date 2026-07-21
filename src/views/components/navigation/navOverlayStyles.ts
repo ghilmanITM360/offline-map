@@ -197,7 +197,7 @@ export const navOverlayStyles = StyleSheet.create({
     borderColor: '#FBC02D',
   },
   rerouteHintText: {
-    color: '#8D6E63',
+    color: '#7C4A03', // #8D6E63 on #FFF8E1 fails AA (4.35:1); #7C4A03 passes (6.97:1)
     fontSize: 12,
     fontWeight: '700',
     textAlign: 'center',

@@ -15,7 +15,7 @@ import {
   Keyboard,
 } from 'react-native';
 import { BottomSheetScrollView } from '@gorhom/bottom-sheet';
-import { ChevronLeft, Clock, Footprints, LocateFixed, MapPin, Navigation, RefreshCw } from 'lucide-react-native';
+import { ChevronLeft, Clock, LocateFixed, MapPin, Navigation, RefreshCw } from 'lucide-react-native';
 
 import { useDirectionsViewModel } from '../../viewmodels/DirectionsViewModel';
 import { InstructionService } from '../../services/InstructionService';
@@ -87,7 +87,6 @@ export function DirectionsScreen({
   const currentLocation = useAppStore((s) => s.currentLocation);
   const lastKnownLocation = useAppStore((s) => s.lastKnownLocation);
   const distanceUnit = useAppStore((s) => s.settings.distanceUnit);
-  const walkingSpeed = useAppStore((s) => s.settings.walkingSpeed ?? 1.4);
 
   const [startSearch, setStartSearch] = useState('');
 
@@ -132,7 +131,7 @@ export function DirectionsScreen({
   const routeMeta = route as RoutePreviewWithV2Meta | null;
   const entryGateName = routeMeta?.startResolution?.gate?.name?.en ?? null;
   const routeDistance = route ? InstructionService.formatDistance(route.totalDistance, distanceUnit) : null;
-  const routeEta = route ? `${route.estimatedTimeMin} min` : null;
+  const routeEta = route ? InstructionService.formatDuration(route.estimatedTimeMin) : null;
   const routeStatusMessage = outsideStart
     ? "You are outside Ijtema. We'll enter through nearest official gate."
     : startSource === 'remembered_location' && rememberedLocationAvailable
@@ -336,10 +335,6 @@ export function DirectionsScreen({
                 <View style={styles.metricPill}>
                   <Navigation size={15} color="#1A73E8" />
                   <Text style={styles.metricText}>Distance: {routeDistance}</Text>
-                </View>
-                <View style={styles.metricPill}>
-                  <Footprints size={15} color="#1A73E8" />
-                  <Text style={styles.metricText}>Walking speed: {walkingSpeed.toFixed(1)} m/s</Text>
                 </View>
               </View>
 
@@ -599,7 +594,7 @@ const styles = StyleSheet.create({
     color: '#202124',
   },
   statusTitleWarning: {
-    color: '#B06000',
+    color: '#7C4A03', // #B06000 on #FFF6E5 fails AA (4.33:1); #7C4A03 passes (6.89:1)
   },
   statusTitleError: {
     color: '#C5221F',
