@@ -375,14 +375,11 @@ export function HomeScreen() {
   const previewVisibleBlocks = routePreviewDeclutterActive
     ? v2MapLayers.blocks.filter((block) => block.isSelected)
     : v2MapLayers.visibleBlocks;
-  const previewVisibleBlockLabels = routePreviewDeclutterActive ? previewVisibleBlocks : v2MapLayers.visibleBlockLabels;
   const previewVisibleGateMarkers = routePreviewDeclutterActive
     ? v2MapLayers.gates.filter((gate) => gate.isSelected || gate.id === previewEntryGateId)
     : v2MapLayers.visibleGateMarkers;
   const previewVisibleRastas = routePreviewDeclutterActive ? [] : v2MapLayers.visibleRastas;
-  const previewVisibleRastaLabels = routePreviewDeclutterActive ? [] : v2MapLayers.visibleRastaLabels;
   const previewVisibleSpecialRoutes = routePreviewDeclutterActive ? [] : v2MapLayers.specialRoutes;
-  const previewVisibleSpecialRouteLabels = routePreviewDeclutterActive ? [] : v2MapLayers.visibleSpecialRouteLabels;
 
   // Feeds the single shared MapLabelOverlay (see docs/TARGETED_FIX_SPRINT_REPORT.md
   // Phase 5 for why label text moved out of Marker children). LOD text logic mirrors
@@ -790,8 +787,6 @@ export function HomeScreen() {
             <React.Fragment key={`v2_layers_${v2MapLayers.activeMapFilter}`}>
               <RastaLayer
                 rastas={previewVisibleRastas}
-                labels={previewVisibleRastaLabels}
-                rastas={v2MapLayers.visibleRastas}
                 variant="home"
                 focused={v2MapLayers.activeMapFilter === 'rastas'}
                 keyPrefix="v2_rasta"
@@ -799,8 +794,6 @@ export function HomeScreen() {
 
               <SpecialRouteLayer
                 routes={previewVisibleSpecialRoutes}
-                labels={previewVisibleSpecialRouteLabels}
-                routes={v2MapLayers.specialRoutes}
                 variant="home"
                 focused={v2MapLayers.activeMapFilter === 'special_routes'}
                 keyPrefix="v2_special"
@@ -808,8 +801,6 @@ export function HomeScreen() {
 
               <BlockLayer
                 blocks={showBlockPolygons ? previewVisibleBlocks : []}
-                labels={previewVisibleBlockLabels}
-                blocks={showBlockPolygons ? v2MapLayers.visibleBlocks : []}
                 variant="home"
                 focused={v2MapLayers.activeMapFilter === 'blocks'}
                 keyPrefix="v2_block"
@@ -823,8 +814,6 @@ export function HomeScreen() {
 
               <GateLayer
                 gates={previewVisibleGateMarkers}
-                variant="home"
-                gates={v2MapLayers.visibleGateMarkers}
                 focused={v2MapLayers.activeMapFilter === 'gates'}
                 keyPrefix="v2_gate"
                 onPressGate={(gateId) => {
@@ -1043,8 +1032,6 @@ export function HomeScreen() {
           </View>
         )}
 
-        {showNavOverlay && <NavigationChromeV2 overlay={navOverlay} hasGoogleMapsKey={hasGoogleMapsKey} />}
-
         {mode !== 'ACTIVE_NAVIGATION' && mode !== 'DIRECTIONS_FORM' && (
         <SafeAreaView
           style={styles.topOverlay}
@@ -1157,11 +1144,6 @@ export function HomeScreen() {
         )}
 
         {mode !== 'ACTIVE_NAVIGATION' && (isOffline || showMapWarningBanner || showOutsideBanner) && (
-          <View
-            style={[styles.bannerStack, { top: bannerStackTop }]}
-            onLayout={(e) => setBannerStackHeight(e.nativeEvent.layout.height)}
-          >
-        {!showNavOverlay && (isOffline || showMapWarningBanner || showOutsideBanner) && (
           <View style={[styles.bannerStack, { top: bannerStackTop }]}>
             {isOffline && (
               <View style={[styles.offlineIndicator, styles.bannerStackItem]}>
@@ -1261,35 +1243,6 @@ export function HomeScreen() {
                 }}
                 recenter={{ state: recenterState, onPress: () => void handleRecenterPress() }}
               />
-            </View>
-
-            <View style={[styles.bottomControls, { bottom: rightControlsBottom + 80 }]}>
-              <Pressable
-                style={styles.recenterButton}
-                disabled={recenterState === 'loading'}
-                onPress={() => void handleRecenterPress()}
-                accessibilityRole="button"
-                accessibilityLabel={
-                  recenterState === 'loading'
-                    ? 'Finding your location'
-                    : recenterState === 'success'
-                    ? 'Location found. Centered on your position.'
-                    : recenterState === 'failure'
-                    ? 'Could not find your location. Tap to try again.'
-                    : 'Center map on my location'
-                }
-                accessibilityLiveRegion="polite"
-              >
-                {recenterState === 'loading' ? (
-                  <ActivityIndicator size="small" color="#4285F4" />
-                ) : recenterState === 'success' ? (
-                  <Check size={24} color="#2E7D32" />
-                ) : recenterState === 'failure' ? (
-                  <AlertTriangle size={22} color="#EA4335" />
-                ) : (
-                  <LocateFixed size={24} color="#4285F4" />
-                )}
-              </Pressable>
             </View>
 
             {__DEV__ && developerModeEnabled && (
@@ -1737,26 +1690,13 @@ const styles = StyleSheet.create({
   activeChip: { backgroundColor: '#1A73E8', borderColor: '#1A73E8' },
   chipText: { fontSize: 13, color: '#3C4043', fontWeight: '500' },
   activeChipText: { color: '#FFFFFF', fontWeight: '700' },
-  rightControls: { position: 'absolute', right: 12, zIndex: Z.mapControls },
   navControls: { position: 'absolute', right: 16, zIndex: Z.mapControls },
-  bottomControls: { position: 'absolute', right: 12, zIndex: Z.mapControls },
-  recenterButton: {
-    backgroundColor: '#FFFFFF',
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    justifyContent: 'center',
-    alignItems: 'center',
-    elevation: 6,
-  },
-  bannerStack: { position: 'absolute', left: 0, right: 0, zIndex: Z.mapControls },
   // Single bottom-anchored Layers/Compass/Zoom/Recenter stack (see MapControls) —
   // replaces the old separately-anchored rightControls (top) + bottomControls
   // (bottom) pair that could collide when a route-preview card shrank the gap
   // between them.
-  controlStack: { position: 'absolute', right: 12, zIndex: 5 },
-  navControls: { position: 'absolute', right: 16, zIndex: 5 },
-  bannerStack: { position: 'absolute', left: 0, right: 0, zIndex: 10 },
+  controlStack: { position: 'absolute', right: 12, zIndex: Z.mapControls },
+  bannerStack: { position: 'absolute', left: 0, right: 0, zIndex: Z.mapControls },
   bannerStackItem: { marginBottom: 8 },
   offlineIndicator: {
     alignSelf: 'flex-start',
