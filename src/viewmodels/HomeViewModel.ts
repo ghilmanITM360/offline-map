@@ -6,7 +6,7 @@
 import { useState, useRef, useMemo, useEffect, useCallback } from 'react';
 import { Alert } from 'react-native';
 import MapView, { Region } from 'react-native-maps';
-import BottomSheet from '@gorhom/bottom-sheet';
+import { BottomSheetModal } from '@gorhom/bottom-sheet';
 import { useAppStore } from '../store/useAppStore';
 import { Place } from '../models/types';
 import { SearchService } from '../services/SearchService';
@@ -55,7 +55,7 @@ function getHomeSnappedCoordinate(coord: { latitude: number; longitude: number }
 
 export function useHomeViewModel() {
   const mapRef = useRef<MapView>(null);
-  const bottomSheetRef = useRef<BottomSheet>(null);
+  const bottomSheetRef = useRef<BottomSheetModal>(null);
 
   const currentLocation = useAppStore((s) => s.currentLocation);
   const lastKnownLocation = useAppStore((s) => s.lastKnownLocation);

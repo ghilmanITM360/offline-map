@@ -14,10 +14,10 @@ const mapControlsSource = readFileSync('src/views/components/map/MapControls.tsx
 
 assert(home.includes('MapView'), 'Home must render a map surface');
 assert(home.includes('V2MapRenderingService.getHomeLayers'), 'Home must source production layers from v2 rendering service');
-assert(home.includes('blocks={showBlockPolygons ? v2MapLayers.visibleBlocks : []}') && blockLayer.includes('blocks.map('), 'Home must render zoom-aware v2 block polygons');
-assert(home.includes('rastas={v2MapLayers.visibleRastas}') && rastaLayer.includes('rastas.map('), 'Home must render zoom-aware v2 rasta lines');
-assert(home.includes('routes={v2MapLayers.specialRoutes}') && specialRouteLayer.includes('routes.map('), 'Home must render Shahr-e-Pindal routes');
-assert(home.includes('gates={v2MapLayers.visibleGateMarkers}') && gateLayer.includes('gates.map('), 'Home must render zoom-aware official gate markers with coordinates');
+assert(home.includes('blocks={showBlockPolygons ? previewVisibleBlocks : []}') && blockLayer.includes('blocks.map('), 'Home must render zoom-aware v2 block polygons');
+assert(home.includes('rastas={previewVisibleRastas}') && rastaLayer.includes('rastas.map('), 'Home must render zoom-aware v2 rasta lines');
+assert(home.includes('routes={previewVisibleSpecialRoutes}') && specialRouteLayer.includes('routes.map('), 'Home must render Shahr-e-Pindal routes');
+assert(home.includes('gates={previewVisibleGateMarkers}') && gateLayer.includes('gates.map('), 'Home must render zoom-aware official gate markers with coordinates');
 assert(gateLayer.includes('gate.needsConnectorVerification'), 'Home must visibly distinguish disconnected gates');
 assert(home.includes('graphOnlyFallbackUsed'), 'Home must track graph-only fallback');
 assert(home.includes("mapType={hasGoogleMapsKey ? (isOffline ? 'none' : mapType) : 'none'}"), 'Home must not require base tiles for graph-only map');

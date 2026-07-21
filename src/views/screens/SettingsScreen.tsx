@@ -33,11 +33,12 @@ import {
   LucideIcon,
 } from 'lucide-react-native';
 
-// Walking speed presets (m/s)
+// Walking speed presets. `value` (m/s) drives internal ETA math only —
+// labels stay plain-language, no raw units shown to the user.
 const SPEED_PRESETS: { label: string; value: number }[] = [
-  { label: 'Slow (0.8 m/s)', value: 0.8 },
-  { label: 'Normal (1.1 m/s)', value: 1.1 },
-  { label: 'Fast (1.4 m/s)', value: 1.4 },
+  { label: 'Slow', value: 0.8 },
+  { label: 'Normal', value: 1.1 },
+  { label: 'Fast', value: 1.4 },
 ];
 import { useNavigation } from '@react-navigation/native';
 import { useSettingsViewModel } from '../../viewmodels/SettingsViewModel';
@@ -118,8 +119,8 @@ export function SettingsScreen() {
           <Switch
             value={value}
             onValueChange={onToggle}
-            trackColor={{ false: theme.border, true: theme.primaryLight }}
-            thumbColor={value ? theme.primary : '#F4F4F4'}
+            trackColor={{ false: theme.border, true: theme.chipActive }}
+            thumbColor={value ? theme.accent : '#F4F4F4'}
           />
         ) : (
           <Text style={[styles.settingValue, { color: danger ? theme.danger : theme.primary }]} numberOfLines={1} ellipsizeMode="tail">
@@ -273,7 +274,7 @@ export function SettingsScreen() {
           <SettingItem
             icon={Footprints}
             label="Walking Speed"
-            value={SPEED_PRESETS.find((p) => p.value === settings.walkingSpeed)?.label ?? `${settings.walkingSpeed} m/s`}
+            value={SPEED_PRESETS.find((p) => p.value === settings.walkingSpeed)?.label ?? 'Normal'}
             type="text"
             onPress={() => {
               const options = SPEED_PRESETS.map((p) => ({

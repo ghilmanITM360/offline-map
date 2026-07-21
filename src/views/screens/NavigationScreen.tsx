@@ -89,6 +89,11 @@ function NavigationScreenV1() {
   const [mapReady, setMapReady] = useState(false);
   const [initialCameraFitDone, setInitialCameraFitDone] = useState(false);
   const [cameraFitReason, setCameraFitReason] = useState<'route' | 'venue' | 'user' | null>(null);
+  // Measured (not guessed) height of the bottom trip-info bar — see NavigationChromeV2.tsx's
+  // bottomBarHeight for the v2 equivalent of this same fix.
+  const [bottomBarHeight, setBottomBarHeight] = useState(0);
+  const bottomBarHeightRef = useRef(0);
+  bottomBarHeightRef.current = bottomBarHeight;
 
   const {
     destination,
@@ -155,7 +160,7 @@ function NavigationScreenV1() {
     if (!mapReady || initialCameraFitDone || !mapRef.current) return;
     if (route?.coordinates && route.coordinates.length > 1) {
       mapRef.current.fitToCoordinates(route.coordinates, {
-        edgePadding: { top: 90, right: 64, bottom: 220, left: 64 },
+        edgePadding: { top: 90, right: 64, bottom: (bottomBarHeightRef.current || 140) + 80, left: 64 },
         animated: true,
       });
       setCameraFitReason('route');
@@ -163,7 +168,7 @@ function NavigationScreenV1() {
       return;
     }
     mapRef.current.fitToCoordinates(venueBoundary, {
-      edgePadding: { top: 48, right: 48, bottom: 160, left: 48 },
+      edgePadding: { top: 48, right: 48, bottom: (bottomBarHeightRef.current || 140) + 20, left: 48 },
       animated: true,
     });
     setCameraFitReason('venue');
@@ -395,11 +400,14 @@ function NavigationScreenV1() {
 
       {/* Bottom info bar */}
       {!arrived && (
-        <View style={[styles.bottomBar, { paddingBottom: Math.max(insets.bottom, 12) }]}>
+        <View
+          style={[styles.bottomBar, { paddingBottom: Math.max(insets.bottom, 12) }]}
+          onLayout={(e) => setBottomBarHeight(e.nativeEvent.layout.height)}
+        >
           <View style={styles.tripInfo}>
             <View style={styles.tripTextWrap}>
               <Text style={styles.timeRemaining}>
-                {route ? `${route.estimatedTimeMin} min` : '— min'}
+                {route ? InstructionService.formatDuration(route.estimatedTimeMin) : '— min'}
               </Text>
               <Text style={styles.distanceRemaining}>
                 {remainingDistance > 0
@@ -427,7 +435,10 @@ function NavigationScreenV1() {
       {snappedLocation && (
         <Pressable
           testID="nav-recenter-button"
-          style={[styles.recenterButton, { bottom: Math.max(insets.bottom, 12) + 140 }]}
+          style={[
+            styles.recenterButton,
+            { bottom: (bottomBarHeight || Math.max(insets.bottom, 12) + 140) + 12 },
+          ]}
           hitSlop={TOUCH_TARGET_HIT_SLOP}
           onPress={() => {
             if (!mapRef.current) return;
@@ -599,7 +610,7 @@ const styles = StyleSheet.create({
     borderColor: '#FBC02D',
   },
   rerouteHintText: {
-    color: '#8D6E63',
+    color: '#7C4A03', // #8D6E63 on #FFF8E1 fails AA (4.35:1); #7C4A03 passes (6.97:1)
     fontSize: 12,
     fontWeight: '700',
     textAlign: 'center',

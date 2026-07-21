@@ -4,20 +4,24 @@
  */
 
 import { StyleSheet } from 'react-native';
+import { Z } from '../../styles/zLayers';
 
 // Styles for the shared floating map-control cluster (MapControls, RecenterButton).
-// Values extracted verbatim from HomeScreen.tsx's pre-extraction inline StyleSheet —
-// must stay pixel-identical to the browse-mode controls that predate this extraction.
+// Button size bumped from the original 44dp to 48dp (Android accessibility touch-target floor).
+// zIndex added on top (was previously relying on elevation alone, which orders
+// Android views within a parent but doesn't compose reliably against a sibling
+// BottomSheetModal/native MapView surface) — see zLayers.ts for the layer contract.
 export const mapControlStyles = StyleSheet.create({
   controlButton: {
     backgroundColor: '#FFFFFF',
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 12,
     elevation: 3,
+    zIndex: Z.mapControls,
   },
   controlButtonActive: {
     borderWidth: 1,
@@ -32,6 +36,7 @@ export const mapControlStyles = StyleSheet.create({
     marginBottom: 10,
     alignSelf: 'center',
     elevation: 2,
+    zIndex: Z.mapControls,
   },
   controlHelperText: {
     color: '#5F6368',
@@ -40,9 +45,10 @@ export const mapControlStyles = StyleSheet.create({
   },
   zoomControls: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 22,
+    borderRadius: 24,
     elevation: 3,
+    zIndex: Z.mapControls,
   },
-  zoomButton: { width: 44, height: 44, justifyContent: 'center', alignItems: 'center' },
+  zoomButton: { width: 48, height: 48, justifyContent: 'center', alignItems: 'center' },
   zoomDivider: { height: 1, backgroundColor: '#DADCE0', marginHorizontal: 8 },
 });

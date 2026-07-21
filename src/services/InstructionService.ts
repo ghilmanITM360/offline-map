@@ -165,13 +165,35 @@ export class InstructionService {
 
   /**
    * Format a distance value according to the user's unit preference.
-   * Returns a display string like "120 m" or "394 ft".
+   * Returns a display string like "120 m" or "394 ft". Distances at or
+   * above 1 km / 1 mile switch to that unit (1 decimal place) — plain-language
+   * for elderly/low-literacy users instead of raw large meter/foot counts.
    */
   static formatDistance(meters: number, unit: 'meters' | 'feet' = 'meters'): string {
     if (unit === 'feet') {
-      const feet = Math.round(meters * 3.28084);
-      return `${feet} ft`;
+      const feet = meters * 3.28084;
+      if (feet >= 5280) {
+        return `${(feet / 5280).toFixed(1)} mi`;
+      }
+      return `${Math.round(feet)} ft`;
+    }
+    if (meters >= 1000) {
+      return `${(meters / 1000).toFixed(1)} km`;
     }
     return `${Math.round(meters)} m`;
+  }
+
+  /**
+   * Format a duration in minutes as plain language ("45 min", "2 hr 39 min")
+   * instead of raw large minute counts.
+   */
+  static formatDuration(minutes: number): string {
+    const wholeMinutes = Math.round(minutes);
+    if (wholeMinutes < 60) {
+      return `${wholeMinutes} min`;
+    }
+    const hours = Math.floor(wholeMinutes / 60);
+    const remainingMinutes = wholeMinutes % 60;
+    return remainingMinutes > 0 ? `${hours} hr ${remainingMinutes} min` : `${hours} hr`;
   }
 }

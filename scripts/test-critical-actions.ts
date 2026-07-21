@@ -173,7 +173,7 @@ assert(
   homeScreen.includes('searchFocusAnim') && homeScreen.includes('warningAnim'),
   'Home should include search focus and warning banner animations',
 );
-assert(homeScreen.includes('rotateEnabled={!settings.keepNorthFixed}'), 'Home map should honor North-up behavior');
+assert(homeScreen.includes("rotateEnabled={mode !== 'MAP_SETTINGS' && !settings.keepNorthFixed}"), 'Home map should honor North-up behavior');
 assert(
   navScreen.includes('setIsMuted(!isMuted)'),
   'Navigation mute button must toggle mute state',

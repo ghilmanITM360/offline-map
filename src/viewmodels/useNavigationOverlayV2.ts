@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Animated, BackHandler } from 'react-native';
 import MapView, { Camera } from 'react-native-maps';
 import { useAppStore } from '../store/useAppStore';
@@ -37,17 +37,27 @@ export function useNavigationOverlayV2({ mapRef, mapReady, mapZoomLevel, hasGoog
 
   const [isAutoFollowing, setIsAutoFollowing] = useState(settings.autoFollowLocation);
   const [initialCameraFitDone, setInitialCameraFitDone] = useState(false);
+  // Measured (not guessed) height of NavigationChromeV2's bottom trip-info bar — grows with
+  // font scaling/device width, so anything anchored above it (recenter button, HomeScreen's
+  // nav zoom/compass cluster, map edgePadding) reads this instead of a hardcoded constant.
+  const [bottomBarHeight, setBottomBarHeight] = useState(0);
+  const bottomBarHeightRef = useRef(0);
+  bottomBarHeightRef.current = bottomBarHeight;
 
-  const mapLayers = useMemo(
-    () => V2MapRenderingService.getHomeLayers({
+  const mapLayers = useMemo(() => {
+    const baseLayers = V2MapRenderingService.getHomeLayers({
       selectedPlaceId: route?.destination.blockId ?? destination?.id,
       selectedPlace: destination,
       developerMode: __DEV__ && developerMode,
       graphOnlyFallback: !hasGoogleMapsKey || !hasInternet,
       zoomLevel: mapZoomLevel,
-    }),
-    [destination, developerMode, hasGoogleMapsKey, hasInternet, route?.destination.blockId, mapZoomLevel],
-  );
+    });
+    // Route-critical-only declutter: active navigation shouldn't render all 42 blocks/
+    // every gate/every rasta — narrow to the actual route corridor (+ destination +
+    // always-visible major gates). See NAV_CORRIDOR_RADIUS_M.
+    if (!route || route.coordinates.length < 2) return baseLayers;
+    return { ...baseLayers, ...V2MapRenderingService.getNavigationCorridorLayers(baseLayers, route.coordinates) };
+  }, [destination, developerMode, hasGoogleMapsKey, hasInternet, route, mapZoomLevel]);
 
   useEffect(() => {
     setInitialCameraFitDone(false);
@@ -55,16 +65,18 @@ export function useNavigationOverlayV2({ mapRef, mapReady, mapZoomLevel, hasGoog
 
   useEffect(() => {
     if (!route || !mapReady || initialCameraFitDone || !mapRef.current) return;
+    // Bottom padding leaves room for the measured trip-info bar (falls back to the old
+    // guessed constant for the rare case a fit runs before the bar has reported a layout).
     if (route.coordinates.length > 1) {
       mapRef.current.fitToCoordinates(route.coordinates, {
-        edgePadding: { top: 90, right: 64, bottom: 220, left: 64 },
+        edgePadding: { top: 90, right: 64, bottom: (bottomBarHeightRef.current || 140) + 80, left: 64 },
         animated: true,
       });
       setInitialCameraFitDone(true);
       return;
     }
     mapRef.current.fitToCoordinates(mapLayers.venueBoundary, {
-      edgePadding: { top: 48, right: 48, bottom: 160, left: 48 },
+      edgePadding: { top: 48, right: 48, bottom: (bottomBarHeightRef.current || 140) + 20, left: 48 },
       animated: true,
     });
     setInitialCameraFitDone(true);
@@ -103,6 +115,8 @@ export function useNavigationOverlayV2({ mapRef, mapReady, mapZoomLevel, hasGoog
     mapLayers,
     isAutoFollowing,
     setIsAutoFollowing,
+    bottomBarHeight,
+    setBottomBarHeight,
     userPulseAnim,
     currentLocationSource,
     settings,

@@ -47,7 +47,7 @@ assert(navVmV2.includes('REROUTE_COOLDOWN_MS'), 'v2 VM must enforce reroute cool
 
 // Phase 2 (map-experience redesign): live navigation reuses Home's own zoom/compass controls
 // (same shared MapView/mapRef) instead of hiding all map controls during navigation.
-assert(homeScreen.includes('showNavOverlay && (') && homeScreen.includes('styles.navControls'), 'Home must render map controls while navigating, not just while browsing');
+assert(homeScreen.includes("mode === 'ACTIVE_NAVIGATION' && (") && homeScreen.includes('styles.navControls'), 'Home must render map controls while navigating, not just while browsing');
 assert(homeScreen.includes("logHomeControl('nav_compass', 'reset_north_up')"), 'Nav-mode controls must reuse the compass reset handler');
 assert(homeScreen.includes("logHomeControl('nav_zoom_in', 'map_zoom_in')") && homeScreen.includes("logHomeControl('nav_zoom_out', 'map_zoom_out')"), 'Nav-mode controls must reuse the zoom in/out handlers');
 

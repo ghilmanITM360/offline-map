@@ -13,7 +13,7 @@ assert(homeScreenSource.includes('handleZoomOut'), 'Home zoom-out button must st
 assert(homeScreenSource.includes('handleCompassReset'), 'Home compass button must stay wired.');
 assert(homeScreenSource.includes('openLayerOptions'), 'Home layer button must stay wired.');
 assert(homeScreenSource.includes('Directions'), 'Home selected-place action must still open Directions.');
-assert(homeScreenSource.includes('Clear Route'), 'Home must expose Clear Route button when preview exists.');
+assert(homeScreenSource.includes('Cancel Route'), 'Home must expose Cancel Route button when preview exists.');
 assert(homeScreenSource.includes('Start Navigation'), 'Home must expose Start Navigation button when preview exists.');
 assert(homeScreenSource.includes('Change Start'), 'Home must expose Change Start button when preview exists.');
 assert(homeScreenSource.includes('BackHandler.addEventListener'), 'Android back on Home must still work.');

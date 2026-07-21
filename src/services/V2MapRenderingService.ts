@@ -89,6 +89,8 @@ export interface V2MapLayerOptions {
   showGatesLayer?: boolean;
   showRastasLayer?: boolean;
   showSpecialRoutesLayer?: boolean;
+  /** PLACE_SELECTED mode: suppress (dot-only) block/gate labels within PLACE_SELECTED_COMPETING_RADIUS_M of selectedPlace. */
+  suppressCompetingMarkers?: boolean;
 }
 
 type V2BaseLayers = Omit<
@@ -115,6 +117,19 @@ export const HIGH_ZOOM = 16.5;
 export const DEFAULT_ZOOM = 15;
 const MAJOR_GATE_IDS = new Set(['GATE_05', 'GATE_08', 'GATE_13', 'GATE_21', 'GATE_22']);
 const MAP_FILTERS = new Set(['all', 'blocks', 'rastas', 'gates', 'special_routes']);
+
+// Active-navigation "route-critical only" declutter: a block/gate/rasta/special-route
+// stays visible while navigating only if it sits within this corridor of the actual
+// route path, is the destination, or is a major gate (always-visible orientation
+// landmark) — everything else (the other ~40 blocks etc.) is real clutter for a
+// walking user mid-route, not context they need.
+export const NAV_CORRIDOR_RADIUS_M = 70;
+
+// PLACE_SELECTED declutter: once a destination is picked, any other block/gate label
+// within this radius of it reads as a competing marker (not "which one did I pick?"
+// clarity) — suppressed to a dot via the same labelSuppressed mechanism gate-collision
+// already uses, not hidden outright (still there for spatial context).
+export const PLACE_SELECTED_COMPETING_RADIUS_M = 70;
 
 const midpoint = (points: Coordinate[]): Coordinate => points[Math.floor(points.length / 2)] ?? points[0];
 
@@ -143,6 +158,44 @@ const GATE_LABEL_MIN_GAP_PX = 42;
 const metersPerPixelAtZoom = (latitude: number, zoomLevel: number): number =>
   (156543.03392 * Math.cos((latitude * Math.PI) / 180)) / Math.pow(2, zoomLevel);
 
+const METERS_PER_DEGREE_LAT = 111320;
+const metersPerDegreeLngAt = (latitude: number): number => METERS_PER_DEGREE_LAT * Math.cos((latitude * Math.PI) / 180);
+
+const distanceMetersBetween = (a: Coordinate, b: Coordinate): number => {
+  const dLatM = (a.latitude - b.latitude) * METERS_PER_DEGREE_LAT;
+  const dLngM = (a.longitude - b.longitude) * metersPerDegreeLngAt(a.latitude);
+  return Math.hypot(dLatM, dLngM);
+};
+
+// Min distance from a point to a polyline (route path), via point-to-segment
+// projection in a local planar frame centered on `point` — flat-earth approximation
+// is fine at this venue's scale (a few hundred meters).
+const distanceMetersToPolyline = (point: Coordinate, polyline: Coordinate[]): number => {
+  if (polyline.length === 0) return Infinity;
+  if (polyline.length === 1) return distanceMetersBetween(point, polyline[0]);
+
+  const mPerLng = metersPerDegreeLngAt(point.latitude);
+  const toXY = (p: Coordinate) => ({
+    x: (p.longitude - point.longitude) * mPerLng,
+    y: (p.latitude - point.latitude) * METERS_PER_DEGREE_LAT,
+  });
+
+  let min = Infinity;
+  for (let i = 0; i < polyline.length - 1; i++) {
+    const a = toXY(polyline[i]);
+    const b = toXY(polyline[i + 1]);
+    const abx = b.x - a.x;
+    const aby = b.y - a.y;
+    const lenSq = abx * abx + aby * aby;
+    const t = lenSq === 0 ? 0 : Math.max(0, Math.min(1, (-a.x * abx + -a.y * aby) / lenSq));
+    const cx = a.x + t * abx;
+    const cy = a.y + t * aby;
+    const d = Math.hypot(cx, cy);
+    if (d < min) min = d;
+  }
+  return min;
+};
+
 const approxPixelDistance = (
   a: { latitude: number; longitude: number },
   b: { latitude: number; longitude: number },
@@ -162,12 +215,27 @@ const approxPixelDistance = (
 // priority one's label text is suppressed in favor of a plain dot — instead
 // of rendering clipped/illegible fragments ("Ga Ga", "G"). Priority:
 // selected > major gate > everything else, stable on incoming order.
+interface CompetingSuppression {
+  selectedCoordinate: Coordinate;
+  radiusM: number;
+}
+
 function declutterGateMarkers<T extends { id: string; coordinate: { latitude: number; longitude: number }; isSelected?: boolean }>(
   gates: T[],
   zoomLevel: number,
+  competingSuppression?: CompetingSuppression,
 ): (T & { labelSuppressed: boolean })[] {
+  const preSuppressed = new Set<string>();
+  if (competingSuppression) {
+    for (const gate of gates) {
+      if (!gate.isSelected && distanceMetersBetween(gate.coordinate, competingSuppression.selectedCoordinate) <= competingSuppression.radiusM) {
+        preSuppressed.add(gate.id);
+      }
+    }
+  }
+
   if (gates.length <= 1 || zoomLevel >= HIGH_ZOOM) {
-    return gates.map((gate) => ({ ...gate, labelSuppressed: false }));
+    return gates.map((gate) => ({ ...gate, labelSuppressed: preSuppressed.has(gate.id) }));
   }
 
   const priority = (gate: T): number => (gate.isSelected ? 2 : MAJOR_GATE_IDS.has(gate.id) ? 1 : 0);
@@ -186,7 +254,7 @@ function declutterGateMarkers<T extends { id: string; coordinate: { latitude: nu
     }
   }
 
-  return gates.map((gate) => ({ ...gate, labelSuppressed: suppressed.has(gate.id) }));
+  return gates.map((gate) => ({ ...gate, labelSuppressed: suppressed.has(gate.id) || preSuppressed.has(gate.id) }));
 }
 
 function normalizeMapFilter(filter: string | null | undefined): string {
@@ -325,11 +393,52 @@ export class V2MapRenderingService {
     return this.developerLabelsCache;
   }
 
+  /**
+   * Active-navigation "route-critical only" declutter — filters an already-built
+   * block/gate/rasta/special-route set down to what's within NAV_CORRIDOR_RADIUS_M
+   * of the actual route path (plus the destination and always-visible major gates).
+   * Applied on top of getHomeLayers()'s output; other fields (venueBoundary, etc.)
+   * pass through untouched.
+   */
+  static getNavigationCorridorLayers(
+    layers: Pick<V2HomeMapLayers, 'blocks' | 'gates' | 'rastas' | 'specialRoutes'>,
+    routeCoordinates: Coordinate[],
+  ): Pick<V2HomeMapLayers, 'blocks' | 'gates' | 'rastas' | 'specialRoutes'> {
+    if (routeCoordinates.length < 2) return layers;
+
+    const blocks = layers.blocks.filter(
+      (block) => block.isSelected || distanceMetersToPolyline(block.center, routeCoordinates) <= NAV_CORRIDOR_RADIUS_M,
+    );
+    const gates = layers.gates.filter(
+      (gate) =>
+        gate.isSelected ||
+        MAJOR_GATE_IDS.has(gate.id) ||
+        distanceMetersToPolyline(gate.coordinate, routeCoordinates) <= NAV_CORRIDOR_RADIUS_M,
+    );
+    const rastas = layers.rastas.filter(
+      (rasta) =>
+        rasta.isSelected ||
+        rasta.polyline.some((point) => distanceMetersToPolyline(point, routeCoordinates) <= NAV_CORRIDOR_RADIUS_M),
+    );
+    const specialRoutes = layers.specialRoutes.filter(
+      (route) =>
+        route.isSelected ||
+        route.polyline.some((point) => distanceMetersToPolyline(point, routeCoordinates) <= NAV_CORRIDOR_RADIUS_M),
+    );
+
+    return { blocks, gates, rastas, specialRoutes };
+  }
+
   static getHomeLayers(options: V2MapLayerOptions = {}): V2HomeMapLayers {
     const selectedId = options.selectedPlaceId ?? options.selectedPlace?.id ?? null;
+    const selectedCoordinate = options.selectedPlace ? V2PlaceAdapter.getMarkerCoordinate(options.selectedPlace) : null;
     const baseLayers = this.getBaseLayers();
     const zoomLevel = options.zoomLevel ?? DEFAULT_ZOOM;
     const mapFilter = normalizeMapFilter(options.mapFilter);
+    const competingSuppression: CompetingSuppression | undefined =
+      options.suppressCompetingMarkers && selectedCoordinate
+        ? { selectedCoordinate, radiusM: PLACE_SELECTED_COMPETING_RADIUS_M }
+        : undefined;
 
     const showBlocks = mapFilter === 'all' || mapFilter === 'blocks';
     const showGates = (mapFilter === 'all' || mapFilter === 'gates') && options.showGatesLayer !== false;
@@ -367,9 +476,10 @@ export class V2MapRenderingService {
     // routes ("major routes" — always rendered, unfiltered) stay on screen. Block
     // polygons and rasta polylines are dense enough to clutter a zoomed-out view,
     // so they're hidden below MEDIUM_ZOOM unless the user explicitly filtered to
-    // that category or has one selected. Nav mode intentionally keeps consuming
-    // the unfiltered `blocks`/`rastas` fields (see NavigationMapLayersV2) — this
-    // LOD only applies to the two new `visibleBlocks`/`visibleRastas` fields Home renders from.
+    // that category or has one selected. Nav mode consumes these same unfiltered
+    // `blocks`/`gates`/`rastas`/`specialRoutes` fields but then narrows them further
+    // via getNavigationCorridorLayers (route-corridor-only) — this LOD only applies
+    // to the `visibleBlocks`/`visibleRastas` fields Home's browse view renders from.
     const visibleBlocks = mapFilter === 'blocks' || zoomLevel >= MEDIUM_ZOOM
       ? blocks
       : blocks.filter((block) => block.isSelected);
@@ -377,14 +487,21 @@ export class V2MapRenderingService {
       ? rastas
       : rastas.filter((rasta) => rasta.isSelected);
 
-    const visibleBlockLabels = mapFilter === 'blocks'
+    const visibleBlockLabels = (mapFilter === 'blocks'
       ? blocks
-      : pickByZoom(visibleBlocks, zoomLevel, selectedId, 4, () => false);
+      : pickByZoom(visibleBlocks, zoomLevel, selectedId, 4, () => false)
+    ).filter(
+      (block) =>
+        !competingSuppression ||
+        block.isSelected ||
+        distanceMetersBetween(block.center, competingSuppression.selectedCoordinate) > competingSuppression.radiusM,
+    );
     const visibleGateMarkers = declutterGateMarkers(
       mapFilter === 'gates'
         ? gates
         : pickByZoom(gates, zoomLevel, selectedId, 2, (gate) => MAJOR_GATE_IDS.has(gate.id)),
       zoomLevel,
+      competingSuppression,
     );
     const visibleRastaLabels = mapFilter === 'rastas'
       ? rastas
