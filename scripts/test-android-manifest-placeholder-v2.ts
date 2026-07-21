@@ -35,7 +35,7 @@ function fakeManifest(apiKeyValue: string) {
 
 // A leaked/real key fed in by app.config.js must always be rewritten to the placeholder,
 // regardless of what literal value Expo's built-in plugin wrote first.
-const rewritten = replaceGoogleMapsApiKeyWithPlaceholder(fakeManifest('AIzaSyREAL_LEAKED_KEY_VALUE'));
+const rewritten = replaceGoogleMapsApiKeyWithPlaceholder(fakeManifest('AIzaSyTEST_FAKE_KEY'));
 const rewrittenEntry = rewritten.manifest.application[0]['meta-data'].find(
   (item: any) => item.$['android:name'] === META_API_KEY,
 );
