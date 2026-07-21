@@ -200,6 +200,18 @@ off to the existing, untouched floating preview card.
   code path) — one representative block plus the script-level sweep across
   all 42 IDs.
 
+## UI polish while implementing
+
+Scoped to issues directly encountered while building the sections above —
+not a separate redesign pass. If the new `DestinationSheet` surfaces a real
+regression in bottom-sheet responsive behavior, close-button placement,
+route-preview positioning, marker-selection consistency, or label clipping,
+fix it as part of the relevant section's work. Zoom/layer/filter-chip
+controls are not touched unless the flow change above breaks them (e.g. the
+`controlStackBottom` collision-avoidance math already keyed off
+`activePreviewRoute` needs to keep working once `DestinationSheet` replaces
+today's separate preview-card/place-card elements).
+
 ## Remaining risks
 
 - The transparent wider-stroke "hit target" polyline for Rasta/Pindal taps
