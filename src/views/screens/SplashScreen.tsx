@@ -13,6 +13,7 @@ import { ConnectivityService } from '../../services/ConnectivityService';
 import { OfflineMapService } from '../../services/OfflineMapService';
 import { OfflineMapStatusService } from '../../services/OfflineMapStatusService';
 import { OnboardingStatusService } from '../../services/OnboardingStatusService';
+import { StartupManager } from '../../services/StartupManager';
 import { RootStackParamList } from '../../navigation/RootNavigator';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
@@ -71,46 +72,15 @@ export function SplashScreen() {
 
         setHasLocationPermission(permissionGranted);
 
-        // Routing logic — check onboarding intro, permission, and map independently
-        if (!hasSeenWelcome) {
-          navigation.replace('Welcome');
-          return;
-        }
-
-        if (!permissionGranted) {
-          navigation.replace('Permission');
-          return;
-        }
-
-        if (startupStatus.status === 'downloaded') {
-          navigation.replace('Main');
-          return;
-        }
-
-        if (startupStatus.status === 'corrupt' || startupStatus.status === 'needs_update') {
-          navigation.replace('DownloadMap');
-          return;
-        }
-
-        if (graphOnlyModeEnabled && startupStatus.status === 'not_downloaded') {
-          navigation.replace('Main');
-          return;
-        }
-
-        if (skippedOnlineModeEnabled && startupStatus.status === 'not_downloaded') {
-          // User already chose "Use Online Mode" once — don't re-prompt every launch.
-          navigation.replace('Main');
-          return;
-        }
-
-        if (!isConnected && startupStatus.status === 'not_downloaded') {
-          // No internet AND no map — go to Main in graph-only mode
-          navigation.replace('Main');
-          return;
-        }
-
-        // Have internet, no map yet, never chosen a mode before — go to download
-        navigation.replace('DownloadMap');
+        const { route } = StartupManager.resolve({
+          hasSeenWelcome,
+          permissionGranted,
+          offlineMapStatus: startupStatus.status,
+          graphOnlyModeEnabled,
+          skippedOnlineModeEnabled,
+          isConnected,
+        });
+        navigation.replace(route);
       } catch {
         if (!isMountedRef.current) return;
         const { setDownloadState } = useAppStore.getState();
