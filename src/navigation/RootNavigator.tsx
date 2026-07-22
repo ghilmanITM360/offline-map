@@ -13,7 +13,6 @@ import { WelcomeScreen } from '../views/screens/WelcomeScreen';
 import { PermissionScreen } from '../views/screens/PermissionScreen';
 import { DownloadMapScreen } from '../views/screens/DownloadMapScreen';
 import { SettingsScreen } from '../views/screens/SettingsScreen';
-import { NavigationScreen } from '../views/screens/NavigationScreen';
 import { ErrorScreen } from '../views/screens/ErrorScreen';
 import { HelpScreen } from '../views/screens/HelpScreen';
 import { AboutScreen } from '../views/screens/AboutScreen';
@@ -36,7 +35,6 @@ export type RootStackParamList = {
   Permission: undefined;
   DownloadMap: undefined;
   Main: NavigatorScreenParams<DrawerParamList> | undefined;
-  Navigation: undefined;
   AppGuide: undefined;
   Error: { title?: string; message?: string; type?: 'general' | 'connectivity' } | undefined;
 }; // fixed: type stack routes
@@ -86,7 +84,6 @@ export function RootNavigator() {
       <Stack.Screen name="Permission" component={PermissionScreen} />
       <Stack.Screen name="DownloadMap" component={DownloadMapScreen} />
       <Stack.Screen name="Main" component={MainDrawer} />
-      <Stack.Screen name="Navigation" component={NavigationScreen} />
       <Stack.Screen name="AppGuide" component={AppGuideScreen} />
       <Stack.Screen name="Error" component={ErrorScreen} />
     </Stack.Navigator>

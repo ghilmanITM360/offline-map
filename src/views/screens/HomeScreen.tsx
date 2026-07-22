@@ -66,9 +66,12 @@ import { MapLabelOverlay, MapLabelItem, MapLabelOverlayHandle } from '../compone
 import { MapControls } from '../components/map/MapControls';
 import { LayersSheet } from '../components/map/LayersSheet';
 import { useNavigationOverlayV2 } from '../../viewmodels/useNavigationOverlayV2';
+import { useNavigationOverlayV1 } from '../../viewmodels/useNavigationOverlayV1';
 import { useMapMode } from '../../viewmodels/useMapMode';
 import { NavigationMapLayersV2 } from '../components/navigation/NavigationMapLayersV2';
 import { NavigationChromeV2 } from '../components/navigation/NavigationChromeV2';
+import { NavigationMapLayersV1 } from '../components/navigation/NavigationMapLayersV1';
+import { NavigationChromeV1 } from '../components/navigation/NavigationChromeV1';
 import { LocationSheet } from '../components/map/LocationSheet';
 import { Z } from '../styles/zLayers';
 
@@ -263,6 +266,17 @@ export function HomeScreen() {
   });
   const showNavOverlay = navOverlay.active && MapFeatureFlagsService.useIjtemaV2Navigation();
 
+  // Legacy (v1) destinations navigate in-place too now — no separate NavigationScreen.
+  // v1's activeRoute and v2's are mutually exclusive by construction (one global
+  // `activeRoute`/`isNavigating` pair in the store), so at most one of these is ever active.
+  const navOverlayV1 = useNavigationOverlayV1({
+    mapRef,
+    mapReady,
+    hasGoogleMapsKey,
+    userPulseAnim,
+  });
+  const showAnyNavOverlay = showNavOverlay || navOverlayV1.active;
+
   useEffect(() => {
     setSelectedEntryIdx(0);
   }, [selectedPlace?.id]);
@@ -315,7 +329,7 @@ export function HomeScreen() {
 
   const mode = useMapMode({
     arrived,
-    showNavOverlay,
+    showNavOverlay: showAnyNavOverlay,
     isSearchFocused,
     detailsExpanded,
     directionsDestination,
@@ -420,6 +434,10 @@ export function HomeScreen() {
         zPriority: 12,
       }));
     }
+    // Legacy (v1) navigation never had a label overlay — its map layers are plain
+    // Polygon/Polyline elements, not v2MapLayers, so v2's gate/block/rasta labels
+    // would be visually mismatched if rendered on top of a v1 nav session.
+    if (navOverlayV1.active) return [];
     if (!useV2Map) return [];
 
     const items: MapLabelItem[] = [];
@@ -499,7 +517,7 @@ export function HomeScreen() {
     }
 
     return items;
-  }, [showNavOverlay, navOverlay.mapLayers.gates, useV2Map, v2MapLayers, mapZoomLevel, dismissSearch, handlePlaceSelect]);
+  }, [showNavOverlay, navOverlay.mapLayers.gates, navOverlayV1.active, useV2Map, v2MapLayers, mapZoomLevel, dismissSearch, handlePlaceSelect]);
 
   const effectiveInitialRegion = useV2Map
     ? {
@@ -619,10 +637,10 @@ export function HomeScreen() {
   }, [activePreviewRoute, directionsDestination, bottomSheetRef]);
 
   useEffect(() => {
-    if (!showNavOverlay) return;
+    if (!showAnyNavOverlay) return;
     setDirectionsDestination(null);
     bottomSheetRef.current?.close();
-  }, [showNavOverlay, bottomSheetRef]);
+  }, [showAnyNavOverlay, bottomSheetRef]);
 
   const recenterResetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const handleRecenterPress = useCallback(async () => {
@@ -825,6 +843,7 @@ export function HomeScreen() {
           <VenueBoundary coordinates={useV2Map ? v2MapLayers.venueBoundary : VENUE_BOUNDARY} />
 
           {mode === 'NAVIGATION' && <NavigationMapLayersV2 overlay={navOverlay} />}
+          {mode === 'NAVIGATION' && <NavigationMapLayersV1 overlay={navOverlayV1} />}
 
           {mode !== 'NAVIGATION' && (useV2Map ? (
             <React.Fragment key={`v2_layers_${v2MapLayers.activeMapFilter}`}>
@@ -1064,6 +1083,7 @@ export function HomeScreen() {
           </MapView>
 
         {mode === 'NAVIGATION' && <NavigationChromeV2 overlay={navOverlay} hasGoogleMapsKey={hasGoogleMapsKey} />}
+        {mode === 'NAVIGATION' && <NavigationChromeV1 overlay={navOverlayV1} hasGoogleMapsKey={hasGoogleMapsKey} />}
         <MapLabelOverlay
           ref={mapLabelOverlayRef}
           mapRef={mapRef}
@@ -1423,7 +1443,6 @@ export function HomeScreen() {
               mode="routePreview"
               destination={directionsDestination}
               onClose={handleCloseDirections}
-              onStartLegacyNavigation={() => nav.navigate('Navigation')}
             />
           ) : selectedPlace ? (
             <LocationSheet

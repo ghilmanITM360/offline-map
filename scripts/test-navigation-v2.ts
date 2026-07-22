@@ -12,7 +12,7 @@ process.env.EXPO_PUBLIC_USE_IJTEMA_V2_ROUTING = 'true';
 
 const directionsScreenSource = readFileSync('src/views/components/map/LocationSheet.tsx', 'utf8');
 const directionsViewModelSource = readFileSync('src/viewmodels/DirectionsViewModel.ts', 'utf8');
-const navigationScreenSource = readFileSync('src/views/screens/NavigationScreen.tsx', 'utf8');
+const navigationViewModelV1Source = readFileSync('src/viewmodels/NavigationViewModel.ts', 'utf8');
 const homeScreenSource = readFileSync('src/views/screens/HomeScreen.tsx', 'utf8');
 const homeViewModelSource = readFileSync('src/viewmodels/HomeViewModel.ts', 'utf8');
 const navigationOverlayV2Source = readFileSync('src/viewmodels/useNavigationOverlayV2.ts', 'utf8');
@@ -20,8 +20,9 @@ const navigationViewModelV2Source = readFileSync('src/viewmodels/NavigationViewM
 const featureFlagSource = readFileSync('src/services/MapFeatureFlagsService.ts', 'utf8');
 
 // v2 live navigation now runs in-place on HomeScreen's persistent MapView (useNavigationOverlayV2),
-// not on a separately pushed NavigationScreen — see docs/MAP_EXPERIENCE_AUDIT.md. NavigationScreen
-// is now v1-only, plus a defensive NavigationScreenV2Disabled fallback for stale/rollback v2 routes.
+// not on a separately pushed NavigationScreen — see docs/MAP_EXPERIENCE_AUDIT.md. v1's equivalent
+// (NavigationViewModel + useNavigationOverlayV1) itself guards against ever adopting a
+// v2-shaped active route, since both hooks now run unconditionally with no outer screen to gate on.
 assert(featureFlagSource.includes('useIjtemaV2Navigation'), 'MapFeatureFlagsService must expose EXPO_PUBLIC_USE_IJTEMA_V2_NAVIGATION');
 assert(directionsScreenSource.includes('Show route on map'), 'DirectionsScreen must hand preview back to Home map');
 assert(directionsScreenSource.includes('Get Directions'), 'DirectionsScreen must keep layman-friendly heading');
@@ -31,8 +32,10 @@ assert(homeScreenSource.includes('useNavigationOverlayV2'), 'HomeScreen must run
 assert(navigationOverlayV2Source.includes('useNavigationViewModelV2'), 'The v2 navigation overlay must be backed by NavigationViewModelV2');
 assert(navigationViewModelV2Source.includes('isV2ActiveRoute(activeRoute)'), 'v2 navigation overlay must choose v2 only for v2 active routes');
 assert(homeScreenSource.includes('MapFeatureFlagsService.useIjtemaV2Navigation()'), 'HomeScreen must gate the v2 navigation overlay behind the v2 navigation flag');
-assert(navigationScreenSource.includes('NavigationScreenV2Disabled'), 'NavigationScreen must not pass v2 active routes into v1 when nav flag is off');
-assert(navigationScreenSource.includes('V2 navigation is disabled'), 'Disabled v2 active navigation branch must show a clear message');
+assert(
+  navigationViewModelV1Source.includes("(activeRoute as { sourceVersion?: string }).sourceVersion === 'v2'"),
+  'v1 navigation runtime must not adopt v2-shaped active routes',
+);
 // The single consolidated start-navigation path now lives on Home (route preview card ->
 // handleStartPreviewNavigation), not on a per-screen Directions handler — it must validate
 // v2 map/routing/navigation flags (and destination) via the shared adapter before starting.
@@ -43,7 +46,7 @@ assert(
 
 const runtimeCoordinateLiteralPattern = /\b(?:24|66|67)\.\d{3,}\b/;
 for (const [file, source] of [
-  ['src/views/screens/NavigationScreen.tsx', navigationScreenSource],
+  ['src/viewmodels/NavigationViewModel.ts', navigationViewModelV1Source],
   ['src/viewmodels/HomeViewModel.ts', homeViewModelSource],
   ['src/viewmodels/useNavigationOverlayV2.ts', navigationOverlayV2Source],
 ]) {

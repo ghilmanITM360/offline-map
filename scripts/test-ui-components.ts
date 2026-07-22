@@ -3,7 +3,13 @@ import { readFileSync } from 'node:fs';
 
 const home = readFileSync('src/views/screens/HomeScreen.tsx', 'utf8');
 const directions = readFileSync('src/views/components/map/LocationSheet.tsx', 'utf8');
-const navigation = readFileSync('src/views/screens/NavigationScreen.tsx', 'utf8');
+// Legacy (v1) navigation no longer lives in one standalone NavigationScreen.tsx — it's split
+// across a viewmodel, an overlay hook, and map-layers/chrome components, mirroring v2's shape.
+const navigationVm = readFileSync('src/viewmodels/NavigationViewModel.ts', 'utf8');
+const navigationOverlayV1 = readFileSync('src/viewmodels/useNavigationOverlayV1.ts', 'utf8');
+const navigationMapLayersV1 = readFileSync('src/views/components/navigation/NavigationMapLayersV1.tsx', 'utf8');
+const navigationChromeV1 = readFileSync('src/views/components/navigation/NavigationChromeV1.tsx', 'utf8');
+const navigation = [navigationVm, navigationOverlayV1, navigationMapLayersV1, navigationChromeV1].join('\n');
 const settings = readFileSync('src/views/screens/SettingsScreen.tsx', 'utf8');
 const guide = readFileSync('src/views/screens/AppGuideScreen.tsx', 'utf8');
 const drawer = readFileSync('src/views/components/CustomDrawer.tsx', 'utf8');
@@ -17,7 +23,8 @@ const rawIdPattern = /\b(?:R\d+-\d+|SPNP-\d+|SPSP-\d+|SPWP-\d+|B\d+_C\d+|P\d+)\b
 const visibleUserText = [
   home.replace(/__DEV__ && developerModeEnabled[\s\S]*?<\/React.Fragment>/g, ''),
   directions,
-  navigation.replace(/developerMode[\s\S]*?graphOnlyFallback/g, 'graphOnlyFallback'),
+  navigationMapLayersV1,
+  navigationChromeV1,
   navigationChromeV2,
   settings.replace(/__DEV__[\s\S]*?Developer Mode[\s\S]*?\)/g, ''),
   guide,
@@ -51,16 +58,19 @@ assert(directions.includes('Route ready'), 'Directions must show route-ready sta
 assert(directions.includes('Find nearest official gate automatically'), 'Directions must explain current-location routing behavior');
 assert(directions.includes('Change destination'), 'Directions must keep destination-change action');
 
-// v2 live navigation now runs in-place on HomeScreen's persistent MapView (useNavigationOverlayV2) —
-// NavigationScreen itself only renders the legacy v1 path, plus a defensive disabled-v2 fallback.
-assert(navigation.includes('<NavigationScreenV1 />') && navigation.includes('<NavigationScreenV2Disabled />'), 'Navigation screen must isolate the v1 render path from the disabled-v2 fallback');
-assert(navigation.includes('NavigationScreenV2Disabled'), 'Navigation must block v2 routes when v2 navigation flag is off');
-assert(navigation.includes('mapType={hasGoogleMapsKey && hasInternet ?') && navigation.includes(": 'none'"), 'Navigation must render graph-only map when base map is unavailable or internet is offline');
+// Both v1 and v2 live navigation now run in-place on HomeScreen's persistent MapView — v1's
+// runtime (NavigationViewModel) itself rejects a v2-shaped activeRoute rather than relying on
+// an outer screen-level disabled-v2 fallback (there's no separate screen left to gate on).
+assert(
+  navigationVm.includes("(activeRoute as { sourceVersion?: string }).sourceVersion === 'v2'"),
+  'Legacy (v1) navigation runtime must detect and reject v2-shaped active routes',
+);
+assert(home.includes("mapType={hasGoogleMapsKey ? (isOffline ? 'none' : mapType) : 'none'}"), 'Home map (shared by navigation) must render graph-only map when base map is unavailable or internet is offline');
 assert(navigation.includes('route.coordinates'), 'Navigation must render route polyline from active route coordinates');
-assert(navigation.includes('title={route.origin.label}') || navigation.includes('title="Start"'), 'Navigation must render a start marker');
+assert(navigation.includes('title="Start"'), 'Navigation must render a start marker');
 assert(navigation.includes('destinationMarker'), 'Navigation must render a destination marker');
 assert(navigation.includes('userMarker'), 'Navigation must render current/user marker');
-assert(navigation.includes('handleExit(nav)'), 'Navigation exit button must be wired');
+assert(navigation.includes('handleExit()'), 'Navigation exit button must be wired');
 assert(navigation.includes('styles.tripTextWrap'), 'Navigation bottom trip text must be constrained separately from Exit button');
 assert(navigation.includes('animateCamera') && navigation.includes('LocateFixed'), 'Navigation recenter button must animate camera');
 

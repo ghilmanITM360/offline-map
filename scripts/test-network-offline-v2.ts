@@ -51,13 +51,16 @@ const offlineMapService = readFileSync('src/services/OfflineMapService.ts', 'utf
 const downloadViewModel = readFileSync('src/viewmodels/DownloadMapViewModel.ts', 'utf8');
 const appGuide = readFileSync('src/views/screens/AppGuideScreen.tsx', 'utf8');
 const directionsScreen = readFileSync('src/views/components/map/LocationSheet.tsx', 'utf8');
-const navigationScreen = readFileSync('src/views/screens/NavigationScreen.tsx', 'utf8');
+// Navigation (v1 and v2 alike) now renders on HomeScreen's single shared MapView instead of a
+// separate NavigationScreen with its own MapView — so the "no live tiles while offline" check
+// applies to HomeScreen's one mapType expression, not a nav-specific one.
+const homeScreenForOffline = readFileSync('src/views/screens/HomeScreen.tsx', 'utf8');
 
 assert(!splash.includes('runNetworkDiagnostics'), 'Startup must not block on network diagnostics');
 assert(offlineMapService.includes('fetch(') || offlineMapService.includes('downloadFileAsync'), 'Network usage must be isolated to optional tile download/diagnostics');
 assert(downloadViewModel.includes('continueWithVenueMapOnly'), 'Tile failure must keep graph-only navigation available');
 assert(appGuide.includes('Internal search and directions work from bundled Ijtema data'), 'User copy must explain that core navigation remains offline');
 assert(!directionsScreen.includes('MapView'), 'Directions start-selection flow must not depend on base map preview while offline');
-assert(navigationScreen.includes("mapType={hasGoogleMapsKey && hasInternet ? (offlineData.isDownloaded ? 'none' : settings.mapMode) : 'none'}"), 'Navigation must not request live base tiles while offline');
+assert(homeScreenForOffline.includes("mapType={hasGoogleMapsKey ? (isOffline ? 'none' : mapType) : 'none'}"), 'Home map (shared by navigation) must not request live base tiles while offline');
 
 console.log('Network/offline v2 checks passed.');

@@ -10,7 +10,6 @@ import { V2NavigationAdapter } from '../src/services/V2NavigationAdapter';
 const searchSource = readFileSync('src/services/SearchService.ts', 'utf8');
 const directionsVmSource = readFileSync('src/viewmodels/DirectionsViewModel.ts', 'utf8');
 const homeScreenSource = readFileSync('src/views/screens/HomeScreen.tsx', 'utf8');
-const navigationScreenSource = readFileSync('src/views/screens/NavigationScreen.tsx', 'utf8');
 const navigationV1Source = readFileSync('src/viewmodels/NavigationViewModel.ts', 'utf8');
 const storeSource = readFileSync('src/store/useAppStore.ts', 'utf8');
 const legacyDataSource = readFileSync('src/constants/data.ts', 'utf8');
@@ -20,8 +19,14 @@ assert(directionsVmSource.includes("destination.sourceVersion === 'v2'"), 'Direc
 // v2 active navigation now starts from Home's route preview card (the single consolidated
 // start-navigation path), not from a per-screen Directions handler.
 assert(homeScreenSource.includes('V2NavigationAdapter.fromPreview'), 'Home start-navigation handler must adapt v2 previews before active navigation');
-assert(navigationScreenSource.includes("activeRoute?.sourceVersion === 'v2'"), 'NavigationScreen must identify v2 active routes');
-assert(navigationScreenSource.includes('NavigationScreenV2Disabled'), 'NavigationScreen must not send disabled v2 active routes into v1 runtime');
+// Both v1 and v2 navigation now run unconditionally inside HomeScreen (no outer screen to
+// gate on activeRoute.sourceVersion), so NavigationViewModel (v1) must reject a v2-shaped
+// activeRoute itself — checked with an inline duck-type test, not V2NavigationAdapter's
+// isV2ActiveRoute, so this v1-only module stays free of any v2 import (see the assertion below).
+assert(
+  navigationV1Source.includes("(activeRoute as { sourceVersion?: string }).sourceVersion === 'v2'"),
+  'NavigationViewModel (v1) must identify and reject v2-shaped active routes',
+);
 assert(!navigationV1Source.includes('V2NavigationAdapter'), 'Legacy NavigationViewModel must remain v1-only');
 assert(!legacyDataSource.includes('../data/ijtema/mapBounds'), 'Legacy data constants must not import v2 map bounds');
 assert(!legacyDataSource.includes('IJTEMA_MAP_BOUNDS'), 'Legacy MAP_BOUNDS must be derived from legacy data only');

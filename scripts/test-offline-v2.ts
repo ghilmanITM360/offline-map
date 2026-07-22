@@ -43,9 +43,9 @@ assert(activeRoute.coordinates.length >= 2, 'Offline active navigation must keep
 
 const downloadScreen = readFileSync('src/views/screens/DownloadMapScreen.tsx', 'utf8');
 const downloadViewModel = readFileSync('src/viewmodels/DownloadMapViewModel.ts', 'utf8');
-const navigationScreen = readFileSync('src/views/screens/NavigationScreen.tsx', 'utf8');
-// v2 live navigation now renders in-place on HomeScreen's persistent MapView
-// (NavigationMapLayersV2), not on a separate NavigationScreen — see docs/MAP_EXPERIENCE_AUDIT.md.
+// v1 and v2 live navigation both now render in-place on HomeScreen's persistent MapView
+// (NavigationMapLayersV1/V2), not on a separate NavigationScreen — see docs/MAP_EXPERIENCE_AUDIT.md.
+const homeScreenForTiles = readFileSync('src/views/screens/HomeScreen.tsx', 'utf8');
 const navigationMapLayersV2 = readFileSync('src/views/components/navigation/NavigationMapLayersV2.tsx', 'utf8');
 const offlineMapService = readFileSync('src/services/OfflineMapService.ts', 'utf8');
 assert(downloadScreen.includes('Use Venue Map Only'), 'Offline tile failure must allow venue-map-only mode');
@@ -54,7 +54,7 @@ assert(
     downloadViewModel.includes('Background map unavailable. Ijtema routes still work.'),
   'Offline tile failure must show the required fallback message',
 );
-assert(navigationScreen.includes("mapType={hasGoogleMapsKey && hasInternet ? (offlineData.isDownloaded ? 'none' : settings.mapMode) : 'none'}"), 'Navigation must not require live tiles when base map is unavailable or internet is offline');
+assert(homeScreenForTiles.includes("mapType={hasGoogleMapsKey ? (isOffline ? 'none' : mapType) : 'none'}"), 'Home map (shared by navigation) must not require live tiles when base map is unavailable or internet is offline');
 assert(navigationMapLayersV2.includes('mapLayers.blocks'), 'V2 navigation graph-only map must render block context');
 assert(navigationMapLayersV2.includes('mapLayers.rastas'), 'V2 navigation graph-only map must render rasta lines');
 // Phase 8 (docs/ROUTING_NAVIGATION_FIX_REPORT.md): route.coordinates was moved

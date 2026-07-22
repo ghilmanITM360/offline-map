@@ -28,14 +28,12 @@ assert(
 // entry point again — previously the primary button unconditionally did
 // onClose() for every destination, and handleStartNavigation didn't exist at
 // all, so a v1 place could never start navigation anywhere in the app. See
-// docs/ROUTING_NAVIGATION_FIX_REPORT.md Phase 4.
+// docs/ROUTING_NAVIGATION_FIX_REPORT.md Phase 4. It no longer pushes a
+// NavigationScreen either way (v1 or v2) — starting navigation always just
+// reveals the map, and the in-place NavigationOverlayV1/V2 takes over from there.
 assert(
   directionsScreenSource.includes('Start Navigation'),
   'Directions screen must expose a Start Navigation CTA for legacy destinations.',
-);
-assert(
-  directionsScreenSource.includes('onStartLegacyNavigation()'),
-  'Directions screen must call onStartLegacyNavigation for legacy destinations.',
 );
 assert(
   directionsScreenSource.includes('handleStartNavigation()'),
@@ -45,17 +43,16 @@ assert(
   directionsScreenSource.includes("destination.sourceVersion === 'v2'"),
   'Directions screen primary button must branch on destination.sourceVersion.',
 );
-// DirectionsScreen takes navigation as an injected prop (onStartLegacyNavigation)
-// rather than calling useNavigation() itself — it's rendered inline inside
-// HomeScreen's bottom sheet, not as a routed screen, and this keeps it
-// renderable/testable in isolation without a NavigationContainer.
+// LocationSheet doesn't depend on react-navigation at all anymore — it's rendered inline
+// inside HomeScreen's bottom sheet, not as a routed screen, and starting navigation (v1 or v2)
+// never needs to navigate anywhere; it just reveals the map behind the sheet.
 assert(
   !directionsScreenSource.includes("from '@react-navigation/native'"),
   'Directions screen must not depend on react-navigation context directly.',
 );
 assert(
-  homeScreenSource.includes("onStartLegacyNavigation={() => nav.navigate('Navigation')}"),
-  'Home screen must wire DirectionsScreen legacy navigation through its own navigation object.',
+  !homeScreenSource.includes("nav.navigate('Navigation')"),
+  'Home screen must not push a separate Navigation screen — navigation runs in-place.',
 );
 assert(
   directionsViewModelSource.includes('const handleStartNavigation'),

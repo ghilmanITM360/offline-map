@@ -25,7 +25,8 @@ assert(RerouteService.isOffRoute(farther, route as any, 50) === false, 'Expected
 
 const directions = readFileSync('src/views/components/map/LocationSheet.tsx', 'utf8');
 const navVm = readFileSync('src/viewmodels/NavigationViewModel.ts', 'utf8');
-const navScreen = readFileSync('src/views/screens/NavigationScreen.tsx', 'utf8');
+const navChrome = readFileSync('src/views/components/navigation/NavigationChromeV1.tsx', 'utf8');
+const homeScreenSource = readFileSync('src/views/screens/HomeScreen.tsx', 'utf8');
 
 assert(directions.includes('Use my current location'), 'Directions should offer current-location start action');
 assert(directions.includes('Choose start manually'), 'Directions should keep manual-start fallback');
@@ -37,8 +38,10 @@ assert(navVm.includes('OFF_ROUTE_PENDING_MS'), 'Navigation should wait before re
 assert(navVm.includes('projectProgressMetersOnRoute'), 'Navigation should project user progress on active route');
 assert(navVm.includes('holdRouteForWeakGps'), 'Navigation should hold route stable when GPS accuracy is poor');
 assert(navVm.includes('continuing current route'), 'Navigation should preserve current route when candidate reroute fails');
-assert(navScreen.includes('Weak GPS signal detected'), 'Navigation UI should show weak GPS warning');
-assert(navScreen.includes('Venue map loading...'), 'Navigation should show venue loading state instead of blank map');
+assert(navChrome.includes('Weak GPS signal detected'), 'Navigation UI should show weak GPS warning');
+// Navigation now runs on HomeScreen's single persistent MapView, so the "map still loading"
+// state is HomeScreen's own cold-start overlay, not a nav-specific one.
+assert(homeScreenSource.includes('Loading map...'), 'Home map should show a loading state instead of a blank map');
 
 const c2BoundaryPoint = {
   latitude: IJTEMA_DATA.nodes.C2.lat,

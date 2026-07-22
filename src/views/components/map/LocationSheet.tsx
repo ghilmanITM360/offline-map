@@ -64,10 +64,10 @@ export type LocationSheetProps =
   | {
       mode: 'routePreview';
       destination: Place;
+      /** Both v1 and v2 destinations reveal the map on start — navigation itself always runs
+       * in-place on HomeScreen's persistent map surface (NavigationOverlayV1/V2), never a pushed
+       * screen. v2's own "Start Navigation" additionally lives in HomeScreen's route-preview card. */
       onClose: () => void;
-      /** Legacy (v1) destinations only — pushes the 'Navigation' stack screen. v2 destinations
-       * start navigation through HomeScreen's own route-preview card instead (onClose reveals it). */
-      onStartLegacyNavigation: () => void;
     }
   | {
       mode: 'preview' | 'details';
@@ -94,7 +94,6 @@ export function LocationSheet(props: LocationSheetProps) {
       <RoutePreviewSection
         destination={props.destination}
         onClose={props.onClose}
-        onStartLegacyNavigation={props.onStartLegacyNavigation}
       />
     );
   }
@@ -140,11 +139,9 @@ function StartOption({
 function RoutePreviewSection({
   destination,
   onClose,
-  onStartLegacyNavigation,
 }: {
   destination: Place;
   onClose: () => void;
-  onStartLegacyNavigation: () => void;
 }) {
   const currentLocation = useAppStore((s) => s.currentLocation);
   const lastKnownLocation = useAppStore((s) => s.lastKnownLocation);
@@ -410,8 +407,10 @@ function RoutePreviewSection({
                     onClose();
                     return;
                   }
+                  // v1: starts the in-place NavigationOverlayV1 (via the store), then
+                  // reveals the map the same way v2 does — no screen navigation either way.
                   handleStartNavigation();
-                  onStartLegacyNavigation();
+                  onClose();
                 }}
               >
                 <Text style={styles.primaryButtonText}>

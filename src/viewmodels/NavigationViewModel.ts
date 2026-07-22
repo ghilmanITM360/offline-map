@@ -92,6 +92,14 @@ export function useNavigationViewModel() {
   useEffect(() => {
     if (!destination) return;
 
+    // This hook now runs unconditionally inside HomeScreen (mirroring v2's overlay pattern),
+    // so it must guard against a v2-shaped activeRoute itself — the old standalone
+    // NavigationScreen used to do this at the outer component level (rendering a disabled
+    // fallback instead of ever mounting this hook), which is no longer possible now that
+    // there's no separate screen to gate on. Checked inline, not via the v2 adapter's
+    // route-shape guard, to keep this v1-only module free of any v2 import.
+    if (activeRoute && (activeRoute as { sourceVersion?: string }).sourceVersion === 'v2') return;
+
     if (activeRoute) {
       setRoute(activeRoute);
       routeRef.current = activeRoute;
@@ -373,10 +381,23 @@ export function useNavigationViewModel() {
     setIsMuted(muted);
   };
 
-  const handleExit = (navigation: any) => {
+  // No screen to unmount anymore (navigation now renders in-place on HomeScreen's
+  // persistent MapView) — this must explicitly clear local route/instruction state that
+  // used to be thrown away for free when NavigationScreen unmounted.
+  const handleExit = () => {
     VoiceService.stop();
     stopNavigation();
-    navigation.reset({ index: 0, routes: [{ name: 'Main' }] });
+    setRoute(null);
+    routeRef.current = null;
+    setInstructions([]);
+    instructionsRef.current = [];
+    setRemainingDistance(0);
+    setIsWeakGps(false);
+    setRerouteStatusMessage(null);
+    if (rerouteTimerRef.current) {
+      clearTimeout(rerouteTimerRef.current);
+      rerouteTimerRef.current = null;
+    }
   };
 
   return {

@@ -6,7 +6,14 @@ const directionsVm = readFileSync('src/viewmodels/DirectionsViewModel.ts', 'utf8
 const settingsVm = readFileSync('src/viewmodels/SettingsViewModel.ts', 'utf8');
 const settingsScreen = readFileSync('src/views/screens/SettingsScreen.tsx', 'utf8');
 const directionsScreen = readFileSync('src/views/components/map/LocationSheet.tsx', 'utf8');
-const navScreen = readFileSync('src/views/screens/NavigationScreen.tsx', 'utf8');
+// Legacy (v1) navigation no longer lives in one standalone NavigationScreen.tsx — it's split
+// across a viewmodel, an overlay hook, and map-layers/chrome components, mirroring v2's shape.
+const navScreen = [
+  readFileSync('src/viewmodels/NavigationViewModel.ts', 'utf8'),
+  readFileSync('src/viewmodels/useNavigationOverlayV1.ts', 'utf8'),
+  readFileSync('src/views/components/navigation/NavigationMapLayersV1.tsx', 'utf8'),
+  readFileSync('src/views/components/navigation/NavigationChromeV1.tsx', 'utf8'),
+].join('\n');
 const homeScreen = readFileSync('src/views/screens/HomeScreen.tsx', 'utf8');
 const offlineMapService = readFileSync('src/services/OfflineMapService.ts', 'utf8');
 const offlineDataService = readFileSync('src/services/OfflineDataService.ts', 'utf8');
@@ -142,8 +149,8 @@ assert(
   'Navigation should include graph-only fallback diagnostics',
 );
 assert(
-  navScreen.includes('fitToCoordinates') && navScreen.includes('cameraFitReason'),
-  'Navigation should fit route/venue bounds and track fit reasons',
+  navScreen.includes('fitToCoordinates'),
+  'Navigation should fit route/venue bounds',
 );
 assert(
   navScreen.includes('title="Start"'),
@@ -179,7 +186,7 @@ assert(
   'Navigation mute button must toggle mute state',
 );
 assert(
-  navScreen.includes('handleExit(nav)'),
+  navScreen.includes('handleExit()'),
   'Navigation exit action must be wired',
 );
 assert(

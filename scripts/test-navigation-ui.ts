@@ -1,12 +1,14 @@
 import { strict as assert } from 'node:assert';
 import { readFileSync } from 'node:fs';
 
-// v2 live navigation now runs in-place on HomeScreen's persistent MapView instead of a
-// separately pushed NavigationScreen — see docs/MAP_EXPERIENCE_AUDIT.md. NavigationScreen.tsx
-// is now v1-only, plus a defensive NavigationScreenV2Disabled fallback for stale/rollback v2
-// routes. The v2 runtime itself now lives in useNavigationOverlayV2 (state/effects),
-// NavigationMapLayersV2 (map children), and NavigationChromeV2 (banners/cards/buttons).
-const navigation = readFileSync('src/views/screens/NavigationScreen.tsx', 'utf8');
+// Both v1 and v2 live navigation now run in-place on HomeScreen's persistent MapView —
+// neither is a separately pushed NavigationScreen anymore (see docs/MAP_EXPERIENCE_AUDIT.md).
+// v1's runtime lives in NavigationViewModel (state/effects) + useNavigationOverlayV1 (camera) +
+// NavigationMapLayersV1/NavigationChromeV1 (rendering). v2's equivalent is
+// useNavigationOverlayV2/NavigationMapLayersV2/NavigationChromeV2. Since both hooks now run
+// unconditionally inside HomeScreen (no outer screen to gate on activeRoute.sourceVersion),
+// NavigationViewModel itself must guard against ever adopting a v2-shaped activeRoute.
+const navigationVm = readFileSync('src/viewmodels/NavigationViewModel.ts', 'utf8');
 const homeScreen = readFileSync('src/views/screens/HomeScreen.tsx', 'utf8');
 const navOverlay = readFileSync('src/viewmodels/useNavigationOverlayV2.ts', 'utf8');
 const navMapLayers = readFileSync('src/views/components/navigation/NavigationMapLayersV2.tsx', 'utf8');
@@ -15,11 +17,12 @@ const navVmV2 = readFileSync('src/viewmodels/NavigationViewModelV2.ts', 'utf8');
 const navAdapter = readFileSync('src/services/V2NavigationAdapter.ts', 'utf8');
 const runtime = readFileSync('src/services/V2NavigationRuntimeService.ts', 'utf8');
 
-assert(navigation.includes("activeRoute?.sourceVersion === 'v2'"), 'Navigation must detect v2 active routes');
+assert(
+  navigationVm.includes("(activeRoute as { sourceVersion?: string }).sourceVersion === 'v2'"),
+  'Legacy (v1) navigation runtime must detect and reject v2-shaped active routes',
+);
 assert(homeScreen.includes('MapFeatureFlagsService.useIjtemaV2Navigation'), 'Home must gate the v2 navigation overlay with the v2 navigation flag');
-assert(navigation.includes('NavigationScreenV2Disabled'), 'Navigation must not send disabled v2 route into v1 runtime');
-assert(navigation.includes('NavigationScreenV1'), 'Legacy navigation must remain isolated for rollback');
-assert(homeScreen.includes('useNavigationOverlayV2'), 'v2 navigation render path must exist on Home');
+assert(homeScreen.includes('useNavigationOverlayV1') && homeScreen.includes('useNavigationOverlayV2'), 'Both v1 and v2 navigation render paths must exist on Home');
 
 assert(navOverlay.includes('V2MapRenderingService.getHomeLayers'), 'v2 navigation must render v2 graph overlay');
 assert(navMapLayers.includes('mapLayers.blocks') && navMapLayers.includes('BlockLayer'), 'v2 navigation must render block context');

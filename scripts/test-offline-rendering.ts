@@ -2,12 +2,12 @@ import { strict as assert } from 'node:assert';
 import { readFileSync } from 'node:fs';
 
 const home = readFileSync('src/views/screens/HomeScreen.tsx', 'utf8');
-const nav = readFileSync('src/views/screens/NavigationScreen.tsx', 'utf8');
 const statusService = readFileSync('src/services/OfflineMapStatusService.ts', 'utf8');
 const layersSheet = readFileSync('src/views/components/map/LayersSheet.tsx', 'utf8');
 
+// Navigation (v1 and v2 alike) renders on HomeScreen's single shared MapView now, not a
+// separate NavigationScreen with its own LocalTile — so Home's one LocalTile covers it.
 assert(home.includes('LocalTile pathTemplate={getTilePath()}'), 'Home should render LocalTile when offline tiles exist');
-assert(nav.includes('LocalTile pathTemplate={getTilePath()}'), 'Navigation should render LocalTile when offline tiles exist');
 assert(
   home.includes('Background map not downloaded. Ijtema routes still work.'),
   'Home should explain that missing background tiles do not block Ijtema routing',

@@ -13,7 +13,7 @@ const splash = readFileSync('src/views/screens/SplashScreen.tsx', 'utf8');
 const downloadScreen = readFileSync('src/views/screens/DownloadMapScreen.tsx', 'utf8');
 const downloadViewModel = readFileSync('src/viewmodels/DownloadMapViewModel.ts', 'utf8');
 const homeScreen = readFileSync('src/views/screens/HomeScreen.tsx', 'utf8');
-const navigationScreen = readFileSync('src/views/screens/NavigationScreen.tsx', 'utf8');
+const navigationViewModelV1 = readFileSync('src/viewmodels/NavigationViewModel.ts', 'utf8');
 const permissionScreen = readFileSync('src/views/screens/PermissionScreen.tsx', 'utf8');
 const settingsScreen = readFileSync('src/views/screens/SettingsScreen.tsx', 'utf8');
 const directionsScreen = readFileSync('src/views/components/map/LocationSheet.tsx', 'utf8');
@@ -22,11 +22,15 @@ assert(splash.includes("setDownloadState({ phase: 'idle' })"), 'Cold start must 
 assert(downloadViewModel.includes('STALE') || downloadViewModel.includes('downloadInProgressRef'), 'Download flow must guard duplicate/stuck workers');
 assert(downloadScreen.includes('showContinueFallback'), 'Download screen must expose a fallback instead of an infinite redirect wait');
 assert(homeScreen.includes('onMapReady={() =>') && homeScreen.includes('setIsMapReady(true)'), 'Home must have a map-ready state instead of blank-map assumptions');
-assert(homeScreen.includes("mapType={hasGoogleMapsKey ? (isOffline ? 'none' : mapType) : 'none'}"), 'Home must render graph-only map when Google key is missing or internet is offline');
-assert(navigationScreen.includes("mapType={hasGoogleMapsKey && hasInternet ? (offlineData.isDownloaded ? 'none' : settings.mapMode) : 'none'}"), 'Navigation must render without a Google key or internet');
+// Navigation (v1 and v2 alike) shares Home's one MapView now, so this single check already
+// covers navigation rendering without a Google key or internet.
+assert(homeScreen.includes("mapType={hasGoogleMapsKey ? (isOffline ? 'none' : mapType) : 'none'}"), 'Home map (shared by navigation) must render graph-only map when Google key is missing or internet is offline');
 assert(permissionScreen.includes('Choose start manually') || directionsScreen.includes('Choose start'), 'Denied GPS must leave a manual routing path');
 assert(settingsScreen.includes("AppState.addEventListener('change'"), 'Settings permission state must refresh safely after Android settings return');
-assert(navigationScreen.includes('NavigationScreenV2Disabled'), 'Disabled/mismatched v2 navigation must show a controlled fallback');
+assert(
+  navigationViewModelV1.includes("(activeRoute as { sourceVersion?: string }).sourceVersion === 'v2'"),
+  'Mismatched v2 active routes must not be adopted by the v1 navigation runtime',
+);
 
 const gate15 = SearchService.search('Gate 15')[0];
 const gate18 = SearchService.search('Gate 18')[0];
