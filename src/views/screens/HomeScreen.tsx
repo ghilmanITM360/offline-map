@@ -70,7 +70,7 @@ import { MapLabelOverlay, MapLabelItem, MapLabelOverlayHandle } from '../compone
 import { MapControls } from '../components/map/MapControls';
 import { LayersSheet } from '../components/map/LayersSheet';
 import { useNavigationOverlayV2 } from '../../viewmodels/useNavigationOverlayV2';
-import { useScreenMode } from '../../viewmodels/useScreenMode';
+import { useMapMode } from '../../viewmodels/useMapMode';
 import { NavigationMapLayersV2 } from '../components/navigation/NavigationMapLayersV2';
 import { NavigationChromeV2 } from '../components/navigation/NavigationChromeV2';
 import { DirectionsScreen } from './DirectionsScreen';
@@ -185,6 +185,8 @@ export function HomeScreen() {
   const [routePreviewCardMeasuredHeight, setRoutePreviewCardMeasuredHeight] = useState(184);
   const [isMapDragging, setIsMapDragging] = useState(false);
   const [recenterState, setRecenterState] = useState<'idle' | 'loading' | 'success' | 'failure'>('idle');
+  const [detailsExpanded, setDetailsExpanded] = useState(false);
+  const [arrived, setArrived] = useState(false);
   const searchFocusAnim = useRef(new Animated.Value(0)).current;
   const warningAnim = useRef(new Animated.Value(0)).current;
   const userPulseAnim = useRef(new Animated.Value(0)).current;
@@ -194,6 +196,22 @@ export function HomeScreen() {
     setIsSearchFocused(false);
     searchInputRef.current?.blur();
     Keyboard.dismiss();
+  }, []);
+
+  // MapMode actions — the only sanctioned way to move the map surface between modes.
+  // selectPlace/showRoutePreview/startNavigation already exist as handlePlaceSelect/
+  // handleOpenDirections/handleStartPreviewNavigation below; they aren't re-wrapped here
+  // to avoid two names for the same entry point.
+  const openSearch = useCallback(() => {
+    setIsSearchFocused(true);
+  }, []);
+
+  const showDetails = useCallback(() => {
+    setDetailsExpanded(true);
+  }, []);
+
+  const arrive = useCallback(() => {
+    setArrived(true);
   }, []);
 
   const logHomeControl = useCallback((pressed: string, action: string) => {
@@ -293,9 +311,11 @@ export function HomeScreen() {
     return isV2PreviewRoute(activeRoute) ? activeRoute : null;
   }, [activeRoute, isNavigating, routePlannerDest]);
 
-  const mode = useScreenMode({
-    layersSheetVisible,
+  const mode = useMapMode({
+    arrived,
     showNavOverlay,
+    isSearchFocused,
+    detailsExpanded,
     directionsDestination,
     activePreviewRoute,
     selectedPlace,
@@ -371,7 +391,9 @@ export function HomeScreen() {
   // the route line itself stay visible. Sourced from v2MapLayers.blocks/gates (the
   // unfiltered arrays) rather than the zoom-LOD visible* fields so the destination/entry
   // gate can't be dropped by an unrelated LOD/collision rule.
-  const routePreviewDeclutterActive = mode === 'ROUTE_PREVIEW';
+  // Declutter only once an actual route exists to preview — not while directionsDestination
+  // alone is set (still picking a start point), since ROUTE_PREVIEW now covers both.
+  const routePreviewDeclutterActive = mode === 'ROUTE_PREVIEW' && !directionsDestination && !!activePreviewRoute;
   const previewVisibleBlocks = routePreviewDeclutterActive
     ? v2MapLayers.blocks.filter((block) => block.isSelected)
     : v2MapLayers.visibleBlocks;
@@ -520,6 +542,15 @@ export function HomeScreen() {
   // Anchoring everything from this single bottom value means the whole stack moves
   // together and can't collide with itself.
   const controlStackBottom = Math.max(insets.bottom, 16) + (activePreviewRoute ? routePreviewCardMeasuredHeight + 16 : 0) + 16;
+  // Keeps block/gate/rasta/route labels from rendering under the search bar/chip
+  // row (top) or the layers/compass/zoom/recenter control column (right, widest
+  // button is the 56dp recenter circle at right:12/16 — see mapControlStyles.ts)
+  // instead of clipping or overlapping those controls when a label's projected
+  // point lands near them.
+  const mapLabelEdgeInsets = useMemo(
+    () => ({ top: topOverlayHeight > 0 ? topOverlayHeight + 8 : 0, right: 80 }),
+    [topOverlayHeight],
+  );
 
   useEffect(() => {
     Animated.timing(searchFocusAnim, {
@@ -625,6 +656,17 @@ export function HomeScreen() {
     setDirectionsDestination(null);
   }, []);
 
+  // Full reset to EXPLORE — replaces the two ad hoc `setSelectedPlace(null) +
+  // bottomSheetRef.close()` call sites that existed independently before and didn't
+  // account for detailsExpanded/arrived/directionsDestination.
+  const closeSheet = useCallback(() => {
+    setSelectedPlace(null);
+    setDirectionsDestination(null);
+    setDetailsExpanded(false);
+    setArrived(false);
+    bottomSheetRef.current?.close();
+  }, [bottomSheetRef, setSelectedPlace]);
+
   const handleStartPreviewNavigation = useCallback(() => {
     if (!activePreviewRoute || !previewDestination) return;
     const startCheck = V2NavigationAdapter.canStartActiveNavigation({
@@ -720,9 +762,9 @@ export function HomeScreen() {
             showsUserLocation={false}
             showsMyLocationButton={false}
             showsCompass={false}
-            scrollEnabled={mode !== 'MAP_SETTINGS'}
-            zoomEnabled={mode !== 'MAP_SETTINGS'}
-            rotateEnabled={mode !== 'MAP_SETTINGS' && !settings.keepNorthFixed}
+            scrollEnabled={!layersSheetVisible}
+            zoomEnabled={!layersSheetVisible}
+            rotateEnabled={!layersSheetVisible && !settings.keepNorthFixed}
             onMapReady={() => {
               setIsMapReady(true);
               setMapReadyState(true);
@@ -768,8 +810,7 @@ export function HomeScreen() {
                 return;
               }
               if (selectedPlace) {
-                setSelectedPlace(null);
-                bottomSheetRef.current?.close();
+                closeSheet();
               }
             }}
           >
@@ -781,9 +822,9 @@ export function HomeScreen() {
 
           <VenueBoundary coordinates={useV2Map ? v2MapLayers.venueBoundary : VENUE_BOUNDARY} />
 
-          {mode === 'ACTIVE_NAVIGATION' && <NavigationMapLayersV2 overlay={navOverlay} />}
+          {mode === 'NAVIGATION' && <NavigationMapLayersV2 overlay={navOverlay} />}
 
-          {mode !== 'ACTIVE_NAVIGATION' && (useV2Map ? (
+          {mode !== 'NAVIGATION' && (useV2Map ? (
             <React.Fragment key={`v2_layers_${v2MapLayers.activeMapFilter}`}>
               <RastaLayer
                 rastas={previewVisibleRastas}
@@ -887,7 +928,7 @@ export function HomeScreen() {
             );
           }))}
 
-          {mode !== 'ACTIVE_NAVIGATION' && !useV2Map && showBlockPolygons && Object.entries(IJTEMA_DATA.blocks).map(([id, block]) => {
+          {mode !== 'NAVIGATION' && !useV2Map && showBlockPolygons && Object.entries(IJTEMA_DATA.blocks).map(([id, block]) => {
             const isSelected = selectedPlace?.id === id;
             return block.corners ? (
               <Polygon
@@ -913,7 +954,7 @@ export function HomeScreen() {
             ) : null;
           })}
 
-          {mode !== 'ACTIVE_NAVIGATION' && !useV2Map && showGraphNodes && __DEV__ && developerModeEnabled && Object.entries(IJTEMA_DATA.nodes).map(([nodeId, node]) => {
+          {mode !== 'NAVIGATION' && !useV2Map && showGraphNodes && __DEV__ && developerModeEnabled && Object.entries(IJTEMA_DATA.nodes).map(([nodeId, node]) => {
             const color = nodeId.startsWith('P') ? '#D32F2F' : nodeId.startsWith('S') ? '#00ACC1' : '#616161';
             return (
               <Marker
@@ -929,7 +970,7 @@ export function HomeScreen() {
             );
           })}
 
-          {mode !== 'ACTIVE_NAVIGATION' && !useV2Map && showRastaNames && __DEV__ && developerModeEnabled && Array.from(new Map(
+          {mode !== 'NAVIGATION' && !useV2Map && showRastaNames && __DEV__ && developerModeEnabled && Array.from(new Map(
             IJTEMA_DATA.edges
               .filter((edge) => !!edge.name)
               .map((edge) => [edge.name!, edge]),
@@ -947,7 +988,7 @@ export function HomeScreen() {
             );
           })}
 
-          {mode !== 'ACTIVE_NAVIGATION' && overlayPlaces.map((item) => {
+          {mode !== 'NAVIGATION' && overlayPlaces.map((item) => {
             const overlayItem = item as Place | SearchResult;
             const coordinate = overlayItem.coordinate;
             const label = getDisplayName(overlayItem);
@@ -970,7 +1011,7 @@ export function HomeScreen() {
           })}
 
           {/* Selected place pin — hidden during route preview to avoid duplicate destination marker */}
-          {mode !== 'ACTIVE_NAVIGATION' && selectedPlace && selectedPlaceMarkerCoordinate && !activePreviewRoute && (
+          {mode !== 'NAVIGATION' && selectedPlace && selectedPlaceMarkerCoordinate && !activePreviewRoute && (
             <Marker coordinate={selectedPlaceMarkerCoordinate} tracksViewChanges={false}>
               <View style={styles.selectedMarker}>
                 <MapPin size={32} color="#EA4335" fill="#EA4335" />
@@ -987,7 +1028,7 @@ export function HomeScreen() {
             </Marker>
           )}
 
-          {mode !== 'ACTIVE_NAVIGATION' && currentLocation && (
+          {mode !== 'NAVIGATION' && currentLocation && (
             <Marker coordinate={currentLocation} anchor={{ x: 0.5, y: 0.5 }} tracksViewChanges={false}>
               <View style={styles.userMarkerWrap}>
                 <Animated.View
@@ -1020,8 +1061,14 @@ export function HomeScreen() {
           )}
           </MapView>
 
-        {mode === 'ACTIVE_NAVIGATION' && <NavigationChromeV2 overlay={navOverlay} hasGoogleMapsKey={hasGoogleMapsKey} />}
-        <MapLabelOverlay ref={mapLabelOverlayRef} mapRef={mapRef} items={mapLabelItems} disableTouch={isMapDragging} />
+        {mode === 'NAVIGATION' && <NavigationChromeV2 overlay={navOverlay} hasGoogleMapsKey={hasGoogleMapsKey} />}
+        <MapLabelOverlay
+          ref={mapLabelOverlayRef}
+          mapRef={mapRef}
+          items={mapLabelItems}
+          disableTouch={isMapDragging}
+          edgeInsets={mapLabelEdgeInsets}
+        />
 
         {/* Cold-start: avoid a blank map while MapView mounts/renders its first
             frame. mapLoadFailed's 7s-timeout banner takes over if it never loads. */}
@@ -1032,7 +1079,7 @@ export function HomeScreen() {
           </View>
         )}
 
-        {mode !== 'ACTIVE_NAVIGATION' && mode !== 'DIRECTIONS_FORM' && (
+        {mode !== 'NAVIGATION' && !directionsDestination && (
         <SafeAreaView
           style={styles.topOverlay}
           pointerEvents="box-none"
@@ -1070,7 +1117,7 @@ export function HomeScreen() {
               placeholderTextColor={theme.placeholder}
               value={searchQuery}
               onChangeText={handleSearch}
-              onFocus={() => setIsSearchFocused(true)}
+              onFocus={openSearch}
               returnKeyType="search"
               onSubmitEditing={Keyboard.dismiss}
               multiline={false}
@@ -1093,7 +1140,7 @@ export function HomeScreen() {
             )}
           </Animated.View>
 
-          {isSearchFocused && (searchResults.length > 0 || (searchQuery.length === 0 && recentSearches.length > 0)) && (
+          {mode === 'SEARCH' && (searchResults.length > 0 || (searchQuery.length === 0 && recentSearches.length > 0)) && (
             <View style={[styles.searchResultsContainer, { backgroundColor: theme.card, borderColor: theme.border }]}>
               <ScrollView keyboardShouldPersistTaps="handled">
                 {searchQuery.length === 0 && (
@@ -1135,7 +1182,7 @@ export function HomeScreen() {
             </View>
           )}
 
-          {!isSearchFocused && (
+          {mode !== 'SEARCH' && (
             <Animated.View style={{ opacity: chipsAnim }} pointerEvents={isMapDragging ? 'none' : 'box-none'}>
               {renderChips()}
             </Animated.View>
@@ -1143,7 +1190,7 @@ export function HomeScreen() {
         </SafeAreaView>
         )}
 
-        {mode !== 'ACTIVE_NAVIGATION' && (isOffline || showMapWarningBanner || showOutsideBanner) && (
+        {mode !== 'NAVIGATION' && (isOffline || showMapWarningBanner || showOutsideBanner) && (
           <View style={[styles.bannerStack, { top: bannerStackTop }]}>
             {isOffline && (
               <View style={[styles.offlineIndicator, styles.bannerStackItem]}>
@@ -1194,7 +1241,7 @@ export function HomeScreen() {
           </View>
         )}
 
-        {mode !== 'ACTIVE_NAVIGATION' && __DEV__ && developerModeEnabled && showRouteDiagnostics && (
+        {mode !== 'NAVIGATION' && __DEV__ && developerModeEnabled && showRouteDiagnostics && (
           <View style={styles.diagnosticsBanner}>
             <Text style={styles.diagnosticsText}>
               {GRAPH_VALIDATION.isValid ? 'Graph validation: PASS' : 'Graph validation: FAIL'}
@@ -1210,7 +1257,7 @@ export function HomeScreen() {
           </View>
         )}
 
-        {mode !== 'ACTIVE_NAVIGATION' && isOffline && !offlineData.isDownloaded && (
+        {mode !== 'NAVIGATION' && isOffline && !offlineData.isDownloaded && (
           <View style={styles.emptyOfflineState}>
             <Text style={styles.emptyOfflineTitle}>Background map not downloaded. Ijtema routes still work.</Text>
             <Pressable style={styles.emptyOfflineButton} onPress={() => nav.navigate('DownloadMap')}>
@@ -1219,7 +1266,7 @@ export function HomeScreen() {
           </View>
         )}
 
-        {mode !== 'ACTIVE_NAVIGATION' && !isSearchFocused && (
+        {mode !== 'NAVIGATION' && mode !== 'SEARCH' && (
           <>
             <View style={[styles.controlStack, { bottom: controlStackBottom }]}>
               <MapControls
@@ -1261,7 +1308,7 @@ export function HomeScreen() {
           </>
         )}
 
-        {mode === 'ACTIVE_NAVIGATION' && (
+        {mode === 'NAVIGATION' && (
           <View
             style={[
               styles.navControls,
@@ -1289,7 +1336,7 @@ export function HomeScreen() {
           </View>
         )}
 
-        {mode === 'ROUTE_PREVIEW' && !isSearchFocused && activePreviewRoute && previewDestination && (
+        {mode === 'ROUTE_PREVIEW' && !directionsDestination && activePreviewRoute && previewDestination && (
           <View
             style={[styles.routePreviewCard, { bottom: Math.max(insets.bottom, 16) + 16 }]}
             onLayout={(e) => setRoutePreviewCardMeasuredHeight(e.nativeEvent.layout.height)}
@@ -1358,6 +1405,16 @@ export function HomeScreen() {
           android_keyboardInputMode="adjustResize"
           handleIndicatorStyle={[styles.sheetIndicator, { backgroundColor: theme.border }]}
           backgroundStyle={{ backgroundColor: theme.card }}
+          onChange={(index) => {
+            // Fully expanding the sheet over a selected place is "show me more" —
+            // PLACE_SELECTED (preview) -> DETAILS. Only meaningful outside the directions
+            // flow, which has its own distinct content.
+            if (index >= 2 && selectedPlace && !directionsDestination) {
+              showDetails();
+            } else if (index < 2) {
+              setDetailsExpanded(false);
+            }
+          }}
         >
           {directionsDestination ? (
             <DirectionsScreen
@@ -1380,7 +1437,7 @@ export function HomeScreen() {
                       <Text style={styles.placeRole}>{(IJTEMA_DATA.blocks as any)[selectedPlace.id].role}</Text>
                     )}
                   </View>
-                  <Pressable onPress={() => { setSelectedPlace(null); bottomSheetRef.current?.close(); }}>
+                  <Pressable onPress={closeSheet}>
                     <X size={24} color="#5F6368" />
                   </Pressable>
                 </View>
@@ -1528,11 +1585,10 @@ export function HomeScreen() {
           )}
         </BottomSheetModal>
 
-        {/* visible stays keyed to layersSheetVisible (the state that feeds mode), not
-            `mode === 'MAP_SETTINGS'` — that would be circular, same reasoning as
-            NavigationChromeV2 self-gating on `route` below. Map gesture props above are
-            the actual interaction lock; the sheet is a Modal so touches can't reach the
-            map underneath either way (see zLayers.ts). */}
+        {/* LayersSheet is intentionally not part of MapMode — it's a modal that overlays
+            whichever mode is underneath, gated by its own layersSheetVisible flag. Map
+            gesture props above are the actual interaction lock; the sheet is a Modal so
+            touches can't reach the map underneath either way (see zLayers.ts). */}
         <LayersSheet
           visible={layersSheetVisible}
           onClose={() => setLayersSheetVisible(false)}
