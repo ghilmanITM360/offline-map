@@ -1,7 +1,7 @@
 import { strict as assert } from 'node:assert';
 import { readFileSync } from 'node:fs';
 
-const screen = readFileSync('src/views/screens/DirectionsScreen.tsx', 'utf8');
+const screen = readFileSync('src/views/components/map/LocationSheet.tsx', 'utf8');
 const vm = readFileSync('src/viewmodels/DirectionsViewModel.ts', 'utf8');
 
 assert(screen.includes('Get Directions'), 'Directions screen must use layman-friendly heading');

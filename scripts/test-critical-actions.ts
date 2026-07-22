@@ -5,7 +5,7 @@ const homeVm = readFileSync('src/viewmodels/HomeViewModel.ts', 'utf8');
 const directionsVm = readFileSync('src/viewmodels/DirectionsViewModel.ts', 'utf8');
 const settingsVm = readFileSync('src/viewmodels/SettingsViewModel.ts', 'utf8');
 const settingsScreen = readFileSync('src/views/screens/SettingsScreen.tsx', 'utf8');
-const directionsScreen = readFileSync('src/views/screens/DirectionsScreen.tsx', 'utf8');
+const directionsScreen = readFileSync('src/views/components/map/LocationSheet.tsx', 'utf8');
 const navScreen = readFileSync('src/views/screens/NavigationScreen.tsx', 'utf8');
 const homeScreen = readFileSync('src/views/screens/HomeScreen.tsx', 'utf8');
 const offlineMapService = readFileSync('src/services/OfflineMapService.ts', 'utf8');
@@ -173,7 +173,7 @@ assert(
   homeScreen.includes('searchFocusAnim') && homeScreen.includes('warningAnim'),
   'Home should include search focus and warning banner animations',
 );
-assert(homeScreen.includes("rotateEnabled={mode !== 'MAP_SETTINGS' && !settings.keepNorthFixed}"), 'Home map should honor North-up behavior');
+assert(homeScreen.includes("rotateEnabled={!layersSheetVisible && !settings.keepNorthFixed}"), 'Home map should honor North-up behavior');
 assert(
   navScreen.includes('setIsMuted(!isMuted)'),
   'Navigation mute button must toggle mute state',

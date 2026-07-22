@@ -10,7 +10,7 @@ const RAW_NODE_PATTERN = /\b(?:P\d+|S\d+|T\d+|C\d+|R\d+-\d+|SPNP-\d+|SPSP-\d+|SP
 process.env.EXPO_PUBLIC_USE_IJTEMA_V2_MAP = 'true';
 process.env.EXPO_PUBLIC_USE_IJTEMA_V2_ROUTING = 'true';
 
-const directionsScreenSource = readFileSync('src/views/screens/DirectionsScreen.tsx', 'utf8');
+const directionsScreenSource = readFileSync('src/views/components/map/LocationSheet.tsx', 'utf8');
 const directionsViewModelSource = readFileSync('src/viewmodels/DirectionsViewModel.ts', 'utf8');
 const navigationScreenSource = readFileSync('src/views/screens/NavigationScreen.tsx', 'utf8');
 const homeScreenSource = readFileSync('src/views/screens/HomeScreen.tsx', 'utf8');

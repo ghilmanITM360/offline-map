@@ -22,7 +22,7 @@ assert.equal(
 
 // ─── Source-level check: v2-scoped inside/outside checks must use the precise geometry ──
 const directionsViewModelSource = readFileSync('src/viewmodels/DirectionsViewModel.ts', 'utf8');
-const directionsScreenSource = readFileSync('src/views/screens/DirectionsScreen.tsx', 'utf8');
+const directionsScreenSource = readFileSync('src/views/components/map/LocationSheet.tsx', 'utf8');
 
 assert(
   directionsScreenSource.includes('EntryGateRoutingService.isInsideIjtemaArea(startCoordinate)'),

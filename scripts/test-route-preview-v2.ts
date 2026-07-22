@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 const homeScreenSource = readFileSync('src/views/screens/HomeScreen.tsx', 'utf8');
 const homeViewModelSource = readFileSync('src/viewmodels/HomeViewModel.ts', 'utf8');
 const storeSource = readFileSync('src/store/useAppStore.ts', 'utf8');
-const directionsScreenSource = readFileSync('src/views/screens/DirectionsScreen.tsx', 'utf8');
+const directionsScreenSource = readFileSync('src/views/components/map/LocationSheet.tsx', 'utf8');
 
 assert(
   homeScreenSource.includes('activeRoute'),

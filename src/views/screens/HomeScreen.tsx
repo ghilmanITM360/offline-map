@@ -14,7 +14,6 @@ import {
   Platform,
   StatusBar,
   KeyboardAvoidingView,
-  Share,
   Alert,
   Keyboard,
   BackHandler,
@@ -26,14 +25,11 @@ import MapView, { Marker, Polygon, Polyline, PROVIDER_GOOGLE, LocalTile } from '
 import {
   Menu,
   Navigation,
-  Star,
   MapPin,
   ChevronRight,
   WifiOff,
   X,
   Clock,
-  Share2,
-  Info,
 } from 'lucide-react-native';
 import { BottomSheetModal, BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import { useNavigation, DrawerActions, CompositeNavigationProp } from '@react-navigation/native';
@@ -73,7 +69,7 @@ import { useNavigationOverlayV2 } from '../../viewmodels/useNavigationOverlayV2'
 import { useMapMode } from '../../viewmodels/useMapMode';
 import { NavigationMapLayersV2 } from '../components/navigation/NavigationMapLayersV2';
 import { NavigationChromeV2 } from '../components/navigation/NavigationChromeV2';
-import { DirectionsScreen } from './DirectionsScreen';
+import { LocationSheet } from '../components/map/LocationSheet';
 import { Z } from '../styles/zLayers';
 
 declare const __DEV__: boolean;
@@ -206,10 +202,6 @@ export function HomeScreen() {
     setIsSearchFocused(true);
   }, []);
 
-  const showDetails = useCallback(() => {
-    setDetailsExpanded(true);
-  }, []);
-
   const arrive = useCallback(() => {
     setArrived(true);
   }, []);
@@ -251,6 +243,16 @@ export function HomeScreen() {
     updateSettings,
     settings,
   } = useHomeViewModel();
+
+  const showDetails = useCallback(() => {
+    setDetailsExpanded(true);
+    bottomSheetRef.current?.snapToIndex(2);
+  }, [bottomSheetRef]);
+
+  const closeDetails = useCallback(() => {
+    setDetailsExpanded(false);
+    bottomSheetRef.current?.snapToIndex(1);
+  }, [bottomSheetRef]);
 
   const navOverlay = useNavigationOverlayV2({
     mapRef,
@@ -1417,171 +1419,48 @@ export function HomeScreen() {
           }}
         >
           {directionsDestination ? (
-            <DirectionsScreen
+            <LocationSheet
+              mode="routePreview"
               destination={directionsDestination}
               onClose={handleCloseDirections}
               onStartLegacyNavigation={() => nav.navigate('Navigation')}
             />
+          ) : selectedPlace ? (
+            <LocationSheet
+              mode={mode === 'DETAILS' ? 'details' : 'preview'}
+              place={selectedPlace}
+              theme={theme}
+              entryPoints={entryPoints}
+              blockGates={blockGates}
+              selectedEntryIdx={selectedEntryIdx}
+              onSelectEntryIdx={setSelectedEntryIdx}
+              walkingTimeMin={walkingTimeMin}
+              isFav={isFav}
+              onToggleFavorite={handleToggleFav}
+              onSelectGate={(gate) => {
+                handlePlaceSelect({
+                  id: gate.id,
+                  name: gate.name,
+                  urduName: gate.urduName,
+                  category: 'Gate',
+                  description: `${gate.name} entrance for Block 2 / Member Masjid.`,
+                  coordinate: gate.coordinate,
+                  routingNodeId: IJTEMA_DATA.nodes[gate.id]?.nearestRoadNode,
+                  sourceVersion: 'v1',
+                });
+              }}
+              onOpenDirections={() => handleOpenDirections(selectedPlace)}
+              onClose={closeSheet}
+              onShowDetails={showDetails}
+              onCloseDetails={closeDetails}
+              developerModeEnabled={developerModeEnabled}
+            />
           ) : (
-          <BottomSheetScrollView contentContainerStyle={styles.sheetContent}>
-            {selectedPlace ? (
-              <View>
-                <View style={styles.placeHeader}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={[styles.placeName, { color: theme.text }]}>{selectedPlace.name}</Text>
-                    {selectedPlace.urduName && (
-                      <Text style={[styles.placeUrdu, { color: theme.primary }]}>{selectedPlace.urduName}</Text>
-                    )}
-                    <Text style={[styles.placeCategory, { color: theme.subtext }]}>{selectedPlace.category}</Text>
-                    {selectedPlace.sourceVersion !== 'v2' && selectedPlace.category === 'Block' && (IJTEMA_DATA.blocks as any)[selectedPlace.id]?.role && (
-                      <Text style={styles.placeRole}>{(IJTEMA_DATA.blocks as any)[selectedPlace.id].role}</Text>
-                    )}
-                  </View>
-                  <Pressable onPress={closeSheet}>
-                    <X size={24} color="#5F6368" />
-                  </Pressable>
-                </View>
-
-                {(selectedPlace.verificationWarning || selectedPlace.unavailableReason) && (
-                  <View style={styles.placeWarningBanner}>
-                    <Text style={styles.placeWarningBannerText}>
-                      {selectedPlace.verificationWarning ?? selectedPlace.unavailableReason}
-                    </Text>
-                  </View>
-                )}
-
-                <View style={styles.infoChips}>
-                  {walkingTimeMin !== null && (
-                    <View style={styles.infoChip}>
-                      <Clock size={14} color="#2E7D32" />
-                      <Text style={styles.infoChipText}>{walkingTimeMin} min walk</Text>
-                    </View>
-                  )}
-                  {entryPoints.length > 0 && (
-                    <View style={styles.infoChip}>
-                      <MapPin size={14} color="#2E7D32" />
-                      <Text style={styles.infoChipText}>{entryPoints.length} entrances</Text>
-                    </View>
-                  )}
-                </View>
-
-                {entryPoints.length > 0 && (
-                  <View style={styles.entranceSection}>
-                    <Text style={styles.sectionLabel}>Entrances</Text>
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                      {entryPoints.map((ep, idx) => (
-                        <Pressable
-                          key={ep.nodeId}
-                          style={[
-                            styles.entranceChip,
-                            selectedEntryIdx === idx && styles.entranceChipActive,
-                          ]}
-                          onPress={() => setSelectedEntryIdx(idx)}
-                        >
-                          <Text
-                            style={[
-                              styles.entranceNodeText,
-                              selectedEntryIdx === idx && styles.entranceChipTextActive,
-                            ]}
-                          >
-                            Entrance {idx + 1}
-                          </Text>
-                          <Text
-                            style={[
-                              styles.entranceChipText,
-                              selectedEntryIdx === idx && styles.entranceChipTextActive,
-                            ]}
-                          >
-                            {ep.friendlyName}
-                          </Text>
-                          <Text style={styles.entranceUrdu}>{ep.urduName}</Text>
-                        </Pressable>
-                      ))}
-                    </ScrollView>
-                  </View>
-                )}
-
-                {blockGates.length > 0 && (
-                  <View style={styles.entranceSection}>
-                    <Text style={styles.sectionLabel}>Member Masjid Gates</Text>
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                      {blockGates.map((gate) => (
-                        <Pressable
-                          key={gate.id}
-                          style={styles.gateChip}
-                          onPress={() => {
-                            handlePlaceSelect({
-                              id: gate.id,
-                              name: gate.name,
-                              urduName: gate.urduName,
-                              category: 'Gate',
-                              description: `${gate.name} entrance for Block 2 / Member Masjid.`,
-                              coordinate: gate.coordinate,
-                              routingNodeId: IJTEMA_DATA.nodes[gate.id]?.nearestRoadNode,
-                              sourceVersion: 'v1',
-                            });
-                          }}
-                        >
-                          {__DEV__ && developerModeEnabled && <Text style={styles.entranceNodeText}>{gate.id}</Text>}
-                          <Text style={styles.entranceChipText}>{gate.name.replace('Member Masjid Gate ', 'Gate ')}</Text>
-                          {gate.urduName && <Text style={styles.entranceUrdu}>{gate.urduName}</Text>}
-                        </Pressable>
-                      ))}
-                    </ScrollView>
-                  </View>
-                )}
-
-                <Pressable style={styles.takeMeButton} onPress={() => selectedPlace && handleOpenDirections(selectedPlace)}>
-                  <Navigation size={22} color="#FFFFFF" />
-                  <Text style={styles.takeMeText}>Directions</Text>
-                </Pressable>
-
-                <View style={styles.secondaryActions}>
-                  <Pressable style={styles.secondaryAction} onPress={handleToggleFav}>
-                    <Star
-                      size={20}
-                      color={isFav ? '#FBC02D' : '#1A73E8'}
-                      fill={isFav ? '#FBC02D' : 'none'}
-                    />
-                    <Text style={styles.secondaryActionText}>{isFav ? 'Saved' : 'Save'}</Text>
-                  </Pressable>
-                  <Pressable
-                    style={styles.secondaryAction}
-                    onPress={() => {
-                      if (!selectedPlace) return;
-                      if (!selectedPlace.coordinate) {
-                        Alert.alert('Place unavailable', selectedPlace.unavailableReason ?? `${selectedPlace.name} is not available on the map yet.`);
-                        return;
-                      }
-                      const { latitude, longitude } = selectedPlace.coordinate;
-                      Share.share({
-                        title: selectedPlace.name,
-                        message: `${selectedPlace.name} — Karachi Ijtema\nLocation: ${latitude.toFixed(6)}, ${longitude.toFixed(6)}`,
-                      }).catch(() => Alert.alert('Unable to share', 'Could not open the share dialog.'));
-                    }}
-                  >
-                    <Share2 size={20} color="#1A73E8" />
-                    <Text style={styles.secondaryActionText}>Share</Text>
-                  </Pressable>
-                  <Pressable
-                    style={styles.secondaryAction}
-                    onPress={() => Alert.alert('Place Details', selectedPlace.description)}
-                  >
-                    <Info size={20} color="#1A73E8" />
-                    <Text style={styles.secondaryActionText}>Details</Text>
-                  </Pressable>
-                </View>
-
-                {selectedPlace.description && (
-                  <Text style={styles.placeDesc}>{selectedPlace.description}</Text>
-                )}
-              </View>
-            ) : (
+            <BottomSheetScrollView contentContainerStyle={styles.sheetContent}>
               <View style={styles.emptySheet}>
                 <Text style={styles.emptySheetText}>Tap a block or search to see details</Text>
               </View>
-            )}
-          </BottomSheetScrollView>
+            </BottomSheetScrollView>
           )}
         </BottomSheetModal>
 
@@ -1874,91 +1753,6 @@ const styles = StyleSheet.create({
   debugBtnText: { color: '#FFFFFF', fontSize: 11, fontWeight: '600' },
   sheetIndicator: { backgroundColor: '#DADCE0', width: 36 },
   sheetContent: { padding: 20 },
-  placeHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 12,
-  },
-  placeName: { fontSize: 24, fontWeight: 'bold', color: '#202124' },
-  placeUrdu: { fontSize: 18, color: '#2E7D32', marginTop: 2 },
-  placeCategory: { fontSize: 14, color: '#70757A', marginTop: 4 },
-  placeRole: { fontSize: 13, color: '#1A73E8', fontWeight: '700', marginTop: 4 },
-  infoChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 },
-  infoChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#E8F5E9',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 16,
-    gap: 4,
-  },
-  infoChipText: { fontSize: 13, color: '#2E7D32', fontWeight: '500' },
-  entranceSection: { marginBottom: 16 },
-  sectionLabel: { fontSize: 13, fontWeight: '600', color: '#5F6368', marginBottom: 8 },
-  entranceChip: {
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 14,
-    backgroundColor: '#F1F3F4',
-    marginRight: 8,
-    minWidth: 120,
-  },
-  gateChip: {
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 14,
-    backgroundColor: '#FFF5F5',
-    borderWidth: 1,
-    borderColor: '#EA4335',
-    marginRight: 8,
-    minWidth: 132,
-  },
-  entranceChipActive: { backgroundColor: '#E8F0FE', borderWidth: 1.5, borderColor: '#1A73E8' },
-  entranceNodeText: { fontSize: 13, color: '#202124', fontWeight: '800', marginBottom: 2 },
-  entranceChipText: { fontSize: 14, color: '#3C4043', fontWeight: '500' },
-  entranceChipTextActive: { color: '#1A73E8' },
-  entranceUrdu: { fontSize: 12, color: '#888', marginTop: 2 },
-  takeMeButton: {
-    backgroundColor: '#2E7D32',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 18,
-    borderRadius: 16,
-    gap: 10,
-    marginBottom: 20,
-    elevation: 4,
-    shadowColor: '#2E7D32',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.3,
-    shadowRadius: 6,
-  },
-  takeMeText: { color: '#FFFFFF', fontSize: 18, fontWeight: 'bold', letterSpacing: 0.3 },
-  secondaryActions: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginBottom: 20,
-    borderTopWidth: 1,
-    borderBottomWidth: 1,
-    borderColor: '#F1F3F4',
-    paddingVertical: 12,
-  },
-  secondaryAction: { alignItems: 'center', gap: 4 },
-  secondaryActionText: { fontSize: 12, color: '#1A73E8', fontWeight: '500' },
-  placeDesc: { fontSize: 14, color: '#5F6368', lineHeight: 22 },
-  placeWarningBanner: {
-    backgroundColor: '#FFF3E0',
-    borderWidth: 1,
-    borderColor: '#E65100',
-    borderRadius: 8,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    marginTop: 4,
-    marginBottom: 12,
-  },
-  placeWarningBannerText: { fontSize: 13, color: '#7C4A03', fontWeight: '600', lineHeight: 18 }, // #E65100 on #FFF3E0 fails AA (3.79:1); #7C4A03 passes (6.75:1)
   emptySheet: { alignItems: 'center', padding: 60 },
   emptySheetText: { color: '#70757A', fontSize: 15 },
   emptyOfflineState: {

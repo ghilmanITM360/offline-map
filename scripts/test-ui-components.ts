@@ -2,7 +2,7 @@ import { strict as assert } from 'node:assert';
 import { readFileSync } from 'node:fs';
 
 const home = readFileSync('src/views/screens/HomeScreen.tsx', 'utf8');
-const directions = readFileSync('src/views/screens/DirectionsScreen.tsx', 'utf8');
+const directions = readFileSync('src/views/components/map/LocationSheet.tsx', 'utf8');
 const navigation = readFileSync('src/views/screens/NavigationScreen.tsx', 'utf8');
 const settings = readFileSync('src/views/screens/SettingsScreen.tsx', 'utf8');
 const guide = readFileSync('src/views/screens/AppGuideScreen.tsx', 'utf8');

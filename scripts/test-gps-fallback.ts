@@ -23,7 +23,7 @@ assert(RerouteService.isOffRoute(nearLine, route as any, 5) === false, 'Expected
 assert(RerouteService.isOffRoute(farther, route as any, 5) === true, 'Expected farther point to be off route in strong GPS');
 assert(RerouteService.isOffRoute(farther, route as any, 50) === false, 'Expected weak GPS to widen reroute tolerance');
 
-const directions = readFileSync('src/views/screens/DirectionsScreen.tsx', 'utf8');
+const directions = readFileSync('src/views/components/map/LocationSheet.tsx', 'utf8');
 const navVm = readFileSync('src/viewmodels/NavigationViewModel.ts', 'utf8');
 const navScreen = readFileSync('src/views/screens/NavigationScreen.tsx', 'utf8');
 

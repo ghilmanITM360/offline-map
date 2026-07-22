@@ -16,7 +16,7 @@ const homeScreen = readFileSync('src/views/screens/HomeScreen.tsx', 'utf8');
 const navigationScreen = readFileSync('src/views/screens/NavigationScreen.tsx', 'utf8');
 const permissionScreen = readFileSync('src/views/screens/PermissionScreen.tsx', 'utf8');
 const settingsScreen = readFileSync('src/views/screens/SettingsScreen.tsx', 'utf8');
-const directionsScreen = readFileSync('src/views/screens/DirectionsScreen.tsx', 'utf8');
+const directionsScreen = readFileSync('src/views/components/map/LocationSheet.tsx', 'utf8');
 
 assert(splash.includes("setDownloadState({ phase: 'idle' })"), 'Cold start must clear stale in-memory downloading state');
 assert(downloadViewModel.includes('STALE') || downloadViewModel.includes('downloadInProgressRef'), 'Download flow must guard duplicate/stuck workers');

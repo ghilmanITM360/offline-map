@@ -6,7 +6,7 @@ import { SearchService } from '../src/services/SearchService';
 import { V2DirectionsService } from '../src/services/V2DirectionsService';
 
 const RAW_NODE_PATTERN = /\b(?:P\d+|S\d+|T\d+|C\d+|R\d+-\d+|SPNP-\d+|SPSP-\d+|SPWP-\d+|B\d+_C\d+)\b/;
-const directionsScreenSource = readFileSync('src/views/screens/DirectionsScreen.tsx', 'utf8');
+const directionsScreenSource = readFileSync('src/views/components/map/LocationSheet.tsx', 'utf8');
 const homeScreenSource = readFileSync('src/views/screens/HomeScreen.tsx', 'utf8');
 const homeViewModelSource = readFileSync('src/viewmodels/HomeViewModel.ts', 'utf8');
 

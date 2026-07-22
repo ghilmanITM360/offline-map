@@ -7,7 +7,7 @@ import { V2DirectionsService } from '../src/services/V2DirectionsService';
 process.env.EXPO_PUBLIC_USE_IJTEMA_V2_MAP = 'true';
 process.env.EXPO_PUBLIC_USE_IJTEMA_V2_ROUTING = 'true';
 
-const directionsScreenSource = readFileSync('src/views/screens/DirectionsScreen.tsx', 'utf8');
+const directionsScreenSource = readFileSync('src/views/components/map/LocationSheet.tsx', 'utf8');
 const directionsViewModelSource = readFileSync('src/viewmodels/DirectionsViewModel.ts', 'utf8');
 const directionsServiceSource = readFileSync('src/services/V2DirectionsService.ts', 'utf8');
 

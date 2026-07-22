@@ -5,6 +5,7 @@ const home = readFileSync('src/views/screens/HomeScreen.tsx', 'utf8');
 const searchService = readFileSync('src/services/SearchService.ts', 'utf8');
 const mapControls = readFileSync('src/views/components/map/MapControls.tsx', 'utf8');
 const layersSheet = readFileSync('src/views/components/map/LayersSheet.tsx', 'utf8');
+const locationSheet = readFileSync('src/views/components/map/LocationSheet.tsx', 'utf8');
 
 assert(!home.includes('Select Start'), 'Home screen should not show Select Start route planner control');
 assert(!home.includes('Select Destination'), 'Home screen should not show Select Destination route planner control');
@@ -31,7 +32,7 @@ assert(
   'Home screen should explain that missing background tiles do not block Ijtema routing',
 );
 assert(home.includes('categoryChips'), 'Home categories should be data-driven, not hardcoded two chips');
-assert(home.includes('Member Masjid Gates'), 'Block detail sheet should show Member Masjid gates');
+assert(locationSheet.includes('Member Masjid Gates'), 'Block detail sheet should show Member Masjid gates');
 assert(home.includes('userMarkerPulse'), 'Home should render a pulsing user marker');
 assert(searchService.includes("{ id: 'gates', label: 'Gates' }"), 'Search categories should include Gates');
 assert(searchService.includes("{ id: 'masjids', label: 'Masjids' }"), 'Search categories should include Masjids');

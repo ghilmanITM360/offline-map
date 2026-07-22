@@ -6,11 +6,15 @@ const offlineMapService = readFileSync('src/services/OfflineMapService.ts', 'utf
 const vm = readFileSync('src/viewmodels/DownloadMapViewModel.ts', 'utf8');
 const screen = readFileSync('src/views/screens/DownloadMapScreen.tsx', 'utf8');
 const splash = readFileSync('src/views/screens/SplashScreen.tsx', 'utf8');
+const startupManager = readFileSync('src/services/StartupManager.ts', 'utf8');
 const mapBoundsSource = readFileSync('src/data/ijtema/mapBounds.ts', 'utf8');
 
 const statuses = ['not_downloaded', 'downloading', 'downloaded', 'corrupt', 'needs_update'];
 for (const status of statuses) {
-  assert(statusService.includes(`'${status}'`) || vm.includes(`'${status}'`) || splash.includes(`'${status}'`), `Missing map status: ${status}`);
+  assert(
+    statusService.includes(`'${status}'`) || vm.includes(`'${status}'`) || splash.includes(`'${status}'`) || startupManager.includes(`'${status}'`),
+    `Missing map status: ${status}`,
+  );
 }
 
 assert(statusService.includes('tileCountExpected'), 'Manifest must include tileCountExpected');
@@ -56,8 +60,9 @@ assert(
   'Offline map status service should persist graph-only fallback mode',
 );
 assert(
-  splash.includes('isGraphOnlyModeEnabled') && splash.includes("startupStatus.status === 'not_downloaded'"),
-  'Splash should route to Main when graph-only mode is enabled and raster map is unavailable',
+  splash.includes('isGraphOnlyModeEnabled') &&
+    startupManager.includes("checks.graphOnlyModeEnabled && checks.offlineMapStatus === 'not_downloaded'"),
+  'Splash/StartupManager should route to Main when graph-only mode is enabled and raster map is unavailable',
 );
 
 assert(offlineMapService.includes('downloadTileWithDiagnostics'), 'OfflineMapService should expose detailed tile download diagnostics');

@@ -50,7 +50,7 @@ const splash = readFileSync('src/views/screens/SplashScreen.tsx', 'utf8');
 const offlineMapService = readFileSync('src/services/OfflineMapService.ts', 'utf8');
 const downloadViewModel = readFileSync('src/viewmodels/DownloadMapViewModel.ts', 'utf8');
 const appGuide = readFileSync('src/views/screens/AppGuideScreen.tsx', 'utf8');
-const directionsScreen = readFileSync('src/views/screens/DirectionsScreen.tsx', 'utf8');
+const directionsScreen = readFileSync('src/views/components/map/LocationSheet.tsx', 'utf8');
 const navigationScreen = readFileSync('src/views/screens/NavigationScreen.tsx', 'utf8');
 
 assert(!splash.includes('runNetworkDiagnostics'), 'Startup must not block on network diagnostics');

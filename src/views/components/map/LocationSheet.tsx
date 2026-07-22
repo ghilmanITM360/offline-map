@@ -10,19 +10,36 @@ import {
   StyleSheet,
   Pressable,
   TextInput,
+  ScrollView,
   KeyboardAvoidingView,
   Platform,
   Keyboard,
+  Share,
+  Alert,
 } from 'react-native';
 import { BottomSheetScrollView } from '@gorhom/bottom-sheet';
-import { ChevronLeft, Clock, LocateFixed, MapPin, Navigation, RefreshCw } from 'lucide-react-native';
+import {
+  ChevronLeft,
+  Clock,
+  LocateFixed,
+  MapPin,
+  Navigation,
+  RefreshCw,
+  Star,
+  Share2,
+  X,
+} from 'lucide-react-native';
 
-import { useDirectionsViewModel } from '../../viewmodels/DirectionsViewModel';
-import { InstructionService } from '../../services/InstructionService';
-import { SearchService } from '../../services/SearchService';
-import { useAppStore } from '../../store/useAppStore';
-import { Place, RoutePreview } from '../../models/types';
-import { EntryGateRoutingService } from '../../services/EntryGateRoutingService';
+import { useDirectionsViewModel } from '../../../viewmodels/DirectionsViewModel';
+import { InstructionService } from '../../../services/InstructionService';
+import { SearchService } from '../../../services/SearchService';
+import { useAppStore } from '../../../store/useAppStore';
+import { Place, RoutePreview, BlockEntryPoint, Gate } from '../../../models/types';
+import { EntryGateRoutingService } from '../../../services/EntryGateRoutingService';
+import { IJTEMA_DATA } from '../../../constants/data';
+import { AppTheme } from '../../../services/ThemeService';
+
+declare const __DEV__: boolean;
 
 type RoutePreviewWithV2Meta = RoutePreview & {
   startResolution?: {
@@ -36,6 +53,53 @@ type RoutePreviewWithV2Meta = RoutePreview & {
   startLabel?: string;
   destinationLabel?: string;
 };
+
+/**
+ * The single sheet HomeMapScreen renders over the map, in one of three modes — never a
+ * separate navigation-stack screen (Google Maps doesn't work that way). `routePreview`
+ * is what used to be the standalone DirectionsScreen; `preview`/`details` used to be
+ * inline JSX in HomeScreen keyed off `selectedPlace` directly.
+ */
+export type LocationSheetProps =
+  | {
+      mode: 'routePreview';
+      destination: Place;
+      onClose: () => void;
+      /** Legacy (v1) destinations only — pushes the 'Navigation' stack screen. v2 destinations
+       * start navigation through HomeScreen's own route-preview card instead (onClose reveals it). */
+      onStartLegacyNavigation: () => void;
+    }
+  | {
+      mode: 'preview' | 'details';
+      place: Place;
+      theme: AppTheme;
+      entryPoints: BlockEntryPoint[];
+      blockGates: Gate[];
+      selectedEntryIdx: number;
+      onSelectEntryIdx: (idx: number) => void;
+      walkingTimeMin: number | null;
+      isFav: boolean;
+      onToggleFavorite: () => void;
+      onSelectGate: (gate: Gate) => void;
+      onOpenDirections: () => void;
+      onClose: () => void;
+      onShowDetails: () => void;
+      onCloseDetails: () => void;
+      developerModeEnabled: boolean;
+    };
+
+export function LocationSheet(props: LocationSheetProps) {
+  if (props.mode === 'routePreview') {
+    return (
+      <RoutePreviewSection
+        destination={props.destination}
+        onClose={props.onClose}
+        onStartLegacyNavigation={props.onStartLegacyNavigation}
+      />
+    );
+  }
+  return <PlaceSection {...props} />;
+}
 
 function StartOption({
   icon,
@@ -73,15 +137,13 @@ function StartOption({
   );
 }
 
-export function DirectionsScreen({
+function RoutePreviewSection({
   destination,
   onClose,
   onStartLegacyNavigation,
 }: {
   destination: Place;
   onClose: () => void;
-  /** Legacy (v1) destinations only — pushes the 'Navigation' stack screen. v2 destinations
-   * start navigation through HomeScreen's own route-preview card instead (onClose reveals it). */
   onStartLegacyNavigation: () => void;
 }) {
   const currentLocation = useAppStore((s) => s.currentLocation);
@@ -361,6 +423,187 @@ export function DirectionsScreen({
         </BottomSheetScrollView>
       </KeyboardAvoidingView>
     </View>
+  );
+}
+
+function PlaceSection(props: Extract<LocationSheetProps, { mode: 'preview' | 'details' }>) {
+  const {
+    mode,
+    place,
+    theme,
+    entryPoints,
+    blockGates,
+    selectedEntryIdx,
+    onSelectEntryIdx,
+    walkingTimeMin,
+    isFav,
+    onToggleFavorite,
+    onSelectGate,
+    onOpenDirections,
+    onClose,
+    onShowDetails,
+    onCloseDetails,
+    developerModeEnabled,
+  } = props;
+  const isDetails = mode === 'details';
+
+  return (
+    <BottomSheetScrollView contentContainerStyle={sheetStyles.sheetContent}>
+      <View>
+        <View style={sheetStyles.placeHeader}>
+          {isDetails && (
+            <Pressable onPress={onCloseDetails} style={sheetStyles.detailsBackButton}>
+              <ChevronLeft size={24} color="#5F6368" />
+            </Pressable>
+          )}
+          <View style={{ flex: 1 }}>
+            <Text style={[sheetStyles.placeName, { color: theme.text }]}>{place.name}</Text>
+            {place.urduName && (
+              <Text style={[sheetStyles.placeUrdu, { color: theme.primary }]}>{place.urduName}</Text>
+            )}
+            <Text style={[sheetStyles.placeCategory, { color: theme.subtext }]}>{place.category}</Text>
+            {place.sourceVersion !== 'v2' && place.category === 'Block' && (IJTEMA_DATA.blocks as any)[place.id]?.role && (
+              <Text style={sheetStyles.placeRole}>{(IJTEMA_DATA.blocks as any)[place.id].role}</Text>
+            )}
+          </View>
+          {!isDetails && (
+            <Pressable onPress={onClose}>
+              <X size={24} color="#5F6368" />
+            </Pressable>
+          )}
+        </View>
+
+        {(place.verificationWarning || place.unavailableReason) && (
+          <View style={sheetStyles.placeWarningBanner}>
+            <Text style={sheetStyles.placeWarningBannerText}>
+              {place.verificationWarning ?? place.unavailableReason}
+            </Text>
+          </View>
+        )}
+
+        {!isDetails && (
+          <View style={sheetStyles.infoChips}>
+            {walkingTimeMin !== null && (
+              <View style={sheetStyles.infoChip}>
+                <Clock size={14} color="#2E7D32" />
+                <Text style={sheetStyles.infoChipText}>{walkingTimeMin} min walk</Text>
+              </View>
+            )}
+            {entryPoints.length > 0 && (
+              <View style={sheetStyles.infoChip}>
+                <MapPin size={14} color="#2E7D32" />
+                <Text style={sheetStyles.infoChipText}>{entryPoints.length} entrances</Text>
+              </View>
+            )}
+          </View>
+        )}
+
+        {isDetails && place.description && (
+          <View style={sheetStyles.detailsBlock}>
+            <Text style={sheetStyles.sectionLabel}>Block information</Text>
+            <Text style={sheetStyles.placeDesc}>{place.description}</Text>
+          </View>
+        )}
+
+        {entryPoints.length > 0 && (
+          <View style={sheetStyles.entranceSection}>
+            <Text style={sheetStyles.sectionLabel}>{isDetails ? 'Connected Rastay' : 'Entrances'}</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              {entryPoints.map((ep, idx) => (
+                <Pressable
+                  key={ep.nodeId}
+                  style={[
+                    sheetStyles.entranceChip,
+                    selectedEntryIdx === idx && sheetStyles.entranceChipActive,
+                  ]}
+                  onPress={() => onSelectEntryIdx(idx)}
+                >
+                  <Text
+                    style={[
+                      sheetStyles.entranceNodeText,
+                      selectedEntryIdx === idx && sheetStyles.entranceChipTextActive,
+                    ]}
+                  >
+                    Entrance {idx + 1}
+                  </Text>
+                  <Text
+                    style={[
+                      sheetStyles.entranceChipText,
+                      selectedEntryIdx === idx && sheetStyles.entranceChipTextActive,
+                    ]}
+                  >
+                    {ep.friendlyName}
+                  </Text>
+                  <Text style={sheetStyles.entranceUrdu}>{ep.urduName}</Text>
+                </Pressable>
+              ))}
+            </ScrollView>
+          </View>
+        )}
+
+        {blockGates.length > 0 && (
+          <View style={sheetStyles.entranceSection}>
+            <Text style={sheetStyles.sectionLabel}>{isDetails ? 'Nearby Gates' : 'Member Masjid Gates'}</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              {blockGates.map((gate) => (
+                <Pressable
+                  key={gate.id}
+                  style={sheetStyles.gateChip}
+                  onPress={() => onSelectGate(gate)}
+                >
+                  {__DEV__ && developerModeEnabled && <Text style={sheetStyles.entranceNodeText}>{gate.id}</Text>}
+                  <Text style={sheetStyles.entranceChipText}>{gate.name.replace('Member Masjid Gate ', 'Gate ')}</Text>
+                  {gate.urduName && <Text style={sheetStyles.entranceUrdu}>{gate.urduName}</Text>}
+                </Pressable>
+              ))}
+            </ScrollView>
+          </View>
+        )}
+
+        <Pressable style={sheetStyles.takeMeButton} onPress={onOpenDirections}>
+          <Navigation size={22} color="#FFFFFF" />
+          <Text style={sheetStyles.takeMeText}>Directions</Text>
+        </Pressable>
+
+        <View style={sheetStyles.secondaryActions}>
+          <Pressable style={sheetStyles.secondaryAction} onPress={onToggleFavorite}>
+            <Star
+              size={20}
+              color={isFav ? '#FBC02D' : '#1A73E8'}
+              fill={isFav ? '#FBC02D' : 'none'}
+            />
+            <Text style={sheetStyles.secondaryActionText}>{isFav ? 'Saved' : 'Save'}</Text>
+          </Pressable>
+          <Pressable
+            style={sheetStyles.secondaryAction}
+            onPress={() => {
+              if (!place.coordinate) {
+                Alert.alert('Place unavailable', place.unavailableReason ?? `${place.name} is not available on the map yet.`);
+                return;
+              }
+              const { latitude, longitude } = place.coordinate;
+              Share.share({
+                title: place.name,
+                message: `${place.name} — Karachi Ijtema\nLocation: ${latitude.toFixed(6)}, ${longitude.toFixed(6)}`,
+              }).catch(() => Alert.alert('Unable to share', 'Could not open the share dialog.'));
+            }}
+          >
+            <Share2 size={20} color="#1A73E8" />
+            <Text style={sheetStyles.secondaryActionText}>Share</Text>
+          </Pressable>
+          {!isDetails && (
+            <Pressable style={sheetStyles.secondaryAction} onPress={onShowDetails}>
+              <MapPin size={20} color="#1A73E8" />
+              <Text style={sheetStyles.secondaryActionText}>Details</Text>
+            </Pressable>
+          )}
+        </View>
+
+        {!isDetails && place.description && (
+          <Text style={sheetStyles.placeDesc}>{place.description}</Text>
+        )}
+      </View>
+    </BottomSheetScrollView>
   );
 }
 
@@ -655,4 +898,95 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: '#FFFFFF',
   },
+});
+
+const sheetStyles = StyleSheet.create({
+  sheetContent: { padding: 20 },
+  placeHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 12,
+  },
+  detailsBackButton: { paddingRight: 12, paddingTop: 2 },
+  placeName: { fontSize: 24, fontWeight: 'bold', color: '#202124' },
+  placeUrdu: { fontSize: 18, color: '#2E7D32', marginTop: 2 },
+  placeCategory: { fontSize: 14, color: '#70757A', marginTop: 4 },
+  placeRole: { fontSize: 13, color: '#1A73E8', fontWeight: '700', marginTop: 4 },
+  infoChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 },
+  infoChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#E8F5E9',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 16,
+    gap: 4,
+  },
+  infoChipText: { fontSize: 13, color: '#2E7D32', fontWeight: '500' },
+  detailsBlock: { marginBottom: 16 },
+  entranceSection: { marginBottom: 16 },
+  sectionLabel: { fontSize: 13, fontWeight: '600', color: '#5F6368', marginBottom: 8 },
+  entranceChip: {
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 14,
+    backgroundColor: '#F1F3F4',
+    marginRight: 8,
+    minWidth: 120,
+  },
+  gateChip: {
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 14,
+    backgroundColor: '#FFF5F5',
+    borderWidth: 1,
+    borderColor: '#EA4335',
+    marginRight: 8,
+    minWidth: 132,
+  },
+  entranceChipActive: { backgroundColor: '#E8F0FE', borderWidth: 1.5, borderColor: '#1A73E8' },
+  entranceNodeText: { fontSize: 13, color: '#202124', fontWeight: '800', marginBottom: 2 },
+  entranceChipText: { fontSize: 14, color: '#3C4043', fontWeight: '500' },
+  entranceChipTextActive: { color: '#1A73E8' },
+  entranceUrdu: { fontSize: 12, color: '#888', marginTop: 2 },
+  takeMeButton: {
+    backgroundColor: '#2E7D32',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 18,
+    borderRadius: 16,
+    gap: 10,
+    marginBottom: 20,
+    elevation: 4,
+    shadowColor: '#2E7D32',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+  },
+  takeMeText: { color: '#FFFFFF', fontSize: 18, fontWeight: 'bold', letterSpacing: 0.3 },
+  secondaryActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginBottom: 20,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: '#F1F3F4',
+    paddingVertical: 12,
+  },
+  secondaryAction: { alignItems: 'center', gap: 4 },
+  secondaryActionText: { fontSize: 12, color: '#1A73E8', fontWeight: '500' },
+  placeDesc: { fontSize: 14, color: '#5F6368', lineHeight: 22 },
+  placeWarningBanner: {
+    backgroundColor: '#FFF3E0',
+    borderWidth: 1,
+    borderColor: '#E65100',
+    borderRadius: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    marginTop: 4,
+    marginBottom: 12,
+  },
+  placeWarningBannerText: { fontSize: 13, color: '#7C4A03', fontWeight: '600', lineHeight: 18 }, // #E65100 on #FFF3E0 fails AA (3.79:1); #7C4A03 passes (6.75:1)
 });

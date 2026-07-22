@@ -23,10 +23,10 @@ jest.mock('../viewmodels/HomeViewModel', () => ({
   useHomeViewModel: jest.fn(),
 }));
 
-// DirectionsScreen's own routing/GPS orchestration is covered by DirectionsScreen.test.tsx and
-// the scripts/test-*.ts routing suites. Here we only care whether HomeScreen keeps the
-// route-preview card and the Directions sheet mutually exclusive, so the hook boundary is mocked
-// the same way DirectionsScreen.test.tsx does.
+// LocationSheet's routePreview mode has its own routing/GPS orchestration, covered by
+// LocationSheet.test.tsx and the scripts/test-*.ts routing suites. Here we only care whether
+// HomeScreen keeps the route-preview card and the Directions sheet mutually exclusive, so the
+// hook boundary is mocked the same way LocationSheet.test.tsx does.
 jest.mock('../viewmodels/DirectionsViewModel', () => ({
   useDirectionsViewModel: jest.fn(),
 }));
