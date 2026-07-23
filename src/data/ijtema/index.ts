@@ -6,6 +6,7 @@
 export * from './types';
 export * from './blocks';
 export * from './gates';
+export * from './gateMeta';
 export * from './rastas';
 export * from './specialRoutes';
 export * from './centralPoints';

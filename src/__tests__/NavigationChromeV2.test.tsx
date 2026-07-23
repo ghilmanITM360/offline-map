@@ -96,3 +96,35 @@ describe('NavigationChromeV2 — Exit/recenter/mute touch targets', () => {
     expect(setIsAutoFollowing).toHaveBeenCalledWith(true);
   });
 });
+
+// Phase 7 (Google Maps style navigation experience): MapMode.ARRIVAL sheet must offer both
+// a Recenter map action and a Done action, per spec.
+describe('NavigationChromeV2 — arrival sheet', () => {
+  test('shows You\'ve Arrived and offers Recenter + Done actions when arrived is true', async () => {
+    await render(<NavigationChromeV2 overlay={baseOverlay({ arrived: true })} hasGoogleMapsKey />);
+
+    expect(screen.getByText("You've Arrived!")).toBeOnTheScreen();
+    expect(screen.getByTestId('nav-arrived-recenter-button')).toBeOnTheScreen();
+    expect(screen.getByTestId('nav-arrived-done-button')).toBeOnTheScreen();
+  });
+
+  test('pressing Recenter in the arrival sheet invokes setIsAutoFollowing(true)', async () => {
+    const setIsAutoFollowing = jest.fn();
+    const user = userEvent.setup();
+    await render(<NavigationChromeV2 overlay={baseOverlay({ arrived: true, setIsAutoFollowing })} hasGoogleMapsKey />);
+
+    await user.press(screen.getByTestId('nav-arrived-recenter-button'));
+
+    expect(setIsAutoFollowing).toHaveBeenCalledWith(true);
+  });
+
+  test('pressing Done in the arrival sheet invokes handleExit', async () => {
+    const handleExit = jest.fn();
+    const user = userEvent.setup();
+    await render(<NavigationChromeV2 overlay={baseOverlay({ arrived: true, handleExit })} hasGoogleMapsKey />);
+
+    await user.press(screen.getByTestId('nav-arrived-done-button'));
+
+    expect(handleExit).toHaveBeenCalledTimes(1);
+  });
+});

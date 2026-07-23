@@ -28,6 +28,8 @@ There is no GeoJSON, KML, CSV, SVG, SQLite seed, remote config, checksum, or gen
 - `src/data/ijtema/navigationGraph.ts` and `graphBuilder.ts`: generated-in-code v2 graph nodes and edges from the v2 source files.
 - `src/data/ijtema/mapBounds.ts`: broad map camera/download bounds and default region, not the outside-user routing policy by itself.
 
+Both flows are map-first: there is no dedicated Directions or Navigation screen/route. `HomeScreen` owns a single shared `MapView` and switches what renders as siblings of it — `LocationSheet` (a mode-aware bottom sheet, `mode: 'routePreview' | 'preview' | 'details'`) for route setup, and `NavigationChromeV1`/`NavigationChromeV2` (overlay chrome, not a screen) once `MapMode` (see `src/viewmodels/useMapMode.ts`) reaches `NAVIGATION`/`ARRIVAL`. `RootNavigator` has no `NavigationScreen` or `DirectionsScreen` route.
+
 ## Legacy V1 Flow
 
 ```mermaid
@@ -39,8 +41,8 @@ flowchart LR
   E --> F["RoutePointService"]
   F --> C
   C --> G["RoutePreview"]
-  G --> H["Directions Screen"]
-  G --> I["Navigation Screen"]
+  G --> H["LocationSheet (mode-aware sheet)"]
+  G --> I["NavigationChromeV1 (in-place overlay)"]
   I --> J["SnapToRoadService + RerouteService"]
 ```
 
@@ -53,15 +55,15 @@ flowchart LR
   A --> D["V2MapRenderingService"]
   B --> E["SearchService by default"]
   C --> F["V2DirectionsService by default"]
-  F --> G["Directions preview"]
+  F --> G["LocationSheet (mode-aware sheet)"]
   G --> H["V2NavigationAdapter"]
-  H --> I["NavigationScreen v2 branch by default"]
+  H --> I["NavigationChromeV2 (in-place overlay) v2 branch by default"]
   I --> J["NavigationViewModelV2 + V2NavigationRuntimeService"]
 ```
 
 ## Rendering
 
-Legacy v1 Home, Directions, and Navigation screens render block polygons and graph edges from `IJTEMA_DATA` only when the v2 feature flags are explicitly set to false for rollback/dev testing. Legacy Navigation can render a graph-only map without a Google Maps key by using `MapView` with `mapType="none"`.
+Legacy v1 rendering (block polygons, graph edges from `IJTEMA_DATA`, and the `NavigationChromeV1` overlay) only activates when the v2 feature flags are explicitly set to false for rollback/dev testing — it renders in-place over `HomeScreen`'s `MapView`, not on a separate screen. Legacy Navigation can render a graph-only map without a Google Maps key by using `MapView` with `mapType="none"`.
 
 The v2 Home path renders B1-B42, Rasta 01-11, Shahr-e-Pindal routes, gates, selected block highlights, and graph-only fallback layers through `V2MapRenderingService` by default. `EXPO_PUBLIC_USE_IJTEMA_V2_MAP=false` is an emergency rollback, not the production default.
 
@@ -71,7 +73,7 @@ The v2 Directions path uses v2 routing by default. It exposes active v2 Start Na
 - `EXPO_PUBLIC_USE_IJTEMA_V2_ROUTING=true`
 - `EXPO_PUBLIC_USE_IJTEMA_V2_NAVIGATION=true`
 
-Unset values are treated as true for production. Explicit `false`, `0`, `no`, or `off` disables the related v2 path for rollback. The v2 Navigation path is isolated from the legacy `NavigationViewModel`. `NavigationScreen` uses v2 only when the active route has `sourceVersion === "v2"` and the v2 navigation flag is enabled. Otherwise, legacy routes continue through the legacy runtime, and v2 routes remain preview-only or show a disabled message.
+Unset values are treated as true for production. Explicit `false`, `0`, `no`, or `off` disables the related v2 path for rollback. The v2 Navigation path is isolated from the legacy `NavigationViewModel`. `HomeScreen` renders the `NavigationChromeV2` overlay only when the active route has `sourceVersion === "v2"` and the v2 navigation flag is enabled. Otherwise, legacy routes continue through the legacy runtime via `NavigationChromeV1`, and v2 routes remain preview-only or show a disabled message.
 
 ## Runtime Status
 

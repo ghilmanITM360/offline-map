@@ -61,6 +61,7 @@ function baseViewModel(overrides: Record<string, unknown> = {}) {
   return {
     route: null,
     startSource: 'live_gps',
+    startSourceLabel: 'My current location',
     rememberedLocationAgeLabel: 'from 5 minutes ago',
     rememberedLocationAvailable: true,
     rememberedLocationInsideVenue: true,
@@ -96,12 +97,24 @@ describe('LocationSheet (routePreview) — start option selection', () => {
     expect(screen.getByText('Block 1')).toBeOnTheScreen();
   });
 
+  test('defaults to current GPS location without showing the start picker first', async () => {
+    mockedUseDirectionsViewModel.mockReturnValue(baseViewModel());
+    await render(<LocationSheet mode="routePreview" destination={destination} onClose={onCloseSpy} />);
+
+    expect(screen.getByText('My current location')).toBeOnTheScreen();
+    expect(screen.getByText('Change Start')).toBeOnTheScreen();
+    expect(screen.queryByText('Where are you starting from?')).not.toBeOnTheScreen();
+    expect(screen.queryByText('Use last known location')).not.toBeOnTheScreen();
+    expect(screen.queryByText('Choose start manually')).not.toBeOnTheScreen();
+  });
+
   test('pressing "Use my current location" invokes chooseCurrentLocation', async () => {
     const chooseCurrentLocation = jest.fn(async () => true);
     mockedUseDirectionsViewModel.mockReturnValue(baseViewModel({ chooseCurrentLocation }));
     const user = userEvent.setup();
     await render(<LocationSheet mode="routePreview" destination={destination} onClose={onCloseSpy} />);
 
+    await user.press(screen.getByText('Change Start'));
     await user.press(screen.getByText('Use my current location'));
 
     expect(chooseCurrentLocation).toHaveBeenCalledTimes(1);
@@ -115,6 +128,7 @@ describe('LocationSheet (routePreview) — start option selection', () => {
     const user = userEvent.setup();
     await render(<LocationSheet mode="routePreview" destination={destination} onClose={onCloseSpy} />);
 
+    await user.press(screen.getByText('Change Start'));
     await user.press(screen.getByText('Use last known location'));
 
     expect(chooseRememberedLocation).toHaveBeenCalledTimes(1);
@@ -124,7 +138,10 @@ describe('LocationSheet (routePreview) — start option selection', () => {
     mockedUseDirectionsViewModel.mockReturnValue(
       baseViewModel({ rememberedLocationAvailable: false }),
     );
+    const user = userEvent.setup();
     await render(<LocationSheet mode="routePreview" destination={destination} onClose={onCloseSpy} />);
+
+    await user.press(screen.getByText('Change Start'));
 
     expect(screen.getByText('No saved location yet')).toBeOnTheScreen();
   });
@@ -135,6 +152,7 @@ describe('LocationSheet (routePreview) — start option selection', () => {
     const user = userEvent.setup();
     await render(<LocationSheet mode="routePreview" destination={destination} onClose={onCloseSpy} />);
 
+    await user.press(screen.getByText('Change Start'));
     await user.press(screen.getByText('Choose start manually'));
 
     expect(chooseManualStart).toHaveBeenCalledTimes(1);
@@ -199,6 +217,130 @@ describe('LocationSheet (routePreview) — manual start search ("Search")', () =
   });
 });
 
+describe('LocationSheet (routePreview) — change destination', () => {
+  test('tapping "Change destination" opens inline destination search instead of closing the sheet', async () => {
+    mockedUseDirectionsViewModel.mockReturnValue(baseViewModel());
+    const onChangeDestination = jest.fn();
+    const user = userEvent.setup();
+    await render(
+      <LocationSheet
+        mode="routePreview"
+        destination={destination}
+        onClose={onCloseSpy}
+        onChangeDestination={onChangeDestination}
+      />,
+    );
+
+    await user.press(screen.getByText('Change destination'));
+
+    expect(screen.getByText('Where do you want to go?')).toBeOnTheScreen();
+    expect(onCloseSpy).not.toHaveBeenCalled();
+  });
+
+  test('typing in the destination search box renders matching results', async () => {
+    mockedSearchServiceSearch.mockReturnValue([candidatePlace]);
+    mockedUseDirectionsViewModel.mockReturnValue(baseViewModel());
+    const user = userEvent.setup();
+    await render(
+      <LocationSheet
+        mode="routePreview"
+        destination={destination}
+        onClose={onCloseSpy}
+        onChangeDestination={jest.fn()}
+      />,
+    );
+
+    await user.press(screen.getByText('Change destination'));
+    const input = screen.getByPlaceholderText('Search destination: gate, rasta, block');
+    await user.type(input, 'Gate');
+
+    expect(await screen.findByText('Gate 1')).toBeOnTheScreen();
+    expect(mockedSearchServiceSearch).toHaveBeenCalled();
+  });
+
+  test('no-results message shown when destination search yields nothing', async () => {
+    mockedSearchServiceSearch.mockReturnValue([]);
+    mockedUseDirectionsViewModel.mockReturnValue(baseViewModel());
+    const user = userEvent.setup();
+    await render(
+      <LocationSheet
+        mode="routePreview"
+        destination={destination}
+        onClose={onCloseSpy}
+        onChangeDestination={jest.fn()}
+      />,
+    );
+
+    await user.press(screen.getByText('Change destination'));
+    const input = screen.getByPlaceholderText('Search destination: gate, rasta, block');
+    await user.type(input, 'zzz');
+
+    expect(await screen.findByText('No destinations found.')).toBeOnTheScreen();
+  });
+
+  test('tapping a destination search result invokes onChangeDestination with the picked place', async () => {
+    mockedSearchServiceSearch.mockReturnValue([candidatePlace]);
+    mockedUseDirectionsViewModel.mockReturnValue(baseViewModel());
+    const onChangeDestination = jest.fn();
+    const user = userEvent.setup();
+    await render(
+      <LocationSheet
+        mode="routePreview"
+        destination={destination}
+        onClose={onCloseSpy}
+        onChangeDestination={onChangeDestination}
+      />,
+    );
+
+    await user.press(screen.getByText('Change destination'));
+    const input = screen.getByPlaceholderText('Search destination: gate, rasta, block');
+    await user.type(input, 'Gate');
+
+    const result = await screen.findByText('Gate 1');
+    await user.press(result);
+
+    expect(onChangeDestination).toHaveBeenCalledWith(candidatePlace);
+    expect(onCloseSpy).not.toHaveBeenCalled();
+  });
+
+  test('pressing "Cancel" during destination search returns to the destination summary without changing it', async () => {
+    mockedUseDirectionsViewModel.mockReturnValue(baseViewModel());
+    const onChangeDestination = jest.fn();
+    const user = userEvent.setup();
+    await render(
+      <LocationSheet
+        mode="routePreview"
+        destination={destination}
+        onClose={onCloseSpy}
+        onChangeDestination={onChangeDestination}
+      />,
+    );
+
+    await user.press(screen.getByText('Change destination'));
+    expect(screen.getByText('Where do you want to go?')).toBeOnTheScreen();
+
+    await user.press(screen.getByText('Cancel'));
+
+    expect(screen.getByText('Block 1')).toBeOnTheScreen();
+    expect(screen.queryByText('Where do you want to go?')).not.toBeOnTheScreen();
+    expect(onChangeDestination).not.toHaveBeenCalled();
+    expect(onCloseSpy).not.toHaveBeenCalled();
+  });
+
+  // Back-compat: a caller that hasn't wired onChangeDestination keeps the old
+  // exit-the-sheet behavior instead of opening a search box with nowhere to send its result.
+  test('falls back to onClose when onChangeDestination is not provided', async () => {
+    mockedUseDirectionsViewModel.mockReturnValue(baseViewModel());
+    const user = userEvent.setup();
+    await render(<LocationSheet mode="routePreview" destination={destination} onClose={onCloseSpy} />);
+
+    await user.press(screen.getByText('Change destination'));
+
+    expect(onCloseSpy).toHaveBeenCalledTimes(1);
+    expect(screen.queryByText('Where do you want to go?')).not.toBeOnTheScreen();
+  });
+});
+
 describe('LocationSheet (routePreview) — route ready CTA', () => {
   test('shows route metrics once a route is ready', async () => {
     mockedUseDirectionsViewModel.mockReturnValue(
@@ -218,7 +360,7 @@ describe('LocationSheet (routePreview) — route ready CTA', () => {
     expect(screen.getByText('ETA: 4 min')).toBeOnTheScreen();
   });
 
-  test('pressing "Show route on map" closes the sheet for a v2 destination (real handler, not a no-op)', async () => {
+  test('pressing "Start Navigation" invokes onStartNavigation and closes the sheet for a v2 destination', async () => {
     mockedUseDirectionsViewModel.mockReturnValue(
       baseViewModel({
         loadState: 'ready',
@@ -230,14 +372,49 @@ describe('LocationSheet (routePreview) — route ready CTA', () => {
         },
       }),
     );
+    const onStartNavigation = jest.fn();
     const user = userEvent.setup();
     await render(
-      <LocationSheet mode="routePreview" destination={v2Destination} onClose={onCloseSpy} />,
+      <LocationSheet
+        mode="routePreview"
+        destination={v2Destination}
+        onClose={onCloseSpy}
+        onStartNavigation={onStartNavigation}
+      />,
     );
 
-    await user.press(screen.getByText('Show route on map'));
+    await user.press(screen.getByText('Start Navigation'));
 
+    expect(onStartNavigation).toHaveBeenCalledTimes(1);
     expect(onCloseSpy).toHaveBeenCalledTimes(1);
+  });
+
+  test('pressing "Cancel Route" invokes onCancelRoute when provided', async () => {
+    mockedUseDirectionsViewModel.mockReturnValue(
+      baseViewModel({
+        loadState: 'ready',
+        route: {
+          nodes: ['A', 'B'],
+          coordinates: [],
+          totalDistance: 250,
+          estimatedTimeMin: 4,
+        },
+      }),
+    );
+    const onCancelRoute = jest.fn();
+    const user = userEvent.setup();
+    await render(
+      <LocationSheet
+        mode="routePreview"
+        destination={v2Destination}
+        onClose={onCloseSpy}
+        onCancelRoute={onCancelRoute}
+      />,
+    );
+
+    await user.press(screen.getByText('Cancel Route'));
+
+    expect(onCancelRoute).toHaveBeenCalledTimes(1);
   });
 
   // Regression: a legacy (v1) destination used to have no working navigation entry point at
@@ -278,5 +455,30 @@ describe('LocationSheet (routePreview) — route ready CTA', () => {
     await user.press(screen.getByText('Retry'));
 
     expect(calculateRoute).toHaveBeenCalledTimes(1);
+  });
+
+  test('does not re-invoke calculateRoute on a second Retry tap while the first is still in flight', async () => {
+    let resolveCalculateRoute: () => void = () => {};
+    const calculateRoute = jest.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveCalculateRoute = resolve;
+        }),
+    );
+    mockedUseDirectionsViewModel.mockReturnValue(
+      baseViewModel({ loadState: 'error', errorMessage: 'Could not calculate route.', calculateRoute }),
+    );
+    const user = userEvent.setup();
+    await render(<LocationSheet mode="routePreview" destination={destination} onClose={onCloseSpy} />);
+
+    const retryButton = screen.getByText('Retry');
+    await user.press(retryButton);
+    // Second tap while the first calculateRoute() promise is still unresolved — the
+    // in-flight ref guard must swallow this, not the stale loadState prop (which the
+    // mocked hook still reports as 'error' for both taps, matching a same-tick race).
+    await user.press(retryButton);
+
+    expect(calculateRoute).toHaveBeenCalledTimes(1);
+    resolveCalculateRoute();
   });
 });

@@ -7,13 +7,17 @@ import React from 'react';
 import { Polygon } from 'react-native-maps';
 
 import { V2BlockLayer } from '../../../services/V2MapRenderingService';
+import { Coordinate } from '../../../models/types';
+import { staticColors } from '../../../theme';
 
 interface BlockLayerProps {
   blocks: V2BlockLayer[];
   variant: 'home' | 'nav';
   /** Home-only: true when the "blocks" map filter is active. */
   focused?: boolean;
-  onPressBlock?: (blockId: string) => void;
+  /** coordinate is the hit point on the polygon (Android only), passed through
+   * for HomeScreen's tap disambiguator. */
+  onPressBlock?: (blockId: string, coordinate?: Coordinate) => void;
   keyPrefix: string;
 }
 
@@ -28,7 +32,7 @@ function BlockLayerImpl({ blocks, variant, focused = false, onPressBlock, keyPre
             key={`${keyPrefix}_${block.id}`}
             coordinates={block.polygon}
             fillColor={block.isSelected ? 'rgba(46,125,50,0.26)' : 'rgba(46,125,50,0.08)'}
-            strokeColor={block.isSelected ? '#2E7D32' : 'rgba(95,99,104,0.45)'}
+            strokeColor={block.isSelected ? staticColors.normalBlock : 'rgba(95,99,104,0.45)'}
             strokeWidth={block.isSelected ? 2.5 : 1}
             zIndex={4}
           />
@@ -44,11 +48,11 @@ function BlockLayerImpl({ blocks, variant, focused = false, onPressBlock, keyPre
           key={`${keyPrefix}_${block.id}`}
           coordinates={block.polygon}
           fillColor={block.isSelected ? 'rgba(26,115,232,0.42)' : focused ? 'rgba(46,125,50,0.30)' : 'rgba(46,125,50,0.14)'}
-          strokeColor={block.isSelected ? '#1A73E8' : focused ? '#1B5E20' : '#2E7D32'}
+          strokeColor={block.isSelected ? staticColors.selectedBlock : focused ? staticColors.focusedBlock : staticColors.normalBlock}
           strokeWidth={block.isSelected ? 3 : focused ? 2 : 1.2}
           zIndex={1}
           tappable
-          onPress={() => onPressBlock?.(block.id)}
+          onPress={(e) => onPressBlock?.(block.id, e.nativeEvent.coordinate)}
         />
       ))}
     </>

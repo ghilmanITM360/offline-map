@@ -18,6 +18,7 @@ import { EntryGateRoutingService } from '../services/EntryGateRoutingService';
 import { MapFeatureFlagsService } from '../services/MapFeatureFlagsService';
 import { IJTEMA_MAP_REGION } from '../data/ijtema';
 import { DEFAULT_MAP_ZOOM as DEFAULT_HOME_MAP_ZOOM, estimateZoomFromRegion } from '../utils/mapZoom';
+import { useCameraManager, CompassMode, PLACE_SELECTION_CAMERA_DURATION_MS } from './useCameraManager';
 
 declare const __DEV__: boolean;
 
@@ -56,6 +57,18 @@ function getHomeSnappedCoordinate(coord: { latitude: number; longitude: number }
 export function useHomeViewModel() {
   const mapRef = useRef<MapView>(null);
   const bottomSheetRef = useRef<BottomSheetModal>(null);
+  // Mirrors HomeScreen's sheetIndex state (-1 = closed) so handlePlaceSelect can decide
+  // whether to preserve the current snap height on re-selection — see handlePlaceSelect.
+  const lastSheetIndexRef = useRef(-1);
+  const handleSheetIndexChange = useCallback((index: number) => {
+    lastSheetIndexRef.current = index;
+  }, []);
+  // Google Maps selection transition: highlight -> camera pan -> sheet spring, in that
+  // order (see handlePlaceSelect) — the sheet's present()/snapToIndex is deliberately
+  // staggered behind the camera pan via this timer instead of firing in the same tick.
+  // Mirrors the debounce-timer-ref pattern already used for search below.
+  const sheetPresentTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cameraManager = useCameraManager({ mapRef });
 
   const currentLocation = useAppStore((s) => s.currentLocation);
   const lastKnownLocation = useAppStore((s) => s.lastKnownLocation);
@@ -68,6 +81,12 @@ export function useHomeViewModel() {
   const selectedPlace = useAppStore((s) => s.selectedPlace);
   const searchQuery = useAppStore((s) => s.searchQuery);
   const searchResults = useAppStore((s) => s.searchResults);
+  // Deliberately the raw store primitive, not MapMode — camera-follow/compass gating below
+  // must stay off for the whole isNavigating-bracketed session, even during an emergency
+  // EXPO_PUBLIC_USE_IJTEMA_V2_NAVIGATION rollback where MapMode's NAVIGATION chrome is
+  // flag-suppressed but the nav runtime (and its own camera ownership) is still live. See the
+  // `isNavigating` doc comment in useAppStore.ts and test-navigation-architecture-audit.ts
+  // Finding 6.
   const isNavigating = useAppStore((s) => s.isNavigating);
   const updateSettings = useAppStore((s) => s.updateSettings);
   const setCurrentLocation = useAppStore((s) => s.setCurrentLocation);
@@ -87,6 +106,10 @@ export function useHomeViewModel() {
     insideVenue: false,
     insideBlock: null,
   });
+  // Session-only (not persisted, like Google Maps' own compass state) — NORTH_UP is the
+  // resting/default state; FOLLOW_HEADING rotates the camera bearing to match the device
+  // compass on every GPS tick, via cameraManager.rotateToHeading, until toggled off.
+  const [compassMode, setCompassMode] = useState<CompassMode>('NORTH_UP');
 
   const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const devLogControl = (pressed: string, action: string, details?: Record<string, unknown>) => {
@@ -107,6 +130,13 @@ export function useHomeViewModel() {
     if (labels.length >= 4) return 'Search blocks, rastas, gates';
     return labels.length > 0 ? `Search ${labels.join(', ').toLowerCase()}` : 'Search places';
   }, [categoryChips]);
+  // Phase 5 — full-screen search overlay "Suggestions" section: a handful of
+  // blocks (the app's primary destination type) shown before the user types
+  // anything, same data source as the Blocks category chip, no new service.
+  const suggestedPlaces = useMemo(
+    () => SearchService.searchByCategory('blocks').filter((place) => !!place.coordinate).slice(0, 6),
+    [],
+  );
 
   const initialRegion: Region = {
     latitude: IJTEMA_MAP_REGION.latitude,
@@ -117,16 +147,19 @@ export function useHomeViewModel() {
   const shouldTrackLiveLocation = hasLocationPermission && isMapReady && !isNavigating;
 
   const handleGPS = useCallback(
-    (coord: { latitude: number; longitude: number }) => {
-      if (settings.autoFollowLocation && mapRef.current && !isNavigating) {
-        mapRef.current.animateToRegion(
-          {
-            ...coord,
-            latitudeDelta: 0.005,
-            longitudeDelta: 0.005,
-          },
-          1000
-        );
+    (coord: { latitude: number; longitude: number; heading?: number }) => {
+      // Continue tracking while CameraManager is in FOLLOWING_USER mode (tap-to-recenter
+      // flow below) or while the persisted "always auto-center" setting is on — either
+      // one re-engages the camera, dragging the map (HomeScreen's onPanDrag) exits
+      // FOLLOWING_USER but doesn't touch the persisted setting.
+      if ((cameraManager.mode === 'FOLLOWING_USER' || settings.autoFollowLocation) && !isNavigating) {
+        cameraManager.followUser(coord);
+      }
+      // Compass FOLLOW_HEADING mode — rotate bearing to match device heading on each
+      // tick. Skipped during active navigation, which already owns camera bearing via
+      // cameraManager.enterNavigationCamera (untouched by this fix).
+      if (compassMode === 'FOLLOW_HEADING' && !isNavigating && typeof coord.heading === 'number' && coord.heading >= 0) {
+        cameraManager.rotateToHeading(coord.heading);
       }
       // Phase 4 — update venue/block status on each GPS tick
       setVenueStatus((previous) => {
@@ -136,7 +169,7 @@ export function useHomeViewModel() {
           : next;
       });
     },
-    [isNavigating, settings.autoFollowLocation],
+    [cameraManager, compassMode, isNavigating, settings.autoFollowLocation],
   );
 
   useEffect(() => {
@@ -167,38 +200,54 @@ export function useHomeViewModel() {
     [currentLocation, setSearchQuery, setSearchResults],
   );
 
+  // Google Maps re-selection behavior: switching from one selected object to another
+  // (Block 1 -> Block 2, Gate 1 -> Gate 2, etc.) while the sheet is already open keeps
+  // its current height instead of collapsing back to the default 50% peek. Only a fresh
+  // open (sheet was closed) snaps to the default. Tracked via a ref (not state) because
+  // HomeScreen's BottomSheetModal onChange is the only writer and handlePlaceSelect
+  // itself must read the pre-selection value synchronously.
+  const isSheetOpenForReselection = Boolean(selectedPlace) && lastSheetIndexRef.current >= 1;
   const handlePlaceSelect = (place: Place) => {
+    const nextSnapIndex = isSheetOpenForReselection ? lastSheetIndexRef.current : 1;
+    // 1. Selection highlight — set synchronously, before camera/sheet move, so the tapped
+    // object's isSelected styling (RastaLayer/SpecialRouteLayer/BlockLayer/GateLayer) updates
+    // immediately regardless of how long the camera pan or sheet spring take.
     setSelectedPlace(place);
     addRecentSearch(place);
     setSearchQuery('');
     setSearchResults([]);
-    bottomSheetRef.current?.snapToIndex(1);
+    if (sheetPresentTimerRef.current) {
+      clearTimeout(sheetPresentTimerRef.current);
+      sheetPresentTimerRef.current = null;
+    }
+    const openSheet = () => {
+      bottomSheetRef.current?.present();
+      bottomSheetRef.current?.snapToIndex(nextSnapIndex);
+    };
     if (!place.coordinate) {
+      // Nothing for the camera to pan to — open the sheet right away so the
+      // "place unavailable" info/alert isn't itself delayed.
       Alert.alert('Place unavailable', place.unavailableReason ?? `${place.name} is not available on the map yet.`);
+      openSheet();
       return;
     }
-    mapRef.current?.animateToRegion(
-      {
-        ...place.coordinate,
-        latitudeDelta: 0.002,
-        longitudeDelta: 0.002,
-      },
-      1000
-    );
+    // 2. Camera pans toward the place, offset for whichever sheet height it's about to
+    // reopen at (or keep, on re-selection) — see useCameraManager.animateToPlace.
+    const snapPercent = parseFloat(snapPoints[nextSnapIndex] ?? '50%');
+    const sheetCoverageFraction = (Number.isFinite(snapPercent) ? snapPercent : 50) / 100;
+    cameraManager.animateToPlace(place, sheetCoverageFraction);
+    // 3. Sheet springs in once the (short) camera pan has landed, instead of racing it.
+    sheetPresentTimerRef.current = setTimeout(openSheet, PLACE_SELECTION_CAMERA_DURATION_MS);
   };
 
   const handleRecenter = useCallback(async (): Promise<boolean> => {
     const recenterTo = (location: typeof currentLocation) => {
       if (!location) return false;
       if (!mapRef.current) return false;
-      mapRef.current.animateToRegion(
-        {
-          ...location,
-          latitudeDelta: 0.005,
-          longitudeDelta: 0.005,
-        },
-        1000
-      );
+      // Google-Maps-style: tap recenter -> animate to user -> enable follow mode ->
+      // handleGPS above keeps tracking every subsequent GPS tick until the user drags
+      // the map away (HomeScreen's onPanDrag calls cameraManager.stopFollowing()).
+      cameraManager.followUser(location);
       setSnappedLocation(getHomeSnappedCoordinate(location));
       setVenueStatus(getHomeVenueStatus(location));
       return true;
@@ -293,33 +342,33 @@ export function useHomeViewModel() {
       Alert.alert('Location error', 'Could not read location right now. Please try again.');
       return false;
     }
-  }, [lastKnownLocation, lastKnownLocationUpdatedAt, setCurrentLocation, setHasLocationPermission, setSnappedLocation]);
+  }, [cameraManager, lastKnownLocation, lastKnownLocationUpdatedAt, setCurrentLocation, setHasLocationPermission, setSnappedLocation]);
 
-  // Phase 11 — compass reset (north-up, pitch 0)
-  const handleCompassReset = useCallback(() => {
-    mapRef.current?.animateCamera({ heading: 0, pitch: 0 }, { duration: 500 });
-    updateSettings({ keepNorthFixed: true });
-    devLogControl('compass', 'north_up_reset');
-  }, [updateSettings]);
+  // Compass button: NORTH_UP <-> FOLLOW_HEADING toggle (Google Maps compass model).
+  // NORTH_UP -> tap -> lock bearing to north-up (unchanged Phase 11 behavior).
+  // FOLLOW_HEADING -> tap -> reset to north-up and stop tracking heading.
+  const handleCompassToggle = useCallback(() => {
+    if (compassMode === 'FOLLOW_HEADING') {
+      setCompassMode('NORTH_UP');
+      cameraManager.resetCompass();
+      updateSettings({ keepNorthFixed: true });
+      devLogControl('compass', 'north_up_reset');
+      return;
+    }
+    setCompassMode('FOLLOW_HEADING');
+    updateSettings({ keepNorthFixed: false });
+    if (typeof currentLocation?.heading === 'number' && currentLocation.heading >= 0) {
+      cameraManager.rotateToHeading(currentLocation.heading);
+    }
+    devLogControl('compass', 'heading_follow_enabled');
+  }, [cameraManager, compassMode, currentLocation, updateSettings]);
 
   const handleZoomIn = () => {
-    mapRef.current?.getCamera().then((camera) => {
-      if (camera.zoom !== undefined) {
-        camera.zoom += 1;
-        mapRef.current?.animateCamera(camera);
-        setMapZoomLevel(camera.zoom);
-      }
-    });
+    cameraManager.nudgeZoom(1, setMapZoomLevel);
   };
 
   const handleZoomOut = () => {
-    mapRef.current?.getCamera().then((camera) => {
-      if (camera.zoom !== undefined) {
-        camera.zoom -= 1;
-        mapRef.current?.animateCamera(camera);
-        setMapZoomLevel(camera.zoom);
-      }
-    });
+    cameraManager.nudgeZoom(-1, setMapZoomLevel);
   };
 
   const handleMapRegionChangeComplete = useCallback((region: Region) => {
@@ -349,9 +398,20 @@ export function useHomeViewModel() {
     }
   };
 
+  // Unmount safety: cancel pending debounce/stagger timers so a navigate-away mid-timer
+  // (e.g. tap Block, then immediately leave Home before the 260ms sheet-open or 200ms
+  // search debounce fires) can't run its callback against a torn-down screen.
+  useEffect(() => {
+    return () => {
+      if (sheetPresentTimerRef.current) clearTimeout(sheetPresentTimerRef.current);
+      if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    };
+  }, []);
+
   return {
     mapRef,
     bottomSheetRef,
+    cameraManager,
     currentLocation,
     mapType: settings.mapMode,
     searchQuery,
@@ -366,15 +426,18 @@ export function useHomeViewModel() {
     activeCategory,
     categoryChips,
     searchPlaceholder,
+    suggestedPlaces,
     settings,
     mapZoomLevel,
     updateSettings,
     venueStatus,
+    compassMode,
     setIsMapReady,
     handleSearch,
     handlePlaceSelect,
+    handleSheetIndexChange,
     handleRecenter,
-    handleCompassReset,
+    handleCompassToggle,
     handleZoomIn,
     handleZoomOut,
     handleMapRegionChangeComplete,

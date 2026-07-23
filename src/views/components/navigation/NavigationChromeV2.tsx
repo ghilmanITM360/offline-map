@@ -3,17 +3,22 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React from 'react';
-import { Modal, Pressable, Text, View } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { Animated, Modal, Pressable, Text, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowLeft, ArrowRight, LocateFixed, MapPin, Navigation, RefreshCw, Volume2, VolumeX, X } from 'lucide-react-native';
 
 import { InstructionService } from '../../../services/InstructionService';
+import { staticColors } from '../../../theme';
+import { NAV_TRANSITION_TIMINGS } from '../../../constants/navigationTransitions';
 import { NavigationOverlayV2 } from '../../../viewmodels/useNavigationOverlayV2';
+import { computeNavRecenterInset, resolveNavBarHeight } from '../../../viewmodels/useOverlayInsets';
 import { NAV_TOUCH_TARGET_HIT_SLOP, navOverlayStyles as styles } from './navOverlayStyles';
 
+const AnimatedSafeAreaView = Animated.createAnimatedComponent(SafeAreaView);
+
 function StepIcon({ type, size = 32 }: { type: string; size?: number }) {
-  const color = '#FFFFFF';
+  const color = staticColors.white;
   switch (type) {
     case 'left':    return <ArrowLeft size={size} color={color} />;
     case 'right':   return <ArrowRight size={size} color={color} />;
@@ -38,6 +43,7 @@ export function NavigationChromeV2({ overlay, hasGoogleMapsKey }: { overlay: Nav
     arrived,
     reroutePending,
     isWeakGps,
+    gpsSignalState,
     rerouteStatusMessage,
     snappedLocation,
     settings,
@@ -47,6 +53,16 @@ export function NavigationChromeV2({ overlay, hasGoogleMapsKey }: { overlay: Nav
     bottomBarHeight,
     setBottomBarHeight,
   } = overlay;
+
+  const mountAnim = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    // Held back a beat so the chrome doesn't pop in on the same frame as the route-preview
+    // sheet collapsing / CameraManager's enterNavigationCamera move — see NAV_TRANSITION_TIMINGS.
+    const revealTimer = setTimeout(() => {
+      Animated.timing(mountAnim, { toValue: 1, duration: NAV_TRANSITION_TIMINGS.chromeFadeMs, useNativeDriver: true }).start();
+    }, NAV_TRANSITION_TIMINGS.chromeRevealDelayMs);
+    return () => clearTimeout(revealTimer);
+  }, [mountAnim]);
 
   if (!route) return null;
 
@@ -72,7 +88,17 @@ export function NavigationChromeV2({ overlay, hasGoogleMapsKey }: { overlay: Nav
         </View>
       )}
 
-      <SafeAreaView style={styles.topBar}>
+      <AnimatedSafeAreaView
+        style={[
+          styles.topBar,
+          { opacity: mountAnim, transform: [{ translateY: mountAnim.interpolate({ inputRange: [0, 1], outputRange: [-16, 0] }) }] },
+        ]}
+      >
+        {gpsSignalState === 'GPS_LOST' && (
+          <View style={styles.weakGpsBanner}>
+            <Text style={styles.weakGpsText}>Searching for GPS signal. Your position may be out of date.</Text>
+          </View>
+        )}
         {isWeakGps && (
           <View style={styles.weakGpsBanner}>
             <Text style={styles.weakGpsText}>Weak GPS signal detected. Route updates may be slower.</Text>
@@ -85,19 +111,22 @@ export function NavigationChromeV2({ overlay, hasGoogleMapsKey }: { overlay: Nav
         )}
         {reroutePending ? (
           <View style={[styles.instructionCard, styles.rerouteCard]}>
-            <RefreshCw size={28} color="#FFFFFF" />
+            <RefreshCw size={28} color={staticColors.white} />
             <Text style={styles.rerouteText}>Recalculating...</Text>
           </View>
         ) : currentStep && !arrived ? (
-          <View style={styles.instructionCard}>
+          <View style={styles.instructionCard} accessibilityLabel={currentStep.text}>
             <View style={styles.instructionIcon}>
               <StepIcon type={currentStep.type} size={32} />
             </View>
             <View style={styles.instructionTextContainer}>
+              <Text style={styles.maneuverLabel}>{InstructionService.maneuverLabel(currentStep.type)}</Text>
               <Text style={styles.instructionDistance}>
                 {currentStep.distanceM > 0 ? InstructionService.formatDistance(currentStep.distanceM, settings.distanceUnit) : ''}
               </Text>
-              <Text style={styles.instructionText} numberOfLines={2} ellipsizeMode="tail">{currentStep.text}</Text>
+              <Text style={styles.roadNameText} numberOfLines={1} ellipsizeMode="tail">
+                {currentStep.roadName ?? InstructionService.ROAD_NAME_FALLBACK}
+              </Text>
               {nextStep && (
                 <Text style={styles.nextStepText} numberOfLines={1}>
                   Then: {nextStep.text}
@@ -109,16 +138,22 @@ export function NavigationChromeV2({ overlay, hasGoogleMapsKey }: { overlay: Nav
               onPress={() => setIsMuted(!isMuted)}
               style={styles.muteButton}
               hitSlop={NAV_TOUCH_TARGET_HIT_SLOP}
+              accessibilityRole="button"
+              accessibilityLabel={isMuted ? 'Unmute voice guidance' : 'Mute voice guidance'}
             >
-              {isMuted ? <VolumeX size={24} color="#FFFFFF" /> : <Volume2 size={24} color="#FFFFFF" />}
+              {isMuted ? <VolumeX size={24} color={staticColors.white} /> : <Volume2 size={24} color={staticColors.white} />}
             </Pressable>
           </View>
         ) : null}
-      </SafeAreaView>
+      </AnimatedSafeAreaView>
 
       {!arrived && (
-        <View
-          style={[styles.bottomBar, { paddingBottom: Math.max(insets.bottom, 12) }]}
+        <Animated.View
+          style={[
+            styles.bottomBar,
+            { paddingBottom: Math.max(insets.bottom, 12) },
+            { opacity: mountAnim, transform: [{ translateY: mountAnim.interpolate({ inputRange: [0, 1], outputRange: [16, 0] }) }] },
+          ]}
           onLayout={(e) => setBottomBarHeight(e.nativeEvent.layout.height)}
         >
           <View style={styles.tripInfo}>
@@ -134,12 +169,14 @@ export function NavigationChromeV2({ overlay, hasGoogleMapsKey }: { overlay: Nav
               style={styles.exitButton}
               onPress={() => handleExit()}
               hitSlop={NAV_TOUCH_TARGET_HIT_SLOP}
+              accessibilityRole="button"
+              accessibilityLabel="Exit navigation"
             >
-              <X size={20} color="#FFFFFF" />
+              <X size={20} color={staticColors.textPrimary} />
               <Text style={styles.exitText}>Exit</Text>
             </Pressable>
           </View>
-        </View>
+        </Animated.View>
       )}
 
       {snappedLocation && (
@@ -147,27 +184,50 @@ export function NavigationChromeV2({ overlay, hasGoogleMapsKey }: { overlay: Nav
           testID="nav-recenter-button"
           style={[
             styles.recenterButton,
-            // bottomBarHeight already bakes in insets.bottom (it's the bar's own
-            // paddingBottom) — stacking insets.bottom again here would double-count it.
-            { bottom: (bottomBarHeight || Math.max(insets.bottom, 12) + 140) + 12 },
+            // resolveNavBarHeight only adds insets.bottom for the pre-layout fallback —
+            // once bottomBarHeight is measured it already bakes insets.bottom in (it's
+            // the bar's own paddingBottom), so it isn't double-counted here.
+            { bottom: computeNavRecenterInset(resolveNavBarHeight(bottomBarHeight, insets.bottom)) },
           ]}
           onPress={() => setIsAutoFollowing(true)}
           hitSlop={NAV_TOUCH_TARGET_HIT_SLOP}
+          accessibilityRole="button"
+          accessibilityLabel="Re-center map on my location"
         >
-          <LocateFixed size={20} color="#1A73E8" />
+          <LocateFixed size={20} color={staticColors.routeInside} />
         </Pressable>
       )}
 
       <Modal visible={arrived} transparent animationType="slide">
         <View style={styles.arrivedOverlay}>
           <View style={styles.arrivedCard}>
-            <MapPin size={52} color="#2E7D32" />
+            <MapPin size={52} color={staticColors.arrivalGreen} />
             <Text style={styles.arrivedTitle}>You've Arrived!</Text>
             <Text style={styles.arrivedUrdu}>منزل پر پہنچ گئے</Text>
             <Text style={styles.arrivedSubtitle}>{route.destination.label}</Text>
-            <Pressable style={styles.arrivedButton} onPress={() => handleExit()}>
-              <Text style={styles.arrivedButtonText}>Done</Text>
-            </Pressable>
+            <View style={styles.arrivedActionsRow}>
+              <Pressable
+                testID="nav-arrived-recenter-button"
+                style={styles.arrivedSecondaryButton}
+                onPress={() => setIsAutoFollowing(true)}
+                hitSlop={NAV_TOUCH_TARGET_HIT_SLOP}
+                accessibilityRole="button"
+                accessibilityLabel="Re-center map on my location"
+              >
+                <LocateFixed size={18} color={staticColors.routeInside} />
+                <Text style={styles.arrivedSecondaryButtonText}>Recenter</Text>
+              </Pressable>
+              <Pressable
+                testID="nav-arrived-done-button"
+                style={styles.arrivedButton}
+                onPress={() => handleExit()}
+                hitSlop={NAV_TOUCH_TARGET_HIT_SLOP}
+                accessibilityRole="button"
+                accessibilityLabel="Done, return to map"
+              >
+                <Text style={styles.arrivedButtonText}>Done</Text>
+              </Pressable>
+            </View>
           </View>
         </View>
       </Modal>

@@ -1,5 +1,6 @@
 import { strict as assert } from 'node:assert';
 import { readFileSync } from 'node:fs';
+import { staticColors } from '../src/theme';
 
 // Both v1 and v2 live navigation now run in-place on HomeScreen's persistent MapView —
 // neither is a separately pushed NavigationScreen anymore (see docs/MAP_EXPERIENCE_AUDIT.md).
@@ -39,14 +40,19 @@ assert(navChrome.includes('Graph-only v2 map is active'), 'v2 navigation must sh
 // Phase 8 (docs/ROUTING_NAVIGATION_FIX_REPORT.md): route.coordinates was moved
 // into a useMemo above the `!route` early return (Rules of Hooks), so the
 // reference is now optional-chained (`route?.coordinates`).
-assert(navMapLayers.includes('route?.coordinates') && navMapLayers.includes('strokeColor="#1A73E8"'), 'v2 navigation must render blue route line');
+assert(
+  navMapLayers.includes('route?.coordinates') &&
+    navMapLayers.includes('strokeColor={staticColors.routeInside}') &&
+    staticColors.routeInside === '#1A73E8',
+  'v2 navigation must render blue route line',
+);
 assert(navMapLayers.includes('route.origin.coordinate'), 'v2 navigation must render start marker from v2 route origin');
 assert(navMapLayers.includes('route.destination.coordinate'), 'v2 navigation must render red destination marker from v2 route destination');
 assert(navMapLayers.includes('snappedLocation') && navMapLayers.includes('userMarker'), 'v2 navigation must render current/user marker');
 assert(navChrome.includes('Weak GPS signal detected'), 'v2 navigation must show weak GPS warning');
 assert(navChrome.includes('Recalculating...'), 'v2 navigation must show reroute state without clearing map');
 assert(navChrome.includes('onPress={() => handleExit()}'), 'v2 navigation exit must be wired');
-assert(navChrome.includes('LocateFixed') && navOverlay.includes('animateCamera'), 'v2 navigation recenter must be wired');
+assert(navChrome.includes('LocateFixed') && navOverlay.includes('cameraManager.enterNavigationCamera('), 'v2 navigation recenter must be wired');
 
 assert(navAdapter.includes('This gate needs connector verification before navigation.'), 'Missing/disconnected gates must show connector verification message');
 assert(navAdapter.includes('canStartActiveNavigation'), 'v2 adapter must validate route start eligibility');
@@ -58,7 +64,10 @@ assert(navVmV2.includes('REROUTE_COOLDOWN_MS'), 'v2 VM must enforce reroute cool
 // Phase 2 (map-experience redesign): live navigation reuses Home's own zoom/compass controls
 // (same shared MapView/mapRef) instead of hiding all map controls during navigation.
 assert(homeScreen.includes("mode === 'NAVIGATION' && (") && homeScreen.includes('styles.navControls'), 'Home must render map controls while navigating, not just while browsing');
-assert(homeScreen.includes("logHomeControl('nav_compass', 'reset_north_up')"), 'Nav-mode controls must reuse the compass reset handler');
+assert(
+  homeScreen.includes("logHomeControl('nav_compass',") && homeScreen.includes('handleCompassToggle'),
+  'Nav-mode controls must reuse the compass toggle handler',
+);
 assert(homeScreen.includes("logHomeControl('nav_zoom_in', 'map_zoom_in')") && homeScreen.includes("logHomeControl('nav_zoom_out', 'map_zoom_out')"), 'Nav-mode controls must reuse the zoom in/out handlers');
 
 console.log('Navigation UI checks passed.');

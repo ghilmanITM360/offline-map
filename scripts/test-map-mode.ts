@@ -60,6 +60,13 @@ assert.equal(
   'ARRIVAL must outrank everything else, even with every other flag set at once',
 );
 
+// Phase 7 named transitions (Start button / arrival detection / exit) — see
+// src/__tests__/useMapMode.test.ts for the same three cases as Jest specs.
+assert.equal(deriveMapMode({ ...base, activePreviewRoute: { routeId: 'r1' } }), 'ROUTE_PREVIEW', 'Start button: before press, mode is ROUTE_PREVIEW');
+assert.equal(deriveMapMode({ ...base, showNavOverlay: true }), 'NAVIGATION', 'Start button: after press, mode is NAVIGATION');
+assert.equal(deriveMapMode({ ...base, showNavOverlay: true, arrived: true }), 'ARRIVAL', 'Arrival detection: NAVIGATION -> ARRIVAL');
+assert.equal(deriveMapMode({ ...base, showNavOverlay: false, arrived: false }), 'EXPLORE', 'Exit navigation: returns to EXPLORE');
+
 // Falsy-but-not-null edge cases: an empty string/0 id should still count as "no selection".
 assert.equal(deriveMapMode({ ...base, selectedPlace: null }), 'EXPLORE');
 assert.equal(deriveMapMode({ ...base, directionsDestination: undefined }), 'EXPLORE');
@@ -73,8 +80,35 @@ for (const key of ['arrived', 'showNavOverlay', 'isSearchFocused', 'detailsExpan
   assert(new RegExp(`useMapMode\\(\\{[\\s\\S]{0,220}${key}`).test(home), `useMapMode call must pass ${key}`);
 }
 assert((home.match(/mode === 'NAVIGATION'/g) ?? []).length >= 2, 'NAVIGATION chrome (NavigationChromeV2 + nav MapControls) must be gated by mode');
+
+// Phase 7: `arrived` must be the real GPS-arrival signal from the nav overlays, not a
+// separate flag nobody ever sets — regression guard for the dead `arrive()`/setArrived(true)
+// state that used to make MapMode.ARRIVAL unreachable in practice.
+assert(
+  home.includes('const arrived = navOverlay.arrived || navOverlayV1.arrived;'),
+  'HomeScreen must derive `arrived` from the real nav-overlay arrival signal, not local dead state',
+);
+assert(!home.includes('const [arrived, setArrived] = useState'), 'HomeScreen must not own a separate, never-set local `arrived` flag');
 assert(home.includes('!layersSheetVisible'), 'MapView gesture props must lock on layersSheetVisible (MAP_SETTINGS is not part of MapMode)');
 assert(!home.includes('!showNavOverlay &&') && !home.includes('showNavOverlay && <'), 'Render-visibility checks must go through mode, not raw showNavOverlay');
 assert(home.includes("mode === 'SEARCH' &&") && home.includes("mode !== 'SEARCH' &&"), 'Search dropdown/chips visibility must go through mode (SEARCH), not raw isSearchFocused');
+
+// Regression guard: isSearchFocused is the raw trigger fed INTO useMapMode (declaration +
+// the single input line below), never a render/behavior gate read back out elsewhere —
+// every consumer must key off `mode === 'SEARCH'` so nothing can drift from the priority
+// chain above (e.g. isSearchFocused=true while arrived=true must still resolve ARRIVAL,
+// not be independently treated as "search showing" by some other check).
+assert(!home.includes('if (isSearchFocused)'), 'isSearchFocused must not gate behavior directly — read mode instead');
+assert(!home.includes('!isSearchFocused'), 'isSearchFocused must not gate rendering directly — read mode instead');
+assert(!home.includes('isSearchFocused ?'), 'isSearchFocused must not drive conditional values directly — read mode instead');
+assert(!home.includes('isSearchFocused ||'), 'isSearchFocused must not combine into render conditions directly — read mode instead');
+const isSearchFocusedCodeLines = home
+  .split('\n')
+  .filter((line) => line.includes('isSearchFocused') && !line.trim().startsWith('//'));
+assert.equal(
+  isSearchFocusedCodeLines.length,
+  2,
+  'isSearchFocused should only appear in code as the raw state decl + the single useMapMode input — any new line means a render/behavior check bypassed mode',
+);
 
 console.log('Map mode checks passed.');

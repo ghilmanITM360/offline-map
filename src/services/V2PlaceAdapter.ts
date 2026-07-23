@@ -11,6 +11,7 @@ import {
   IJTEMA_NAVIGATION_GRAPH_V2,
   IJTEMA_RASTAS,
   IJTEMA_SPECIAL_ROUTES,
+  MAJOR_GATE_IDS,
   Rasta,
   SpecialRoute,
   getBlockEntryNodeIds,
@@ -63,6 +64,26 @@ const gateUnavailableReason = (gate: Gate): string | undefined => {
  */
 const gateVerificationWarning = (gate: Gate): string | undefined =>
   gate.status === 'needs_verification' ? 'This gate needs verification before navigation.' : undefined;
+
+/**
+ * Blocks whose entry node sits on (or is graph-adjacent to) one of the given path point
+ * ids — reuses the same navigation graph adjacency hasConnectedSpecialRoutePath already
+ * relies on, so "connected blocks" on a Rasta/Pindal's LocationSheet is real routing data,
+ * not a guess from proximity/geometry.
+ */
+const findConnectedBlockNames = (pointIds: string[]): string[] => {
+  const pointIdSet = new Set(pointIds);
+  const names: string[] = [];
+  for (const block of IJTEMA_BLOCKS) {
+    const isConnected = getBlockEntryNodeIds(block.id).some(
+      (entryId) =>
+        pointIdSet.has(entryId) ||
+        (IJTEMA_NAVIGATION_GRAPH_V2.adjacency[entryId] ?? []).some((edge) => pointIdSet.has(edge.to)),
+    );
+    if (isConnected) names.push(block.name.en);
+  }
+  return names;
+};
 
 export class V2PlaceAdapter {
   private static allPlacesCache = new Map<string, V2Place[]>();
@@ -126,6 +147,8 @@ export class V2PlaceAdapter {
       unavailableReason,
       verificationWarning: gateVerificationWarning(gate),
       developerLabel: options.developerMode ? `${gate.id}${disconnectedGateIds.has(gate.id) ? ' disconnected' : ''}` : undefined,
+      gateNumber: gate.number,
+      isMajorGate: MAJOR_GATE_IDS.has(gate.id),
     };
   }
 
@@ -148,6 +171,7 @@ export class V2PlaceAdapter {
       isRoutable: true,
       isStartRoutable: true,
       developerLabel: options.developerMode ? rasta.points.map((point) => point.id).join(', ') : undefined,
+      connectedBlockNames: findConnectedBlockNames(rasta.points.map((point) => point.id)),
     };
   }
 
@@ -175,6 +199,7 @@ export class V2PlaceAdapter {
       isStartRoutable: isConnected,
       unavailableReason: isConnected ? undefined : `${route.name.en} needs connector verification before routing.`,
       developerLabel: options.developerMode ? route.points.map((point) => point.id).join(', ') : undefined,
+      connectedBlockNames: findConnectedBlockNames(route.points.map((point) => point.id)),
     };
   }
 

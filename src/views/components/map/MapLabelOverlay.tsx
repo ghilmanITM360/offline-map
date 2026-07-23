@@ -38,12 +38,24 @@ export interface MapLabelOverlayHandle {
   requestProjection: () => void;
 }
 
+export interface MapLabelOverlayEdgeInsets {
+  top?: number;
+  right?: number;
+  bottom?: number;
+  left?: number;
+}
+
 export interface MapLabelOverlayProps {
   mapRef: React.RefObject<MapView | null>;
   items: MapLabelItem[];
   /** Disables label tap targets while true (e.g. during an active map drag, when the
    * last resolved projection may be one throttle-frame stale). */
   disableTouch?: boolean;
+  /** Culls labels whose projected point falls within these distances of the
+   * container edges, so they don't render under chrome overlapping the map
+   * (e.g. a top search bar or a right-side control column). Optional, all
+   * sides default to 0 (no culling beyond the existing offscreen check). */
+  edgeInsets?: MapLabelOverlayEdgeInsets;
 }
 
 const OFFSCREEN_PAD = 40;
@@ -146,7 +158,7 @@ function getLabelStyles(item: MapLabelItem): { container: ViewStyle[]; text: any
  * component trees fighting over paint order.
  */
 export const MapLabelOverlay = React.forwardRef<MapLabelOverlayHandle, MapLabelOverlayProps>(
-  function MapLabelOverlay({ mapRef, items, disableTouch }, ref) {
+  function MapLabelOverlay({ mapRef, items, disableTouch, edgeInsets }, ref) {
     const [containerSize, setContainerSize] = useState<Size>({ width: 0, height: 0 });
     const [points, setPoints] = useState<Record<string, Point>>({});
     const [measuredSizes, setMeasuredSizes] = useState<Record<string, Size>>({});
@@ -154,6 +166,15 @@ export const MapLabelOverlay = React.forwardRef<MapLabelOverlayHandle, MapLabelO
     const pendingRef = useRef(false);
     const itemsRef = useRef(items);
     itemsRef.current = items;
+    // project()'s rAF + Promise.all(pointForCoordinate) chain has no native cancellation —
+    // guards its own state-setting continuation instead, so a projection started before
+    // unmount can't call setPoints (or re-trigger itself via pendingRef) after unmount.
+    const mountedRef = useRef(true);
+    useEffect(() => {
+      return () => {
+        mountedRef.current = false;
+      };
+    }, []);
 
     // rAF-gated in-flight coalescing: while a projection batch is running, drop
     // intermediate calls (onRegionChange can fire many times per second during a
@@ -179,6 +200,7 @@ export const MapLabelOverlay = React.forwardRef<MapLabelOverlayHandle, MapLabelO
           ),
         )
           .then((resolved) => {
+            if (!mountedRef.current) return;
             const next: Record<string, Point> = {};
             resolved.forEach((entry) => {
               if (entry) next[entry[0]] = entry[1];
@@ -187,7 +209,7 @@ export const MapLabelOverlay = React.forwardRef<MapLabelOverlayHandle, MapLabelO
           })
           .finally(() => {
             inFlightRef.current = false;
-            if (pendingRef.current) {
+            if (mountedRef.current && pendingRef.current) {
               pendingRef.current = false;
               project();
             }
@@ -230,7 +252,11 @@ export const MapLabelOverlay = React.forwardRef<MapLabelOverlayHandle, MapLabelO
               point.x < -OFFSCREEN_PAD ||
               point.x > containerSize.width + OFFSCREEN_PAD ||
               point.y < -OFFSCREEN_PAD ||
-              point.y > containerSize.height + OFFSCREEN_PAD;
+              point.y > containerSize.height + OFFSCREEN_PAD ||
+              point.y < (edgeInsets?.top ?? 0) ||
+              point.x > containerSize.width - (edgeInsets?.right ?? 0) ||
+              point.y > containerSize.height - (edgeInsets?.bottom ?? 0) ||
+              point.x < (edgeInsets?.left ?? 0);
             if (offscreen) return null;
           }
 
@@ -252,7 +278,14 @@ export const MapLabelOverlay = React.forwardRef<MapLabelOverlayHandle, MapLabelO
 
           if (item.onPress && !disableTouch) {
             return (
-              <Pressable key={item.id} style={wrapperStyle} onPress={item.onPress}>
+              <Pressable
+                key={item.id}
+                style={wrapperStyle}
+                onPress={item.onPress}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel={item.secondaryText ? `${item.text}, ${item.secondaryText}` : item.text}
+              >
                 {content}
               </Pressable>
             );

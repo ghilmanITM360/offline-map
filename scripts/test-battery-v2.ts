@@ -27,7 +27,11 @@ assert(
   'Home follow mode must use a lower-duty GPS interval than active navigation',
 );
 assert(
-  gpsManager.includes('timeInterval: 1000') && gpsManager.includes('distanceInterval: 2'),
+  // The 1000ms literal moved to a named, shared constant (NAVIGATION_WATCH_TIME_INTERVAL_MS
+  // in src/constants/navigation.ts) so GPS-loss-detection can define its timeout as an
+  // explicit multiple of it — see scripts/test-gps-signal-loss-v2.ts, which asserts the
+  // constant's actual value (1000) and that GPSManagerService is wired to use it.
+  gpsManager.includes('timeInterval: NAVIGATION_WATCH_TIME_INTERVAL_MS') && gpsManager.includes('distanceInterval: 2'),
   'Active navigation must keep high-resolution GPS updates',
 );
 

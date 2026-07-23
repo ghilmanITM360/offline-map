@@ -45,6 +45,7 @@ import { useSettingsViewModel } from '../../viewmodels/SettingsViewModel';
 import { useTheme } from '../../services/useTheme';
 import { useAppStore } from '../../store/useAppStore';
 import { MapConfigService } from '../../services/MapConfigService';
+import { staticColors } from '../../theme';
 
 declare const __DEV__: boolean;
 
@@ -120,7 +121,7 @@ export function SettingsScreen() {
             value={value}
             onValueChange={onToggle}
             trackColor={{ false: theme.border, true: theme.chipActive }}
-            thumbColor={value ? theme.accent : '#F4F4F4'}
+            thumbColor={value ? theme.accent : staticColors.switchThumbOff}
           />
         ) : (
           <Text style={[styles.settingValue, { color: danger ? theme.danger : theme.primary }]} numberOfLines={1} ellipsizeMode="tail">

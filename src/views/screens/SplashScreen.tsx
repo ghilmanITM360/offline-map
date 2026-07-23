@@ -16,6 +16,7 @@ import { OnboardingStatusService } from '../../services/OnboardingStatusService'
 import { StartupManager } from '../../services/StartupManager';
 import { RootStackParamList } from '../../navigation/RootNavigator';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { staticColors } from '../../theme';
 
 export function SplashScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
@@ -105,7 +106,7 @@ export function SplashScreen() {
     <View style={styles.container}>
       <Animated.View style={[styles.content, { opacity: fadeAnim }]}>
         <View style={styles.logoContainer}>
-          <MapIcon size={60} color="#FFFFFF" />
+          <MapIcon size={60} color={staticColors.white} />
         </View>
         <Text style={styles.title}>Ijtema Map</Text>
         <Text style={styles.urduTitle}>اجتماع میپ</Text>
@@ -118,7 +119,7 @@ export function SplashScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#2E7D32',
+    backgroundColor: staticColors.arrivalGreen,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -137,18 +138,18 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 32,
     fontWeight: 'bold',
-    color: '#FFFFFF',
+    color: staticColors.white,
     letterSpacing: 1,
   },
   urduTitle: {
     fontSize: 22,
-    color: '#E8F5E9',
+    color: staticColors.lightGreenSubtext,
     marginTop: 4,
     letterSpacing: 0.5,
   },
   subtitle: {
     fontSize: 15,
-    color: '#A5D6A7',
+    color: staticColors.entryGateBorder,
     marginTop: 8,
   },
 });

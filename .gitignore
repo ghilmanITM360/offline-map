@@ -18,3 +18,6 @@ screenshots/
 *.jks
 release.keystore
 android/keystore.properties
+# android/app/debug.keystore is the standard RN debug key (public, non-secret credentials) —
+# intentionally tracked, not a real secret. Keep it out of the *.keystore exclusion above.
+!android/app/debug.keystore

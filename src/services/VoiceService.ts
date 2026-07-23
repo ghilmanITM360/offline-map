@@ -55,4 +55,13 @@ export class VoiceService {
   static async isSpeaking(): Promise<boolean> {
     return Speech.isSpeakingAsync();
   }
+
+  /** Turn-by-turn instruction entry point — same queued/deduped speak() underneath. */
+  static speakInstruction(text: string, language: 'en' | 'ur' = 'en'): void {
+    VoiceService.speak(text, language);
+  }
+
+  static stopSpeaking(): void {
+    VoiceService.stop();
+  }
 }

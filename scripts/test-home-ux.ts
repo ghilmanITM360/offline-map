@@ -16,8 +16,8 @@ assert(home.includes('LayersSheet') && home.includes('openLayerOptions'), 'Home 
 assert(layersSheet.includes('Map Layers'), 'Layers sheet should be titled Map Layers');
 assert(!home.includes("Alert.alert('Map Layers'"), 'Layers control should be a bottom sheet, not a native Alert action sheet');
 assert(!home.includes('Voice Search'), 'Home should hide voice-search action until it is fully implemented');
-assert(home.includes('handleCompassReset'), 'Home compass control should call compass reset handler');
-assert(mapControls.includes('North-up') && mapControls.includes('Free rotate'), 'Home should explain compass state (north-up vs free rotate)');
+assert(home.includes('handleCompassToggle'), 'Home compass control should call compass toggle handler');
+assert(mapControls.includes('North-up') && mapControls.includes('Compass'), 'Home should explain compass state (north-up vs heading-follow)');
 assert(home.includes('[HomeControl] pressed='), 'Home controls should emit dev diagnostics logs');
 assert(home.includes('__DEV__ && developerModeEnabled'), 'Developer controls must be gated behind __DEV__ and developer mode');
 assert(home.includes('marginRight: 76'), 'Outside-area warning should leave room for right-side map controls');
@@ -33,7 +33,9 @@ assert(
 );
 assert(home.includes('categoryChips'), 'Home categories should be data-driven, not hardcoded two chips');
 assert(locationSheet.includes('Member Masjid Gates'), 'Block detail sheet should show Member Masjid gates');
-assert(home.includes('userMarkerPulse'), 'Home should render a pulsing user marker');
+const userLocationMarker = readFileSync('src/views/components/map/UserLocationMarker.tsx', 'utf8');
+assert(home.includes('<UserLocationMarker'), 'Home should render the shared UserLocationMarker component');
+assert(userLocationMarker.includes('pulse'), 'User location marker should render a pulsing dot');
 assert(searchService.includes("{ id: 'gates', label: 'Gates' }"), 'Search categories should include Gates');
 assert(searchService.includes("{ id: 'masjids', label: 'Masjids' }"), 'Search categories should include Masjids');
 assert(searchService.includes("{ id: 'terminals', label: 'Terminals' }"), 'Search categories should include Terminals');

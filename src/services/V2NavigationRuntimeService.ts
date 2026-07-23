@@ -7,6 +7,10 @@ import { Coordinate, V2ActiveRoute } from '../models/types';
 import { RerouteService } from './RerouteService';
 import { EntryGateRoutingService } from './EntryGateRoutingService';
 import { RoutingDestinationV2, RoutingStartV2 } from './RoutingServiceV2';
+// Deliberately from constants/navigation, not GPSManagerService (which imports react-native
+// and would drag a native module import into this otherwise plain, node/tsx-testable file —
+// see the comment on NAVIGATION_WATCH_TIME_INTERVAL_MS for why it lives there).
+import { NAVIGATION_WATCH_TIME_INTERVAL_MS } from '../constants/navigation';
 
 export interface NavigationProgressV2Input {
   route: V2ActiveRoute;
@@ -39,6 +43,44 @@ export interface RerouteEvidenceV2 {
 
 export function shouldIgnorePoorAccuracyMovementV2(input: { movedDistanceM: number; accuracyM?: number }): boolean {
   return (input.accuracyM ?? 0) > 50 && input.movedDistanceM < 10;
+}
+
+// Google-Maps-style GPS state for live v2 navigation. GPS_GOOD/GPS_WEAK reflect the accuracy
+// of the most recent fix (same threshold as RerouteService.shouldHoldRouteForWeakGps);
+// GPS_LOST is a distinct, timeout-driven state for when fixes stop arriving entirely — the
+// scenario the pre-existing weak-GPS banner never covered (it only reacts to fixes that DO
+// arrive, so a total signal dropout during a Karachi-Ijtema-crowd-density GPS outage used to
+// leave the UI frozen on the last known position with no indication anything was wrong).
+export type GpsSignalStateV2 = 'GPS_GOOD' | 'GPS_WEAK' | 'GPS_LOST';
+
+/**
+ * GPS_LOST fires once this many ms have passed with zero fresh fixes while navigating. Set
+ * as an explicit multiple of GPSManagerService's navigation-mode watchPositionAsync
+ * `timeInterval` (the minimum ms between fixes it requests while a NavigationViewModelV2
+ * listener is attached) rather than an arbitrary guess: 8 missed fixes is long enough that a
+ * single delayed/dropped update (a momentary hiccup, ordinary GPS jitter) doesn't
+ * false-positive into a scary "no signal" banner, but short enough that a real outage
+ * (crowd-density signal loss, walking under a covered area) is surfaced to the user within
+ * ~8 seconds — well before a frozen "you are here" dot could be mistaken for a current
+ * position by the app's elderly user base.
+ */
+export const GPS_LOST_TIMEOUT_MS = NAVIGATION_WATCH_TIME_INTERVAL_MS * 8;
+
+export function deriveGpsSignalStateV2(input: {
+  /** Accuracy verdict for the most recent fix (RerouteService.shouldHoldRouteForWeakGps). Only
+   * consulted when a fix has actually arrived within the timeout — ignored once GPS_LOST. */
+  isWeakGps: boolean;
+  /** Wall-clock time (Date.now()) the last fix was accepted, or null if none has arrived yet
+   * this navigation session. */
+  lastFixAtMs: number | null;
+  nowMs: number;
+  timeoutMs?: number;
+}): GpsSignalStateV2 {
+  const timeoutMs = input.timeoutMs ?? GPS_LOST_TIMEOUT_MS;
+  if (input.lastFixAtMs == null || input.nowMs - input.lastFixAtMs >= timeoutMs) {
+    return 'GPS_LOST';
+  }
+  return input.isWeakGps ? 'GPS_WEAK' : 'GPS_GOOD';
 }
 
 export function calculateNavigationProgressV2(input: NavigationProgressV2Input): NavigationProgressV2 {

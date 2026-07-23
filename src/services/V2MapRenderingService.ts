@@ -3,6 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import { getDistance } from 'geolib';
+
 import {
   IJTEMA_BLOCKS,
   IJTEMA_GATES,
@@ -10,6 +12,7 @@ import {
   IJTEMA_RASTAS,
   IJTEMA_SPECIAL_ROUTES,
   LocalizedLabel,
+  MAJOR_GATE_IDS,
 } from '../data/ijtema';
 import { Coordinate, Place } from '../models/types';
 import { MapFeatureFlagsService } from './MapFeatureFlagsService';
@@ -115,7 +118,6 @@ export const LOW_ZOOM = 13;
 export const MEDIUM_ZOOM = 15;
 export const HIGH_ZOOM = 16.5;
 export const DEFAULT_ZOOM = 15;
-const MAJOR_GATE_IDS = new Set(['GATE_05', 'GATE_08', 'GATE_13', 'GATE_21', 'GATE_22']);
 const MAP_FILTERS = new Set(['all', 'blocks', 'rastas', 'gates', 'special_routes']);
 
 // Active-navigation "route-critical only" declutter: a block/gate/rasta/special-route
@@ -296,6 +298,42 @@ export class V2MapRenderingService {
     return {
       outside: coordinates.slice(0, count + 1),
       inside: coordinates.slice(count),
+    };
+  }
+
+  /**
+   * Splits a leg's coordinates into "walked" (behind the user) vs "remaining" (ahead)
+   * for Google-Maps-style progress rendering (dimmed-behind / bright-ahead), by finding
+   * the vertex nearest the user's snapped location and treating everything up to and
+   * including it as walked. Vertex-level granularity (not a true point-on-segment split)
+   * is enough for this route's coordinate density and avoids adding interpolation math
+   * to a render-path helper. The nearest vertex is shared between both slices so they
+   * connect with no visual gap, matching splitOutsideInsideCoordinates above.
+   */
+  static splitByProgress(
+    coordinates: Coordinate[],
+    userLocation: Coordinate | null | undefined,
+  ): { walked: Coordinate[]; remaining: Coordinate[] } {
+    if (!userLocation || coordinates.length < 2) {
+      return { walked: [], remaining: coordinates };
+    }
+    let nearestIndex = 0;
+    let nearestDistance = Infinity;
+    coordinates.forEach((coord, index) => {
+      const distance = getDistance(
+        { latitude: userLocation.latitude, longitude: userLocation.longitude },
+        { latitude: coord.latitude, longitude: coord.longitude },
+      );
+      if (distance < nearestDistance) {
+        nearestDistance = distance;
+        nearestIndex = index;
+      }
+    });
+    if (nearestIndex <= 0) return { walked: [], remaining: coordinates };
+    if (nearestIndex >= coordinates.length - 1) return { walked: coordinates, remaining: [] };
+    return {
+      walked: coordinates.slice(0, nearestIndex + 1),
+      remaining: coordinates.slice(nearestIndex),
     };
   }
 

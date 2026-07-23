@@ -5,6 +5,8 @@
 
 import { StyleSheet } from 'react-native';
 
+import { markerColors, markerSizes, staticColors } from '../../../theme';
+
 // Styles shared by the Home and Navigation map-layer renderers. Extracted
 // verbatim from src/views/screens/HomeScreen.tsx and NavigationScreen.tsx —
 // values must stay pixel-identical to the pre-extraction inline JSX.
@@ -107,20 +109,32 @@ export const mapLayerStyles = StyleSheet.create({
     shadowRadius: 3,
   },
   v2GateMarkerWarning: {
-    backgroundColor: '#E65100',
+    backgroundColor: markerColors.warning,
   },
   v2GateMarkerDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: '#1565C0',
+    width: markerSizes.gate,
+    height: markerSizes.gate,
+    borderRadius: markerSizes.gate / 2,
+    backgroundColor: staticColors.gateMarkerDot,
     borderWidth: 1.5,
-    borderColor: '#FFFFFF',
+    borderColor: staticColors.white,
     elevation: 3,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.3,
     shadowRadius: 2,
+  },
+  // react-native-maps' Marker has no hitSlop — the only way to widen a custom-view
+  // marker's touch region is to widen the child View itself (anchor stays centered,
+  // so the visible dot doesn't move). Only used for suppressed/unselected gates (see
+  // GateLayer.tsx) — the non-suppressed case already gets a bigger Pressable via its
+  // MapLabelOverlay label item. 44x44 matches the platform-standard minimum touch
+  // target (Android/iOS accessibility guidance, Google Maps parity).
+  v2GateMarkerHitArea: {
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   v2GateMarkerText: {
     color: '#FFFFFF',
@@ -217,17 +231,17 @@ export const mapLayerStyles = StyleSheet.create({
     marginTop: 1,
   },
   rastaEndpointDot: {
-    width: 9,
-    height: 9,
-    borderRadius: 4.5,
-    backgroundColor: '#FFFFFF',
+    width: markerSizes.rasta,
+    height: markerSizes.rasta,
+    borderRadius: markerSizes.rasta / 2,
+    backgroundColor: staticColors.white,
     borderWidth: 2,
   },
   rastaEndpointDotEmphasized: {
     width: 12,
     height: 12,
     borderRadius: 6,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: staticColors.white,
     borderWidth: 2.5,
     elevation: 3,
   },
@@ -236,5 +250,34 @@ export const mapLayerStyles = StyleSheet.create({
     fontSize: 8,
     fontWeight: '500',
     marginTop: 1,
+  },
+  // Same invisible-hit-area pattern as v2GateMarkerHitArea — facilityMarker's visible
+  // icon (markerSizes.facility, well under 44dp) stays the same size; this wrapper
+  // just widens the Marker's own touch region, anchor-centered so nothing shifts.
+  facilityMarkerHitArea: {
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  facilityMarker: {
+    width: markerSizes.facility,
+    height: markerSizes.facility,
+    borderRadius: markerSizes.facility / 2,
+    backgroundColor: staticColors.facilityAccent,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: staticColors.white,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.3,
+    shadowRadius: 2,
+  },
+  facilityMarkerSelected: {
+    borderWidth: 2.5,
+    borderColor: '#FFD700',
+    elevation: 6,
   },
 });

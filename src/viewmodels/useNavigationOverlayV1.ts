@@ -5,11 +5,12 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Animated, BackHandler } from 'react-native';
-import MapView, { Camera } from 'react-native-maps';
+import MapView from 'react-native-maps';
 import { useAppStore } from '../store/useAppStore';
 import { RoutingService } from '../services/RoutingService';
 import { IJTEMA_DATA, MAP_BOUNDS } from '../constants/data';
 import { useNavigationViewModel } from './NavigationViewModel';
+import { CameraManager } from './useCameraManager';
 
 interface Params {
   mapRef: React.RefObject<MapView | null>;
@@ -17,6 +18,7 @@ interface Params {
   hasGoogleMapsKey: boolean;
   /** Reuse Home's existing current-location pulse animation instead of starting a second loop. */
   userPulseAnim: Animated.Value;
+  cameraManager: CameraManager;
 }
 
 const VENUE_BOUNDARY = [
@@ -32,13 +34,13 @@ const VENUE_BOUNDARY = [
  * mirrors useNavigationOverlayV2's shape. Safe to call unconditionally — every effect
  * here already no-ops when there's no active v1 route.
  */
-export function useNavigationOverlayV1({ mapRef, mapReady, hasGoogleMapsKey, userPulseAnim }: Params) {
+export function useNavigationOverlayV1({ mapRef, mapReady, hasGoogleMapsKey, userPulseAnim, cameraManager }: Params) {
   const hasInternet = useAppStore((s) => s.hasInternet);
   const settings = useAppStore((s) => s.settings);
   const currentLocationSource = useAppStore((s) => s.currentLocationSource);
 
   const vm = useNavigationViewModel();
-  const { route, snappedLocation } = vm;
+  const { route, snappedLocation, arrived } = vm;
 
   const [isAutoFollowing, setIsAutoFollowing] = useState(settings.autoFollowLocation);
   const [initialCameraFitDone, setInitialCameraFitDone] = useState(false);
@@ -64,38 +66,49 @@ export function useNavigationOverlayV1({ mapRef, mapReady, hasGoogleMapsKey, use
   useEffect(() => {
     if (!route || !mapReady || initialCameraFitDone || !mapRef.current) return;
     if (route.coordinates.length > 1) {
-      mapRef.current.fitToCoordinates(route.coordinates, {
-        edgePadding: { top: 90, right: 64, bottom: (bottomBarHeightRef.current || 140) + 80, left: 64 },
-        animated: true,
+      cameraManager.fitRoute(route.coordinates, {
+        top: 90,
+        right: 64,
+        bottom: (bottomBarHeightRef.current || 140) + 80,
+        left: 64,
       });
       setInitialCameraFitDone(true);
       return;
     }
-    mapRef.current.fitToCoordinates(mapLayers.venueBoundary, {
-      edgePadding: { top: 48, right: 48, bottom: (bottomBarHeightRef.current || 140) + 20, left: 48 },
-      animated: true,
+    cameraManager.fitVenueBounds(mapLayers.venueBoundary, {
+      top: 48,
+      right: 48,
+      bottom: (bottomBarHeightRef.current || 140) + 20,
+      left: 48,
     });
     setInitialCameraFitDone(true);
-  }, [initialCameraFitDone, mapReady, mapRef, mapLayers.venueBoundary, route]);
+  }, [cameraManager, initialCameraFitDone, mapReady, mapRef, mapLayers.venueBoundary, route]);
 
   useEffect(() => {
     if (!route || !isAutoFollowing || !snappedLocation || !mapRef.current) return;
     const snappedInsideVenue = RoutingService.isInsideVenue(snappedLocation);
     if (!snappedInsideVenue && route.coordinates.length > 1) return;
-    mapRef.current.animateCamera(
-      {
-        center: snappedLocation,
-        zoom: 18,
-        heading: settings.keepNorthFixed ? 0 : (snappedLocation.heading ?? 0),
-        pitch: 30,
-      } as Camera,
-      { duration: 800 },
-    );
-  }, [isAutoFollowing, mapRef, route, settings.keepNorthFixed, snappedLocation]);
+    cameraManager.enterNavigationCamera(snappedLocation, {
+      zoom: 18,
+      heading: settings.keepNorthFixed ? 0 : (snappedLocation.heading ?? 0),
+      pitch: 30,
+      duration: 800,
+    });
+  }, [cameraManager, isAutoFollowing, mapRef, route, settings.keepNorthFixed, snappedLocation]);
+
+  useEffect(() => {
+    if (!route) cameraManager.exitNavigationCamera();
+  }, [cameraManager, route]);
 
   useEffect(() => {
     if (!route) return;
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      // Same ARRIVAL-vs-NAVIGATION back distinction as useNavigationOverlayV2 — see its
+      // comment.
+      if (arrived) {
+        vm.handleExit();
+        return true;
+      }
       Alert.alert('Exit navigation?', 'Do you want to stop navigation and return to map?', [
         { text: 'Cancel', style: 'cancel' },
         { text: 'Exit', style: 'destructive', onPress: () => vm.handleExit() },
@@ -103,7 +116,7 @@ export function useNavigationOverlayV1({ mapRef, mapReady, hasGoogleMapsKey, use
       return true;
     });
     return () => sub.remove();
-  }, [route, vm.handleExit]);
+  }, [route, arrived, vm.handleExit]);
 
   const graphOnlyFallbackUsed = !hasGoogleMapsKey || !hasInternet;
 

@@ -12,6 +12,7 @@ import { IJTEMA_DATA } from '../../../constants/data';
 import { RoutePointService } from '../../../services/RoutePointService';
 import { NavigationOverlayV1 } from '../../../viewmodels/useNavigationOverlayV1';
 import { navOverlayStyles as styles } from './navOverlayStyles';
+import { markerSizes, staticColors } from '../../../theme';
 
 /** Renders as children of the shared MapView while a legacy (v1) route is being
  * navigated — moved verbatim out of the old standalone NavigationScreen. */
@@ -37,7 +38,7 @@ export function NavigationMapLayersV1({ overlay }: { overlay: NavigationOverlayV
           key={`nav_v1_block_${block.id}`}
           coordinates={block.corners ?? block.polygon}
           fillColor={block.id === destination?.id ? 'rgba(46,125,50,0.2)' : 'rgba(46,125,50,0.08)'}
-          strokeColor={block.id === destination?.id ? '#2E7D32' : 'rgba(95,99,104,0.45)'}
+          strokeColor={block.id === destination?.id ? staticColors.normalBlock : 'rgba(95,99,104,0.45)'}
           strokeWidth={block.id === destination?.id ? 2 : 1}
           zIndex={0}
         />
@@ -61,14 +62,14 @@ export function NavigationMapLayersV1({ overlay }: { overlay: NavigationOverlayV
 
       <Polyline
         coordinates={route.coordinates}
-        strokeColor="rgba(13,71,161,0.72)"
+        strokeColor={staticColors.routeCasing}
         strokeWidth={11}
         lineDashPattern={reroutePending ? [10, 5] : undefined}
         zIndex={20}
       />
       <Polyline
         coordinates={route.coordinates}
-        strokeColor="#1A73E8"
+        strokeColor={staticColors.routeInside}
         strokeWidth={7}
         lineDashPattern={reroutePending ? [10, 5] : undefined}
         zIndex={21}
@@ -88,7 +89,7 @@ export function NavigationMapLayersV1({ overlay }: { overlay: NavigationOverlayV
       {destination && destinationCoordinate && (
         <Marker coordinate={destinationCoordinate} title={destination.name} anchor={{ x: 0.5, y: 1 }} tracksViewChanges={false}>
           <View style={styles.destinationMarker}>
-            <MapPin size={34} color="#EA4335" fill="#EA4335" />
+            <MapPin size={markerSizes.destination} color={staticColors.gateAccent} fill={staticColors.gateAccent} />
           </View>
         </Marker>
       )}

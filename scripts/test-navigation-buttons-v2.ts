@@ -38,7 +38,9 @@ assert(
   'Navigation v2 Exit button must stay wired to shared exit handler.',
 );
 assert(
-  navigationChromeSource.includes('<Pressable style={styles.arrivedButton} onPress={() => handleExit()}>'),
+  navigationChromeSource.includes('testID="nav-arrived-done-button"') &&
+    navigationChromeSource.includes('style={styles.arrivedButton}') &&
+    navigationChromeSource.includes('onPress={() => handleExit()}'),
   'Navigation v2 arrival Done button must stay wired to shared exit handler.',
 );
 assert(
@@ -50,7 +52,20 @@ assert(
   'Navigation v2 recenter control must resume auto-follow.',
 );
 assert(
-  navigationOverlaySource.includes('center: snappedLocation') &&
+  navigationChromeSource.includes('testID="nav-arrived-recenter-button"') &&
+    navigationChromeSource.includes('testID="nav-arrived-done-button"'),
+  'Navigation v2 arrival sheet must offer both Recenter map and Done actions.',
+);
+assert(
+  // v2 speech now goes through the shared VoiceService (queued/deduped) instead of calling
+  // expo-speech raw — see src/services/VoiceService.ts speakInstruction()/stopSpeaking().
+  navigationViewModelSource.includes('VoiceService.speakInstruction(') && navigationViewModelSource.includes('VoiceService.stopSpeaking()'),
+  'Navigation v2 view model must speak/stop through the shared VoiceService.',
+);
+assert(
+  // Camera recenter now goes through CameraManager.enterNavigationCamera() (see
+  // src/viewmodels/useCameraManager.ts) instead of calling mapRef.animateCamera directly.
+  navigationOverlaySource.includes('cameraManager.enterNavigationCamera(snappedLocation') &&
     navigationOverlaySource.includes('heading: settings.keepNorthFixed ? 0 : (snappedLocation.heading ?? 0)'),
   'Navigation v2 auto-follow effect must keep camera recenter on the snapped location.',
 );
@@ -91,7 +106,7 @@ assert(
   'Navigation v2 view model must keep weak GPS state updates.',
 );
 assert(
-  navigationViewModelSource.includes('Speech.stop();') && navigationViewModelSource.includes('stopNavigation();'),
+  navigationViewModelSource.includes('VoiceService.stopSpeaking();') && navigationViewModelSource.includes('stopNavigation();'),
   'Navigation v2 exit handler must stop speech and clear navigation state.',
 );
 assert(

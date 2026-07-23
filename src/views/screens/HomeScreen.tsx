@@ -19,6 +19,7 @@ import {
   BackHandler,
   Animated,
   ActivityIndicator,
+  useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import MapView, { Marker, Polygon, Polyline, PROVIDER_GOOGLE, LocalTile } from 'react-native-maps';
@@ -30,18 +31,28 @@ import {
   WifiOff,
   X,
   Clock,
+  ArrowLeft,
 } from 'lucide-react-native';
 import { BottomSheetModal, BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import { useNavigation, DrawerActions, CompositeNavigationProp } from '@react-navigation/native';
 import { DrawerNavigationProp } from '@react-navigation/drawer';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useHomeViewModel } from '../../viewmodels/HomeViewModel';
+import {
+  computeMapControlsInset,
+  computeNavControlsInset,
+  resolveNavBarHeight,
+  resolveOverlayExtent,
+  OverlayState,
+} from '../../viewmodels/useOverlayInsets';
 import { useTheme } from '../../services/useTheme';
-import { GRAPH_VALIDATION, IJTEMA_DATA, MAP_BOUNDS } from '../../constants/data';
+import { SHEET_CORNER_RADIUS } from '../components/common/SheetHeader';
+import { markerColors, markerSizes, shadows, staticColors } from '../../theme';
+import { getDistance } from 'geolib';
+import { GRAPH_VALIDATION, IJTEMA_DATA, LANDMARK_PLACES, MAP_BOUNDS } from '../../constants/data';
 import { Place, RoutePreview, SearchResult } from '../../models/types';
 import { PlaceDetailService } from '../../services/PlaceDetailService';
 import { FavoriteService } from '../../services/FavoriteService';
-import { InstructionService } from '../../services/InstructionService';
 import { useAppStore } from '../../store/useAppStore';
 import { RoutePointService } from '../../services/RoutePointService';
 import { Paths } from 'expo-file-system';
@@ -49,6 +60,7 @@ import { DrawerParamList, RootStackParamList } from '../../navigation/RootNaviga
 import { RoutingService } from '../../services/RoutingService';
 import { MapConfigService } from '../../services/MapConfigService';
 import { MapFeatureFlagsService } from '../../services/MapFeatureFlagsService';
+import { MapStartupController } from '../../services/MapStartupController';
 import { V2MapRenderingService, MEDIUM_ZOOM, HIGH_ZOOM } from '../../services/V2MapRenderingService';
 import { V2NavigationAdapter } from '../../services/V2NavigationAdapter';
 import { RoutingServiceV2 } from '../../services/RoutingServiceV2';
@@ -62,8 +74,9 @@ import { RastaLayer } from '../components/map/RastaLayer';
 import { SpecialRouteLayer } from '../components/map/SpecialRouteLayer';
 import { BlockLayer } from '../components/map/BlockLayer';
 import { GateLayer } from '../components/map/GateLayer';
+import { FacilityLayer } from '../components/map/FacilityLayer';
 import { MapLabelOverlay, MapLabelItem, MapLabelOverlayHandle } from '../components/map/MapLabelOverlay';
-import { MapControls } from '../components/map/MapControls';
+import { MapControls, MapControlsRecenter } from '../components/map/MapControls';
 import { LayersSheet } from '../components/map/LayersSheet';
 import { useNavigationOverlayV2 } from '../../viewmodels/useNavigationOverlayV2';
 import { useNavigationOverlayV1 } from '../../viewmodels/useNavigationOverlayV1';
@@ -73,6 +86,9 @@ import { NavigationChromeV2 } from '../components/navigation/NavigationChromeV2'
 import { NavigationMapLayersV1 } from '../components/navigation/NavigationMapLayersV1';
 import { NavigationChromeV1 } from '../components/navigation/NavigationChromeV1';
 import { LocationSheet } from '../components/map/LocationSheet';
+import { UserLocationMarker } from '../components/map/UserLocationMarker';
+import { LocationTutorialTooltip } from '../components/map/LocationTutorialTooltip';
+import { resolveTapCandidate, TapCandidate } from '../../services/TapDisambiguationService';
 import { Z } from '../styles/zLayers';
 
 declare const __DEV__: boolean;
@@ -143,9 +159,20 @@ export function HomeScreen() {
   const nav = useNavigation<HomeScreenNavigationProp>();
   const currentLocation = useAppStore((s) => s.currentLocation);
   const currentLocationSource = useAppStore((s) => s.currentLocationSource);
+  const lastKnownLocation = useAppStore((s) => s.lastKnownLocation);
+  const hasLocationPermission = useAppStore((s) => s.hasLocationPermission);
+  const hasSeenMapOverview = useAppStore((s) => s.hasSeenMapOverview);
+  const setHasSeenMapOverview = useAppStore((s) => s.setHasSeenMapOverview);
+  const hasSeenLocationTutorial = useAppStore((s) => s.hasSeenLocationTutorial);
+  const setHasSeenLocationTutorial = useAppStore((s) => s.setHasSeenLocationTutorial);
   const activeRoute = useAppStore((s) => s.activeRoute);
   const clearRoutePlanner = useAppStore((s) => s.clearRoutePlanner);
   const favorites = useAppStore((s) => s.favorites);
+  // Deliberately the raw store primitive, not `mode` — used only below to null out
+  // activePreviewRoute once a real nav session starts, and `mode` is itself derived FROM
+  // activePreviewRoute (see useMapMode() below), so reading `mode` here would be circular. See
+  // the `isNavigating` doc comment in useAppStore.ts and test-navigation-architecture-audit.ts
+  // Finding 6.
   const isNavigating = useAppStore((s) => s.isNavigating);
   const routePlannerDest = useAppStore((s) => s.routePlannerDest);
   const routePlannerOrigin = useAppStore((s) => s.routePlannerOrigin);
@@ -170,6 +197,8 @@ export function HomeScreen() {
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const searchInputRef = useRef<TextInput>(null);
   const mapLabelOverlayRef = useRef<MapLabelOverlayHandle>(null);
+  // Cold-launch camera decision (see onMapReady below) fires once per mount only.
+  const coldLaunchCameraDoneRef = useRef(false);
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const mapRuntimeStatus = MapConfigService.getRuntimeStatus();
@@ -181,11 +210,15 @@ export function HomeScreen() {
   const [mapReady, setMapReadyState] = useState(false);
   const [mapLoadFailed, setMapLoadFailed] = useState(false);
   const [topOverlayHeight, setTopOverlayHeight] = useState(0);
-  const [routePreviewCardMeasuredHeight, setRoutePreviewCardMeasuredHeight] = useState(184);
   const [isMapDragging, setIsMapDragging] = useState(false);
   const [recenterState, setRecenterState] = useState<'idle' | 'loading' | 'success' | 'failure'>('idle');
+  const [showLocationTutorial, setShowLocationTutorial] = useState(false);
   const [detailsExpanded, setDetailsExpanded] = useState(false);
-  const [arrived, setArrived] = useState(false);
+  // -1 = closed. Tracked (not derived from mode) because PLACE_SELECTED/ROUTE_PREVIEW
+  // cover two distinct snap heights (15%/50% peek vs preview) that mode alone can't
+  // distinguish — see onChange below and useOverlayInsets.computeMapControlsInset.
+  const [sheetIndex, setSheetIndex] = useState(-1);
+  const { height: windowHeight } = useWindowDimensions();
   const searchFocusAnim = useRef(new Animated.Value(0)).current;
   const warningAnim = useRef(new Animated.Value(0)).current;
   const userPulseAnim = useRef(new Animated.Value(0)).current;
@@ -205,10 +238,6 @@ export function HomeScreen() {
     setIsSearchFocused(true);
   }, []);
 
-  const arrive = useCallback(() => {
-    setArrived(true);
-  }, []);
-
   const logHomeControl = useCallback((pressed: string, action: string) => {
     if (__DEV__) {
       console.log(`[HomeControl] pressed=${pressed} action=${action}`);
@@ -218,6 +247,7 @@ export function HomeScreen() {
   const {
     mapRef,
     bottomSheetRef,
+    cameraManager,
     mapType,
     searchQuery,
     searchResults,
@@ -230,13 +260,16 @@ export function HomeScreen() {
     activeCategory,
     categoryChips,
     searchPlaceholder,
+    suggestedPlaces,
     mapZoomLevel,
     venueStatus,
+    compassMode,
     setIsMapReady,
     handleSearch,
     handlePlaceSelect,
+    handleSheetIndexChange,
     handleRecenter,
-    handleCompassReset,
+    handleCompassToggle,
     handleZoomIn,
     handleZoomOut,
     handleMapRegionChangeComplete,
@@ -257,12 +290,42 @@ export function HomeScreen() {
     bottomSheetRef.current?.snapToIndex(1);
   }, [bottomSheetRef]);
 
+  // Tap disambiguation: react-native-maps dispatches one onPress per native shape
+  // that a tap actually hits, independently per layer — a tap landing where a
+  // widened gate hit-area overlaps a rasta hit-corridor can fire both in the same
+  // gesture. Candidates are collected for one animation frame (imperceptible delay,
+  // well under the 100ms Google-Maps-parity target) and resolved to a single winner
+  // via TapDisambiguationService instead of whichever layer happened to register
+  // last winning by accident. The overwhelmingly common case (exactly one shape hit)
+  // resolves on the very next frame with no user-visible difference from calling
+  // handlePlaceSelect directly.
+  const tapCandidatesRef = useRef<TapCandidate<Place>[]>([]);
+  const tapFlushScheduledRef = useRef(false);
+  const selectedPlaceIdRef = useRef<string | undefined>(undefined);
+  selectedPlaceIdRef.current = selectedPlace?.id;
+
+  const collectTapCandidate = useCallback((candidate: TapCandidate<Place>) => {
+    tapCandidatesRef.current.push(candidate);
+    if (tapFlushScheduledRef.current) return;
+    tapFlushScheduledRef.current = true;
+    requestAnimationFrame(() => {
+      const candidates = tapCandidatesRef.current;
+      tapCandidatesRef.current = [];
+      tapFlushScheduledRef.current = false;
+      const winner = resolveTapCandidate(candidates, selectedPlaceIdRef.current);
+      if (!winner) return;
+      dismissSearch();
+      handlePlaceSelect(winner.payload);
+    });
+  }, [dismissSearch, handlePlaceSelect]);
+
   const navOverlay = useNavigationOverlayV2({
     mapRef,
     mapReady,
     mapZoomLevel,
     hasGoogleMapsKey,
     userPulseAnim,
+    cameraManager,
   });
   const showNavOverlay = navOverlay.active && MapFeatureFlagsService.useIjtemaV2Navigation();
 
@@ -274,23 +337,53 @@ export function HomeScreen() {
     mapReady,
     hasGoogleMapsKey,
     userPulseAnim,
+    cameraManager,
   });
   const showAnyNavOverlay = showNavOverlay || navOverlayV1.active;
+  // Real GPS-arrival signal (V2NavigationRuntimeService-backed distance check for v2,
+  // inline distance check for v1) — feeds MapMode.ARRIVAL directly instead of a separate,
+  // never-set local flag, so "destination reached" actually flips NAVIGATION -> ARRIVAL.
+  const arrived = navOverlay.arrived || navOverlayV1.arrived;
+
+  const activePreviewRoute = useMemo(() => {
+    if (isNavigating) return null;
+    if (!routePlannerDest || routePlannerDest.sourceVersion !== 'v2') return null;
+    return isV2PreviewRoute(activeRoute) ? activeRoute : null;
+  }, [activeRoute, isNavigating, routePlannerDest]);
+
+  // CameraManager.fitRoute() — camera frames origin + destination + full route whenever a
+  // route preview opens (or a different route is chosen), instead of leaving the camera
+  // wherever it happened to be when the user picked a destination.
+  useEffect(() => {
+    if (!activePreviewRoute || activePreviewRoute.coordinates.length < 2) return;
+    const sheetExtent = resolveOverlayExtent({ kind: 'sheet', windowHeight, snapPoints, sheetIndex });
+    cameraManager.fitRoute(activePreviewRoute.coordinates, {
+      top: 90,
+      right: 64,
+      bottom: sheetExtent + Math.max(insets.bottom, 16) + 32,
+      left: 64,
+    });
+  }, [activePreviewRoute, cameraManager, insets.bottom, windowHeight, snapPoints, sheetIndex]);
+
+  // Single source of truth for "what is the map surface showing right now" — every
+  // render/behavior gate below reads `mode`, never the raw isSearchFocused/arrived/etc
+  // inputs directly, so nothing can drift out of sync with the priority chain in
+  // deriveMapMode (e.g. isSearchFocused=true no longer implies "search is showing" if
+  // arrived or showNavOverlay also happen to be true — mode already resolves that).
+  const mode = useMapMode({
+    arrived,
+    showNavOverlay: showAnyNavOverlay,
+    isSearchFocused,
+    detailsExpanded,
+    directionsDestination,
+    activePreviewRoute,
+    selectedPlace,
+  });
 
   useEffect(() => {
     setSelectedEntryIdx(0);
   }, [selectedPlace?.id]);
 
-  useEffect(() => {
-    const handler = BackHandler.addEventListener('hardwareBackPress', () => {
-      if (isSearchFocused) {
-        dismissSearch();
-        return true;
-      }
-      return false;
-    });
-    return () => handler.remove();
-  }, [isSearchFocused, dismissSearch]);
 
   const entryPoints = useMemo(
     () => (selectedPlace?.category === 'Block' && selectedPlace.sourceVersion !== 'v2'
@@ -316,26 +409,11 @@ export function HomeScreen() {
     return RoutePointService.getDestinationCoordinate(selectedPlace);
   }, [selectedPlace, entryPoints, selectedEntryIdx]);
   const overlayPlaces = useMemo(
-    () => ((isSearchFocused || searchQuery.length > 1)
+    () => ((mode === 'SEARCH' || searchQuery.length > 1)
       ? searchResults.filter((item) => (item as any).coordinate && (item as any).id !== selectedPlace?.id)
       : []),
-    [isSearchFocused, searchQuery, searchResults, selectedPlace],
+    [mode, searchQuery, searchResults, selectedPlace],
   );
-  const activePreviewRoute = useMemo(() => {
-    if (isNavigating) return null;
-    if (!routePlannerDest || routePlannerDest.sourceVersion !== 'v2') return null;
-    return isV2PreviewRoute(activeRoute) ? activeRoute : null;
-  }, [activeRoute, isNavigating, routePlannerDest]);
-
-  const mode = useMapMode({
-    arrived,
-    showNavOverlay: showAnyNavOverlay,
-    isSearchFocused,
-    detailsExpanded,
-    directionsDestination,
-    activePreviewRoute,
-    selectedPlace,
-  });
 
   const { outside: previewOutsideLegCoordinates, inside: previewInsideLegCoordinates } = useMemo(
     () => V2MapRenderingService.splitOutsideInsideCoordinates(
@@ -345,6 +423,11 @@ export function HomeScreen() {
     [activePreviewRoute],
   );
   const previewDestination = activePreviewRoute ? routePlannerDest : null;
+  // Single route-preview surface: whichever of the two ways a route preview can start
+  // (explicit "Directions" tap -> directionsDestination, or a v2 route already resolved
+  // in the store, e.g. restored on relaunch -> activePreviewRoute/previewDestination)
+  // resolves to the same destination shown in the same LocationSheet routePreview mode.
+  const routePreviewSheetDestination = directionsDestination ?? previewDestination;
   const previewDestinationCoordinate = previewDestination
     ? V2PlaceAdapter.getMarkerCoordinate(previewDestination) ?? activePreviewRoute?.coordinates[activePreviewRoute.coordinates.length - 1] ?? null
     : null;
@@ -358,20 +441,6 @@ export function HomeScreen() {
     routePlannerOrigin &&
     previewStartCoordinate
   );
-  const previewRouteSummary = useMemo(() => {
-    if (!activePreviewRoute) return null;
-    if (activePreviewRoute.startResolution?.mode === 'outside') {
-      const gateLabel = activePreviewRoute.startResolution.gate?.name.en;
-      // Recommended gate renders as its own badge row (see previewRecommendedGate below)
-      // when one is resolved — keep this text limited to the no-gate-yet case.
-      return gateLabel ? 'Outside Ijtema.' : 'Outside Ijtema. Enter through nearest connected official gate.';
-    }
-    if (routePlannerOrigin) return `Start from ${routePlannerOrigin.name}.`;
-    return currentLocationSource === 'remembered' ? 'Start from last known location.' : 'Start from current location.';
-  }, [activePreviewRoute, currentLocationSource, routePlannerOrigin]);
-  const previewRecommendedGate = activePreviewRoute?.startResolution?.mode === 'outside'
-    ? activePreviewRoute.startResolution.gate?.name.en ?? null
-    : null;
   const previewEntryGateId = activePreviewRoute?.startResolution?.mode === 'outside'
     ? activePreviewRoute.startResolution.gate?.id ?? null
     : null;
@@ -499,6 +568,12 @@ export function HomeScreen() {
         isSelected: rasta.isSelected,
         focused: rastaFocused,
         zPriority: 7,
+        onPress: () => {
+          const place = V2PlaceAdapter.getPlaceById(rasta.id);
+          if (!place) return;
+          dismissSearch();
+          handlePlaceSelect(place);
+        },
       });
     }
 
@@ -513,6 +588,12 @@ export function HomeScreen() {
         isSelected: route.isSelected,
         focused: routeFocused,
         zPriority: 9,
+        onPress: () => {
+          const place = V2PlaceAdapter.getPlaceById(route.id);
+          if (!place) return;
+          dismissSearch();
+          handlePlaceSelect(place);
+        },
       });
     }
 
@@ -530,13 +611,15 @@ export function HomeScreen() {
 
   const walkingTimeMin = (selectedPlace && currentLocation && selectedPlace.sourceVersion !== 'v2')
     ? PlaceDetailService.estimateWalkingTime(
-      PlaceDetailService.distanceToBlock(selectedPlace.id, currentLocation),
+      selectedPlace.category === 'Block'
+        ? PlaceDetailService.distanceToBlock(selectedPlace.id, currentLocation)
+        : getDistance(currentLocation, selectedPlace.coordinate),
       settings.walkingSpeed ?? 1.4,
     )
     : null;
 
   const isFav = selectedPlace ? favorites.some((f) => f.placeId === selectedPlace.id) : false;
-  const showOutsideBanner = !!currentLocation && !venueStatus.insideVenue && !outsideBannerDismissed && !activePreviewRoute && !isSearchFocused && searchQuery.length === 0 && !activeCategory;
+  const showOutsideBanner = !!currentLocation && !venueStatus.insideVenue && !outsideBannerDismissed && !activePreviewRoute && mode !== 'SEARCH' && searchQuery.length === 0 && !activeCategory;
   const nearestEntryGate = useMemo(() => {
     if (!currentLocation || venueStatus.insideVenue) return null;
     // Destination-aware whenever a place is already selected, so this banner can
@@ -550,18 +633,18 @@ export function HomeScreen() {
   // bannerStackTop used to be a hardcoded `topInsetBase + 140` guess at the combined
   // search bar + chip row height, which under-measured on some font scales/screen sizes
   // and let the banner overlap the chip row. Now derived from the search+chip overlay's
-  // own onLayout height (topOverlayHeight), same measure-don't-guess pattern as
-  // routePreviewCardMeasuredHeight below. Falls back to the old constant only for the
+  // own onLayout height (topOverlayHeight). Falls back to the old constant only for the
   // one frame before the first layout pass reports a height.
   const bannerStackTop = topOverlayHeight > 0 ? topOverlayHeight + 8 : topInsetBase + 140;
   // The full Layers/Compass/Zoom/Recenter cluster is one bottom-anchored stack (see
   // MapControls) instead of two independently-positioned pieces (a top-anchored
-  // compass/zoom group and a separately bottom-anchored recenter button) — that old
-  // split is exactly what let a route-preview card push the recenter button up into
-  // the zoom controls, since neither side's offset accounted for the other's extent.
-  // Anchoring everything from this single bottom value means the whole stack moves
-  // together and can't collide with itself.
-  const controlStackBottom = Math.max(insets.bottom, 16) + (activePreviewRoute ? routePreviewCardMeasuredHeight + 16 : 0) + 16;
+  // compass/zoom group and a separately bottom-anchored recenter button). Anchoring
+  // everything from this single bottom value means the whole stack moves together and
+  // can't collide with itself. Route preview lives inside the same BottomSheetModal as
+  // place preview/details/directions (no separate floating card), so this always clears
+  // the sheet at whatever snap height it's actually at (see useOverlayInsets.computeMapControlsInset).
+  const controlStackOverlay: OverlayState = { kind: 'sheet', windowHeight, snapPoints, sheetIndex };
+  const controlStackBottom = computeMapControlsInset(insets.bottom, controlStackOverlay);
   // Keeps block/gate/rasta/route labels from rendering under the search bar/chip
   // row (top) or the layers/compass/zoom/recenter control column (right, widest
   // button is the 56dp recenter circle at right:12/16 — see mapControlStyles.ts)
@@ -574,11 +657,11 @@ export function HomeScreen() {
 
   useEffect(() => {
     Animated.timing(searchFocusAnim, {
-      toValue: isSearchFocused ? 1 : 0,
+      toValue: mode === 'SEARCH' ? 1 : 0,
       duration: 160,
       useNativeDriver: false,
     }).start();
-  }, [isSearchFocused, searchFocusAnim]);
+  }, [mode, searchFocusAnim]);
 
   useEffect(() => {
     Animated.timing(warningAnim, {
@@ -610,6 +693,17 @@ export function HomeScreen() {
     return () => pulse.stop();
   }, [userPulseAnim]);
 
+  // First-time "you are here" education — fires once, the first time the camera
+  // actually enters FOLLOWING_USER (cold-launch auto-follow or a recenter tap both
+  // qualify as "first successful location follow"). Gated by the persisted flag so
+  // it can never show again after this.
+  useEffect(() => {
+    if (hasSeenLocationTutorial) return;
+    if (cameraManager.mode !== 'FOLLOWING_USER' || !currentLocation) return;
+    setShowLocationTutorial(true);
+    setHasSeenLocationTutorial(true);
+  }, [cameraManager.mode, currentLocation, hasSeenLocationTutorial, setHasSeenLocationTutorial]);
+
   useEffect(() => {
     if (!hasGoogleMapsKey) {
       setMapLoadFailed(false);
@@ -631,9 +725,14 @@ export function HomeScreen() {
     }
   }, [venueStatus.insideVenue]);
 
+  // The route-preview sheet is the single surface for a resolved preview route — no
+  // separate floating card. This opens it automatically whenever a route becomes active
+  // without the user having explicitly tapped "Directions" (e.g. a promoted/restored
+  // route-planner state), the same trigger the old floating card relied on to appear.
   useEffect(() => {
     if (!activePreviewRoute || directionsDestination) return;
-    bottomSheetRef.current?.close();
+    bottomSheetRef.current?.present();
+    bottomSheetRef.current?.snapToIndex(1);
   }, [activePreviewRoute, directionsDestination, bottomSheetRef]);
 
   useEffect(() => {
@@ -656,6 +755,14 @@ export function HomeScreen() {
     if (recenterResetTimerRef.current) clearTimeout(recenterResetTimerRef.current);
   }, []);
 
+  // Google-Maps-style sustained follow: once the transient tap feedback (loading/
+  // success/failure) settles back to idle, the button reflects whether CameraManager
+  // is still actively following the user (stays "active" until HomeScreen's onPanDrag
+  // calls cameraManager.stopFollowing()) rather than always reverting to a plain idle icon.
+  const isFollowingUser = cameraManager.mode === 'FOLLOWING_USER';
+  const recenterButtonState: MapControlsRecenter['state'] =
+    recenterState !== 'idle' ? recenterState : isFollowingUser ? 'active' : 'idle';
+
   const handleToggleFav = () => {
     if (!selectedPlace) return;
     FavoriteService.toggleFavorite(selectedPlace);
@@ -669,11 +776,24 @@ export function HomeScreen() {
         ? RoutePointService.enrichPlaceWithRoutingNode(place, entryPoints[selectedEntryIdx].nodeId)
         : place;
     setDirectionsDestination(destination);
+    bottomSheetRef.current?.present();
     bottomSheetRef.current?.snapToIndex(1);
   };
 
   const handleCloseDirections = useCallback(() => {
     setDirectionsDestination(null);
+  }, []);
+
+  // "Change Destination" (LocationSheet's routePreview mode) — swaps the destination
+  // in place instead of exiting route preview like the old onClose-only wiring did.
+  // Reuses the exact same directionsDestination state handleOpenDirections already
+  // writes to, so useDirectionsViewModel(destination) picks it up and recalculates the
+  // route itself (see DirectionsViewModel's `[destination, ...]` effect deps) — no new
+  // recalculation path. Camera follow for v2 destinations is likewise already handled
+  // by the existing activePreviewRoute -> cameraManager.fitRoute() effect above once the
+  // new route lands; nothing here calls the camera directly.
+  const handleChangeDestination = useCallback((place: Place) => {
+    setDirectionsDestination(place);
   }, []);
 
   // Full reset to EXPLORE — replaces the two ad hoc `setSelectedPlace(null) +
@@ -683,7 +803,6 @@ export function HomeScreen() {
     setSelectedPlace(null);
     setDirectionsDestination(null);
     setDetailsExpanded(false);
-    setArrived(false);
     bottomSheetRef.current?.close();
   }, [bottomSheetRef, setSelectedPlace]);
 
@@ -706,13 +825,6 @@ export function HomeScreen() {
     startNavigation(previewDestination, resolvedRoute, resolvedRoute.instructions);
   }, [activePreviewRoute, currentLocation, previewDestination, routePlannerOrigin, startNavigation]);
 
-  const handleChangePreviewStart = useCallback(() => {
-    if (!previewDestination) return;
-    setSelectedPlace(previewDestination);
-    setDirectionsDestination(previewDestination);
-    bottomSheetRef.current?.snapToIndex(1);
-  }, [bottomSheetRef, previewDestination, setSelectedPlace]);
-
   const handleClearPreviewRoute = useCallback(() => {
     Alert.alert('Cancel route?', 'You will need to choose your destination again.', [
       { text: 'Keep route', style: 'cancel' },
@@ -720,10 +832,79 @@ export function HomeScreen() {
     ]);
   }, [clearRoutePlanner]);
 
+  // Mode-aware hardware back: steps back through the map surface one mode at a time
+  // (Google Maps model — MAP is always the root, back never falls through to the
+  // drawer/stack while a sheet mode is open) instead of exiting the screen. NAVIGATION/
+  // ARRIVAL are deliberately not handled here — useNavigationOverlayV2 already owns a
+  // separate hardwareBackPress listener for the confirm-exit dialog in those modes.
+  // Each branch reuses the exact same handler its mode's own visible Close button
+  // already calls (see the onClose wiring on RoutePreviewSection/PlaceSection below) —
+  // no new close behavior introduced, just extending it to hardware back.
+  useEffect(() => {
+    const handler = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (mode === 'SEARCH') {
+        dismissSearch();
+        return true;
+      }
+      if (mode === 'DETAILS') {
+        closeDetails();
+        return true;
+      }
+      if (mode === 'ROUTE_PREVIEW') {
+        if (directionsDestination) handleCloseDirections();
+        else handleClearPreviewRoute();
+        return true;
+      }
+      if (mode === 'PLACE_SELECTED') {
+        closeSheet();
+        return true;
+      }
+      return false;
+    });
+    return () => handler.remove();
+  }, [mode, dismissSearch, closeDetails, directionsDestination, handleCloseDirections, handleClearPreviewRoute, closeSheet]);
+
   const handleSearchResultSelect = (place: Place) => {
     dismissSearch();
     handlePlaceSelect(place);
   };
+
+  // Phase 5 — shared row renderer for the full-screen search overlay's Recent /
+  // Suggestions / Results sections (only the leading icon differs between them).
+  const renderResultRow = (item: Place | SearchResult, variant: 'recent' | 'suggestion' | 'result') => (
+    <Pressable
+      key={(item as any).id}
+      testID={`search-result-${(item as any).id}`}
+      style={styles.searchResultItem}
+      onPress={() => handleSearchResultSelect(item as any)}
+      accessibilityRole="button"
+      accessibilityLabel={`${getDisplayName(item)}, ${(item as any).category}`}
+    >
+      <View style={styles.searchResultIcon}>
+        {variant === 'recent' ? (
+          <Clock size={18} color={staticColors.iconSubtle} />
+        ) : (
+          <MapPin size={18} color={staticColors.iconSubtle} />
+        )}
+      </View>
+      <View style={styles.searchResultText}>
+        <View style={styles.searchResultNameRow}>
+          <Text style={styles.searchResultName} numberOfLines={1} ellipsizeMode="tail">
+            {getDisplayName(item)}
+          </Text>
+          {getSecondaryDisplayName(item) && (
+            <Text style={styles.searchResultNameUrdu} numberOfLines={1} ellipsizeMode="tail">
+              {getSecondaryDisplayName(item)}
+            </Text>
+          )}
+        </View>
+        <Text style={styles.searchResultCategory} numberOfLines={1} ellipsizeMode="tail">
+          {(item as any).category}
+        </Text>
+      </View>
+      <ChevronRight size={18} color={staticColors.iconFaint} />
+    </Pressable>
+  );
 
   const openLayerOptions = () => setLayersSheetVisible(true);
 
@@ -751,6 +932,10 @@ export function HomeScreen() {
               logHomeControl('category_chip', `filter_${cat.id}`);
               handleCategoryPress(cat.id);
             }}
+            hitSlop={6}
+            accessibilityRole="button"
+            accessibilityLabel={cat.label}
+            accessibilityState={{ selected: activeCategory === cat.id }}
           >
             <Text
               style={[styles.chipText, activeCategory === cat.id && styles.activeChipText]}
@@ -774,6 +959,7 @@ export function HomeScreen() {
         <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
 
         <MapView
+            testID="home-map-view"
             ref={mapRef}
             style={styles.map}
             provider={Platform.OS === 'android' && hasGoogleMapsKey ? PROVIDER_GOOGLE : undefined}
@@ -791,6 +977,27 @@ export function HomeScreen() {
               setMapLoadFailed(false);
               handleMapRegionChangeComplete(effectiveInitialRegion);
               mapLabelOverlayRef.current?.requestProjection();
+
+              // Cold-launch camera decision — MapStartupController owns the "what should
+              // happen" logic; this stays the one-shot guard + the actual CameraManager
+              // calls. Recenter/GPS-follow after this point go through CameraManager's own
+              // FOLLOWING_USER flow, untouched here.
+              if (!coldLaunchCameraDoneRef.current) {
+                coldLaunchCameraDoneRef.current = true;
+                const venueBoundary = useV2Map ? v2MapLayers.venueBoundary : VENUE_BOUNDARY;
+                const decision = MapStartupController.resolveColdLaunchCamera({
+                  hasSeenMapOverview,
+                  hasLocationPermission,
+                  gpsCoordinate: currentLocation ?? lastKnownLocation,
+                });
+                if (decision.action === 'ANIMATE_TO_USER') {
+                  cameraManager.animateToUser(decision.coordinate);
+                } else {
+                  cameraManager.fitVenueBounds(venueBoundary);
+                  if (decision.reason === 'first_overview') setHasSeenMapOverview(true);
+                }
+              }
+
               if (__DEV__) {
                 console.log('[Home][Render]', {
                   mapReady: true,
@@ -821,10 +1028,11 @@ export function HomeScreen() {
             }}
             onPanDrag={() => {
               navOverlay.setIsAutoFollowing(false);
+              cameraManager.stopFollowing();
               setIsMapDragging(true);
             }}
             onPress={() => {
-              if (isSearchFocused) {
+              if (mode === 'SEARCH') {
                 dismissSearch();
                 clearSearch();
                 return;
@@ -842,16 +1050,25 @@ export function HomeScreen() {
 
           <VenueBoundary coordinates={useV2Map ? v2MapLayers.venueBoundary : VENUE_BOUNDARY} />
 
-          {mode === 'NAVIGATION' && <NavigationMapLayersV2 overlay={navOverlay} />}
-          {mode === 'NAVIGATION' && <NavigationMapLayersV1 overlay={navOverlayV1} />}
+          {/* ARRIVAL must stay on the nav map layers/chrome — arrived is the highest-priority
+              mode input (outranks NAVIGATION itself), so gating on 'NAVIGATION' alone would
+              unmount the route/user marker and the arrival sheet the instant GPS detects
+              arrival. */}
+          {(mode === 'NAVIGATION' || mode === 'ARRIVAL') && <NavigationMapLayersV2 overlay={navOverlay} />}
+          {(mode === 'NAVIGATION' || mode === 'ARRIVAL') && <NavigationMapLayersV1 overlay={navOverlayV1} />}
 
-          {mode !== 'NAVIGATION' && (useV2Map ? (
+          {mode !== 'NAVIGATION' && mode !== 'ARRIVAL' && (useV2Map ? (
             <React.Fragment key={`v2_layers_${v2MapLayers.activeMapFilter}`}>
               <RastaLayer
                 rastas={previewVisibleRastas}
                 variant="home"
                 focused={v2MapLayers.activeMapFilter === 'rastas'}
                 keyPrefix="v2_rasta"
+                onPressRasta={(rastaId, coordinate) => {
+                  const place = V2PlaceAdapter.getPlaceById(rastaId);
+                  if (!place) return;
+                  collectTapCandidate({ id: rastaId, kind: 'rasta', coordinate, payload: place });
+                }}
               />
 
               <SpecialRouteLayer
@@ -859,6 +1076,11 @@ export function HomeScreen() {
                 variant="home"
                 focused={v2MapLayers.activeMapFilter === 'special_routes'}
                 keyPrefix="v2_special"
+                onPressRoute={(routeId, coordinate) => {
+                  const place = V2PlaceAdapter.getPlaceById(routeId);
+                  if (!place) return;
+                  collectTapCandidate({ id: routeId, kind: 'route', coordinate, payload: place });
+                }}
               />
 
               <BlockLayer
@@ -866,11 +1088,10 @@ export function HomeScreen() {
                 variant="home"
                 focused={v2MapLayers.activeMapFilter === 'blocks'}
                 keyPrefix="v2_block"
-                onPressBlock={(blockId) => {
+                onPressBlock={(blockId, coordinate) => {
                   const place = V2PlaceAdapter.getPlaceById(blockId);
                   if (!place) return;
-                  dismissSearch();
-                  handlePlaceSelect(place);
+                  collectTapCandidate({ id: blockId, kind: 'block', coordinate, payload: place });
                 }}
               />
 
@@ -878,38 +1099,33 @@ export function HomeScreen() {
                 gates={previewVisibleGateMarkers}
                 focused={v2MapLayers.activeMapFilter === 'gates'}
                 keyPrefix="v2_gate"
-                onPressGate={(gateId) => {
+                onPressGate={(gateId, coordinate) => {
                   const place = V2PlaceAdapter.getPlaceById(gateId);
                   if (!place) return;
-                  dismissSearch();
-                  handlePlaceSelect(place);
+                  collectTapCandidate({ id: gateId, kind: 'gate', coordinate, payload: place });
                 }}
               />
 
               {activePreviewRoute && activePreviewRoute.coordinates.length > 1 && (
                 <>
-                  {/* White outline underneath for contrast */}
-                  <Polyline
-                    coordinates={activePreviewRoute.coordinates}
-                    strokeColor="rgba(255,255,255,0.95)"
-                    strokeWidth={11}
-                    zIndex={14}
-                  />
                   {previewOutsideLegCoordinates.length > 1 && (
-                    <Polyline
-                      coordinates={previewOutsideLegCoordinates}
-                      strokeColor="#E67C00"
-                      strokeWidth={5}
-                      lineDashPattern={[8, 6]}
-                      zIndex={15}
-                    />
+                    <>
+                      <Polyline coordinates={previewOutsideLegCoordinates} strokeColor={staticColors.routeCasing} strokeWidth={9} zIndex={14} />
+                      <Polyline
+                        coordinates={previewOutsideLegCoordinates}
+                        strokeColor={staticColors.routeOutside}
+                        strokeWidth={5}
+                        lineDashPattern={[8, 6]}
+                        zIndex={15}
+                      />
+                    </>
                   )}
-                  {/* Blue route line on top */}
+                  <Polyline coordinates={previewInsideLegCoordinates} strokeColor={staticColors.routeCasing} strokeWidth={11} zIndex={16} />
                   <Polyline
                     coordinates={previewInsideLegCoordinates}
-                    strokeColor="#1A73E8"
-                    strokeWidth={6}
-                    zIndex={16}
+                    strokeColor={staticColors.routeInside}
+                    strokeWidth={7}
+                    zIndex={17}
                   />
                 </>
               )}
@@ -956,7 +1172,7 @@ export function HomeScreen() {
                 key={id}
                 coordinates={block.corners}
                 fillColor={isSelected ? 'rgba(26, 115, 232, 0.35)' : 'rgba(46, 125, 50, 0.15)'}
-                strokeColor={isSelected ? '#1A73E8' : '#2E7D32'}
+                strokeColor={isSelected ? staticColors.selectedBlock : staticColors.normalBlock}
                 strokeWidth={isSelected ? 3 : 1.5}
                 tappable
                 onPress={() => {
@@ -1009,6 +1225,16 @@ export function HomeScreen() {
             );
           })}
 
+          {mode !== 'NAVIGATION' && mode !== 'ARRIVAL' && (
+            <FacilityLayer
+              places={LANDMARK_PLACES}
+              selectedPlaceId={selectedPlace?.id}
+              onPressFacility={(place, coordinate) => {
+                collectTapCandidate({ id: place.id, kind: 'facility', coordinate, payload: place });
+              }}
+            />
+          )}
+
           {mode !== 'NAVIGATION' && overlayPlaces.map((item) => {
             const overlayItem = item as Place | SearchResult;
             const coordinate = overlayItem.coordinate;
@@ -1024,7 +1250,7 @@ export function HomeScreen() {
                 }}
               >
                 <View style={styles.searchOverlayMarker}>
-                  <MapPin size={18} color="#FFFFFF" fill="#1A73E8" />
+                  <MapPin size={markerSizes.facility} color={staticColors.white} fill={markerColors.route} />
                   <Text style={styles.searchOverlayText} numberOfLines={1}>{label}</Text>
                 </View>
               </Marker>
@@ -1035,55 +1261,42 @@ export function HomeScreen() {
           {mode !== 'NAVIGATION' && selectedPlace && selectedPlaceMarkerCoordinate && !activePreviewRoute && (
             <Marker coordinate={selectedPlaceMarkerCoordinate} tracksViewChanges={false}>
               <View style={styles.selectedMarker}>
-                <MapPin size={32} color="#EA4335" fill="#EA4335" />
+                <MapPin size={markerSizes.destination} color={staticColors.gateAccent} fill={staticColors.gateAccent} />
               </View>
             </Marker>
           )}
 
-          {/* Route preview destination pin — shown when route is active */}
+          {/* Route preview destination pin — shown when route is active. */}
           {previewDestinationCoordinate && activePreviewRoute && (
             <Marker coordinate={previewDestinationCoordinate} tracksViewChanges={false}>
               <View style={styles.selectedMarker}>
-                <MapPin size={30} color="#EA4335" fill="#EA4335" />
+                <MapPin size={markerSizes.destination} color={staticColors.gateAccent} fill={staticColors.gateAccent} />
               </View>
             </Marker>
           )}
 
           {mode !== 'NAVIGATION' && currentLocation && (
-            <Marker coordinate={currentLocation} anchor={{ x: 0.5, y: 0.5 }} tracksViewChanges={false}>
-              <View style={styles.userMarkerWrap}>
-                <Animated.View
-                  style={[
-                    styles.userMarkerPulse,
-                    {
-                      opacity: userPulseAnim.interpolate({ inputRange: [0, 1], outputRange: [0.38, 0] }),
-                      transform: [{ scale: userPulseAnim.interpolate({ inputRange: [0, 1], outputRange: [1, 2.3] }) }],
-                    },
-                  ]}
-                />
-                <View style={styles.userMarker}>
-                  <Navigation size={12} color="#FFFFFF" />
-                </View>
-                {currentLocationSource === 'remembered' && (
-                  <View style={styles.rememberedLabel}>
-                    <Text style={styles.rememberedLabelText}>last known</Text>
-                  </View>
-                )}
-              </View>
-            </Marker>
+            <UserLocationMarker
+              coordinate={currentLocation}
+              accuracy={currentLocation.accuracy}
+              heading={currentLocation.heading}
+              isFollowing={cameraManager.mode === 'FOLLOWING_USER'}
+              pulseAnim={userPulseAnim}
+              isRemembered={currentLocationSource === 'remembered'}
+            />
           )}
 
           {showPreviewStartMarker && previewStartCoordinate && (
             <Marker coordinate={previewStartCoordinate} anchor={{ x: 0.5, y: 1 }} tracksViewChanges={false}>
               <View style={styles.previewStartMarker}>
-                <Navigation size={13} color="#FFFFFF" />
+                <Navigation size={13} color={staticColors.white} />
               </View>
             </Marker>
           )}
           </MapView>
 
-        {mode === 'NAVIGATION' && <NavigationChromeV2 overlay={navOverlay} hasGoogleMapsKey={hasGoogleMapsKey} />}
-        {mode === 'NAVIGATION' && <NavigationChromeV1 overlay={navOverlayV1} hasGoogleMapsKey={hasGoogleMapsKey} />}
+        {(mode === 'NAVIGATION' || mode === 'ARRIVAL') && <NavigationChromeV2 overlay={navOverlay} hasGoogleMapsKey={hasGoogleMapsKey} />}
+        {(mode === 'NAVIGATION' || mode === 'ARRIVAL') && <NavigationChromeV1 overlay={navOverlayV1} hasGoogleMapsKey={hasGoogleMapsKey} />}
         <MapLabelOverlay
           ref={mapLabelOverlayRef}
           mapRef={mapRef}
@@ -1096,14 +1309,14 @@ export function HomeScreen() {
             frame. mapLoadFailed's 7s-timeout banner takes over if it never loads. */}
         {hasGoogleMapsKey && !mapReady && !mapLoadFailed && (
           <View style={styles.mapLoadingOverlay} pointerEvents="none">
-            <ActivityIndicator size="small" color="#4285F4" />
+            <ActivityIndicator size="small" color={staticColors.recenterBlue} />
             <Text style={styles.mapLoadingText}>Loading map...</Text>
           </View>
         )}
 
         {mode !== 'NAVIGATION' && !directionsDestination && (
         <SafeAreaView
-          style={styles.topOverlay}
+          style={[styles.topOverlay, mode === 'SEARCH' && styles.topOverlaySearch]}
           pointerEvents="box-none"
           onLayout={(e) => setTopOverlayHeight(e.nativeEvent.layout.height)}
         >
@@ -1114,7 +1327,7 @@ export function HomeScreen() {
                 backgroundColor: theme.searchBar,
                 borderColor: searchFocusAnim.interpolate({
                   inputRange: [0, 1],
-                  outputRange: ['rgba(218,220,224,0)', '#1A73E8'],
+                  outputRange: ['rgba(218,220,224,0)', staticColors.info],
                 }),
                 transform: [{ scale: searchFocusAnim.interpolate({ inputRange: [0, 1], outputRange: [1, 1.01] }) }],
               },
@@ -1122,15 +1335,20 @@ export function HomeScreen() {
           >
             <Pressable
               onPress={() => {
+                if (mode === 'SEARCH') {
+                  logHomeControl('search_back', 'dismiss_search');
+                  dismissSearch();
+                  return;
+                }
                 dismissSearch();
                 logHomeControl('menu', 'open_drawer');
                 nav.dispatch(DrawerActions.openDrawer());
               }}
               style={styles.iconButton}
               accessibilityRole="button"
-              accessibilityLabel="Open menu"
+              accessibilityLabel={mode === 'SEARCH' ? 'Back' : 'Open menu'}
             >
-              <Menu size={24} color={theme.subtext} />
+              {mode === 'SEARCH' ? <ArrowLeft size={24} color={theme.subtext} /> : <Menu size={24} color={theme.subtext} />}
             </Pressable>
             <TextInput
               ref={searchInputRef}
@@ -1144,6 +1362,7 @@ export function HomeScreen() {
               onSubmitEditing={Keyboard.dismiss}
               multiline={false}
               numberOfLines={1}
+              accessibilityLabel="Search destination: gate, rasta, block"
             />
             {searchQuery.length > 0 ? (
               <Pressable
@@ -1155,53 +1374,99 @@ export function HomeScreen() {
                 accessibilityRole="button"
                 accessibilityLabel="Clear search"
               >
-                <X size={20} color="#5F6368" />
+                <X size={20} color={staticColors.iconMuted} />
               </Pressable>
             ) : (
               <View style={styles.iconButtonSpacer} />
             )}
           </Animated.View>
 
-          {mode === 'SEARCH' && (searchResults.length > 0 || (searchQuery.length === 0 && recentSearches.length > 0)) && (
-            <View style={[styles.searchResultsContainer, { backgroundColor: theme.card, borderColor: theme.border }]}>
-              <ScrollView keyboardShouldPersistTaps="handled">
-                {searchQuery.length === 0 && (
-                  <Text style={styles.sectionTitle}>Recent</Text>
-                )}
-                {(searchQuery.length > 0 ? searchResults : recentSearches).map((item) => (
-                  <Pressable
-                    key={(item as any).id}
-                    testID={`search-result-${(item as any).id}`}
-                    style={styles.searchResultItem}
-                    onPress={() => handleSearchResultSelect(item as any)}
-                  >
-                    <View style={styles.searchResultIcon}>
-                      {searchQuery.length === 0 ? (
-                        <Clock size={18} color="#70757A" />
-                      ) : (
-                        <MapPin size={18} color="#70757A" />
-                      )}
-                    </View>
-                    <View style={styles.searchResultText}>
-                      <View style={styles.searchResultNameRow}>
-                        <Text style={styles.searchResultName} numberOfLines={1} ellipsizeMode="tail">
-                          {getDisplayName(item)}
-                        </Text>
-                        {getSecondaryDisplayName(item) && (
-                          <Text style={styles.searchResultNameUrdu} numberOfLines={1} ellipsizeMode="tail">
-                            {getSecondaryDisplayName(item)}
+          {/* Phase 5 — full-screen search overlay. Map stays mounted underneath
+              (never unmounted/removed); this content view just covers it with
+              a solid background until dismissed via back button or a result
+              selection, matching the Google Maps search flow. */}
+          {mode === 'SEARCH' && (
+            <Animated.View
+              style={[
+                styles.searchOverlayContent,
+                { backgroundColor: theme.card, opacity: searchFocusAnim },
+                { transform: [{ translateY: searchFocusAnim.interpolate({ inputRange: [0, 1], outputRange: [12, 0] }) }] },
+              ]}
+            >
+              <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.searchOverlayScrollContent}>
+                {searchQuery.length > 0 ? (
+                  searchResults.length > 0 ? (
+                    searchResults.map((item) => renderResultRow(item, 'result'))
+                  ) : (
+                    <Text style={[styles.searchEmptyText, { color: theme.subtext }]}>{`No results for "${searchQuery}"`}</Text>
+                  )
+                ) : (
+                  <>
+                    {recentSearches.length > 0 && (
+                      <>
+                        <Text style={[styles.sectionTitle, { color: theme.subtext }]}>Recent</Text>
+                        {recentSearches.map((item) => renderResultRow(item, 'recent'))}
+                      </>
+                    )}
+
+                    {suggestedPlaces.length > 0 && (
+                      <>
+                        <Text style={[styles.sectionTitle, { color: theme.subtext }]}>Suggestions</Text>
+                        {suggestedPlaces
+                          .filter((place) => !recentSearches.some((recent) => (recent as any).id === place.id))
+                          .map((item) => renderResultRow(item, 'suggestion'))}
+                      </>
+                    )}
+
+                    <Text style={[styles.sectionTitle, { color: theme.subtext }]}>Categories</Text>
+                    <View style={styles.categoryGrid}>
+                      {categoryChips.filter((cat) => cat.id !== 'all').map((cat) => (
+                        <Pressable
+                          key={cat.id}
+                          style={[
+                            styles.categoryTile,
+                            { backgroundColor: theme.chip, borderColor: theme.border },
+                            activeCategory === cat.id && { backgroundColor: theme.chipActive, borderColor: theme.chipActive },
+                          ]}
+                          onPress={() => {
+                            logHomeControl('category_tile', `filter_${cat.id}`);
+                            handleCategoryPress(cat.id);
+                          }}
+                          accessibilityRole="button"
+                          accessibilityLabel={cat.label}
+                          accessibilityState={{ selected: activeCategory === cat.id }}
+                        >
+                          <Text
+                            style={[
+                              styles.categoryTileText,
+                              { color: theme.chipText },
+                              activeCategory === cat.id && { color: theme.chipActiveText, fontWeight: '700' },
+                            ]}
+                            numberOfLines={1}
+                            ellipsizeMode="tail"
+                          >
+                            {cat.label}
                           </Text>
-                        )}
-                      </View>
-                      <Text style={styles.searchResultCategory} numberOfLines={1} ellipsizeMode="tail">
-                        {(item as any).category}
-                      </Text>
+                        </Pressable>
+                      ))}
                     </View>
-                    <ChevronRight size={18} color="#BDC1C6" />
-                  </Pressable>
-                ))}
+
+                    {activeCategory && (
+                      <>
+                        <Text style={[styles.sectionTitle, { color: theme.subtext }]}>
+                          {categoryChips.find((cat) => cat.id === activeCategory)?.label ?? 'Results'}
+                        </Text>
+                        {searchResults.length > 0 ? (
+                          searchResults.map((item) => renderResultRow(item, 'result'))
+                        ) : (
+                          <Text style={[styles.searchEmptyText, { color: theme.subtext }]}>No places in this category.</Text>
+                        )}
+                      </>
+                    )}
+                  </>
+                )}
               </ScrollView>
-            </View>
+            </Animated.View>
           )}
 
           {mode !== 'SEARCH' && (
@@ -1293,14 +1558,14 @@ export function HomeScreen() {
             <View style={[styles.controlStack, { bottom: controlStackBottom }]}>
               <MapControls
                 variant="browse"
-                keepNorthFixed={settings.keepNorthFixed}
+                compassMode={compassMode}
                 onLayers={() => {
                   logHomeControl('layer', 'open_options');
                   openLayerOptions();
                 }}
-                onCompassReset={() => {
-                  logHomeControl('compass', 'reset_north_up');
-                  handleCompassReset();
+                onCompassToggle={() => {
+                  logHomeControl('compass', compassMode === 'FOLLOW_HEADING' ? 'reset_north_up' : 'heading_follow_enabled');
+                  handleCompassToggle();
                 }}
                 onZoomIn={() => {
                   logHomeControl('zoom_in', 'map_zoom_in');
@@ -1310,9 +1575,16 @@ export function HomeScreen() {
                   logHomeControl('zoom_out', 'map_zoom_out');
                   handleZoomOut();
                 }}
-                recenter={{ state: recenterState, onPress: () => void handleRecenterPress() }}
+                recenter={{ state: recenterButtonState, onPress: () => void handleRecenterPress() }}
               />
             </View>
+
+            {showLocationTutorial && (
+              <LocationTutorialTooltip
+                bottomOffset={controlStackBottom + 340}
+                onDismiss={() => setShowLocationTutorial(false)}
+              />
+            )}
 
             {__DEV__ && developerModeEnabled && (
               <View style={styles.debugCard}>
@@ -1334,17 +1606,18 @@ export function HomeScreen() {
           <View
             style={[
               styles.navControls,
-              // Stacks above the recenter button, which itself stacks above the measured
-              // trip-info bar (navOverlay.bottomBarHeight) — no more guessed 140px bar height.
-              { bottom: (navOverlay.bottomBarHeight || Math.max(insets.bottom, 12) + 140) + 12 + 56 + 16 },
+              // Stacks above the recenter button (NavigationChromeV1/V2), which itself
+              // stacks above the trip-info bar — same shared calculation both chrome
+              // components use for their own recenter button, so the two can't drift apart.
+              { bottom: computeNavControlsInset(resolveNavBarHeight(navOverlay.bottomBarHeight, insets.bottom)) },
             ]}
           >
             <MapControls
               variant="nav"
-              keepNorthFixed={settings.keepNorthFixed}
-              onCompassReset={() => {
-                logHomeControl('nav_compass', 'reset_north_up');
-                handleCompassReset();
+              compassMode={compassMode}
+              onCompassToggle={() => {
+                logHomeControl('nav_compass', compassMode === 'FOLLOW_HEADING' ? 'reset_north_up' : 'heading_follow_enabled');
+                handleCompassToggle();
               }}
               onZoomIn={() => {
                 logHomeControl('nav_zoom_in', 'map_zoom_in');
@@ -1358,76 +1631,30 @@ export function HomeScreen() {
           </View>
         )}
 
-        {mode === 'ROUTE_PREVIEW' && !directionsDestination && activePreviewRoute && previewDestination && (
-          <View
-            style={[styles.routePreviewCard, { bottom: Math.max(insets.bottom, 16) + 16 }]}
-            onLayout={(e) => setRoutePreviewCardMeasuredHeight(e.nativeEvent.layout.height)}
-          >
-            <View style={styles.routePreviewCardHeader}>
-              <View style={styles.routePreviewTitleWrap}>
-                <Text style={styles.routePreviewEyebrow}>Route to</Text>
-                <Text style={styles.routePreviewTitle} numberOfLines={1}>{previewDestination.name}</Text>
-              </View>
-              <View style={styles.routePreviewMetricPill}>
-                <Clock size={14} color="#1A73E8" />
-                <Text style={styles.routePreviewMetricText}>
-                  {InstructionService.formatDuration(activePreviewRoute.estimatedTimeMin)}
-                </Text>
-              </View>
-            </View>
-            <Text style={styles.routePreviewDistance}>
-              {InstructionService.formatDistance(activePreviewRoute.totalDistance, settings.distanceUnit)}
-            </Text>
-            {previewRecommendedGate && (
-              <View style={styles.routePreviewGateBadge}>
-                <MapPin size={14} color="#1B5E20" />
-                <Text style={styles.routePreviewGateBadgeText}>Enter through {previewRecommendedGate}</Text>
-              </View>
-            )}
-            <Text style={styles.routePreviewSummary} numberOfLines={2}>
-              {previewRouteSummary}
-            </Text>
-            <Pressable
-              style={styles.routePreviewPrimaryButton}
-              onPress={handleStartPreviewNavigation}
-              accessibilityRole="button"
-              accessibilityLabel={`Start walking to ${previewDestination.name}`}
-            >
-              <Navigation size={16} color="#FFFFFF" />
-              <Text style={styles.routePreviewPrimaryText}>Start Navigation</Text>
-            </Pressable>
-            <View style={styles.routePreviewActions}>
-              <Pressable
-                style={styles.routePreviewSecondaryButton}
-                onPress={handleChangePreviewStart}
-                accessibilityRole="button"
-                accessibilityLabel="Change starting point"
-              >
-                <Text style={styles.routePreviewSecondaryText}>Change Start</Text>
-              </Pressable>
-              <Pressable
-                style={styles.routePreviewCancelButton}
-                onPress={handleClearPreviewRoute}
-                accessibilityRole="button"
-                accessibilityLabel="Cancel route"
-              >
-                <Text style={styles.routePreviewCancelText}>Cancel Route</Text>
-              </Pressable>
-            </View>
-          </View>
-        )}
-
         <BottomSheetModal
           ref={bottomSheetRef}
-          index={-1}
+          // BottomSheetModal only renders once present() is called (mount stays false, and
+          // unmounts again on close since enablePanDownToClose implies enableDismissOnClose) —
+          // `index` here is the position it animates to on that mount, not a live/controlled
+          // value, so it must match the snap index every present() caller opens to (1).
+          index={1}
           snapPoints={snapPoints}
           enablePanDownToClose
           keyboardBehavior="interactive"
           keyboardBlurBehavior="restore"
           android_keyboardInputMode="adjustResize"
           handleIndicatorStyle={[styles.sheetIndicator, { backgroundColor: theme.border }]}
-          backgroundStyle={{ backgroundColor: theme.card }}
+          backgroundStyle={{
+            backgroundColor: theme.card,
+            borderTopLeftRadius: SHEET_CORNER_RADIUS,
+            borderTopRightRadius: SHEET_CORNER_RADIUS,
+            // Separates the sheet from the map behind it — shadows.high's upward
+            // offset (Phase 8A shadow scale) matches a bottom sheet's shadow direction.
+            ...shadows.high,
+          }}
           onChange={(index) => {
+            setSheetIndex(index);
+            handleSheetIndexChange(index);
             // Fully expanding the sheet over a selected place is "show me more" —
             // PLACE_SELECTED (preview) -> DETAILS. Only meaningful outside the directions
             // flow, which has its own distinct content.
@@ -1438,11 +1665,14 @@ export function HomeScreen() {
             }
           }}
         >
-          {directionsDestination ? (
+          {routePreviewSheetDestination ? (
             <LocationSheet
               mode="routePreview"
-              destination={directionsDestination}
-              onClose={handleCloseDirections}
+              destination={routePreviewSheetDestination}
+              onClose={directionsDestination ? handleCloseDirections : handleClearPreviewRoute}
+              onStartNavigation={handleStartPreviewNavigation}
+              onCancelRoute={activePreviewRoute ? handleClearPreviewRoute : undefined}
+              onChangeDestination={handleChangeDestination}
             />
           ) : selectedPlace ? (
             <LocationSheet
@@ -1566,45 +1796,71 @@ const styles = StyleSheet.create({
     paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
     zIndex: Z.mapControls,
   },
+  // Phase 5 — stretches the overlay to fill the screen so its full-screen
+  // search content (searchOverlayContent, flex: 1) has a bounded height to
+  // fill; topOverlay itself has no `bottom` outside SEARCH mode since it's
+  // normally sized to its (small) search-bar-only content.
+  topOverlaySearch: {
+    bottom: 0,
+  },
   searchBarContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: staticColors.white,
     marginHorizontal: 12,
     marginTop: 8,
-    borderRadius: 24,
+    // True pill (height / 2), was 24 against a 52 height — Google Maps search bar
+    // is a full capsule, not a slightly-rounded rect.
+    borderRadius: 26,
     paddingHorizontal: 8,
     height: 52,
     borderWidth: 1,
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
+    ...shadows.medium,
   },
   iconButton: { padding: 14 },
   iconButtonSpacer: { width: 48, height: 48 },
   searchInput: {
     flex: 1,
     fontSize: 16,
-    color: '#202124',
+    color: staticColors.textPrimary,
     paddingHorizontal: 4,
     height: 52,
     // Prevent multiline overflow that causes "..." artifacts below placeholder
     textAlignVertical: 'center',
   },
-  searchResultsContainer: {
-    backgroundColor: '#FFFFFF',
-    marginHorizontal: 12,
+  // Phase 5 — full-screen search overlay content (fills topOverlaySearch below
+  // the search bar, replacing the old small anchored dropdown).
+  searchOverlayContent: {
+    flex: 1,
     marginTop: 4,
-    borderRadius: 16,
-    maxHeight: 380,
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    overflow: 'hidden',
+  },
+  searchOverlayScrollContent: {
+    paddingBottom: 24,
+  },
+  searchEmptyText: {
+    fontSize: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 24,
+    textAlign: 'center',
+  },
+  categoryGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    paddingHorizontal: 12,
+    paddingTop: 8,
+    gap: 8,
+  },
+  categoryTile: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+    borderWidth: 1,
+    minWidth: 76,
+    alignItems: 'center',
+  },
+  categoryTileText: {
+    fontSize: 13,
+    fontWeight: '500',
   },
   sectionTitle: {
     fontSize: 12,
@@ -1716,46 +1972,15 @@ const styles = StyleSheet.create({
   rastaLabelText: { color: '#FFFFFF', fontSize: 10, fontWeight: '600' },
   selectedMarker: { alignItems: 'center', justifyContent: 'center' },
   previewStartMarker: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: '#1A73E8',
+    width: markerSizes.userLocation,
+    height: markerSizes.userLocation,
+    borderRadius: markerSizes.userLocation / 2,
+    backgroundColor: markerColors.route,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
-    borderColor: '#FFFFFF',
+    borderColor: staticColors.white,
   },
-  userMarkerWrap: {
-    width: 76,
-    minHeight: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  userMarkerPulse: {
-    position: 'absolute',
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: '#1A73E8',
-  },
-  userMarker: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: '#1A73E8',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: '#FFFFFF',
-  },
-  rememberedLabel: {
-    marginTop: 2,
-    backgroundColor: 'rgba(26,115,232,0.92)',
-    borderRadius: 7,
-    paddingHorizontal: 5,
-    paddingVertical: 2,
-  },
-  rememberedLabelText: { color: '#FFFFFF', fontSize: 9, fontWeight: '700' },
   debugCard: {
     position: 'absolute',
     bottom: 96,
@@ -1770,10 +1995,12 @@ const styles = StyleSheet.create({
   },
   debugBtn: { backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4 },
   debugBtnText: { color: '#FFFFFF', fontSize: 11, fontWeight: '600' },
-  sheetIndicator: { backgroundColor: '#DADCE0', width: 36 },
+  // Google Maps-style capsule handle — was width-only (36) with no explicit
+  // height/radius, relying on the bottom-sheet library's own default bar shape.
+  sheetIndicator: { backgroundColor: staticColors.border, width: 36, height: 4, borderRadius: 2 },
   sheetContent: { padding: 20 },
   emptySheet: { alignItems: 'center', padding: 60 },
-  emptySheetText: { color: '#70757A', fontSize: 15 },
+  emptySheetText: { color: staticColors.iconSubtle, fontSize: 15 },
   emptyOfflineState: {
     position: 'absolute',
     bottom: 100,
@@ -1784,137 +2011,6 @@ const styles = StyleSheet.create({
     padding: 16,
     alignItems: 'center',
     zIndex: Z.mapControls,
-  },
-  routePreviewCard: {
-    position: 'absolute',
-    left: 12,
-    right: 84,
-    backgroundColor: 'rgba(255,255,255,0.98)',
-    borderRadius: 18,
-    padding: 14,
-    zIndex: Z.mapControls,
-    borderWidth: 1,
-    borderColor: '#D2E3FC',
-    shadowColor: '#1A73E8',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.16,
-    shadowRadius: 16,
-    elevation: 6,
-  },
-  routePreviewCardHeader: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-    gap: 8,
-  },
-  routePreviewTitleWrap: {
-    flex: 1,
-  },
-  routePreviewEyebrow: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: '#1A73E8',
-    textTransform: 'uppercase',
-    letterSpacing: 0.4,
-  },
-  routePreviewTitle: {
-    marginTop: 3,
-    fontSize: 17,
-    fontWeight: '800',
-    color: '#202124',
-  },
-  routePreviewMetricPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    backgroundColor: '#E8F0FE',
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-  },
-  routePreviewMetricText: {
-    color: '#1A73E8',
-    fontSize: 12,
-    fontWeight: '800',
-  },
-  routePreviewDistance: {
-    marginTop: 6,
-    color: '#5F6368',
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  routePreviewSummary: {
-    marginTop: 6,
-    color: '#202124',
-    fontSize: 13,
-    lineHeight: 18,
-  },
-  routePreviewGateBadge: {
-    marginTop: 8,
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'flex-start',
-    gap: 6,
-    backgroundColor: 'rgba(46,125,50,0.12)',
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-  },
-  routePreviewGateBadgeText: {
-    color: '#1B5E20',
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  routePreviewPrimaryButton: {
-    marginTop: 12,
-    minHeight: 56,
-    backgroundColor: '#1A73E8',
-    borderRadius: 12,
-    paddingVertical: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexDirection: 'row',
-    gap: 8,
-  },
-  routePreviewPrimaryText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '800',
-  },
-  routePreviewActions: {
-    flexDirection: 'row',
-    gap: 8,
-    marginTop: 8,
-  },
-  routePreviewSecondaryButton: {
-    flex: 1,
-    minHeight: 48,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#DADCE0',
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 8,
-  },
-  routePreviewSecondaryText: {
-    color: '#3C4043',
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  routePreviewCancelButton: {
-    flex: 1,
-    minHeight: 48,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 8,
-  },
-  routePreviewCancelText: {
-    color: '#5F6368',
-    fontSize: 13,
-    fontWeight: '600',
-    textDecorationLine: 'underline',
   },
   emptyOfflineTitle: {
     color: '#FFFFFF',

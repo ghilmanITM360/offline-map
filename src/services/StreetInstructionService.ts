@@ -140,6 +140,7 @@ export function generateStreetInstructions(
       maneuver,
       coordinate: to,
       routeIndex: i,
+      roadName: name,
     });
   }
 

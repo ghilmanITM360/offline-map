@@ -82,6 +82,55 @@ if (!hasReleaseSigningConfig) {
 }
 
 /**
+ * Fail-safe: hard-stop actual release-artifact builds (assembleRelease / bundleRelease and any
+ * install/CI task that depends on them) when no production keystore is configured, instead of
+ * silently shipping a debug-signed artifact.
+ *
+ * This only gates tasks that produce/install the final `release` variant output for this module
+ * (":app"). It intentionally does NOT gate verification-only tasks that happen to have "Release"
+ * in their name (e.g. lintRelease, testReleaseUnitTest, compileReleaseSources) — those are safe
+ * to run without a keystore and are part of normal CI/dev workflows.
+ *
+ * Escape hatch for an intentional debug-signed release-shaped artifact (local testing only):
+ *   ./gradlew assembleRelease -PallowInsecureReleaseSigning=true
+ *   ALLOW_INSECURE_RELEASE_SIGNING=true ./gradlew assembleRelease
+ *
+ * See docs/RELEASE_SIGNING.md.
+ */
+def releaseArtifactTaskNamePattern = ~/^(assemble|bundle)[A-Za-z0-9]*Release$/
+
+def allowInsecureReleaseSigning = (
+    findProperty("allowInsecureReleaseSigning") ?: System.getenv("ALLOW_INSECURE_RELEASE_SIGNING") ?: "false"
+).toString().toBoolean()
+
+gradle.taskGraph.whenReady { taskGraph ->
+    def matchedReleaseArtifactTasks = taskGraph.allTasks.findAll { task ->
+        task.project == project && (task.name ==~ releaseArtifactTaskNamePattern)
+    }
+
+    if (matchedReleaseArtifactTasks && !hasReleaseSigningConfig) {
+        def matchedTaskPaths = matchedReleaseArtifactTasks*.path.join(", ")
+
+        if (allowInsecureReleaseSigning) {
+            println "WARNING: Building release-artifact task(s) [$matchedTaskPaths] WITHOUT a configured production" +
+                " keystore. The output will be signed with the DEBUG keystore (publicly-known credentials:" +
+                " storePassword/keyPassword 'android', keyAlias 'androiddebugkey')." +
+                " This artifact MUST NOT be distributed to users, testers, or the Play Store." +
+                " (-PallowInsecureReleaseSigning=true / ALLOW_INSECURE_RELEASE_SIGNING=true was set.)"
+        } else {
+            throw new GradleException(
+                "Refusing to run release-artifact task(s) [$matchedTaskPaths]: no production keystore is configured" +
+                " (android/keystore.properties or ANDROID_RELEASE_* env vars are missing/incomplete)." +
+                " Building now would silently sign the release artifact with the public debug keystore.\n" +
+                "Fix: configure a real release keystore — see docs/RELEASE_SIGNING.md.\n" +
+                "Intentional debug-signed release-shaped build for local testing only: re-run with" +
+                " -PallowInsecureReleaseSigning=true (or ALLOW_INSECURE_RELEASE_SIGNING=true)."
+            )
+        }
+    }
+}
+
+/**
  * This is the configuration block to customize your React Native Android app.
  * By default you don't need to apply any configuration, just uncomment the lines you need.
  */

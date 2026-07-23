@@ -17,7 +17,7 @@ assert(screen.includes('rememberedLocationAvailable'), 'Directions should disabl
 assert(screen.includes('Change destination'), 'Directions screen must include destination change action');
 assert(screen.includes('ScrollView'), 'Directions screen should use scroll layout');
 assert(screen.includes('paddingBottom'), 'Directions screen should add bottom padding for safe area');
-assert(screen.includes('Show route on map'), 'Directions screen should return route preview to Home');
+assert(screen.includes('Start Navigation'), 'Directions screen should expose a Start Navigation CTA once a route is ready');
 assert(screen.includes('Route ready'), 'Directions screen should show route-ready summary');
 assert(screen.includes('Finding best offline route...'), 'Directions screen should show calculating state clearly');
 

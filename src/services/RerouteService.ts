@@ -6,6 +6,11 @@
 import { Coordinate, RoutePreview } from '../models/types';
 import { getDistance } from 'geolib';
 
+// Single owner of "closest point on route / progress meters" for live navigation: both
+// NavigationViewModel (v1, inline) and calculateNavigationProgressV2/V2NavigationRuntimeService
+// (v2) call projectProgressMetersOnRoute + clampMonotonicProgress here rather than each
+// re-deriving projection math. Do not add a second progress-projection implementation —
+// GPS position -> this service -> navigation UI is the whole chain.
 export class RerouteService {
   static getDynamicOffRouteThresholdMeters(gpsAccuracyM = 0): number {
     const threshold = Math.max(30, gpsAccuracyM * 1.5);

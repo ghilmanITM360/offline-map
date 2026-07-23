@@ -25,7 +25,7 @@ assert(home.includes("mapType={hasGoogleMapsKey ? (isOffline ? 'none' : mapType)
 assert(home.includes('handleZoomIn'), 'Zoom in control must call handler');
 assert(home.includes('handleZoomOut'), 'Zoom out control must call handler');
 assert(home.includes('handleRecenter'), 'Current location control must call handler');
-assert(home.includes('handleCompassReset'), 'Compass control must call handler');
+assert(home.includes('handleCompassToggle'), 'Compass control must call handler');
 assert(home.includes('openLayerOptions'), 'Middle/layer map control must call handler');
 assert(home.includes('handleCategoryPress'), 'Category chips must call filter handler');
 assert(home.includes('handlePlaceSelect'), 'Map/search selection must call selection handler');
@@ -39,7 +39,10 @@ assert(home.includes('showsHorizontalScrollIndicator={false}'), 'Category chips 
 // docs/TARGETED_FIX_SPRINT_REPORT.md Phase 5 / test-map-controls-v2.ts for the full rationale.
 assert(home.includes('controlStackBottom'), 'Floating controls must derive their position from the single bottom-anchored control-stack offset');
 assert(home.includes('onLayout={(e) => setTopOverlayHeight'), 'Top overlay (search+chip row) height must be measured, not a hardcoded guess');
-assert(home.includes('onLayout={(e) => setRoutePreviewCardMeasuredHeight'), 'Route preview card height must be measured, not a hardcoded guess');
+// P0-2: route preview lives inside the BottomSheetModal (LocationSheet routePreview mode) —
+// no separate floating card to measure. Its extent already comes from the sheet's real snap
+// point via resolveOverlayExtent (see scripts/test-map-controls-v2.ts).
+assert(home.includes("const controlStackOverlay: OverlayState = { kind: 'sheet', windowHeight, snapPoints, sheetIndex };"), 'Control stack must derive its overlay extent from the route-preview sheet, not a separate measured card');
 assert(
   mapControlsSource.includes("variant: 'browse' | 'nav'") && mapControlsSource.includes("variant === 'browse'"),
   'MapControls must share one component across browse and nav modes',

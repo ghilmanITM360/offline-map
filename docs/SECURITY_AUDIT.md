@@ -55,6 +55,20 @@
 
 ### C3. Release Android builds are signed with the debug keystore, not a real release key
 
+> **Update (2026-07-23 fix pass):** The `build.gradle` mechanism described as the fix below has
+> since been implemented (commit `a08601d`) — `android/app/build.gradle` now resolves release
+> signing credentials from `android/keystore.properties` (gitignored) or `ANDROID_RELEASE_*` env
+> vars, with a `hasReleaseSigningConfig` guard that falls back to the debug keystore (with a
+> `WARNING:` println) only when neither source provides complete credentials. **The mechanism is
+> code-complete; what remains outstanding is a human generating and safely storing a real
+> production keystore** — no such keystore or credentials exist in this repo or environment
+> today, so release builds still fall back to the debug keystore in practice. This is an owner
+> action item, not a code fix — see `docs/RELEASE_SIGNING.md` for the exact step-by-step
+> (`keytool -genkeypair` command, where to place the file, how to wire in via either
+> `keystore.properties` or env vars). The original finding/analysis below is kept for audit-trail
+> completeness; treat `docs/RELEASE_SIGNING.md` as the current source of truth for what to do
+> next.
+
 - **What:** `android/app/build.gradle:141-158`:
   ```gradle
   signingConfigs {
@@ -75,15 +89,17 @@
   }
   ```
   `android/app/debug.keystore` is tracked in git (`git ls-files android/app/debug.keystore` confirms it), and uses the universally-known default Android debug credentials (`storePassword: android`, `keyAlias: androiddebugkey`, `keyPassword: android` — the standard Android SDK debug keystore defaults, not a project-specific secret).
-- **Where:** `android/app/build.gradle:141-158`.
+- **Where:** `android/app/build.gradle:141-158` (pre-`a08601d` state, kept for history — see update note above for current state).
 - **Risk:** Two distinct problems:
   1. **App integrity**: any release APK/AAB built from this repo (`npm run android:release:apk`, `npm run android:release:aab`) is signed with a key whose credentials are public knowledge and shared across countless other Android projects that never changed the RN template defaults. Anyone with this repo (or just the standard RN debug keystore) can produce a binary that presents the same signing identity — a real risk if this identity is ever relied on for update-integrity checks, deep-link verification, or any signature-based trust decision.
   2. **Undermines the Google Maps key restriction recommended in C1**: restricting the Maps key to "package name + release SHA-1" only provides real protection if the release SHA-1 is unique to you. Today it is the well-known default debug SHA-1 fingerprint (`38:9C:...` template value), which is publicly documented — so a SHA-1 restriction against it is close to no restriction at all.
-- **Remediation:**
-  1. Generate a real release keystore: `keytool -genkeypair -v -keystore release.keystore -alias <your-alias> -keyalg RSA -keysize 2048 -validity 10000`.
-  2. Store it **outside** git (e.g. secrets manager / CI secret store), reference store/key passwords via `gradle.properties` (untracked, gitignored) or environment variables — never hardcode.
-  3. Add a real `release` signing config in `android/app/build.gradle` pointing at that keystore, and point `buildTypes.release.signingConfig` at it instead of `signingConfigs.debug`.
-  4. Only after this is done, pull the release SHA-1 (`keytool -list -v -keystore release.keystore`) and use it to restrict the rotated Maps key from C1.
+- **Remediation:** See `docs/RELEASE_SIGNING.md` for the current, actionable checklist (keystore
+  generation command, exact env var / `keystore.properties` field names, verification steps, and
+  the follow-up Maps-key SHA-1 restriction step). Summary: generate a real release keystore,
+  store it and its passwords outside git in a secrets manager, wire the four credential fields in
+  via `android/keystore.properties` (copy from `android/keystore.properties.example`) or
+  `ANDROID_RELEASE_*` env vars, then re-run a release build and confirm the `WARNING:` no longer
+  prints.
 
 ---
 

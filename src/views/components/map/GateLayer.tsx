@@ -8,6 +8,7 @@ import { View } from 'react-native';
 import { Marker } from 'react-native-maps';
 
 import { V2GateLayer } from '../../../services/V2MapRenderingService';
+import { Coordinate } from '../../../models/types';
 import { mapLayerStyles as styles } from './mapLayerStyles';
 
 interface GateLayerProps {
@@ -17,7 +18,11 @@ interface GateLayerProps {
    * case GateLayer itself still renders a Marker for; the full/compact/number
    * label text renders via MapLabelOverlay (see HomeScreen's mapLabelItems). */
   focused?: boolean;
-  onPressGate?: (gateId: string) => void;
+  /** coordinate is the Marker's own press-event coordinate (always reported,
+   * cross-platform) — passed through so HomeScreen's tap disambiguator can
+   * resolve which object wins when this Marker's hit area overlaps another
+   * layer's (e.g. a widened gate dot over a rasta hit-corridor). */
+  onPressGate?: (gateId: string, coordinate: Coordinate) => void;
   keyPrefix: string;
 }
 
@@ -35,6 +40,16 @@ function GateLayerImpl({ gates, focused = false, onPressGate, keyPrefix }: GateL
         // label text — never applied to the selected gate. Non-suppressed gates
         // still get a dot here (the always-accurate native tap target); their
         // label text is a separate MapLabelOverlay item at the same coordinate.
+        const dot = (
+          <View style={[styles.v2GateMarkerDot, gate.needsConnectorVerification && styles.v2GateMarkerWarning]} />
+        );
+        // Suppressed + unselected gates lose their MapLabelOverlay Pressable entirely
+        // (HomeScreen's mapLabelItems skips pushing a label item in exactly this case),
+        // leaving this Marker's ~10px dot as the only tap target. Widen the Marker's own
+        // child bounds for that case only — same "invisible wide hit area" idea
+        // RastaLayer/SpecialRouteLayer use via a transparent Polyline hit corridor,
+        // adapted to a point marker since react-native-maps' Marker has no hitSlop.
+        const needsWiderHitArea = gate.labelSuppressed && !gate.isSelected;
         return (
           <Marker
             key={`${keyPrefix}_${gate.id}`}
@@ -42,9 +57,9 @@ function GateLayerImpl({ gates, focused = false, onPressGate, keyPrefix }: GateL
             anchor={{ x: 0.5, y: 0.5 }}
             zIndex={gate.isSelected ? 16 : focused ? 14 : 12}
             tracksViewChanges={false}
-            onPress={() => onPressGate?.(gate.id)}
+            onPress={(e) => onPressGate?.(gate.id, e.nativeEvent.coordinate)}
           >
-            <View style={[styles.v2GateMarkerDot, gate.needsConnectorVerification && styles.v2GateMarkerWarning]} />
+            {needsWiderHitArea ? <View style={styles.v2GateMarkerHitArea}>{dot}</View> : dot}
           </Marker>
         );
       })}

@@ -8,9 +8,14 @@ import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { AlertTriangle, Check, Compass, Layers, LocateFixed, Minus, Plus } from 'lucide-react-native';
 
 import { mapControlStyles as styles } from './mapControlStyles';
+import { staticColors } from '../../../theme';
+import { CompassMode } from '../../../viewmodels/useCameraManager';
 
 export interface MapControlsRecenter {
-  state: 'idle' | 'loading' | 'success' | 'failure';
+  /** 'active' = CameraManager is in FOLLOWING_USER mode (Google-Maps-style sustained
+   * follow, entered by tapping recenter, exited by panning the map) — distinct from the
+   * transient 'success' checkmark, which only confirms the tap itself resolved. */
+  state: 'idle' | 'loading' | 'success' | 'failure' | 'active';
   onPress: () => void;
 }
 
@@ -18,9 +23,12 @@ interface MapControlsProps {
   /** 'browse' shows the Layers button + north-up/free-rotate helper badge; 'nav' omits both
    * (no layer switching while actively navigating, per Phase 2's control-stack scoping). */
   variant: 'browse' | 'nav';
-  keepNorthFixed: boolean;
+  /** NORTH_UP (resting, neutral icon) vs FOLLOW_HEADING (bearing tracks device compass,
+   * blue active icon) — see useCameraManager's CompassMode and HomeViewModel's
+   * handleCompassToggle for the tap-to-cycle behavior. */
+  compassMode: CompassMode;
   onLayers?: () => void;
-  onCompassReset: () => void;
+  onCompassToggle: () => void;
   onZoomIn: () => void;
   onZoomOut: () => void;
   /** Renders the recenter/"current location" button as the last item in this same
@@ -36,7 +44,8 @@ interface MapControlsProps {
  * and owns the full vertical arrangement (single source of truth for inter-button
  * spacing) — the caller only owns the stack's own absolute position (bottom/right
  * offset), not the layout of what's inside it. */
-export function MapControls({ variant, keepNorthFixed, onLayers, onCompassReset, onZoomIn, onZoomOut, recenter }: MapControlsProps) {
+export function MapControls({ variant, compassMode, onLayers, onCompassToggle, onZoomIn, onZoomOut, recenter }: MapControlsProps) {
+  const isHeadingFollow = compassMode === 'FOLLOW_HEADING';
   return (
     <>
       {variant === 'browse' && (
@@ -46,22 +55,22 @@ export function MapControls({ variant, keepNorthFixed, onLayers, onCompassReset,
           accessibilityRole="button"
           accessibilityLabel="Map layers and filters"
         >
-          <Layers size={22} color="#5F6368" />
+          <Layers size={22} color={staticColors.iconMuted} />
         </Pressable>
       )}
       <Pressable
-        style={[styles.controlButton, keepNorthFixed && styles.controlButtonActive]}
-        onPress={onCompassReset}
+        style={[styles.controlButton, isHeadingFollow && styles.controlButtonActive]}
+        onPress={onCompassToggle}
         accessibilityRole="button"
         accessibilityLabel={
-          keepNorthFixed ? 'Map locked north-up. Tap to allow free rotation.' : 'Map rotates freely. Tap to lock north-up.'
+          isHeadingFollow ? 'Map rotates with your compass heading. Tap to return to north-up.' : 'Map is north-up. Tap to rotate with your compass heading.'
         }
       >
-        <Compass size={22} color={keepNorthFixed ? '#1A73E8' : '#5F6368'} />
+        <Compass size={22} color={isHeadingFollow ? staticColors.info : staticColors.iconMuted} />
       </Pressable>
       {variant === 'browse' && (
         <View style={styles.controlHelperBadge}>
-          <Text style={styles.controlHelperText}>{keepNorthFixed ? 'North-up' : 'Free rotate'}</Text>
+          <Text style={styles.controlHelperText}>{isHeadingFollow ? 'Compass' : 'North-up'}</Text>
         </View>
       )}
       <View style={styles.zoomControls}>
@@ -71,7 +80,7 @@ export function MapControls({ variant, keepNorthFixed, onLayers, onCompassReset,
           accessibilityRole="button"
           accessibilityLabel="Zoom in"
         >
-          <Plus size={22} color="#5F6368" />
+          <Plus size={22} color={staticColors.iconMuted} />
         </Pressable>
         <View style={styles.zoomDivider} />
         <Pressable
@@ -80,20 +89,30 @@ export function MapControls({ variant, keepNorthFixed, onLayers, onCompassReset,
           accessibilityRole="button"
           accessibilityLabel="Zoom out"
         >
-          <Minus size={22} color="#5F6368" />
+          <Minus size={22} color={staticColors.iconMuted} />
         </Pressable>
       </View>
       {recenter && (
         <View style={styles.recenterButtonWrap}>
-          <Pressable style={styles.recenterButton} disabled={recenter.state === 'loading'} onPress={recenter.onPress}>
+          <Pressable
+            style={[styles.recenterButton, recenter.state === 'active' && styles.recenterButtonActive]}
+            disabled={recenter.state === 'loading'}
+            onPress={recenter.onPress}
+            accessibilityRole="button"
+            accessibilityLabel={
+              recenter.state === 'active'
+                ? 'Following my current location. Tap to re-center.'
+                : 'Center map on my current location'
+            }
+          >
             {recenter.state === 'loading' ? (
-              <ActivityIndicator size="small" color="#4285F4" />
+              <ActivityIndicator size="small" color={staticColors.recenterBlue} />
             ) : recenter.state === 'success' ? (
-              <Check size={24} color="#2E7D32" />
+              <Check size={24} color={staticColors.success} />
             ) : recenter.state === 'failure' ? (
-              <AlertTriangle size={22} color="#EA4335" />
+              <AlertTriangle size={22} color={staticColors.gateAccent} />
             ) : (
-              <LocateFixed size={24} color="#4285F4" />
+              <LocateFixed size={24} color={staticColors.recenterBlue} />
             )}
           </Pressable>
         </View>

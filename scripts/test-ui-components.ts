@@ -38,7 +38,7 @@ assert(permission.includes('contentContainerStyle={styles.contentContainer}'), '
 
 assert(home.includes('handleZoomIn') && home.includes('handleZoomOut'), 'Home zoom controls must be wired to handlers');
 assert(home.includes('handleRecenter'), 'Home current-location/recenter control must be wired');
-assert(home.includes('handleCompassReset'), 'Home compass control must be wired');
+assert(home.includes('handleCompassToggle'), 'Home compass control must be wired');
 assert(home.includes('openLayerOptions'), 'Home layer control must open the layer chooser');
 assert(home.includes('handleOpenDirections'), 'Home selected-place CTA must open Directions');
 assert(home.includes('horizontal') && home.includes('categoryChips.map'), 'Home category chips must be horizontally scrollable');
@@ -53,7 +53,7 @@ assert(directions.includes('keyboardDismissMode="on-drag"'), 'Directions must di
 assert(directions.includes('Use my current location'), 'Directions must expose current-location start action');
 assert(directions.includes('Use last known location'), 'Directions must expose last-known start action when available');
 assert(directions.includes('Choose start manually'), 'Directions must expose manual start action');
-assert(directions.includes('Show route on map'), 'Directions must hand route preview back to Home map');
+assert(directions.includes('Start Navigation'), 'Directions must expose a Start Navigation CTA once the route is ready');
 assert(directions.includes('Route ready'), 'Directions must show route-ready state');
 assert(directions.includes('Find nearest official gate automatically'), 'Directions must explain current-location routing behavior');
 assert(directions.includes('Change destination'), 'Directions must keep destination-change action');
@@ -72,7 +72,11 @@ assert(navigation.includes('destinationMarker'), 'Navigation must render a desti
 assert(navigation.includes('userMarker'), 'Navigation must render current/user marker');
 assert(navigation.includes('handleExit()'), 'Navigation exit button must be wired');
 assert(navigation.includes('styles.tripTextWrap'), 'Navigation bottom trip text must be constrained separately from Exit button');
-assert(navigation.includes('animateCamera') && navigation.includes('LocateFixed'), 'Navigation recenter button must animate camera');
+assert(navigation.includes('cameraManager.enterNavigationCamera(') && navigation.includes('LocateFixed'), 'Navigation recenter button must animate camera');
+assert(
+  navigation.includes('testID="nav-arrived-recenter-button"') && navigation.includes('testID="nav-arrived-done-button"'),
+  'Navigation arrival sheet must offer both Recenter map and Done actions',
+);
 
 assert(settings.includes("disabled={type !== 'toggle' && !onPress}"), 'Settings info-only rows must be disabled');
 assert(settings.includes('numberOfLines={1}') && settings.includes('ellipsizeMode="tail"'), 'Settings labels/values must constrain long text');

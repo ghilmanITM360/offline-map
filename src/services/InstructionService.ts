@@ -55,6 +55,7 @@ export class InstructionService {
       const nextNameUr = this.getFriendlyName(nextId, 'ur');
       const nextName = this.getFriendlyName(nextId, 'en');
       const edgeName = this.getEdgeName(currentId, nextId);
+      const roadName = edgeName !== 'the path' ? edgeName : undefined;
 
       if (i === 0) {
         text = `Start on ${edgeName}. Continue ${distance} meters to ${nextName}.`;
@@ -102,6 +103,7 @@ export class InstructionService {
         distance,
         type,
         coordinate: { latitude: nextNode.lat, longitude: nextNode.lng },
+        roadName,
       });
     }
 
@@ -162,6 +164,23 @@ export class InstructionService {
 
     return lang === 'ur' ? 'چوراہا' : 'the junction';
   }
+
+  /**
+   * Short caps-style maneuver label for the nav banner's top line (Google
+   * Maps style hierarchy) — derived from the instruction's existing `type`,
+   * not a new instruction field.
+   */
+  static maneuverLabel(type: NavigationInstruction['type']): string {
+    switch (type) {
+      case 'left': return 'Left Turn';
+      case 'right': return 'Right Turn';
+      case 'arrival': return 'Arrive';
+      default: return 'Continue Straight';
+    }
+  }
+
+  /** Fallback shown in the road-name line when the step has no known road/rasta name. */
+  static readonly ROAD_NAME_FALLBACK = 'Continue ahead';
 
   /**
    * Format a distance value according to the user's unit preference.

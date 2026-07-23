@@ -41,10 +41,26 @@ for (const deadOffsetGuess of ['isOffline ? 42', 'showMapWarningBanner ? 56', 's
 assert((home.match(/<View style=\{\[styles\.controlStack, \{ bottom: controlStackBottom \}\]\}>/g) ?? []).length >= 1, 'HomeScreen must position the control stack via a single controlStackBottom value');
 assert(home.includes('recenter={'), 'HomeScreen must pass the recenter button into MapControls\' single stack, not render it separately');
 
-// Real layout: recenter clearance derives from a measured route-preview-card height,
-// not a hardcoded 184px guess.
-assert(home.includes('onLayout={(e) => setRoutePreviewCardMeasuredHeight(e.nativeEvent.layout.height)}'), 'Route preview card height must be measured via onLayout');
-assert(home.includes('routePreviewCardMeasuredHeight + 16'), 'controlStackBottom must derive from the measured route-preview-card height');
+// P0-2 (Google Maps routing parity fix): route preview is a single surface living inside
+// LocationSheet's routePreview mode — there is no separate floating route-preview card, so
+// recenter clearance only ever has to clear the BottomSheetModal itself. controlStackBottom
+// is built via the shared computeMapControlsInset calculation (see src/viewmodels/useOverlayInsets.ts /
+// scripts/test-overlay-insets.ts) using the sheet's real snap-point extent, not a measured card height.
+assert(!home.includes('routePreviewCardMeasuredHeight'), 'The floating route-preview card and its measured-height state must be gone (see LocationSheet routePreview mode)');
+assert(!home.includes("{ kind: 'measured'"), 'controlStackOverlay must not fall back to a measured floating-card extent anymore — the sheet is the only overlay kind now');
+assert(
+  home.includes("const controlStackOverlay: OverlayState = { kind: 'sheet', windowHeight, snapPoints, sheetIndex };"),
+  'controlStackOverlay must always resolve to the sheet kind now that route preview lives inside the BottomSheetModal',
+);
+assert(
+  home.includes('const controlStackBottom = computeMapControlsInset('),
+  'controlStackBottom must be computed via the shared computeMapControlsInset calculation',
+);
 assert(!home.includes('activePreviewRoute ? 184 : 0'), 'Hardcoded route-preview-card height guess (184) must be gone');
+assert(!home.includes('styles.routePreviewCard'), 'The floating routePreviewCard JSX/styles must be removed — route preview renders via LocationSheet mode="routePreview" inside the single BottomSheetModal');
+assert(
+  home.includes('routePreviewSheetDestination'),
+  'HomeScreen must resolve a single routePreviewSheetDestination (directionsDestination ?? previewDestination) feeding one LocationSheet routePreview render',
+);
 
 console.log('Map controls v2 checks passed.');

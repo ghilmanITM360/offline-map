@@ -24,7 +24,7 @@ const featureFlagSource = readFileSync('src/services/MapFeatureFlagsService.ts',
 // (NavigationViewModel + useNavigationOverlayV1) itself guards against ever adopting a
 // v2-shaped active route, since both hooks now run unconditionally with no outer screen to gate on.
 assert(featureFlagSource.includes('useIjtemaV2Navigation'), 'MapFeatureFlagsService must expose EXPO_PUBLIC_USE_IJTEMA_V2_NAVIGATION');
-assert(directionsScreenSource.includes('Show route on map'), 'DirectionsScreen must hand preview back to Home map');
+assert(directionsScreenSource.includes('Start Navigation'), 'DirectionsScreen must expose a Start Navigation CTA that reveals the map in place');
 assert(directionsScreenSource.includes('Get Directions'), 'DirectionsScreen must keep layman-friendly heading');
 assert(directionsViewModelSource.includes('V2NavigationAdapter'), 'DirectionsViewModel must adapt v2 previews before starting active navigation');
 assert(directionsViewModelSource.includes('setActiveRoute(preview.route)'), 'DirectionsViewModel must persist v2 preview route for Home preview');

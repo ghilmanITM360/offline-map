@@ -4,6 +4,7 @@
  */
 
 import { IJTEMA_DATA, LANDMARK_NEAREST_NODE, MAP_BOUNDS } from '../constants/data';
+import { OUTSIDE_VENUE_BOUNDARY_NODE_IDS_V1 } from '../constants/navigation';
 import { Coordinate, Place, RoutePreview, RouteSegment, RouteAlternative } from '../models/types';
 import { getDistance } from 'geolib';
 
@@ -21,6 +22,13 @@ interface RouteNodePlan {
 }
 
 export class RoutingService {
+  // Boundary/terminal nodes only — mirrors SnapToRoadService.resolveRoutingNode's
+  // outside-venue fallback so an outside-venue origin can never snap straight onto
+  // an interior graph node (initial route generation was missing this guard while
+  // the reroute path already had it). Shared constant — see its doc comment in
+  // constants/navigation.ts for why this must stay v1-only.
+  private static readonly OUTSIDE_VENUE_BOUNDARY_NODE_IDS = OUTSIDE_VENUE_BOUNDARY_NODE_IDS_V1;
+
   // ─── Venue / block detection ───────────────────────────────────────────────
 
   /** Returns whether a coordinate is within the venue bounding box. */
@@ -135,6 +143,13 @@ export class RoutingService {
       if (entryNodes.length > 0) {
         return this.sortNodeIdsByDistance(entryNodes, startCoord);
       }
+    }
+
+    if (!this.isInsideVenue(startCoord)) {
+      const boundaryNodes = this.uniqueValidNodeIds(
+        Object.keys(IJTEMA_DATA.nodes).filter((id) => this.OUTSIDE_VENUE_BOUNDARY_NODE_IDS.test(id)),
+      );
+      return boundaryNodes.length > 0 ? this.sortNodeIdsByDistance(boundaryNodes, startCoord) : [];
     }
 
     const nearest = this.findNearestNode(startCoord);

@@ -14,8 +14,8 @@ import { RerouteService } from '../services/RerouteService';
 import { GPSManagerService } from '../services/GPSManagerService';
 import { getDistance } from 'geolib';
 import { Coordinate, RoutePreview } from '../models/types';
+import { ARRIVAL_THRESHOLD_METERS as ARRIVAL_THRESHOLD_M } from '../constants/navigation';
 
-const ARRIVAL_THRESHOLD_M = 20;
 const OFF_ROUTE_PENDING_MS = 9000;
 const OFF_ROUTE_CONSECUTIVE_REQUIRED = 3;
 const REROUTE_COOLDOWN_MS = 25000;
@@ -341,7 +341,7 @@ export function useNavigationViewModel() {
                   settingsRef.current.language,
                 );
               }
-              setRerouteStatusMessage(null);
+              setRerouteStatusMessage(resolvedStart.warning ?? null);
             } else {
               setRerouteStatusMessage('Could not find a better route. continuing current route.');
             }

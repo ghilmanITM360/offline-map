@@ -14,7 +14,7 @@ assert(directionsScreenSource.includes('Choose start manually'), 'Directions scr
 assert(directionsScreenSource.includes('Change destination'), 'Directions screen must let user change destination.');
 assert(directionsScreenSource.includes('Finding best offline route'), 'Directions screen must show calculating status copy.');
 assert(directionsScreenSource.includes('Route ready'), 'Directions screen must show success status copy.');
-assert(directionsScreenSource.includes('Show route on map'), 'Directions screen must expose Show route on map CTA.');
+assert(directionsScreenSource.includes('Start Navigation'), 'Directions screen must expose a Start Navigation CTA.');
 assert(
   !directionsScreenSource.includes('Last known location is outside Ijtema and cannot be used for routing.'),
   'Directions screen must stop rejecting outside remembered location.',

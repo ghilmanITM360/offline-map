@@ -4,7 +4,7 @@
  */
 
 import React from 'react';
-import { render as rtlRender, RenderOptions } from '@testing-library/react-native';
+import { render as rtlRender, renderHook as rtlRenderHook, RenderOptions, RenderHookOptions } from '@testing-library/react-native';
 import { SafeAreaProvider, Metrics } from 'react-native-safe-area-context';
 
 // Screens under test call useSafeAreaInsets()/SafeAreaView, which throw without a
@@ -23,6 +23,16 @@ function AllProviders({ children }: { children: React.ReactNode }) {
 
 export function render(ui: React.ReactElement, options?: RenderOptions) {
   return rtlRender(ui, { wrapper: AllProviders, ...options });
+}
+
+// Hooks under test (e.g. useCameraManager reading useSafeAreaFrame/useSafeAreaInsets)
+// need the same SafeAreaProvider ancestor as render() above — without it they throw
+// "No safe area value available".
+export function renderHook<Result, Props>(
+  callback: (props: Props) => Result,
+  options?: RenderHookOptions<Props>,
+) {
+  return rtlRenderHook(callback, { wrapper: AllProviders, ...options });
 }
 
 export * from '@testing-library/react-native';

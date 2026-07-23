@@ -18,6 +18,7 @@ import {
 import { useAppStore } from '../../store/useAppStore';
 import { RootStackParamList } from '../../navigation/RootNavigator'; // fixed: type parent stack navigation for drawer-to-stack transitions
 import { useTheme } from '../../services/useTheme'; // fixed: use theme-safe colors for icons and badges
+import { staticColors } from '../../theme';
 
 const DRAWER_ICON_COLOR_KEY = 'subtext'; // fixed: centralize drawer icon color selection for future theming changes
 const DRAWER_BADGE_SUCCESS_KEY = 'primary'; // fixed: centralize badge success color selection
@@ -43,7 +44,7 @@ export function CustomDrawer(props: DrawerContentComponentProps) {
     <View style={styles.container}>
       <View style={styles.header}>
         <View style={styles.logoContainer}>
-          <MapIcon size={32} color="#FFFFFF" />
+          <MapIcon size={32} color={staticColors.white} />
         </View>
         <View style={styles.headerText}>
           <Text style={styles.title}>Ijtema Map</Text>
@@ -113,10 +114,10 @@ export function CustomDrawer(props: DrawerContentComponentProps) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: staticColors.white,
   },
   header: {
-    backgroundColor: '#2E7D32',
+    backgroundColor: staticColors.drawerHeaderBackground,
     padding: 24,
     paddingTop: 60,
     flexDirection: 'row',
@@ -136,11 +137,11 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#FFFFFF',
+    color: staticColors.white,
   },
   subtitle: {
     fontSize: 14,
-    color: '#E8F5E9',
+    color: staticColors.lightGreenSubtext,
     marginTop: 2,
   },
   drawerContent: {
@@ -152,7 +153,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 12,
     fontWeight: 'bold',
-    color: '#888',
+    color: staticColors.destNameMuted,
     marginLeft: 16,
     marginTop: 16,
     marginBottom: 8,
@@ -173,7 +174,7 @@ const styles = StyleSheet.create({
   },
   menuItemLabel: {
     fontSize: 16,
-    color: '#333',
+    color: staticColors.drawerText,
     marginLeft: 16,
   },
   badge: {
@@ -182,18 +183,18 @@ const styles = StyleSheet.create({
   },
   divider: {
     height: 1,
-    backgroundColor: '#EEEEEE',
+    backgroundColor: staticColors.drawerDivider,
     marginVertical: 16,
     marginHorizontal: 16,
   },
   footer: {
     padding: 20,
     borderTopWidth: 1,
-    borderTopColor: '#EEEEEE',
+    borderTopColor: staticColors.drawerDivider,
     alignItems: 'center',
   },
   version: {
     fontSize: 12,
-    color: '#AAA',
+    color: staticColors.drawerFaint,
   },
 });

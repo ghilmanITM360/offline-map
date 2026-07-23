@@ -1,5 +1,6 @@
 import { strict as assert } from 'node:assert';
 import { readFileSync } from 'node:fs';
+import { staticColors } from '../src/theme';
 
 const homeVm = readFileSync('src/viewmodels/HomeViewModel.ts', 'utf8');
 const directionsVm = readFileSync('src/viewmodels/DirectionsViewModel.ts', 'utf8');
@@ -131,13 +132,13 @@ assert(
 );
 assert(
   directionsScreen.includes('Get Directions') &&
-    directionsScreen.includes('Show route on map') &&
+    directionsScreen.includes('Start Navigation') &&
     directionsScreen.includes('Find nearest official gate automatically'),
   'Directions should use layman-friendly start-selection flow',
 );
 
 assert(
-  navScreen.includes('#EA4335'),
+  navScreen.includes('staticColors.gateAccent') && staticColors.gateAccent === '#EA4335',
   'Navigation destination marker should be red',
 );
 assert(
@@ -149,7 +150,9 @@ assert(
   'Navigation should include graph-only fallback diagnostics',
 );
 assert(
-  navScreen.includes('fitToCoordinates'),
+  // fitToCoordinates itself now lives only in CameraManager (src/viewmodels/useCameraManager.ts)
+  // — the nav overlay calls cameraManager.fitRoute()/fitVenueBounds() instead of the MapView ref directly.
+  navScreen.includes('cameraManager.fitRoute(') && navScreen.includes('cameraManager.fitVenueBounds('),
   'Navigation should fit route/venue bounds',
 );
 assert(
@@ -169,11 +172,14 @@ assert(
   'Navigation heading behavior should honor North-up setting',
 );
 assert(
-  navScreen.includes('InstructionService.formatDistance') && homeScreen.includes('InstructionService.formatDistance'),
-  'Distance unit setting should affect both navigation and Home route preview distance text',
+  // Route-preview distance text lives in LocationSheet's routePreview mode (directionsScreen),
+  // not HomeScreen directly, since P0-2 consolidated it into a single sheet-based surface.
+  navScreen.includes('InstructionService.formatDistance') && directionsScreen.includes('InstructionService.formatDistance'),
+  'Distance unit setting should affect both navigation and route preview distance text',
 );
+const userLocationMarkerSrc = readFileSync('src/views/components/map/UserLocationMarker.tsx', 'utf8');
 assert(
-  navScreen.includes('userMarkerPulse') && homeScreen.includes('userMarkerPulse'),
+  navScreen.includes('userMarkerPulse') && homeScreen.includes('<UserLocationMarker') && userLocationMarkerSrc.includes('pulse'),
   'Current user marker should have lightweight pulse styling',
 );
 assert(

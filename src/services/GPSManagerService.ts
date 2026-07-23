@@ -6,6 +6,7 @@
 import * as Location from 'expo-location';
 import { AppState, AppStateStatus } from 'react-native';
 import { Coordinate } from '../models/types';
+import { NAVIGATION_WATCH_TIME_INTERVAL_MS } from '../constants/navigation';
 
 type LocationCallback = (coord: Coordinate) => void;
 type LocationTrackingMode = 'follow' | 'navigation';
@@ -42,7 +43,7 @@ class GPSManager {
     if (mode === 'navigation') {
       return {
         accuracy: Location.Accuracy.High,
-        timeInterval: 1000,
+        timeInterval: NAVIGATION_WATCH_TIME_INTERVAL_MS,
         distanceInterval: 2,
       };
     }
@@ -109,20 +110,7 @@ class GPSManager {
 
     const nextSubscription = await Location.watchPositionAsync(
       this.getWatchOptions(mode),
-      (location) => {
-        const coord: Coordinate = {
-          latitude: location.coords.latitude,
-          longitude: location.coords.longitude,
-          heading: location.coords.heading ?? 0, // fixed: normalize null/undefined heading values coming from Expo Location
-          accuracy: location.coords.accuracy ?? 0, // fixed: normalize null/undefined accuracy values coming from Expo Location
-        };
-
-        // Update global store via the injected callback (no direct store import)
-        this.storeUpdater?.(coord);
-
-        // Notify all registered listeners (NavigationViewModel, etc.)
-        this.listeners.forEach((_mode, cb) => cb(coord));
-      }
+      (location) => this.publishFix(location),
     );
 
     if (this.appState !== 'active' || this.getRequestedMode() !== mode) {
@@ -132,6 +120,46 @@ class GPSManager {
 
     this.subscription = nextSubscription;
     this.subscriptionMode = mode;
+  }
+
+  private publishFix(location: Location.LocationObject): Coordinate {
+    const coord: Coordinate = {
+      latitude: location.coords.latitude,
+      longitude: location.coords.longitude,
+      // undefined (not 0) when the device has no reliable heading — 0 is a valid
+      // "facing true north" reading and must stay distinguishable from "unknown".
+      heading: location.coords.heading == null || location.coords.heading < 0 ? undefined : location.coords.heading,
+      accuracy: location.coords.accuracy ?? 0, // fixed: normalize null/undefined accuracy values coming from Expo Location
+    };
+
+    // Update global store via the injected callback (no direct store import)
+    this.storeUpdater?.(coord);
+
+    // Notify all registered listeners (NavigationViewModel, etc.)
+    this.listeners.forEach((_mode, cb) => cb(coord));
+    return coord;
+  }
+
+  /**
+   * One-shot fresh fix, bypassing watchPositionAsync's natural cadence. Used on
+   * app-foreground resume during active navigation: after a multi-minute background
+   * gap (phone locked mid-walk), waiting for the ambient watch subscription's next
+   * callback could take a while (device needs to reacquire GPS lock) — this forces
+   * an immediate fix instead, so route progress/ETA don't sit stale on-screen after
+   * unlock. Publishes through the same store-updater/listener path as a normal fix,
+   * so callers don't need any special-case handling.
+   */
+  async forceFix(): Promise<Coordinate | null> {
+    if (this.appState !== 'active') return null;
+    const { status } = await Location.getForegroundPermissionsAsync();
+    if (status !== 'granted') return null;
+    try {
+      const location = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
+      return this.publishFix(location);
+    } catch (err) {
+      console.warn('[GPSManager] forceFix failed:', err);
+      return null;
+    }
   }
 
   stop(): void {

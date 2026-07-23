@@ -1,5 +1,6 @@
 import { strict as assert } from 'node:assert';
 import { readFileSync } from 'node:fs';
+import { staticColors } from '../src/theme';
 
 // Phase 9 (task #36): the task asked for selected-block rendering to have a blue border,
 // light fill, and an EN/UR label bubble — all three already existed (border+fill from the
@@ -25,7 +26,11 @@ assert(mapLayerStyles.includes('v2SelectedBlockLabelText'), 'v2SelectedBlockLabe
 
 // Border+fill+bubble were already in place before this phase — assert they still are.
 assert(blockLayer.includes("fillColor={block.isSelected ? 'rgba(26,115,232,0.42)'"), 'Selected block must keep its light blue fill');
-assert(blockLayer.includes("strokeColor={block.isSelected ? '#1A73E8'"), 'Selected block must keep its blue border');
+assert(
+  blockLayer.includes('strokeColor={block.isSelected ? staticColors.selectedBlock') &&
+    staticColors.selectedBlock === '#1A73E8',
+  'Selected block must keep its blue border',
+);
 assert(home.includes('MapLocalizationService.getSecondaryLabel(block.name)'), 'Selected block label bubble must keep showing the Urdu secondary line');
 
 console.log('Selected block contrast v2 checks passed.');

@@ -47,7 +47,7 @@
       <true/>
     </dict>
     <key>NSLocationWhenInUseUsageDescription</key>
-    <string>Allow $(PRODUCT_NAME) to access your location</string>
+    <string>Karachi Ijtema Nav uses your location to show your position on the ground map and guide you with turn-by-turn walking directions to gates, blocks, and facilities.</string>
     <key>RCTNewArchEnabled</key>
     <true/>
     <key>UILaunchStoryboardName</key>

@@ -14,6 +14,7 @@ import { RastaLayer } from '../map/RastaLayer';
 import { SpecialRouteLayer } from '../map/SpecialRouteLayer';
 import { BlockLayer } from '../map/BlockLayer';
 import { navOverlayStyles as styles } from './navOverlayStyles';
+import { markerSizes, staticColors } from '../../../theme';
 
 /** Renders as children of the shared MapView while a v2 route is being navigated. */
 export function NavigationMapLayersV2({ overlay }: { overlay: NavigationOverlayV2 }) {
@@ -24,6 +25,12 @@ export function NavigationMapLayersV2({ overlay }: { overlay: NavigationOverlayV
   const { outside: outsideLegCoordinates, inside: insideLegCoordinates } = useMemo(
     () => V2MapRenderingService.splitOutsideInsideCoordinates(route?.coordinates ?? [], route?.outsideLegCoordinateCount),
     [route?.coordinates, route?.outsideLegCoordinateCount],
+  );
+  // Progress split only applies once the user is on the inside leg — outside-leg
+  // progress isn't rendered (that leg is dashed/short and already de-emphasized).
+  const { walked: walkedInsideCoordinates, remaining: remainingInsideCoordinates } = useMemo(
+    () => V2MapRenderingService.splitByProgress(insideLegCoordinates, outsideLegCoordinates.length > 0 ? null : snappedLocation),
+    [insideLegCoordinates, outsideLegCoordinates.length, snappedLocation],
   );
   if (!route) return null;
 
@@ -40,10 +47,10 @@ export function NavigationMapLayersV2({ overlay }: { overlay: NavigationOverlayV
 
       {outsideLegCoordinates.length > 1 && (
         <>
-          <Polyline coordinates={outsideLegCoordinates} strokeColor="rgba(230,124,0,0.55)" strokeWidth={9} zIndex={18} />
+          <Polyline coordinates={outsideLegCoordinates} strokeColor={staticColors.routeCasing} strokeWidth={9} zIndex={18} />
           <Polyline
             coordinates={outsideLegCoordinates}
-            strokeColor="#E67C00"
+            strokeColor={staticColors.routeOutside}
             strokeWidth={5}
             lineDashPattern={[8, 6]}
             zIndex={19}
@@ -52,18 +59,21 @@ export function NavigationMapLayersV2({ overlay }: { overlay: NavigationOverlayV
       )}
       <Polyline
         coordinates={insideLegCoordinates}
-        strokeColor="rgba(13,71,161,0.72)"
+        strokeColor={staticColors.routeCasing}
         strokeWidth={11}
         lineDashPattern={reroutePending ? [10, 5] : undefined}
         zIndex={20}
       />
-      <Polyline
-        coordinates={insideLegCoordinates}
-        strokeColor="#1A73E8"
-        strokeWidth={7}
-        lineDashPattern={reroutePending ? [10, 5] : undefined}
-        zIndex={21}
-      />
+      {reroutePending ? (
+        <Polyline coordinates={insideLegCoordinates} strokeColor={staticColors.routeInside} strokeWidth={7} lineDashPattern={[10, 5]} zIndex={21} />
+      ) : (
+        <>
+          {walkedInsideCoordinates.length > 1 && (
+            <Polyline coordinates={walkedInsideCoordinates} strokeColor={staticColors.routeWalked} strokeWidth={7} zIndex={21} />
+          )}
+          <Polyline coordinates={remainingInsideCoordinates} strokeColor={staticColors.routeInside} strokeWidth={7} zIndex={22} />
+        </>
+      )}
 
       <Marker coordinate={startCoordinate} title={route.origin.label} anchor={{ x: 0.5, y: 0.5 }} tracksViewChanges={false}>
         <View style={styles.startMarkerWrap}>
@@ -76,7 +86,7 @@ export function NavigationMapLayersV2({ overlay }: { overlay: NavigationOverlayV
 
       <Marker coordinate={destinationCoordinate} title={route.destination.label} anchor={{ x: 0.5, y: 1 }} tracksViewChanges={false}>
         <View style={styles.destinationMarker}>
-          <MapPin size={34} color="#EA4335" fill="#EA4335" />
+          <MapPin size={markerSizes.destination} color={staticColors.gateAccent} fill={staticColors.gateAccent} />
         </View>
       </Marker>
 

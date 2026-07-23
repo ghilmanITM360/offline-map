@@ -8,11 +8,15 @@ const home = readFileSync('src/views/screens/HomeScreen.tsx', 'utf8');
 // scripts/test-map-label-overlay-v2.ts) — only small fixed-size dot markers remain here.
 const gateLayer = readFileSync('src/views/components/map/GateLayer.tsx', 'utf8');
 const navMapLayers = readFileSync('src/views/components/navigation/NavigationMapLayersV2.tsx', 'utf8');
+// User-location marker moved into its own shared component (heading-cone support) — see
+// src/views/components/map/UserLocationMarker.tsx.
+const userLocationMarkerSource = readFileSync('src/views/components/map/UserLocationMarker.tsx', 'utf8');
 
 // --- user-location marker: tracksViewChanges must be permanently false ----
 
-const userLocationMarkerMatch = home.match(/<Marker coordinate=\{currentLocation\}[\s\S]*?<\/Marker>/);
-assert(userLocationMarkerMatch, 'Home must render a user-location Marker bound to currentLocation.');
+assert(home.includes('<UserLocationMarker'), 'Home must render the shared UserLocationMarker component bound to currentLocation.');
+const userLocationMarkerMatch = userLocationMarkerSource.match(/<Marker[\s\S]*?coordinate=\{coordinate\}[\s\S]*?<\/Marker>/);
+assert(userLocationMarkerMatch, 'UserLocationMarker must render a Marker bound to its coordinate prop.');
 const userLocationMarkerBlock = userLocationMarkerMatch![0];
 assert(
   userLocationMarkerBlock.includes('tracksViewChanges={false}'),

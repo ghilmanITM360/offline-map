@@ -185,6 +185,7 @@ const generateInstructions = (path: ShortestPathResult, destinationLabel: string
       distance: edge.distanceM,
       type: 'straight',
       coordinate: toNode ? toAppCoordinate(toNode) : { latitude: 0, longitude: 0 },
+      roadName: edge.name.en,
     });
   });
 

@@ -1,5 +1,6 @@
 import { strict as assert } from 'node:assert';
 import { readFileSync } from 'node:fs';
+import { staticColors } from '../src/theme';
 
 const homeScreenSource = readFileSync('src/views/screens/HomeScreen.tsx', 'utf8');
 const homeViewModelSource = readFileSync('src/viewmodels/HomeViewModel.ts', 'utf8');
@@ -15,36 +16,40 @@ assert(
   'Home screen must read preview destination state.',
 );
 assert(
-  homeScreenSource.includes('strokeColor="#1A73E8"'),
+  homeScreenSource.includes('strokeColor={staticColors.routeInside}') && staticColors.routeInside === '#1A73E8',
   'Home screen must render blue route preview line.',
 );
+// P0-2 (Google Maps routing parity fix): route preview is a single surface — LocationSheet's
+// routePreview mode — not a separate HomeScreen floating card, so this content now lives in
+// LocationSheet.tsx (see scripts/test-map-controls-v2.ts for the corresponding HomeScreen-side
+// checks that the old floating card/its styles are gone).
 assert(
-  homeScreenSource.includes('Start Navigation'),
-  'Home screen must expose Start Navigation from route preview card.',
+  directionsScreenSource.includes('Start Navigation'),
+  'LocationSheet routePreview mode must expose Start Navigation.',
 );
 assert(
-  homeScreenSource.includes('Cancel Route'),
-  'Home screen must expose Cancel Route action (demoted, confirm-gated destructive action).',
+  directionsScreenSource.includes('Cancel Route'),
+  'LocationSheet routePreview mode must expose Cancel Route action (confirm-gated destructive action, via onCancelRoute).',
 );
 assert(
-  homeScreenSource.includes('Change Start'),
-  'Home screen must expose Change Start action.',
+  directionsScreenSource.includes('Change Start'),
+  'LocationSheet routePreview mode must expose Change Start action.',
 );
 assert(
-  homeScreenSource.includes('Enter through'),
-  'Home route card must explain entry gate.',
+  directionsScreenSource.includes('Enter through'),
+  'LocationSheet routePreview mode must explain entry gate.',
 );
 assert(
-  homeScreenSource.includes('Outside Ijtema'),
-  'Home route card must explain outside-user route mode.',
+  directionsScreenSource.includes('Outside Ijtema'),
+  'LocationSheet routePreview mode must explain outside-user route mode.',
 );
 assert(
-  homeScreenSource.includes('routePreviewCard'),
-  'Home screen must render compact route preview card styles.',
+  homeScreenSource.includes('routePreviewSheetDestination'),
+  'Home screen must resolve a single routePreviewSheetDestination feeding the one LocationSheet routePreview render.',
 );
 assert(
-  directionsScreenSource.includes('Show route on map'),
-  'Directions screen must return user to Home preview with Show route on map CTA.',
+  !homeScreenSource.includes('styles.routePreviewCard'),
+  'Home screen must not render a separate floating route-preview card anymore.',
 );
 assert(
   storeSource.includes('routePlannerOrigin') && storeSource.includes('routePlannerDest'),

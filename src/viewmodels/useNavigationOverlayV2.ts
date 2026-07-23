@@ -5,10 +5,11 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Animated, BackHandler } from 'react-native';
-import MapView, { Camera } from 'react-native-maps';
+import MapView from 'react-native-maps';
 import { useAppStore } from '../store/useAppStore';
 import { V2MapRenderingService } from '../services/V2MapRenderingService';
 import { useNavigationViewModelV2 } from './NavigationViewModelV2';
+import { CameraManager } from './useCameraManager';
 
 declare const __DEV__: boolean;
 
@@ -19,6 +20,7 @@ interface Params {
   hasGoogleMapsKey: boolean;
   /** Reuse Home's existing current-location pulse animation instead of starting a second loop. */
   userPulseAnim: Animated.Value;
+  cameraManager: CameraManager;
 }
 
 /**
@@ -26,14 +28,14 @@ interface Params {
  * (on the single persistent MapView) instead of a separate NavigationScreen. Safe to call
  * unconditionally — every effect here already no-ops when there's no active v2 route.
  */
-export function useNavigationOverlayV2({ mapRef, mapReady, mapZoomLevel, hasGoogleMapsKey, userPulseAnim }: Params) {
+export function useNavigationOverlayV2({ mapRef, mapReady, mapZoomLevel, hasGoogleMapsKey, userPulseAnim, cameraManager }: Params) {
   const hasInternet = useAppStore((s) => s.hasInternet);
   const developerMode = useAppStore((s) => s.developerModeEnabled);
   const settings = useAppStore((s) => s.settings);
   const currentLocationSource = useAppStore((s) => s.currentLocationSource);
 
   const vm = useNavigationViewModelV2();
-  const { route, destination, snappedLocation } = vm;
+  const { route, destination, snappedLocation, arrived } = vm;
 
   const [isAutoFollowing, setIsAutoFollowing] = useState(settings.autoFollowLocation);
   const [initialCameraFitDone, setInitialCameraFitDone] = useState(false);
@@ -68,36 +70,50 @@ export function useNavigationOverlayV2({ mapRef, mapReady, mapZoomLevel, hasGoog
     // Bottom padding leaves room for the measured trip-info bar (falls back to the old
     // guessed constant for the rare case a fit runs before the bar has reported a layout).
     if (route.coordinates.length > 1) {
-      mapRef.current.fitToCoordinates(route.coordinates, {
-        edgePadding: { top: 90, right: 64, bottom: (bottomBarHeightRef.current || 140) + 80, left: 64 },
-        animated: true,
+      cameraManager.fitRoute(route.coordinates, {
+        top: 90,
+        right: 64,
+        bottom: (bottomBarHeightRef.current || 140) + 80,
+        left: 64,
       });
       setInitialCameraFitDone(true);
       return;
     }
-    mapRef.current.fitToCoordinates(mapLayers.venueBoundary, {
-      edgePadding: { top: 48, right: 48, bottom: (bottomBarHeightRef.current || 140) + 20, left: 48 },
-      animated: true,
+    cameraManager.fitVenueBounds(mapLayers.venueBoundary, {
+      top: 48,
+      right: 48,
+      bottom: (bottomBarHeightRef.current || 140) + 20,
+      left: 48,
     });
     setInitialCameraFitDone(true);
-  }, [initialCameraFitDone, mapReady, mapRef, mapLayers.venueBoundary, route]);
+  }, [cameraManager, initialCameraFitDone, mapReady, mapRef, mapLayers.venueBoundary, route]);
 
   useEffect(() => {
     if (!route || !isAutoFollowing || !snappedLocation || !mapRef.current) return;
-    mapRef.current.animateCamera(
-      {
-        center: snappedLocation,
-        zoom: 18,
-        heading: settings.keepNorthFixed ? 0 : (snappedLocation.heading ?? 0),
-        pitch: 30,
-      } as Camera,
-      { duration: 800 },
-    );
-  }, [isAutoFollowing, mapRef, route, settings.keepNorthFixed, snappedLocation]);
+    // CameraManager.enterNavigationCamera() — follows the user, keeps the route corridor
+    // visible via mapLayers above, and holds the tilted navigation perspective.
+    cameraManager.enterNavigationCamera(snappedLocation, {
+      zoom: 18,
+      heading: settings.keepNorthFixed ? 0 : (snappedLocation.heading ?? 0),
+      pitch: 30,
+      duration: 800,
+    });
+  }, [cameraManager, isAutoFollowing, mapRef, route, settings.keepNorthFixed, snappedLocation]);
+
+  useEffect(() => {
+    if (!route) cameraManager.exitNavigationCamera();
+  }, [cameraManager, route]);
 
   useEffect(() => {
     if (!route) return;
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      // ARRIVAL is a distinct MapMode above NAVIGATION (see useMapMode.ts) — back here
+      // mirrors the arrival sheet's own "Done" button (dismiss straight to map), not the
+      // mid-trip exit confirmation (nothing to lose by leaving, the trip is already over).
+      if (arrived) {
+        vm.handleExit();
+        return true;
+      }
       Alert.alert('Exit navigation?', 'Do you want to stop navigation and return to map?', [
         { text: 'Cancel', style: 'cancel' },
         { text: 'Exit', style: 'destructive', onPress: () => vm.handleExit() },
@@ -105,7 +121,7 @@ export function useNavigationOverlayV2({ mapRef, mapReady, mapZoomLevel, hasGoog
       return true;
     });
     return () => sub.remove();
-  }, [route, vm.handleExit]);
+  }, [route, arrived, vm.handleExit]);
 
   const graphOnlyFallbackUsed = (!hasGoogleMapsKey || !hasInternet) && mapLayers.graphOnlyFallbackSupported;
 

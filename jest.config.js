@@ -6,7 +6,11 @@
  * Run with: npm run test:components
  */
 module.exports = {
-  preset: 'jest-expo',
+  // 'jest-expo/android', not the platform-less base preset — the base preset's
+  // haste.defaultPlatform is 'ios' (inherited from react-native/jest-preset.js), which
+  // silently resolves platform-suffixed RN internals (e.g. BackHandler.ios.js, a no-op
+  // stub) instead of the .android.js this app actually ships (Android-only, see CLAUDE.md).
+  preset: 'jest-expo/android',
   roots: ['<rootDir>/src/__tests__'],
   testMatch: ['<rootDir>/src/__tests__/**/*.test.{ts,tsx}'],
   setupFilesAfterEnv: ['<rootDir>/src/__tests__/jest.setup.ts'],

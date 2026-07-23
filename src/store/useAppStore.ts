@@ -88,7 +88,34 @@ interface AppState {
   hasInternet: boolean;
   setHasInternet: (val: boolean) => void;
 
+  // --- Cold-launch camera (Phase: map-first nav) ---
+  // False only until the map's very first onMapReady resolves its cold-launch camera
+  // move (venue-overview fit) — distinct from OnboardingStatusService's welcome-screen
+  // flag, which flips true earlier, at Welcome, before Main ever mounts.
+  hasSeenMapOverview: boolean;
+  setHasSeenMapOverview: (val: boolean) => void;
+
+  // --- First-time "you are here" location tooltip (Explore Mode parity fix) ---
+  // Flips true the first time the location tooltip has been shown once — never shown again.
+  hasSeenLocationTutorial: boolean;
+  setHasSeenLocationTutorial: (val: boolean) => void;
+
   // --- Navigation ---
+  // `isNavigating` is the single raw "a nav session is bracketed by
+  // startNavigation()/stopNavigation()" signal — this store is its only writer (see those two
+  // actions below; nothing else may `set({ isNavigating: ... })`). MapMode (useMapMode.ts) is a
+  // stricter, *derived* concept built on top of it — NAVIGATION/ARRIVAL additionally require the
+  // active route to match the live feature-flag/source-version shape (see
+  // NavigationViewModelV2's `route` and NavigationViewModel(v1)'s `destination`-gated route) —
+  // so MapMode can legitimately read false while isNavigating is true (e.g. an emergency
+  // EXPO_PUBLIC_USE_IJTEMA_V2_NAVIGATION=false rollback still runs the v2 nav runtime but hides
+  // its chrome). Direct reads of this raw field are sanctioned ONLY where a consumer genuinely
+  // needs the primitive session-active signal ahead of/independent from MapMode — currently
+  // HomeViewModel.ts (camera-follow/compass gating, which must keep working even if MapMode's
+  // NAVIGATION chrome is flag-suppressed) and HomeScreen.tsx's activePreviewRoute memo (MapMode
+  // itself depends on activePreviewRoute, so that one consumer, structurally, cannot read mode
+  // without a circular dependency). See scripts/test-navigation-architecture-audit.ts Finding 6
+  // for the regression guard enforcing this closed list — add a new direct reader there too.
   isNavigating: boolean;
   destination: Place | null;
   startNavigation: (destination: Place, route?: RoutePreview | V2ActiveRoute | null, instructions?: Array<NavigationInstruction | V2NavigationInstruction>) => void;
@@ -231,6 +258,12 @@ export const useAppStore = create<AppState>()(
       hasInternet: true,
       setHasInternet: (val) => set({ hasInternet: val }),
 
+      hasSeenMapOverview: false,
+      setHasSeenMapOverview: (val) => set({ hasSeenMapOverview: val }),
+
+      hasSeenLocationTutorial: false,
+      setHasSeenLocationTutorial: (val) => set({ hasSeenLocationTutorial: val }),
+
       // --- Navigation ---
       isNavigating: false,
       destination: null,
@@ -349,6 +382,8 @@ export const useAppStore = create<AppState>()(
         favorites: sanitizePersistedFavorites(state.favorites),
         lastKnownLocation: state.lastKnownLocation,
         lastKnownLocationUpdatedAt: state.lastKnownLocationUpdatedAt,
+        hasSeenMapOverview: state.hasSeenMapOverview,
+        hasSeenLocationTutorial: state.hasSeenLocationTutorial,
         showGraphNodes: state.showGraphNodes,
         showRastaNames: state.showRastaNames,
         showBlockPolygons: state.showBlockPolygons,

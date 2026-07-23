@@ -6,7 +6,11 @@
 import React from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Layers, Satellite, Map as MapIcon, X } from 'lucide-react-native';
+import { Layers, Satellite, Map as MapIcon } from 'lucide-react-native';
+
+import { SheetHandle } from '../common/SheetHandle';
+import { SheetHeader, SHEET_CORNER_RADIUS } from '../common/SheetHeader';
+import { radii, shadows, spacing, staticColors } from '../../../theme';
 
 interface LayersSheetProps {
   visible: boolean;
@@ -30,8 +34,8 @@ function OverlayRow({ label, value, onChange }: { label: string; value: boolean;
       <Switch
         value={value}
         onValueChange={onChange}
-        trackColor={{ false: '#DADCE0', true: '#1A73E8' }}
-        thumbColor="#FFFFFF"
+        trackColor={{ false: staticColors.border, true: staticColors.info }}
+        thumbColor={staticColors.white}
       />
     </Pressable>
   );
@@ -61,16 +65,8 @@ export function LayersSheet({
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <Pressable style={styles.backdrop} onPress={onClose} />
       <View style={[styles.sheet, { paddingBottom: Math.max(insets.bottom, 16) + 12 }]}>
-        <View style={styles.handle} />
-        <View style={styles.header}>
-          <View style={styles.headerTitleWrap}>
-            <Layers size={18} color="#202124" />
-            <Text style={styles.headerTitle}>Map Layers</Text>
-          </View>
-          <Pressable style={styles.closeBtn} onPress={onClose} hitSlop={12}>
-            <X size={20} color="#5F6368" />
-          </Pressable>
-        </View>
+        <SheetHandle />
+        <SheetHeader title="Map Layers" icon={<Layers size={18} color="#202124" />} onClose={onClose} />
 
         <ScrollView bounces={false}>
           <Text style={styles.sectionLabel}>Map Type</Text>
@@ -79,14 +75,14 @@ export function LayersSheet({
               style={[styles.segment, mapType === 'standard' && styles.segmentActive]}
               onPress={() => onMapTypeChange('standard')}
             >
-              <MapIcon size={16} color={mapType === 'standard' ? '#1A73E8' : '#5F6368'} />
+              <MapIcon size={16} color={mapType === 'standard' ? staticColors.info : staticColors.iconMuted} />
               <Text style={[styles.segmentText, mapType === 'standard' && styles.segmentTextActive]}>Standard</Text>
             </Pressable>
             <Pressable
               style={[styles.segment, mapType === 'satellite' && styles.segmentActive]}
               onPress={() => onMapTypeChange('satellite')}
             >
-              <Satellite size={16} color={mapType === 'satellite' ? '#1A73E8' : '#5F6368'} />
+              <Satellite size={16} color={mapType === 'satellite' ? staticColors.info : staticColors.iconMuted} />
               <Text style={[styles.segmentText, mapType === 'satellite' && styles.segmentTextActive]}>Satellite</Text>
             </Pressable>
           </View>
@@ -110,63 +106,27 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.35)',
   },
   sheet: {
-    backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    paddingHorizontal: 20,
+    backgroundColor: staticColors.white,
+    borderTopLeftRadius: SHEET_CORNER_RADIUS,
+    borderTopRightRadius: SHEET_CORNER_RADIUS,
+    paddingHorizontal: spacing.xl,
     paddingTop: 10,
     maxHeight: '70%',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 12,
-  },
-  handle: {
-    alignSelf: 'center',
-    width: 36,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: '#DADCE0',
-    marginBottom: 12,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 8,
-  },
-  headerTitleWrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#202124',
-  },
-  closeBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#F1F3F4',
+    ...shadows.high,
   },
   sectionLabel: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#5F6368',
+    color: staticColors.iconMuted,
     textTransform: 'uppercase',
     letterSpacing: 0.4,
-    marginTop: 16,
-    marginBottom: 8,
+    marginTop: spacing.lg,
+    marginBottom: spacing.sm,
   },
   segmentedControl: {
     flexDirection: 'row',
     backgroundColor: '#F1F3F4',
-    borderRadius: 12,
+    borderRadius: radii.md,
     padding: 4,
     gap: 4,
   },
@@ -176,36 +136,32 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    paddingVertical: 12,
-    borderRadius: 9,
+    paddingVertical: spacing.md,
+    borderRadius: radii.md - 3,
   },
   segmentActive: {
-    backgroundColor: '#FFFFFF',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
+    backgroundColor: staticColors.white,
+    ...shadows.low,
   },
   segmentText: {
     fontSize: 15,
     fontWeight: '500',
-    color: '#5F6368',
+    color: staticColors.iconMuted,
   },
   segmentTextActive: {
-    color: '#1A73E8',
+    color: staticColors.info,
   },
   overlayGroup: {
     backgroundColor: '#F8F9FA',
-    borderRadius: 12,
+    borderRadius: radii.md,
     overflow: 'hidden',
   },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 16,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.lg,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: '#E8EAED',
     minHeight: 56,

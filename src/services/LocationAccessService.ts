@@ -91,7 +91,7 @@ export class LocationAccessService {
           coordinate: {
             latitude: current.coords.latitude,
             longitude: current.coords.longitude,
-            heading: current.coords.heading ?? 0,
+            heading: current.coords.heading == null || current.coords.heading < 0 ? undefined : current.coords.heading,
             accuracy: current.coords.accuracy ?? 0,
           },
           source: 'live',
@@ -106,7 +106,7 @@ export class LocationAccessService {
             coordinate: {
               latitude: lastKnown.coords.latitude,
               longitude: lastKnown.coords.longitude,
-              heading: lastKnown.coords.heading ?? 0,
+              heading: lastKnown.coords.heading == null || lastKnown.coords.heading < 0 ? undefined : lastKnown.coords.heading,
               accuracy: lastKnown.coords.accuracy ?? 0,
             },
             source: 'device_last_known',

@@ -4,7 +4,8 @@
  */
 
 import React from 'react';
-import { render, screen, userEvent, waitFor } from './test-utils';
+import { DeviceEventEmitter } from 'react-native';
+import { act, fireEvent, render, screen, userEvent, waitFor } from './test-utils';
 
 import { HomeScreen } from '../views/screens/HomeScreen';
 import { useHomeViewModel } from '../viewmodels/HomeViewModel';
@@ -12,7 +13,15 @@ import { useDirectionsViewModel } from '../viewmodels/DirectionsViewModel';
 import { useAppStore } from '../store/useAppStore';
 import type { Place } from '../models/types';
 
-jest.useFakeTimers();
+// requestAnimationFrame stays real (not faked): MapLabelOverlay's projection pipeline
+// (rAF -> Promise.all(pointForCoordinate) -> setPoints, see MapLabelOverlay.tsx) schedules
+// a rAF on every render. Faking it means those callbacks sit queued until some *later*
+// test happens to call advanceTimersByTime/runAllTimers (recenter tests below do, for
+// their own unrelated reason) — at which point every backlogged rAF fires at once and its
+// promise resolves on the microtask queue right as whichever test runs next is mid-render,
+// producing "not wrapped in act()" warnings and, at worst, a corrupted empty render tree
+// for that unlucky next test. Real rAF fires promptly within the test that scheduled it.
+jest.useFakeTimers({ doNotFake: ['requestAnimationFrame'] });
 
 // HomeScreen's own GPS/search/map-ref orchestration lives in useHomeViewModel (already covered
 // by scripts/test-*.ts for the underlying search/routing logic). We mock the hook boundary with
@@ -63,11 +72,29 @@ const handleCategoryPressSpy = jest.fn();
 const handleSearchSpy = jest.fn();
 const handlePlaceSelectSpy = jest.fn();
 const setSelectedPlaceSpy = jest.fn();
+const cameraFollowUserSpy = jest.fn();
+const cameraStopFollowingSpy = jest.fn();
+const handleRecenterSpy = jest.fn();
 
 function useFakeHomeViewModel() {
   const [activeCategory, setActiveCategory] = React.useState<string | null>(null);
   const [searchQuery, setSearchQuery] = React.useState('');
   const [searchResults, setSearchResults] = React.useState<Place[]>([]);
+  const [selectedPlace, setSelectedPlaceState] = React.useState<Place | null>(null);
+  const [cameraMode, setCameraMode] = React.useState<'IDLE' | 'EXPLORING' | 'FOLLOWING_USER'>('IDLE');
+  // Real useRef (matches production useHomeViewModel's own bottomSheetRef) — a fresh
+  // { current: null } object literal here would be replaced every render, silently
+  // discarding the mocked BottomSheetModal's imperative handle before tests can assert
+  // on close()/present()/snapToIndex() call counts across a reselection sequence.
+  const bottomSheetRef = React.useRef<{ present: jest.Mock; close: jest.Mock; snapToIndex: jest.Mock } | null>(null);
+
+  // Mirrors the real useHomeViewModel.handleRecenter(), which resolves the user's location
+  // and then calls cameraManager.followUser(...) — see HomeViewModel.ts.
+  const handleRecenter = async () => {
+    handleRecenterSpy();
+    setCameraMode('FOLLOWING_USER');
+    return true;
+  };
 
   const handleCategoryPress = (category: string) => {
     handleCategoryPressSpy(category);
@@ -80,13 +107,35 @@ function useFakeHomeViewModel() {
     setSearchResults(text.length > 1 ? [gateResult] : []);
   };
 
+  const handlePlaceSelect = (place: Place) => {
+    handlePlaceSelectSpy(place);
+    setSelectedPlaceState(place);
+  };
+
+  const setSelectedPlace = (place: Place | null) => {
+    setSelectedPlaceSpy(place);
+    setSelectedPlaceState(place);
+  };
+
   return {
     mapRef: { current: null },
-    bottomSheetRef: { current: null },
+    bottomSheetRef,
+    cameraManager: {
+      mode: cameraMode,
+      animateToUser: jest.fn(),
+      animateToPlace: jest.fn(),
+      fitVenueBounds: jest.fn(),
+      fitRoute: jest.fn(),
+      followUser: cameraFollowUserSpy,
+      stopFollowing: cameraStopFollowingSpy.mockImplementation(() => setCameraMode('EXPLORING')),
+      enterNavigationCamera: jest.fn(),
+      exitNavigationCamera: jest.fn(),
+    },
     mapType: 'standard' as const,
     searchQuery,
     searchResults,
-    selectedPlace: null,
+    selectedPlace,
+    suggestedPlaces: [],
     recentSearches: [],
     snapPoints: ['15%', '50%', '92%'],
     initialRegion: { latitude: 24.9, longitude: 67.1, latitudeDelta: 0.01, longitudeDelta: 0.01 },
@@ -97,17 +146,19 @@ function useFakeHomeViewModel() {
     searchPlaceholder: 'Search blocks, rastas, gates',
     mapZoomLevel: 15.5,
     venueStatus: { insideVenue: false, insideBlock: null },
+    compassMode: 'NORTH_UP' as const,
     setIsMapReady: jest.fn(),
     handleSearch,
-    handlePlaceSelect: handlePlaceSelectSpy,
-    handleRecenter: jest.fn(async () => {}),
-    handleCompassReset: jest.fn(),
+    handlePlaceSelect,
+    handleSheetIndexChange: jest.fn(),
+    handleRecenter,
+    handleCompassToggle: jest.fn(),
     handleZoomIn: jest.fn(),
     handleZoomOut: jest.fn(),
     handleMapRegionChangeComplete: jest.fn(),
     clearSearch: jest.fn(),
     handleCategoryPress,
-    setSelectedPlace: setSelectedPlaceSpy,
+    setSelectedPlace,
     updateSettings: jest.fn(),
     settings: {
       mapMode: 'standard' as const,
@@ -134,6 +185,119 @@ beforeEach(() => {
   useAppStore.setState(initialStoreState, true);
   useNavigation.mockReturnValue({ navigate: jest.fn(), dispatch: jest.fn(), goBack: jest.fn() });
   mockedUseHomeViewModel.mockImplementation(useFakeHomeViewModel);
+});
+
+// Deliberately placed early in the file (not after "recenter follow mode" below): the
+// "recenter" tests are the only ones in this file that call jest.advanceTimersByTime, which
+// also flushes any MapLabelOverlay projection work queued by earlier tests' rAF callbacks —
+// letting their promises resolve outside any test's own act() and land mid-render in
+// whichever test happens to run next. Running these before "recenter" avoids that.
+// Stage 4 audit — the map surface is the root, so the Android hardware back button must
+// step back through MapMode one level at a time (never fall through to the drawer/stack
+// while a sheet mode is open). Fires the real 'hardwareBackPress' device event (what
+// BackHandler.addEventListener actually subscribes to on Android), not the on-screen Back
+// icon — the SEARCH-mode on-screen button was already covered above; this is the gap.
+describe('HomeScreen — hardware back button (mode-aware, Google Maps parity)', () => {
+  async function pressHardwareBack() {
+    await act(async () => {
+      DeviceEventEmitter.emit('hardwareBackPress');
+    });
+  }
+
+  test('hardware back press closes SEARCH mode', async () => {
+    const user = userEvent.setup();
+    await render(<HomeScreen />);
+
+    const input = screen.getByPlaceholderText('Search blocks, rastas, gates');
+    await user.type(input, '');
+    expect(await screen.findByLabelText('Back')).toBeOnTheScreen();
+
+    await pressHardwareBack();
+
+    expect(screen.queryByLabelText('Back')).not.toBeOnTheScreen();
+    expect(screen.getByLabelText('Open menu')).toBeOnTheScreen();
+  });
+
+  test('hardware back press in PLACE_SELECTED mode closes the sheet back to EXPLORE', async () => {
+    const user = userEvent.setup();
+    await render(<HomeScreen />);
+
+    const input = screen.getByPlaceholderText('Search blocks, rastas, gates');
+    await user.type(input, 'Gate 5');
+    await user.press(await screen.findByTestId('search-result-GATE_05'));
+    expect(await screen.findByText('Gate 5')).toBeOnTheScreen();
+
+    await pressHardwareBack();
+
+    expect(setSelectedPlaceSpy).toHaveBeenCalledWith(null);
+    // "Gate 5" itself is a poor absence check — GateLayer/MapLabelOverlay render it as an
+    // on-map label regardless of selection. "Official entry / exit gate" only renders inside
+    // the sheet's PlaceSection, so its absence is the real signal the sheet actually closed.
+    expect(screen.queryByText('Official entry / exit gate')).not.toBeOnTheScreen();
+  });
+
+  test('hardware back press in ROUTE_PREVIEW mode returns to the place preview, not exit', async () => {
+    mockedUseDirectionsViewModel.mockReturnValue({
+      route: null,
+      startSource: 'live_gps',
+      rememberedLocationAgeLabel: '',
+      rememberedLocationAvailable: false,
+      rememberedLocationInsideVenue: false,
+      currentRouteOriginInsideVenue: true,
+      loadState: 'idle',
+      errorMessage: null,
+      manualStart: null,
+      chooseManualStart: jest.fn(),
+      setIsEditingManualStart: jest.fn(),
+      setManualStartPlace: jest.fn(),
+      chooseCurrentLocation: jest.fn(async () => true),
+      chooseRememberedLocation: jest.fn(() => true),
+      calculateRoute: jest.fn(async () => {}),
+      showManualStartSearch: false,
+    });
+
+    const user = userEvent.setup();
+    await render(<HomeScreen />);
+
+    const input = screen.getByPlaceholderText('Search blocks, rastas, gates');
+    await user.type(input, 'Gate 5');
+    await user.press(await screen.findByTestId('search-result-GATE_05'));
+    await user.press(await screen.findByText('Directions'));
+    expect(await screen.findByText('Get Directions')).toBeOnTheScreen();
+
+    await pressHardwareBack();
+
+    // One step back — to Gate 5's place preview, not all the way to EXPLORE — mirrors
+    // exactly what the sheet's own visible "Get Directions" back chevron does.
+    expect(screen.queryByText('Get Directions')).not.toBeOnTheScreen();
+    expect(await screen.findByText('Gate 5')).toBeOnTheScreen();
+    expect(setSelectedPlaceSpy).not.toHaveBeenCalledWith(null);
+  });
+});
+
+// Stage 4 audit scenario 7 — selecting a different object while the sheet is already open
+// must update the same sheet in place, not close-then-reopen (flicker).
+describe('HomeScreen — selection switching (Google Maps parity, no flicker)', () => {
+  test('switching selected place while the sheet is open updates content directly, with no intermediate close', async () => {
+    const user = userEvent.setup();
+    await render(<HomeScreen />);
+
+    const input = screen.getByPlaceholderText('Search blocks, rastas, gates');
+    await user.type(input, 'Gate 5');
+    await user.press(await screen.findByTestId('search-result-GATE_05'));
+    expect(await screen.findByText('Gate 5')).toBeOnTheScreen();
+
+    await user.press(screen.getByTestId('facility_marker_LM_MASJID_MAIN'));
+
+    expect(await screen.findByText('Main Masjid')).toBeOnTheScreen();
+    // "Gate 5" itself is a poor absence check — GateLayer/MapLabelOverlay render it as an
+    // on-map label regardless of selection. "Official entry / exit gate" only renders inside
+    // the sheet's PlaceSection, so its absence confirms the sheet content actually switched.
+    expect(screen.queryByText('Official entry / exit gate')).not.toBeOnTheScreen();
+    // closeSheet() is the only HomeScreen path that clears selectedPlace to null — asserting
+    // it never fired proves the sheet updated in place rather than closing between taps.
+    expect(setSelectedPlaceSpy).not.toHaveBeenCalledWith(null);
+  });
 });
 
 describe('HomeScreen — filter chips', () => {
@@ -192,6 +356,48 @@ describe('HomeScreen — filter chips', () => {
 });
 
 describe('HomeScreen — search', () => {
+  test('entering search (focusing the bar) opens the full-screen MapMode.SEARCH overlay', async () => {
+    await render(<HomeScreen />);
+
+    const user = userEvent.setup();
+    const input = screen.getByPlaceholderText('Search blocks, rastas, gates');
+    // The top filter-chip row and the SEARCH overlay's own Categories grid both render a
+    // "Gates" label — assert they never coexist before asserting on either one.
+    expect(screen.getByLabelText('Open menu')).toBeOnTheScreen();
+    expect(screen.queryByLabelText('Back')).not.toBeOnTheScreen();
+
+    // type('') focuses the input the same way userEvent.type does before typing any
+    // characters — TextInput has no onPress handler, so userEvent.press wouldn't focus it.
+    await user.type(input, '');
+
+    // MapMode.SEARCH: back button replaces the menu icon, and the full-screen
+    // Recent/Suggestions/Categories content renders in place of the map. No voice
+    // search affordance — speech recognition isn't implemented.
+    expect(await screen.findByLabelText('Back')).toBeOnTheScreen();
+    expect(screen.queryByLabelText('Open menu')).not.toBeOnTheScreen();
+    expect(screen.queryByLabelText('Voice search')).not.toBeOnTheScreen();
+    expect(screen.getByText('Categories')).toBeOnTheScreen();
+    expect(screen.getByText('Gates')).toBeOnTheScreen();
+  });
+
+  test('exiting search (pressing Back) returns to MapMode.EXPLORE', async () => {
+    const user = userEvent.setup();
+    await render(<HomeScreen />);
+
+    const input = screen.getByPlaceholderText('Search blocks, rastas, gates');
+    await user.type(input, '');
+    const backButton = await screen.findByLabelText('Back');
+
+    await user.press(backButton);
+
+    // Overlay content and Back/Voice icons are gone; the menu icon and filter-chip row
+    // (same "Gates" label, now from the chip row instead of the category grid) are back.
+    expect(screen.queryByLabelText('Back')).not.toBeOnTheScreen();
+    expect(screen.queryByText('Categories')).not.toBeOnTheScreen();
+    expect(screen.getByLabelText('Open menu')).toBeOnTheScreen();
+    expect(screen.getByText('Gates')).toBeOnTheScreen();
+  });
+
   test('typing in the search bar renders results', async () => {
     const user = userEvent.setup();
     await render(<HomeScreen />);
@@ -203,7 +409,7 @@ describe('HomeScreen — search', () => {
     expect(await screen.findByTestId('search-result-GATE_05')).toBeOnTheScreen();
   });
 
-  test('tapping a search result selects it', async () => {
+  test('selecting a search result dismisses the overlay, selects the place, and opens LocationSheet', async () => {
     const user = userEvent.setup();
     await render(<HomeScreen />);
 
@@ -214,6 +420,68 @@ describe('HomeScreen — search', () => {
     await user.press(result);
 
     expect(handlePlaceSelectSpy).toHaveBeenCalledWith(gateResult);
+
+    // SEARCH overlay dismissed (MapMode.PLACE_SELECTED now, not SEARCH)...
+    expect(screen.queryByLabelText('Back')).not.toBeOnTheScreen();
+    expect(screen.getByLabelText('Open menu')).toBeOnTheScreen();
+    // ...and LocationSheet opened for the selected place — real content, not just a spy call.
+    expect(await screen.findByText('Gate 5')).toBeOnTheScreen();
+    expect(screen.getByText('Gate')).toBeOnTheScreen();
+    expect(screen.getByText('Directions')).toBeOnTheScreen();
+    expect(screen.getByText('Share')).toBeOnTheScreen();
+  });
+});
+
+describe('HomeScreen — facility markers (Google Maps POI parity)', () => {
+  // P0-1: facilities (masjid, food, water, medical, parking, terminals, help) are real,
+  // tappable map objects — not search-only — and route through the exact same
+  // handlePlaceSelect -> LocationSheet -> Directions chain as blocks/gates.
+  test('a known facility (Main Masjid) renders as a tappable map marker', async () => {
+    await render(<HomeScreen />);
+
+    expect(screen.getByTestId('facility_marker_LM_MASJID_MAIN')).toBeOnTheScreen();
+  });
+
+  test('tapping a facility marker selects it and opens LocationSheet', async () => {
+    const user = userEvent.setup();
+    await render(<HomeScreen />);
+
+    await user.press(screen.getByTestId('facility_marker_LM_MASJID_MAIN'));
+
+    expect(handlePlaceSelectSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'LM_MASJID_MAIN', name: 'Main Masjid' }),
+    );
+    expect(await screen.findByText('Main Masjid')).toBeOnTheScreen();
+    expect(screen.getByText('Directions')).toBeOnTheScreen();
+  });
+
+  test('the facility Directions CTA opens the same route-preview flow as any other place', async () => {
+    mockedUseDirectionsViewModel.mockReturnValue({
+      route: null,
+      startSource: 'live_gps',
+      rememberedLocationAgeLabel: '',
+      rememberedLocationAvailable: false,
+      rememberedLocationInsideVenue: false,
+      currentRouteOriginInsideVenue: true,
+      loadState: 'idle',
+      errorMessage: null,
+      manualStart: null,
+      chooseManualStart: jest.fn(),
+      setIsEditingManualStart: jest.fn(),
+      setManualStartPlace: jest.fn(),
+      chooseCurrentLocation: jest.fn(async () => true),
+      chooseRememberedLocation: jest.fn(() => true),
+      calculateRoute: jest.fn(async () => {}),
+      showManualStartSearch: false,
+    });
+
+    const user = userEvent.setup();
+    await render(<HomeScreen />);
+
+    await user.press(screen.getByTestId('facility_marker_LM_MASJID_MAIN'));
+    await user.press(await screen.findByText('Directions'));
+
+    expect(await screen.findByText('Get Directions')).toBeOnTheScreen();
   });
 });
 
@@ -271,6 +539,32 @@ describe('HomeScreen — route preview "Start Navigation" (real handler wiring)'
       currentLocation: { latitude: 24.9, longitude: 67.1 },
     });
 
+    // The route-preview sheet's "Start Navigation" button now lives inside LocationSheet's
+    // routePreview mode (single source of truth — no separate floating card), which is
+    // driven by useDirectionsViewModel. HomeScreen's own handleStartPreviewNavigation (under
+    // test here) still reads the resolved route straight from the store above, independent
+    // of this mock — this just needs to render the ready-state CTA.
+    mockedUseDirectionsViewModel.mockReturnValue({
+      route: previewRoute,
+      startSource: 'live_gps',
+      startSourceLabel: 'My current location',
+      rememberedLocationAgeLabel: '',
+      rememberedLocationAvailable: false,
+      rememberedLocationInsideVenue: false,
+      currentRouteOriginInsideVenue: true,
+      loadState: 'ready',
+      errorMessage: null,
+      manualStart: null,
+      chooseManualStart: jest.fn(),
+      setIsEditingManualStart: jest.fn(),
+      setManualStartPlace: jest.fn(),
+      chooseCurrentLocation: jest.fn(async () => true),
+      chooseRememberedLocation: jest.fn(() => true),
+      calculateRoute: jest.fn(async () => {}),
+      handleStartNavigation: jest.fn(),
+      showManualStartSearch: false,
+    });
+
     await render(<HomeScreen />);
 
     const startButton = await screen.findByText('Start Navigation');
@@ -283,8 +577,8 @@ describe('HomeScreen — route preview "Start Navigation" (real handler wiring)'
   });
 });
 
-describe('HomeScreen — Directions sheet / route-preview card mutual exclusion', () => {
-  test('route-preview card stays hidden while the Directions sheet is open for the same destination', async () => {
+describe('HomeScreen — route preview is a single surface (P0-2 consolidation)', () => {
+  test('a resolved route and its matching selected place render exactly one route-preview surface, not a duplicate', async () => {
     const destination: Place = {
       id: 'GATE_08',
       name: 'Gate 8',
@@ -343,14 +637,136 @@ describe('HomeScreen — Directions sheet / route-preview card mutual exclusion'
       currentLocation: { latitude: 24.9, longitude: 67.1 },
     });
 
+    await render(<HomeScreen />);
+
+    // LocationSheet.routePreview mode renders directly — MapMode.ROUTE_PREVIEW is the single
+    // source of truth, there is no separate floating route-preview card and no intermediate
+    // place-details sheet to tap "Directions" on first (see HomeScreen.routePreviewSheetDestination).
+    expect(await screen.findByText('Get Directions')).toBeOnTheScreen();
+    // Exactly one "Start Navigation" CTA — getByText throws if this ever matches more than
+    // one element, which is what a duplicate surface would produce.
+    expect(screen.getByText('Start Navigation')).toBeOnTheScreen();
+    // Place-details-only content (PlaceSection, not RoutePreviewSection) must not also be
+    // mounted underneath — confirms there isn't a second, duplicate sheet.
+    expect(screen.queryByText('Share')).not.toBeOnTheScreen();
+  });
+
+  test('destination selected -> Directions tap -> route preview appears once -> Start Navigation works', async () => {
+    const destination: Place = {
+      id: 'GATE_09',
+      name: 'Gate 9',
+      category: 'Gate',
+      description: 'Official Gate 9.',
+      coordinate: { latitude: 24.904, longitude: 67.104 },
+      sourceVersion: 'v2',
+      sourceKind: 'gate',
+    } as Place;
+
+    mockedUseHomeViewModel.mockImplementation(() => ({
+      ...useFakeHomeViewModel(),
+      selectedPlace: destination,
+    }));
+
+    const previewRoute = {
+      nodes: ['start', 'end'],
+      coordinates: [
+        { latitude: 24.9, longitude: 67.1 },
+        { latitude: 24.904, longitude: 67.104 },
+      ],
+      totalDistance: 220,
+      estimatedTimeMin: 4,
+      segments: [],
+      startLabel: 'Current location',
+      destinationLabel: 'Gate 9',
+      startResolution: { mode: 'inside', coordinate: { latitude: 24.9, longitude: 67.1 } },
+      instructions: [],
+    };
+
+    mockedUseDirectionsViewModel.mockReturnValue({
+      route: previewRoute,
+      startSource: 'live_gps',
+      startSourceLabel: 'My current location',
+      rememberedLocationAgeLabel: '',
+      rememberedLocationAvailable: false,
+      rememberedLocationInsideVenue: false,
+      currentRouteOriginInsideVenue: true,
+      loadState: 'ready',
+      errorMessage: null,
+      manualStart: null,
+      chooseManualStart: jest.fn(),
+      setIsEditingManualStart: jest.fn(),
+      setManualStartPlace: jest.fn(),
+      chooseCurrentLocation: jest.fn(async () => true),
+      chooseRememberedLocation: jest.fn(() => true),
+      calculateRoute: jest.fn(async () => {}),
+      handleStartNavigation: jest.fn(),
+      showManualStartSearch: false,
+    });
+
+    useAppStore.setState({ currentLocation: { latitude: 24.9, longitude: 67.1 } });
+
     const user = userEvent.setup();
     await render(<HomeScreen />);
 
+    // Bare selectedPlace, no route resolved yet — the sheet is in plain "preview" mode with
+    // a "Directions" CTA, not route preview (nothing to duplicate yet).
     await user.press(screen.getByText('Directions'));
 
-    // The Directions sheet is open...
     expect(await screen.findByText('Get Directions')).toBeOnTheScreen();
-    // ...so the separate bottom-pinned route-preview card must not also be visible underneath it.
-    expect(screen.queryByText('Start Navigation')).not.toBeOnTheScreen();
+
+    // Mirrors DirectionsViewModel.calculateRoute() writing the resolved route to the shared
+    // store the instant it resolves (see src/viewmodels/DirectionsViewModel.ts) — this is what
+    // makes handleStartPreviewNavigation's store read valid, and is what would otherwise risk
+    // a second, duplicate route-preview surface if the sheet weren't the single source of truth.
+    await act(async () => {
+      useAppStore.setState({ routePlannerDest: destination, activeRoute: previewRoute as any });
+    });
+
+    expect(screen.getByText('Start Navigation')).toBeOnTheScreen();
+    // Still exactly one route-preview surface, not a second one appearing alongside it.
+    expect(screen.getAllByText('Get Directions')).toHaveLength(1);
+
+    await user.press(screen.getByText('Start Navigation'));
+
+    expect(useAppStore.getState().isNavigating).toBe(true);
   });
 });
+
+describe('HomeScreen — recenter follow mode (Google Maps parity)', () => {
+  // Pressing recenter shows a brief transient "success" checkmark (see recenterState in
+  // HomeScreen.tsx) before settling into the sustained "active" follow state — advance past
+  // that 1200ms window so tests observe the settled state, not the momentary confirmation.
+  async function pressRecenterAndSettle(user: ReturnType<typeof userEvent.setup>) {
+    await user.press(screen.getByLabelText('Center map on my current location'));
+    expect(handleRecenterSpy).toHaveBeenCalled();
+    await act(async () => {
+      jest.advanceTimersByTime(1300);
+    });
+  }
+
+  test('tapping recenter resolves location, enters follow mode, and the button reflects an active state', async () => {
+    const user = userEvent.setup();
+    await render(<HomeScreen />);
+
+    expect(screen.getByLabelText('Center map on my current location')).toBeOnTheScreen();
+
+    await pressRecenterAndSettle(user);
+
+    expect(await screen.findByLabelText('Following my current location. Tap to re-center.')).toBeOnTheScreen();
+    expect(screen.queryByLabelText('Center map on my current location')).not.toBeOnTheScreen();
+  });
+
+  test('panning the map exits follow mode and the recenter button reverts to idle', async () => {
+    const user = userEvent.setup();
+    await render(<HomeScreen />);
+
+    await pressRecenterAndSettle(user);
+    expect(await screen.findByLabelText('Following my current location. Tap to re-center.')).toBeOnTheScreen();
+
+    await fireEvent(screen.getByTestId('home-map-view'), 'panDrag');
+
+    expect(cameraStopFollowingSpy).toHaveBeenCalled();
+    expect(await screen.findByLabelText('Center map on my current location')).toBeOnTheScreen();
+  });
+});
+

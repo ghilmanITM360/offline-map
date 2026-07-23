@@ -12,7 +12,10 @@ export interface Coordinate {
 
 export type LocationSource = 'live' | 'device_last_known' | 'remembered' | 'manual';
 
-export type MapMode = 'standard' | 'satellite' | 'hybrid';
+// Renamed from `MapMode` (Phase 8A.5 task 3) — collided in name with the unrelated
+// navigation-mode state machine `MapMode` in viewmodels/useMapMode.ts (HOME/SEARCH/
+// NAVIGATION/...). This one is strictly the Google Maps render/mapType setting.
+export type MapDisplayType = 'standard' | 'satellite' | 'hybrid';
 
 export interface Node {
   id: string;
@@ -111,6 +114,15 @@ export interface PlaceCommon {
    */
   verificationWarning?: string;
   developerLabel?: string;
+  /** Gate-only: official gate number, from source data (see src/data/ijtema/gates.ts). */
+  gateNumber?: number;
+  /** Gate-only: true for gates prioritized as always-visible orientation landmarks
+   * (src/data/ijtema/gateMeta.ts) — surfaced as a "recommended entry point" hint. */
+  isMajorGate?: boolean;
+  /** Rasta/SpecialRoute-only: names of blocks whose entry node is graph-connected to this
+   * path, derived from the same navigation graph adjacency routing already relies on (see
+   * V2PlaceAdapter). Empty/omitted rather than guessed when nothing is graph-connected. */
+  connectedBlockNames?: string[];
 }
 
 /** Place sourced from the legacy `IJTEMA_DATA` / `LANDMARK_PLACES` (v1) map data. */
@@ -130,7 +142,7 @@ export interface V2Place extends PlaceCommon {
 export type Place = V1Place | V2Place;
 
 export interface UserSettings {
-  mapMode: MapMode;
+  mapMode: MapDisplayType;
   autoFollowLocation: boolean;
   keepNorthFixed: boolean;
   darkMode: boolean;
@@ -236,6 +248,11 @@ export interface NavigationInstruction {
   distance: number;
   type: 'straight' | 'left' | 'right' | 'arrival';
   coordinate: Coordinate;
+  /** Road/rasta name for this step, shown as its own line in the nav banner
+   * (Google Maps style hierarchy) separate from the composed `text` sentence.
+   * Undefined when the underlying edge has no real name — UI falls back to
+   * "Continue ahead". */
+  roadName?: string;
 }
 
 export interface V2NavigationInstruction extends NavigationInstruction {

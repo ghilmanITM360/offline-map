@@ -4,6 +4,7 @@
  */
 
 import { IJTEMA_DATA, MAP_BOUNDS } from '../constants/data';
+import { OUTSIDE_VENUE_BOUNDARY_NODE_IDS_V1 } from '../constants/navigation';
 import { Coordinate } from '../models/types';
 import { getDistance } from 'geolib';
 
@@ -53,7 +54,12 @@ export class SnapToRoadService {
     return nearestPoint;
   }
 
-  // Backward-compatible alias
+  /**
+   * @deprecated Unused — no call sites in src/ (verified via repo-wide grep, 2026-07).
+   * Use SnapToRoadService.snapVisualToRoad() directly instead. Kept only to avoid
+   * a breaking API-signature change; safe to delete in a follow-up cleanup PR.
+   * See docs/LEGACY_NAVIGATION.md.
+   */
   static snapToRoad(coord: Coordinate): Coordinate {
     return this.snapVisualToRoad(coord, 20);
   }
@@ -90,7 +96,7 @@ export class SnapToRoadService {
     }
 
     const boundaryCandidates = Object.keys(IJTEMA_DATA.nodes).filter((id) =>
-      /^(T1|T2|S6|S12|S13|S14|S15|S16|S17)$/.test(id),
+      OUTSIDE_VENUE_BOUNDARY_NODE_IDS_V1.test(id),
     );
     const nodeId = this.findNearestNodeFromSet(coord, boundaryCandidates);
 
