@@ -16,8 +16,8 @@ assert(
   'Directions screen must not reject outside remembered location.',
 );
 assert(
-  directionsScreenSource.includes("We'll enter through nearest official gate"),
-  'Directions screen must explain nearest-official-gate entry for outside starts.',
+  directionsScreenSource.includes("We'll enter through best eligible official gate"),
+  'Directions screen must explain destination-aware official-gate entry for outside starts.',
 );
 assert(
   directionsViewModelSource.includes('forceOutside'),

@@ -55,7 +55,7 @@ assert(directions.includes('Use last known location'), 'Directions must expose l
 assert(directions.includes('Choose start manually'), 'Directions must expose manual start action');
 assert(directions.includes('Start Navigation'), 'Directions must expose a Start Navigation CTA once the route is ready');
 assert(directions.includes('Route ready'), 'Directions must show route-ready state');
-assert(directions.includes('Find nearest official gate automatically'), 'Directions must explain current-location routing behavior');
+assert(directions.includes('Find best eligible official gate automatically'), 'Directions must explain destination-aware current-location routing behavior');
 assert(directions.includes('Change destination'), 'Directions must keep destination-change action');
 
 // Both v1 and v2 live navigation now run in-place on HomeScreen's persistent MapView — v1's

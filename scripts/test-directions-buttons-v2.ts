@@ -12,7 +12,7 @@ assert(directionsScreenSource.includes('Use my current location'), 'Directions s
 assert(directionsScreenSource.includes('Use last known location'), 'Directions screen must keep remembered-location CTA.');
 assert(directionsScreenSource.includes('Choose start manually'), 'Directions screen must keep manual-start CTA.');
 assert(directionsScreenSource.includes('Change destination'), 'Directions screen must let user change destination.');
-assert(directionsScreenSource.includes('Finding best offline route'), 'Directions screen must show calculating status copy.');
+assert(directionsScreenSource.includes('Finding route'), 'Directions screen must show provider-neutral calculating status copy.');
 assert(directionsScreenSource.includes('Route ready'), 'Directions screen must show success status copy.');
 assert(directionsScreenSource.includes('Start Navigation'), 'Directions screen must expose a Start Navigation CTA.');
 assert(

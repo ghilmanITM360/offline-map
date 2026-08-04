@@ -8,7 +8,7 @@ assert(screen.includes('Get Directions'), 'Directions screen must use layman-fri
 assert(screen.includes('Going to'), 'Directions screen must show destination card clearly');
 assert(screen.includes('Where are you starting from?'), 'Directions screen must focus on start selection');
 assert(screen.includes('Use my current location'), 'Directions screen must include current-location action');
-assert(screen.includes('Find nearest official gate automatically'), 'Directions screen should explain current-location routing behavior');
+assert(screen.includes('Find best eligible official gate automatically'), 'Directions screen should explain destination-aware current-location routing behavior');
 assert(screen.includes('Use last known location'), 'Directions screen should use clear last-known location labeling');
 assert(screen.includes('Choose start manually'), 'Directions screen should expose manual start action explicitly');
 assert(screen.includes('Search start point: gate, rasta, block'), 'Directions screen must include manual start search');
@@ -19,7 +19,7 @@ assert(screen.includes('ScrollView'), 'Directions screen should use scroll layou
 assert(screen.includes('paddingBottom'), 'Directions screen should add bottom padding for safe area');
 assert(screen.includes('Start Navigation'), 'Directions screen should expose a Start Navigation CTA once a route is ready');
 assert(screen.includes('Route ready'), 'Directions screen should show route-ready summary');
-assert(screen.includes('Finding best offline route...'), 'Directions screen should show calculating state clearly');
+assert(screen.includes('Finding route...'), 'Directions screen should show provider-neutral calculating state clearly');
 
 assert(vm.includes('ROUTE_TIMEOUT_MS'), 'Directions route calculation should include timeout');
 assert(vm.includes('forceOutside'), 'Directions should pass outside start mode into v2 preview service');
