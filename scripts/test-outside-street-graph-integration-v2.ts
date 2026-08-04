@@ -81,6 +81,24 @@ process.env.EXPO_PUBLIC_USE_IJTEMA_OUTSIDE_STREET_GRAPH = 'true';
   console.log(`Flag ON, beyond radius: outsideLegCoordinateCount=${route!.outsideLegCoordinateCount ?? 0} (beeline fallback confirmed)`);
 }
 
+// ─── Manual gate override must remain authoritative under street mode ─────
+// The destination-aware weighted-sink selection (RoutingServiceV2.selectOutsidePathViaStreetGraph)
+// must never override an explicit manualGateId, even when a different gate
+// would otherwise minimize complete-journey cost. GATE_15 is deliberately
+// not the gate closest to the GATE_05 probe used above.
+{
+  const gate15 = IJTEMA_GATES.find((gate) => gate.id === 'GATE_15')!;
+  assert.ok(gate15.coordinate);
+  const route = RoutingServiceV2.calculateRoute({
+    start: { type: 'outside_coordinate', coordinate: probe, manualGateId: 'GATE_15' },
+    destination: { type: 'block', blockId: 'B2' },
+  });
+  assert.ok(route, 'expected a route with an explicit manualGateId under street mode');
+  assert.equal(route!.startResolution?.gate?.id, 'GATE_15', 'manualGateId must remain authoritative over automatic weighted-sink gate selection');
+  assert.equal(route!.startResolution?.startType, 'selected_official_gate', 'manual gate selection must be labeled selected_official_gate, not nearest_official_gate');
+  console.log(`Manual override under street mode: startLabel=${route!.startLabel}, gate=${route!.startResolution?.gate?.id}`);
+}
+
 // ─── inside_coordinate starts must never be marked as an outside leg ──────
 // (they carry a leading startCoordinate too — "you're inside, walk to the
 // graph" — a different concept from the outside/inside venue split.)

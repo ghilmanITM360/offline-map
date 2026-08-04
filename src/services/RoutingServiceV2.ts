@@ -561,9 +561,20 @@ const selectOutsidePathViaBeeline = (
 };
 
 // Road-following outside leg over the bundled OSM street graph, behind
-// EXPO_PUBLIC_USE_IJTEMA_OUTSIDE_STREET_GRAPH. Reuses the same internal-graph
-// findBestPath from the selected gate onward — only the outside-of-venue leg
-// changes.
+// EXPO_PUBLIC_USE_IJTEMA_OUTSIDE_STREET_GRAPH.
+//
+// Destination-aware weighted virtual sink: each candidate gate's best
+// internal route to the destination is computed BEFORE the street search
+// picks a winner, so gate selection minimizes the complete pedestrian
+// journey (outside street cost + gate connector cost + gate penalty +
+// internal cost to the destination) as one combined objective, the same way
+// the beeline path's findBestOutsidePath already does — not "pick the
+// cheapest outside leg, then see where it leads." Gates with no valid
+// internal route to the destination are excluded before the street search
+// ever sees them. The winning gate's internal path is the one already
+// computed here (not a second findBestPath call), so the outside and
+// internal legs returned below can never disagree about which gate they
+// belong to.
 const selectOutsidePathViaStreetGraph = (
   start: Extract<RoutingStartV2, { type: 'outside_coordinate' }>,
   destinationNodeIds: string[],
@@ -581,10 +592,20 @@ const selectOutsidePathViaStreetGraph = (
     .filter((gate) => getConnectedCandidates([gate.id]).length > 0);
   if (candidateGates.length === 0) return undefined;
 
-  const streetResult = selectStreetGraphOutsidePath(appToV2Coordinate(start.coordinate), candidateGates);
+  const internalPathByGateId = new Map<string, ShortestPathResult>();
+  for (const gate of candidateGates) {
+    const internalPath = findBestPath([gate.id], destinationNodeIds);
+    if (internalPath) internalPathByGateId.set(gate.id, internalPath);
+  }
+  const reachableGates = candidateGates.filter((gate) => internalPathByGateId.has(gate.id));
+  if (reachableGates.length === 0) return undefined;
+
+  const extraCostByGateId = new Map(reachableGates.map((gate) => [gate.id, internalPathByGateId.get(gate.id)!.costM]));
+
+  const streetResult = selectStreetGraphOutsidePath(appToV2Coordinate(start.coordinate), reachableGates, extraCostByGateId);
   if (!streetResult) return undefined;
 
-  const internalPath = findBestPath([streetResult.gate.id], destinationNodeIds);
+  const internalPath = internalPathByGateId.get(streetResult.gate.id);
   if (!internalPath) return undefined;
 
   if (streetResult.sanityCapExceeded) {

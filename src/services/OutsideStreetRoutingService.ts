@@ -62,30 +62,44 @@ const heuristicToNearestNode = (fromId: string, targetNodeIds: Set<string>): num
   return min === Infinity ? 0 : min;
 };
 
+// Sub-millimeter secondary key folded into the sink weight so an exact tie
+// in real cost breaks deterministically (lowest gate number wins) instead of
+// being an unspecified artifact of heap insertion order. Small enough that
+// it can never flip a real routing decision (smallest realistic real-cost
+// gap between two distinct gates is many meters).
+const TIE_BREAK_EPSILON_M = 1e-6;
+
 /**
  * Single-source (user's nearest street node) multi-target (every candidate
  * gate's connector node) A* over the bounded OSM street graph. Returns the
- * cheapest gate to route through — factoring in each gate's verification
- * penalty, same as the beeline path's `gatePenaltyM` — and the full polyline
- * to reach it, including preserved intermediate geometry for rendering
- * fidelity.
+ * gate that minimizes the complete pedestrian journey — street-graph
+ * traversal + gate connector cost + gate verification penalty + (when a
+ * destination is known) internal pedestrian cost from that gate to the
+ * destination — not just the outside leg. `extraCostByGateId` carries the
+ * caller-supplied internal-destination cost per gate (see
+ * RoutingServiceV2.selectOutsidePathViaStreetGraph); omitted or missing
+ * entries contribute 0, preserving today's outside-leg-only behavior for
+ * callers with no destination (e.g. direct probes in
+ * scripts/test-outside-street-routing-v2.ts).
  *
- * Per-target penalty ("arrival cost") + a first-match early exit don't mix
+ * Per-target extra cost ("arrival cost") + a first-match early exit don't mix
  * directly: stopping at the first target *node* reached would ignore the
- * possibility that a farther-but-unpenalized gate has a lower *penalized*
- * total. Standard fix: treat "arriving at the goal via gate g" as node g plus
- * a fixed non-negative synthetic edge of weight `gatePenaltyM(g)` to one
- * shared virtual sink (`GATE_GOAL_SINK`). Whenever a candidate gate node is
- * settled, relax the sink through it; keep expanding real neighbors too (a
+ * possibility that a farther-but-cheaper-overall gate has a lower total.
+ * Standard fix: treat "arriving at the goal via gate g" as node g plus a
+ * fixed non-negative synthetic edge of weight
+ * `connector.distanceM + gatePenaltyM(g) + extraCostByGateId.get(g.id)` to
+ * one shared virtual sink (`GATE_GOAL_SINK`). Whenever a candidate gate node
+ * is settled, relax the sink through it; keep expanding real neighbors too (a
  * path can legitimately thread past one gate's connector toward a cheaper
  * one). Stop only when the sink itself is popped — by then no unexplored
  * node can beat it (non-negative weights, and the existing heuristic already
- * lower-bounds distance-to-nearest-target, which is <= distance+penalty for
- * any target, so it stays admissible for the penalized goal too).
+ * lower-bounds distance-to-nearest-target, which is <= distance+extraCost for
+ * any target, so it stays admissible for the extended goal too).
  */
 export const selectStreetGraphOutsidePath = (
   userCoordinate: Coordinate,
   candidateGates: Gate[],
+  extraCostByGateId?: Map<string, number>,
 ): StreetOutsidePathResult | undefined => {
   const graph = getStreetNavigationGraph();
   const nearestUser = findNearestStreetNode(userCoordinate);
@@ -97,15 +111,23 @@ export const selectStreetGraphOutsidePath = (
   if (targets.length === 0) return undefined;
 
   const targetNodeIds = new Set(targets.map((target) => target.connector.nodeId));
-  const targetPenalty = new Map(targets.map((target) => [target.connector.nodeId, gatePenaltyM(target.gate)]));
+  const targetSinkWeight = new Map(
+    targets.map((target) => [
+      target.connector.nodeId,
+      target.connector.distanceM +
+        gatePenaltyM(target.gate) +
+        (extraCostByGateId?.get(target.gate.id) ?? 0) +
+        target.gate.number * TIE_BREAK_EPSILON_M,
+    ]),
+  );
 
   // Real street-graph edges, plus (only from a candidate gate's connector
   // node) one synthetic edge to the virtual sink weighted by that gate's
-  // verification penalty — see the function doc comment above.
+  // connector + penalty + extra cost — see the function doc comment above.
   const neighbors = (nodeId: string): AStarNeighbor<StreetGraphEdge>[] => {
     const realNeighbors = (graph.adjacency[nodeId] ?? []).map((edge) => ({ to: edge.to, weight: edge.distanceM, edge }));
-    const penalty = targetPenalty.get(nodeId);
-    return penalty === undefined ? realNeighbors : [...realNeighbors, { to: GATE_GOAL_SINK, weight: penalty }];
+    const sinkWeight = targetSinkWeight.get(nodeId);
+    return sinkWeight === undefined ? realNeighbors : [...realNeighbors, { to: GATE_GOAL_SINK, weight: sinkWeight }];
   };
 
   const result = runAStar<StreetGraphEdge>({

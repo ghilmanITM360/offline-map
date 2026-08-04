@@ -25,6 +25,7 @@
     "test:street-instructions-v2": "node --import tsx scripts/test-street-instructions-v2.ts",
     "test:street-instructions-routeindex-v2": "node --import tsx scripts/test-street-instructions-routeindex-v2.ts",
     "test:street-gate-penalty-parity-v2": "node --import tsx scripts/test-street-gate-penalty-parity-v2.ts",
+    "test:outside-street-gate-selection-cost-v2": "node --import tsx scripts/test-outside-street-gate-selection-cost-v2.ts",
     "test:offline-download": "node --import tsx scripts/test-offline-download.ts",
     "test:map-data": "node --import tsx scripts/test-map-data.ts",
     "test:facility-routing": "node --import tsx scripts/test-facility-routing.ts",
