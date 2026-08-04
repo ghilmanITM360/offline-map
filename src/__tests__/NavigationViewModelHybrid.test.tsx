@@ -89,4 +89,28 @@ describe('NavigationViewModelV2 hybrid rerouting', () => {
     expect(hook.result.current.rerouteStatusMessage).toBe('Could not find a better route. Continuing current route.');
     previewSpy.mockRestore();
   });
+
+  test('rapid GPS updates cannot start overlapping automatic outside reroutes', async () => {
+    let resolvePreview: ((value: Awaited<ReturnType<typeof V2DirectionsService.calculateHybridPreview>>) => void) | undefined;
+    const pendingPreview = new Promise<Awaited<ReturnType<typeof V2DirectionsService.calculateHybridPreview>>>((resolve) => {
+      resolvePreview = resolve;
+    });
+    const previewSpy = jest.spyOn(V2DirectionsService, 'calculateHybridPreview').mockReturnValue(pendingPreview);
+    await renderHook(() => useNavigationViewModelV2());
+    const offRoutePoints = [
+      { latitude: 24.9850, longitude: 67.0200, accuracy: 5 },
+      { latitude: 24.9852, longitude: 67.0200, accuracy: 5 },
+      { latitude: 24.9854, longitude: 67.0200, accuracy: 5 },
+      { latitude: 24.9856, longitude: 67.0200, accuracy: 5 },
+    ];
+
+    for (const point of offRoutePoints) {
+      await act(async () => useAppStore.setState({ currentLocation: point, currentLocationSource: 'live' }));
+    }
+
+    expect(previewSpy).toHaveBeenCalledTimes(1);
+    resolvePreview?.({ status: 'unavailable', route: null, instructions: [], message: 'No replacement.' });
+    await waitFor(() => expect(useAppStore.getState().reroutePending).toBe(false));
+    previewSpy.mockRestore();
+  });
 });

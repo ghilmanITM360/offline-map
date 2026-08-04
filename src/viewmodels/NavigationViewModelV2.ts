@@ -127,6 +127,7 @@ export function useNavigationViewModelV2() {
   const lastRerouteAtRef = useRef(0);
   const lastSpokenInstructionIdRef = useRef<string | null>(null);
   const outsideRequestCoordinatorRef = useRef(new OutsideRouteRequestCoordinator());
+  const rerouteRequestInFlightRef = useRef<object | null>(null);
   const handleLiveLocation = useCallback(() => {
     // GPSManagerService updates currentLocation through the store updater wired in RootNavigator.
   }, []);
@@ -215,82 +216,91 @@ export function useNavigationViewModelV2() {
 
   const attemptReroute = useCallback(async (coordinate: Coordinate, options: RerouteOptions = {}) => {
     if (!route || (!settings.autoReroute && !options.explicit)) return;
-    const routeAtRequest = route;
-    setReroutePending(true);
-    setRerouteStatusMessage(null);
+    if (!options.explicit && rerouteRequestInFlightRef.current) return;
+    const requestMarker = {};
+    rerouteRequestInFlightRef.current = requestMarker;
+    try {
+      const routeAtRequest = route;
+      setReroutePending(true);
+      setRerouteStatusMessage(null);
 
-    let candidate = null;
-    let outsideHandle: ReturnType<OutsideRouteRequestCoordinator['begin']> | null = null;
-    if (!EntryGateRoutingService.isInsideIjtemaArea(coordinate) && destination) {
-      outsideHandle = outsideRequestCoordinatorRef.current.begin(
-        `${destination.id}:${options.manualGateId ?? 'automatic'}`,
-      );
-      try {
-        const result = await V2DirectionsService.calculateHybridPreview({
-          request: {
-            startPlace: null,
-            destination,
-            currentLocation: coordinate,
-            forceOutside: true,
-            walkingSpeedMs: settings.walkingSpeed ?? 1.4,
-            manualGateId: options.manualGateId,
-          },
-          token: outsideHandle.token,
-          signal: outsideHandle.signal,
-          outsideProvider: productionOutsideRouteSource,
+      let candidate = null;
+      let outsideHandle: ReturnType<OutsideRouteRequestCoordinator['begin']> | null = null;
+      if (!EntryGateRoutingService.isInsideIjtemaArea(coordinate) && destination) {
+        outsideHandle = outsideRequestCoordinatorRef.current.begin(
+          `${destination.id}:${options.manualGateId ?? 'automatic'}`,
+        );
+        try {
+          const result = await V2DirectionsService.calculateHybridPreview({
+            request: {
+              startPlace: null,
+              destination,
+              currentLocation: coordinate,
+              forceOutside: true,
+              walkingSpeedMs: settings.walkingSpeed ?? 1.4,
+              manualGateId: options.manualGateId,
+            },
+            token: outsideHandle.token,
+            signal: outsideHandle.signal,
+            outsideProvider: productionOutsideRouteSource,
+          });
+          candidate = result.status === 'ready' ? result.route : null;
+        } catch {
+          candidate = null;
+        }
+        if (
+          !outsideHandle.canCommit() ||
+          useAppStore.getState().activeRoute !== routeAtRequest ||
+          !useAppStore.getState().isNavigating
+        ) {
+          return;
+        }
+        if (
+          candidate?.outsideRoute?.provider === 'direct-guide' &&
+          routeAtRequest.outsideRoute?.roadFollowing &&
+          !options.allowDirectGuide
+        ) {
+          candidate = null;
+        }
+      } else {
+        outsideRequestCoordinatorRef.current.cancelCurrent();
+        const rerouteRequest = buildV2RerouteRequest({
+          route: routeAtRequest,
+          coordinate,
+          walkingSpeedMs: settings.walkingSpeed ?? 1.4,
         });
-        candidate = result.status === 'ready' ? result.route : null;
-      } catch {
-        candidate = null;
+        candidate = RoutingServiceV2.calculateRoute(rerouteRequest);
       }
-      if (
-        !outsideHandle.canCommit() ||
-        useAppStore.getState().activeRoute !== routeAtRequest ||
-        !useAppStore.getState().isNavigating
-      ) {
+
+      if (!candidate) {
+        lastRerouteAtRef.current = Date.now();
+        const failure = keepCurrentRouteAfterRerouteFailureV2(routeAtRequest);
+        setRerouteStatusMessage(failure.message);
+        setReroutePending(false);
+        outsideHandle?.finish();
         return;
       }
-      if (
-        candidate?.outsideRoute?.provider === 'direct-guide' &&
-        routeAtRequest.outsideRoute?.roadFollowing &&
-        !options.allowDirectGuide
-      ) {
-        candidate = null;
-      }
-    } else {
-      outsideRequestCoordinatorRef.current.cancelCurrent();
-      const rerouteRequest = buildV2RerouteRequest({
-        route: routeAtRequest,
-        coordinate,
-        walkingSpeedMs: settings.walkingSpeed ?? 1.4,
-      });
-      candidate = RoutingServiceV2.calculateRoute(rerouteRequest);
-    }
 
-    if (!candidate) {
+      const activeCandidate = V2NavigationAdapter.fromPreview({
+        previewRoute: candidate,
+        destination: destination ?? placeFromV2Destination(routeAtRequest, null)!,
+        currentLocation: coordinate,
+      });
+      setActiveRoute(activeCandidate);
+      setRouteInstructions(activeCandidate.instructions);
+      setRemainingDistance(activeCandidate.totalDistanceM);
+      progressRef.current = 0;
+      lastAcceptedLocationRef.current = coordinate;
+      consecutiveOffRouteRef.current = 0;
+      offRouteStartRef.current = null;
       lastRerouteAtRef.current = Date.now();
-      const failure = keepCurrentRouteAfterRerouteFailureV2(routeAtRequest);
-      setRerouteStatusMessage(failure.message);
       setReroutePending(false);
       outsideHandle?.finish();
-      return;
+    } finally {
+      if (rerouteRequestInFlightRef.current === requestMarker) {
+        rerouteRequestInFlightRef.current = null;
+      }
     }
-
-    const activeCandidate = V2NavigationAdapter.fromPreview({
-      previewRoute: candidate,
-      destination: destination ?? placeFromV2Destination(routeAtRequest, null)!,
-      currentLocation: coordinate,
-    });
-    setActiveRoute(activeCandidate);
-    setRouteInstructions(activeCandidate.instructions);
-    setRemainingDistance(activeCandidate.totalDistanceM);
-    progressRef.current = 0;
-    lastAcceptedLocationRef.current = coordinate;
-    consecutiveOffRouteRef.current = 0;
-    offRouteStartRef.current = null;
-    lastRerouteAtRef.current = Date.now();
-    setReroutePending(false);
-    outsideHandle?.finish();
   }, [destination, route, setActiveRoute, setReroutePending, setRouteInstructions, settings.autoReroute, settings.walkingSpeed]);
 
   const retryOutsideRoute = useCallback(async () => {
