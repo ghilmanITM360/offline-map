@@ -4,7 +4,14 @@
  */
 
 import { NavigationInstruction, Place } from '../models/types';
+import type {
+  OutsideGateRouteTarget,
+  OutsideRouteCandidateSet,
+  OutsideRouteRequestToken,
+  OutsideWalkingRouteProvider,
+} from '../models/outsideRouting';
 import { MapFeatureFlagsService } from './MapFeatureFlagsService';
+import { assertCompleteCandidateSet } from './outsideRouting/OutsideRouteValidation';
 import {
   RoutePreviewV2,
   RoutingDestinationV2,
@@ -20,6 +27,7 @@ export interface V2DirectionsPreviewRequest {
   currentLocation: Place['coordinate'] | null;
   walkingSpeedMs?: number;
   forceOutside?: boolean;
+  manualGateId?: string;
 }
 
 export interface V2DirectionsPreviewResult {
@@ -27,6 +35,33 @@ export interface V2DirectionsPreviewResult {
   route: RoutePreviewV2 | null;
   instructions: NavigationInstruction[];
   message: string;
+}
+
+export interface HybridCoreOutsideRoutingPlan {
+  planId: string;
+  origin: Place['coordinate'];
+  providerGateTargets: readonly OutsideGateRouteTarget[];
+}
+
+export interface HybridCoreOutsideRoutingAdapter {
+  prepareOutsideRoutingPlan(input: {
+    origin: Place['coordinate'];
+    destination: RoutingDestinationV2;
+    manualGateId?: string;
+  }): HybridCoreOutsideRoutingPlan | null;
+  finalizeOutsideRoutingPlan(input: {
+    plan: HybridCoreOutsideRoutingPlan;
+    outsideCandidates: OutsideRouteCandidateSet;
+    walkingSpeedMs?: number;
+  }): RoutePreviewV2 | null;
+}
+
+export interface V2HybridDirectionsPreviewInput {
+  request: V2DirectionsPreviewRequest;
+  token: OutsideRouteRequestToken;
+  signal: AbortSignal;
+  outsideProvider: OutsideWalkingRouteProvider;
+  core: HybridCoreOutsideRoutingAdapter;
 }
 
 function routeMessageForUnavailablePlace(place: Place): string {
@@ -59,6 +94,114 @@ function startFromPlace(place: Place): RoutingStartV2 | null {
 }
 
 export class V2DirectionsService {
+  /**
+   * Additive async seam for hybrid outside providers. Core supplies approved gates and
+   * remains sole complete-journey selector; provider layer supplies per-gate outside routes.
+   * Existing synchronous preview stays unchanged until Claude-owned core exposes this seam.
+   */
+  static async calculateHybridPreview(input: V2HybridDirectionsPreviewInput): Promise<V2DirectionsPreviewResult> {
+    const { request } = input;
+    if (!MapFeatureFlagsService.useIjtemaV2Routing()) {
+      return {
+        status: 'disabled',
+        route: null,
+        instructions: [],
+        message: 'V2 routing preview is disabled by feature flag.',
+      };
+    }
+    const destination = destinationFromPlace(request.destination);
+    if (!destination || !request.currentLocation || !request.forceOutside) {
+      return {
+        status: 'unavailable',
+        route: null,
+        instructions: [],
+        message: 'Hybrid outside routing requires an outside coordinate and routable v2 destination.',
+      };
+    }
+    if (input.signal.aborted) {
+      return { status: 'unavailable', route: null, instructions: [], message: 'Outside route request was cancelled.' };
+    }
+
+    const plan = input.core.prepareOutsideRoutingPlan({
+      origin: request.currentLocation,
+      destination,
+      manualGateId: request.manualGateId,
+    });
+    if (!plan || plan.providerGateTargets.length === 0) {
+      return {
+        status: 'unavailable',
+        route: null,
+        instructions: [],
+        message: 'No eligible official gate is available for outside routing.',
+      };
+    }
+
+    const outsideRequest = {
+      token: input.token,
+      origin: plan.origin,
+      gates: plan.providerGateTargets,
+      signal: input.signal,
+    };
+    const attempt = await input.outsideProvider.routeToGates(outsideRequest);
+    if (attempt.status === 'failure') {
+      return {
+        status: 'unavailable',
+        route: null,
+        instructions: [],
+        message: attempt.failure.code === 'cancelled'
+          ? 'Outside route request was cancelled.'
+          : 'Road routing is unavailable for this request.',
+      };
+    }
+    try {
+      assertCompleteCandidateSet(outsideRequest, attempt.candidateSet);
+    } catch {
+      return {
+        status: 'unavailable',
+        route: null,
+        instructions: [],
+        message: 'Outside route provider returned an invalid candidate set.',
+      };
+    }
+    if (input.signal.aborted) {
+      return { status: 'unavailable', route: null, instructions: [], message: 'Outside route request was cancelled.' };
+    }
+
+    const route = input.core.finalizeOutsideRoutingPlan({
+      plan,
+      outsideCandidates: attempt.candidateSet,
+      walkingSpeedMs: request.walkingSpeedMs,
+    });
+    const selectedGateId = route?.startResolution?.gate?.id;
+    if (!route || !selectedGateId) {
+      return {
+        status: 'unavailable',
+        route: null,
+        instructions: [],
+        message: 'No complete outside-to-inside route is available.',
+      };
+    }
+    const selectedOutcome = attempt.candidateSet.outcomes.find(
+      (outcome) => outcome.gateId === selectedGateId && outcome.status === 'routed',
+    );
+    const selectedOutsideRoute = selectedOutcome?.status === 'routed' ? selectedOutcome.routes[0] : undefined;
+    if (!selectedOutsideRoute) {
+      return {
+        status: 'unavailable',
+        route: null,
+        instructions: [],
+        message: 'Core-selected gate has no matching outside provider route.',
+      };
+    }
+    const hybridRoute: RoutePreviewV2 = { ...route, outsideRoute: selectedOutsideRoute };
+    return {
+      status: 'ready',
+      route: hybridRoute,
+      instructions: hybridRoute.instructions,
+      message: '',
+    };
+  }
+
   static calculatePreview(request: V2DirectionsPreviewRequest): V2DirectionsPreviewResult {
     if (!MapFeatureFlagsService.useIjtemaV2Routing()) {
       return {
