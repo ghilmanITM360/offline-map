@@ -1,5 +1,19 @@
 # Offline Outside Routing — Final Spec
 
+> **Radius, sanity-cap, fallback-table, and data-pipeline decisions below
+> remain authoritative and unchanged.** The gate-*selection* policy implied
+> by UX-flow step 5 below ("same gate-selection policy as today... now
+> road-following once within 3km") is superseded by
+> `docs/CORE_ROUTING_DECISION.md` — automatic gate selection is no longer
+> "nearest," it minimizes the complete pedestrian journey (outside +
+> connector + penalty + internal cost), which the OSM street-graph path did
+> not previously do. Build Order step 6 ("full QA pass... before flipping
+> the flag default") predates this branch's work: the project owner has
+> since approved flipping the source-code default now, as documented in
+> `docs/CORE_ROUTING_DECISION.md` — physical-device/emulator QA remains a
+> separate, still-pending gate per CLAUDE.md, not something this change
+> claims to have satisfied.
+
 Status: **Decisions final. No code changed.**
 
 Date: 2026-07-18

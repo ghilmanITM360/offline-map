@@ -2,6 +2,12 @@
 
 The v2 Karachi Ijtema data model treats numbered gates as the only official entry and exit points for public routing.
 
+This document defines gate **eligibility** (which gates may ever be offered)
+and remains authoritative for that. For *how* the winning gate among
+eligible candidates is chosen — "nearest official gate" below means nearest
+by complete pedestrian journey cost when a destination is known, not
+straight-line-nearest — see `docs/CORE_ROUTING_DECISION.md`.
+
 ## Outside User Flow
 
 If user GPS is outside the internal Ijtema walking area:
@@ -17,7 +23,7 @@ Flow summary:
 
 Outside user -> nearest official gate -> internal graph -> destination block/rasta/gate
 
-In the current implementation, "nearest official gate" means the nearest connected and routable official gate.
+In the current implementation, "nearest official gate" means the connected, routable official gate that minimizes the complete pedestrian journey cost to the user's destination (see `docs/CORE_ROUTING_DECISION.md`) when a destination is known, or straight-line-nearest when it isn't (e.g. the Home banner before a destination is picked).
 
 ## Inside User Flow
 

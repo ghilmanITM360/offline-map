@@ -1,5 +1,14 @@
 # Outside Routing Architecture Decision
 
+> **Partially superseded** by `docs/CORE_ROUTING_DECISION.md`. The Option A
+> vs. Option B evaluation and offline-first reasoning below remain accurate
+> historical context. The "Recommended Flow" step 5 assumption — that gate
+> *selection policy* would stay unchanged once street-graph geometry was
+> added, only becoming "road-following" — did not hold: that assumption was
+> the actual destination-blind gate-selection bug fixed in
+> `docs/CORE_ROUTING_DECISION.md`. See that document for the current
+> selection algorithm.
+
 Status: **Analysis only. No code changed.**
 
 Date: 2026-07-18
