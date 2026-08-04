@@ -198,6 +198,9 @@ export interface OfflineOsmOutsideCandidate {
   candidateId: string;
   outsideDistanceM: number;
   outsideCoordinates?: AppCoordinate[];
+  topologyCoordinates: AppCoordinate[];
+  topologyEdgeDistancesM: number[];
+  topologyEdgeNames: Array<string | undefined>;
   /** Optional: providers that can detect an implausible route (e.g. the offline OSM resolver's distance-ratio check) may set this; omitted/false otherwise. */
   sanityCapExceeded?: boolean;
 }
@@ -1088,6 +1091,9 @@ export class RoutingServiceV2 {
       candidateId: gate.id,
       outsideDistanceM: result.totalDistanceM,
       outsideCoordinates: result.coordinates.map(v2ToAppCoordinate),
+      topologyCoordinates: result.topologyCoordinates.map(v2ToAppCoordinate),
+      topologyEdgeDistancesM: result.topologyEdgeDistancesM,
+      topologyEdgeNames: result.topologyEdgeNames,
       sanityCapExceeded: result.sanityCapExceeded,
     };
   }
