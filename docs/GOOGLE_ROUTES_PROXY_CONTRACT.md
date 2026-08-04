@@ -129,6 +129,8 @@ Unreachable outcome:
 
 Response must not include raw Google payload, encoded credential, upstream request headers, billing project, debug stack, precise-location log identifier, or unrestricted upstream URL.
 
+Normalized geometry must begin within 100m of requested origin and end within 100m of declared gate route target. When multiple gate targets are present, endpoint must not be closer (with 2m comparison margin) to another gate target than declared gate. Mobile repeats these checks before core finalization; mismatch is `malformed-response`.
+
 ## Safe Errors
 
 HTTP mapping:

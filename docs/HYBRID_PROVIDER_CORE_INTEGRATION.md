@@ -30,6 +30,7 @@ Production validation requires:
 - route candidate IDs are non-empty and unique
 - candidate gate, provider, request ID, and request version match enclosing request
 - routed geometry and distance are valid
+- geometry begins within 100m of request origin, ends within 100m of declared gate target, and is not closer to another requested gate target (2m comparison margin)
 - direct guide has no duration, road steps, or road-following claim
 - finalized selected candidate exists and matches selected core gate and current request identity
 
@@ -44,6 +45,8 @@ Direct guide is final fallback. It returns direct-distance geometry, `roadFollow
 ## Request Lifecycle
 
 `OutsideRouteRequestCoordinator` owns opaque request ID, monotonic version, abort signal, and current-result check. New request aborts old request. Preview and live reroute commit only current results. Failed replacement retains current valid route. Automatic reroute does not downgrade a valid road-following route to direct guide; explicit manual-gate action may start direct guidance when road providers fail.
+
+Live navigation also holds a synchronous in-flight marker. Rapid GPS updates cannot start overlapping automatic reroutes; explicit retry or manual-gate action may deliberately supersede current provider work.
 
 ## Configuration
 
