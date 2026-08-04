@@ -48,8 +48,8 @@ assert(rastaLayers.visibleRastaLabels.length === 11, 'rastas filter: all 11 rast
 assert(rastaLayers.blocks.length === 0, 'rastas filter: blocks hidden');
 assert(rastaLayers.gates.length === 0, 'rastas filter: gates hidden');
 
-assert(gateLayers.gates.length === 17, 'gates filter: 17 active gates');
-assert(gateLayers.visibleGateMarkers.length === 17, 'gates filter: all 17 gate markers');
+assert(gateLayers.gates.length === 18, 'gates filter: 18 active gates');
+assert(gateLayers.visibleGateMarkers.length === 18, 'gates filter: all 18 gate markers');
 assert(gateLayers.blocks.length === 0, 'gates filter: blocks hidden');
 assert(gateLayers.rastas.length === 0, 'gates filter: rastas hidden');
 
@@ -66,7 +66,7 @@ assert(
 );
 
 const gateIds = gateLayers.gates.map((g) => g.id);
-const forbidden = ['GATE_06', 'GATE_09', 'GATE_10', 'GATE_11', 'GATE_12'];
+const forbidden = ['GATE_06', 'GATE_09', 'GATE_10', 'GATE_11'];
 assert(
   forbidden.every((id) => !gateIds.includes(id)),
   `nonexistent gates absent — checked: ${forbidden.join(', ')}`,
@@ -86,7 +86,7 @@ assert(
 // ---------- all filter balanced ----------
 assert(allLayers.blocks.length === 42, 'all filter: 42 blocks');
 assert(allLayers.rastas.length === 11, 'all filter: 11 public rastas');
-assert(allLayers.gates.length === 17, 'all filter: 17 gates');
+assert(allLayers.gates.length === 18, 'all filter: 18 gates');
 assert(allLayers.specialRoutes.length === 3, 'all filter: 3 special routes');
 
 // ---------- hidden connector absent ----------

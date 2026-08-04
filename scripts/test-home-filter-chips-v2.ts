@@ -15,8 +15,8 @@ assert(homeScreen.includes('mapFilter: activeCategory'), 'Home must pass active 
 const allLayers = V2MapRenderingService.getHomeLayers({ mapFilter: 'all', zoomLevel: 17 } as any);
 assert.equal(allLayers.blocks.length, 42, 'All filter must include B1-B42 block polygons.');
 assert.equal(allLayers.rastas.length, 11, 'All filter must include 11 public rastas.');
-assert.equal(allLayers.gates.length, 17, 'All filter must include 17 active gates.');
-assert.equal(allLayers.visibleGateMarkers.length, 17, 'All filter at high zoom must show active gate markers.');
+assert.equal(allLayers.gates.length, 18, 'All filter must include 18 active gates.');
+assert.equal(allLayers.visibleGateMarkers.length, 18, 'All filter at high zoom must show active gate markers.');
 assert.equal(allLayers.specialRoutes.length, 3, 'All filter must include 3 Shahr-e-Pindal routes.');
 
 const blockLayers = V2MapRenderingService.getHomeLayers({ mapFilter: 'blocks', zoomLevel: 17 } as any);
@@ -34,8 +34,8 @@ assert.equal(rastaLayers.visibleGateMarkers.length, 0, 'Rastas filter must hide 
 assert.equal(rastaLayers.specialRoutes.length, 0, 'Rastas filter must hide Shahr-e-Pindal routes.');
 
 const gateLayers = V2MapRenderingService.getHomeLayers({ mapFilter: 'gates', zoomLevel: 17 } as any);
-assert.equal(gateLayers.gates.length, 17, 'Gates filter must include 17 active gates.');
-assert.equal(gateLayers.visibleGateMarkers.length, 17, 'Gates filter must show all active gate markers.');
+assert.equal(gateLayers.gates.length, 18, 'Gates filter must include 18 active gates.');
+assert.equal(gateLayers.visibleGateMarkers.length, 18, 'Gates filter must show all active gate markers.');
 assert.deepEqual(
   gateLayers.gates.map((gate) => gate.id).sort(),
   [
@@ -46,6 +46,7 @@ assert.deepEqual(
     'GATE_05',
     'GATE_07',
     'GATE_08',
+    'GATE_12',
     'GATE_13',
     'GATE_14',
     'GATE_15',

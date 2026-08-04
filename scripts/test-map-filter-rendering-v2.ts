@@ -50,7 +50,7 @@ assert.deepEqual(layerCounts('rastas'), {
 assert.deepEqual(layerCounts('gates'), {
   blocks: 0,
   blockLabels: 0,
-  gates: 17,
+  gates: 18,
   rastas: 0,
   rastaLabels: 0,
   pindal: 0,

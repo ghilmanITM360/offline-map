@@ -25,7 +25,7 @@ assert.equal(layers.blocks.find((block) => block.id === 'B42')?.isSelected, true
 assert.equal(layers.blocks.find((block) => block.id === 'B42')?.pulse, true, 'Selected block must support pulse/highlight state');
 assert(layers.blocks.every((block) => !INTERNAL_ID_PATTERN.test(block.label)), 'Normal block labels must not expose internal IDs');
 
-assert.equal(layers.gates.length, 17, 'Home v2 must render all active gate markers only');
+assert.equal(layers.gates.length, 18, 'Home v2 must render all active gate markers only');
 assert.equal(layers.gates.some((gate) => gate.id === 'GATE_15'), true, 'Active Gate 15 must render on map');
 assert.equal(layers.gates.find((gate) => gate.id === 'GATE_18')?.isRoutable, false, 'Disconnected Gate 18 marker must not be route-enabled');
 assert(layers.gates.every((gate) => gate.coordinate), 'Rendered gates must all have real coordinates');

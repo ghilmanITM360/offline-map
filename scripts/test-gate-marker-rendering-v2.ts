@@ -14,10 +14,10 @@ function assert(condition: boolean, label: string): void {
 }
 
 const ZOOM = 15;
-const FORBIDDEN_GATES = ['GATE_06', 'GATE_09', 'GATE_10', 'GATE_11', 'GATE_12'];
+const FORBIDDEN_GATES = ['GATE_06', 'GATE_09', 'GATE_10', 'GATE_11'];
 const REQUIRED_GATES = [
   'GATE_01','GATE_02','GATE_03','GATE_04','GATE_05',
-  'GATE_07','GATE_08',
+  'GATE_07','GATE_08','GATE_12',
   'GATE_13','GATE_14','GATE_15','GATE_16','GATE_17',
   'GATE_18','GATE_19','GATE_20','GATE_21','GATE_22',
 ];
@@ -25,8 +25,8 @@ const REQUIRED_GATES = [
 const layers = V2MapRenderingService.getHomeLayers({ mapFilter: 'gates', zoomLevel: ZOOM });
 
 // count
-assert(layers.gates.length === 17, `gates filter: exactly 17 active gates (got ${layers.gates.length})`);
-assert(layers.visibleGateMarkers.length === 17, `gates filter: all 17 gate markers visible (got ${layers.visibleGateMarkers.length})`);
+assert(layers.gates.length === 18, `gates filter: exactly 18 active gates (got ${layers.gates.length})`);
+assert(layers.visibleGateMarkers.length === 18, `gates filter: all 18 gate markers visible (got ${layers.visibleGateMarkers.length})`);
 
 // each required gate present
 for (const id of REQUIRED_GATES) {
@@ -67,7 +67,7 @@ assert(layers.specialRoutes.length === 0, 'special routes hidden in gates filter
 
 // all-mode gates still present (not zero)
 const allLayers = V2MapRenderingService.getHomeLayers({ zoomLevel: ZOOM });
-assert(allLayers.gates.length === 17, 'all mode: 17 gates returned');
+assert(allLayers.gates.length === 18, 'all mode: 18 gates returned');
 
 // gate 15 specifically
 assert(layers.gates.some(g => g.id === 'GATE_15'), 'Gate 15 present');

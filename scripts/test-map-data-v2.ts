@@ -26,8 +26,8 @@ const BROAD_KARACHI_BOUNDS = {
 };
 
 const internalPointIdPattern = /\b(?:R\d+-\d+|SPNP(?:-\d+)?|SPSP(?:-\d+)?|SPWP(?:-\d+)?|P\d+)\b/;
-const activeGateNumbers = [1, 2, 3, 4, 5, 7, 8, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22];
-const nonexistentGateNumbers = [6, 9, 10, 11, 12];
+const activeGateNumbers = [1, 2, 3, 4, 5, 7, 8, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22];
+const nonexistentGateNumbers = [6, 9, 10, 11];
 const outsideRoutingDoc = readFileSync(join(process.cwd(), 'docs/OUTSIDE_IJTEMA_ROUTING_RULE.md'), 'utf8');
 
 const hasGraphConnection = (gate: Gate): boolean => (IJTEMA_NAVIGATION_GRAPH_V2.adjacency[gate.id] ?? []).length > 0;
@@ -166,23 +166,30 @@ assert.equal(IJTEMA_BLOCKS.length, 42, 'Exactly 42 block records must exist');
 IJTEMA_BLOCKS.forEach(assertBlock);
 assertNoDuplicateIds(IJTEMA_BLOCKS.map((block) => block.id), 'block');
 
-assert.equal(IJTEMA_GATES.length, 17, 'Only 17 active gates from latest dataset must exist');
-assert.equal(IJTEMA_GATES.filter((gate) => gate.status !== 'missing_coordinate').length, 17, 'All active gates must have supplied coordinates');
+assert.equal(IJTEMA_GATES.length, 18, 'Only 18 active gates from latest dataset must exist');
+assert.equal(IJTEMA_GATES.filter((gate) => gate.status !== 'missing_coordinate').length, 18, 'All active gates must have supplied coordinates');
 assert.equal(IJTEMA_GATES.filter((gate) => gate.status === 'missing_coordinate').length, 0, 'No active gate should stay missing-coordinate');
-assert.equal(IJTEMA_GATES.filter((gate) => gate.routingStatus === 'routable').length, 17, 'All active gates must be eligible for graph-connector validation');
+assert.equal(IJTEMA_GATES.filter((gate) => gate.routingStatus === 'routable').length, 18, 'All active gates must be eligible for graph-connector validation');
 assert.equal(IJTEMA_GATES.filter((gate) => gate.routingStatus === 'missing_coordinate').length, 0, 'No active gate should remain missing-coordinate');
-assert.equal(IJTEMA_GATES.filter((gate) => gate.canStartRouteFromOutside).length, 17, 'All active gates must support outside-start resolution');
+assert.equal(IJTEMA_GATES.filter((gate) => gate.canStartRouteFromOutside).length, 18, 'All active gates must support outside-start resolution');
 activeGateNumbers.forEach((number) => assert(IJTEMA_GATES.some((gate) => gate.number === number && gate.status !== 'missing_coordinate'), `Gate ${number} must be active`));
 nonexistentGateNumbers.forEach((number) => assert(!IJTEMA_GATES.some((gate) => gate.number === number), `Gate ${number} must be excluded as nonexistent`));
 assert.equal(IJTEMA_GATES.find((gate) => gate.number === 13)?.status, 'provided', 'Gate 13 must use the verified coordinate, no longer needs_verification');
 assert.equal(IJTEMA_GATES.find((gate) => gate.number === 14)?.status, 'provided', 'Gate 14 must use the verified coordinate, no longer needs_verification');
+assert.deepEqual(IJTEMA_GATES.find((gate) => gate.number === 12)?.coordinate, { lat: 24.963676, lng: 67.006339 }, 'Gate 12 must use the project-owner-verified coordinate');
 assert.deepEqual(IJTEMA_GATES.find((gate) => gate.number === 13)?.coordinate, { lat: 24.963718, lng: 67.006862 }, 'Gate 13 must use the project-owner-verified coordinate');
 assert.deepEqual(IJTEMA_GATES.find((gate) => gate.number === 14)?.coordinate, { lat: 24.965516, lng: 67.007675 }, 'Gate 14 must use the project-owner-verified coordinate');
+assert.equal(IJTEMA_GATES.find((gate) => gate.number === 12)?.status, 'provided', 'Gate 12 must be a normal provided gate, not needs_verification');
 {
+  const gate12Coordinate = IJTEMA_GATES.find((gate) => gate.number === 12)?.coordinate;
   const gate13Coordinate = IJTEMA_GATES.find((gate) => gate.number === 13)?.coordinate;
   const gate14Coordinate = IJTEMA_GATES.find((gate) => gate.number === 14)?.coordinate;
-  assert.ok(gate13Coordinate && gate14Coordinate, 'Gate 13 and Gate 14 must both have coordinates for the identity check');
+  assert.ok(gate12Coordinate && gate13Coordinate && gate14Coordinate, 'Gate 12, Gate 13, and Gate 14 must all have coordinates for the identity check');
+  const gate12To13M = distanceMeters(gate12Coordinate!, gate13Coordinate!);
+  const gate12To14M = distanceMeters(gate12Coordinate!, gate14Coordinate!);
   const gate13To14M = distanceMeters(gate13Coordinate!, gate14Coordinate!);
+  assert.ok(gate12To13M > 50, `Gate 12 and Gate 13 must be distinct, routable locations, not near-duplicates (only ${gate12To13M.toFixed(1)}m apart)`);
+  assert.ok(gate12To14M > 50, `Gate 12 and Gate 14 must be distinct, routable locations, not near-duplicates (only ${gate12To14M.toFixed(1)}m apart)`);
   assert.ok(gate13To14M > 50, `Gate 13 and Gate 14 must be distinct, routable locations, not near-duplicates (only ${gate13To14M.toFixed(1)}m apart)`);
 }
 assert.deepEqual(IJTEMA_GATES.find((gate) => gate.number === 15)?.coordinate, { lat: 24.968126, lng: 67.008578 }, 'Gate 15 must use latest coordinate');
