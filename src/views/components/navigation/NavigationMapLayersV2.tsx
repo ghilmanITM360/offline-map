@@ -15,6 +15,7 @@ import { SpecialRouteLayer } from '../map/SpecialRouteLayer';
 import { BlockLayer } from '../map/BlockLayer';
 import { navOverlayStyles as styles } from './navOverlayStyles';
 import { markerSizes, staticColors } from '../../../theme';
+import { OutsideRoutePolyline } from './OutsideRoutePolyline';
 
 /** Renders as children of the shared MapView while a v2 route is being navigated. */
 export function NavigationMapLayersV2({ overlay }: { overlay: NavigationOverlayV2 }) {
@@ -46,16 +47,11 @@ export function NavigationMapLayersV2({ overlay }: { overlay: NavigationOverlayV
           mapLabelItems), built from `overlay.mapLayers.gates` — not rendered here. */}
 
       {outsideLegCoordinates.length > 1 && (
-        <>
-          <Polyline coordinates={outsideLegCoordinates} strokeColor={staticColors.routeCasing} strokeWidth={9} zIndex={18} />
-          <Polyline
-            coordinates={outsideLegCoordinates}
-            strokeColor={staticColors.routeOutside}
-            strokeWidth={5}
-            lineDashPattern={[8, 6]}
-            zIndex={19}
-          />
-        </>
+        <OutsideRoutePolyline
+          coordinates={outsideLegCoordinates}
+          roadFollowing={route.outsideRoute?.roadFollowing ?? false}
+          zIndex={18}
+        />
       )}
       <Polyline
         coordinates={insideLegCoordinates}

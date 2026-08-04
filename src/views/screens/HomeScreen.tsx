@@ -82,6 +82,7 @@ import { useNavigationOverlayV2 } from '../../viewmodels/useNavigationOverlayV2'
 import { useNavigationOverlayV1 } from '../../viewmodels/useNavigationOverlayV1';
 import { useMapMode } from '../../viewmodels/useMapMode';
 import { NavigationMapLayersV2 } from '../components/navigation/NavigationMapLayersV2';
+import { OutsideRoutePolyline } from '../components/navigation/OutsideRoutePolyline';
 import { NavigationChromeV2 } from '../components/navigation/NavigationChromeV2';
 import { NavigationMapLayersV1 } from '../components/navigation/NavigationMapLayersV1';
 import { NavigationChromeV1 } from '../components/navigation/NavigationChromeV1';
@@ -133,7 +134,7 @@ function getSecondaryDisplayName(item: Place | SearchResult): string | undefined
   return MapLocalizationService.getSecondaryLabel({ en: item.name, ur: item.urduName });
 }
 
-type V2PreviewRoute = RoutePreview & {
+type V2PreviewRoute = Extract<RoutePreview, { sourceVersion: 'v2' }> & {
   startLabel: string;
   destinationLabel: string;
   startResolution?: {
@@ -1109,16 +1110,11 @@ export function HomeScreen() {
               {activePreviewRoute && activePreviewRoute.coordinates.length > 1 && (
                 <>
                   {previewOutsideLegCoordinates.length > 1 && (
-                    <>
-                      <Polyline coordinates={previewOutsideLegCoordinates} strokeColor={staticColors.routeCasing} strokeWidth={9} zIndex={14} />
-                      <Polyline
-                        coordinates={previewOutsideLegCoordinates}
-                        strokeColor={staticColors.routeOutside}
-                        strokeWidth={5}
-                        lineDashPattern={[8, 6]}
-                        zIndex={15}
-                      />
-                    </>
+                    <OutsideRoutePolyline
+                      coordinates={previewOutsideLegCoordinates}
+                      roadFollowing={activePreviewRoute.outsideRoute?.roadFollowing ?? false}
+                      zIndex={14}
+                    />
                   )}
                   <Polyline coordinates={previewInsideLegCoordinates} strokeColor={staticColors.routeCasing} strokeWidth={11} zIndex={16} />
                   <Polyline

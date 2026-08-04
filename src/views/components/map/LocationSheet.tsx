@@ -43,6 +43,8 @@ import { Button } from '../common/Button';
 import { Card } from '../common/Card';
 import { SearchBarField } from '../common/SearchBarField';
 import { staticColors } from '../../../theme';
+import { OutsideRouteStatusCard } from '../navigation/OutsideRouteStatusCard';
+import type { NormalizedOutsideRoute } from '../../../models/outsideRouting';
 
 declare const __DEV__: boolean;
 
@@ -64,6 +66,7 @@ function facilityTypeLabel(place: Place): string | null {
 }
 
 type RoutePreviewWithV2Meta = RoutePreview & {
+  outsideRoute?: NormalizedOutsideRoute;
   startResolution?: {
     startType?: 'internal_snap' | 'nearest_official_gate' | 'selected_official_gate' | 'unresolved';
     gate?: {
@@ -284,6 +287,7 @@ function RoutePreviewSection({
     !!startCoordinate &&
     !EntryGateRoutingService.isInsideIjtemaArea(startCoordinate);
   const routeMeta = route as RoutePreviewWithV2Meta | null;
+  const outsideRoute = routeMeta?.outsideRoute;
   const entryGateName = routeMeta?.startResolution?.gate?.name?.en ?? null;
   const routeDistance = route ? InstructionService.formatDistance(route.totalDistance, distanceUnit) : null;
   const routeEta = route ? InstructionService.formatDuration(route.estimatedTimeMin) : null;
@@ -309,6 +313,13 @@ function RoutePreviewSection({
   const showLoading = loadState === 'loading';
   const showError = loadState === 'error';
   const showStartHint = !showLoading && !showError && !showRouteReady;
+  const retryRoute = () => {
+    if (retryInFlightRef.current) return;
+    retryInFlightRef.current = true;
+    void calculateRoute().finally(() => {
+      retryInFlightRef.current = false;
+    });
+  };
 
   return (
     <View style={styles.container}>
@@ -567,13 +578,7 @@ function RoutePreviewSection({
                 fullWidth={false}
                 icon={<RefreshCw size={18} color={staticColors.white} />}
                 label="Retry"
-                onPress={() => {
-                  if (retryInFlightRef.current) return;
-                  retryInFlightRef.current = true;
-                  void calculateRoute().finally(() => {
-                    retryInFlightRef.current = false;
-                  });
-                }}
+                onPress={retryRoute}
               />
             </Card>
           )}
@@ -583,11 +588,21 @@ function RoutePreviewSection({
               <Text style={styles.statusTitle}>Route ready</Text>
               <Text style={styles.statusText}>{routeEntrySummary}</Text>
 
+              {outsideRoute && (
+                <OutsideRouteStatusCard
+                  route={outsideRoute}
+                  gateLabel={outsideRoute.gateId.replace('GATE_', 'Gate ')}
+                  onRetry={outsideRoute.provider === 'direct-guide' ? retryRoute : undefined}
+                />
+              )}
+
               <View style={styles.metricsRow}>
-                <View style={styles.metricPill}>
-                  <Clock size={15} color={staticColors.info} />
-                  <Text style={styles.metricText}>ETA: {routeEta}</Text>
-                </View>
+                {outsideRoute?.durationSeconds !== null && (
+                  <View style={styles.metricPill}>
+                    <Clock size={15} color={staticColors.info} />
+                    <Text style={styles.metricText}>ETA: {routeEta}</Text>
+                  </View>
+                )}
                 <View style={styles.metricPill}>
                   <Navigation size={15} color={staticColors.info} />
                   <Text style={styles.metricText}>Distance: {routeDistance}</Text>
@@ -596,7 +611,7 @@ function RoutePreviewSection({
 
               <Button
                 variant="primary"
-                label="Start Navigation"
+                label={outsideRoute?.provider === 'direct-guide' ? 'Start Direct Guide' : 'Start Navigation'}
                 onPress={() => {
                   if (destination.sourceVersion === 'v2') {
                     // Built from the resolved preview route already sitting in the store

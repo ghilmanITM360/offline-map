@@ -14,6 +14,8 @@ import { NAV_TRANSITION_TIMINGS } from '../../../constants/navigationTransitions
 import { NavigationOverlayV2 } from '../../../viewmodels/useNavigationOverlayV2';
 import { computeNavRecenterInset, resolveNavBarHeight } from '../../../viewmodels/useOverlayInsets';
 import { NAV_TOUCH_TARGET_HIT_SLOP, navOverlayStyles as styles } from './navOverlayStyles';
+import { OutsideRouteStatusCard } from './OutsideRouteStatusCard';
+import { outsideRouteMessage } from '../../../services/OutsideRouteLocalizationService';
 
 const AnimatedSafeAreaView = Animated.createAnimatedComponent(SafeAreaView);
 
@@ -68,6 +70,12 @@ export function NavigationChromeV2({ overlay, hasGoogleMapsKey }: { overlay: Nav
 
   const currentStep = instructions[currentStepIndex];
   const nextStep = instructions[currentStepIndex + 1];
+  const outsideRoute = route.outsideRoute;
+  const directOutsideActive = Boolean(
+    outsideRoute?.provider === 'direct-guide' &&
+    (currentStep?.routeIndex ?? 0) < (route.outsideLegCoordinateCount ?? 0),
+  );
+  const directGateLabel = outsideRoute?.gateId.replace('GATE_', 'Gate ') ?? 'selected gate';
   const arrivalTime = new Date(Date.now() + Math.max(etaMinutes, 0) * 60_000).toLocaleTimeString([], {
     hour: '2-digit',
     minute: '2-digit',
@@ -86,6 +94,9 @@ export function NavigationChromeV2({ overlay, hasGoogleMapsKey }: { overlay: Nav
         <View style={styles.v2EntryGateBanner}>
           <Text style={styles.v2EntryGateText}>Route starts from {route.origin.label}.</Text>
         </View>
+      )}
+      {directOutsideActive && outsideRoute && (
+        <OutsideRouteStatusCard route={outsideRoute} gateLabel={directGateLabel} />
       )}
 
       <AnimatedSafeAreaView
@@ -113,6 +124,21 @@ export function NavigationChromeV2({ overlay, hasGoogleMapsKey }: { overlay: Nav
           <View style={[styles.instructionCard, styles.rerouteCard]}>
             <RefreshCw size={28} color={staticColors.white} />
             <Text style={styles.rerouteText}>Recalculating...</Text>
+          </View>
+        ) : directOutsideActive && !arrived ? (
+          <View
+            style={styles.instructionCard}
+            accessibilityLabel={outsideRouteMessage('direct.heading', 'en', { gate: directGateLabel })}
+          >
+            <View style={styles.instructionIcon}>
+              <Navigation size={32} color={staticColors.white} />
+            </View>
+            <View style={styles.instructionTextContainer}>
+              <Text style={styles.maneuverLabel}>Direct gate guide</Text>
+              <Text style={styles.nextStepText}>
+                {outsideRouteMessage('direct.heading', 'en', { gate: directGateLabel })}
+              </Text>
+            </View>
           </View>
         ) : currentStep && !arrived ? (
           <View style={styles.instructionCard} accessibilityLabel={currentStep.text}>

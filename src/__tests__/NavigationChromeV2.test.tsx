@@ -63,6 +63,52 @@ function baseOverlay(overrides: Partial<NavigationOverlayV2> = {}): NavigationOv
   } as unknown as NavigationOverlayV2;
 }
 
+describe('NavigationChromeV2 — direct outside guide', () => {
+  test('shows direct-guide warning and suppresses road instruction fields', async () => {
+    const directRoute: V2ActiveRoute = {
+      ...route,
+      outsideLegCoordinateCount: 1,
+      outsideRoute: {
+        schemaVersion: 1,
+        candidateId: 'nav-direct-1',
+        requestId: 'nav-1',
+        requestVersion: 1,
+        provider: 'direct-guide',
+        gateId: 'GATE_05',
+        distanceM: 120,
+        durationSeconds: null,
+        coordinates: route.coordinates,
+        steps: [],
+        roadFollowing: false,
+        distanceKind: 'direct-distance',
+        warnings: [{ code: 'direct-guide-not-road-route' }],
+        fallbackReason: 'outside-coverage',
+        fallbackHistory: [],
+      },
+      instructions: [{
+        ...route.instructions[0],
+        text: 'Turn right on Imaginary Road',
+        roadName: 'Imaginary Road',
+      }],
+      metadata: {
+        ...route.metadata,
+        startedOutside: true,
+        entryGateId: 'GATE_05',
+        usesOfficialGateEntry: true,
+      },
+    };
+    await render(<NavigationChromeV2
+      overlay={baseOverlay({ route: directRoute, instructions: directRoute.instructions })}
+      hasGoogleMapsKey
+    />);
+
+    expect(screen.getByText('Direct guide — not a road route')).toBeOnTheScreen();
+    expect(screen.getByText('Follow the direction line toward Gate 05.')).toBeOnTheScreen();
+    expect(screen.queryByText('Imaginary Road')).not.toBeOnTheScreen();
+    expect(screen.queryByText('Turn right on Imaginary Road')).not.toBeOnTheScreen();
+  });
+});
+
 // Regression test for Phase 3 (Exit/recenter touch-target re-verification): Exit (~44px) and
 // Mute (~44px) buttons sit below Android's 48dp minimum touch target, and Recenter (48px) has
 // zero margin above it — none had hitSlop. Without the fix, these Pressables carry no hitSlop

@@ -342,6 +342,51 @@ describe('LocationSheet (routePreview) — change destination', () => {
 });
 
 describe('LocationSheet (routePreview) — route ready CTA', () => {
+  test('surfaces direct-guide warning and retries road routing from ready state', async () => {
+    const calculateRoute = jest.fn(async () => {});
+    mockedUseDirectionsViewModel.mockReturnValue(
+      baseViewModel({
+        loadState: 'ready',
+        calculateRoute,
+        route: {
+          sourceVersion: 'v2',
+          nodes: ['GATE_05', 'B2_C1'],
+          coordinates: [],
+          totalDistance: 250,
+          estimatedTimeMin: 4,
+          outsideRoute: {
+            schemaVersion: 1,
+            candidateId: 'preview-direct-1',
+            requestId: 'preview-1',
+            requestVersion: 1,
+            provider: 'direct-guide',
+            gateId: 'GATE_05',
+            distanceM: 120,
+            durationSeconds: null,
+            coordinates: [
+              { latitude: 24.96, longitude: 67.01 },
+              { latitude: 24.961, longitude: 67.011 },
+            ],
+            steps: [],
+            roadFollowing: false,
+            distanceKind: 'direct-distance',
+            warnings: [{ code: 'direct-guide-not-road-route' }],
+            fallbackReason: 'outside-coverage',
+            fallbackHistory: [],
+          },
+        },
+      }),
+    );
+    const user = userEvent.setup();
+    await render(<LocationSheet mode="routePreview" destination={v2Destination} onClose={onCloseSpy} />);
+
+    expect(screen.getByText('Direct guide — not a road route')).toBeOnTheScreen();
+    expect(screen.getByText('Start Direct Guide')).toBeOnTheScreen();
+    expect(screen.queryByText('ETA: 4 min')).not.toBeOnTheScreen();
+    await user.press(screen.getByRole('button', { name: 'Retry road route' }));
+    expect(calculateRoute).toHaveBeenCalledTimes(1);
+  });
+
   test('shows route metrics once a route is ready', async () => {
     mockedUseDirectionsViewModel.mockReturnValue(
       baseViewModel({
