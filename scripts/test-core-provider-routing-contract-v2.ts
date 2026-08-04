@@ -12,6 +12,10 @@
 import { strict as assert } from 'node:assert';
 
 import { RoutingServiceV2 } from '../src/services/RoutingServiceV2';
+import type {
+  NormalizedOutsideCandidate,
+  OutsideRouteCandidateSet,
+} from '../src/models/outsideRouting';
 
 process.env.EXPO_PUBLIC_USE_IJTEMA_V2_MAP = 'true';
 process.env.EXPO_PUBLIC_USE_IJTEMA_V2_ROUTING = 'true';
@@ -19,6 +23,46 @@ process.env.EXPO_PUBLIC_USE_IJTEMA_OUTSIDE_STREET_GRAPH = 'true';
 
 const OUTSIDE_NORTH_EAST = { latitude: 24.9762, longitude: 67.011 };
 const DESTINATION = { type: 'block' as const, blockId: 'B34' };
+
+const normalizedCandidate = (
+  gateId: string,
+  distanceM: number,
+  candidateId = `core-contract:offline-osm:${gateId}:0`,
+  coordinates = [OUTSIDE_NORTH_EAST, OUTSIDE_NORTH_EAST],
+): NormalizedOutsideCandidate => ({
+  schemaVersion: 1,
+  candidateId,
+  requestId: 'core-contract',
+  requestVersion: 1,
+  provider: 'offline-osm',
+  gateId,
+  distanceM,
+  durationSeconds: null,
+  coordinates,
+  steps: [],
+  roadFollowing: true,
+  distanceKind: 'walking-route',
+  warnings: [],
+  fallbackReason: null,
+  fallbackHistory: [],
+});
+
+const candidateSet = (routes: NormalizedOutsideCandidate[]): OutsideRouteCandidateSet => ({
+  requestId: 'core-contract',
+  requestVersion: 1,
+  provider: 'offline-osm',
+  outcomes: routes.map((route) => ({ status: 'routed', gateId: route.gateId, routes: [route] })),
+});
+
+const fromOsmCandidate = (
+  gateId: string,
+  candidate: NonNullable<ReturnType<typeof RoutingServiceV2.resolveOfflineOsmOutsideCandidate>>,
+): NormalizedOutsideCandidate => normalizedCandidate(
+  gateId,
+  candidate.outsideDistanceM,
+  `core-contract:offline-osm:${gateId}:0`,
+  candidate.outsideCoordinates ?? [OUTSIDE_NORTH_EAST, OUTSIDE_NORTH_EAST],
+);
 
 // ─── Plan preparation returns eligible gate targets ─────────────────────────
 const plan = RoutingServiceV2.prepareOutsideRoutingPlan({ userCoordinate: OUTSIDE_NORTH_EAST, destination: DESTINATION });
@@ -96,10 +140,10 @@ assert.equal(
 
   const result = RoutingServiceV2.finalizeOutsideRoutingPlan({
     plan,
-    outsideCandidates: [
-      { candidateId: candidateA.candidateId, outsideDistanceM: fakeOutsideA },
-      { candidateId: candidateB.candidateId, outsideDistanceM: fakeOutsideB },
-    ],
+    outsideCandidates: candidateSet([
+      normalizedCandidate(candidateA.gateId, fakeOutsideA, 'candidate-near-outside'),
+      normalizedCandidate(candidateB.gateId, fakeOutsideB, 'candidate-complete-journey-winner'),
+    ]),
     walkingSpeedMs: 1.4,
   });
 
@@ -109,7 +153,7 @@ assert.equal(
     farOutsideNearInternalGateId,
     'must select by complete-journey cost, not by raw outside distance alone (A had the smaller outsideDistanceM but the larger total)',
   );
-  assert.equal(result.selectedOutsideCandidateId, farOutsideNearInternalGateId, 'selectedOutsideCandidateId must echo the winning candidate exactly');
+  assert.equal(result.selectedOutsideCandidateId, 'candidate-complete-journey-winner', 'selectedOutsideCandidateId must echo the winning provider candidate exactly');
   assert.equal(
     result.startResolution?.candidateNodes[0],
     farOutsideNearInternalGateId,
@@ -144,19 +188,19 @@ assert.equal(
 
   const manualResult = RoutingServiceV2.finalizeOutsideRoutingPlan({
     plan: manualPlan,
-    outsideCandidates: [
-      { candidateId: 'GATE_15', outsideDistanceM: 500 },
+    outsideCandidates: candidateSet([
+      normalizedCandidate('GATE_15', 500, 'manual-gate-15'),
       // A candidate for a gate outside the manual plan must be ignored —
       // the provider layer must never be able to override a manual choice
       // by supplying an alternative, even a cheaper-looking one.
-      { candidateId: 'GATE_01', outsideDistanceM: 1 },
-    ],
+      normalizedCandidate('GATE_01', 1, 'provider-cannot-override-manual'),
+    ]),
     walkingSpeedMs: 1.4,
   });
   assert(manualResult, 'manual override finalize must produce a route');
   assert.equal(manualResult.startResolution?.gate?.id, 'GATE_15', 'manual gate override must remain authoritative');
   assert.equal(manualResult.startResolution?.startType, 'selected_official_gate');
-  assert.equal(manualResult.selectedOutsideCandidateId, 'GATE_15');
+  assert.equal(manualResult.selectedOutsideCandidateId, 'manual-gate-15');
 
   assert.equal(
     RoutingServiceV2.prepareOutsideRoutingPlan({ userCoordinate: OUTSIDE_NORTH_EAST, destination: DESTINATION, manualGateId: 'GATE_03' }),
@@ -173,14 +217,14 @@ assert.equal(
 // ─── Stale or incomplete candidate sets are rejected safely ────────────────
 {
   assert.equal(
-    RoutingServiceV2.finalizeOutsideRoutingPlan({ plan, outsideCandidates: [], walkingSpeedMs: 1.4 }),
+    RoutingServiceV2.finalizeOutsideRoutingPlan({ plan, outsideCandidates: candidateSet([]), walkingSpeedMs: 1.4 }),
     null,
     'empty outsideCandidates must return null, not throw',
   );
   assert.equal(
     RoutingServiceV2.finalizeOutsideRoutingPlan({
       plan,
-      outsideCandidates: [{ candidateId: 'NOT_A_REAL_CANDIDATE', outsideDistanceM: 5 }],
+      outsideCandidates: candidateSet([normalizedCandidate('GATE_99', 5, 'unknown-candidate')]),
       walkingSpeedMs: 1.4,
     }),
     null,
@@ -190,15 +234,15 @@ assert.equal(
   assert(plan.candidates.length >= 3, 'fixture requires at least 3 eligible candidates for the partial-validity check');
   const partiallyValid = RoutingServiceV2.finalizeOutsideRoutingPlan({
     plan,
-    outsideCandidates: [
-      { candidateId: plan.candidates[0].candidateId, outsideDistanceM: -5 }, // invalid: negative, must be dropped
-      { candidateId: plan.candidates[1].candidateId, outsideDistanceM: Number.NaN }, // invalid: non-finite, must be dropped
-      { candidateId: plan.candidates[2].candidateId, outsideDistanceM: 100 }, // valid
-    ],
+    outsideCandidates: candidateSet([
+      normalizedCandidate(plan.candidates[0].gateId, -5, 'invalid-negative'),
+      normalizedCandidate(plan.candidates[1].gateId, Number.NaN, 'invalid-non-finite'),
+      normalizedCandidate(plan.candidates[2].gateId, 100, 'remaining-valid'),
+    ]),
     walkingSpeedMs: 1.4,
   });
   assert(partiallyValid, 'a partially-invalid candidate set must still produce a route from the remaining valid candidate');
-  assert.equal(partiallyValid.selectedOutsideCandidateId, plan.candidates[2].candidateId, 'the one valid candidate must be the one selected');
+  assert.equal(partiallyValid.selectedOutsideCandidateId, 'remaining-valid', 'the one valid candidate must be the one selected');
 }
 
 // ─── Initial routing / rerouting parity, cross-checked against calculateRoute ──
@@ -212,12 +256,13 @@ assert.equal(
     const scenarioPlan = RoutingServiceV2.prepareOutsideRoutingPlan({ userCoordinate: scenario.coordinate, destination: DESTINATION });
     assert(scenarioPlan, `${scenario.label}: plan must be producible`);
 
-    const outsideCandidates = scenarioPlan.candidates
-      .map((candidate) => RoutingServiceV2.resolveOfflineOsmOutsideCandidate(scenario.coordinate, candidate.gateId))
-      .filter((candidate): candidate is NonNullable<typeof candidate> => candidate !== null);
+    const outsideCandidates = scenarioPlan.candidates.flatMap((planCandidate) => {
+      const resolved = RoutingServiceV2.resolveOfflineOsmOutsideCandidate(scenario.coordinate, planCandidate.gateId);
+      return resolved ? [fromOsmCandidate(planCandidate.gateId, resolved)] : [];
+    });
     assert(outsideCandidates.length > 0, `${scenario.label}: at least one offline OSM candidate must resolve`);
 
-    const finalized = RoutingServiceV2.finalizeOutsideRoutingPlan({ plan: scenarioPlan, outsideCandidates, walkingSpeedMs: 1.4 });
+    const finalized = RoutingServiceV2.finalizeOutsideRoutingPlan({ plan: scenarioPlan, outsideCandidates: candidateSet(outsideCandidates), walkingSpeedMs: 1.4 });
     assert(finalized, `${scenario.label}: finalize must produce a route`);
 
     const directRoute = RoutingServiceV2.calculateRoute({
@@ -231,7 +276,7 @@ assert.equal(
       directRoute.startResolution?.gate?.id,
       `${scenario.label}: prepare/finalize (fed by the offline OSM resolver) must select the same gate as calculateRoute's own street-graph path — got ${finalized.startResolution?.gate?.id} vs ${directRoute.startResolution?.gate?.id}`,
     );
-    assert.equal(finalized.startResolution?.gate?.id, finalized.selectedOutsideCandidateId, `${scenario.label}: outside and internal legs must agree on the same gate`);
+    assert.equal(finalized.startResolution?.gate?.id, finalized.outsideRoute?.gateId, `${scenario.label}: outside and internal legs must agree on the same gate`);
   }
 
   console.log('Initial routing and rerouting selected the same gate as calculateRoute in both scenarios.');

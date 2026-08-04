@@ -42,6 +42,7 @@ function assertNormalizedRoute(
   candidateSet: OutsideRouteCandidateSet,
   route: NormalizedOutsideRoute,
 ): void {
+  if (!route.candidateId.trim()) throw new Error('Route candidate identity is invalid.');
   if (route.requestId !== request.token.requestId || route.requestVersion !== request.token.requestVersion) {
     throw new Error('Route request identity does not match request.');
   }
@@ -79,6 +80,7 @@ export function assertCompleteCandidateSet(
 
   const requestedGateIds = new Set(request.gates.map((gate) => gate.gateId));
   const outcomeGateIds = new Set<string>();
+  const candidateIds = new Set<string>();
   for (const outcome of candidateSet.outcomes) {
     if (!requestedGateIds.has(outcome.gateId)) throw new Error(`Unexpected gate outcome: ${outcome.gateId}`);
     if (outcomeGateIds.has(outcome.gateId)) throw new Error(`Duplicate gate outcome: ${outcome.gateId}`);
@@ -86,6 +88,8 @@ export function assertCompleteCandidateSet(
     if (outcome.status === 'routed') {
       if (outcome.routes.length === 0) throw new Error(`Routed gate ${outcome.gateId} has no routes.`);
       for (const route of outcome.routes) {
+        if (candidateIds.has(route.candidateId)) throw new Error(`Duplicate route candidate: ${route.candidateId}`);
+        candidateIds.add(route.candidateId);
         if (route.gateId !== outcome.gateId) throw new Error('Route gate does not match outcome gate.');
         assertNormalizedRoute(request, candidateSet, route);
       }

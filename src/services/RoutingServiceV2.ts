@@ -22,6 +22,10 @@ import {
   RouteSegment,
   V2RoutePreview,
 } from '../models/types';
+import type {
+  NormalizedOutsideCandidate,
+  OutsideRouteCandidateSet,
+} from '../models/outsideRouting';
 import { EntryGateRoutingService, RouteStartResolutionV2 } from './EntryGateRoutingService';
 import { AStarNeighbor, reconstructAStarPath, runAStar } from '../utils/AStar';
 import { MapFeatureFlagsService } from './MapFeatureFlagsService';
@@ -190,7 +194,7 @@ export interface PrepareOutsideRoutingPlanInput {
  * (the same one the beeline path already uses), not a re-derivation of
  * provider-specific turn narration.
  */
-export interface NormalizedOutsideCandidate {
+export interface OfflineOsmOutsideCandidate {
   candidateId: string;
   outsideDistanceM: number;
   outsideCoordinates?: AppCoordinate[];
@@ -198,11 +202,9 @@ export interface NormalizedOutsideCandidate {
   sanityCapExceeded?: boolean;
 }
 
-export type NormalizedOutsideCandidateSet = NormalizedOutsideCandidate[];
-
 export interface FinalizeOutsideRoutingPlanInput {
   plan: CoreOutsideRoutingPlan;
-  outsideCandidates: NormalizedOutsideCandidateSet;
+  outsideCandidates: OutsideRouteCandidateSet;
   walkingSpeedMs: number;
 }
 
@@ -967,23 +969,31 @@ export class RoutingServiceV2 {
     const planByCandidateId = new Map(plan.candidates.map((candidate) => [candidate.candidateId, candidate]));
 
     let winner: { planCandidate: CoreOutsideCandidateGate; outside: NormalizedOutsideCandidate; totalCostM: number } | undefined;
-    for (const outside of outsideCandidates) {
-      const planCandidate = planByCandidateId.get(outside.candidateId);
-      if (!planCandidate) continue; // unknown/stale candidate id — reject safely, don't throw
-      if (!Number.isFinite(outside.outsideDistanceM) || outside.outsideDistanceM < 0) continue; // incomplete/invalid — reject safely
+    for (const outcome of outsideCandidates.outcomes) {
+      if (outcome.status !== 'routed') continue;
+      const planCandidate = planByCandidateId.get(outcome.gateId);
+      if (!planCandidate) continue;
+      for (const outside of outcome.routes) {
+        if (outside.gateId !== planCandidate.gateId) continue;
+        if (!Number.isFinite(outside.distanceM) || outside.distanceM < 0) continue;
 
-      const gate = getGate(planCandidate.gateId);
-      if (!gate) continue;
+        const gate = getGate(planCandidate.gateId);
+        if (!gate) continue;
 
-      const totalCostM =
-        outside.outsideDistanceM +
-        planCandidate.connectorCostM +
-        planCandidate.penaltyM +
-        planCandidate.internalCostM +
-        gate.number * TIE_BREAK_EPSILON_M;
+        const totalCostM =
+          outside.distanceM +
+          planCandidate.connectorCostM +
+          planCandidate.penaltyM +
+          planCandidate.internalCostM +
+          gate.number * TIE_BREAK_EPSILON_M;
 
-      if (!winner || totalCostM < winner.totalCostM) {
-        winner = { planCandidate, outside, totalCostM };
+        if (
+          !winner ||
+          totalCostM < winner.totalCostM ||
+          (totalCostM === winner.totalCostM && outside.candidateId.localeCompare(winner.outside.candidateId) < 0)
+        ) {
+          winner = { planCandidate, outside, totalCostM };
+        }
       }
     }
     if (!winner) return null;
@@ -1007,10 +1017,10 @@ export class RoutingServiceV2 {
       startLabel: gate.name.en,
       startResolution,
       startCoordinate: plan.userCoordinate,
-      startConnectorDistanceM: Math.round(winner.outside.outsideDistanceM + winner.planCandidate.connectorCostM),
-      routeCostM: winner.outside.outsideDistanceM + winner.planCandidate.connectorCostM + winner.planCandidate.penaltyM + internalPath.costM,
-      outsideLegCoordinates: winner.outside.outsideCoordinates?.map(appToV2Coordinate),
-      outsideLegSanityCapExceeded: winner.outside.sanityCapExceeded ?? false,
+      startConnectorDistanceM: Math.round(winner.outside.distanceM + winner.planCandidate.connectorCostM),
+      routeCostM: winner.outside.distanceM + winner.planCandidate.connectorCostM + winner.planCandidate.penaltyM + internalPath.costM,
+      outsideLegCoordinates: winner.outside.coordinates.map(appToV2Coordinate),
+      outsideLegSanityCapExceeded: winner.outside.warnings.some((warning) => warning.code === 'distance-sanity-cap-exceeded'),
     };
 
     const { path } = selected;
@@ -1038,7 +1048,8 @@ export class RoutingServiceV2 {
       startConnectorDistanceM: selected.startConnectorDistanceM,
       outsideLegCoordinateCount,
       outsideLegSanityCapExceeded: selected.outsideLegSanityCapExceeded ?? false,
-      selectedOutsideCandidateId: winner.planCandidate.candidateId,
+      selectedOutsideCandidateId: winner.outside.candidateId,
+      outsideRoute: winner.outside,
     };
   }
 
@@ -1063,7 +1074,7 @@ export class RoutingServiceV2 {
    * a second time as `connectorCostM` — is what keeps this path from
    * double-counting it.
    */
-  static resolveOfflineOsmOutsideCandidate(userCoordinate: AppCoordinate, gateId: string): NormalizedOutsideCandidate | null {
+  static resolveOfflineOsmOutsideCandidate(userCoordinate: AppCoordinate, gateId: string): OfflineOsmOutsideCandidate | null {
     const gate = getGate(gateId);
     if (!gate || !gate.coordinate) return null;
 

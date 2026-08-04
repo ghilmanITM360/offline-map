@@ -73,7 +73,8 @@ export interface SafeOutsideRouteFailure {
   retryAfterSeconds?: number;
 }
 
-export interface NormalizedOutsideRoute {
+/** Canonical provider-neutral outside-route candidate shared by providers, core, viewmodels, and UI. */
+export interface NormalizedOutsideCandidate {
   schemaVersion: 1;
   candidateId: string;
   requestId: string;
@@ -91,11 +92,14 @@ export interface NormalizedOutsideRoute {
   fallbackHistory: readonly SafeOutsideRouteFailure[];
 }
 
+/** @deprecated Use `NormalizedOutsideCandidate`; retained temporarily for source compatibility. */
+export type NormalizedOutsideRoute = NormalizedOutsideCandidate;
+
 export type GateRouteOutcome =
   | {
       status: 'routed';
       gateId: string;
-      routes: readonly NormalizedOutsideRoute[];
+      routes: readonly NormalizedOutsideCandidate[];
     }
   | {
       status: 'unreachable';
