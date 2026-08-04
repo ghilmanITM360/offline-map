@@ -77,9 +77,12 @@ export function NavigationChromeV2({ overlay, hasGoogleMapsKey }: { overlay: Nav
   const currentStep = instructions[currentStepIndex];
   const nextStep = instructions[currentStepIndex + 1];
   const outsideRoute = route.outsideRoute;
-  const directOutsideActive = Boolean(
-    outsideRoute?.provider === 'direct-guide' &&
+  const outsidePhaseActive = Boolean(
+    outsideRoute &&
     (currentStep?.routeIndex ?? 0) < (route.outsideLegCoordinateCount ?? 0),
+  );
+  const directOutsideActive = Boolean(
+    outsidePhaseActive && outsideRoute?.provider === 'direct-guide',
   );
   const directGateLabel = outsideRoute?.gateId.replace('GATE_', 'Gate ') ?? 'selected gate';
   const arrivalTime = new Date(Date.now() + Math.max(etaMinutes, 0) * 60_000).toLocaleTimeString([], {
@@ -101,7 +104,7 @@ export function NavigationChromeV2({ overlay, hasGoogleMapsKey }: { overlay: Nav
           <Text style={styles.v2EntryGateText}>Route starts from {route.origin.label}.</Text>
         </View>
       )}
-      {directOutsideActive && outsideRoute && (
+      {outsidePhaseActive && outsideRoute && (
         <OutsideRouteStatusCard
           route={outsideRoute}
           gateLabel={directGateLabel}

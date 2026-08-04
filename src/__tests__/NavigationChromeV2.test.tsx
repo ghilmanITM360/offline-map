@@ -64,6 +64,39 @@ function baseOverlay(overrides: Partial<NavigationOverlayV2> = {}): NavigationOv
 }
 
 describe('NavigationChromeV2 — direct outside guide', () => {
+  test('shows accurate road provider identity while outside leg is active', async () => {
+    const offlineRoute: V2ActiveRoute = {
+      ...route,
+      outsideLegCoordinateCount: 1,
+      outsideRoute: {
+        schemaVersion: 1,
+        candidateId: 'nav-offline-1',
+        requestId: 'nav-offline',
+        requestVersion: 1,
+        provider: 'offline-osm',
+        gateId: 'GATE_05',
+        distanceM: 120,
+        durationSeconds: null,
+        coordinates: route.coordinates,
+        steps: [],
+        roadFollowing: true,
+        distanceKind: 'walking-route',
+        warnings: [],
+        fallbackReason: 'proxy-unconfigured',
+        fallbackHistory: [{ provider: 'google', code: 'proxy-unconfigured', retryable: true }],
+      },
+      metadata: { ...route.metadata, startedOutside: true, entryGateId: 'GATE_05', usesOfficialGateEntry: true },
+    };
+
+    await render(<NavigationChromeV2
+      overlay={baseOverlay({ route: offlineRoute, instructions: offlineRoute.instructions })}
+      hasGoogleMapsKey
+    />);
+
+    expect(screen.getByText('Offline walking route')).toBeOnTheScreen();
+    expect(screen.getByText('Google walking route unavailable. Using offline walking roads.')).toBeOnTheScreen();
+  });
+
   test('shows direct-guide warning and suppresses road instruction fields', async () => {
     const directRoute: V2ActiveRoute = {
       ...route,
