@@ -21,6 +21,7 @@ export interface GoogleRoutesProxyClientOptions {
 }
 
 const DEFAULT_TIMEOUT_MS = 4_000;
+const MAX_TIMEOUT_MS = 120_000;
 const MANEUVERS = new Set<OutsideWalkingManeuver>([
   'depart',
   'continue',
@@ -167,7 +168,11 @@ export class GoogleRoutesProxyClient {
   constructor(options: GoogleRoutesProxyClientOptions = {}) {
     this.baseUrl = safeBaseUrl(options.baseUrl);
     this.fetchImpl = options.fetchImpl ?? fetch;
-    this.timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+    const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+    if (!Number.isFinite(timeoutMs) || timeoutMs <= 0 || timeoutMs > MAX_TIMEOUT_MS) {
+      throw new RangeError(`Google proxy timeout must be between 1 and ${MAX_TIMEOUT_MS} milliseconds.`);
+    }
+    this.timeoutMs = timeoutMs;
   }
 
   async computeRoutes(request: OutsideWalkingRouteRequest): Promise<OutsideProviderAttempt> {
@@ -211,6 +216,7 @@ export class GoogleRoutesProxyClient {
       if (!response.ok) {
         if (response.status === 429) return failure('rate-limited', true);
         if (response.status >= 500) return failure('provider-server-error', true);
+        if (response.status === 401 || response.status === 403) return failure('proxy-unavailable', true);
         if (response.status >= 400) return failure('invalid-request', false);
         return failure('proxy-unavailable', true);
       }

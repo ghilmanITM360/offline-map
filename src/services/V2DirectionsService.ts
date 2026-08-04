@@ -6,9 +6,9 @@
 import { NavigationInstruction, Place } from '../models/types';
 import type {
   OutsideGateRouteTarget,
+  OutsideRouteCandidateSource,
   OutsideRouteCandidateSet,
   OutsideRouteRequestToken,
-  OutsideWalkingRouteProvider,
 } from '../models/outsideRouting';
 import { MapFeatureFlagsService } from './MapFeatureFlagsService';
 import { assertCompleteCandidateSet } from './outsideRouting/OutsideRouteValidation';
@@ -53,14 +53,17 @@ export interface HybridCoreOutsideRoutingAdapter {
     plan: HybridCoreOutsideRoutingPlan;
     outsideCandidates: OutsideRouteCandidateSet;
     walkingSpeedMs?: number;
-  }): RoutePreviewV2 | null;
+  }): {
+    route: RoutePreviewV2;
+    selectedOutsideCandidateId: string;
+  } | null;
 }
 
 export interface V2HybridDirectionsPreviewInput {
   request: V2DirectionsPreviewRequest;
   token: OutsideRouteRequestToken;
   signal: AbortSignal;
-  outsideProvider: OutsideWalkingRouteProvider;
+  outsideProvider: OutsideRouteCandidateSource;
   core: HybridCoreOutsideRoutingAdapter;
 }
 
@@ -167,13 +170,13 @@ export class V2DirectionsService {
       return { status: 'unavailable', route: null, instructions: [], message: 'Outside route request was cancelled.' };
     }
 
-    const route = input.core.finalizeOutsideRoutingPlan({
+    const finalized = input.core.finalizeOutsideRoutingPlan({
       plan,
       outsideCandidates: attempt.candidateSet,
       walkingSpeedMs: request.walkingSpeedMs,
     });
-    const selectedGateId = route?.startResolution?.gate?.id;
-    if (!route || !selectedGateId) {
+    const selectedGateId = finalized?.route.startResolution?.gate?.id;
+    if (!finalized || !selectedGateId) {
       return {
         status: 'unavailable',
         route: null,
@@ -184,7 +187,9 @@ export class V2DirectionsService {
     const selectedOutcome = attempt.candidateSet.outcomes.find(
       (outcome) => outcome.gateId === selectedGateId && outcome.status === 'routed',
     );
-    const selectedOutsideRoute = selectedOutcome?.status === 'routed' ? selectedOutcome.routes[0] : undefined;
+    const selectedOutsideRoute = selectedOutcome?.status === 'routed'
+      ? selectedOutcome.routes.find((candidate) => candidate.candidateId === finalized.selectedOutsideCandidateId)
+      : undefined;
     if (!selectedOutsideRoute) {
       return {
         status: 'unavailable',
@@ -193,7 +198,7 @@ export class V2DirectionsService {
         message: 'Core-selected gate has no matching outside provider route.',
       };
     }
-    const hybridRoute: RoutePreviewV2 = { ...route, outsideRoute: selectedOutsideRoute };
+    const hybridRoute: RoutePreviewV2 = { ...finalized.route, outsideRoute: selectedOutsideRoute };
     return {
       status: 'ready',
       route: hybridRoute,

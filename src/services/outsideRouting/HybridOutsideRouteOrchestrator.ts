@@ -2,6 +2,7 @@ import type {
   NormalizedOutsideRoute,
   OutsideProviderAttempt,
   OutsideRouteCandidateSet,
+  OutsideRouteCandidateSource,
   OutsideWalkingRouteProvider,
   OutsideWalkingRouteRequest,
   SafeOutsideRouteFailure,
@@ -35,8 +36,7 @@ function withFallbackHistory(
   };
 }
 
-export class HybridOutsideRouteOrchestrator implements OutsideWalkingRouteProvider {
-  readonly id = 'google' as const;
+export class HybridOutsideRouteOrchestrator implements OutsideRouteCandidateSource {
   private readonly providers: readonly OutsideWalkingRouteProvider[];
 
   constructor(providers: HybridOutsideRouteOrchestratorProviders) {
@@ -53,6 +53,9 @@ export class HybridOutsideRouteOrchestrator implements OutsideWalkingRouteProvid
         return { status: 'failure', failure: { provider: provider.id, code: 'cancelled', retryable: false } };
       }
       const attempt = await provider.routeToGates(request);
+      if (request.signal.aborted) {
+        return { status: 'failure', failure: { provider: provider.id, code: 'cancelled', retryable: false } };
+      }
       if (attempt.status === 'failure') {
         if (attempt.failure.code === 'cancelled') return attempt;
         history.push(attempt.failure);

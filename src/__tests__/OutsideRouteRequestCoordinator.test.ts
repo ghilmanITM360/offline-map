@@ -16,15 +16,18 @@ describe('OutsideRouteRequestCoordinator', () => {
     expect(second.token).toEqual({ requestId: 'request-b', requestVersion: 2 });
   });
 
-  test('repeated active request key coalesces instead of creating uncontrolled work', () => {
-    const idFactory = jest.fn(() => 'request-one');
+  test('repeated active request key supersedes prior work with a new identity', () => {
+    const ids = ['request-one', 'request-two'];
+    const idFactory = jest.fn(() => ids.shift() ?? 'extra');
     const coordinator = new OutsideRouteRequestCoordinator({ requestIdFactory: idFactory });
     const first = coordinator.begin('same-input');
     const second = coordinator.begin('same-input');
 
-    expect(second).toBe(first);
-    expect(idFactory).toHaveBeenCalledTimes(1);
-    expect(first.signal.aborted).toBe(false);
+    expect(second).not.toBe(first);
+    expect(idFactory).toHaveBeenCalledTimes(2);
+    expect(first.signal.aborted).toBe(true);
+    expect(second.signal.aborted).toBe(false);
+    expect(second.token.requestVersion).toBe(2);
   });
 
   test('cancel and finish prevent later state commits', () => {

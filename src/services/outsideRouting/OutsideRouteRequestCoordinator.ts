@@ -29,7 +29,6 @@ export class OutsideRouteRequestCoordinator {
   }
 
   begin(requestKey: string): OutsideRouteRequestHandle {
-    if (this.active?.key === requestKey && !this.active.controller.signal.aborted) return this.active.handle;
     this.cancelCurrent();
     this.requestVersion += 1;
     const controller = new AbortController();

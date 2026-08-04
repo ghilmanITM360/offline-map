@@ -203,4 +203,43 @@ describe('hybrid outside route providers', () => {
     });
     expect(osm.calls).toBe(0);
   });
+
+  test('abort during a provider attempt cannot commit its later success', async () => {
+    const controller = new AbortController();
+    const google: OutsideWalkingRouteProvider = {
+      id: 'google',
+      routeToGates: jest.fn(async () => {
+        controller.abort();
+        return completeAttempt('google');
+      }),
+    };
+    const osm = new FakeProvider('offline-osm', completeAttempt('offline-osm'));
+    const orchestrator = new HybridOutsideRouteOrchestrator({
+      google,
+      osm,
+      direct: new DirectDirectionGuideProvider(),
+    });
+
+    expect(orchestrator).not.toHaveProperty('id');
+    await expect(orchestrator.routeToGates({ ...request, signal: controller.signal })).resolves.toEqual({
+      status: 'failure',
+      failure: { provider: 'google', code: 'cancelled', retryable: false },
+    });
+    expect(osm.calls).toBe(0);
+  });
+
+  test('bounded OSM attempt times out so direct fallback can continue', async () => {
+    jest.useFakeTimers();
+    const osm = new OfflineOsmWalkingRouteProvider({
+      timeoutMs: 50,
+      resolveGateRoute: jest.fn(() => new Promise(() => undefined)),
+    });
+    const resultPromise = osm.routeToGates(request);
+    await jest.advanceTimersByTimeAsync(50);
+    await expect(resultPromise).resolves.toEqual({
+      status: 'failure',
+      failure: { provider: 'offline-osm', code: 'timed-out', retryable: true },
+    });
+    jest.useRealTimers();
+  });
 });

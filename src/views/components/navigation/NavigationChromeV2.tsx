@@ -184,9 +184,11 @@ export function NavigationChromeV2({ overlay, hasGoogleMapsKey }: { overlay: Nav
         >
           <View style={styles.tripInfo}>
             <View style={styles.tripTextWrap}>
-              <Text style={styles.timeRemaining}>{etaMinutes} min</Text>
+              {!directOutsideActive && <Text style={styles.timeRemaining}>{etaMinutes} min</Text>}
               <Text style={styles.distanceRemaining}>
-                {InstructionService.formatDistance(remainingDistance, settings.distanceUnit)} · ETA {arrivalTime}
+                {directOutsideActive
+                  ? InstructionService.formatDistance(remainingDistance, settings.distanceUnit)
+                  : `${InstructionService.formatDistance(remainingDistance, settings.distanceUnit)} · ETA ${arrivalTime}`}
               </Text>
               <Text style={styles.destName} numberOfLines={1}>{route.destination.label}</Text>
             </View>

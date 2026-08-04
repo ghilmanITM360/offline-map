@@ -292,7 +292,7 @@ function RoutePreviewSection({
   const routeDistance = route ? InstructionService.formatDistance(route.totalDistance, distanceUnit) : null;
   const routeEta = route ? InstructionService.formatDuration(route.estimatedTimeMin) : null;
   const routeStatusMessage = outsideStart
-    ? "You are outside Ijtema. We'll enter through nearest official gate."
+    ? "You are outside Ijtema. We'll enter through best eligible official gate."
     : startSource === 'remembered_location' && rememberedLocationAvailable
     ? `Using last known location ${rememberedLocationAgeLabel}.`
     : startSource === 'manual_place' && manualStart
@@ -445,7 +445,7 @@ function RoutePreviewSection({
                   active={startSource === 'live_gps'}
                   icon={<LocateFixed size={18} color={startSource === 'live_gps' ? staticColors.white : staticColors.info} />}
                   title="Use my current location"
-                  subtitle="Find nearest official gate automatically"
+                  subtitle="Find best eligible official gate automatically"
                   onPress={() => {
                     void chooseCurrentLocation().then((ok) => {
                       if (ok) setShowStartOptions(false);
@@ -463,7 +463,7 @@ function RoutePreviewSection({
                       ? 'No saved location yet'
                       : rememberedLocationInsideVenue
                       ? `We will start from nearest path (${rememberedLocationAgeLabel})`
-                      : `We'll enter through nearest official gate (${rememberedLocationAgeLabel})`
+                      : `We'll enter through best eligible official gate (${rememberedLocationAgeLabel})`
                   }
                   onPress={() => {
                     if (chooseRememberedLocation()) setShowStartOptions(false);
@@ -550,11 +550,11 @@ function RoutePreviewSection({
               </Text>
               <Text style={styles.statusText}>
                 {outsideStart
-                  ? "You are outside Ijtema. Route will enter through nearest connected official gate."
+                  ? "You are outside Ijtema. Route will enter through best eligible official gate."
                   : routeStatusMessage}
               </Text>
               {startSource === 'live_gps' && currentRouteOriginInsideVenue === false && (
-                <Text style={styles.statusHint}>We will snap to nearest connected gate first, then continue inside venue.</Text>
+                <Text style={styles.statusHint}>We will route to selected official gate first, then continue inside venue.</Text>
               )}
             </Card>
           )}
@@ -563,7 +563,7 @@ function RoutePreviewSection({
             <Card variant="info">
               <View style={styles.statusRow}>
                 <RefreshCw size={18} color={staticColors.info} />
-                <Text style={styles.statusTitle}>Finding best offline route...</Text>
+                <Text style={styles.statusTitle}>Finding route...</Text>
               </View>
               <Text style={styles.statusText}>{routeStatusMessage}</Text>
             </Card>

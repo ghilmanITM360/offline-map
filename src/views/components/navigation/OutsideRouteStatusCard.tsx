@@ -30,9 +30,6 @@ export function OutsideRouteStatusCard({
   return (
     <View
       style={[styles.container, directGuide && styles.directContainer]}
-      accessible={directGuide}
-      accessibilityRole={directGuide ? 'alert' : undefined}
-      accessibilityLiveRegion={directGuide ? 'polite' : undefined}
     >
       <View style={styles.titleRow}>
         {directGuide
@@ -53,7 +50,13 @@ export function OutsideRouteStatusCard({
 
       {directGuide && (
         <>
-          <Text style={styles.warningEnglish}>{outsideRouteMessage('direct.warning')}</Text>
+          <Text
+            style={styles.warningEnglish}
+            accessibilityRole="alert"
+            accessibilityLiveRegion="polite"
+          >
+            {outsideRouteMessage('direct.warning')}
+          </Text>
           <Text style={styles.warningUrdu}>{outsideRouteMessage('direct.warning', 'ur')}</Text>
           <Text style={styles.gateText}>Selected gate: {gateLabel}</Text>
           {retrying && <Text style={styles.retryingText}>{outsideRouteMessage('retrying')}</Text>}

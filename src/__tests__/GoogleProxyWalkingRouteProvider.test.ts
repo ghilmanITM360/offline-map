@@ -106,6 +106,8 @@ describe('GoogleProxyWalkingRouteProvider', () => {
   test.each([
     [429, 'rate-limited', true],
     [500, 'provider-server-error', true],
+    [401, 'proxy-unavailable', true],
+    [403, 'proxy-unavailable', true],
     [400, 'invalid-request', false],
   ] as const)('maps HTTP %s to safe failure %s', async (status, code, retryable) => {
     const provider = new GoogleProxyWalkingRouteProvider({
@@ -117,6 +119,16 @@ describe('GoogleProxyWalkingRouteProvider', () => {
       failure: { provider: 'google', code, retryable },
     });
   });
+
+  test.each([0, -1, Number.POSITIVE_INFINITY, 120_001])(
+    'rejects unsafe timeout %s',
+    (timeoutMs) => {
+      expect(() => new GoogleProxyWalkingRouteProvider({
+        baseUrl: 'https://routing.example.test',
+        timeoutMs,
+      })).toThrow('timeout');
+    },
+  );
 
   test('maps malformed successful response without leaking raw data', async () => {
     const provider = new GoogleProxyWalkingRouteProvider({

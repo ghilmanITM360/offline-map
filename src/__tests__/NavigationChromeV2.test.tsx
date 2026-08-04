@@ -106,6 +106,8 @@ describe('NavigationChromeV2 — direct outside guide', () => {
     expect(screen.getByText('Follow the direction line toward Gate 05.')).toBeOnTheScreen();
     expect(screen.queryByText('Imaginary Road')).not.toBeOnTheScreen();
     expect(screen.queryByText('Turn right on Imaginary Road')).not.toBeOnTheScreen();
+    expect(screen.queryByText('5 min')).not.toBeOnTheScreen();
+    expect(screen.queryByText(/ETA/)).not.toBeOnTheScreen();
   });
 });
 

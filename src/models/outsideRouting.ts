@@ -118,3 +118,8 @@ export interface OutsideWalkingRouteProvider {
   readonly id: OutsideRouteProviderId;
   routeToGates(request: OutsideWalkingRouteRequest): Promise<OutsideProviderAttempt>;
 }
+
+/** Provider-neutral candidate source, including ordered fallback orchestration. */
+export interface OutsideRouteCandidateSource {
+  routeToGates(request: OutsideWalkingRouteRequest): Promise<OutsideProviderAttempt>;
+}

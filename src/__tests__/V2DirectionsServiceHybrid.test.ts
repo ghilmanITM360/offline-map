@@ -43,6 +43,12 @@ function outsideRoute(gateId: string): NormalizedOutsideRoute {
   };
 }
 
+const selectedGate08Route = {
+  ...outsideRoute('GATE_08'),
+  candidateId: 'hybrid-directions:google:GATE_08:selected',
+  distanceM: 225,
+};
+
 const candidateSet: OutsideRouteCandidateSet = {
   requestId: 'hybrid-directions',
   requestVersion: 1,
@@ -50,7 +56,9 @@ const candidateSet: OutsideRouteCandidateSet = {
   outcomes: ['GATE_05', 'GATE_08'].map((gateId) => ({
     status: 'routed' as const,
     gateId,
-    routes: [outsideRoute(gateId)],
+    routes: gateId === 'GATE_08'
+      ? [outsideRoute(gateId), selectedGate08Route]
+      : [outsideRoute(gateId)],
   })),
 };
 
@@ -61,6 +69,8 @@ describe('V2DirectionsService hybrid core seam', () => {
       routeToGates: jest.fn(async () => ({ status: 'success', candidateSet })),
     };
     const finalizeOutsideRoutingPlan = jest.fn(() => ({
+      selectedOutsideCandidateId: selectedGate08Route.candidateId,
+      route: {
       id: 'core-selected-route',
       sourceVersion: 'v2' as const,
       coordinates: [
@@ -80,6 +90,7 @@ describe('V2DirectionsService hybrid core seam', () => {
         coordinate: { latitude: 24.961, longitude: 67.011 },
         candidateNodes: ['GATE_08'],
         gate: { id: 'GATE_08' },
+      },
       },
     }));
     const core: HybridCoreOutsideRoutingAdapter = {
@@ -121,7 +132,8 @@ describe('V2DirectionsService hybrid core seam', () => {
     }));
     expect(result.route?.startResolution?.gate?.id).toBe('GATE_08');
     expect(result.route?.outsideRoute?.gateId).toBe('GATE_08');
-    expect(result.route?.outsideRoute?.distanceM).toBe(200);
+    expect(result.route?.outsideRoute?.candidateId).toBe(selectedGate08Route.candidateId);
+    expect(result.route?.outsideRoute?.distanceM).toBe(225);
     expect(candidateSet).not.toHaveProperty('selectedGate');
   });
 
@@ -148,6 +160,8 @@ describe('V2DirectionsService hybrid core seam', () => {
         ],
       })),
       finalizeOutsideRoutingPlan: jest.fn(() => ({
+        selectedOutsideCandidateId: 'missing-candidate',
+        route: {
         id: 'bad-core-route',
         sourceVersion: 'v2',
         coordinates: [],
@@ -164,6 +178,7 @@ describe('V2DirectionsService hybrid core seam', () => {
           coordinate: { latitude: 24.961, longitude: 67.011 },
           candidateNodes: ['GATE_22'],
           gate: { id: 'GATE_22' },
+        },
         },
       })),
     };

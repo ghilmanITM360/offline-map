@@ -33,14 +33,42 @@ export type OfflineOsmGateRouteResolver = (
 
 export interface OfflineOsmWalkingRouteProviderOptions {
   resolveGateRoute: OfflineOsmGateRouteResolver;
+  timeoutMs?: number;
 }
+
+const DEFAULT_OSM_TIMEOUT_MS = 4_000;
+const MAX_OSM_TIMEOUT_MS = 120_000;
+const TIMED_OUT = Symbol('offline-osm-timeout');
 
 export class OfflineOsmWalkingRouteProvider implements OutsideWalkingRouteProvider {
   readonly id = 'offline-osm' as const;
   private readonly resolveGateRoute: OfflineOsmGateRouteResolver;
+  private readonly timeoutMs: number;
 
   constructor(options: OfflineOsmWalkingRouteProviderOptions) {
     this.resolveGateRoute = options.resolveGateRoute;
+    const timeoutMs = options.timeoutMs ?? DEFAULT_OSM_TIMEOUT_MS;
+    if (!Number.isFinite(timeoutMs) || timeoutMs <= 0 || timeoutMs > MAX_OSM_TIMEOUT_MS) {
+      throw new RangeError(`Offline OSM timeout must be between 1 and ${MAX_OSM_TIMEOUT_MS} milliseconds.`);
+    }
+    this.timeoutMs = timeoutMs;
+  }
+
+  private async resolveWithTimeout(
+    request: OutsideWalkingRouteRequest,
+    gate: OutsideWalkingRouteRequest['gates'][number],
+  ): Promise<OfflineOsmGateRouteResult | typeof TIMED_OUT> {
+    let timeout: ReturnType<typeof setTimeout> | undefined;
+    try {
+      return await Promise.race([
+        Promise.resolve(this.resolveGateRoute(request, gate)),
+        new Promise<typeof TIMED_OUT>((resolve) => {
+          timeout = setTimeout(() => resolve(TIMED_OUT), this.timeoutMs);
+        }),
+      ]);
+    } finally {
+      if (timeout) clearTimeout(timeout);
+    }
   }
 
   async routeToGates(request: OutsideWalkingRouteRequest): Promise<OutsideProviderAttempt> {
@@ -56,9 +84,12 @@ export class OfflineOsmWalkingRouteProvider implements OutsideWalkingRouteProvid
         if (request.signal.aborted) {
           return { status: 'failure', failure: { provider: this.id, code: 'cancelled', retryable: false } };
         }
-        const result = await this.resolveGateRoute(request, gate);
+        const result = await this.resolveWithTimeout(request, gate);
         if (request.signal.aborted) {
           return { status: 'failure', failure: { provider: this.id, code: 'cancelled', retryable: false } };
+        }
+        if (result === TIMED_OUT) {
+          return { status: 'failure', failure: { provider: this.id, code: 'timed-out', retryable: true } };
         }
         if (result.status === 'failure') {
           return { status: 'failure', failure: { provider: this.id, code: result.reason, retryable: result.retryable } };
