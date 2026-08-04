@@ -113,9 +113,9 @@ function composeOutsideInstructions(
 
 export class V2DirectionsService {
   /**
-   * Additive async seam for hybrid outside providers. Core supplies approved gates and
+   * Production async seam for hybrid outside providers. Core supplies approved gates and
    * remains sole complete-journey selector; provider layer supplies per-gate outside routes.
-   * Existing synchronous preview stays unchanged until Claude-owned core exposes this seam.
+   * Inside-only routing keeps the existing synchronous preview path.
    */
   static async calculateHybridPreview(input: V2HybridDirectionsPreviewInput): Promise<V2DirectionsPreviewResult> {
     const { request } = input;

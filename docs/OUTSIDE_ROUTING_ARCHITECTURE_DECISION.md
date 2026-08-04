@@ -8,6 +8,13 @@
 > the actual destination-blind gate-selection bug fixed in
 > `docs/CORE_ROUTING_DECISION.md`. See that document for the current
 > selection algorithm.
+>
+> **Hybrid provider policy supersedes this document's offline-only provider
+> recommendation.** Current order is configured secure Google walking proxy,
+> bundled offline OSM, then explicitly labelled direct guide. Offline OSM
+> remains required fallback. See
+> `docs/HYBRID_PROVIDER_CORE_INTEGRATION.md` and
+> `docs/GOOGLE_ROUTES_PROXY_CONTRACT.md`.
 
 Status: **Analysis only. No code changed.**
 

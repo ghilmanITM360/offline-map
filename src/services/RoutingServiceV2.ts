@@ -69,10 +69,9 @@ export interface RoutePreviewV2 extends V2RoutePreview {
   outsideLegCoordinateCount?: number;
   outsideLegSanityCapExceeded?: boolean;
   /**
-   * Set only by `finalizeOutsideRoutingPlan` — echoes back the winning
-   * `CoreOutsideCandidateGate.candidateId` (== the selected gate's id) so a
-   * caller that supplied multiple provider candidates can verify exactly
-   * which one core selected, without re-deriving it from `startResolution`.
+   * Set only by `finalizeOutsideRoutingPlan` — echoes the exact winning provider
+   * route candidate identity so callers can attach its geometry and metadata
+   * without re-deriving an alternative from `startResolution` or gate id alone.
    */
   selectedOutsideCandidateId?: string;
 }
@@ -120,8 +119,8 @@ interface SelectedRoutePath {
 // Phase 1 (`prepareOutsideRoutingPlan`): core resolves destination + gate
 // eligibility and returns one candidate per eligible, internally-reachable
 // gate, each carrying the exact coordinate a provider should route to and
-// the core-owned cost components for that gate. The provider layer computes
-// only `outsideDistanceM` (and optionally geometry) per candidate — it must
+// the core-owned cost components for that gate. Provider layer computes
+// only `NormalizedOutsideCandidate.distanceM` plus outside route metadata — it must
 // never add connector/penalty/internal cost itself, and must never pick a
 // winner.
 //
@@ -151,7 +150,7 @@ interface SelectedRoutePath {
  * silently included at cost 0).
  */
 export interface CoreOutsideCandidateGate {
-  /** Stable identity for this candidate — equal to `gateId`. Echo it back in `NormalizedOutsideCandidate.candidateId`. */
+  /** Stable core-plan identity for this gate — equal to `gateId`; distinct from provider route-alternative IDs. */
   candidateId: string;
   gateId: string;
   gateLabel: string;
@@ -185,14 +184,9 @@ export interface PrepareOutsideRoutingPlanInput {
 }
 
 /**
- * What the provider layer supplies back per candidate. `outsideDistanceM`
- * must be the provider's route distance to `providerRouteTargetCoordinate`
- * only — it must NOT include connector, penalty, or internal cost (those are
- * added by `finalizeOutsideRoutingPlan`, not the provider). `outsideCoordinates`,
- * when supplied, is used only for polyline rendering — turn-by-turn text for
- * this leg is a generic "Walk N meters to enter through Gate X" instruction
- * (the same one the beeline path already uses), not a re-derivation of
- * provider-specific turn narration.
+ * Internal raw result from bundled per-gate OSM resolution. Production adapter
+ * normalizes this into `NormalizedOutsideCandidate`, including provider route
+ * identity and generated walking steps, before core finalization.
  */
 export interface OfflineOsmOutsideCandidate {
   candidateId: string;
@@ -958,11 +952,10 @@ export class RoutingServiceV2 {
    * tie-break, never surfaced as user-visible distance), and rebuilds the
    * matching internal route for the winning gate so the outside and inside
    * legs of the returned preview can never disagree about which gate they
-   * belong to. Unknown candidate ids and non-finite/negative distances are
-   * dropped rather than throwing, so a stale or partially-failed provider
-   * response degrades to "fewer candidates considered" instead of a crash;
-   * an empty or fully-invalid `outsideCandidates` set returns null so the
-   * caller can retain its last valid route.
+   * belong to. Unknown gates, gate-mismatched routes, and non-finite/negative
+   * distances are ignored; an empty or fully-invalid set returns null so the
+   * caller can retain its last valid route. Production callers validate request
+   * identity and complete per-gate outcomes before invoking this method.
    */
   static finalizeOutsideRoutingPlan(input: FinalizeOutsideRoutingPlanInput): RoutePreviewV2 | null {
     const { plan, outsideCandidates } = input;
@@ -1060,7 +1053,7 @@ export class RoutingServiceV2 {
    * Narrow per-gate offline OSM candidate resolver — produces a
    * `NormalizedOutsideCandidate` for exactly one gate using the bundled
    * street graph, in the same shape a provider (e.g. Google) would supply.
-   * Lets a caller build an offline-fallback `NormalizedOutsideCandidateSet`
+   * Lets a caller build an offline-fallback `OutsideRouteCandidateSet`
    * for `finalizeOutsideRoutingPlan` by calling this once per
    * `plan.candidates` entry — reusing the same finalize() combination logic
    * regardless of whether distances came from a network provider or from

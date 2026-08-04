@@ -269,20 +269,32 @@ connected — the same "unresolved" case `EntryGateRoutingService` already
 returns for the default flow, here as a clean `null` instead of a rich
 error object, so the caller's own UI layer decides how to present it).
 
-**Phase 2 — `RoutingServiceV2.finalizeOutsideRoutingPlan(input: { plan: CoreOutsideRoutingPlan; outsideCandidates: NormalizedOutsideCandidateSet; walkingSpeedMs: number }): RoutePreviewV2 | null`**
+**Phase 2 — `RoutingServiceV2.finalizeOutsideRoutingPlan(input: { plan: CoreOutsideRoutingPlan; outsideCandidates: OutsideRouteCandidateSet; walkingSpeedMs: number }): RoutePreviewV2 | null`**
 
 ```ts
 interface NormalizedOutsideCandidate {
-  candidateId: string;
-  outsideDistanceM: number;          // provider distance to providerRouteTargetCoordinate ONLY
-  outsideCoordinates?: AppCoordinate[]; // for polyline rendering only
-  sanityCapExceeded?: boolean;        // optional, provider-detectable
+  candidateId: string;               // exact provider-route alternative identity
+  gateId: string;
+  provider: 'google' | 'offline-osm' | 'direct-guide';
+  requestId: string;
+  requestVersion: number;
+  distanceM: number;                 // provider distance to providerRouteTargetCoordinate ONLY
+  coordinates: AppCoordinate[];
+  // duration, normalized steps, warnings, roadFollowing, fallback metadata
 }
-type NormalizedOutsideCandidateSet = NormalizedOutsideCandidate[];
+interface OutsideRouteCandidateSet {
+  requestId: string;
+  requestVersion: number;
+  provider: NormalizedOutsideCandidate['provider'];
+  outcomes: Array<
+    | { status: 'routed'; gateId: string; routes: NormalizedOutsideCandidate[] }
+    | { status: 'unreachable'; gateId: string; reason: 'no-route' }
+  >;
+}
 ```
 
-For each supplied candidate, combines `outsideDistanceM` with its plan
-candidate's `connectorCostM + penaltyM + internalCostM`, plus the same
+For each routed provider alternative, combines `distanceM` with its plan
+gate's `connectorCostM + penaltyM + internalCostM`, plus the same
 `gate.number * 1e-6` tie-break epsilon used elsewhere (never reported —
 `routeCostM`/`totalDistance` are `Math.round`ed, and the epsilon's
 maximum magnitude, ~2.2e-5m for gate 22, can never change a rounded
@@ -290,15 +302,16 @@ integer-meter result). Picks the argmin, rebuilds the matching internal
 route for that exact gate via `findBestPath` (so the outside and internal
 legs can never disagree about which gate they belong to), and returns a
 normal `RoutePreviewV2` — the same shape `calculateRoute` returns, with one
-addition: `selectedOutsideCandidateId` echoes the winning `candidateId`, so
-a caller that supplied multiple candidates can verify exactly which one
-core selected without re-deriving it from `startResolution`. The provider
+addition: `selectedOutsideCandidateId` echoes exact winning provider-route
+`candidateId`, so a caller that supplied multiple alternatives for one gate
+can attach exact geometry without re-deriving it from `startResolution`. The provider
 layer never picks the winner — it supplies distances, core picks.
 
-Unknown `candidateId`s and non-finite/negative `outsideDistanceM`s are
-dropped, not thrown on; an empty or fully-invalid `outsideCandidates` set
-returns `null`, so a caller can retain its last valid route on a failed or
-partial provider response rather than crash.
+Production orchestration validates request identity and requires one routed
+or unreachable outcome for every planned gate before finalization. Core
+ignores unknown gates, gate-mismatched routes, and non-finite/negative
+distances; an empty or fully-invalid set returns `null`, so caller retains
+last valid route rather than crashing.
 
 **Cost boundary (no double counting)**:
 
@@ -318,12 +331,12 @@ offset to back it would violate "do not invent graph connectivity." A
 future provider integration that needs to route to a different point than
 the gate's own coordinate is exactly what this field exists for.
 
-**Narrow per-gate offline OSM candidate resolver — `RoutingServiceV2.resolveOfflineOsmOutsideCandidate(userCoordinate: AppCoordinate, gateId: string): NormalizedOutsideCandidate | null`**
+**Narrow per-gate offline OSM candidate resolver — `RoutingServiceV2.resolveOfflineOsmOutsideCandidate(userCoordinate: AppCoordinate, gateId: string): OfflineOsmOutsideCandidate | null`**
 
-Produces a `NormalizedOutsideCandidate` for exactly one gate using the
-bundled street graph, in the exact shape a provider would supply — lets a
-caller build an offline-fallback `NormalizedOutsideCandidateSet` (one call
-per `plan.candidates` entry) and run it through the *same*
+Produces raw route data for exactly one gate using bundled street graph.
+Production OSM adapter normalizes each result into a
+`NormalizedOutsideCandidate`, builds an `OutsideRouteCandidateSet` (one call
+per `plan.candidates` entry), and runs it through the *same*
 `finalizeOutsideRoutingPlan`, regardless of whether distances came from a
 network provider or this offline graph. Returns `null` outside the bundled
 graph's 3km radius or when the gate has no street connector — never throws.
@@ -442,22 +455,20 @@ for the itemized list.
   cost-minimization objective; this document is now the reference for how
   the winning gate among eligible candidates is actually chosen.
 
-## Cross-track interfaces needed from Codex
+## Combined integration status
 
-- `.env.example` still documents `EXPO_PUBLIC_USE_IJTEMA_OUTSIDE_STREET_GRAPH=false`.
-  The source-code fallback is now `true`. Recommend updating the example
-  file's default to `true` (or adding a comment noting the source default)
-  as part of Codex's consolidated provider-configuration work, to avoid a
-  new local `.env` silently disagreeing with production behavior.
-- For the provider integration: call `RoutingServiceV2.prepareOutsideRoutingPlan`
-  once per routing/reroute request, compute `outsideDistanceM` per candidate
+- `.env.example` and source fallback both enable outside street routing.
+- Provider integration calls `RoutingServiceV2.prepareOutsideRoutingPlan`
+  once per routing/reroute request, computes normalized `distanceM` per candidate
   from your provider (never add connector/penalty/internal cost, never pick
   a winner), and call `RoutingServiceV2.finalizeOutsideRoutingPlan` with the
   results — see "Core/provider outside-routing contract" above for the exact
   signatures. Use `RoutingServiceV2.resolveOfflineOsmOutsideCandidate` for an
   offline fallback through the same `finalizeOutsideRoutingPlan` call. Use
-  `getRoutableOfficialGates()` for manual-gate-selection UI options.
-- No other cross-track interface changes were needed. This work stayed
+  `getRoutableOfficialGates()` for manual-gate-selection UI options. Exact
+  normalized contract and request lifecycle are documented in
+  `docs/HYBRID_PROVIDER_CORE_INTEGRATION.md`.
+- Core implementation stayed
   entirely inside `src/data/ijtema/gates.ts`, `src/data/ijtema/dataIssues.ts`,
   `src/data/ijtema/streetGraph.ts` (generated), `src/services/RoutingServiceV2.ts`,
   `src/services/OutsideStreetRoutingService.ts`,

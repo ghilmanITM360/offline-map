@@ -96,17 +96,19 @@ Urdu:
 
 Direct guide exposes retry and manual-gate actions. Road-following outside polylines are solid; direct guide is dashed. Direct outside phase suppresses fake road names and turn instructions. Internal instructions resume after gate.
 
-## Required Core Seam
+## Implemented Core Seam
 
-Claude-owned core must add two narrow APIs during integration:
+Combined integration uses two narrow core APIs:
 
 ```ts
 prepareOutsideRoutingPlan(input): CoreOutsideRoutingPlan | null
 finalizeOutsideRoutingPlan({ plan, outsideCandidates, walkingSpeedMs }): RoutePreviewV2 | null
 ```
 
-Plan exposes approved gate IDs and provider route targets, while retaining internal paths, penalties, connector costs, and eligibility inside core. OSM track must expose per-gate paths or a callback with equivalent semantics. Codex adapter does not call current one-winner OSM function as a competing gate selector.
+Plan exposes approved gate IDs and provider route targets, while retaining internal paths, penalties, connector costs, and eligibility inside core. Production OSM adaptation calls `resolveOfflineOsmOutsideCandidate(userCoordinate, gateId)` once per approved gate. No provider or adapter invokes one-winner gate selection.
+
+`NormalizedOutsideCandidate` in `src/models/outsideRouting.ts` is canonical across providers, core, viewmodels, and UI. `selectedOutsideCandidateId` identifies exact winning route alternative; `V2DirectionsService` rejects missing, gate-mismatched, or stale selected candidates.
 
 ## Verification Boundary
 
-This track can prove types, validation, client normalization, fallback orchestration, cancellation, stale-response rejection, direct-guide semantics, component rendering, and config safety. It cannot prove deployed Google API behavior, proxy security controls, native rendering, device accessibility, or complete-journey integration until backend and core seams exist.
+Automated tests prove types, validation, client normalization, fallback orchestration, cancellation, stale-response rejection, direct-guide semantics, component rendering, config safety, and core/provider complete-journey integration. They do not prove deployed Google API behavior, proxy security controls, native rendering, or physical-device accessibility.
