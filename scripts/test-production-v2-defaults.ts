@@ -16,8 +16,8 @@ assert.equal(MapFeatureFlagsService.useIjtemaV2Routing(), true, 'v2 routing must
 assert.equal(MapFeatureFlagsService.useIjtemaV2Navigation(), true, 'v2 navigation must be the production default when env is unset');
 assert.equal(
   MapFeatureFlagsService.useOutsideStreetGraph(),
-  false,
-  'Outside street graph must default OFF when env is unset — Phase 1 build, not yet a supported production path',
+  true,
+  'Outside street graph must default ON when env is unset — approved product policy',
 );
 
 const block42 = SearchService.search('Block 42')[0];
@@ -55,11 +55,11 @@ assert.equal(MapFeatureFlagsService.useIjtemaV2Map(), false, 'Explicit false mus
 assert.equal(MapFeatureFlagsService.useIjtemaV2Routing(), false, 'Explicit false must remain an emergency rollback for v2 routing');
 assert.equal(MapFeatureFlagsService.useIjtemaV2Navigation(), false, 'Explicit false must remain an emergency rollback for v2 navigation');
 
-process.env.EXPO_PUBLIC_USE_IJTEMA_OUTSIDE_STREET_GRAPH = 'true';
+process.env.EXPO_PUBLIC_USE_IJTEMA_OUTSIDE_STREET_GRAPH = 'false';
 assert.equal(
   MapFeatureFlagsService.useOutsideStreetGraph(),
-  true,
-  'Outside street graph must turn on when explicitly enabled',
+  false,
+  'Explicit false must remain an emergency rollback for outside street graph routing',
 );
 delete process.env.EXPO_PUBLIC_USE_IJTEMA_OUTSIDE_STREET_GRAPH;
 
@@ -68,16 +68,19 @@ const envExample = readFileSync('.env.example', 'utf8');
 const homeViewModelSource = readFileSync('src/viewmodels/HomeViewModel.ts', 'utf8');
 assert(featureFlagSource.includes('defaultValue = true'), 'Feature flags must document true production defaults in code');
 assert(
-  featureFlagSource.includes("readFlag(process.env.EXPO_PUBLIC_USE_IJTEMA_OUTSIDE_STREET_GRAPH, false)"),
-  'Outside street graph flag must be explicit about defaulting to false (not yet a supported production path)',
+  featureFlagSource.includes("readFlag(process.env.EXPO_PUBLIC_USE_IJTEMA_OUTSIDE_STREET_GRAPH, true)"),
+  'Outside street graph flag must be explicit about defaulting to true — approved product policy',
 );
 assert(envExample.includes('EXPO_PUBLIC_USE_IJTEMA_V2_MAP=true'), '.env.example must document v2 map as production default');
 assert(envExample.includes('EXPO_PUBLIC_USE_IJTEMA_V2_ROUTING=true'), '.env.example must document v2 routing as production default');
 assert(envExample.includes('EXPO_PUBLIC_USE_IJTEMA_V2_NAVIGATION=true'), '.env.example must document v2 navigation as production default');
-assert(
-  envExample.includes('EXPO_PUBLIC_USE_IJTEMA_OUTSIDE_STREET_GRAPH=false'),
-  '.env.example must document outside street graph as off by default',
-);
+// NOTE: .env.example itself is intentionally NOT asserted against here.
+// .env.example is owned by a separate integration track (consolidated
+// provider configuration) and is not edited by this change — it may still
+// document EXPO_PUBLIC_USE_IJTEMA_OUTSIDE_STREET_GRAPH=false as a template
+// default even though the source-code fallback (above) is now true when the
+// var is absent entirely. See the core-routing decision doc for this
+// cross-track note.
 assert(homeViewModelSource.includes('EntryGateRoutingService'), 'Home production venue status/recenter must use v2 geometry helpers');
 assert(homeViewModelSource.includes('MapFeatureFlagsService.useIjtemaV2Map()'), 'Home must select v2 helpers by production map flag');
 

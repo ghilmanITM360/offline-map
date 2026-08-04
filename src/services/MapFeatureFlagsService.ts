@@ -28,6 +28,6 @@ export class MapFeatureFlagsService {
   }
 
   static useOutsideStreetGraph(): boolean {
-    return readFlag(process.env.EXPO_PUBLIC_USE_IJTEMA_OUTSIDE_STREET_GRAPH, false);
+    return readFlag(process.env.EXPO_PUBLIC_USE_IJTEMA_OUTSIDE_STREET_GRAPH, true);
   }
 }

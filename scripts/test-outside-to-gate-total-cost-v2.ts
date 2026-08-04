@@ -6,6 +6,12 @@ import { RoutingServiceV2 } from '../src/services/RoutingServiceV2';
 
 process.env.EXPO_PUBLIC_USE_IJTEMA_V2_MAP = 'true';
 process.env.EXPO_PUBLIC_USE_IJTEMA_V2_ROUTING = 'true';
+// Pinned to beeline mode: this test specifically checks that the approach
+// distance is the straight-line distance to the gate (a beeline-geometry
+// invariant). Under street-graph mode the approach follows real roads and is
+// legitimately longer — see test-outside-street-routing-v2.ts for street-mode
+// approach-distance coverage.
+process.env.EXPO_PUBLIC_USE_IJTEMA_OUTSIDE_STREET_GRAPH = 'false';
 
 const start = { latitude: 24.9682, longitude: 67.0087 };
 const gate15 = IJTEMA_GATES.find((gate) => gate.id === 'GATE_15');

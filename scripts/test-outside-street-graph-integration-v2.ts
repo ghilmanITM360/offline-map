@@ -7,14 +7,18 @@ import { V2MapRenderingService } from '../src/services/V2MapRenderingService';
 // MapFeatureFlagsService.readFlag() re-reads process.env on every call (no
 // caching), so toggling the env var between calls below is enough — no
 // module-cache-busting needed.
-delete process.env.EXPO_PUBLIC_USE_IJTEMA_OUTSIDE_STREET_GRAPH;
+//
+// EXPO_PUBLIC_USE_IJTEMA_OUTSIDE_STREET_GRAPH now defaults to true when
+// unset (approved product policy) — explicitly set 'false' below to test the
+// off/rollback state, don't rely on delete-means-off anymore.
+process.env.EXPO_PUBLIC_USE_IJTEMA_OUTSIDE_STREET_GRAPH = 'false';
 
 // Probe point: near GATE_05, well inside the bundled street-graph radius.
 const gate05 = IJTEMA_GATES.find((gate) => gate.id === 'GATE_05')!;
 assert.ok(gate05.coordinate);
 const probe = { latitude: gate05.coordinate!.lat + 0.0015, longitude: gate05.coordinate!.lng + 0.0015 };
 
-// ─── Flag OFF (default): must stay a plain 2-point beeline outside leg, matching pre-street-graph behavior ──
+// ─── Flag explicitly OFF (rollback): must stay a plain 2-point beeline outside leg, matching pre-street-graph behavior ──
 {
   const route = RoutingServiceV2.calculateRoute({
     start: { type: 'outside_coordinate', coordinate: probe },
@@ -27,7 +31,22 @@ const probe = { latitude: gate05.coordinate!.lat + 0.0015, longitude: gate05.coo
   // legs") — it is still a real, renderable outside leg, just a straight one.
   assert.equal(route!.outsideLegCoordinateCount ?? 0, 1, 'flag off must still mark a 1-point (beeline) outside leg for the two-color split');
   assert.equal(route!.outsideLegSanityCapExceeded, false);
-  console.log(`Flag OFF: outsideLegCoordinateCount=${route!.outsideLegCoordinateCount ?? 0}, startLabel=${route!.startLabel}, totalDistance=${route!.totalDistance}m`);
+  console.log(`Flag explicitly OFF: outsideLegCoordinateCount=${route!.outsideLegCoordinateCount ?? 0}, startLabel=${route!.startLabel}, totalDistance=${route!.totalDistance}m`);
+}
+
+// ─── Flag unset (default): must behave like flag ON — road-following outside leg ──
+{
+  delete process.env.EXPO_PUBLIC_USE_IJTEMA_OUTSIDE_STREET_GRAPH;
+  const route = RoutingServiceV2.calculateRoute({
+    start: { type: 'outside_coordinate', coordinate: probe },
+    destination: { type: 'block', blockId: 'B2' },
+  });
+  assert.ok(route, 'expected a route with the flag unset');
+  assert.ok(
+    (route!.outsideLegCoordinateCount ?? 0) > 1,
+    `flag unset must default to street-graph routing (>1-point outside leg), got ${route!.outsideLegCoordinateCount}`,
+  );
+  console.log(`Flag unset (default): outsideLegCoordinateCount=${route!.outsideLegCoordinateCount ?? 0}, startLabel=${route!.startLabel}, totalDistance=${route!.totalDistance}m`);
 }
 
 // ─── Flag ON: must produce a road-following outside leg with more than the bare 2 endpoints ──

@@ -48,8 +48,12 @@ for (const check of checks) {
   assert(route.instructions.length > 0, `${check.label} should have friendly instructions`);
   assert(route.destinationEntryNodeId?.startsWith(`${check.destination.type === 'block' ? check.destination.blockId : ''}_C`) || check.destination.type !== 'block', `${check.label} should resolve block destination to an entry node`);
 
-  // For outside_coordinate starts, the first coordinate is the raw GPS which may be outside venue bounds — skip it
-  const coordStartIndex = check.start.type === 'outside_coordinate' ? 1 : 0;
+  // For outside_coordinate starts, the leading outsideLegCoordinateCount
+  // entries are the outside (pre-gate) leg and may legitimately fall outside
+  // venue bounds — a raw GPS point in beeline mode (count 1), or a full
+  // street-following polyline in street-graph mode (count > 1). Skip exactly
+  // that many, not a hardcoded 0/1.
+  const coordStartIndex = route.outsideLegCoordinateCount ?? 0;
   route.coordinates.slice(coordStartIndex).forEach((coordinate, index) => {
     assert(coordinate.latitude >= IJTEMA_MAP_BOUNDS.minLat && coordinate.latitude <= IJTEMA_MAP_BOUNDS.maxLat, `${check.label} coord ${index + coordStartIndex} latitude outside bounds`);
     assert(coordinate.longitude >= IJTEMA_MAP_BOUNDS.minLng && coordinate.longitude <= IJTEMA_MAP_BOUNDS.maxLng, `${check.label} coord ${index + coordStartIndex} longitude outside bounds`);

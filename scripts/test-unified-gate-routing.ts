@@ -3,6 +3,18 @@ import { EntryGateRoutingService } from '../src/services/EntryGateRoutingService
 import { RoutingServiceV2 } from '../src/services/RoutingServiceV2';
 import { IJTEMA_GATES } from '../src/data/ijtema';
 
+// Pinned to beeline mode: this is specifically a beeline-era regression test
+// (the exact expected gate, GATE_16, was computed under straight-line
+// distances). Real street-graph distances legitimately differ per gate, so
+// the complete-journey-cost argmin can differ between beeline and street
+// mode for the same point+destination without that being a bug — see
+// test-route-selection-total-cost-v2.ts / test-outside-street-gate-selection-cost-v2.ts
+// for street-mode destination-aware-selection coverage. The invariant this
+// file actually protects (recommendOutsideEntryGate == calculateRoute's
+// chosen gate) holds by construction regardless of mode, since both call the
+// same selectOutsidePath internally.
+process.env.EXPO_PUBLIC_USE_IJTEMA_OUTSIDE_STREET_GRAPH = 'false';
+
 // Phase 4 (unify Gate 08/14/15/16 routing): the Home outside-venue banner
 // picked the nearest gate by straight-line distance only, ignoring any
 // destination already selected in the place-detail sheet. Actual routing
