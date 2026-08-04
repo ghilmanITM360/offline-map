@@ -1,5 +1,6 @@
 import type { Place } from '../models/types';
 import { useAppStore } from '../store/useAppStore';
+import { V2DirectionsService } from '../services/V2DirectionsService';
 import { useDirectionsViewModel } from '../viewmodels/DirectionsViewModel';
 import { act, renderHook, waitFor } from './test-utils';
 
@@ -45,5 +46,19 @@ describe('DirectionsViewModel hybrid outside routing', () => {
     expect(hook.result.current.manualGateId).toBe('GATE_12');
     expect(hook.result.current.route?.outsideRoute?.gateId).toBe('GATE_12');
     expect(hook.result.current.route?.selectedOutsideCandidateId).toContain(':GATE_12:');
+  });
+
+  test('retains ready preview when replacement provider orchestration throws', async () => {
+    const hook = await renderHook(() => useDirectionsViewModel(destination));
+    await waitFor(() => expect(hook.result.current.loadState).toBe('ready'), { timeout: 5_000 });
+    const routeBeforeRetry = hook.result.current.route;
+    const previewSpy = jest.spyOn(V2DirectionsService, 'calculateHybridPreview').mockRejectedValueOnce(new Error('provider exploded'));
+
+    await act(() => hook.result.current.retryOutsideRoute());
+
+    expect(hook.result.current.route).toBe(routeBeforeRetry);
+    expect(hook.result.current.loadState).toBe('ready');
+    expect(hook.result.current.routeRefreshing).toBe(false);
+    previewSpy.mockRestore();
   });
 });

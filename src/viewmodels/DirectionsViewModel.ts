@@ -11,7 +11,7 @@ import { InstructionService, Instruction } from '../services/InstructionService'
 import { Place, RouteAlternative, RoutePreview } from '../models/types';
 import { LocationAccessService } from '../services/LocationAccessService';
 import { MapFeatureFlagsService } from '../services/MapFeatureFlagsService';
-import { V2DirectionsService } from '../services/V2DirectionsService';
+import { V2DirectionsService, type V2DirectionsPreviewResult } from '../services/V2DirectionsService';
 import { V2NavigationAdapter } from '../services/V2NavigationAdapter';
 import { EntryGateRoutingService } from '../services/EntryGateRoutingService';
 import { RoutePointService } from '../services/RoutePointService';
@@ -170,14 +170,24 @@ export function useDirectionsViewModel(destination: Place | null) {
         ? outsideRequestCoordinatorRef.current.begin(`${destination.id}:${startSource}:${manualGateId ?? 'automatic'}`)
         : null;
       if (!forceOutside) outsideRequestCoordinatorRef.current.cancelCurrent();
-      const preview = requestHandle
-        ? await V2DirectionsService.calculateHybridPreview({
-            request: previewRequest,
-            token: requestHandle.token,
-            signal: requestHandle.signal,
-            outsideProvider: productionOutsideRouteSource,
-          })
-        : V2DirectionsService.calculatePreview(previewRequest);
+      let preview: V2DirectionsPreviewResult;
+      try {
+        preview = requestHandle
+          ? await V2DirectionsService.calculateHybridPreview({
+              request: previewRequest,
+              token: requestHandle.token,
+              signal: requestHandle.signal,
+              outsideProvider: productionOutsideRouteSource,
+            })
+          : V2DirectionsService.calculatePreview(previewRequest);
+      } catch {
+        preview = {
+          status: 'unavailable',
+          route: null,
+          instructions: [],
+          message: 'Outside routing is temporarily unavailable.',
+        };
+      }
       if (requestHandle && !requestHandle.canCommit()) return;
 
       if (preview.status === 'disabled' || !MapFeatureFlagsService.useIjtemaV2Routing()) {
