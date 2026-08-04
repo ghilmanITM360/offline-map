@@ -102,4 +102,34 @@ describe('outside routing contract validation', () => {
       { ...candidateSet([direct]), provider: 'direct-guide' },
     )).toThrow('roadFollowing');
   });
+
+  test('rejects geometry that starts away from request origin or ends at another gate target', () => {
+    expect(() => assertCompleteCandidateSet(request, candidateSet([route({
+      coordinates: [
+        { latitude: 24.97, longitude: 67.02 },
+        request.gates[0].routeTargetCoordinate,
+      ],
+    })]))).toThrow(/origin/i);
+
+    const nearbyOtherGate = {
+      gateId: 'GATE_12',
+      gateCoordinate: { latitude: 24.9611, longitude: 67.0111 },
+      routeTargetCoordinate: { latitude: 24.9611, longitude: 67.0111 },
+    };
+    const multiGateRequest = { ...request, gates: [...request.gates, nearbyOtherGate] };
+    const swappedSet: OutsideRouteCandidateSet = {
+      requestId: request.token.requestId,
+      requestVersion: request.token.requestVersion,
+      provider: 'google',
+      outcomes: [
+        {
+          status: 'routed',
+          gateId: 'GATE_05',
+          routes: [route({ coordinates: [request.origin, nearbyOtherGate.routeTargetCoordinate] })],
+        },
+        { status: 'unreachable', gateId: 'GATE_12', reason: 'no-route' },
+      ],
+    };
+    expect(() => assertCompleteCandidateSet(multiGateRequest, swappedSet)).toThrow(/another gate target/i);
+  });
 });

@@ -28,6 +28,8 @@ const request: OutsideWalkingRouteRequest = {
 };
 
 function normalized(provider: Exclude<OutsideRouteProviderId, 'direct-guide'>, gateId: string): NormalizedOutsideCandidate {
+  const gateTarget = request.gates.find((gate) => gate.gateId === gateId)?.routeTargetCoordinate;
+  if (!gateTarget) throw new Error(`Missing test gate target: ${gateId}`);
   return {
     schemaVersion: 1,
     candidateId: `hybrid-1:${provider}:${gateId}:0`,
@@ -37,7 +39,7 @@ function normalized(provider: Exclude<OutsideRouteProviderId, 'direct-guide'>, g
     gateId,
     distanceM: 210,
     durationSeconds: 160,
-    coordinates: [request.origin, { latitude: 24.9605, longitude: 67.0105 }, request.gates[0].routeTargetCoordinate],
+    coordinates: [request.origin, { latitude: 24.9605, longitude: 67.0105 }, gateTarget],
     steps: [{
       id: 'osm-step-1',
       maneuver: 'turn-right',

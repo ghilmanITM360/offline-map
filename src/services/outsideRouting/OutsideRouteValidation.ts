@@ -6,6 +6,23 @@ import type {
 } from '../../models/outsideRouting';
 
 const OFFICIAL_GATE_ID = /^GATE_\d{2}$/;
+// Providers may snap walking geometry to a nearby public path, but geometry
+// farther than this cannot safely prove origin/gate identity on mobile.
+const MAX_ROUTE_ENDPOINT_OFFSET_M = 100;
+const GATE_IDENTITY_MARGIN_M = 2;
+
+function distanceMeters(from: Coordinate, to: Coordinate): number {
+  const radians = (degrees: number) => (degrees * Math.PI) / 180;
+  const earthRadiusM = 6_371_000;
+  const deltaLat = radians(to.latitude - from.latitude);
+  const deltaLng = radians(to.longitude - from.longitude);
+  const fromLat = radians(from.latitude);
+  const toLat = radians(to.latitude);
+  const a =
+    Math.sin(deltaLat / 2) ** 2 +
+    Math.cos(fromLat) * Math.cos(toLat) * Math.sin(deltaLng / 2) ** 2;
+  return earthRadiusM * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
 
 function assertCoordinate(coordinate: Coordinate, label: string): void {
   if (
@@ -53,6 +70,22 @@ function assertNormalizedRoute(
   }
   if (route.coordinates.length < 2) throw new Error('Route geometry requires at least two coordinates.');
   route.coordinates.forEach((coordinate, index) => assertCoordinate(coordinate, `route coordinate ${index}`));
+  const routeStart = route.coordinates[0];
+  const routeEnd = route.coordinates[route.coordinates.length - 1];
+  if (distanceMeters(routeStart, request.origin) > MAX_ROUTE_ENDPOINT_OFFSET_M) {
+    throw new Error('Route geometry origin does not match request origin.');
+  }
+  const declaredGate = request.gates.find((gate) => gate.gateId === route.gateId);
+  if (!declaredGate) throw new Error('Route gate has no matching request target.');
+  const declaredGateOffsetM = distanceMeters(routeEnd, declaredGate.routeTargetCoordinate);
+  if (declaredGateOffsetM > MAX_ROUTE_ENDPOINT_OFFSET_M) {
+    throw new Error('Route geometry endpoint does not match gate target.');
+  }
+  const closerOtherGate = request.gates.some((gate) =>
+    gate.gateId !== route.gateId &&
+    distanceMeters(routeEnd, gate.routeTargetCoordinate) + GATE_IDENTITY_MARGIN_M < declaredGateOffsetM,
+  );
+  if (closerOtherGate) throw new Error('Route geometry endpoint matches another gate target.');
 
   if (route.provider === 'direct-guide') {
     if (route.roadFollowing) throw new Error('Direct guide must set roadFollowing=false.');
