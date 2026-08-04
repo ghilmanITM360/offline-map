@@ -24,11 +24,11 @@ export const DATA_ISSUES: DataIssue[] = [
   },
   {
     id: 'GATE_13_14_NEAR_DUPLICATE',
-    severity: 'warning',
+    severity: 'info',
     category: 'near_duplicate',
     affectedIds: ['GATE_13', 'GATE_14'],
-    summary: 'Gate 13 and Gate 14 coordinates are nearly identical in the supplied dataset.',
-    resolution: 'Kept both user-intended gates as routable official gates and marked both source coordinates as needs_verification.',
+    summary: 'Gate 13 and Gate 14 coordinates were nearly identical in the originally supplied dataset.',
+    resolution: 'Project owner supplied verified, distinct coordinates for both gates; both are now routable official gates with no verification penalty.',
   },
   {
     id: 'POLYGON_CORNER_ORDER_NORMALIZED',

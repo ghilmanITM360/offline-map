@@ -1,6 +1,8 @@
 import { readFileSync } from 'node:fs';
+import { IJTEMA_GATES } from '../src/data/ijtema/gates';
 import { V2MapRenderingService, HIGH_ZOOM } from '../src/services/V2MapRenderingService';
 import { V2PlaceAdapter } from '../src/services/V2PlaceAdapter';
+import { Place } from '../src/models/types';
 
 let passed = 0;
 let failed = 0;
@@ -59,32 +61,48 @@ const degenerate = V2MapRenderingService.getNavigationCorridorLayers(
 );
 assert(degenerate.blocks.length === 1, 'nav corridor: no-ops on a degenerate (<2 point) route instead of hiding everything');
 
-// --- PLACE_SELECTED competing-marker suppression: real data (GATE_13/GATE_14 documented near-duplicate coords) ---
+// --- PLACE_SELECTED competing-marker suppression: synthetic selection point ---
 // Zoom pinned at/above HIGH_ZOOM so the pre-existing pixel-collision path (which itself
-// skips at HIGH_ZOOM) can't be the thing suppressing GATE_14 — isolates the new option.
-const gate13Place = V2PlaceAdapter.getPlaceById('GATE_13');
-assert(!!gate13Place, 'GATE_13 resolves to a place (fixture assumption for the suppression test below)');
+// skips at HIGH_ZOOM) can't be the thing suppressing the neighbor — isolates the new option.
+//
+// Previously this used real GATE_13/GATE_14 data, which happened to be
+// ~5m apart (documented near-duplicate coordinates in the originally supplied
+// dataset). The project owner has since supplied verified, distinct
+// coordinates for both (see src/data/ijtema/gates.ts) — they are no longer
+// close enough to exercise this suppression mechanism, so the fixture below
+// uses a synthetic selection point placed deliberately near a real gate
+// (GATE_01) instead of depending on two real gates coincidentally being
+// close together.
+const anchorGate = IJTEMA_GATES.find((gate) => gate.id === 'GATE_01')!;
+assert(!!anchorGate?.coordinate, 'GATE_01 must have a coordinate for this fixture');
+const anchorPlace = V2PlaceAdapter.gateToPlace(anchorGate);
 
-if (gate13Place) {
+const SYNTHETIC_SELECTED_ID = 'SYNTHETIC_COMPETING_TEST_SELECTION';
+// ~40m north of GATE_01 — well within PLACE_SELECTED_COMPETING_RADIUS_M (70m).
+const syntheticSelectedPlace: Place = {
+  ...anchorPlace,
+  id: SYNTHETIC_SELECTED_ID,
+  coordinate: { latitude: anchorGate.coordinate!.lat + 0.00036, longitude: anchorGate.coordinate!.lng },
+};
+
+{
   const withoutSuppression = V2MapRenderingService.getHomeLayers({
-    selectedPlaceId: 'GATE_13',
-    selectedPlace: gate13Place,
+    selectedPlaceId: SYNTHETIC_SELECTED_ID,
+    selectedPlace: syntheticSelectedPlace,
     zoomLevel: HIGH_ZOOM,
   });
   const withSuppression = V2MapRenderingService.getHomeLayers({
-    selectedPlaceId: 'GATE_13',
-    selectedPlace: gate13Place,
+    selectedPlaceId: SYNTHETIC_SELECTED_ID,
+    selectedPlace: syntheticSelectedPlace,
     zoomLevel: HIGH_ZOOM,
     suppressCompetingMarkers: true,
   });
 
-  const gate14Without = withoutSuppression.visibleGateMarkers.find((g) => g.id === 'GATE_14');
-  const gate14With = withSuppression.visibleGateMarkers.find((g) => g.id === 'GATE_14');
-  const gate13With = withSuppression.visibleGateMarkers.find((g) => g.id === 'GATE_13');
+  const gate01Without = withoutSuppression.visibleGateMarkers.find((g) => g.id === 'GATE_01');
+  const gate01With = withSuppression.visibleGateMarkers.find((g) => g.id === 'GATE_01');
 
-  assert(!!gate14Without && !gate14Without.labelSuppressed, 'competing suppression off: GATE_14 label not suppressed at high zoom');
-  assert(!!gate14With && gate14With.labelSuppressed === true, 'competing suppression on: GATE_14 (near GATE_13) label suppressed to a dot');
-  assert(!!gate13With && !gate13With.labelSuppressed, 'competing suppression on: the selected gate itself is never suppressed');
+  assert(!!gate01Without && !gate01Without.labelSuppressed, 'competing suppression off: GATE_01 label not suppressed at high zoom');
+  assert(!!gate01With && gate01With.labelSuppressed === true, 'competing suppression on: GATE_01 (near the synthetic selection) label suppressed to a dot');
 }
 
 // --- wiring: HomeScreen mode-driven declutter + nav overlay corridor filter ---
