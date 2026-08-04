@@ -25,7 +25,12 @@ import {
 import { EntryGateRoutingService, RouteStartResolutionV2 } from './EntryGateRoutingService';
 import { AStarNeighbor, reconstructAStarPath, runAStar } from '../utils/AStar';
 import { MapFeatureFlagsService } from './MapFeatureFlagsService';
-import { gatePenaltyM, isWithinStreetGraphRadius, selectStreetGraphOutsidePath } from './OutsideStreetRoutingService';
+import {
+  gatePenaltyM,
+  isWithinStreetGraphRadius,
+  selectStreetGraphOutsidePath,
+  TIE_BREAK_EPSILON_M,
+} from './OutsideStreetRoutingService';
 import { generateStreetInstructions } from './StreetInstructionService';
 
 export type RoutingStartV2 =
@@ -59,6 +64,13 @@ export interface RoutePreviewV2 extends V2RoutePreview {
   /** How many leading entries of `coordinates` belong to the outside (pre-gate) leg — 0 when the leg is a plain beeline. */
   outsideLegCoordinateCount?: number;
   outsideLegSanityCapExceeded?: boolean;
+  /**
+   * Set only by `finalizeOutsideRoutingPlan` — echoes back the winning
+   * `CoreOutsideCandidateGate.candidateId` (== the selected gate's id) so a
+   * caller that supplied multiple provider candidates can verify exactly
+   * which one core selected, without re-deriving it from `startResolution`.
+   */
+  selectedOutsideCandidateId?: string;
 }
 
 interface RouteCandidateSet {
@@ -90,6 +102,110 @@ interface SelectedRoutePath {
   outsideLegTopologyNames?: Array<string | undefined>;
 }
 
+// ─── Core/provider two-phase outside-routing contract ──────────────────────
+//
+// Codex's provider track (e.g. a Google Directions integration) needs to
+// compute the *outside* leg (user -> gate) with a provider that core has no
+// business knowing about, while core keeps sole ownership of gate
+// eligibility, connector/penalty/internal cost, the complete-journey
+// comparison across candidates, manual override, and deterministic
+// tie-breaking — the same policy `calculateRoute`'s street-graph path
+// already enforces (selectOutsidePathViaStreetGraph), reused here rather
+// than duplicated so the two call paths can never disagree.
+//
+// Phase 1 (`prepareOutsideRoutingPlan`): core resolves destination + gate
+// eligibility and returns one candidate per eligible, internally-reachable
+// gate, each carrying the exact coordinate a provider should route to and
+// the core-owned cost components for that gate. The provider layer computes
+// only `outsideDistanceM` (and optionally geometry) per candidate — it must
+// never add connector/penalty/internal cost itself, and must never pick a
+// winner.
+//
+// Phase 2 (`finalizeOutsideRoutingPlan`): core combines each returned
+// candidate's provider distance with its own connector/penalty/internal
+// cost, selects the argmin (deterministic tie-break, never exposed as
+// user-visible distance), rebuilds the matching internal route for that same
+// gate, and returns a normal `RoutePreviewV2` — the same shape
+// `calculateRoute` returns, so existing downstream consumers work unchanged.
+
+/**
+ * `providerRouteTargetCoordinate` is always the gate's own literal
+ * coordinate (not a graph-discretized approach point) — any provider can
+ * route directly to an arbitrary lat/lng, so there is no snapping gap for
+ * core to bridge. `connectorCostM` is therefore correctly 0 today for every
+ * candidate; the field stays in the contract (rather than being omitted)
+ * because the cost boundary in Task 3 requires it to exist as a real,
+ * core-owned line item, not because a nonzero value is being withheld. If a
+ * future provider integration needs to route to a different point than the
+ * gate's own coordinate, this is the field that would carry the real gap —
+ * inventing a nonzero value for it today, with no surveyed offset to back
+ * it, would violate "do not invent graph connectivity."
+ *
+ * `internalCostM` is the gate's best pedestrian cost (via `findBestPath`) to
+ * the request's destination, precomputed here so a gate with no valid
+ * internal route is excluded before the provider ever sees it (never
+ * silently included at cost 0).
+ */
+export interface CoreOutsideCandidateGate {
+  /** Stable identity for this candidate — equal to `gateId`. Echo it back in `NormalizedOutsideCandidate.candidateId`. */
+  candidateId: string;
+  gateId: string;
+  gateLabel: string;
+  providerRouteTargetCoordinate: AppCoordinate;
+  connectorCostM: number;
+  penaltyM: number;
+  internalCostM: number;
+}
+
+export interface CoreOutsideRoutingPlan {
+  /** Deterministic, derived from the request inputs — stable across repeated calls with the same inputs (e.g. reroute ticks), not time-based. */
+  requestId: string;
+  userCoordinate: AppCoordinate;
+  destination: RoutingDestinationV2;
+  destinationLabel: string;
+  /** Present only when the user explicitly picked a gate — `candidates` then contains at most that one gate, so finalize can never select a different one. */
+  manualGateId?: string;
+  walkingSpeedMs: number;
+  /** Only eligible (routable, connected, outside-startable) AND internally-reachable-to-destination gates. */
+  candidates: CoreOutsideCandidateGate[];
+  /** Opaque plumbing for `finalizeOutsideRoutingPlan` to rebuild the matching internal route — treat as an internal implementation detail, not a field to interpret. */
+  destinationNodeIds: string[];
+}
+
+export interface PrepareOutsideRoutingPlanInput {
+  userCoordinate: AppCoordinate;
+  destination: RoutingDestinationV2;
+  /** Restricts `candidates` to exactly this one gate when set (manual override), same semantics as `RoutingStartV2`'s outside_coordinate.manualGateId. */
+  manualGateId?: string;
+  walkingSpeedMs?: number;
+}
+
+/**
+ * What the provider layer supplies back per candidate. `outsideDistanceM`
+ * must be the provider's route distance to `providerRouteTargetCoordinate`
+ * only — it must NOT include connector, penalty, or internal cost (those are
+ * added by `finalizeOutsideRoutingPlan`, not the provider). `outsideCoordinates`,
+ * when supplied, is used only for polyline rendering — turn-by-turn text for
+ * this leg is a generic "Walk N meters to enter through Gate X" instruction
+ * (the same one the beeline path already uses), not a re-derivation of
+ * provider-specific turn narration.
+ */
+export interface NormalizedOutsideCandidate {
+  candidateId: string;
+  outsideDistanceM: number;
+  outsideCoordinates?: AppCoordinate[];
+  /** Optional: providers that can detect an implausible route (e.g. the offline OSM resolver's distance-ratio check) may set this; omitted/false otherwise. */
+  sanityCapExceeded?: boolean;
+}
+
+export type NormalizedOutsideCandidateSet = NormalizedOutsideCandidate[];
+
+export interface FinalizeOutsideRoutingPlanInput {
+  plan: CoreOutsideRoutingPlan;
+  outsideCandidates: NormalizedOutsideCandidateSet;
+  walkingSpeedMs: number;
+}
+
 const DEFAULT_WALKING_SPEED_MS = 1.4;
 const COORDINATE_DEDUP_TOLERANCE_M = 2;
 
@@ -102,6 +218,31 @@ const appToV2Coordinate = (coordinate: AppCoordinate) => ({
   lat: coordinate.latitude,
   lng: coordinate.longitude,
 });
+
+const v2ToAppCoordinate = (coordinate: { lat: number; lng: number }): AppCoordinate => ({
+  latitude: coordinate.lat,
+  longitude: coordinate.lng,
+});
+
+const destinationRequestKey = (destination: RoutingDestinationV2): string => {
+  switch (destination.type) {
+    case 'gate':
+      return `gate:${destination.gateId}`;
+    case 'block':
+      return `block:${destination.blockId}`;
+    case 'rasta':
+      return `rasta:${destination.rastaId}`;
+    case 'special_route':
+      return `special_route:${destination.routeId}`;
+  }
+};
+
+const buildPlanRequestId = (userCoordinate: AppCoordinate, destination: RoutingDestinationV2, manualGateId?: string): string => {
+  const lat = userCoordinate.latitude.toFixed(6);
+  const lng = userCoordinate.longitude.toFixed(6);
+  const manualSuffix = manualGateId ? `_manual_${manualGateId}` : '';
+  return `plan_${lat}_${lng}_to_${destinationRequestKey(destination)}${manualSuffix}`;
+};
 
 const routeNodeTypes = new Set(['rasta_point', 'special_route_point', 'central_point', 'gate', 'block_entry']);
 
@@ -752,6 +893,191 @@ export class RoutingServiceV2 {
       // not the outside/inside split this field describes.
       outsideLegCoordinateCount: selected.startResolution?.mode === 'outside' ? outsideLegCoordinateCount : 0,
       outsideLegSanityCapExceeded: selected.outsideLegSanityCapExceeded ?? false,
+    };
+  }
+
+  /**
+   * Phase 1 of the core/provider outside-routing contract — see the block
+   * comment above `CoreOutsideCandidateGate`. Reuses the exact same gate
+   * eligibility filter (routable + coordinate + canStartRouteFromOutside +
+   * internally connected) and `findBestPath` internal-cost computation that
+   * `selectOutsidePathViaStreetGraph` uses for the default offline flow, so
+   * a provider-driven route can never apply a looser or different policy
+   * than the one already governing initial routing and rerouting.
+   */
+  static prepareOutsideRoutingPlan(input: PrepareOutsideRoutingPlanInput): CoreOutsideRoutingPlan | null {
+    const destinationCandidates = resolveDestinationCandidates(input.destination);
+    if (destinationCandidates.nodeIds.length === 0) return null;
+
+    const gatesInScope = input.manualGateId
+      ? IJTEMA_GATES.filter((gate) => gate.id === input.manualGateId)
+      : IJTEMA_GATES;
+    const eligibleGates = gatesInScope
+      .filter((gate) => gate.coordinate && gate.routingStatus === 'routable' && gate.canStartRouteFromOutside)
+      .filter((gate) => getConnectedCandidates([gate.id]).length > 0);
+    if (eligibleGates.length === 0) return null;
+
+    const candidates: CoreOutsideCandidateGate[] = [];
+    for (const gate of eligibleGates) {
+      const internalPath = findBestPath([gate.id], destinationCandidates.nodeIds);
+      if (!internalPath) continue; // no valid internal route to this destination — excluded, never included at cost 0
+
+      candidates.push({
+        candidateId: gate.id,
+        gateId: gate.id,
+        gateLabel: gate.name.en,
+        providerRouteTargetCoordinate: v2ToAppCoordinate(gate.coordinate!),
+        connectorCostM: 0,
+        penaltyM: gatePenaltyM(gate),
+        internalCostM: internalPath.costM,
+      });
+    }
+    if (candidates.length === 0) return null;
+
+    return {
+      requestId: buildPlanRequestId(input.userCoordinate, input.destination, input.manualGateId),
+      userCoordinate: input.userCoordinate,
+      destination: input.destination,
+      destinationLabel: destinationCandidates.label,
+      manualGateId: input.manualGateId,
+      walkingSpeedMs: input.walkingSpeedMs ?? DEFAULT_WALKING_SPEED_MS,
+      candidates,
+      destinationNodeIds: destinationCandidates.nodeIds,
+    };
+  }
+
+  /**
+   * Phase 2 — combines each supplied provider candidate with its
+   * corresponding plan candidate's core-owned costs (connector + penalty +
+   * internal), selects the complete-journey argmin (deterministic
+   * tie-break, never surfaced as user-visible distance), and rebuilds the
+   * matching internal route for the winning gate so the outside and inside
+   * legs of the returned preview can never disagree about which gate they
+   * belong to. Unknown candidate ids and non-finite/negative distances are
+   * dropped rather than throwing, so a stale or partially-failed provider
+   * response degrades to "fewer candidates considered" instead of a crash;
+   * an empty or fully-invalid `outsideCandidates` set returns null so the
+   * caller can retain its last valid route.
+   */
+  static finalizeOutsideRoutingPlan(input: FinalizeOutsideRoutingPlanInput): RoutePreviewV2 | null {
+    const { plan, outsideCandidates } = input;
+    const walkingSpeedMs = input.walkingSpeedMs ?? plan.walkingSpeedMs ?? DEFAULT_WALKING_SPEED_MS;
+    if (!plan || plan.candidates.length === 0) return null;
+
+    const planByCandidateId = new Map(plan.candidates.map((candidate) => [candidate.candidateId, candidate]));
+
+    let winner: { planCandidate: CoreOutsideCandidateGate; outside: NormalizedOutsideCandidate; totalCostM: number } | undefined;
+    for (const outside of outsideCandidates) {
+      const planCandidate = planByCandidateId.get(outside.candidateId);
+      if (!planCandidate) continue; // unknown/stale candidate id — reject safely, don't throw
+      if (!Number.isFinite(outside.outsideDistanceM) || outside.outsideDistanceM < 0) continue; // incomplete/invalid — reject safely
+
+      const gate = getGate(planCandidate.gateId);
+      if (!gate) continue;
+
+      const totalCostM =
+        outside.outsideDistanceM +
+        planCandidate.connectorCostM +
+        planCandidate.penaltyM +
+        planCandidate.internalCostM +
+        gate.number * TIE_BREAK_EPSILON_M;
+
+      if (!winner || totalCostM < winner.totalCostM) {
+        winner = { planCandidate, outside, totalCostM };
+      }
+    }
+    if (!winner) return null;
+
+    const gate = getGate(winner.planCandidate.gateId);
+    if (!gate) return null;
+
+    const internalPath = findBestPath([gate.id], plan.destinationNodeIds);
+    if (!internalPath) return null;
+
+    const startResolution: RouteStartResolutionV2 = {
+      mode: 'outside',
+      startType: plan.manualGateId ? 'selected_official_gate' : 'nearest_official_gate',
+      coordinate: v2ToAppCoordinate(gate.coordinate!),
+      candidateNodes: [gate.id],
+      gate,
+    };
+
+    const selected: SelectedRoutePath = {
+      path: internalPath,
+      startLabel: gate.name.en,
+      startResolution,
+      startCoordinate: plan.userCoordinate,
+      startConnectorDistanceM: Math.round(winner.outside.outsideDistanceM + winner.planCandidate.connectorCostM),
+      routeCostM: winner.outside.outsideDistanceM + winner.planCandidate.connectorCostM + winner.planCandidate.penaltyM + internalPath.costM,
+      outsideLegCoordinates: winner.outside.outsideCoordinates?.map(appToV2Coordinate),
+      outsideLegSanityCapExceeded: winner.outside.sanityCapExceeded ?? false,
+    };
+
+    const { path } = selected;
+    const { coordinates, outsideLegCoordinateCount } = pathCoordinates(path, selected.startCoordinate, selected.outsideLegCoordinates);
+    const totalDistance = Math.round(selected.startConnectorDistanceM + path.distanceM);
+    const estimatedTimeMin = Math.max(1, Math.ceil(totalDistance / walkingSpeedMs / 60));
+    const instructions = prependOutsideApproachInstruction(generateInstructions(path, plan.destinationLabel), selected);
+
+    return {
+      id: `v2_route_${path.nodes[0]}_${path.nodes[path.nodes.length - 1]}`.replace(/[^A-Za-z0-9_]+/g, '_'),
+      sourceVersion: 'v2',
+      coordinates,
+      polyline: coordinates,
+      nodes: path.nodes,
+      totalDistance,
+      totalTime: estimatedTimeMin,
+      estimatedTimeMin,
+      segments: routeSegmentsFromPath(path),
+      instructions,
+      startLabel: selected.startLabel,
+      destinationLabel: plan.destinationLabel,
+      startResolution: selected.startResolution,
+      destinationEntryNodeId: plan.destination.type === 'block' ? path.nodes[path.nodes.length - 1] : undefined,
+      routeCostM: Math.round(selected.routeCostM),
+      startConnectorDistanceM: selected.startConnectorDistanceM,
+      outsideLegCoordinateCount,
+      outsideLegSanityCapExceeded: selected.outsideLegSanityCapExceeded ?? false,
+      selectedOutsideCandidateId: winner.planCandidate.candidateId,
+    };
+  }
+
+  /**
+   * Narrow per-gate offline OSM candidate resolver — produces a
+   * `NormalizedOutsideCandidate` for exactly one gate using the bundled
+   * street graph, in the same shape a provider (e.g. Google) would supply.
+   * Lets a caller build an offline-fallback `NormalizedOutsideCandidateSet`
+   * for `finalizeOutsideRoutingPlan` by calling this once per
+   * `plan.candidates` entry — reusing the same finalize() combination logic
+   * regardless of whether distances came from a network provider or from
+   * this offline graph. Returns null outside the bundled graph's radius or
+   * when the gate has no street connector (mirrors `isWithinStreetGraphRadius`
+   * / `selectStreetGraphOutsidePath`'s own null cases — never throws).
+   *
+   * `outsideDistanceM` here is the OSM graph's full user -> gate distance
+   * (nearest street node + graph traversal + that graph's own internal
+   * node-to-gate connector). It is intentionally NOT split into a separate
+   * connector figure: `CoreOutsideCandidateGate.connectorCostM` is 0 for
+   * every candidate (see that type's doc comment), so folding the street
+   * graph's own connector into `outsideDistanceM` — rather than exposing it
+   * a second time as `connectorCostM` — is what keeps this path from
+   * double-counting it.
+   */
+  static resolveOfflineOsmOutsideCandidate(userCoordinate: AppCoordinate, gateId: string): NormalizedOutsideCandidate | null {
+    const gate = getGate(gateId);
+    if (!gate || !gate.coordinate) return null;
+
+    const v2Coordinate = appToV2Coordinate(userCoordinate);
+    if (!isWithinStreetGraphRadius(v2Coordinate)) return null;
+
+    const result = selectStreetGraphOutsidePath(v2Coordinate, [gate]);
+    if (!result) return null;
+
+    return {
+      candidateId: gate.id,
+      outsideDistanceM: result.totalDistanceM,
+      outsideCoordinates: result.coordinates.map(v2ToAppCoordinate),
+      sanityCapExceeded: result.sanityCapExceeded,
     };
   }
 }

@@ -66,8 +66,12 @@ const heuristicToNearestNode = (fromId: string, targetNodeIds: Set<string>): num
 // in real cost breaks deterministically (lowest gate number wins) instead of
 // being an unspecified artifact of heap insertion order. Small enough that
 // it can never flip a real routing decision (smallest realistic real-cost
-// gap between two distinct gates is many meters).
-const TIE_BREAK_EPSILON_M = 1e-6;
+// gap between two distinct gates is many meters). Exported so any other
+// complete-journey cost comparison (e.g. RoutingServiceV2's
+// finalizeOutsideRoutingPlan, which scores externally-supplied provider
+// distances the same way) breaks ties the same deterministic way instead of
+// defining a second, possibly-inconsistent epsilon.
+export const TIE_BREAK_EPSILON_M = 1e-6;
 
 /**
  * Single-source (user's nearest street node) multi-target (every candidate
