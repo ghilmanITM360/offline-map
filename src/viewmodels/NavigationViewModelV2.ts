@@ -225,19 +225,24 @@ export function useNavigationViewModelV2() {
       outsideHandle = outsideRequestCoordinatorRef.current.begin(
         `${destination.id}:${options.manualGateId ?? 'automatic'}`,
       );
-      const result = await V2DirectionsService.calculateHybridPreview({
-        request: {
-          startPlace: null,
-          destination,
-          currentLocation: coordinate,
-          forceOutside: true,
-          walkingSpeedMs: settings.walkingSpeed ?? 1.4,
-          manualGateId: options.manualGateId,
-        },
-        token: outsideHandle.token,
-        signal: outsideHandle.signal,
-        outsideProvider: productionOutsideRouteSource,
-      });
+      try {
+        const result = await V2DirectionsService.calculateHybridPreview({
+          request: {
+            startPlace: null,
+            destination,
+            currentLocation: coordinate,
+            forceOutside: true,
+            walkingSpeedMs: settings.walkingSpeed ?? 1.4,
+            manualGateId: options.manualGateId,
+          },
+          token: outsideHandle.token,
+          signal: outsideHandle.signal,
+          outsideProvider: productionOutsideRouteSource,
+        });
+        candidate = result.status === 'ready' ? result.route : null;
+      } catch {
+        candidate = null;
+      }
       if (
         !outsideHandle.canCommit() ||
         useAppStore.getState().activeRoute !== routeAtRequest ||
@@ -245,7 +250,6 @@ export function useNavigationViewModelV2() {
       ) {
         return;
       }
-      candidate = result.status === 'ready' ? result.route : null;
       if (
         candidate?.outsideRoute?.provider === 'direct-guide' &&
         routeAtRequest.outsideRoute?.roadFollowing &&

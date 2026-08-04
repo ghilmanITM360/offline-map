@@ -76,4 +76,17 @@ describe('NavigationViewModelV2 hybrid rerouting', () => {
     expect(hook.result.current.rerouteStatusMessage).toBe('Could not find a better route. Continuing current route.');
     previewSpy.mockRestore();
   });
+
+  test('retains current active route when provider orchestration throws unexpectedly', async () => {
+    const routeBeforeRetry = useAppStore.getState().activeRoute;
+    const previewSpy = jest.spyOn(V2DirectionsService, 'calculateHybridPreview').mockRejectedValueOnce(new Error('provider exploded'));
+    const hook = await renderHook(() => useNavigationViewModelV2());
+
+    await act(() => hook.result.current.retryOutsideRoute());
+
+    expect(useAppStore.getState().activeRoute).toBe(routeBeforeRetry);
+    expect(hook.result.current.reroutePending).toBe(false);
+    expect(hook.result.current.rerouteStatusMessage).toBe('Could not find a better route. Continuing current route.');
+    previewSpy.mockRestore();
+  });
 });
