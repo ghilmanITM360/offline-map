@@ -75,6 +75,12 @@ function baseViewModel(overrides: Record<string, unknown> = {}) {
     chooseCurrentLocation: jest.fn(async () => true),
     chooseRememberedLocation: jest.fn(() => true),
     calculateRoute: jest.fn(async () => {}),
+    retryOutsideRoute: jest.fn(async () => {}),
+    selectManualGate: jest.fn(),
+    clearManualGateSelection: jest.fn(),
+    manualGateId: null,
+    manualGateOptions: [],
+    routeRefreshing: false,
     handleStartNavigation: jest.fn(),
     showManualStartSearch: false,
     ...overrides,
@@ -343,11 +349,17 @@ describe('LocationSheet (routePreview) — change destination', () => {
 
 describe('LocationSheet (routePreview) — route ready CTA', () => {
   test('surfaces direct-guide warning and retries road routing from ready state', async () => {
-    const calculateRoute = jest.fn(async () => {});
+    const retryOutsideRoute = jest.fn(async () => {});
+    const selectManualGate = jest.fn();
     mockedUseDirectionsViewModel.mockReturnValue(
       baseViewModel({
         loadState: 'ready',
-        calculateRoute,
+        retryOutsideRoute,
+        selectManualGate,
+        manualGateOptions: [
+          { gateId: 'GATE_12', label: 'Gate 12' },
+          { gateId: 'GATE_13', label: 'Gate 13' },
+        ],
         route: {
           sourceVersion: 'v2',
           nodes: ['GATE_05', 'B2_C1'],
@@ -384,7 +396,10 @@ describe('LocationSheet (routePreview) — route ready CTA', () => {
     expect(screen.getByText('Start Direct Guide')).toBeOnTheScreen();
     expect(screen.queryByText('ETA: 4 min')).not.toBeOnTheScreen();
     await user.press(screen.getByRole('button', { name: 'Retry road route' }));
-    expect(calculateRoute).toHaveBeenCalledTimes(1);
+    expect(retryOutsideRoute).toHaveBeenCalledTimes(1);
+    await user.press(screen.getByRole('button', { name: 'Choose another gate' }));
+    await user.press(screen.getByRole('button', { name: 'Use Gate 12' }));
+    expect(selectManualGate).toHaveBeenCalledWith('GATE_12');
   });
 
   test('shows route metrics once a route is ready', async () => {

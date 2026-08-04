@@ -221,6 +221,7 @@ function RoutePreviewSection({
   // search overlay), applied to the destination side instead of the start side.
   const [showDestinationOptions, setShowDestinationOptions] = useState(false);
   const [destSearch, setDestSearch] = useState('');
+  const [showGateOptions, setShowGateOptions] = useState(false);
   // Guards Retry against a same-tick double-tap: loadState only reflects the in-flight
   // request after DirectionsViewModel's state update commits and this component
   // re-renders, so a second tap landing before that commit would otherwise still see
@@ -244,6 +245,12 @@ function RoutePreviewSection({
     chooseCurrentLocation,
     chooseRememberedLocation,
     calculateRoute,
+    retryOutsideRoute,
+    manualGateId,
+    manualGateOptions,
+    selectManualGate,
+    clearManualGateSelection,
+    routeRefreshing,
     handleStartNavigation,
     showManualStartSearch,
   } = useDirectionsViewModel(destination);
@@ -592,8 +599,37 @@ function RoutePreviewSection({
                 <OutsideRouteStatusCard
                   route={outsideRoute}
                   gateLabel={outsideRoute.gateId.replace('GATE_', 'Gate ')}
-                  onRetry={outsideRoute.provider === 'direct-guide' ? retryRoute : undefined}
+                  retrying={routeRefreshing}
+                  onRetry={outsideRoute.provider === 'direct-guide' ? () => void retryOutsideRoute() : undefined}
+                  onChooseGate={outsideRoute.provider === 'direct-guide' ? () => setShowGateOptions(true) : undefined}
                 />
+              )}
+
+              {outsideRoute?.provider === 'direct-guide' && showGateOptions && (
+                <View style={styles.gateOptions}>
+                  <Text style={styles.cardLabel}>Choose official entry gate</Text>
+                  <Button
+                    variant={manualGateId ? 'outline' : 'secondary'}
+                    label="Automatic gate"
+                    accessibilityLabel="Use automatic gate selection"
+                    onPress={() => {
+                      clearManualGateSelection();
+                      setShowGateOptions(false);
+                    }}
+                  />
+                  {manualGateOptions.map((gate) => (
+                    <Button
+                      key={gate.gateId}
+                      variant={manualGateId === gate.gateId ? 'secondary' : 'outline'}
+                      label={gate.label}
+                      accessibilityLabel={`Use ${gate.label}`}
+                      onPress={() => {
+                        selectManualGate(gate.gateId);
+                        setShowGateOptions(false);
+                      }}
+                    />
+                  ))}
+                </View>
               )}
 
               <View style={styles.metricsRow}>
@@ -1077,6 +1113,9 @@ const styles = StyleSheet.create({
     color: staticColors.iconMuted,
   },
   metricsRow: {
+    gap: 10,
+  },
+  gateOptions: {
     gap: 10,
   },
   metricPill: {
