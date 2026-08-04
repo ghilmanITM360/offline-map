@@ -17,7 +17,12 @@ import {
 import { RerouteService } from '../services/RerouteService';
 import { GPSManagerService } from '../services/GPSManagerService';
 import { RoutingServiceV2 } from '../services/RoutingServiceV2';
+import { EntryGateRoutingService } from '../services/EntryGateRoutingService';
+import { V2DirectionsService } from '../services/V2DirectionsService';
 import { V2NavigationAdapter, isV2ActiveRoute } from '../services/V2NavigationAdapter';
+import { OutsideRouteRequestCoordinator } from '../services/outsideRouting/OutsideRouteRequestCoordinator';
+import { createProductionOutsideRouteSource } from '../services/outsideRouting/ProductionOutsideRouteSource';
+import { getRoutableOfficialGates } from '../data/ijtema/entryPolicy';
 import {
   buildV2RerouteRequest,
   calculateNavigationProgressV2,
@@ -31,6 +36,17 @@ import {
 import { ARRIVAL_THRESHOLD_METERS } from '../constants/navigation';
 
 const REROUTE_COOLDOWN_MS = 25_000;
+const productionOutsideRouteSource = createProductionOutsideRouteSource();
+const AVAILABLE_OUTSIDE_GATES = getRoutableOfficialGates().map((gate) => ({
+  id: gate.id,
+  label: gate.name.en,
+}));
+
+interface RerouteOptions {
+  manualGateId?: string;
+  explicit?: boolean;
+  allowDirectGuide?: boolean;
+}
 
 function instructionIndexForProgress(route: V2ActiveRoute, progressMeters: number): number {
   let bestIndex = 0;
@@ -98,6 +114,7 @@ export function useNavigationViewModelV2() {
   const [isWeakGps, setIsWeakGps] = useState(false);
   const [rerouteStatusMessage, setRerouteStatusMessage] = useState<string | null>(null);
   const [gpsSignalState, setGpsSignalState] = useState<GpsSignalStateV2>('GPS_GOOD');
+  const [manualGateId, setManualGateId] = useState<string | null>(null);
 
   const progressRef = useRef(0);
   const lastAcceptedLocationRef = useRef<Coordinate | null>(route?.origin.coordinate ?? null);
@@ -109,6 +126,7 @@ export function useNavigationViewModelV2() {
   const consecutiveOffRouteRef = useRef(0);
   const lastRerouteAtRef = useRef(0);
   const lastSpokenInstructionIdRef = useRef<string | null>(null);
+  const outsideRequestCoordinatorRef = useRef(new OutsideRouteRequestCoordinator());
   const handleLiveLocation = useCallback(() => {
     // GPSManagerService updates currentLocation through the store updater wired in RootNavigator.
   }, []);
@@ -126,6 +144,8 @@ export function useNavigationViewModelV2() {
     setCurrentStepIndex(0);
     progressRef.current = 0;
   }, [route?.routeId]);
+
+  useEffect(() => () => outsideRequestCoordinatorRef.current.cancelCurrent(), []);
 
   useEffect(() => {
     if (!route) return;
@@ -193,28 +213,68 @@ export function useNavigationViewModelV2() {
     return () => subscription.remove();
   }, [route]);
 
-  const attemptReroute = useCallback((coordinate: Coordinate) => {
-    if (!route || !settings.autoReroute) return;
+  const attemptReroute = useCallback(async (coordinate: Coordinate, options: RerouteOptions = {}) => {
+    if (!route || (!settings.autoReroute && !options.explicit)) return;
+    const routeAtRequest = route;
     setReroutePending(true);
     setRerouteStatusMessage(null);
 
-    const rerouteRequest = buildV2RerouteRequest({
-      route,
-      coordinate,
-      walkingSpeedMs: settings.walkingSpeed ?? 1.4,
-    });
-    const candidate = RoutingServiceV2.calculateRoute(rerouteRequest);
+    let candidate = null;
+    let outsideHandle: ReturnType<OutsideRouteRequestCoordinator['begin']> | null = null;
+    if (!EntryGateRoutingService.isInsideIjtemaArea(coordinate) && destination) {
+      outsideHandle = outsideRequestCoordinatorRef.current.begin(
+        `${destination.id}:${options.manualGateId ?? 'automatic'}`,
+      );
+      const result = await V2DirectionsService.calculateHybridPreview({
+        request: {
+          startPlace: null,
+          destination,
+          currentLocation: coordinate,
+          forceOutside: true,
+          walkingSpeedMs: settings.walkingSpeed ?? 1.4,
+          manualGateId: options.manualGateId,
+        },
+        token: outsideHandle.token,
+        signal: outsideHandle.signal,
+        outsideProvider: productionOutsideRouteSource,
+      });
+      if (
+        !outsideHandle.canCommit() ||
+        useAppStore.getState().activeRoute !== routeAtRequest ||
+        !useAppStore.getState().isNavigating
+      ) {
+        return;
+      }
+      candidate = result.status === 'ready' ? result.route : null;
+      if (
+        candidate?.outsideRoute?.provider === 'direct-guide' &&
+        routeAtRequest.outsideRoute?.roadFollowing &&
+        !options.allowDirectGuide
+      ) {
+        candidate = null;
+      }
+    } else {
+      outsideRequestCoordinatorRef.current.cancelCurrent();
+      const rerouteRequest = buildV2RerouteRequest({
+        route: routeAtRequest,
+        coordinate,
+        walkingSpeedMs: settings.walkingSpeed ?? 1.4,
+      });
+      candidate = RoutingServiceV2.calculateRoute(rerouteRequest);
+    }
+
     if (!candidate) {
       lastRerouteAtRef.current = Date.now();
-      const failure = keepCurrentRouteAfterRerouteFailureV2(route);
+      const failure = keepCurrentRouteAfterRerouteFailureV2(routeAtRequest);
       setRerouteStatusMessage(failure.message);
       setReroutePending(false);
+      outsideHandle?.finish();
       return;
     }
 
     const activeCandidate = V2NavigationAdapter.fromPreview({
       previewRoute: candidate,
-      destination: destination ?? placeFromV2Destination(route, null)!,
+      destination: destination ?? placeFromV2Destination(routeAtRequest, null)!,
       currentLocation: coordinate,
     });
     setActiveRoute(activeCandidate);
@@ -226,7 +286,29 @@ export function useNavigationViewModelV2() {
     offRouteStartRef.current = null;
     lastRerouteAtRef.current = Date.now();
     setReroutePending(false);
+    outsideHandle?.finish();
   }, [destination, route, setActiveRoute, setReroutePending, setRouteInstructions, settings.autoReroute, settings.walkingSpeed]);
+
+  const retryOutsideRoute = useCallback(async () => {
+    const coordinate = currentLocation ?? snappedLocation;
+    if (!coordinate) return;
+    await attemptReroute(coordinate, {
+      manualGateId: manualGateId ?? undefined,
+      explicit: true,
+    });
+  }, [attemptReroute, currentLocation, manualGateId, snappedLocation]);
+
+  const selectOutsideGate = useCallback(async (gateId: string) => {
+    if (!AVAILABLE_OUTSIDE_GATES.some((gate) => gate.id === gateId)) return;
+    setManualGateId(gateId);
+    const coordinate = currentLocation ?? snappedLocation;
+    if (!coordinate) return;
+    await attemptReroute(coordinate, {
+      manualGateId: gateId,
+      explicit: true,
+      allowDirectGuide: true,
+    });
+  }, [attemptReroute, currentLocation, snappedLocation]);
 
   useEffect(() => {
     if (!route || !currentLocation) return;
@@ -276,6 +358,9 @@ export function useNavigationViewModelV2() {
     }
 
     const thresholdM = RerouteService.getDynamicOffRouteThresholdMeters(accuracyM);
+    if (route.outsideRoute?.provider === 'direct-guide' && !EntryGateRoutingService.isInsideIjtemaArea(currentLocation)) {
+      return;
+    }
     const isOffRoute = progress.distanceToRouteMeters > thresholdM;
     if (!isOffRoute || weakGps) {
       consecutiveOffRouteRef.current = 0;
@@ -294,7 +379,7 @@ export function useNavigationViewModelV2() {
     });
 
     if (evidence.shouldReroute) {
-      attemptReroute(currentLocation);
+      void attemptReroute(currentLocation);
     }
   }, [attemptReroute, currentLocation, currentStepIndex, etaMinutes, instructions, isMuted, route, settings.voiceInstructions, settings.walkingSpeed]);
 
@@ -319,6 +404,10 @@ export function useNavigationViewModelV2() {
     isWeakGps,
     gpsSignalState,
     rerouteStatusMessage,
+    manualGateId,
+    availableOutsideGates: AVAILABLE_OUTSIDE_GATES,
+    retryOutsideRoute,
+    selectOutsideGate,
     handleExit,
   };
 }
