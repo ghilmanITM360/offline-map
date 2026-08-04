@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { getDistance } from 'geolib';
 import { useAppStore } from '../store/useAppStore';
 import { RoutingService } from '../services/RoutingService';
@@ -15,9 +15,13 @@ import { V2DirectionsService } from '../services/V2DirectionsService';
 import { V2NavigationAdapter } from '../services/V2NavigationAdapter';
 import { EntryGateRoutingService } from '../services/EntryGateRoutingService';
 import { RoutePointService } from '../services/RoutePointService';
+import { getRoutableOfficialGates } from '../data/ijtema/entryPolicy';
+import { createProductionOutsideRouteSource } from '../services/outsideRouting/ProductionOutsideRouteSource';
+import { OutsideRouteRequestCoordinator } from '../services/outsideRouting/OutsideRouteRequestCoordinator';
 
 const ROUTE_TIMEOUT_MS = 3500;
 const DIRECTIONS_RECALCULATE_ORIGIN_MOVEMENT_M = 20;
+const productionOutsideRouteSource = createProductionOutsideRouteSource();
 
 type RouteLoadState = 'idle' | 'loading' | 'ready' | 'error' | 'needs_origin';
 export type StartSource = 'live_gps' | 'remembered_location' | 'manual_place';
@@ -60,6 +64,13 @@ export function useDirectionsViewModel(destination: Place | null) {
   const [startSource, setStartSource] = useState<StartSource>(currentLocation ? 'live_gps' : 'manual_place');
   const [routeOriginLocation, setRouteOriginLocation] = useState(currentLocation);
   const [isEditingManualStart, setIsEditingManualStart] = useState(false);
+  const [manualGateId, setManualGateId] = useState<string | null>(null);
+  const [routeRefreshing, setRouteRefreshing] = useState(false);
+  const routeRef = useRef<RoutePreview | null>(null);
+  const routeDestinationIdRef = useRef<string | null>(null);
+  const outsideRequestCoordinatorRef = useRef(new OutsideRouteRequestCoordinator());
+  routeRef.current = route;
+  const manualGateOptions = getRoutableOfficialGates().map((gate) => ({ gateId: gate.id, label: gate.name.en }));
   const isV2Destination = destination?.sourceVersion === 'v2';
   const v2NavigationStartCheck = isV2Destination
     ? V2NavigationAdapter.canStartActiveNavigation({ route: route as any, destination })
@@ -70,6 +81,12 @@ export function useDirectionsViewModel(destination: Place | null) {
       setLoadState('needs_origin');
     }
   }, [routeOriginLocation, startSource]);
+
+  useEffect(() => () => outsideRequestCoordinatorRef.current.cancelCurrent(), []);
+
+  useEffect(() => {
+    setManualGateId(null);
+  }, [destination?.id]);
 
   useEffect(() => {
     if (startSource !== 'live_gps' || !currentLocation) return;
@@ -127,7 +144,13 @@ export function useDirectionsViewModel(destination: Place | null) {
 
     const shouldUseV2Destination = destination.sourceVersion === 'v2';
     if (shouldUseV2Destination) {
-      setLoadState('loading');
+      const previousRoute = routeDestinationIdRef.current === destination.id ? routeRef.current : null;
+      const replacingCurrentRoute = Boolean(previousRoute);
+      if (!replacingCurrentRoute) {
+        setLoadState('loading');
+        setRoute(null);
+      }
+      setRouteRefreshing(replacingCurrentRoute);
       setErrorMessage(null);
       const hasOriginCoord = originCoord != null;
       const forceOutside =
@@ -135,31 +158,57 @@ export function useDirectionsViewModel(destination: Place | null) {
         hasOriginCoord &&
         !EntryGateRoutingService.isInsideIjtemaArea(originCoord);
 
-      const preview = V2DirectionsService.calculatePreview({
+      const previewRequest = {
         startPlace: startSource === 'manual_place' ? manualStart : null,
         destination,
         currentLocation: startSource === 'manual_place' ? null : originCoord ?? null,
         walkingSpeedMs: settings.walkingSpeed ?? 1.4,
         forceOutside,
-      });
+        manualGateId: manualGateId ?? undefined,
+      };
+      const requestHandle = forceOutside
+        ? outsideRequestCoordinatorRef.current.begin(`${destination.id}:${startSource}:${manualGateId ?? 'automatic'}`)
+        : null;
+      if (!forceOutside) outsideRequestCoordinatorRef.current.cancelCurrent();
+      const preview = requestHandle
+        ? await V2DirectionsService.calculateHybridPreview({
+            request: previewRequest,
+            token: requestHandle.token,
+            signal: requestHandle.signal,
+            outsideProvider: productionOutsideRouteSource,
+          })
+        : V2DirectionsService.calculatePreview(previewRequest);
+      if (requestHandle && !requestHandle.canCommit()) return;
 
       if (preview.status === 'disabled' || !MapFeatureFlagsService.useIjtemaV2Routing()) {
         setLoadState('error');
         setErrorMessage('V2 route preview is disabled. Enable EXPO_PUBLIC_USE_IJTEMA_V2_ROUTING to calculate this route.');
-        setRoute(null);
-        setAlternatives([]);
-        setInstructions([]);
-        setRouteAlternatives([]);
+        setRouteRefreshing(false);
+        if (!previousRoute) {
+          setRoute(null);
+          setAlternatives([]);
+          setInstructions([]);
+          setRouteAlternatives([]);
+        } else {
+          setLoadState('ready');
+        }
+        requestHandle?.finish();
         return;
       }
 
       if (preview.status !== 'ready' || !preview.route) {
         setLoadState('error');
         setErrorMessage(preview.message || 'Could not calculate v2 route preview.');
-        setRoute(null);
-        setAlternatives([]);
-        setInstructions([]);
-        setRouteAlternatives([]);
+        setRouteRefreshing(false);
+        if (!previousRoute) {
+          setRoute(null);
+          setAlternatives([]);
+          setInstructions([]);
+          setRouteAlternatives([]);
+        } else {
+          setLoadState('ready');
+        }
+        requestHandle?.finish();
         return;
       }
 
@@ -173,12 +222,15 @@ export function useDirectionsViewModel(destination: Place | null) {
       setSelectedIndex(0);
       setSelectedRouteIndex(0);
       setRoute(preview.route);
+      routeDestinationIdRef.current = destination.id;
       setInstructions(preview.instructions);
       setActiveRoute(preview.route);
       setRouteInstructions(preview.instructions);
       setRoutePlannerDest(destination);
       setRoutePlannerOrigin(startSource === 'manual_place' ? manualStart : null);
       setLoadState('ready');
+      setRouteRefreshing(false);
+      requestHandle?.finish();
       return;
     }
 
@@ -304,7 +356,7 @@ export function useDirectionsViewModel(destination: Place | null) {
       setLoadState('error');
       setErrorMessage('Route calculation failed. Please retry.');
     }
-  }, [destination, lastKnownLocation, manualStart, routeOriginLocation, setActiveRoute, setRouteAlternatives, setRouteInstructions, setSelectedRouteIndex, settings.walkingSpeed, startSource]);
+  }, [destination, lastKnownLocation, manualGateId, manualStart, routeOriginLocation, setActiveRoute, setRouteAlternatives, setRouteInstructions, setSelectedRouteIndex, settings.walkingSpeed, startSource]);
 
   useEffect(() => {
     void calculateRoute();
@@ -403,6 +455,13 @@ export function useDirectionsViewModel(destination: Place | null) {
     setErrorMessage(null);
   };
 
+  const selectManualGate = (gateId: string) => {
+    if (!manualGateOptions.some((gate) => gate.gateId === gateId)) return;
+    setManualGateId(gateId);
+  };
+
+  const clearManualGateSelection = () => setManualGateId(null);
+
   // Legacy (v1) destinations only — v2 destinations start navigation through
   // HomeScreen's route-preview card (handleStartPreviewNavigation), which
   // reuses this same store action for the v2-shaped route instead.
@@ -437,6 +496,12 @@ export function useDirectionsViewModel(destination: Place | null) {
     chooseCurrentLocation,
     chooseRememberedLocation,
     calculateRoute,
+    retryOutsideRoute: calculateRoute,
+    manualGateId,
+    manualGateOptions,
+    selectManualGate,
+    clearManualGateSelection,
+    routeRefreshing,
     handleStartNavigation,
     showRememberedStartAction: rememberedLocationAvailable,
     showManualStartSearch: isEditingManualStart || startSource === 'manual_place',

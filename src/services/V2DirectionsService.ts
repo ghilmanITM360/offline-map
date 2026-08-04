@@ -5,9 +5,11 @@
 
 import { NavigationInstruction, Place } from '../models/types';
 import type {
+  NormalizedOutsideCandidate,
   OutsideGateRouteTarget,
   OutsideRouteCandidateSource,
   OutsideRouteRequestToken,
+  OutsideWalkingManeuver,
 } from '../models/outsideRouting';
 import { MapFeatureFlagsService } from './MapFeatureFlagsService';
 import { assertCompleteCandidateSet } from './outsideRouting/OutsideRouteValidation';
@@ -70,6 +72,43 @@ function startFromPlace(place: Place): RoutingStartV2 | null {
   if (place.category === 'Rasta') return { type: 'rasta', rastaId: place.id };
   if (place.category === 'SpecialRoute') return { type: 'special_route', routeId: place.id };
   return null;
+}
+
+function instructionType(maneuver: OutsideWalkingManeuver): NavigationInstruction['type'] {
+  if (maneuver === 'turn-left' || maneuver === 'slight-left' || maneuver === 'u-turn') return 'left';
+  if (maneuver === 'turn-right' || maneuver === 'slight-right') return 'right';
+  if (maneuver === 'arrive') return 'arrival';
+  return 'straight';
+}
+
+function composeOutsideInstructions(
+  route: NormalizedOutsideCandidate,
+  coreInstructions: NavigationInstruction[],
+): NavigationInstruction[] {
+  const internalInstructions = coreInstructions.filter((instruction) => instruction.id !== 'v2-outside-approach');
+  if (route.provider === 'direct-guide') {
+    const gateLabel = route.gateId.replace('GATE_', 'Gate ');
+    return [{
+      id: 'outside-direct-guide',
+      text: `Follow the direction line toward ${gateLabel}.`,
+      urduText: `دکھائی گئی سیدھی سمت میں ${gateLabel} کی طرف جائیں۔`,
+      distance: route.distanceM,
+      type: 'straight',
+      coordinate: route.coordinates[0],
+    }, ...internalInstructions];
+  }
+  if (route.steps.length === 0) return coreInstructions;
+  return [
+    ...route.steps.map((step): NavigationInstruction => ({
+      id: `outside-${step.id}`,
+      text: step.instruction,
+      distance: step.distanceM,
+      type: instructionType(step.maneuver),
+      coordinate: step.coordinate,
+      roadName: step.roadName,
+    })),
+    ...internalInstructions,
+  ];
 }
 
 export class V2DirectionsService {
@@ -186,7 +225,8 @@ export class V2DirectionsService {
         message: 'Core-selected gate has no matching outside provider route.',
       };
     }
-    const hybridRoute: RoutePreviewV2 = { ...finalized, outsideRoute: selectedOutsideRoute };
+    const instructions = composeOutsideInstructions(selectedOutsideRoute, finalized.instructions);
+    const hybridRoute: RoutePreviewV2 = { ...finalized, instructions, outsideRoute: selectedOutsideRoute };
     return {
       status: 'ready',
       route: hybridRoute,

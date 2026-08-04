@@ -30,7 +30,15 @@ function routeFor(request: OutsideWalkingRouteRequest, gateId: string): Normaliz
     distanceM: gateId === 'GATE_12' ? 1 : 50_000,
     durationSeconds: gateId === 'GATE_12' ? 60 : 50_000,
     coordinates: [request.origin, gate.routeTargetCoordinate],
-    steps: [],
+    steps: gateId === 'GATE_12' ? [{
+      id: 'google-step-12',
+      maneuver: 'turn-right',
+      distanceM: 1,
+      durationSeconds: 60,
+      coordinate: gate.routeTargetCoordinate,
+      instruction: 'Turn right toward Gate 12',
+      roadName: 'Public Road',
+    }] : [],
     roadFollowing: true,
     distanceKind: 'walking-route',
     warnings: [],
@@ -82,6 +90,11 @@ describe('V2DirectionsService hybrid core integration', () => {
       candidateId: 'hybrid-directions:google:GATE_12:preferred',
       gateId: 'GATE_12',
       provider: 'google',
+    });
+    expect(result.instructions[0]).toMatchObject({
+      id: 'outside-google-step-12',
+      text: 'Turn right toward Gate 12',
+      roadName: 'Public Road',
     });
   });
 
