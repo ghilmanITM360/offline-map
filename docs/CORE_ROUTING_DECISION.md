@@ -1,6 +1,9 @@
 # Core Routing Decision: Complete-Journey Gate Selection
 
-Status: **Implemented.**
+Status: **Implemented.** Updated for Gate 12 and the core/provider
+integration contract (see "Gate 12 / 13 / 14 coordinates" and "Core/provider
+outside-routing contract" below) — both follow-ups to the original
+implementation, same branch.
 
 Branch: `agent/claude-routing-core`. Supersedes the gate-selection *policy*
 assumptions in `docs/OUTSIDE_ROUTING_ARCHITECTURE_DECISION.md` and
@@ -87,26 +90,53 @@ Verified coordinates supplied by the project owner:
 
 | Gate | Latitude | Longitude |
 |---|---|---|
+| Gate 12 | 24.963676 | 67.006339 |
 | Gate 13 | 24.963718 | 67.006862 |
 | Gate 14 | 24.965516 | 67.007675 |
 
-Both are now `status: 'provided'` (previously `'needs_verification'`) in
-`src/data/ijtema/gates.ts`, distinct locations (~216m apart, vs. ~5m in the
-originally supplied dataset), each confirmed to connect to the internal
-graph (Gate 13 -> `R6-09`-adjacent node, Gate 14 -> its existing connector
-node, both well within the 320m `GATE_CONNECTOR_MAX_M` threshold) and to the
-bundled OSM street graph (regenerated after the coordinate change).
+Gate 13 and Gate 14 are `status: 'provided'` (previously
+`'needs_verification'`) in `src/data/ijtema/gates.ts`, distinct locations
+(~216m apart, vs. ~5m in the originally supplied dataset), each confirmed to
+connect to the internal graph (Gate 13 -> `R6-09`-adjacent node, Gate 14 ->
+its existing connector node, both well within the 320m
+`GATE_CONNECTOR_MAX_M` threshold) and to the bundled OSM street graph
+(regenerated after the coordinate change).
 
-**Gate 12 was explicitly out of scope for this change** and was not added.
-It has no record at all in `src/data/ijtema/gates.ts` (the file jumps
-`gate(8, ...)` -> `gate(13, ...)`), and five existing tests assert it must
-not exist (`test-map-data-v2`, `test-public-map-labels-v2`,
-`test-gate-marker-rendering-v2`, `test-map-visual-emphasis-v2`,
-`test-home-filter-chips-v2`). Adding it would require a new gate entity
-(name/aliases/entry policy — none of which were specified) and touches more
-tests than a coordinate update. The project owner confirmed skipping Gate 12
-for this track; creating it is a separate, explicitly-scoped follow-up if
-still wanted.
+**Gate 12 status: an earlier revision of this document recorded Gate 12 as
+explicitly out of scope, based on the project owner's initial guidance. The
+project owner has since corrected that guidance — Gate 12 is a real,
+confirmed gate — and it has been added as a normal, fully routable official
+gate.** It previously had no record at all in `src/data/ijtema/gates.ts`
+(the file jumped `gate(8, ...)` -> `gate(13, ...)`); it now sits between
+them (`gate(12, ...)` before `gate(13, ...)`), using the same `gate()`
+factory every other gate uses — no gate-ID-specific code was written for it.
+Connectivity was verified from repository evidence, not assumed, before
+adding the record:
+
+- **Internal graph**: `buildNavigationGraphV2()` (live, derived from
+  `IJTEMA_GATES` at module load) connects Gate 12 to walkable node `R6-09` at
+  15m — well within the 320m `GATE_CONNECTOR_MAX_M` threshold.
+- **Outside street graph**: regenerating via the existing deterministic
+  generator (`scripts/generate-street-graph.ts`, a live OSM Overpass pull)
+  connects Gate 12 to a street node at 15.15m. A baseline re-pull *without*
+  Gate 12 first confirmed the OSM extract itself is stable — identical raw
+  (12,979 nodes / 17,032 edges) and simplified (7,945 nodes / 11,978 edges)
+  counts to the previously-committed graph, only the `generatedAt` timestamp
+  differed — so the regenerated `streetGraph.ts` changed in exactly one
+  place: Gate 12's new connector entry. All 17 pre-existing gate connectors
+  are byte-identical (same node coordinate, same distance) to before.
+- **Identity**: Gate 12 is 52.9m from Gate 13 and 245.0m from Gate 14 — not a
+  near-duplicate of either; all three remain distinct, independently
+  routable gates.
+
+Gate 12 is therefore fully routable (`routingStatus: 'routable'`,
+`canStartRouteFromOutside: true`), not left in a degraded state — the
+"add the record but keep it non-routable" fallback the original follow-up
+brief allowed for was not needed. The active gate count is now **18**
+(previously 17); `src/data/ijtema/gateMeta.ts`'s `MAJOR_GATE_IDS` (map
+label-declutter priority) was deliberately left untouched — that is a
+product/UX call about which gates get priority at low zoom, not a
+routing-correctness one, and out of scope here.
 
 ## Gate 13 / 14 penalty removal
 
@@ -195,15 +225,160 @@ equal-cost ties break deterministically by gate number.
 
 **Complexity**: unchanged shape for the street search itself — still exactly
 one A* run over the ~7,945-node/~11,978-edge bundled street graph. The new
-cost is `O(candidate gates)` extra small internal-graph searches (17 gates
-against the ~289-node venue graph, each `findBestPath`) run once per route
-calculation, before the street search — see performance numbers below.
+cost is `O(candidate gates)` extra small internal-graph searches (18 gates,
+14 of them currently routable/outside-eligible, against the ~290-node venue
+graph, each `findBestPath`) run once per route calculation, before the
+street search — see performance numbers below.
+
+## Core/provider outside-routing contract
+
+Codex's provider track (e.g. a Google Directions integration) needs to
+compute the *outside* leg (user -> gate) with a provider core has no
+business knowing about — while core keeps sole ownership of gate
+eligibility, connector/penalty/internal cost, the complete-journey
+comparison across candidates, manual override, and deterministic
+tie-breaking, i.e. exactly the policy described above. `src/services/RoutingServiceV2.ts`
+exposes this as a narrow two-phase API, reusing the same private
+eligibility/`findBestPath`/`gatePenaltyM` helpers `calculateRoute`'s
+street-graph path already uses (not a parallel implementation) — so a
+provider-driven route and the default offline flow can never apply a
+different policy.
+
+**Phase 1 — `RoutingServiceV2.prepareOutsideRoutingPlan(input: { userCoordinate, destination, manualGateId?, walkingSpeedMs? }): CoreOutsideRoutingPlan | null`**
+
+Resolves the destination and gate eligibility (same filter as
+"Gate eligibility" above, narrowed to one gate when `manualGateId` is set),
+excludes any gate with no valid internal route to the destination, and
+returns one `CoreOutsideCandidateGate` per remaining eligible gate:
+
+```ts
+interface CoreOutsideCandidateGate {
+  candidateId: string;        // == gateId — no invented ID scheme
+  gateId: string;
+  gateLabel: string;
+  providerRouteTargetCoordinate: AppCoordinate; // the gate's own coordinate — see cost boundary below
+  connectorCostM: number;     // 0 today — see cost boundary below
+  penaltyM: number;           // gatePenaltyM(gate) — 0 for every current gate
+  internalCostM: number;      // findBestPath(gate, destination).costM
+}
+```
+
+`null` when the destination can't be resolved or no gate is eligible
+(including a `manualGateId` that doesn't exist or isn't internally
+connected — the same "unresolved" case `EntryGateRoutingService` already
+returns for the default flow, here as a clean `null` instead of a rich
+error object, so the caller's own UI layer decides how to present it).
+
+**Phase 2 — `RoutingServiceV2.finalizeOutsideRoutingPlan(input: { plan: CoreOutsideRoutingPlan; outsideCandidates: NormalizedOutsideCandidateSet; walkingSpeedMs: number }): RoutePreviewV2 | null`**
+
+```ts
+interface NormalizedOutsideCandidate {
+  candidateId: string;
+  outsideDistanceM: number;          // provider distance to providerRouteTargetCoordinate ONLY
+  outsideCoordinates?: AppCoordinate[]; // for polyline rendering only
+  sanityCapExceeded?: boolean;        // optional, provider-detectable
+}
+type NormalizedOutsideCandidateSet = NormalizedOutsideCandidate[];
+```
+
+For each supplied candidate, combines `outsideDistanceM` with its plan
+candidate's `connectorCostM + penaltyM + internalCostM`, plus the same
+`gate.number * 1e-6` tie-break epsilon used elsewhere (never reported —
+`routeCostM`/`totalDistance` are `Math.round`ed, and the epsilon's
+maximum magnitude, ~2.2e-5m for gate 22, can never change a rounded
+integer-meter result). Picks the argmin, rebuilds the matching internal
+route for that exact gate via `findBestPath` (so the outside and internal
+legs can never disagree about which gate they belong to), and returns a
+normal `RoutePreviewV2` — the same shape `calculateRoute` returns, with one
+addition: `selectedOutsideCandidateId` echoes the winning `candidateId`, so
+a caller that supplied multiple candidates can verify exactly which one
+core selected without re-deriving it from `startResolution`. The provider
+layer never picks the winner — it supplies distances, core picks.
+
+Unknown `candidateId`s and non-finite/negative `outsideDistanceM`s are
+dropped, not thrown on; an empty or fully-invalid `outsideCandidates` set
+returns `null`, so a caller can retain its last valid route on a failed or
+partial provider response rather than crash.
+
+**Cost boundary (no double counting)**:
+
+```
+Provider owns:  outside route distance to providerRouteTargetCoordinate only
+Core owns:      connector cost + gate penalty + internal destination cost
+```
+
+`providerRouteTargetCoordinate` is always the gate's own literal
+coordinate, not a graph-discretized approach point — any provider can route
+directly to an arbitrary lat/lng, so there is no snapping gap for core to
+bridge. `connectorCostM` is therefore correctly `0` for every candidate
+today; the field stays in the contract (rather than being omitted) because
+the cost boundary requires it to exist as a real, core-owned line item, not
+because a nonzero value is being withheld — inventing one with no surveyed
+offset to back it would violate "do not invent graph connectivity." A
+future provider integration that needs to route to a different point than
+the gate's own coordinate is exactly what this field exists for.
+
+**Narrow per-gate offline OSM candidate resolver — `RoutingServiceV2.resolveOfflineOsmOutsideCandidate(userCoordinate: AppCoordinate, gateId: string): NormalizedOutsideCandidate | null`**
+
+Produces a `NormalizedOutsideCandidate` for exactly one gate using the
+bundled street graph, in the exact shape a provider would supply — lets a
+caller build an offline-fallback `NormalizedOutsideCandidateSet` (one call
+per `plan.candidates` entry) and run it through the *same*
+`finalizeOutsideRoutingPlan`, regardless of whether distances came from a
+network provider or this offline graph. Returns `null` outside the bundled
+graph's 3km radius or when the gate has no street connector — never throws.
+Its `outsideDistanceM` is the street graph's full user -> gate distance
+(nearest street node + graph traversal + that graph's own internal
+node-to-gate connector, e.g. ~15m for Gate 12) — intentionally *not* split
+out as a separate `connectorCostM` (which stays `0` here too), since folding
+it into `outsideDistanceM` is what avoids double-counting the street
+graph's own connector.
+
+**Manual gate, initial routing, and rerouting**: `manualGateId` on
+`prepareOutsideRoutingPlan` narrows `plan.candidates` to exactly that one
+gate before any cost comparison happens — the same authoritative-override
+guarantee `resolveStartCandidates`'s `'gate'` branch already provides for
+the default flow, so a provider layer can never override a manual choice by
+supplying a cheaper-looking alternative candidate for a different gate (it
+isn't in `plan.candidates`, so `finalizeOutsideRoutingPlan` ignores it).
+Initial routing and rerouting need no separate code path: calling
+`prepareOutsideRoutingPlan`/`finalizeOutsideRoutingPlan` again with a fresh
+`userCoordinate` on each reroute tick applies the identical eligibility and
+cost policy as the first call, the same way repeated `calculateRoute` calls
+already do for the default flow. Retaining the current valid route when a
+replacement fails is the caller's responsibility (both phases return `null`
+cleanly on failure, never throw, specifically so a caller can detect that
+and keep its last-known-good preview).
+
+**Owner-approved manual gate options**: no new API was needed —
+`getRoutableOfficialGates()` (`src/data/ijtema/entryPolicy.ts`, already
+exported from `src/data/ijtema`'s barrel) already returns exactly the
+routable, connected, outside-startable official gates a manual-selection UI
+should offer; it is the same list `prepareOutsideRoutingPlan` filters from.
+
+**Test coverage**: `scripts/test-core-provider-routing-contract-v2.ts` —
+plan preparation returns eligible candidates (and excludes disconnected
+gates / includes Gate 12), finalization selects by complete journey (not
+raw outside distance — a deliberately inverted synthetic scenario using two
+real gates), exact `selectedOutsideCandidateId` / matching outside+internal
+gate, no double counting (exact-sum equality on `routeCostM` and
+`startConnectorDistanceM`), manual override remains authoritative even when
+a cheaper alternative candidate is supplied, stale/unknown/invalid
+candidates rejected safely (`null` or partial-success, never a throw), and
+initial/reroute parity cross-checked against `calculateRoute` itself using
+the offline OSM resolver as the "provider" for two different coordinates.
 
 ## Performance (host/Node measurements — not Android/Hermes)
 
-Measured on this development host, 200 repetitions per case unless noted.
-Graph sizes: internal venue graph 289 nodes, bundled OSM street graph 7,945
-nodes, 17 routable/outside-eligible candidate gates.
+Measured on this development host, 200 repetitions per case unless noted, on
+the branch's original (pre-Gate-12) implementation — the extra per-route
+work Gate 12 adds is one more `O(candidate gates)` internal-graph search
+(now 14 routable/outside-eligible gates instead of 13), well within the
+existing measured range below; these numbers were not re-run after adding
+Gate 12; the shape of the cost is unchanged. Graph sizes at measurement
+time: internal venue graph 289 nodes, bundled OSM street graph 7,945 nodes,
+17 routable/outside-eligible candidate gates (18 gates / 290 internal nodes
+/ 14 routable-outside-eligible after Gate 12 was added).
 
 | Case | Beeline (median / p95 / max) | Street mode (median / p95 / max) |
 |---|---|---|
@@ -274,6 +449,14 @@ for the itemized list.
   file's default to `true` (or adding a comment noting the source default)
   as part of Codex's consolidated provider-configuration work, to avoid a
   new local `.env` silently disagreeing with production behavior.
+- For the provider integration: call `RoutingServiceV2.prepareOutsideRoutingPlan`
+  once per routing/reroute request, compute `outsideDistanceM` per candidate
+  from your provider (never add connector/penalty/internal cost, never pick
+  a winner), and call `RoutingServiceV2.finalizeOutsideRoutingPlan` with the
+  results — see "Core/provider outside-routing contract" above for the exact
+  signatures. Use `RoutingServiceV2.resolveOfflineOsmOutsideCandidate` for an
+  offline fallback through the same `finalizeOutsideRoutingPlan` call. Use
+  `getRoutableOfficialGates()` for manual-gate-selection UI options.
 - No other cross-track interface changes were needed. This work stayed
   entirely inside `src/data/ijtema/gates.ts`, `src/data/ijtema/dataIssues.ts`,
   `src/data/ijtema/streetGraph.ts` (generated), `src/services/RoutingServiceV2.ts`,
@@ -286,3 +469,12 @@ Per CLAUDE.md's runtime-status guidance: passing TypeScript/lint/the full
 test-script suite does not establish Android/Hermes runtime correctness or
 production readiness. No physical-device or emulator QA was performed for
 this change — that remains a separate, still-pending gate.
+
+The core/provider outside-routing contract (`prepareOutsideRoutingPlan` /
+`finalizeOutsideRoutingPlan`) was tested with real venue data end-to-end,
+including a parity cross-check against `calculateRoute`, but only using
+`resolveOfflineOsmOutsideCandidate` as the "provider" (this track has no
+access to a live Google Directions integration). It has not been exercised
+against Codex's actual provider implementation — that integration, and
+whatever shape Codex's real provider responses take in practice, remains
+unverified until Codex wires it up.
