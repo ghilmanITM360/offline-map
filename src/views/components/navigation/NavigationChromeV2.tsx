@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Animated, Modal, Pressable, Text, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowLeft, ArrowRight, LocateFixed, MapPin, Navigation, RefreshCw, Volume2, VolumeX, X } from 'lucide-react-native';
@@ -16,6 +16,7 @@ import { computeNavRecenterInset, resolveNavBarHeight } from '../../../viewmodel
 import { NAV_TOUCH_TARGET_HIT_SLOP, navOverlayStyles as styles } from './navOverlayStyles';
 import { OutsideRouteStatusCard } from './OutsideRouteStatusCard';
 import { outsideRouteMessage } from '../../../services/OutsideRouteLocalizationService';
+import { Button } from '../common/Button';
 
 const AnimatedSafeAreaView = Animated.createAnimatedComponent(SafeAreaView);
 
@@ -50,11 +51,16 @@ export function NavigationChromeV2({ overlay, hasGoogleMapsKey }: { overlay: Nav
     snappedLocation,
     settings,
     graphOnlyFallbackUsed,
+    manualGateId,
+    availableOutsideGates,
+    retryOutsideRoute,
+    selectOutsideGate,
     handleExit,
     setIsAutoFollowing,
     bottomBarHeight,
     setBottomBarHeight,
   } = overlay;
+  const [showGateOptions, setShowGateOptions] = useState(false);
 
   const mountAnim = useRef(new Animated.Value(0)).current;
   useEffect(() => {
@@ -96,7 +102,30 @@ export function NavigationChromeV2({ overlay, hasGoogleMapsKey }: { overlay: Nav
         </View>
       )}
       {directOutsideActive && outsideRoute && (
-        <OutsideRouteStatusCard route={outsideRoute} gateLabel={directGateLabel} />
+        <OutsideRouteStatusCard
+          route={outsideRoute}
+          gateLabel={directGateLabel}
+          retrying={reroutePending}
+          onRetry={() => void retryOutsideRoute()}
+          onChooseGate={() => setShowGateOptions((visible) => !visible)}
+        />
+      )}
+      {directOutsideActive && showGateOptions && (
+        <View style={styles.directGateOptions}>
+          <Text style={styles.directGateOptionsTitle}>Choose official entry gate</Text>
+          {availableOutsideGates.map((gate) => (
+            <Button
+              key={gate.id}
+              variant={manualGateId === gate.id ? 'secondary' : 'outline'}
+              label={gate.label}
+              accessibilityLabel={`Use ${gate.label}`}
+              onPress={() => {
+                setShowGateOptions(false);
+                void selectOutsideGate(gate.id);
+              }}
+            />
+          ))}
+        </View>
       )}
 
       <AnimatedSafeAreaView

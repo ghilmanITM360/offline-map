@@ -109,6 +109,52 @@ describe('NavigationChromeV2 — direct outside guide', () => {
     expect(screen.queryByText('5 min')).not.toBeOnTheScreen();
     expect(screen.queryByText(/ETA/)).not.toBeOnTheScreen();
   });
+
+  test('connects retry and official-gate actions during active direct guidance', async () => {
+    const retryOutsideRoute = jest.fn(async () => undefined);
+    const selectOutsideGate = jest.fn(async () => undefined);
+    const user = userEvent.setup();
+    const directRoute: V2ActiveRoute = {
+      ...route,
+      outsideLegCoordinateCount: 1,
+      outsideRoute: {
+        schemaVersion: 1,
+        candidateId: 'nav-direct-actions',
+        requestId: 'nav-actions',
+        requestVersion: 1,
+        provider: 'direct-guide',
+        gateId: 'GATE_05',
+        distanceM: 120,
+        durationSeconds: null,
+        coordinates: route.coordinates,
+        steps: [],
+        roadFollowing: false,
+        distanceKind: 'direct-distance',
+        warnings: [{ code: 'direct-guide-not-road-route' }],
+        fallbackReason: 'outside-coverage',
+        fallbackHistory: [],
+      },
+      metadata: { ...route.metadata, startedOutside: true, entryGateId: 'GATE_05', usesOfficialGateEntry: true },
+    };
+    await render(<NavigationChromeV2
+      overlay={baseOverlay({
+        route: directRoute,
+        instructions: directRoute.instructions,
+        retryOutsideRoute,
+        selectOutsideGate,
+        manualGateId: null,
+        availableOutsideGates: [{ id: 'GATE_12', label: 'Gate 12' }],
+      })}
+      hasGoogleMapsKey
+    />);
+
+    await user.press(screen.getByRole('button', { name: 'Retry road route' }));
+    await user.press(screen.getByRole('button', { name: 'Choose another gate' }));
+    await user.press(screen.getByRole('button', { name: 'Use Gate 12' }));
+
+    expect(retryOutsideRoute).toHaveBeenCalledTimes(1);
+    expect(selectOutsideGate).toHaveBeenCalledWith('GATE_12');
+  });
 });
 
 // Regression test for Phase 3 (Exit/recenter touch-target re-verification): Exit (~44px) and
