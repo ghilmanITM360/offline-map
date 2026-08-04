@@ -2,7 +2,7 @@ import { DirectDirectionGuideProvider } from '../services/outsideRouting/DirectD
 import { HybridOutsideRouteOrchestrator } from '../services/outsideRouting/HybridOutsideRouteOrchestrator';
 import { OfflineOsmWalkingRouteProvider } from '../services/outsideRouting/OfflineOsmWalkingRouteProvider';
 import type {
-  NormalizedOutsideRoute,
+  NormalizedOutsideCandidate,
   OutsideProviderAttempt,
   OutsideRouteProviderId,
   OutsideWalkingRouteProvider,
@@ -27,7 +27,7 @@ const request: OutsideWalkingRouteRequest = {
   signal: new AbortController().signal,
 };
 
-function normalized(provider: Exclude<OutsideRouteProviderId, 'direct-guide'>, gateId: string): NormalizedOutsideRoute {
+function normalized(provider: Exclude<OutsideRouteProviderId, 'direct-guide'>, gateId: string): NormalizedOutsideCandidate {
   return {
     schemaVersion: 1,
     candidateId: `hybrid-1:${provider}:${gateId}:0`,

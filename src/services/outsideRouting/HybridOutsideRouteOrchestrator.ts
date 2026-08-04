@@ -1,5 +1,5 @@
 import type {
-  NormalizedOutsideRoute,
+  NormalizedOutsideCandidate,
   OutsideProviderAttempt,
   OutsideRouteCandidateSet,
   OutsideRouteCandidateSource,
@@ -27,7 +27,7 @@ function withFallbackHistory(
       ? outcome
       : {
           ...outcome,
-          routes: outcome.routes.map((route): NormalizedOutsideRoute => ({
+          routes: outcome.routes.map((route): NormalizedOutsideCandidate => ({
             ...route,
             fallbackReason,
             fallbackHistory: [...history],

@@ -1,6 +1,6 @@
 import type {
   GateRouteOutcome,
-  NormalizedOutsideRoute,
+  NormalizedOutsideCandidate,
   NormalizedWalkingStep,
   OutsideProviderAttempt,
   OutsideWalkingManeuver,
@@ -83,7 +83,7 @@ function routedOutcome(
   request: OutsideWalkingRouteRequest,
 ): GateRouteOutcome | null {
   if (typeof value.gateId !== 'string' || !Array.isArray(value.routes) || value.routes.length === 0) return null;
-  const routes: NormalizedOutsideRoute[] = [];
+  const routes: NormalizedOutsideCandidate[] = [];
   for (const [index, rawRoute] of value.routes.entries()) {
     if (!isRecord(rawRoute)) return null;
     if (

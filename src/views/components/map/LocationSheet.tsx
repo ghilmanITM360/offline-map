@@ -44,7 +44,7 @@ import { Card } from '../common/Card';
 import { SearchBarField } from '../common/SearchBarField';
 import { staticColors } from '../../../theme';
 import { OutsideRouteStatusCard } from '../navigation/OutsideRouteStatusCard';
-import type { NormalizedOutsideRoute } from '../../../models/outsideRouting';
+import type { NormalizedOutsideCandidate } from '../../../models/outsideRouting';
 
 declare const __DEV__: boolean;
 
@@ -66,7 +66,7 @@ function facilityTypeLabel(place: Place): string | null {
 }
 
 type RoutePreviewWithV2Meta = RoutePreview & {
-  outsideRoute?: NormalizedOutsideRoute;
+  outsideRoute?: NormalizedOutsideCandidate;
   startResolution?: {
     startType?: 'internal_snap' | 'nearest_official_gate' | 'selected_official_gate' | 'unresolved';
     gate?: {

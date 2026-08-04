@@ -1,6 +1,6 @@
 import type { Coordinate } from '../../models/types';
 import type {
-  NormalizedOutsideRoute,
+  NormalizedOutsideCandidate,
   OutsideRouteCandidateSet,
   OutsideWalkingRouteRequest,
 } from '../../models/outsideRouting';
@@ -40,7 +40,7 @@ export function assertOutsideWalkingRouteRequest(request: OutsideWalkingRouteReq
 function assertNormalizedRoute(
   request: OutsideWalkingRouteRequest,
   candidateSet: OutsideRouteCandidateSet,
-  route: NormalizedOutsideRoute,
+  route: NormalizedOutsideCandidate,
 ): void {
   if (!route.candidateId.trim()) throw new Error('Route candidate identity is invalid.');
   if (route.requestId !== request.token.requestId || route.requestVersion !== request.token.requestVersion) {

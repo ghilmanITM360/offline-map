@@ -321,7 +321,7 @@ export interface V1RoutePreview extends RoutePreviewCommon {
 export interface V2RoutePreview extends RoutePreviewCommon {
   sourceVersion: 'v2';
   /** Normalized selected outside leg. Added by hybrid provider/core integration; absent for inside-only and legacy routes. */
-  outsideRoute?: import('./outsideRouting').NormalizedOutsideRoute;
+  outsideRoute?: import('./outsideRouting').NormalizedOutsideCandidate;
   /** How many leading entries of `coordinates` belong to the outside (pre-gate) leg — 0 when there is none. */
   outsideLegCoordinateCount?: number;
   outsideLegSanityCapExceeded?: boolean;

@@ -1,7 +1,7 @@
 import { StyleSheet, Text, View } from 'react-native';
 import { AlertTriangle, Route } from 'lucide-react-native';
 
-import type { NormalizedOutsideRoute } from '../../../models/outsideRouting';
+import type { NormalizedOutsideCandidate } from '../../../models/outsideRouting';
 import {
   outsideRouteMessage,
   outsideRouteProviderLabel,
@@ -10,7 +10,7 @@ import { radii, spacing, staticColors, typography } from '../../../theme';
 import { Button } from '../common/Button';
 
 export interface OutsideRouteStatusCardProps {
-  route: NormalizedOutsideRoute;
+  route: NormalizedOutsideCandidate;
   gateLabel: string;
   retrying?: boolean;
   onRetry?: () => void;

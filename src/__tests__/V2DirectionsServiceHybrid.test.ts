@@ -1,5 +1,5 @@
 import type {
-  NormalizedOutsideRoute,
+  NormalizedOutsideCandidate,
   OutsideRouteCandidateSource,
   OutsideWalkingRouteRequest,
 } from '../models/outsideRouting';
@@ -18,7 +18,7 @@ const destination: Place = {
   sourceVersion: 'v2',
 };
 
-function routeFor(request: OutsideWalkingRouteRequest, gateId: string): NormalizedOutsideRoute {
+function routeFor(request: OutsideWalkingRouteRequest, gateId: string): NormalizedOutsideCandidate {
   const gate = request.gates.find((candidate) => candidate.gateId === gateId)!;
   return {
     schemaVersion: 1,

@@ -92,9 +92,6 @@ export interface NormalizedOutsideCandidate {
   fallbackHistory: readonly SafeOutsideRouteFailure[];
 }
 
-/** @deprecated Use `NormalizedOutsideCandidate`; retained temporarily for source compatibility. */
-export type NormalizedOutsideRoute = NormalizedOutsideCandidate;
-
 export type GateRouteOutcome =
   | {
       status: 'routed';

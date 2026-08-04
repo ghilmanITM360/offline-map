@@ -3,7 +3,7 @@ import {
   assertOutsideWalkingRouteRequest,
 } from '../services/outsideRouting/OutsideRouteValidation';
 import type {
-  NormalizedOutsideRoute,
+  NormalizedOutsideCandidate,
   OutsideRouteCandidateSet,
   OutsideWalkingRouteRequest,
 } from '../models/outsideRouting';
@@ -21,7 +21,7 @@ const request: OutsideWalkingRouteRequest = {
   signal: new AbortController().signal,
 };
 
-function route(overrides: Partial<NormalizedOutsideRoute> = {}): NormalizedOutsideRoute {
+function route(overrides: Partial<NormalizedOutsideCandidate> = {}): NormalizedOutsideCandidate {
   return {
     schemaVersion: 1,
     candidateId: 'outside-1:google:GATE_05:0',
@@ -42,7 +42,7 @@ function route(overrides: Partial<NormalizedOutsideRoute> = {}): NormalizedOutsi
   };
 }
 
-function candidateSet(routes: readonly NormalizedOutsideRoute[]): OutsideRouteCandidateSet {
+function candidateSet(routes: readonly NormalizedOutsideCandidate[]): OutsideRouteCandidateSet {
   return {
     requestId: 'outside-1',
     requestVersion: 1,

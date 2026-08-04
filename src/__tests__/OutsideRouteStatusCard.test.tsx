@@ -1,11 +1,11 @@
 import React from 'react';
 import { screen, userEvent } from '@testing-library/react-native';
 
-import type { NormalizedOutsideRoute } from '../models/outsideRouting';
+import type { NormalizedOutsideCandidate } from '../models/outsideRouting';
 import { OutsideRouteStatusCard } from '../views/components/navigation/OutsideRouteStatusCard';
 import { render } from './test-utils';
 
-function route(overrides: Partial<NormalizedOutsideRoute> = {}): NormalizedOutsideRoute {
+function route(overrides: Partial<NormalizedOutsideCandidate> = {}): NormalizedOutsideCandidate {
   return {
     schemaVersion: 1,
     candidateId: 'ui-1:google:GATE_05:0',
