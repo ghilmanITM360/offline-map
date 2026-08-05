@@ -596,13 +596,20 @@ interface OutsideGateSeed {
   seedCostM: number;
 }
 
+// Canonical outside-gate eligibility filter — routable + coordinate +
+// canStartRouteFromOutside + internally connected. Shared by every outside
+// routing path (beeline, street-graph, and the core/provider plan) so none
+// of them can drift onto a looser or different policy.
+const isEligibleOutsideGate = (gate: Gate): boolean =>
+  Boolean(gate.coordinate && gate.routingStatus === 'routable' && gate.canStartRouteFromOutside)
+  && getConnectedCandidates([gate.id]).length > 0;
+
 const resolveOutsideGateSeeds = (
   startPoint: { lat: number; lng: number },
   gates: Gate[],
 ): OutsideGateSeed[] =>
   gates
-    .filter((gate) => gate.coordinate && gate.routingStatus === 'routable' && gate.canStartRouteFromOutside)
-    .filter((gate) => getConnectedCandidates([gate.id]).length > 0)
+    .filter(isEligibleOutsideGate)
     .map((gate) => {
       const connectorDistanceM = Math.round(distanceMeters(startPoint, gate.coordinate!));
       return { gate, connectorDistanceM, seedCostM: connectorDistanceM + gatePenaltyM(gate) };
@@ -722,14 +729,7 @@ const selectOutsidePathViaStreetGraph = (
   const gates = start.manualGateId
     ? IJTEMA_GATES.filter((gate) => gate.id === start.manualGateId)
     : IJTEMA_GATES;
-  const candidateGates = gates
-    .filter((gate) => gate.coordinate && gate.routingStatus === 'routable' && gate.canStartRouteFromOutside)
-    // Reject internally-disconnected gates (e.g. GATE_03) up front, same as
-    // resolveOutsideGateSeeds does for the beeline path — otherwise the
-    // street-graph search below can "win" with a gate that has no path
-    // through the internal graph, discarding the whole street-following
-    // result to full beeline instead of trying the next-best connected gate.
-    .filter((gate) => getConnectedCandidates([gate.id]).length > 0);
+  const candidateGates = gates.filter(isEligibleOutsideGate);
   if (candidateGates.length === 0) return undefined;
 
   const internalPathByGateId = new Map<string, ShortestPathResult>();
@@ -911,9 +911,7 @@ export class RoutingServiceV2 {
     const gatesInScope = input.manualGateId
       ? IJTEMA_GATES.filter((gate) => gate.id === input.manualGateId)
       : IJTEMA_GATES;
-    const eligibleGates = gatesInScope
-      .filter((gate) => gate.coordinate && gate.routingStatus === 'routable' && gate.canStartRouteFromOutside)
-      .filter((gate) => getConnectedCandidates([gate.id]).length > 0);
+    const eligibleGates = gatesInScope.filter(isEligibleOutsideGate);
     if (eligibleGates.length === 0) return null;
 
     const candidates: CoreOutsideCandidateGate[] = [];
