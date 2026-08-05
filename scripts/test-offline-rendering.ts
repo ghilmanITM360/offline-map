@@ -2,6 +2,7 @@ import { strict as assert } from 'node:assert';
 import { readFileSync } from 'node:fs';
 
 const home = readFileSync('src/views/screens/HomeScreen.tsx', 'utf8');
+const offlineMapService = readFileSync('src/services/OfflineMapService.ts', 'utf8');
 const statusService = readFileSync('src/services/OfflineMapStatusService.ts', 'utf8');
 const layersSheet = readFileSync('src/views/components/map/LayersSheet.tsx', 'utf8');
 
@@ -17,6 +18,10 @@ assert(
   'Satellite mode should be disabled or warned when unavailable offline',
 );
 assert(statusService.includes('[14, 15, 16, 17, 18]'), 'Offline tile strategy should include zoom levels 17 and 18');
-assert(statusService.includes('{z}_{x}_{y}.png') === false || true, 'Tile file naming is verified in Home/Navigation path templates');
+assert(
+  home.includes('tiles/{z}_{x}_{y}.png') &&
+    offlineMapService.includes('new File(getTileDir(), `${z}_${x}_${y}.png`)'),
+  'Downloaded tile filenames should match the LocalTile z/x/y path template',
+);
 
 console.log('Offline rendering checks passed.');
