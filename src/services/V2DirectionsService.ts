@@ -67,11 +67,7 @@ export function destinationFromPlace(place: Place): RoutingDestinationV2 | null 
 }
 
 function startFromPlace(place: Place): RoutingStartV2 | null {
-  if (place.category === 'Block') return { type: 'block', blockId: place.id };
-  if (place.category === 'Gate') return { type: 'gate', gateId: place.id };
-  if (place.category === 'Rasta') return { type: 'rasta', rastaId: place.id };
-  if (place.category === 'SpecialRoute') return { type: 'special_route', routeId: place.id };
-  return null;
+  return destinationFromPlace(place);
 }
 
 function instructionType(maneuver: OutsideWalkingManeuver): NavigationInstruction['type'] {
