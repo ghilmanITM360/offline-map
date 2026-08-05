@@ -70,3 +70,27 @@ Source default and clean-clone example enable bundled OSM street routing. Empty 
 Automated evidence covers canonical contract, complete set validation, exact selected candidate, complete-journey cost boundary, Google client normalization/errors, fallback order, cancellation/stale rejection, Gate 12 manual flow, preview/reroute retention, direct UI semantics, and dashed geometry.
 
 Still required: deployed secure proxy integration, real Google route test, Android/iOS native builds, physical-device route geometry/accessibility, GPS rerouting, background/resume, and crowd-network behavior.
+
+## Routing Test-Chain Policy
+
+`npm test` includes the two critical formerly orphaned scripts. Remaining
+scripts stay targeted until test-architecture cleanup; classification below
+prevents their names from being mistaken for default coverage.
+
+| Script | Classification | Default/CI policy |
+| --- | --- | --- |
+| `test:all-gates-v2` | unique necessary coverage | Default. Verifies all official gates, including Gate 12, against all blocks. Run on every CI test job. |
+| `test:outside-street-gate-selection-cost-v2` | unique necessary coverage | Default. Protects connector, internal, penalty, reachability, and tie-break costs. Run on every CI test job. |
+| `test:all-blocks-v2` | duplicate coverage | Outside default because `test:all-gates-v2` traverses the same 14×42 gate/block matrix and default block-entry/route-smoke tests cover resolved entries. Run after bulk block or connector edits; separate CI job is optional. |
+| `test:all-roads-v2` | unique necessary coverage | Outside default to keep this correction narrow. Run after rasta or navigation-graph edits; CI should run it in a map-data routing job. |
+| `test:all-points-v2` | expensive exhaustive/optional suite | Runs every central-point snap against all 42 blocks. Run after central-point/graph edits and in nightly or release-candidate CI. |
+| `test:all-routing-combinations-v2` | expensive exhaustive/optional suite | Exercises 5,476 place pairs and emits large diagnostics. Run after routing-model/data changes and in nightly or release-candidate CI. |
+| `test:nearest-gate-selection-v2` | stale or misleading test | Tests nearest-gate helper at gate coordinates, not current complete-journey routing policy. Run only when orientation/banner helper changes; rename or replace before adding to CI. |
+| `test:block-entry-selection-v2` | expensive exhaustive/optional suite | Diagnostic 168-entry matrix currently treats 38 never-selected connected entries as `SKIPPED`. Run after block-entry changes and in nightly map-data CI, not as a release gate until skip policy is defined. |
+| `test:parking-routing-v2` | stale or misleading test | Exits successfully when parking data is absent and performs no route calculation. Keep outside CI until parking exists and test asserts routing behavior. |
+
+`test:button-actions-v2` invokes `test:home-buttons-v2`,
+`test:directions-buttons-v2`, `test:directions-boundary-consistency-v2`,
+`test:navigation-buttons-v2`, `test:critical-actions`, and `test:settings-ui`;
+all six also appear separately in `npm test`. Removing that double execution
+belongs to later test-architecture cleanup, not this correction.
