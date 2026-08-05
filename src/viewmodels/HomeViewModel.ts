@@ -18,19 +18,10 @@ import { EntryGateRoutingService } from '../services/EntryGateRoutingService';
 import { MapFeatureFlagsService } from '../services/MapFeatureFlagsService';
 import { IJTEMA_MAP_REGION } from '../data/ijtema';
 import { DEFAULT_MAP_ZOOM as DEFAULT_HOME_MAP_ZOOM, estimateZoomFromRegion } from '../utils/mapZoom';
+import { formatLastKnownAge } from '../utils/formatLastKnownAge';
 import { useCameraManager, CompassMode, PLACE_SELECTION_CAMERA_DURATION_MS } from './useCameraManager';
 
 declare const __DEV__: boolean;
-
-function formatLastKnownAge(timestamp: string | null): string {
-  if (!timestamp) return 'from an earlier session';
-  const ageMs = Date.now() - new Date(timestamp).getTime();
-  if (!Number.isFinite(ageMs) || ageMs < 0) return 'from an earlier session';
-  const minutes = Math.max(1, Math.round(ageMs / 60_000));
-  if (minutes < 60) return `from ${minutes} minute${minutes === 1 ? '' : 's'} ago`;
-  const hours = Math.round(minutes / 60);
-  return `from ${hours} hour${hours === 1 ? '' : 's'} ago`;
-}
 
 function getHomeVenueStatus(coord: { latitude: number; longitude: number }): { insideVenue: boolean; insideBlock: string | null } {
   return MapFeatureFlagsService.useIjtemaV2Map()

@@ -18,6 +18,7 @@ import { RoutePointService } from '../services/RoutePointService';
 import { getRoutableOfficialGates } from '../data/ijtema/entryPolicy';
 import { createProductionOutsideRouteSource } from '../services/outsideRouting/ProductionOutsideRouteSource';
 import { OutsideRouteRequestCoordinator } from '../services/outsideRouting/OutsideRouteRequestCoordinator';
+import { formatLastKnownAge } from '../utils/formatLastKnownAge';
 
 const ROUTE_TIMEOUT_MS = 3500;
 const DIRECTIONS_RECALCULATE_ORIGIN_MOVEMENT_M = 20;
@@ -25,16 +26,6 @@ const productionOutsideRouteSource = createProductionOutsideRouteSource();
 
 type RouteLoadState = 'idle' | 'loading' | 'ready' | 'error' | 'needs_origin';
 export type StartSource = 'live_gps' | 'remembered_location' | 'manual_place';
-
-function formatLastKnownAge(timestamp: string | null): string {
-  if (!timestamp) return 'from an earlier session';
-  const ageMs = Date.now() - new Date(timestamp).getTime();
-  if (!Number.isFinite(ageMs) || ageMs < 0) return 'from an earlier session';
-  const minutes = Math.max(1, Math.round(ageMs / 60_000));
-  if (minutes < 60) return `from ${minutes} minute${minutes === 1 ? '' : 's'} ago`;
-  const hours = Math.round(minutes / 60);
-  return `from ${hours} hour${hours === 1 ? '' : 's'} ago`;
-}
 
 export function useDirectionsViewModel(destination: Place | null) {
   const currentLocation = useAppStore((s) => s.currentLocation);
