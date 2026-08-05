@@ -52,7 +52,14 @@ export class DirectDirectionGuideProvider implements OutsideWalkingRouteProvider
         }],
       })),
     };
-    assertCompleteCandidateSet(request, candidateSet);
+    try {
+      assertCompleteCandidateSet(request, candidateSet);
+    } catch {
+      return {
+        status: 'failure',
+        failure: { provider: this.id, code: 'unknown', retryable: false },
+      };
+    }
     return { status: 'success', candidateSet };
   }
 }

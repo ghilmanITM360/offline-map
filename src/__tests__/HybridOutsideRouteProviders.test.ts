@@ -1,6 +1,7 @@
 import { DirectDirectionGuideProvider } from '../services/outsideRouting/DirectDirectionGuideProvider';
 import { HybridOutsideRouteOrchestrator } from '../services/outsideRouting/HybridOutsideRouteOrchestrator';
 import { OfflineOsmWalkingRouteProvider } from '../services/outsideRouting/OfflineOsmWalkingRouteProvider';
+import * as outsideRouteValidation from '../services/outsideRouting/OutsideRouteValidation';
 import type {
   NormalizedOutsideCandidate,
   OutsideProviderAttempt,
@@ -189,6 +190,19 @@ describe('hybrid outside route providers', () => {
         }
       }
     }
+  });
+
+  test('direct guide returns safe failure when its generated candidate set fails validation', async () => {
+    const validationSpy = jest
+      .spyOn(outsideRouteValidation, 'assertCompleteCandidateSet')
+      .mockImplementationOnce(() => { throw new Error('generated candidate invalid'); });
+    const provider = new DirectDirectionGuideProvider();
+
+    await expect(provider.routeToGates(request)).resolves.toEqual({
+      status: 'failure',
+      failure: { provider: 'direct-guide', code: 'unknown', retryable: false },
+    });
+    validationSpy.mockRestore();
   });
 
   test('cancellation terminates fallback chain', async () => {
