@@ -71,6 +71,8 @@ describe('DirectionsViewModel hybrid outside routing', () => {
     });
     const gpsCandidateId = gpsRoute?.selectedOutsideCandidateId;
     const gpsGateId = gpsRoute?.startResolution?.gate?.id;
+    expect(gpsCandidateId).toBeDefined();
+    expect(gpsGateId).toBeDefined();
 
     await act(() => hook.result.current.setManualStartPlace(outsideManualPlace()));
     await waitFor(() => expect(hook.result.current.route?.selectedOutsideCandidateId).not.toBe(gpsCandidateId), { timeout: 5_000 });
@@ -97,15 +99,15 @@ describe('DirectionsViewModel hybrid outside routing', () => {
     expect(insideStart).not.toBeNull();
     const hook = await renderHook(() => useDirectionsViewModel(destination));
     await waitFor(() => expect(hook.result.current.loadState).toBe('ready'), { timeout: 5_000 });
-    const outsideCandidateId = hook.result.current.route?.selectedOutsideCandidateId;
 
     await act(() => hook.result.current.setManualStartPlace(insideStart!));
-    await waitFor(() => expect(hook.result.current.route?.selectedOutsideCandidateId).not.toBe(outsideCandidateId), { timeout: 5_000 });
+    await waitFor(() => {
+      expect(hook.result.current.loadState).toBe('ready');
+      expect(hook.result.current.route?.outsideRoute).toBeUndefined();
+      expect(hook.result.current.route?.nodes.length).toBeGreaterThan(1);
+    }, { timeout: 5_000 });
 
     expect(hook.result.current.startSource).toBe('manual_place');
-    expect(hook.result.current.loadState).toBe('ready');
-    expect(hook.result.current.route?.outsideRoute).toBeUndefined();
-    expect(hook.result.current.route?.nodes.length).toBeGreaterThan(1);
     expect(hook.result.current.route?.outsideLegCoordinateCount ?? 0).toBe(0);
   });
 

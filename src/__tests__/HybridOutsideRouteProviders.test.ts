@@ -67,6 +67,8 @@ class FakeProvider implements OutsideWalkingRouteProvider {
   }
 }
 
+afterEach(() => jest.restoreAllMocks());
+
 function completeAttempt(provider: Exclude<OutsideRouteProviderId, 'direct-guide'>): OutsideProviderAttempt {
   return {
     status: 'success',
@@ -178,10 +180,16 @@ describe('hybrid outside route providers', () => {
         if (outcome.status === 'routed') {
           expect(outcome.routes[0]).toMatchObject({
             provider: 'direct-guide',
+            requestId: request.token.requestId,
+            requestVersion: request.token.requestVersion,
             roadFollowing: false,
             durationSeconds: null,
             steps: [],
             fallbackReason: 'outside-coverage',
+            fallbackHistory: [
+              { provider: 'google', code: 'proxy-unavailable', retryable: true },
+              { provider: 'offline-osm', code: 'outside-coverage', retryable: false },
+            ],
           });
           expect(outcome.routes[0].coordinates).toEqual([
             request.origin,
