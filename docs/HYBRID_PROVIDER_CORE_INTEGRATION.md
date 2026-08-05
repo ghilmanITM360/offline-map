@@ -34,6 +34,14 @@ Production validation requires:
 - direct guide has no duration, road steps, or road-following claim
 - finalized selected candidate exists and matches selected core gate and current request identity
 
+Gate 12 (`24.963676, 67.006339`) and Gate 13 (`24.963718, 67.006862`)
+are less than 100m apart. For normal multi-gate plans, the competing-target
+check still rejects a Gate 12 route ending at Gate 13 and the reverse, despite
+both endpoints satisfying the absolute 100m tolerance. A manual plan contains
+only the selected gate, so no competing target exists in that request. Mobile
+validation then has only the absolute endpoint tolerance; secure proxy
+validation against server-side canonical gate coordinates remains required.
+
 ## Provider Behavior
 
 Google runs only when `EXPO_PUBLIC_IJTEMA_ROUTING_PROXY_BASE_URL` is a valid configured base URL. Mobile sends walking-only requests and contains no Google Routes web-service credential. Backend remains undeployed; server security, quota, rate limiting, and real Google behavior remain blocked pending platform approval.

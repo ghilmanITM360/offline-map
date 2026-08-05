@@ -131,6 +131,14 @@ Response must not include raw Google payload, encoded credential, upstream reque
 
 Normalized geometry must begin within 100m of requested origin and end within 100m of declared gate route target. When multiple gate targets are present, endpoint must not be closer (with 2m comparison margin) to another gate target than declared gate. Mobile repeats these checks before core finalization; mismatch is `malformed-response`.
 
+Gate 12 (`24.963676, 67.006339`) and Gate 13
+(`24.963718, 67.006862`) are close enough that either endpoint is within the
+other gate's 100m absolute tolerance. Multi-gate mobile requests remain safe
+because the 2m competing-target check rejects the swapped identity. A manual
+single-gate request has no competing gate in its request set, so mobile cannot
+perform that comparison; server-side canonical gate validation is mandatory
+for this case and must not rely only on the mobile candidate-set check.
+
 ## Safe Errors
 
 HTTP mapping:

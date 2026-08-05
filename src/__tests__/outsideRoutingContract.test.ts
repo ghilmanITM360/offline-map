@@ -7,6 +7,7 @@ import type {
   OutsideRouteCandidateSet,
   OutsideWalkingRouteRequest,
 } from '../models/outsideRouting';
+import { getDistance } from 'geolib';
 
 const request: OutsideWalkingRouteRequest = {
   token: { requestId: 'outside-1', requestVersion: 1 },
@@ -18,6 +19,23 @@ const request: OutsideWalkingRouteRequest = {
       routeTargetCoordinate: { latitude: 24.9609, longitude: 67.0109 },
     },
   ],
+  signal: new AbortController().signal,
+};
+
+const approvedGateTargets = {
+  GATE_12: { latitude: 24.963676, longitude: 67.006339 },
+  GATE_13: { latitude: 24.963718, longitude: 67.006862 },
+  GATE_14: { latitude: 24.965516, longitude: 67.007675 },
+} as const;
+
+const realGateRequest: OutsideWalkingRouteRequest = {
+  token: { requestId: 'real-gate-identity', requestVersion: 4 },
+  origin: { latitude: 24.97, longitude: 67.01 },
+  gates: Object.entries(approvedGateTargets).map(([gateId, coordinate]) => ({
+    gateId,
+    gateCoordinate: coordinate,
+    routeTargetCoordinate: coordinate,
+  })),
   signal: new AbortController().signal,
 };
 
@@ -48,6 +66,45 @@ function candidateSet(routes: readonly NormalizedOutsideCandidate[]): OutsideRou
     requestVersion: 1,
     provider: routes[0]?.provider ?? 'google',
     outcomes: [{ status: 'routed', gateId: 'GATE_05', routes }],
+  };
+}
+
+function realGateRoute(
+  gateId: keyof typeof approvedGateTargets,
+  endpoint = approvedGateTargets[gateId],
+): NormalizedOutsideCandidate {
+  return {
+    schemaVersion: 1,
+    candidateId: `${realGateRequest.token.requestId}:google:${gateId}:0`,
+    requestId: realGateRequest.token.requestId,
+    requestVersion: realGateRequest.token.requestVersion,
+    provider: 'google',
+    gateId,
+    distanceM: 800,
+    durationSeconds: 600,
+    coordinates: [realGateRequest.origin, endpoint],
+    steps: [],
+    roadFollowing: true,
+    distanceKind: 'walking-route',
+    warnings: [],
+    fallbackReason: null,
+    fallbackHistory: [],
+  };
+}
+
+function realGateCandidateSet(
+  routes: Partial<Record<keyof typeof approvedGateTargets, NormalizedOutsideCandidate>>,
+): OutsideRouteCandidateSet {
+  return {
+    requestId: realGateRequest.token.requestId,
+    requestVersion: realGateRequest.token.requestVersion,
+    provider: 'google',
+    outcomes: realGateRequest.gates.map(({ gateId }) => {
+      const routeForGate = routes[gateId as keyof typeof approvedGateTargets];
+      return routeForGate
+        ? { status: 'routed' as const, gateId, routes: [routeForGate] }
+        : { status: 'unreachable' as const, gateId, reason: 'no-route' as const };
+    }),
   };
 }
 
@@ -131,5 +188,45 @@ describe('outside routing contract validation', () => {
       ],
     };
     expect(() => assertCompleteCandidateSet(multiGateRequest, swappedSet)).toThrow(/another gate target/i);
+  });
+
+  test('real Gate 12 and Gate 13 remain distinct inside the 100m endpoint tolerance', () => {
+    expect(getDistance(approvedGateTargets.GATE_12, approvedGateTargets.GATE_13)).toBeLessThan(100);
+
+    expect(() => assertCompleteCandidateSet(realGateRequest, realGateCandidateSet({
+      GATE_12: realGateRoute('GATE_12', approvedGateTargets.GATE_13),
+    }))).toThrow(/another gate target/i);
+
+    expect(() => assertCompleteCandidateSet(realGateRequest, realGateCandidateSet({
+      GATE_13: realGateRoute('GATE_13', approvedGateTargets.GATE_12),
+    }))).toThrow(/another gate target/i);
+  });
+
+  test('accepts correct real Gate 12 and Gate 13 endpoints with distinct candidate IDs', () => {
+    const gate12Route = realGateRoute('GATE_12');
+    const gate13Route = realGateRoute('GATE_13');
+
+    expect(gate12Route.candidateId).not.toBe(gate13Route.candidateId);
+    expect(() => assertCompleteCandidateSet(realGateRequest, realGateCandidateSet({
+      GATE_12: gate12Route,
+      GATE_13: gate13Route,
+    }))).not.toThrow();
+  });
+
+  test('single manual Gate 12 plan cannot apply competing-gate identity check', () => {
+    const singleGateRequest = {
+      ...realGateRequest,
+      gates: realGateRequest.gates.filter(({ gateId }) => gateId === 'GATE_12'),
+    };
+    const routeEndingAtGate13 = realGateRoute('GATE_12', approvedGateTargets.GATE_13);
+    const singleGateSet: OutsideRouteCandidateSet = {
+      requestId: singleGateRequest.token.requestId,
+      requestVersion: singleGateRequest.token.requestVersion,
+      provider: 'google',
+      outcomes: [{ status: 'routed', gateId: 'GATE_12', routes: [routeEndingAtGate13] }],
+    };
+
+    expect(getDistance(approvedGateTargets.GATE_12, approvedGateTargets.GATE_13)).toBeLessThan(100);
+    expect(() => assertCompleteCandidateSet(singleGateRequest, singleGateSet)).not.toThrow();
   });
 });
