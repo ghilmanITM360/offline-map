@@ -1,5 +1,13 @@
 # Core Routing Decision: Complete-Journey Gate Selection
 
+> **Current integration context:** This document remains authoritative for
+> eligibility and complete-journey cost. References below to beeline/default
+> offline provider behavior describe the core track when it was written.
+> Current production outside coordinates, regardless of GPS, remembered, or
+> manual selection source, use `prepareOutsideRoutingPlan` → configured Google
+> proxy → bundled OSM fallback → labelled direct-direction fallback →
+> `finalizeOutsideRoutingPlan`. Internal venue routing remains offline.
+
 Status: **Implemented.** Updated for Gate 12 and the core/provider
 integration contract (see "Gate 12 / 13 / 14 coordinates" and "Core/provider
 outside-routing contract" below) — both follow-ups to the original
@@ -483,9 +491,8 @@ this change — that remains a separate, still-pending gate.
 
 The core/provider outside-routing contract (`prepareOutsideRoutingPlan` /
 `finalizeOutsideRoutingPlan`) was tested with real venue data end-to-end,
-including a parity cross-check against `calculateRoute`, but only using
-`resolveOfflineOsmOutsideCandidate` as the "provider" (this track has no
-access to a live Google Directions integration). It has not been exercised
-against Codex's actual provider implementation — that integration, and
-whatever shape Codex's real provider responses take in practice, remains
-unverified until Codex wires it up.
+including a parity cross-check against `calculateRoute`, but this core-track
+report only used `resolveOfflineOsmOutsideCandidate` as its provider. Hybrid
+mobile integration was added later and is documented in
+`docs/HYBRID_PROVIDER_CORE_INTEGRATION.md`; deployed proxy and real Google
+Routes behavior remain unverified.

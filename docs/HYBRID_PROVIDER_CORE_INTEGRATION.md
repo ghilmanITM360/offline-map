@@ -4,6 +4,12 @@ Status: source implemented and automated integration-tested. Native, device, dep
 
 This document complements `CORE_ROUTING_DECISION.md`; it does not redefine complete-journey cost or gate eligibility.
 
+Internal Ijtema routing and bundled OSM outside fallback remain offline.
+When a secure routing proxy is configured and available, every outside start
+coordinate may first request Google walking-route candidates. Google failure
+falls back to bundled OSM. Failure of both road-routing providers falls back
+to a clearly labelled direct-direction guide that is not road navigation.
+
 ## Production Flow
 
 ```text
@@ -19,6 +25,11 @@ DirectionsViewModel / NavigationViewModelV2
 ```
 
 Provider layer supplies outside route distance, optional duration, geometry, steps, warnings, and provider/request identity for each approved gate. Core alone adds connector cost, gate penalty, and internal route cost, then chooses complete-journey winner. Manual gate selection narrows prepared plan before provider work; provider distance cannot override it.
+
+Outside/inside dispatch depends on resolved coordinate, not selection source.
+Live GPS, remembered location, and manually searched/selected places use the
+same hybrid workflow when their coordinate is outside. A manual place inside
+the Ijtema continues through the existing internal pedestrian route.
 
 ## Canonical Contract
 
@@ -47,6 +58,14 @@ validation against server-side canonical gate coordinates remains required.
 Google runs only when `EXPO_PUBLIC_IJTEMA_ROUTING_PROXY_BASE_URL` is a valid configured base URL. Mobile sends walking-only requests and contains no Google Routes web-service credential. Backend remains undeployed; server security, quota, rate limiting, and real Google behavior remain blocked pending platform approval.
 
 OSM adapter calls `RoutingServiceV2.resolveOfflineOsmOutsideCandidate(origin, gateId)` for every core-approved gate. It preserves road geometry, generated walking steps, graph coverage failure, and sanity warnings. Adapter never selects gate.
+
+Bundled OSM graph calculation is synchronous in production. No per-gate
+JavaScript timer is presented as an interrupt: a timer cannot preempt that
+CPU work. Cancellation is checked before each gate calculation and after it
+returns, so cancellation stops untouched gates and prevents a completed
+provider result from committing. External request coordination also checks
+cancellation before and after provider execution. An in-progress synchronous
+gate calculation itself is not cancellable.
 
 Direct guide is final fallback. It returns direct-distance geometry, `roadFollowing: false`, null duration, no road instructions, and visible English/Urdu warning. Preview and active navigation expose retry and official-gate selection. Direct geometry is dashed and never labelled as shortest, safest, or road-following.
 

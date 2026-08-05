@@ -1,5 +1,14 @@
 # Production Runtime QA Plan
 
+> **Architecture update:** This plan was authored against the earlier
+> offline-only provider architecture. Preserve its historical QA state and
+> device-evidence rules, but execute outside-route cases against current
+> hybrid behavior: configured secure Google proxy first, bundled offline OSM
+> fallback second, and a clearly labelled direct-direction guide last.
+> Internal Ijtema routing remains offline. Offline test rows must disable or
+> make the proxy unavailable and verify OSM/direct fallback honestly; they do
+> not prove that every current outside-route attempt has no network path.
+
 Read this before running any check in this plan: **nothing in this repository's automated test suite (`npm test`, `npm run typecheck`, `npm run lint`) constitutes runtime verification.** Those gates prove the TypeScript source is internally consistent and that specific computed values (routes, distances, graph adjacency) are correct. They do not prove the app renders, responds to touch, survives a real device's GPS/network/memory conditions, or that a human can actually complete a task in it. `CLAUDE.md` states this explicitly ("local TypeScript/lint/test-script gates passing does not mean Android visual QA has passed"), and `PROJECT_AUDIT.md` (§7, §9.2) goes further: roughly half of the `scripts/test-*-v2.ts` files that sound like UI tests (`test-home-buttons-v2`, `test-navigation-ui`, `test-battery-v2`) are `readFileSync` string-presence checks against source files — they never render a component or simulate a tap. A fully green `npm test` run is evidence about source code, not about the running app.
 
 **Sign-off rule for this plan: no row below may be marked PASS without a real device/emulator run behind it, on that device, on that day — a release build for Android (Part 1), a real build for iOS (Part 2). "Looks correct in source" is not evidence. A screenshot, screen recording, or platform-appropriate log capture (`adb logcat` on Android, device console log on iOS) is the minimum acceptable evidence per row. No exceptions, including for rows that look trivial.**
@@ -151,7 +160,7 @@ Use `docs/V2_FULL_APP_EMULATOR_QA_TEST_CASES.md` section D for the full route ma
 | D5 | Weak GPS simulation (mock a low-accuracy fix, e.g. via a location-mocking dev tool or a real weak-signal environment) | A weak-GPS warning banner appears rather than the app silently trusting a bad fix | |
 | D6 | Tap Exit mid-navigation | Navigation stops cleanly and returns to Home/Directions; no crash, no stuck screen | |
 | D7 | Re-enter navigation, press Android hardware back | A confirmation dialog appears before exiting (not an abrupt unconfirmed exit) | |
-| D8 | Full navigation session with Wi-Fi and mobile data off (release build only, per §4 A4) | Navigation starts, tracks GPS, reroutes if needed, and reaches arrival state entirely offline — the graph/routing logic must not depend on any network call (per `CLAUDE.md`'s "routing/nav logic is unconditionally offline" architecture claim; this row is the actual runtime proof of that claim, which today rests only on source reading) | |
+| D8 | Full navigation session with Wi-Fi and mobile data off (release build only, per §4 A4) | Navigation starts, tracks GPS, reroutes if needed, and reaches arrival state using bundled OSM outside fallback plus offline internal routing. Google proxy failure must not block fallback. If both road-routing providers fail, UI must identify direct-direction guidance as not road navigation. | |
 | D9 | Arrival | Reaching the destination within the documented arrival radius shows an arrival state/modal, not a route that silently keeps recalculating past the destination | |
 | D10 | Developer Mode off (normal mode) throughout D1-D9 | No raw internal IDs (`R9-03`, `SPNP-01`, `B28_C2`, etc.) are ever visible in any navigation UI copy | |
 

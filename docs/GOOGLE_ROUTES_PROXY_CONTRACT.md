@@ -210,6 +210,12 @@ external cancellation -> stop; no fallback
 
 Mobile client performs one proxy attempt per request and no automatic retry loop. Direct guide remains visibly labelled as not road navigation.
 
+Google client timeout and abort handling remain asynchronous and real.
+Bundled OSM fallback uses a fast synchronous graph calculation; mobile does
+not claim a JavaScript timer can interrupt an in-progress gate calculation.
+OSM cancellation checks run between gate calculations, while request
+coordination rejects cancellation before and after provider execution.
+
 ## Verification Boundary
 
 Automated mobile tests verify request validation, walking-only payload, timeout, cancellation, safe HTTP mapping, response normalization, fallback order, and absence of credential fields in normalized results.

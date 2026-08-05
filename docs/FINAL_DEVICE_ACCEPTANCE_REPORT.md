@@ -1,5 +1,15 @@
 # Final Device Acceptance Report
 
+> **Historical architecture context:** This report records device evidence
+> from an offline-only routing build before hybrid outside providers were
+> integrated. Its screenshots, failures, and pass/fail conclusions remain
+> valid for that tested build; its present-tense provider assumptions do not
+> describe current source. Internal Ijtema routing and bundled OSM outside
+> fallback remain offline. When a secure routing proxy is configured and
+> available, outside routing may first request Google walking-route
+> candidates, then falls back to bundled OSM, then to a clearly labelled
+> direct-direction guide that is not road navigation.
+
 QA pass performed against a real running Android emulator (`Pixel_10_Pro`, `emulator-5554`), fresh install, cleared Metro cache, current working tree (all fixes from `docs/FINAL_FIX_VALIDATION_REPORT.md` included, uncommitted). No code was modified during this pass — QA/validation only, per instruction. Screenshots referenced below are saved under `docs/qa-evidence/`.
 
 ## Environment
@@ -51,7 +61,7 @@ Filter chips were exercised across searches and 3 direct category switches (Bloc
 ### Offline Mode (`docs/qa-evidence/12-offline-search-ok.png`)
 **PASS (search only).** With wifi and mobile data both disabled at the OS level (`svc wifi disable` / `svc data disable`, confirmed via the airplane-mode status-bar icon), searching "Block 10" returned the correct bilingual result instantly, with an explicit "Offline" badge on the result row and the existing honest messaging "Background map not downloaded. Ijtema routes still work." — no misleading network-error state was shown anywhere.
 
-**Not independently re-verified this pass:** a live offline route-preview/navigation screenshot — repeated tap-coordinate misses on the offline search-result row (search-suggestion layout shifted between attempts) consumed the remaining time budget for this sub-test before one could be captured. The online Directions flow was already fully verified working (see Flow C above), and per `CLAUDE.md` the v2 routing architecture has no network dependency by design, but that is a code-level inference, not this session's own device evidence for the offline case specifically.
+**Not independently re-verified this pass:** a live offline route-preview/navigation screenshot — repeated tap-coordinate misses on the offline search-result row (search-suggestion layout shifted between attempts) consumed the remaining time budget for this sub-test before one could be captured. The online Directions flow was already fully verified working (see Flow C above). At the time of this pass, v2 route computation had no network provider; that was a code-level inference, not this session's own device evidence for the offline case specifically. Current hybrid source still supports offline routing through bundled OSM fallback when Google proxy routing is unavailable.
 
 ### Performance
 **Inconclusive — host confound, not a clean pass or fail.** `adb shell dumpsys gfxinfo` on the app process reported 99.63% janky frames, 50th-percentile frame time 93ms, 90th-percentile 1350ms, Native Heap PSS ~297MB. These numbers are real device output, not fabricated — but they were captured while the host itself was under severe, independently-confirmed resource exhaustion (sustained load average 30–45, ~60–90MB system-wide free memory, concurrent Metro/jest-worker processes, the emulator's own qemu process alone consuming 160%+ CPU). It is not possible to separate "the app is janky" from "the host could not give the emulator a fair CPU/GPU share" with the evidence gathered this session. This must be re-measured on a healthy host or physical device before being used as a release signal in either direction.
