@@ -1,5 +1,14 @@
 # Full Project Audit Report
 
+> **Historical audit context:** This report describes source as inspected on
+> 2026-07-19, before hybrid outside providers were integrated. Preserve its
+> evidence and findings for that revision, but do not treat its current-tense
+> claim that routing is unconditionally offline as current architecture.
+> Internal Ijtema routing and bundled OSM fallback remain offline; configured
+> secure Google walking proxy is now first outside provider, followed by OSM
+> and a clearly labelled direct-direction fallback. See
+> `docs/HYBRID_PROVIDER_CORE_INTEGRATION.md`.
+
 Consolidated cross-check of all `docs/*.md` against the current working-tree code state (branch `codex/ijtema-map-data-v2`, 2026-07-19). This report reads every doc under `docs/`, verifies each claim against the actual source (file/line citations below), and calls out where docs are stale, aspirational, contradicted by code, or — the opposite direction — where code has quietly moved *ahead* of what the docs still describe as "planning only."
 
 Methodology: read all 21 pre-existing `docs/*.md` files in full; cross-checked specific claims with `grep`/`Read` against `src/`, `scripts/`, `android/`, `ios/`; ran `npm run typecheck` (clean) and spot-checked 3 representative test scripts (`test-entry-gate-routing`, `test-outside-street-graph-integration-v2`, `test-v1-v2-isolation` — all pass) rather than the full 86-script suite, given time budget. Also read root `PROJECT_AUDIT.md` (a prior, independent audit dated the same day) and reconciled its findings against current code, since several of its findings have since been fixed by later work.

@@ -1,5 +1,13 @@
 # Outside-to-Inside Navigation Audit
 
+> **Superseded provider context:** This analysis accurately records the
+> 2026-07-18 offline-only starting point. Current outside routing may use a
+> configured secure Google walking proxy, then bundled offline OSM, then a
+> labelled direct-direction guide. Its statements that no online routing
+> provider exists and routing services make zero network calls are historical,
+> not current. See `docs/HYBRID_PROVIDER_CORE_INTEGRATION.md` and
+> `docs/GOOGLE_ROUTES_PROXY_CONTRACT.md`.
+
 Status: **Analysis only. No code changed. Awaiting approval before implementation.**
 
 Date: 2026-07-18
