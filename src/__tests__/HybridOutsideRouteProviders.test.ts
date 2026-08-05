@@ -122,8 +122,9 @@ describe('hybrid outside route providers', () => {
     }
   });
 
-  test('OSM adapter preserves per-gate geometry, steps, and warning without selecting a gate', async () => {
-    const resolver = jest.fn(async (_request, gate) => ({
+  test('synchronous OSM adapter preserves per-gate routes without scheduling a fake interrupt timer', async () => {
+    const timeoutSpy = jest.spyOn(global, 'setTimeout');
+    const resolver = jest.fn((_request, gate) => ({
       status: 'routed' as const,
       distanceM: 250,
       durationSeconds: 180,
@@ -136,6 +137,7 @@ describe('hybrid outside route providers', () => {
     const result = await provider.routeToGates(request);
 
     expect(resolver).toHaveBeenCalledTimes(2);
+    expect(timeoutSpy).not.toHaveBeenCalled();
     expect(result.status).toBe('success');
     if (result.status === 'success') {
       expect(result.candidateSet.outcomes).toHaveLength(2);
@@ -147,6 +149,7 @@ describe('hybrid outside route providers', () => {
         expect(first.routes[0].steps[0].roadName).toBe('Public Road');
       }
     }
+    timeoutSpy.mockRestore();
   });
 
   test('Google and OSM failures produce direct guides for every approved gate', async () => {
@@ -230,18 +233,40 @@ describe('hybrid outside route providers', () => {
     expect(osm.calls).toBe(0);
   });
 
-  test('bounded OSM attempt times out so direct fallback can continue', async () => {
-    jest.useFakeTimers();
+  test('OSM cancellation before gate calculation stops all resolver work', async () => {
+    const controller = new AbortController();
+    controller.abort();
+    const resolver = jest.fn(() => ({ status: 'unreachable' as const, reason: 'no-route' as const }));
     const osm = new OfflineOsmWalkingRouteProvider({
-      timeoutMs: 50,
-      resolveGateRoute: jest.fn(() => new Promise(() => undefined)),
+      resolveGateRoute: resolver,
     });
-    const resultPromise = osm.routeToGates(request);
-    await jest.advanceTimersByTimeAsync(50);
-    await expect(resultPromise).resolves.toEqual({
+
+    await expect(osm.routeToGates({ ...request, signal: controller.signal })).resolves.toEqual({
       status: 'failure',
-      failure: { provider: 'offline-osm', code: 'timed-out', retryable: true },
+      failure: { provider: 'offline-osm', code: 'cancelled', retryable: false },
     });
-    jest.useRealTimers();
+    expect(resolver).not.toHaveBeenCalled();
+  });
+
+  test('OSM cancellation between gate calculations stops remaining gates', async () => {
+    const controller = new AbortController();
+    const resolver = jest.fn((_request, gate) => {
+      controller.abort();
+      return {
+        status: 'routed' as const,
+        distanceM: 250,
+        durationSeconds: null,
+        coordinates: [request.origin, gate.routeTargetCoordinate],
+        steps: [],
+        warnings: [],
+      };
+    });
+    const osm = new OfflineOsmWalkingRouteProvider({ resolveGateRoute: resolver });
+
+    await expect(osm.routeToGates({ ...request, signal: controller.signal })).resolves.toEqual({
+      status: 'failure',
+      failure: { provider: 'offline-osm', code: 'cancelled', retryable: false },
+    });
+    expect(resolver).toHaveBeenCalledTimes(1);
   });
 });

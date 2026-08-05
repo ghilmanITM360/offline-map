@@ -14,7 +14,6 @@ import { OfflineOsmWalkingRouteProvider } from './OfflineOsmWalkingRouteProvider
 export interface ProductionOutsideRouteSourceOptions {
   googleProxyBaseUrl?: string;
   googleTimeoutMs?: number;
-  osmTimeoutMs?: number;
 }
 
 function maneuver(type: string): OutsideWalkingManeuver {
@@ -59,7 +58,6 @@ export function createProductionOutsideRouteSource(
     timeoutMs: options.googleTimeoutMs,
   });
   const osm = new OfflineOsmWalkingRouteProvider({
-    timeoutMs: options.osmTimeoutMs,
     resolveGateRoute: (request, gate) => {
       const v2Origin = { lat: request.origin.latitude, lng: request.origin.longitude };
       if (!isWithinStreetGraphRadius(v2Origin)) {
