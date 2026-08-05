@@ -35,7 +35,6 @@ import { InstructionService } from '../../../services/InstructionService';
 import { SearchService } from '../../../services/SearchService';
 import { useAppStore } from '../../../store/useAppStore';
 import { Place, RoutePreview, BlockEntryPoint, Gate } from '../../../models/types';
-import { EntryGateRoutingService } from '../../../services/EntryGateRoutingService';
 import { IJTEMA_DATA } from '../../../constants/data';
 import { AppTheme } from '../../../services/ThemeService';
 import { NAV_TRANSITION_TIMINGS } from '../../../constants/navigationTransitions';
@@ -212,7 +211,6 @@ function RoutePreviewSection({
   onChangeDestination?: (place: Place) => void;
 }) {
   const currentLocation = useAppStore((s) => s.currentLocation);
-  const lastKnownLocation = useAppStore((s) => s.lastKnownLocation);
   const distanceUnit = useAppStore((s) => s.settings.distanceUnit);
 
   const [startSearch, setStartSearch] = useState('');
@@ -236,6 +234,7 @@ function RoutePreviewSection({
     rememberedLocationAvailable,
     rememberedLocationInsideVenue,
     currentRouteOriginInsideVenue,
+    isOutsideStart,
     loadState,
     errorMessage,
     manualStart,
@@ -282,17 +281,7 @@ function RoutePreviewSection({
       .slice(0, 8);
   }, [currentLocation, destination.id, showDestinationOptions, destSearch]);
 
-  const startCoordinate =
-    startSource === 'live_gps'
-      ? currentLocation
-      : startSource === 'remembered_location'
-      ? lastKnownLocation
-      : manualStart?.coordinate ?? null;
-  const outsideStart =
-    destination.sourceVersion === 'v2' &&
-    startSource !== 'manual_place' &&
-    !!startCoordinate &&
-    !EntryGateRoutingService.isInsideIjtemaArea(startCoordinate);
+  const outsideStart = isOutsideStart;
   const routeMeta = route as RoutePreviewWithV2Meta | null;
   const outsideRoute = routeMeta?.outsideRoute;
   const entryGateName = routeMeta?.startResolution?.gate?.name?.en ?? null;

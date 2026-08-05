@@ -112,6 +112,22 @@ export function useDirectionsViewModel(destination: Place | null) {
   const rememberedLocationInsideVenue = !!lastKnownLocation && isInsideVenueForDestination(lastKnownLocation);
   const currentRouteOriginInsideVenue = !!routeOriginLocation && isInsideVenueForDestination(routeOriginLocation);
 
+  // Presentation-only "is the active start point outside the venue" check —
+  // manual_place is deliberately excluded here (a manually chosen start is
+  // never flagged as an outside-forced start in the UI), unlike calculateRoute's
+  // own forceOutside, which applies to every startSource.
+  const startCoordinateForOutsideCheck =
+    startSource === 'live_gps'
+      ? currentLocation
+      : startSource === 'remembered_location'
+      ? lastKnownLocation
+      : manualStart?.coordinate ?? null;
+  const isOutsideStart =
+    destination?.sourceVersion === 'v2' &&
+    startSource !== 'manual_place' &&
+    !!startCoordinateForOutsideCheck &&
+    !EntryGateRoutingService.isInsideIjtemaArea(startCoordinateForOutsideCheck);
+
   const startSourceLabel =
     startSource === 'live_gps'
       ? (currentLocation ? (currentLocationSource === 'remembered' ? 'Last known location' : 'My current location') : 'Choose starting point')
@@ -495,6 +511,7 @@ export function useDirectionsViewModel(destination: Place | null) {
     rememberedLocationAvailable,
     rememberedLocationInsideVenue,
     currentRouteOriginInsideVenue,
+    isOutsideStart,
     loadState,
     errorMessage,
     manualStart,
