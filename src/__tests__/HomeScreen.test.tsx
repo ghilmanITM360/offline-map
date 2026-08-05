@@ -11,6 +11,7 @@ import { HomeScreen } from '../views/screens/HomeScreen';
 import { useHomeViewModel } from '../viewmodels/HomeViewModel';
 import { useDirectionsViewModel } from '../viewmodels/DirectionsViewModel';
 import { useAppStore } from '../store/useAppStore';
+import { MapConfigService } from '../services/MapConfigService';
 import type { Place } from '../models/types';
 
 // requestAnimationFrame stays real (not faked): MapLabelOverlay's projection pipeline
@@ -589,6 +590,97 @@ describe('HomeScreen — canonical bottom-sheet dismissal', () => {
     });
 
     expect(setSelectedPlaceSpy.mock.calls.filter(([place]) => place === null)).toHaveLength(1);
+  });
+});
+
+describe('HomeScreen — resolved base-map rendering', () => {
+  function useDownloadedTilesViewModel() {
+    return { ...useFakeHomeViewModel(), isOffline: false, offlineData: { isDownloaded: true } };
+  }
+
+  beforeEach(() => {
+    useAppStore.setState({ offlineMapStatus: 'downloaded' });
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  test('online missing-key state renders one LocalTile fallback', async () => {
+    mockedUseHomeViewModel.mockImplementation(useDownloadedTilesViewModel);
+    await render(<HomeScreen />);
+
+    expect(screen.getAllByTestId('local-base-map-tiles')).toHaveLength(1);
+    expect(screen.getByTestId('home-map-view').props.mapType).toBe('none');
+  });
+
+  test('online Google map renders without LocalTile conflict', async () => {
+    jest.spyOn(MapConfigService, 'getRuntimeStatus').mockReturnValue({
+      keyPresent: true,
+      keyPreview: null,
+      packageName: 'com.test',
+      platform: 'android',
+      source: 'env',
+    });
+    mockedUseHomeViewModel.mockImplementation(useDownloadedTilesViewModel);
+    await render(<HomeScreen />);
+
+    expect(screen.queryByTestId('local-base-map-tiles')).not.toBeOnTheScreen();
+    expect(screen.getByTestId('home-map-view').props.mapType).toBe('standard');
+    expect(screen.getByTestId('home-map-view').props.provider).toBe('google');
+  });
+
+  test('Google load watchdog switches once to one LocalTile fallback', async () => {
+    jest.spyOn(MapConfigService, 'getRuntimeStatus').mockReturnValue({
+      keyPresent: true,
+      keyPreview: null,
+      packageName: 'com.test',
+      platform: 'android',
+      source: 'env',
+    });
+    mockedUseHomeViewModel.mockImplementation(useDownloadedTilesViewModel);
+    await render(<HomeScreen />);
+
+    await act(async () => {
+      jest.advanceTimersByTime(7_100);
+    });
+
+    expect(screen.getAllByTestId('local-base-map-tiles')).toHaveLength(1);
+    expect(screen.getByTestId('home-map-view').props.mapType).toBe('none');
+  });
+
+  test.each(['corrupt', 'needs_update'] as const)('%s tiles stay graph-only', async (offlineMapStatus) => {
+    useAppStore.setState({ offlineMapStatus });
+    mockedUseHomeViewModel.mockImplementation(useDownloadedTilesViewModel);
+    await render(<HomeScreen />);
+
+    expect(screen.queryByTestId('local-base-map-tiles')).not.toBeOnTheScreen();
+    expect(screen.getByText(MapConfigService.getMissingGoogleMapsMessage())).toBeOnTheScreen();
+  });
+
+  test('returning online replaces LocalTile with Google without duplicate rendering', async () => {
+    jest.spyOn(MapConfigService, 'getRuntimeStatus').mockReturnValue({
+      keyPresent: true,
+      keyPreview: null,
+      packageName: 'com.test',
+      platform: 'android',
+      source: 'env',
+    });
+    useAppStore.setState({ hasInternet: false });
+    mockedUseHomeViewModel.mockImplementation(() => {
+      const home = useFakeHomeViewModel();
+      const hasInternet = useAppStore((state) => state.hasInternet);
+      return { ...home, isOffline: !hasInternet, offlineData: { isDownloaded: true } };
+    });
+    await render(<HomeScreen />);
+    expect(screen.getAllByTestId('local-base-map-tiles')).toHaveLength(1);
+
+    await act(async () => {
+      useAppStore.setState({ hasInternet: true });
+    });
+
+    expect(screen.queryByTestId('local-base-map-tiles')).not.toBeOnTheScreen();
+    expect(screen.getByTestId('home-map-view').props.mapType).toBe('standard');
   });
 });
 

@@ -17,7 +17,7 @@ interface Params {
   mapRef: React.RefObject<MapView | null>;
   mapReady: boolean;
   mapZoomLevel: number;
-  hasGoogleMapsKey: boolean;
+  hasBaseMap: boolean;
   /** Reuse Home's existing current-location pulse animation instead of starting a second loop. */
   userPulseAnim: Animated.Value;
   cameraManager: CameraManager;
@@ -28,8 +28,7 @@ interface Params {
  * (on the single persistent MapView) instead of a separate NavigationScreen. Safe to call
  * unconditionally — every effect here already no-ops when there's no active v2 route.
  */
-export function useNavigationOverlayV2({ mapRef, mapReady, mapZoomLevel, hasGoogleMapsKey, userPulseAnim, cameraManager }: Params) {
-  const hasInternet = useAppStore((s) => s.hasInternet);
+export function useNavigationOverlayV2({ mapRef, mapReady, mapZoomLevel, hasBaseMap, userPulseAnim, cameraManager }: Params) {
   const developerMode = useAppStore((s) => s.developerModeEnabled);
   const settings = useAppStore((s) => s.settings);
   const currentLocationSource = useAppStore((s) => s.currentLocationSource);
@@ -51,7 +50,7 @@ export function useNavigationOverlayV2({ mapRef, mapReady, mapZoomLevel, hasGoog
       selectedPlaceId: route?.destination.blockId ?? destination?.id,
       selectedPlace: destination,
       developerMode: __DEV__ && developerMode,
-      graphOnlyFallback: !hasGoogleMapsKey || !hasInternet,
+      graphOnlyFallback: !hasBaseMap,
       zoomLevel: mapZoomLevel,
     });
     // Route-critical-only declutter: active navigation shouldn't render all 42 blocks/
@@ -59,7 +58,7 @@ export function useNavigationOverlayV2({ mapRef, mapReady, mapZoomLevel, hasGoog
     // always-visible major gates). See NAV_CORRIDOR_RADIUS_M.
     if (!route || route.coordinates.length < 2) return baseLayers;
     return { ...baseLayers, ...V2MapRenderingService.getNavigationCorridorLayers(baseLayers, route.coordinates) };
-  }, [destination, developerMode, hasGoogleMapsKey, hasInternet, route, mapZoomLevel]);
+  }, [destination, developerMode, hasBaseMap, route, mapZoomLevel]);
 
   useEffect(() => {
     setInitialCameraFitDone(false);
@@ -123,7 +122,7 @@ export function useNavigationOverlayV2({ mapRef, mapReady, mapZoomLevel, hasGoog
     return () => sub.remove();
   }, [route, arrived, vm.handleExit]);
 
-  const graphOnlyFallbackUsed = (!hasGoogleMapsKey || !hasInternet) && mapLayers.graphOnlyFallbackSupported;
+  const graphOnlyFallbackUsed = !hasBaseMap && mapLayers.graphOnlyFallbackSupported;
 
   return {
     ...vm,

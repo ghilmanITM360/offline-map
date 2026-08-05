@@ -65,7 +65,7 @@ assert(
   navigationVm.includes("(activeRoute as { sourceVersion?: string }).sourceVersion === 'v2'"),
   'Legacy (v1) navigation runtime must detect and reject v2-shaped active routes',
 );
-assert(home.includes("mapType={hasGoogleMapsKey ? (isOffline ? 'none' : mapType) : 'none'}"), 'Home map (shared by navigation) must render graph-only map when base map is unavailable or internet is offline');
+assert(home.includes("mapType={baseMapMode === 'GOOGLE_BASEMAP' ? mapType : 'none'}"), 'Home map must render Google tiles only in resolved Google-basemap mode');
 assert(navigation.includes('route.coordinates'), 'Navigation must render route polyline from active route coordinates');
 assert(navigation.includes('title="Start"'), 'Navigation must render a start marker');
 assert(navigation.includes('destinationMarker'), 'Navigation must render a destination marker');

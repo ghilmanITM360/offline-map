@@ -90,7 +90,7 @@ describe('NavigationChromeV2 — direct outside guide', () => {
 
     await render(<NavigationChromeV2
       overlay={baseOverlay({ route: offlineRoute, instructions: offlineRoute.instructions })}
-      hasGoogleMapsKey
+      hasBaseMap
     />);
 
     expect(screen.getByText('Offline walking route')).toBeOnTheScreen();
@@ -132,7 +132,7 @@ describe('NavigationChromeV2 — direct outside guide', () => {
     };
     await render(<NavigationChromeV2
       overlay={baseOverlay({ route: directRoute, instructions: directRoute.instructions })}
-      hasGoogleMapsKey
+      hasBaseMap
     />);
 
     expect(screen.getByText('Direct guide — not a road route')).toBeOnTheScreen();
@@ -178,7 +178,7 @@ describe('NavigationChromeV2 — direct outside guide', () => {
         manualGateId: null,
         availableOutsideGates: [{ id: 'GATE_12', label: 'Gate 12' }],
       })}
-      hasGoogleMapsKey
+      hasBaseMap
     />);
 
     await user.press(screen.getByRole('button', { name: 'Retry road route' }));
@@ -196,7 +196,7 @@ describe('NavigationChromeV2 — direct outside guide', () => {
 // prop at all and this test fails.
 describe('NavigationChromeV2 — Exit/recenter/mute touch targets', () => {
   test('Exit, mute, and recenter buttons all carry hitSlop widening their tappable area', async () => {
-    await render(<NavigationChromeV2 overlay={baseOverlay()} hasGoogleMapsKey />);
+    await render(<NavigationChromeV2 overlay={baseOverlay()} hasBaseMap />);
 
     expect(screen.getByTestId('nav-exit-button').props.hitSlop).toEqual(NAV_TOUCH_TARGET_HIT_SLOP);
     expect(screen.getByTestId('nav-mute-toggle').props.hitSlop).toEqual(NAV_TOUCH_TARGET_HIT_SLOP);
@@ -206,7 +206,7 @@ describe('NavigationChromeV2 — Exit/recenter/mute touch targets', () => {
   test('pressing Exit invokes the real handleExit handler', async () => {
     const handleExit = jest.fn();
     const user = userEvent.setup();
-    await render(<NavigationChromeV2 overlay={baseOverlay({ handleExit })} hasGoogleMapsKey />);
+    await render(<NavigationChromeV2 overlay={baseOverlay({ handleExit })} hasBaseMap />);
 
     await user.press(screen.getByTestId('nav-exit-button'));
 
@@ -216,7 +216,7 @@ describe('NavigationChromeV2 — Exit/recenter/mute touch targets', () => {
   test('pressing recenter invokes setIsAutoFollowing(true)', async () => {
     const setIsAutoFollowing = jest.fn();
     const user = userEvent.setup();
-    await render(<NavigationChromeV2 overlay={baseOverlay({ setIsAutoFollowing })} hasGoogleMapsKey />);
+    await render(<NavigationChromeV2 overlay={baseOverlay({ setIsAutoFollowing })} hasBaseMap />);
 
     await user.press(screen.getByTestId('nav-recenter-button'));
 
@@ -228,7 +228,7 @@ describe('NavigationChromeV2 — Exit/recenter/mute touch targets', () => {
 // a Recenter map action and a Done action, per spec.
 describe('NavigationChromeV2 — arrival sheet', () => {
   test('shows You\'ve Arrived and offers Recenter + Done actions when arrived is true', async () => {
-    await render(<NavigationChromeV2 overlay={baseOverlay({ arrived: true })} hasGoogleMapsKey />);
+    await render(<NavigationChromeV2 overlay={baseOverlay({ arrived: true })} hasBaseMap />);
 
     expect(screen.getByText("You've Arrived!")).toBeOnTheScreen();
     expect(screen.getByTestId('nav-arrived-recenter-button')).toBeOnTheScreen();
@@ -238,7 +238,7 @@ describe('NavigationChromeV2 — arrival sheet', () => {
   test('pressing Recenter in the arrival sheet invokes setIsAutoFollowing(true)', async () => {
     const setIsAutoFollowing = jest.fn();
     const user = userEvent.setup();
-    await render(<NavigationChromeV2 overlay={baseOverlay({ arrived: true, setIsAutoFollowing })} hasGoogleMapsKey />);
+    await render(<NavigationChromeV2 overlay={baseOverlay({ arrived: true, setIsAutoFollowing })} hasBaseMap />);
 
     await user.press(screen.getByTestId('nav-arrived-recenter-button'));
 
@@ -248,7 +248,7 @@ describe('NavigationChromeV2 — arrival sheet', () => {
   test('pressing Done in the arrival sheet invokes handleExit', async () => {
     const handleExit = jest.fn();
     const user = userEvent.setup();
-    await render(<NavigationChromeV2 overlay={baseOverlay({ arrived: true, handleExit })} hasGoogleMapsKey />);
+    await render(<NavigationChromeV2 overlay={baseOverlay({ arrived: true, handleExit })} hasBaseMap />);
 
     await user.press(screen.getByTestId('nav-arrived-done-button'));
 

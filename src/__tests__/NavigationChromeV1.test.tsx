@@ -66,7 +66,7 @@ function baseOverlay(overrides: Partial<NavigationOverlayV1> = {}): NavigationOv
 // v1 navigation renders in-place on HomeScreen's MapView instead of a standalone NavigationScreen.
 describe('NavigationChromeV1 — Exit/recenter/mute touch targets', () => {
   test('Exit, mute, and recenter buttons all carry hitSlop widening their tappable area', async () => {
-    await render(<NavigationChromeV1 overlay={baseOverlay()} hasGoogleMapsKey />);
+    await render(<NavigationChromeV1 overlay={baseOverlay()} hasBaseMap />);
 
     expect(screen.getByTestId('nav-exit-button').props.hitSlop).toEqual(NAV_TOUCH_TARGET_HIT_SLOP);
     expect(screen.getByTestId('nav-mute-toggle').props.hitSlop).toEqual(NAV_TOUCH_TARGET_HIT_SLOP);
@@ -74,7 +74,7 @@ describe('NavigationChromeV1 — Exit/recenter/mute touch targets', () => {
   });
 
   test('renders active navigation state (instruction + trip info)', async () => {
-    await render(<NavigationChromeV1 overlay={baseOverlay()} hasGoogleMapsKey />);
+    await render(<NavigationChromeV1 overlay={baseOverlay()} hasBaseMap />);
 
     // Instruction card shows the maneuver label + road name hierarchy (Google Maps style),
     // not the raw instructions[].text — see InstructionService.maneuverLabel/ROAD_NAME_FALLBACK.
@@ -86,7 +86,7 @@ describe('NavigationChromeV1 — Exit/recenter/mute touch targets', () => {
   test('pressing Exit invokes the real handleExit handler (no navigation object involved)', async () => {
     const handleExit = jest.fn();
     const user = userEvent.setup();
-    await render(<NavigationChromeV1 overlay={baseOverlay({ handleExit })} hasGoogleMapsKey />);
+    await render(<NavigationChromeV1 overlay={baseOverlay({ handleExit })} hasBaseMap />);
 
     await user.press(screen.getByTestId('nav-exit-button'));
 
@@ -97,7 +97,7 @@ describe('NavigationChromeV1 — Exit/recenter/mute touch targets', () => {
   test('pressing the mute toggle invokes setIsMuted with the flipped value', async () => {
     const setIsMuted = jest.fn();
     const user = userEvent.setup();
-    await render(<NavigationChromeV1 overlay={baseOverlay({ isMuted: false, setIsMuted })} hasGoogleMapsKey />);
+    await render(<NavigationChromeV1 overlay={baseOverlay({ isMuted: false, setIsMuted })} hasBaseMap />);
 
     await user.press(screen.getByTestId('nav-mute-toggle'));
 
@@ -107,7 +107,7 @@ describe('NavigationChromeV1 — Exit/recenter/mute touch targets', () => {
   test('pressing recenter invokes setIsAutoFollowing(true)', async () => {
     const setIsAutoFollowing = jest.fn();
     const user = userEvent.setup();
-    await render(<NavigationChromeV1 overlay={baseOverlay({ setIsAutoFollowing })} hasGoogleMapsKey />);
+    await render(<NavigationChromeV1 overlay={baseOverlay({ setIsAutoFollowing })} hasBaseMap />);
 
     await user.press(screen.getByTestId('nav-recenter-button'));
 
@@ -115,7 +115,7 @@ describe('NavigationChromeV1 — Exit/recenter/mute touch targets', () => {
   });
 
   test('renders nothing once the route is cleared (exit must not leave stale chrome mounted)', async () => {
-    await render(<NavigationChromeV1 overlay={baseOverlay({ route: null })} hasGoogleMapsKey />);
+    await render(<NavigationChromeV1 overlay={baseOverlay({ route: null })} hasBaseMap />);
 
     expect(screen.queryByTestId('nav-exit-button')).not.toBeOnTheScreen();
   });
@@ -124,7 +124,7 @@ describe('NavigationChromeV1 — Exit/recenter/mute touch targets', () => {
   // a Recenter map action and a Done action, per spec.
   describe('arrival sheet', () => {
     test('shows You\'ve Arrived and offers Recenter + Done actions when arrived is true', async () => {
-      await render(<NavigationChromeV1 overlay={baseOverlay({ arrived: true })} hasGoogleMapsKey />);
+      await render(<NavigationChromeV1 overlay={baseOverlay({ arrived: true })} hasBaseMap />);
 
       expect(screen.getByText("You've Arrived!")).toBeOnTheScreen();
       expect(screen.getByTestId('nav-arrived-recenter-button')).toBeOnTheScreen();
@@ -134,7 +134,7 @@ describe('NavigationChromeV1 — Exit/recenter/mute touch targets', () => {
     test('pressing Recenter in the arrival sheet invokes setIsAutoFollowing(true)', async () => {
       const setIsAutoFollowing = jest.fn();
       const user = userEvent.setup();
-      await render(<NavigationChromeV1 overlay={baseOverlay({ arrived: true, setIsAutoFollowing })} hasGoogleMapsKey />);
+      await render(<NavigationChromeV1 overlay={baseOverlay({ arrived: true, setIsAutoFollowing })} hasBaseMap />);
 
       await user.press(screen.getByTestId('nav-arrived-recenter-button'));
 
@@ -144,7 +144,7 @@ describe('NavigationChromeV1 — Exit/recenter/mute touch targets', () => {
     test('pressing Done in the arrival sheet invokes handleExit', async () => {
       const handleExit = jest.fn();
       const user = userEvent.setup();
-      await render(<NavigationChromeV1 overlay={baseOverlay({ arrived: true, handleExit })} hasGoogleMapsKey />);
+      await render(<NavigationChromeV1 overlay={baseOverlay({ arrived: true, handleExit })} hasBaseMap />);
 
       await user.press(screen.getByTestId('nav-arrived-done-button'));
 

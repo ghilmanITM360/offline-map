@@ -15,7 +15,7 @@ import { CameraManager } from './useCameraManager';
 interface Params {
   mapRef: React.RefObject<MapView | null>;
   mapReady: boolean;
-  hasGoogleMapsKey: boolean;
+  hasBaseMap: boolean;
   /** Reuse Home's existing current-location pulse animation instead of starting a second loop. */
   userPulseAnim: Animated.Value;
   cameraManager: CameraManager;
@@ -34,8 +34,7 @@ const VENUE_BOUNDARY = [
  * mirrors useNavigationOverlayV2's shape. Safe to call unconditionally — every effect
  * here already no-ops when there's no active v1 route.
  */
-export function useNavigationOverlayV1({ mapRef, mapReady, hasGoogleMapsKey, userPulseAnim, cameraManager }: Params) {
-  const hasInternet = useAppStore((s) => s.hasInternet);
+export function useNavigationOverlayV1({ mapRef, mapReady, hasBaseMap, userPulseAnim, cameraManager }: Params) {
   const settings = useAppStore((s) => s.settings);
   const currentLocationSource = useAppStore((s) => s.currentLocationSource);
 
@@ -118,7 +117,7 @@ export function useNavigationOverlayV1({ mapRef, mapReady, hasGoogleMapsKey, use
     return () => sub.remove();
   }, [route, arrived, vm.handleExit]);
 
-  const graphOnlyFallbackUsed = !hasGoogleMapsKey || !hasInternet;
+  const graphOnlyFallbackUsed = !hasBaseMap;
 
   return {
     ...vm,

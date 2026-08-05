@@ -53,7 +53,7 @@ describe('useNavigationOverlayV2 — hardware back (NAVIGATION vs ARRIVAL)', () 
       mapRef: { current: null },
       mapReady: true,
       mapZoomLevel: 16,
-      hasGoogleMapsKey: true,
+      hasBaseMap: true,
       // useNavigationOverlayV2 only passes this through untouched (never reads/animates
       // it), so a real Animated.Value isn't needed here.
       userPulseAnim: {} as any,

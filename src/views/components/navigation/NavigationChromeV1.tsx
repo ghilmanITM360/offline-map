@@ -30,7 +30,7 @@ function StepIcon({ type, size = 32 }: { type: string; size?: number }) {
 /** Overlay chrome (banners, instruction/trip cards, recenter, arrival modal) shown over the
  * shared MapView while a legacy (v1) route is being navigated. Renders as a sibling of the
  * MapView, not inside it — moved verbatim out of the old standalone NavigationScreen. */
-export function NavigationChromeV1({ overlay, hasGoogleMapsKey }: { overlay: NavigationOverlayV1; hasGoogleMapsKey: boolean }) {
+export function NavigationChromeV1({ overlay, hasBaseMap }: { overlay: NavigationOverlayV1; hasBaseMap: boolean }) {
   const insets = useSafeAreaInsets();
   const {
     route,
@@ -74,7 +74,7 @@ export function NavigationChromeV1({ overlay, hasGoogleMapsKey }: { overlay: Nav
 
   return (
     <>
-      {(!hasGoogleMapsKey || graphOnlyFallbackUsed) && (
+      {(!hasBaseMap || graphOnlyFallbackUsed) && (
         <View style={styles.mapUnavailableBanner}>
           <Text style={styles.mapUnavailableText}>
             {graphOnlyFallbackUsed ? 'Graph-only map is active. Base map tiles are unavailable.' : 'Base map tiles are unavailable.'}

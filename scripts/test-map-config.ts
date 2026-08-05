@@ -247,12 +247,13 @@ assert(
   'Home warning logic should show missing-key text only when key is missing, and map-failed text when key exists but map fails',
 );
 assert(
-  homeScreen.includes("provider={Platform.OS === 'android' && hasGoogleMapsKey ? PROVIDER_GOOGLE : undefined}"),
+  homeScreen.includes("provider={Platform.OS === 'android' && baseMapMode === 'GOOGLE_BASEMAP' ? PROVIDER_GOOGLE : undefined}"),
   'Home should keep MapView renderable without a Google key by disabling the Google provider',
 );
 assert(
-  homeScreen.includes("mapType={hasGoogleMapsKey ? (isOffline ? 'none' : mapType) : 'none'}"),
-  'Home should render graph-only MapView with mapType none when Google tiles are unavailable',
+  homeScreen.includes("mapType={baseMapMode === 'GOOGLE_BASEMAP' ? mapType : 'none'}") &&
+    homeScreen.includes("baseMapMode === 'LOCAL_TILES'"),
+  'Home should render exactly one resolved Google, local-tile, or graph-only base-map mode',
 );
 assert(homeScreen.includes('venueBoundary'), 'Home graph-only fallback should render venue boundary context');
 assert(

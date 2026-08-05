@@ -59,6 +59,7 @@ import { Paths } from 'expo-file-system';
 import { DrawerParamList, RootStackParamList } from '../../navigation/RootNavigator';
 import { RoutingService } from '../../services/RoutingService';
 import { MapConfigService } from '../../services/MapConfigService';
+import { resolveBaseMapMode } from '../../services/BaseMapModeResolver';
 import { MapFeatureFlagsService } from '../../services/MapFeatureFlagsService';
 import { MapStartupController } from '../../services/MapStartupController';
 import { V2MapRenderingService, MEDIUM_ZOOM, HIGH_ZOOM } from '../../services/V2MapRenderingService';
@@ -167,6 +168,7 @@ export function HomeScreen() {
   const hasSeenLocationTutorial = useAppStore((s) => s.hasSeenLocationTutorial);
   const setHasSeenLocationTutorial = useAppStore((s) => s.setHasSeenLocationTutorial);
   const activeRoute = useAppStore((s) => s.activeRoute);
+  const offlineMapStatus = useAppStore((s) => s.offlineMapStatus);
   const clearRoutePlanner = useAppStore((s) => s.clearRoutePlanner);
   const favorites = useAppStore((s) => s.favorites);
   // Deliberately the raw store primitive, not `mode` — used only below to null out
@@ -205,10 +207,10 @@ export function HomeScreen() {
   const mapRuntimeStatus = MapConfigService.getRuntimeStatus();
   const hasGoogleMapsKey = mapRuntimeStatus.keyPresent;
   const useV2Map = MapFeatureFlagsService.useIjtemaV2Map();
-  const graphOnlyFallbackUsed = !hasGoogleMapsKey;
   const [outsideBannerDismissed, setOutsideBannerDismissed] = useState(false);
   const [layersSheetVisible, setLayersSheetVisible] = useState(false);
   const [mapReady, setMapReadyState] = useState(false);
+  const [googleBaseMapLoaded, setGoogleBaseMapLoaded] = useState(false);
   const [mapLoadFailed, setMapLoadFailed] = useState(false);
   const [topOverlayHeight, setTopOverlayHeight] = useState(0);
   const [isMapDragging, setIsMapDragging] = useState(false);
@@ -282,6 +284,16 @@ export function HomeScreen() {
     settings,
   } = useHomeViewModel();
 
+  const baseMapMode = resolveBaseMapMode({
+    hasGoogleMapsKey,
+    hasInternet: !isOffline,
+    googleMapLoadFailed: mapLoadFailed,
+    offlineDataDownloaded: offlineData.isDownloaded,
+    offlineMapStatus,
+  });
+  const graphOnlyFallbackUsed = baseMapMode === 'GRAPH_ONLY';
+  const hasBaseMap = baseMapMode !== 'GRAPH_ONLY';
+
   const showDetails = useCallback(() => {
     setDetailsExpanded(true);
     bottomSheetRef.current?.snapToIndex(2);
@@ -325,7 +337,7 @@ export function HomeScreen() {
     mapRef,
     mapReady,
     mapZoomLevel,
-    hasGoogleMapsKey,
+    hasBaseMap,
     userPulseAnim,
     cameraManager,
   });
@@ -337,7 +349,7 @@ export function HomeScreen() {
   const navOverlayV1 = useNavigationOverlayV1({
     mapRef,
     mapReady,
-    hasGoogleMapsKey,
+    hasBaseMap,
     userPulseAnim,
     cameraManager,
   });
@@ -679,7 +691,7 @@ export function HomeScreen() {
     const destination = selectedPlace && selectedPlace.sourceVersion === 'v2' ? destinationFromPlace(selectedPlace) : null;
     return RoutingServiceV2.recommendOutsideEntryGate(currentLocation, destination) ?? null;
   }, [currentLocation, venueStatus.insideVenue, selectedPlace]);
-  const showMapWarningBanner = !hasGoogleMapsKey || mapLoadFailed;
+  const showMapWarningBanner = baseMapMode === 'GRAPH_ONLY';
   const topInsetBase = Math.max(insets.top, Platform.OS === 'android' ? StatusBar.currentHeight ?? 0 : 0);
   // bannerStackTop used to be a hardcoded `topInsetBase + 140` guess at the combined
   // search bar + chip row height, which under-measured on some font scales/screen sizes
@@ -756,11 +768,12 @@ export function HomeScreen() {
   }, [cameraManager.mode, currentLocation, hasSeenLocationTutorial, setHasSeenLocationTutorial]);
 
   useEffect(() => {
-    if (!hasGoogleMapsKey) {
+    if (!hasGoogleMapsKey || isOffline) {
+      setGoogleBaseMapLoaded(false);
       setMapLoadFailed(false);
       return;
     }
-    if (mapReady) {
+    if (googleBaseMapLoaded) {
       setMapLoadFailed(false);
       return;
     }
@@ -768,7 +781,18 @@ export function HomeScreen() {
       setMapLoadFailed(true);
     }, 7000);
     return () => clearTimeout(timeout);
-  }, [hasGoogleMapsKey, mapReady]);
+  }, [googleBaseMapLoaded, hasGoogleMapsKey, isOffline]);
+
+  const wasOfflineRef = useRef(isOffline);
+  useEffect(() => {
+    const wasOffline = wasOfflineRef.current;
+    wasOfflineRef.current = isOffline;
+    if (!wasOffline || isOffline || !hasGoogleMapsKey) return;
+    // A connectivity recovery is the one explicit retry boundary. The previous
+    // watchdog latch stays stable otherwise, preventing Google/local switching loops.
+    setGoogleBaseMapLoaded(false);
+    setMapLoadFailed(false);
+  }, [hasGoogleMapsKey, isOffline]);
 
   useEffect(() => {
     if (venueStatus.insideVenue) {
@@ -963,7 +987,7 @@ export function HomeScreen() {
   const openLayerOptions = () => setLayersSheetVisible(true);
 
   const handleMapTypeChange = (nextMapType: 'standard' | 'satellite') => {
-    if (nextMapType === 'satellite' && isOffline) {
+    if (nextMapType === 'satellite' && baseMapMode !== 'GOOGLE_BASEMAP') {
       Alert.alert('Satellite unavailable offline', 'Satellite requires internet or downloaded satellite tiles.');
       return;
     }
@@ -1016,9 +1040,9 @@ export function HomeScreen() {
             testID="home-map-view"
             ref={mapRef}
             style={styles.map}
-            provider={Platform.OS === 'android' && hasGoogleMapsKey ? PROVIDER_GOOGLE : undefined}
+            provider={Platform.OS === 'android' && baseMapMode === 'GOOGLE_BASEMAP' ? PROVIDER_GOOGLE : undefined}
             initialRegion={effectiveInitialRegion}
-            mapType={hasGoogleMapsKey ? (isOffline ? 'none' : mapType) : 'none'}
+            mapType={baseMapMode === 'GOOGLE_BASEMAP' ? mapType : 'none'}
             showsUserLocation={false}
             showsMyLocationButton={false}
             showsCompass={false}
@@ -1028,7 +1052,6 @@ export function HomeScreen() {
             onMapReady={() => {
               setIsMapReady(true);
               setMapReadyState(true);
-              setMapLoadFailed(false);
               handleMapRegionChangeComplete(effectiveInitialRegion);
               mapLabelOverlayRef.current?.requestProjection();
 
@@ -1065,7 +1088,10 @@ export function HomeScreen() {
             }}
             onMapLoaded={() => {
               setMapReadyState(true);
-              setMapLoadFailed(false);
+              if (baseMapMode === 'GOOGLE_BASEMAP') {
+                setGoogleBaseMapLoaded(true);
+                setMapLoadFailed(false);
+              }
               mapLabelOverlayRef.current?.requestProjection();
             }}
             onRegionChange={() => {
@@ -1096,11 +1122,11 @@ export function HomeScreen() {
               }
             }}
           >
-          {isOffline && offlineData.isDownloaded && (
-            <LocalTile pathTemplate={getTilePath()} tileSize={256} zIndex={-1} />
+          {baseMapMode === 'LOCAL_TILES' && (
+            <LocalTile pathTemplate={getTilePath()} testID="local-base-map-tiles" tileSize={256} zIndex={-1} />
           )}
 
-          {mapType === 'satellite' && hasGoogleMapsKey && !isOffline && <SatelliteDimOverlay bounds={SATELLITE_DIM_BOUNDARY} />}
+          {mapType === 'satellite' && baseMapMode === 'GOOGLE_BASEMAP' && <SatelliteDimOverlay bounds={SATELLITE_DIM_BOUNDARY} />}
 
           <VenueBoundary coordinates={useV2Map ? v2MapLayers.venueBoundary : VENUE_BOUNDARY} />
 
@@ -1344,8 +1370,8 @@ export function HomeScreen() {
           )}
           </MapView>
 
-        {(mode === 'NAVIGATION' || mode === 'ARRIVAL') && <NavigationChromeV2 overlay={navOverlay} hasGoogleMapsKey={hasGoogleMapsKey} />}
-        {(mode === 'NAVIGATION' || mode === 'ARRIVAL') && <NavigationChromeV1 overlay={navOverlayV1} hasGoogleMapsKey={hasGoogleMapsKey} />}
+        {(mode === 'NAVIGATION' || mode === 'ARRIVAL') && <NavigationChromeV2 overlay={navOverlay} hasBaseMap={hasBaseMap} />}
+        {(mode === 'NAVIGATION' || mode === 'ARRIVAL') && <NavigationChromeV1 overlay={navOverlayV1} hasBaseMap={hasBaseMap} />}
         <MapLabelOverlay
           ref={mapLabelOverlayRef}
           mapRef={mapRef}
@@ -1356,7 +1382,7 @@ export function HomeScreen() {
 
         {/* Cold-start: avoid a blank map while MapView mounts/renders its first
             frame. mapLoadFailed's 7s-timeout banner takes over if it never loads. */}
-        {hasGoogleMapsKey && !mapReady && !mapLoadFailed && (
+        {baseMapMode === 'GOOGLE_BASEMAP' && !googleBaseMapLoaded && !mapLoadFailed && (
           <View style={styles.mapLoadingOverlay} pointerEvents="none">
             <ActivityIndicator size="small" color={staticColors.recenterBlue} />
             <Text style={styles.mapLoadingText}>Loading map...</Text>
@@ -1535,15 +1561,15 @@ export function HomeScreen() {
               </View>
             )}
 
-            {!hasGoogleMapsKey && (
+            {showMapWarningBanner && (
               <View style={[styles.mapWarningBanner, styles.bannerStackItem]}>
-                <Text style={styles.mapWarningText}>{MapConfigService.getMissingGoogleMapsMessage()}</Text>
-              </View>
-            )}
-
-            {hasGoogleMapsKey && mapLoadFailed && (
-              <View style={[styles.mapWarningBanner, styles.bannerStackItem]}>
-                <Text style={styles.mapWarningText}>{MapConfigService.getMapLoadFailedMessage()}</Text>
+                <Text style={styles.mapWarningText}>
+                  {hasGoogleMapsKey && mapLoadFailed
+                    ? MapConfigService.getMapLoadFailedMessage()
+                    : isOffline
+                      ? 'Downloaded background map unavailable. Ijtema routes still work.'
+                      : MapConfigService.getMissingGoogleMapsMessage()}
+                </Text>
               </View>
             )}
 
