@@ -724,14 +724,6 @@ for (const edge of IJTEMA_DATA.edges) {
   }
 }
 
-export const IJTEMA_NODES = IJTEMA_DATA.nodes;
-export const IJTEMA_EDGES = IJTEMA_DATA.edges;
-export const IJTEMA_BLOCKS = IJTEMA_DATA.blocks;
-export const IJTEMA_BLOCK_ENTRY_MAP = BLOCK_ENTRY_MAP_STRICT;
-export const IJTEMA_RASTAS = Array.from(
-  new Set(IJTEMA_DATA.edges.filter((edge) => edge.name?.startsWith('Rasta')).map((edge) => edge.name!)),
-);
-
 export const GRAPH_VALIDATION = validateIjtemaGraph(IJTEMA_DATA);
 if (!GRAPH_VALIDATION.isValid) {
   console.error('[IjtemaGraphValidation] Errors:', GRAPH_VALIDATION.errors);

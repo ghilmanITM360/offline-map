@@ -242,8 +242,3 @@ export class EntryGateRoutingService {
     };
   }
 }
-
-export const __entryGateRoutingCoordinateAdapters = {
-  toV2Coordinate,
-  toAppCoordinate,
-};

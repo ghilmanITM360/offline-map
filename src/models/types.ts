@@ -270,30 +270,6 @@ export interface SearchResult {
   coordinate: Coordinate;
 }
 
-export interface RecentSearch {
-  id: string;
-  title: string;
-  timestamp: number;
-}
-
-export interface PlaceDetails {
-  id: string;
-  name: string;
-  urduName?: string;
-  description: string;
-  category: string;
-  coordinate: Coordinate;
-  image?: string;
-  gates?: Gate[];
-}
-
-export interface OfflineTile {
-  z: number;
-  x: number;
-  y: number;
-  path: string;
-}
-
 /**
  * Fields shared by every route preview regardless of source version.
  * `sourceVersion` is required on each variant below so a route can never be
@@ -364,4 +340,3 @@ export interface V2ActiveRoute extends V2RoutePreview {
   };
 }
 
-export type ActiveNavigationRoute = RoutePreview | V2ActiveRoute;

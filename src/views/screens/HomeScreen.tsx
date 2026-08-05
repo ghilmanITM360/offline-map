@@ -1747,25 +1747,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
   },
-  mapFallback: {
-    ...StyleSheet.absoluteFillObject,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#E8EAED',
-    paddingHorizontal: 24,
-  },
-  mapFallbackTitle: {
-    color: '#202124',
-    fontSize: 18,
-    fontWeight: '700',
-    marginBottom: 8,
-  },
-  mapFallbackText: {
-    color: '#5F6368',
-    fontSize: 14,
-    textAlign: 'center',
-    lineHeight: 20,
-  },
   searchOverlayMarker: {
     maxWidth: 120,
     alignItems: 'center',

@@ -8,8 +8,6 @@ import { OUTSIDE_VENUE_BOUNDARY_NODE_IDS_V1 } from '../constants/navigation';
 import { Coordinate, Place, RoutePreview, RouteSegment, RouteAlternative } from '../models/types';
 import { getDistance } from 'geolib';
 
-export type RouteResult = RoutePreview;
-
 export interface VenueStatus {
   insideVenue: boolean;
   insideBlock: string | null; // Block ID if GPS is inside a block polygon
@@ -165,19 +163,6 @@ export class RoutingService {
 
   private static isUsableRoute(route: RoutePreview | null): route is RoutePreview {
     return !!route && route.totalDistance > 0 && route.nodes.length > 1 && route.segments.length > 0;
-  }
-
-  /**
-   * Resolve destination node IDs for any Place/landmark.
-   * - Block → entry_nodes
-   * - Landmark → LANDMARK_NEAREST_NODE
-   * - Node → the node itself
-   */
-  static resolveDestinationNodes(placeId: string, placeCoord: Coordinate): string[] {
-    return this.resolveDestinationNodesFromPlace({
-      id: placeId,
-      coordinate: placeCoord,
-    } as Place);
   }
 
   static resolveDestinationNodesFromPlace(place: Place, origin?: Coordinate): string[] {

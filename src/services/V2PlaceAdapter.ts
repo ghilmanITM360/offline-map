@@ -17,15 +17,12 @@ import {
   getBlockEntryNodeIds,
 } from '../data/ijtema';
 import { Coordinate as V2Coordinate } from '../data/ijtema/types';
-import { Coordinate, Place, V2Place, V2PlaceSourceKind } from '../models/types';
+import { Coordinate, Place, V2Place } from '../models/types';
 
 export interface V2PlaceAdapterOptions {
   developerMode?: boolean;
   includeUnavailableGates?: boolean;
 }
-
-/** @deprecated use V2PlaceSourceKind from '../models/types' */
-export type V2PlaceKind = V2PlaceSourceKind;
 
 export type { V2Place } from '../models/types';
 
@@ -267,5 +264,3 @@ export class V2PlaceAdapter {
     return null;
   }
 }
-
-export const V2_DISCONNECTED_GATE_IDS = disconnectedGateIds;
