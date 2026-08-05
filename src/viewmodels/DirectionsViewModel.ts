@@ -154,14 +154,13 @@ export function useDirectionsViewModel(destination: Place | null) {
       setErrorMessage(null);
       const hasOriginCoord = originCoord != null;
       const forceOutside =
-        startSource !== 'manual_place' &&
         hasOriginCoord &&
         !EntryGateRoutingService.isInsideIjtemaArea(originCoord);
 
       const previewRequest = {
-        startPlace: startSource === 'manual_place' ? manualStart : null,
+        startPlace: startSource === 'manual_place' && !forceOutside ? manualStart : null,
         destination,
-        currentLocation: startSource === 'manual_place' ? null : originCoord ?? null,
+        currentLocation: startSource === 'manual_place' && !forceOutside ? null : originCoord ?? null,
         walkingSpeedMs: settings.walkingSpeed ?? 1.4,
         forceOutside,
         manualGateId: manualGateId ?? undefined,

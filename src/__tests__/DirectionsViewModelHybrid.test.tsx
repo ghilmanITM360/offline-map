@@ -1,4 +1,5 @@
 import type { Place } from '../models/types';
+import { V2PlaceAdapter } from '../services/V2PlaceAdapter';
 import { useAppStore } from '../store/useAppStore';
 import { V2DirectionsService } from '../services/V2DirectionsService';
 import { useDirectionsViewModel } from '../viewmodels/DirectionsViewModel';
@@ -14,6 +15,17 @@ const destination: Place = {
   coordinate: { latitude: 24.966, longitude: 67.004 },
   sourceVersion: 'v2',
 };
+
+function outsideManualPlace(coordinate = origin, id = 'outside-manual'): Place {
+  return {
+    id,
+    name: 'Outside start',
+    category: 'CustomPoint',
+    description: 'Selected outside coordinate',
+    coordinate,
+    sourceVersion: 'v1',
+  };
+}
 
 beforeEach(() => {
   delete process.env.EXPO_PUBLIC_IJTEMA_ROUTING_PROXY_BASE_URL;
@@ -46,6 +58,75 @@ describe('DirectionsViewModel hybrid outside routing', () => {
     expect(hook.result.current.manualGateId).toBe('GATE_12');
     expect(hook.result.current.route?.outsideRoute?.gateId).toBe('GATE_12');
     expect(hook.result.current.route?.selectedOutsideCandidateId).toContain(':GATE_12:');
+  });
+
+  test('same outside coordinate uses same hybrid policy for GPS, manual search, and remembered starts', async () => {
+    const hook = await renderHook(() => useDirectionsViewModel(destination));
+    await waitFor(() => expect(hook.result.current.loadState).toBe('ready'), { timeout: 5_000 });
+
+    const gpsRoute = hook.result.current.route;
+    expect(gpsRoute?.outsideRoute).toMatchObject({
+      provider: 'offline-osm',
+      fallbackHistory: [{ provider: 'google', code: 'proxy-unconfigured', retryable: true }],
+    });
+    const gpsCandidateId = gpsRoute?.selectedOutsideCandidateId;
+    const gpsGateId = gpsRoute?.startResolution?.gate?.id;
+
+    await act(() => hook.result.current.setManualStartPlace(outsideManualPlace()));
+    await waitFor(() => expect(hook.result.current.route?.selectedOutsideCandidateId).not.toBe(gpsCandidateId), { timeout: 5_000 });
+
+    const manualRoute = hook.result.current.route;
+    expect(hook.result.current.startSource).toBe('manual_place');
+    expect(manualRoute?.outsideRoute?.provider).toBe('offline-osm');
+    expect(manualRoute?.startResolution?.gate?.id).toBe(gpsGateId);
+    expect(manualRoute?.outsideRoute?.fallbackHistory).toEqual([
+      { provider: 'google', code: 'proxy-unconfigured', retryable: true },
+    ]);
+
+    const manualCandidateId = manualRoute?.selectedOutsideCandidateId;
+    await act(() => expect(hook.result.current.chooseRememberedLocation()).toBe(true));
+    await waitFor(() => expect(hook.result.current.route?.selectedOutsideCandidateId).not.toBe(manualCandidateId), { timeout: 5_000 });
+
+    expect(hook.result.current.startSource).toBe('remembered_location');
+    expect(hook.result.current.route?.outsideRoute?.provider).toBe('offline-osm');
+    expect(hook.result.current.route?.startResolution?.gate?.id).toBe(gpsGateId);
+  });
+
+  test('manual inside place stays on internal pedestrian routing', async () => {
+    const insideStart = V2PlaceAdapter.getPlaceById('B1');
+    expect(insideStart).not.toBeNull();
+    const hook = await renderHook(() => useDirectionsViewModel(destination));
+    await waitFor(() => expect(hook.result.current.loadState).toBe('ready'), { timeout: 5_000 });
+    const outsideCandidateId = hook.result.current.route?.selectedOutsideCandidateId;
+
+    await act(() => hook.result.current.setManualStartPlace(insideStart!));
+    await waitFor(() => expect(hook.result.current.route?.selectedOutsideCandidateId).not.toBe(outsideCandidateId), { timeout: 5_000 });
+
+    expect(hook.result.current.startSource).toBe('manual_place');
+    expect(hook.result.current.loadState).toBe('ready');
+    expect(hook.result.current.route?.outsideRoute).toBeUndefined();
+    expect(hook.result.current.route?.nodes.length).toBeGreaterThan(1);
+    expect(hook.result.current.route?.outsideLegCoordinateCount ?? 0).toBe(0);
+  });
+
+  test('manual outside start falls through OSM failure to labelled direct guide', async () => {
+    const farOutside = { latitude: 24.9, longitude: 67.01 };
+    const hook = await renderHook(() => useDirectionsViewModel(destination));
+    await waitFor(() => expect(hook.result.current.loadState).toBe('ready'), { timeout: 5_000 });
+    const previousCandidateId = hook.result.current.route?.selectedOutsideCandidateId;
+
+    await act(() => hook.result.current.setManualStartPlace(outsideManualPlace(farOutside, 'far-outside-manual')));
+    await waitFor(() => expect(hook.result.current.route?.selectedOutsideCandidateId).not.toBe(previousCandidateId), { timeout: 5_000 });
+
+    expect(hook.result.current.route?.outsideRoute).toMatchObject({
+      provider: 'direct-guide',
+      roadFollowing: false,
+      distanceKind: 'direct-distance',
+      fallbackHistory: [
+        { provider: 'google', code: 'proxy-unconfigured', retryable: true },
+        { provider: 'offline-osm', code: 'outside-coverage', retryable: false },
+      ],
+    });
   });
 
   test('retains ready preview when replacement provider orchestration throws', async () => {
