@@ -9,6 +9,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { ArrowLeft, ArrowRight, LocateFixed, MapPin, Navigation, RefreshCw, Volume2, VolumeX, X } from 'lucide-react-native';
 
 import { InstructionService } from '../../../services/InstructionService';
+import { IJTEMA_GATES } from '../../../data/ijtema';
 import { staticColors } from '../../../theme';
 import { NAV_TRANSITION_TIMINGS } from '../../../constants/navigationTransitions';
 import { NavigationOverlayV2 } from '../../../viewmodels/useNavigationOverlayV2';
@@ -84,7 +85,9 @@ export function NavigationChromeV2({ overlay, hasGoogleMapsKey }: { overlay: Nav
   const directOutsideActive = Boolean(
     outsidePhaseActive && outsideRoute?.provider === 'direct-guide',
   );
-  const directGateLabel = outsideRoute?.gateId.replace('GATE_', 'Gate ') ?? 'selected gate';
+  const directGateLabel = outsideRoute
+    ? IJTEMA_GATES.find((gate) => gate.id === outsideRoute.gateId)?.name.en ?? outsideRoute.gateId.replace('GATE_', 'Gate ')
+    : 'selected gate';
   const arrivalTime = new Date(Date.now() + Math.max(etaMinutes, 0) * 60_000).toLocaleTimeString([], {
     hour: '2-digit',
     minute: '2-digit',

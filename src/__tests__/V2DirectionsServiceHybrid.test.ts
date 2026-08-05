@@ -98,6 +98,58 @@ describe('V2DirectionsService hybrid core integration', () => {
     });
   });
 
+  test('direct-guide instruction uses the authoritative Urdu gate name, not the Latin label', async () => {
+    const routeToGates = jest.fn(async (request: OutsideWalkingRouteRequest) => ({
+      status: 'success' as const,
+      candidateSet: {
+        requestId: request.token.requestId,
+        requestVersion: request.token.requestVersion,
+        provider: 'direct-guide' as const,
+        outcomes: request.gates.map(({ gateId, routeTargetCoordinate }) => ({
+          status: 'routed' as const,
+          gateId,
+          routes: [{
+            schemaVersion: 1 as const,
+            candidateId: `${request.token.requestId}:direct-guide:${gateId}:0`,
+            requestId: request.token.requestId,
+            requestVersion: request.token.requestVersion,
+            provider: 'direct-guide' as const,
+            gateId,
+            distanceM: gateId === 'GATE_12' ? 1 : 50_000,
+            durationSeconds: null,
+            coordinates: [request.origin, routeTargetCoordinate],
+            steps: [],
+            roadFollowing: false,
+            distanceKind: 'direct-distance' as const,
+            warnings: [{ code: 'direct-guide-not-road-route' as const }],
+            fallbackReason: null,
+            fallbackHistory: [],
+          }],
+        })),
+      },
+    }));
+    const outsideProvider: OutsideRouteCandidateSource = { routeToGates };
+
+    const result = await V2DirectionsService.calculateHybridPreview({
+      request: {
+        startPlace: null,
+        destination,
+        currentLocation: origin,
+        forceOutside: true,
+      },
+      token: { requestId: 'hybrid-direct-guide', requestVersion: 1 },
+      signal: new AbortController().signal,
+      outsideProvider,
+    });
+
+    expect(result.status).toBe('ready');
+    expect(result.route?.startResolution?.gate?.id).toBe('GATE_12');
+    const directGuideInstruction = result.instructions.find((i) => i.id === 'outside-direct-guide');
+    expect(directGuideInstruction?.text).toContain('Gate 12');
+    expect(directGuideInstruction?.urduText).toContain('گیٹ 12');
+    expect(directGuideInstruction?.urduText).not.toContain('Gate 12');
+  });
+
   test('rejects incomplete provider sets before core finalization', async () => {
     const outsideProvider: OutsideRouteCandidateSource = {
       routeToGates: jest.fn(async (request) => ({

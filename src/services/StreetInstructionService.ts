@@ -84,7 +84,7 @@ export function generateStreetInstructions(
   topologyCoordinates: AppCoordinate[],
   hopDistancesM: number[],
   hopNames: Array<string | undefined>,
-  gateLabel: string,
+  gateLabel: { en: string; ur: string },
 ): V2StreetNavigationInstruction[] {
   if (topologyCoordinates.length < 2 || hopDistancesM.length !== topologyCoordinates.length - 1) {
     return [];
@@ -114,8 +114,8 @@ export function generateStreetInstructions(
     let urduText: string;
 
     if (isFirstHop) {
-      text = `Walk ${distanceM}m${namePart} toward ${gateLabel}.`;
-      urduText = `${gateLabel} کی طرف${nameUrPart} ${distanceM} میٹر چلیں۔`;
+      text = `Walk ${distanceM}m${namePart} toward ${gateLabel.en}.`;
+      urduText = `${gateLabel.ur} کی طرف${nameUrPart} ${distanceM} میٹر چلیں۔`;
     } else if (maneuver === 'straight') {
       text = `Continue ${distanceM}m${namePart}.`;
       urduText = `${distanceM} میٹر${nameUrPart} سیدھا جاری رکھیں۔`;
@@ -126,8 +126,8 @@ export function generateStreetInstructions(
     }
 
     if (isLastHop) {
-      text = `${text} Arrive at ${gateLabel}.`;
-      urduText = `${urduText} ${gateLabel} پہنچیں۔`;
+      text = `${text} Arrive at ${gateLabel.en}.`;
+      urduText = `${urduText} ${gateLabel.ur} پہنچیں۔`;
     }
 
     instructions.push({

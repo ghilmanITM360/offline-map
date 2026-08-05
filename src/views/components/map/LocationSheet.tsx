@@ -36,6 +36,7 @@ import { SearchService } from '../../../services/SearchService';
 import { useAppStore } from '../../../store/useAppStore';
 import { Place, RoutePreview, BlockEntryPoint, Gate } from '../../../models/types';
 import { IJTEMA_DATA } from '../../../constants/data';
+import { IJTEMA_GATES } from '../../../data/ijtema';
 import { AppTheme } from '../../../services/ThemeService';
 import { NAV_TRANSITION_TIMINGS } from '../../../constants/navigationTransitions';
 import { Button } from '../common/Button';
@@ -587,7 +588,7 @@ function RoutePreviewSection({
               {outsideRoute && (
                 <OutsideRouteStatusCard
                   route={outsideRoute}
-                  gateLabel={outsideRoute.gateId.replace('GATE_', 'Gate ')}
+                  gateLabel={IJTEMA_GATES.find((gate) => gate.id === outsideRoute.gateId)?.name.en ?? outsideRoute.gateId.replace('GATE_', 'Gate ')}
                   retrying={routeRefreshing}
                   onRetry={outsideRoute.provider === 'direct-guide' ? () => void retryOutsideRoute() : undefined}
                   onChooseGate={outsideRoute.provider === 'direct-guide' ? () => setShowGateOptions(true) : undefined}

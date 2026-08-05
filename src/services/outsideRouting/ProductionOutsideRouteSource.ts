@@ -3,6 +3,7 @@ import type {
   OutsideRouteCandidateSource,
   OutsideWalkingManeuver,
 } from '../../models/outsideRouting';
+import { IJTEMA_GATES } from '../../data/ijtema';
 import { RoutingServiceV2 } from '../RoutingServiceV2';
 import { generateStreetInstructions } from '../StreetInstructionService';
 import { isWithinStreetGraphRadius } from '../OutsideStreetRoutingService';
@@ -32,7 +33,7 @@ function maneuver(type: string): OutsideWalkingManeuver {
 
 function normalizedSteps(
   candidate: NonNullable<ReturnType<typeof RoutingServiceV2.resolveOfflineOsmOutsideCandidate>>,
-  gateLabel: string,
+  gateLabel: { en: string; ur: string },
 ): NormalizedWalkingStep[] {
   return generateStreetInstructions(
     candidate.topologyCoordinates,
@@ -65,12 +66,15 @@ export function createProductionOutsideRouteSource(
       }
       const candidate = RoutingServiceV2.resolveOfflineOsmOutsideCandidate(request.origin, gate.gateId);
       if (!candidate?.outsideCoordinates) return { status: 'unreachable', reason: 'no-route' };
+      const gateRecord = IJTEMA_GATES.find((entry) => entry.id === gate.gateId);
+      const gateLabelEn = gateRecord?.name.en ?? gate.gateId.replace('GATE_', 'Gate ');
+      const gateLabel = { en: gateLabelEn, ur: gateRecord?.name.ur ?? gateLabelEn };
       return {
         status: 'routed',
         distanceM: candidate.outsideDistanceM,
         durationSeconds: null,
         coordinates: candidate.outsideCoordinates,
-        steps: normalizedSteps(candidate, gate.gateId.replace('GATE_', 'Gate ')),
+        steps: normalizedSteps(candidate, gateLabel),
         warnings: candidate.sanityCapExceeded
           ? [{ code: 'distance-sanity-cap-exceeded' }]
           : [],

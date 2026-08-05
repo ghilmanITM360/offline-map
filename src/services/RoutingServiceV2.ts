@@ -502,15 +502,15 @@ const routeSegmentsFromPath = (path: ShortestPathResult): RouteSegment[] =>
 const renumberAndRewriteEntry = (
   instructions: NavigationInstruction[],
   outsideStepCount: number,
-  gateLabel: string,
+  gateLabel: { en: string; ur: string },
 ): NavigationInstruction[] =>
   instructions.map((instruction, index) => ({
     ...instruction,
     id: instruction.id === 'v2-start' ? 'v2-entry-start' : instruction.id.replace(/^v2-step-(\d+)$/, (_match, step) => `v2-step-${Number(step) + outsideStepCount}`),
     ...(index === 0
       ? {
-          text: `Enter through ${gateLabel}.`,
-          urduText: `${gateLabel} سے داخل ہوں۔`,
+          text: `Enter through ${gateLabel.en}.`,
+          urduText: `${gateLabel.ur} سے داخل ہوں۔`,
         }
       : {}),
   }));
@@ -523,7 +523,10 @@ const prependOutsideApproachInstruction = (
     return instructions;
   }
 
-  const gateLabel = selected.startResolution.gate?.name.en ?? selected.startLabel;
+  const gateLabel = {
+    en: selected.startResolution.gate?.name.en ?? selected.startLabel,
+    ur: selected.startResolution.gate?.name.ur ?? selected.startLabel,
+  };
 
   // Road-following outside leg: real turn-by-turn from the street graph,
   // one instruction per topology hop instead of a single distance blob.
@@ -544,8 +547,8 @@ const prependOutsideApproachInstruction = (
   return [
     {
       id: 'v2-outside-approach',
-      text: `Walk ${selected.startConnectorDistanceM} meters to enter through ${gateLabel}.`,
-      urduText: `${gateLabel} سے داخل ہونے کے لیے ${selected.startConnectorDistanceM} میٹر چلیں۔`,
+      text: `Walk ${selected.startConnectorDistanceM} meters to enter through ${gateLabel.en}.`,
+      urduText: `${gateLabel.ur} سے داخل ہونے کے لیے ${selected.startConnectorDistanceM} میٹر چلیں۔`,
       distance: selected.startConnectorDistanceM,
       type: 'straight',
       coordinate: selected.startCoordinate,

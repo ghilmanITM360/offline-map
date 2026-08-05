@@ -11,6 +11,8 @@ process.env.EXPO_PUBLIC_USE_IJTEMA_OUTSIDE_STREET_GRAPH = 'true';
 
 const gate05 = IJTEMA_GATES.find((gate) => gate.id === 'GATE_05')!;
 assert.ok(gate05.coordinate);
+assert.ok(gate05.name.ur, 'Gate 05 fixture must have an Urdu name to exercise the bilingual regression check');
+const gate05NameUr = gate05.name.ur!;
 const probe = { latitude: gate05.coordinate!.lat + 0.0015, longitude: gate05.coordinate!.lng + 0.0015 };
 
 const preview = RoutingServiceV2.calculateRoute({
@@ -66,6 +68,22 @@ activeRoute.instructions.forEach((instruction, index) => {
 assert.ok(
   activeRoute.coordinates.length > activeRoute.instructions.length,
   'fixture must have more coordinates than instructions to be a meaningful regression check',
+);
+
+// Bilingual gate-name regression: the entry instruction's urduText must use
+// Gate 05's authoritative Urdu name (gate05.name.ur), never the Latin label
+// interpolated into Urdu copy.
+const entryInstruction = activeRoute.instructions.find(
+  (instruction) => instruction.id === 'v2-entry-start' || instruction.id === 'v2-outside-approach',
+);
+assert.ok(entryInstruction, 'expected an entry/outside-approach instruction naming the gate');
+assert.ok(
+  entryInstruction!.urduText?.includes(gate05NameUr),
+  `entry instruction urduText must include the authoritative Urdu gate name "${gate05NameUr}", got: ${entryInstruction!.urduText}`,
+);
+assert.ok(
+  !entryInstruction!.urduText?.includes(gate05.name.en),
+  'entry instruction urduText must not embed the Latin gate label',
 );
 
 console.log(

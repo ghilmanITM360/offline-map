@@ -11,6 +11,7 @@ import type {
   OutsideRouteRequestToken,
   OutsideWalkingManeuver,
 } from '../models/outsideRouting';
+import { IJTEMA_GATES } from '../data/ijtema';
 import { MapFeatureFlagsService } from './MapFeatureFlagsService';
 import { assertCompleteCandidateSet } from './outsideRouting/OutsideRouteValidation';
 import {
@@ -83,11 +84,13 @@ function composeOutsideInstructions(
 ): NavigationInstruction[] {
   const internalInstructions = coreInstructions.filter((instruction) => instruction.id !== 'v2-outside-approach');
   if (route.provider === 'direct-guide') {
-    const gateLabel = route.gateId.replace('GATE_', 'Gate ');
+    const gate = IJTEMA_GATES.find((candidate) => candidate.id === route.gateId);
+    const gateLabelEn = gate?.name.en ?? route.gateId.replace('GATE_', 'Gate ');
+    const gateLabelUr = gate?.name.ur ?? gateLabelEn;
     return [{
       id: 'outside-direct-guide',
-      text: `Follow the direction line toward ${gateLabel}.`,
-      urduText: `دکھائی گئی سیدھی سمت میں ${gateLabel} کی طرف جائیں۔`,
+      text: `Follow the direction line toward ${gateLabelEn}.`,
+      urduText: `دکھائی گئی سیدھی سمت میں ${gateLabelUr} کی طرف جائیں۔`,
       distance: route.distanceM,
       type: 'straight',
       coordinate: route.coordinates[0],
