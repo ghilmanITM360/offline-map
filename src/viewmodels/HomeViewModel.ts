@@ -59,6 +59,11 @@ export function useHomeViewModel() {
   // staggered behind the camera pan via this timer instead of firing in the same tick.
   // Mirrors the debounce-timer-ref pattern already used for search below.
   const sheetPresentTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cancelPendingSheetPresentation = useCallback(() => {
+    if (!sheetPresentTimerRef.current) return;
+    clearTimeout(sheetPresentTimerRef.current);
+    sheetPresentTimerRef.current = null;
+  }, []);
   const cameraManager = useCameraManager({ mapRef });
 
   const currentLocation = useAppStore((s) => s.currentLocation);
@@ -207,11 +212,9 @@ export function useHomeViewModel() {
     addRecentSearch(place);
     setSearchQuery('');
     setSearchResults([]);
-    if (sheetPresentTimerRef.current) {
-      clearTimeout(sheetPresentTimerRef.current);
-      sheetPresentTimerRef.current = null;
-    }
+    cancelPendingSheetPresentation();
     const openSheet = () => {
+      sheetPresentTimerRef.current = null;
       bottomSheetRef.current?.present();
       bottomSheetRef.current?.snapToIndex(nextSnapIndex);
     };
@@ -394,10 +397,10 @@ export function useHomeViewModel() {
   // search debounce fires) can't run its callback against a torn-down screen.
   useEffect(() => {
     return () => {
-      if (sheetPresentTimerRef.current) clearTimeout(sheetPresentTimerRef.current);
+      cancelPendingSheetPresentation();
       if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
     };
-  }, []);
+  }, [cancelPendingSheetPresentation]);
 
   return {
     mapRef,
@@ -426,6 +429,7 @@ export function useHomeViewModel() {
     setIsMapReady,
     handleSearch,
     handlePlaceSelect,
+    cancelPendingSheetPresentation,
     handleSheetIndexChange,
     handleRecenter,
     handleCompassToggle,

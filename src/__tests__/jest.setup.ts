@@ -71,6 +71,7 @@ jest.mock('react-native-maps', () => {
 jest.mock('@gorhom/bottom-sheet', () => {
   const ReactActual = require('react');
   const { View: RNView } = require('react-native');
+  let lastBottomSheetModalProps: any = null;
 
   const BottomSheet = ReactActual.forwardRef((props: any, ref: any) => {
     ReactActual.useImperativeHandle(ref, () => ({
@@ -84,6 +85,7 @@ jest.mock('@gorhom/bottom-sheet', () => {
   BottomSheet.displayName = 'BottomSheet';
 
   const BottomSheetModal = ReactActual.forwardRef((props: any, ref: any) => {
+    lastBottomSheetModalProps = props;
     ReactActual.useImperativeHandle(ref, () => ({
       snapToIndex: jest.fn(),
       snapToPosition: jest.fn(),
@@ -94,7 +96,7 @@ jest.mock('@gorhom/bottom-sheet', () => {
       dismiss: jest.fn(),
       forceClose: jest.fn(),
     }));
-    return ReactActual.createElement(RNView, null, props.children);
+    return ReactActual.createElement(RNView, { ...props, testID: 'location-sheet-modal' }, props.children);
   });
   BottomSheetModal.displayName = 'BottomSheetModal';
 
@@ -116,6 +118,7 @@ jest.mock('@gorhom/bottom-sheet', () => {
     BottomSheetModalProvider,
     BottomSheetScrollView,
     BottomSheetView,
+    __getLastBottomSheetModalProps: () => lastBottomSheetModalProps,
   };
 });
 

@@ -51,6 +51,9 @@ jest.mock('@react-navigation/native', () => {
 const { useNavigation } = jest.requireMock('@react-navigation/native') as { useNavigation: jest.Mock };
 const mockedUseHomeViewModel = useHomeViewModel as jest.Mock;
 const mockedUseDirectionsViewModel = useDirectionsViewModel as jest.Mock;
+const { __getLastBottomSheetModalProps } = jest.requireMock('@gorhom/bottom-sheet') as {
+  __getLastBottomSheetModalProps: () => { onChange: (index: number) => void; onDismiss: () => void };
+};
 
 const CATEGORY_CHIPS = [
   { id: 'all', label: 'All' },
@@ -72,6 +75,7 @@ const handleCategoryPressSpy = jest.fn();
 const handleSearchSpy = jest.fn();
 const handlePlaceSelectSpy = jest.fn();
 const setSelectedPlaceSpy = jest.fn();
+const cancelPendingSheetPresentationSpy = jest.fn();
 const cameraFollowUserSpy = jest.fn();
 const cameraStopFollowingSpy = jest.fn();
 const handleRecenterSpy = jest.fn();
@@ -157,6 +161,7 @@ function useFakeHomeViewModel() {
     handleZoomOut: jest.fn(),
     handleMapRegionChangeComplete: jest.fn(),
     clearSearch: jest.fn(),
+    cancelPendingSheetPresentation: cancelPendingSheetPresentationSpy,
     handleCategoryPress,
     setSelectedPlace,
     updateSettings: jest.fn(),
@@ -429,6 +434,161 @@ describe('HomeScreen — search', () => {
     expect(screen.getByText('Gate')).toBeOnTheScreen();
     expect(screen.getByText('Directions')).toBeOnTheScreen();
     expect(screen.getByText('Share')).toBeOnTheScreen();
+  });
+});
+
+describe('HomeScreen — canonical bottom-sheet dismissal', () => {
+  async function selectGate() {
+    const user = userEvent.setup();
+    const input = screen.getByPlaceholderText('Search blocks, rastas, gates');
+    await user.type(input, 'Gate 5');
+    await user.press(await screen.findByTestId('search-result-GATE_05'));
+    return user;
+  }
+
+  async function dismissSheet() {
+    const sheetProps = __getLastBottomSheetModalProps();
+    await act(async () => {
+      sheetProps.onChange(-1);
+      sheetProps.onDismiss();
+    });
+    await waitFor(() => expect(cancelPendingSheetPresentationSpy).toHaveBeenCalled());
+  }
+
+  test('pan-down preview dismissal clears selection, marker, and pending presentation', async () => {
+    await render(<HomeScreen />);
+    await selectGate();
+    expect(screen.getByTestId('selected-place-marker')).toBeOnTheScreen();
+
+    await dismissSheet();
+
+    expect(setSelectedPlaceSpy).toHaveBeenCalledWith(null);
+    expect(cancelPendingSheetPresentationSpy).toHaveBeenCalled();
+    await waitFor(() => {
+      expect(screen.queryByTestId('selected-place-marker')).not.toBeOnTheScreen();
+    });
+  });
+
+  test('pan-down details dismissal clears DETAILS instead of leaving hidden state', async () => {
+    await render(<HomeScreen />);
+    const user = await selectGate();
+    await user.press(screen.getByText('Details'));
+    expect(screen.getByLabelText('Back')).toBeOnTheScreen();
+
+    await dismissSheet();
+
+    expect(screen.queryByLabelText('Back')).not.toBeOnTheScreen();
+    expect(setSelectedPlaceSpy).toHaveBeenCalledWith(null);
+  });
+
+  test('pan-down route-preview dismissal clears planner and returns to Explore', async () => {
+    mockedUseDirectionsViewModel.mockReturnValue({
+      route: null,
+      startSource: 'live_gps',
+      rememberedLocationAgeLabel: '',
+      rememberedLocationAvailable: false,
+      rememberedLocationInsideVenue: false,
+      currentRouteOriginInsideVenue: true,
+      loadState: 'idle',
+      errorMessage: null,
+      manualStart: null,
+      chooseManualStart: jest.fn(),
+      setIsEditingManualStart: jest.fn(),
+      setManualStartPlace: jest.fn(),
+      chooseCurrentLocation: jest.fn(async () => true),
+      chooseRememberedLocation: jest.fn(() => true),
+      calculateRoute: jest.fn(async () => {}),
+      showManualStartSearch: false,
+    });
+    await render(<HomeScreen />);
+    const user = await selectGate();
+    await user.press(screen.getByText('Directions'));
+    await act(async () => {
+      useAppStore.setState({ routePlannerDest: gateResult });
+    });
+
+    await dismissSheet();
+
+    expect(useAppStore.getState().routePlannerDest).toBeNull();
+    expect(setSelectedPlaceSpy).toHaveBeenCalledWith(null);
+    expect(screen.queryByText('Get Directions')).not.toBeOnTheScreen();
+  });
+
+  test('programmatic close during Start Navigation does not clear the active route', async () => {
+    const destination = gateResult;
+    const previewRoute = {
+      nodes: ['start', 'end'],
+      coordinates: [
+        { latitude: 24.9, longitude: 67.1 },
+        destination.coordinate,
+      ],
+      totalDistance: 180,
+      estimatedTimeMin: 3,
+      segments: [],
+      startLabel: 'Current location',
+      destinationLabel: destination.name,
+      startResolution: { mode: 'inside', coordinate: { latitude: 24.9, longitude: 67.1 } },
+      instructions: [],
+    };
+    mockedUseHomeViewModel.mockImplementation(() => ({ ...useFakeHomeViewModel(), selectedPlace: destination }));
+    mockedUseDirectionsViewModel.mockReturnValue({
+      route: previewRoute,
+      startSource: 'live_gps',
+      startSourceLabel: 'My current location',
+      rememberedLocationAgeLabel: '',
+      rememberedLocationAvailable: false,
+      rememberedLocationInsideVenue: false,
+      currentRouteOriginInsideVenue: true,
+      loadState: 'ready',
+      errorMessage: null,
+      manualStart: null,
+      chooseManualStart: jest.fn(),
+      setIsEditingManualStart: jest.fn(),
+      setManualStartPlace: jest.fn(),
+      chooseCurrentLocation: jest.fn(async () => true),
+      chooseRememberedLocation: jest.fn(() => true),
+      calculateRoute: jest.fn(async () => {}),
+      showManualStartSearch: false,
+    });
+    useAppStore.setState({ routePlannerDest: destination, activeRoute: previewRoute as any, currentLocation: { latitude: 24.9, longitude: 67.1 } });
+    await render(<HomeScreen />);
+
+    await userEvent.setup().press(await screen.findByText('Start Navigation'));
+    await act(async () => {
+      __getLastBottomSheetModalProps().onDismiss();
+    });
+
+    expect(useAppStore.getState().isNavigating).toBe(true);
+    expect(useAppStore.getState().activeRoute).not.toBeNull();
+  });
+
+  test('stale dismissal from a previous selection does not clear rapid replacement', async () => {
+    await render(<HomeScreen />);
+    const user = await selectGate();
+    await act(async () => {
+      __getLastBottomSheetModalProps().onChange(-1);
+    });
+    await user.press(screen.getByTestId('facility_marker_LM_MASJID_MAIN'));
+
+    await act(async () => {
+      __getLastBottomSheetModalProps().onDismiss();
+    });
+
+    expect(await screen.findByText('Main Masjid')).toBeOnTheScreen();
+    expect(screen.getByTestId('selected-place-marker')).toBeOnTheScreen();
+  });
+
+  test('repeated onDismiss calls are idempotent', async () => {
+    await render(<HomeScreen />);
+    await selectGate();
+    const sheetProps = __getLastBottomSheetModalProps();
+    await act(async () => {
+      sheetProps.onChange(-1);
+      sheetProps.onDismiss();
+      sheetProps.onDismiss();
+    });
+
+    expect(setSelectedPlaceSpy.mock.calls.filter(([place]) => place === null)).toHaveLength(1);
   });
 });
 
@@ -769,4 +929,3 @@ describe('HomeScreen — recenter follow mode (Google Maps parity)', () => {
     expect(await screen.findByLabelText('Center map on my current location')).toBeOnTheScreen();
   });
 });
-

@@ -268,6 +268,7 @@ export function HomeScreen() {
     setIsMapReady,
     handleSearch,
     handlePlaceSelect,
+    cancelPendingSheetPresentation,
     handleSheetIndexChange,
     handleRecenter,
     handleCompassToggle,
@@ -380,6 +381,55 @@ export function HomeScreen() {
     activePreviewRoute,
     selectedPlace,
   });
+
+  type SheetDismissalReason = 'state-reset' | 'start-navigation' | 'replacement';
+  const sheetRouteDestination = directionsDestination ?? (activePreviewRoute ? routePlannerDest : null);
+  const sheetIdentity = sheetRouteDestination
+    ? `route:${sheetRouteDestination.id}`
+    : selectedPlace
+      ? `place:${selectedPlace.id}`
+      : null;
+  const currentSheetIdentityRef = useRef<string | null>(sheetIdentity);
+  currentSheetIdentityRef.current = sheetIdentity;
+  const closingSheetIdentityRef = useRef<string | null>(null);
+  const programmaticSheetDismissRef = useRef<{ identity: string | null; reason: SheetDismissalReason } | null>(null);
+  const sheetDismissHandledRef = useRef(false);
+
+  const prepareProgrammaticSheetDismiss = useCallback((reason: SheetDismissalReason) => {
+    programmaticSheetDismissRef.current = { identity: currentSheetIdentityRef.current, reason };
+    cancelPendingSheetPresentation();
+  }, [cancelPendingSheetPresentation]);
+
+  const resetDismissedSheetState = useCallback((clearPlanner: boolean) => {
+    cancelPendingSheetPresentation();
+    if (clearPlanner) clearRoutePlanner();
+    setDirectionsDestination(null);
+    setDetailsExpanded(false);
+    setSelectedEntryIdx(0);
+    setSelectedPlace(null);
+    setSheetIndex(-1);
+    handleSheetIndexChange(-1);
+  }, [cancelPendingSheetPresentation, clearRoutePlanner, handleSheetIndexChange, setSelectedPlace]);
+
+  const handleSheetDismiss = useCallback(() => {
+    cancelPendingSheetPresentation();
+    if (sheetDismissHandledRef.current) return;
+
+    const dismissedIdentity = closingSheetIdentityRef.current ?? currentSheetIdentityRef.current;
+    const programmaticDismiss = programmaticSheetDismissRef.current;
+    closingSheetIdentityRef.current = null;
+    programmaticSheetDismissRef.current = null;
+    sheetDismissHandledRef.current = true;
+    setSheetIndex(-1);
+    handleSheetIndexChange(-1);
+
+    if (!dismissedIdentity) return;
+    if (programmaticDismiss?.identity === dismissedIdentity) return;
+    // Portal dismissal can finish after a rapid re-selection. Only the identity that
+    // actually began closing may be reset; a newer selection owns the shared sheet now.
+    if (currentSheetIdentityRef.current !== dismissedIdentity) return;
+    resetDismissedSheetState(dismissedIdentity.startsWith('route:'));
+  }, [cancelPendingSheetPresentation, handleSheetIndexChange, resetDismissedSheetState]);
 
   useEffect(() => {
     setSelectedEntryIdx(0);
@@ -732,15 +782,18 @@ export function HomeScreen() {
   // route-planner state), the same trigger the old floating card relied on to appear.
   useEffect(() => {
     if (!activePreviewRoute || directionsDestination) return;
+    sheetDismissHandledRef.current = false;
+    closingSheetIdentityRef.current = null;
     bottomSheetRef.current?.present();
     bottomSheetRef.current?.snapToIndex(1);
   }, [activePreviewRoute, directionsDestination, bottomSheetRef]);
 
   useEffect(() => {
     if (!showAnyNavOverlay) return;
+    if (!programmaticSheetDismissRef.current) prepareProgrammaticSheetDismiss('start-navigation');
     setDirectionsDestination(null);
     bottomSheetRef.current?.close();
-  }, [showAnyNavOverlay, bottomSheetRef]);
+  }, [showAnyNavOverlay, bottomSheetRef, prepareProgrammaticSheetDismiss]);
 
   const recenterResetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const handleRecenterPress = useCallback(async () => {
@@ -801,11 +854,10 @@ export function HomeScreen() {
   // bottomSheetRef.close()` call sites that existed independently before and didn't
   // account for detailsExpanded/arrived/directionsDestination.
   const closeSheet = useCallback(() => {
-    setSelectedPlace(null);
-    setDirectionsDestination(null);
-    setDetailsExpanded(false);
+    prepareProgrammaticSheetDismiss('state-reset');
+    resetDismissedSheetState(false);
     bottomSheetRef.current?.close();
-  }, [bottomSheetRef, setSelectedPlace]);
+  }, [bottomSheetRef, prepareProgrammaticSheetDismiss, resetDismissedSheetState]);
 
   const handleStartPreviewNavigation = useCallback(() => {
     if (!activePreviewRoute || !previewDestination) return;
@@ -823,8 +875,9 @@ export function HomeScreen() {
       startPlace: routePlannerOrigin,
       currentLocation: routePlannerOrigin ? null : currentLocation,
     });
+    prepareProgrammaticSheetDismiss('start-navigation');
     startNavigation(previewDestination, resolvedRoute, resolvedRoute.instructions);
-  }, [activePreviewRoute, currentLocation, previewDestination, routePlannerOrigin, startNavigation]);
+  }, [activePreviewRoute, currentLocation, prepareProgrammaticSheetDismiss, previewDestination, routePlannerOrigin, startNavigation]);
 
   const handleClearPreviewRoute = useCallback(() => {
     Alert.alert('Cancel route?', 'You will need to choose your destination again.', [
@@ -1256,7 +1309,7 @@ export function HomeScreen() {
           {/* Selected place pin — hidden during route preview to avoid duplicate destination marker */}
           {mode !== 'NAVIGATION' && selectedPlace && selectedPlaceMarkerCoordinate && !activePreviewRoute && (
             <Marker coordinate={selectedPlaceMarkerCoordinate} tracksViewChanges={false}>
-              <View style={styles.selectedMarker}>
+              <View testID="selected-place-marker" style={styles.selectedMarker}>
                 <MapPin size={markerSizes.destination} color={staticColors.gateAccent} fill={staticColors.gateAccent} />
               </View>
             </Marker>
@@ -1651,6 +1704,12 @@ export function HomeScreen() {
           onChange={(index) => {
             setSheetIndex(index);
             handleSheetIndexChange(index);
+            if (index < 0) {
+              closingSheetIdentityRef.current ??= currentSheetIdentityRef.current;
+            } else {
+              sheetDismissHandledRef.current = false;
+              closingSheetIdentityRef.current = null;
+            }
             // Fully expanding the sheet over a selected place is "show me more" —
             // PLACE_SELECTED (preview) -> DETAILS. Only meaningful outside the directions
             // flow, which has its own distinct content.
@@ -1660,6 +1719,7 @@ export function HomeScreen() {
               setDetailsExpanded(false);
             }
           }}
+          onDismiss={handleSheetDismiss}
         >
           {routePreviewSheetDestination ? (
             <LocationSheet
