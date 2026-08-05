@@ -73,6 +73,8 @@ describe('DirectionsViewModel hybrid outside routing', () => {
     const gpsGateId = gpsRoute?.startResolution?.gate?.id;
     expect(gpsCandidateId).toBeDefined();
     expect(gpsGateId).toBeDefined();
+    // Presentation must agree with the routing layer: GPS is genuinely outside the venue here.
+    expect(hook.result.current.isOutsideStart).toBe(true);
 
     await act(() => hook.result.current.setManualStartPlace(outsideManualPlace()));
     await waitFor(() => expect(hook.result.current.route?.selectedOutsideCandidateId).not.toBe(gpsCandidateId), { timeout: 5_000 });
@@ -84,6 +86,10 @@ describe('DirectionsViewModel hybrid outside routing', () => {
     expect(manualRoute?.outsideRoute?.fallbackHistory).toEqual([
       { provider: 'google', code: 'proxy-unconfigured', retryable: true },
     ]);
+    // Regression: manual_place used to be hard-excluded from isOutsideStart regardless of its
+    // actual coordinate, so the UI would claim "inside" while routing silently ran the
+    // outside/gate flow above. Same outside coordinate as GPS must produce the same flag.
+    expect(hook.result.current.isOutsideStart).toBe(true);
 
     const manualCandidateId = manualRoute?.selectedOutsideCandidateId;
     await act(() => expect(hook.result.current.chooseRememberedLocation()).toBe(true));
@@ -92,6 +98,7 @@ describe('DirectionsViewModel hybrid outside routing', () => {
     expect(hook.result.current.startSource).toBe('remembered_location');
     expect(hook.result.current.route?.outsideRoute?.provider).toBe('offline-osm');
     expect(hook.result.current.route?.startResolution?.gate?.id).toBe(gpsGateId);
+    expect(hook.result.current.isOutsideStart).toBe(true);
   });
 
   test('manual inside place stays on internal pedestrian routing', async () => {
@@ -109,6 +116,9 @@ describe('DirectionsViewModel hybrid outside routing', () => {
 
     expect(hook.result.current.startSource).toBe('manual_place');
     expect(hook.result.current.route?.outsideLegCoordinateCount ?? 0).toBe(0);
+    // A manual start that is genuinely inside the venue must present as inside — the fix only
+    // removes the blanket manual_place exclusion, it does not force manual starts outside.
+    expect(hook.result.current.isOutsideStart).toBe(false);
   });
 
   test('manual outside start falls through OSM failure to labelled direct guide', async () => {
@@ -129,6 +139,9 @@ describe('DirectionsViewModel hybrid outside routing', () => {
         { provider: 'offline-osm', code: 'outside-coverage', retryable: false },
       ],
     });
+    // The direct-guide fallback message/status is presentation the UI shows specifically
+    // because the start is outside — must not regress to "inside" for a manual start.
+    expect(hook.result.current.isOutsideStart).toBe(true);
   });
 
   test('retains ready preview when replacement provider orchestration throws', async () => {

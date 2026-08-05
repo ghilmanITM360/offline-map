@@ -103,10 +103,13 @@ export function useDirectionsViewModel(destination: Place | null) {
   const rememberedLocationInsideVenue = !!lastKnownLocation && isInsideVenueForDestination(lastKnownLocation);
   const currentRouteOriginInsideVenue = !!routeOriginLocation && isInsideVenueForDestination(routeOriginLocation);
 
-  // Presentation-only "is the active start point outside the venue" check —
-  // manual_place is deliberately excluded here (a manually chosen start is
-  // never flagged as an outside-forced start in the UI), unlike calculateRoute's
-  // own forceOutside, which applies to every startSource.
+  // Presentation-only "is the active start point outside the venue" check. The routing
+  // coordinate determines outside/inside presentation, not the source label — a manually
+  // searched or map-selected place whose coordinate is genuinely outside the venue must show
+  // the same "Outside Ijtema" status as GPS/remembered starts, matching calculateRoute's own
+  // forceOutside below (which already applies uniformly to every startSource). Previously
+  // manual_place was excluded here, so the routing layer would silently run the outside/gate
+  // flow while the UI still claimed the start was inside.
   const startCoordinateForOutsideCheck =
     startSource === 'live_gps'
       ? currentLocation
@@ -115,7 +118,6 @@ export function useDirectionsViewModel(destination: Place | null) {
       : manualStart?.coordinate ?? null;
   const isOutsideStart =
     destination?.sourceVersion === 'v2' &&
-    startSource !== 'manual_place' &&
     !!startCoordinateForOutsideCheck &&
     !EntryGateRoutingService.isInsideIjtemaArea(startCoordinateForOutsideCheck);
 
