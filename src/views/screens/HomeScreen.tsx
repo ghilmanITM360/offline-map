@@ -227,7 +227,7 @@ export function HomeScreen() {
   const userPulseAnim = useRef(new Animated.Value(0)).current;
   const chipsAnim = useRef(new Animated.Value(1)).current;
 
-  const dismissSearch = useCallback(() => {
+  const dismissSearchOverlay = useCallback(() => {
     setIsSearchFocused(false);
     searchInputRef.current?.blur();
     Keyboard.dismiss();
@@ -237,10 +237,6 @@ export function HomeScreen() {
   // selectPlace/showRoutePreview/startNavigation already exist as handlePlaceSelect/
   // handleOpenDirections/handleStartPreviewNavigation below; they aren't re-wrapped here
   // to avoid two names for the same entry point.
-  const openSearch = useCallback(() => {
-    setIsSearchFocused(true);
-  }, []);
-
   const logHomeControl = useCallback((pressed: string, action: string) => {
     if (__DEV__) {
       console.log(`[HomeControl] pressed=${pressed} action=${action}`);
@@ -328,10 +324,10 @@ export function HomeScreen() {
       tapFlushScheduledRef.current = false;
       const winner = resolveTapCandidate(candidates, selectedPlaceIdRef.current);
       if (!winner) return;
-      dismissSearch();
+      dismissSearchOverlay();
       handlePlaceSelect(winner.payload);
     });
-  }, [dismissSearch, handlePlaceSelect]);
+  }, [dismissSearchOverlay, handlePlaceSelect]);
 
   const navOverlay = useNavigationOverlayV2({
     mapRef,
@@ -423,6 +419,21 @@ export function HomeScreen() {
     handleSheetIndexChange(-1);
   }, [cancelPendingSheetPresentation, clearRoutePlanner, handleSheetIndexChange, setSelectedPlace]);
 
+  const closeSearch = useCallback(() => {
+    clearSearch();
+    dismissSearchOverlay();
+  }, [clearSearch, dismissSearchOverlay]);
+
+  const openSearch = useCallback(() => {
+    const currentIdentity = currentSheetIdentityRef.current;
+    if (currentIdentity) {
+      prepareProgrammaticSheetDismiss('replacement');
+      resetDismissedSheetState(currentIdentity.startsWith('route:'));
+      bottomSheetRef.current?.close();
+    }
+    setIsSearchFocused(true);
+  }, [bottomSheetRef, prepareProgrammaticSheetDismiss, resetDismissedSheetState]);
+
   const handleSheetDismiss = useCallback(() => {
     cancelPendingSheetPresentation();
     if (sheetDismissHandledRef.current) return;
@@ -472,10 +483,10 @@ export function HomeScreen() {
     return RoutePointService.getDestinationCoordinate(selectedPlace);
   }, [selectedPlace, entryPoints, selectedEntryIdx]);
   const overlayPlaces = useMemo(
-    () => ((mode === 'SEARCH' || searchQuery.length > 1)
+    () => (mode === 'SEARCH'
       ? searchResults.filter((item) => (item as any).coordinate && (item as any).id !== selectedPlace?.id)
       : []),
-    [mode, searchQuery, searchResults, selectedPlace],
+    [mode, searchResults, selectedPlace],
   );
 
   const { outside: previewOutsideLegCoordinates, inside: previewInsideLegCoordinates } = useMemo(
@@ -594,7 +605,7 @@ export function HomeScreen() {
         onPress: () => {
           const place = V2PlaceAdapter.getPlaceById(gate.id);
           if (!place) return;
-          dismissSearch();
+          dismissSearchOverlay();
           handlePlaceSelect(place);
         },
       });
@@ -614,7 +625,7 @@ export function HomeScreen() {
         onPress: () => {
           const place = V2PlaceAdapter.getPlaceById(block.id);
           if (!place) return;
-          dismissSearch();
+          dismissSearchOverlay();
           handlePlaceSelect(place);
         },
       });
@@ -634,7 +645,7 @@ export function HomeScreen() {
         onPress: () => {
           const place = V2PlaceAdapter.getPlaceById(rasta.id);
           if (!place) return;
-          dismissSearch();
+          dismissSearchOverlay();
           handlePlaceSelect(place);
         },
       });
@@ -654,14 +665,14 @@ export function HomeScreen() {
         onPress: () => {
           const place = V2PlaceAdapter.getPlaceById(route.id);
           if (!place) return;
-          dismissSearch();
+          dismissSearchOverlay();
           handlePlaceSelect(place);
         },
       });
     }
 
     return items;
-  }, [showNavOverlay, navOverlay.mapLayers.gates, navOverlayV1.active, useV2Map, v2MapLayers, mapZoomLevel, dismissSearch, handlePlaceSelect]);
+  }, [showNavOverlay, navOverlay.mapLayers.gates, navOverlayV1.active, useV2Map, v2MapLayers, mapZoomLevel, dismissSearchOverlay, handlePlaceSelect]);
 
   const effectiveInitialRegion = useV2Map
     ? {
@@ -921,7 +932,7 @@ export function HomeScreen() {
   useEffect(() => {
     const handler = BackHandler.addEventListener('hardwareBackPress', () => {
       if (mode === 'SEARCH') {
-        dismissSearch();
+        closeSearch();
         return true;
       }
       if (mode === 'DETAILS') {
@@ -940,10 +951,11 @@ export function HomeScreen() {
       return false;
     });
     return () => handler.remove();
-  }, [mode, dismissSearch, closeDetails, directionsDestination, handleCloseDirections, handleClearPreviewRoute, closeSheet]);
+  }, [mode, closeSearch, closeDetails, directionsDestination, handleCloseDirections, handleClearPreviewRoute, closeSheet]);
 
   const handleSearchResultSelect = (place: Place) => {
-    dismissSearch();
+    clearSearch();
+    dismissSearchOverlay();
     handlePlaceSelect(place);
   };
 
@@ -1113,8 +1125,7 @@ export function HomeScreen() {
             }}
             onPress={() => {
               if (mode === 'SEARCH') {
-                dismissSearch();
-                clearSearch();
+                closeSearch();
                 return;
               }
               if (selectedPlace) {
@@ -1251,7 +1262,7 @@ export function HomeScreen() {
                 strokeWidth={isSelected ? 3 : 1.5}
                 tappable
                 onPress={() => {
-                  dismissSearch();
+                  dismissSearchOverlay();
                   handlePlaceSelect({
                     id: block.id,
                     name: block.name,
@@ -1317,6 +1328,7 @@ export function HomeScreen() {
             return (
               <Marker
                 key={`search_overlay_${overlayItem.id}`}
+                testID={`search-map-marker-${overlayItem.id}`}
                 coordinate={coordinate}
                 anchor={{ x: 0.5, y: 1 }}
                 tracksViewChanges={false}
@@ -1412,10 +1424,10 @@ export function HomeScreen() {
               onPress={() => {
                 if (mode === 'SEARCH') {
                   logHomeControl('search_back', 'dismiss_search');
-                  dismissSearch();
+                  closeSearch();
                   return;
                 }
-                dismissSearch();
+                dismissSearchOverlay();
                 logHomeControl('menu', 'open_drawer');
                 nav.dispatch(DrawerActions.openDrawer());
               }}

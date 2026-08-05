@@ -76,6 +76,7 @@ const handleCategoryPressSpy = jest.fn();
 const handleSearchSpy = jest.fn();
 const handlePlaceSelectSpy = jest.fn();
 const setSelectedPlaceSpy = jest.fn();
+const clearSearchSpy = jest.fn();
 const cancelPendingSheetPresentationSpy = jest.fn();
 const cameraFollowUserSpy = jest.fn();
 const cameraStopFollowingSpy = jest.fn();
@@ -115,11 +116,19 @@ function useFakeHomeViewModel() {
   const handlePlaceSelect = (place: Place) => {
     handlePlaceSelectSpy(place);
     setSelectedPlaceState(place);
+    setSearchQuery('');
+    setSearchResults([]);
   };
 
   const setSelectedPlace = (place: Place | null) => {
     setSelectedPlaceSpy(place);
     setSelectedPlaceState(place);
+  };
+
+  const clearSearch = () => {
+    clearSearchSpy();
+    setSearchQuery('');
+    setSearchResults([]);
   };
 
   return {
@@ -161,7 +170,7 @@ function useFakeHomeViewModel() {
     handleZoomIn: jest.fn(),
     handleZoomOut: jest.fn(),
     handleMapRegionChangeComplete: jest.fn(),
-    clearSearch: jest.fn(),
+    clearSearch,
     cancelPendingSheetPresentation: cancelPendingSheetPresentationSpy,
     handleCategoryPress,
     setSelectedPlace,
@@ -404,6 +413,35 @@ describe('HomeScreen — search', () => {
     expect(screen.getByText('Gates')).toBeOnTheScreen();
   });
 
+  test('search X clears transient query/results but keeps Search open', async () => {
+    const user = userEvent.setup();
+    await render(<HomeScreen />);
+    const input = screen.getByPlaceholderText('Search blocks, rastas, gates');
+    await user.type(input, 'Gate 5');
+
+    await user.press(screen.getByLabelText('Clear search'));
+
+    expect(clearSearchSpy).toHaveBeenCalledTimes(1);
+    expect(screen.getByLabelText('Back')).toBeOnTheScreen();
+    expect(screen.queryByTestId('search-result-GATE_05')).not.toBeOnTheScreen();
+  });
+
+  test('search Back clears query/results, result markers, and keyboard state', async () => {
+    const keyboardDismissSpy = jest.spyOn(require('react-native').Keyboard, 'dismiss');
+    const user = userEvent.setup();
+    await render(<HomeScreen />);
+    const input = screen.getByPlaceholderText('Search blocks, rastas, gates');
+    await user.type(input, 'Gate 5');
+    expect(await screen.findByTestId('search-map-marker-GATE_05')).toBeOnTheScreen();
+
+    await user.press(screen.getByLabelText('Back'));
+
+    expect(clearSearchSpy).toHaveBeenCalledTimes(1);
+    expect(keyboardDismissSpy).toHaveBeenCalled();
+    expect(input.props.value).toBe('');
+    expect(screen.queryByTestId('search-map-marker-GATE_05')).not.toBeOnTheScreen();
+  });
+
   test('typing in the search bar renders results', async () => {
     const user = userEvent.setup();
     await render(<HomeScreen />);
@@ -435,6 +473,52 @@ describe('HomeScreen — search', () => {
     expect(screen.getByText('Gate')).toBeOnTheScreen();
     expect(screen.getByText('Directions')).toBeOnTheScreen();
     expect(screen.getByText('Share')).toBeOnTheScreen();
+    expect(input.props.value).toBe('');
+    expect(screen.queryByTestId('search-map-marker-GATE_05')).not.toBeOnTheScreen();
+  });
+
+  test('opening Search over a place sheet clears the old selection before cancel returns to Explore', async () => {
+    const user = userEvent.setup();
+    await render(<HomeScreen />);
+    const input = screen.getByPlaceholderText('Search blocks, rastas, gates');
+    await user.type(input, 'Gate 5');
+    await user.press(await screen.findByTestId('search-result-GATE_05'));
+    expect(screen.getByTestId('selected-place-marker')).toBeOnTheScreen();
+
+    await user.type(input, '');
+    await user.press(await screen.findByLabelText('Back'));
+
+    expect(setSelectedPlaceSpy).toHaveBeenCalledWith(null);
+    expect(screen.queryByTestId('selected-place-marker')).not.toBeOnTheScreen();
+    expect(screen.queryByText('Official entry / exit gate')).not.toBeOnTheScreen();
+  });
+
+  test('rapid open/cancel cycles never resurrect transient results', async () => {
+    const user = userEvent.setup();
+    await render(<HomeScreen />);
+    const input = screen.getByPlaceholderText('Search blocks, rastas, gates');
+    await user.type(input, 'Gate 5');
+    await user.press(screen.getByLabelText('Back'));
+    await user.type(input, '');
+    await user.press(screen.getByLabelText('Back'));
+
+    expect(screen.queryByLabelText('Back')).not.toBeOnTheScreen();
+    expect(screen.queryByTestId('search-map-marker-GATE_05')).not.toBeOnTheScreen();
+    expect(input.props.value).toBe('');
+  });
+
+  test('reopening Search keeps recent history while transient results stay cleared', async () => {
+    mockedUseHomeViewModel.mockImplementation(() => ({ ...useFakeHomeViewModel(), recentSearches: [gateResult] }));
+    const user = userEvent.setup();
+    await render(<HomeScreen />);
+    const input = screen.getByPlaceholderText('Search blocks, rastas, gates');
+    await user.type(input, 'Gate 5');
+    await user.press(screen.getByLabelText('Back'));
+    await user.type(input, '');
+
+    expect(await screen.findByText('Recent')).toBeOnTheScreen();
+    expect(screen.getByTestId('search-result-GATE_05')).toBeOnTheScreen();
+    expect(input.props.value).toBe('');
   });
 });
 
