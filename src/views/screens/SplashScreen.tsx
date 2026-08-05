@@ -8,7 +8,7 @@ import { View, Text, StyleSheet, Animated } from 'react-native';
 import { Map as MapIcon } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
 import * as Location from 'expo-location';
-import { useAppStore } from '../../store/useAppStore';
+import { useAppStore, waitForStoreHydration } from '../../store/useAppStore';
 import { ConnectivityService } from '../../services/ConnectivityService';
 import { OfflineMapService } from '../../services/OfflineMapService';
 import { OfflineMapStatusService } from '../../services/OfflineMapStatusService';
@@ -49,6 +49,12 @@ export function SplashScreen() {
           OfflineMapStatusService.isSkippedOnlineModeEnabled(),
           OnboardingStatusService.hasSeenWelcome(),
           minVisibleMs,
+          // Persisted-store hydration gate (pre-APK correction) — StartupManager/
+          // MapStartupController must never see default (unhydrated) persisted values.
+          // HomeScreen only mounts after this Promise.all resolves and navigation.replace()
+          // below runs, so this transitively guards every persisted read (hasSeenMapOverview,
+          // lastKnownLocation, settings, ...) downstream of Splash too.
+          waitForStoreHydration(),
         ]);
 
         const permissionGranted = permissionResult.status === 'granted';

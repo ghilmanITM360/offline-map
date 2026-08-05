@@ -180,6 +180,14 @@ interface AppState {
   setShowRouteDiagnostics: (val: boolean) => void;
   developerModeEnabled: boolean;
   setDeveloperModeEnabled: (val: boolean) => void;
+
+  // --- Persisted-store hydration (pre-APK correction: startup/camera decisions must never
+  // read default values before AsyncStorage rehydration completes) ---
+  // Starts false on every cold start (deliberately excluded from partialize) and flips true
+  // exactly once, via the persist config's onRehydrateStorage below, on success OR failure —
+  // see waitForStoreHydration() for the single canonical way callers should wait on this.
+  hasHydrated: boolean;
+  setHasHydrated: (val: boolean) => void;
 }
 
 export const useAppStore = create<AppState>()(
@@ -354,11 +362,22 @@ export const useAppStore = create<AppState>()(
       setShowRouteDiagnostics: (val) => set({ showRouteDiagnostics: val }),
       developerModeEnabled: false,
       setDeveloperModeEnabled: (val) => set({ developerModeEnabled: val }),
+
+      hasHydrated: false,
+      setHasHydrated: (val) => set({ hasHydrated: val }),
     }),
     {
       name: 'ijtema-app-store',
       storage: createJSONStorage(() => AsyncStorage),
       version: 2,
+      onRehydrateStorage: () => (_state, error) => {
+        if (error) {
+          // Safe fallback: leave in-memory defaults in place rather than throwing or hanging —
+          // callers (see waitForStoreHydration) still get unblocked below.
+          console.error('[useAppStore] Failed to rehydrate persisted state — continuing with default values.', error);
+        }
+        useAppStore.getState().setHasHydrated(true);
+      },
       migrate: (persistedState) => {
         if (!persistedState || typeof persistedState !== 'object') return persistedState;
         const state = persistedState as Partial<AppState>;
@@ -392,7 +411,36 @@ export const useAppStore = create<AppState>()(
         showSpecialRoutesLayer: state.showSpecialRoutesLayer,
         showRouteDiagnostics: state.showRouteDiagnostics,
         developerModeEnabled: state.developerModeEnabled,
+        // hasHydrated is deliberately excluded — it must start false on every cold start so
+        // waitForStoreHydration() below always waits for a real rehydration pass.
       }),
     }
   )
 );
+
+const HYDRATION_TIMEOUT_MS = 5000;
+
+/**
+ * Single canonical way to wait for the persisted store's one-shot AsyncStorage rehydration
+ * (see onRehydrateStorage above — fires on success or failure). Bounded by a safety timeout
+ * so a pathological AsyncStorage hang (a read that never resolves or rejects) can't block
+ * startup forever; if the timeout wins, hydration may still complete later in the background
+ * and this resolves anyway with whatever state is currently in memory.
+ */
+export function waitForStoreHydration(timeoutMs = HYDRATION_TIMEOUT_MS): Promise<void> {
+  if (useAppStore.getState().hasHydrated) return Promise.resolve();
+  return new Promise((resolve) => {
+    const timeoutId = setTimeout(() => {
+      console.warn(`[useAppStore] Hydration timed out after ${timeoutMs}ms — proceeding with current in-memory state.`);
+      unsubscribe();
+      resolve();
+    }, timeoutMs);
+    const unsubscribe = useAppStore.subscribe((state) => {
+      if (state.hasHydrated) {
+        clearTimeout(timeoutId);
+        unsubscribe();
+        resolve();
+      }
+    });
+  });
+}
