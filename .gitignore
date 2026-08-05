@@ -5,7 +5,21 @@ coverage/
 .DS_Store
 *.log
 .idea/
+
+# Agent/editor-local tooling
+.agents/
+.claude/skills/
+.claude/settings.json
+.claude/settings.local.json
+.clinerules/
+.cursor/
+.opencode/
+.windsurf/
+skills-lock.json
+
+# Local QA evidence
 android-runtime-artifacts/
+ios-runtime-artifacts/
 screenshots/
 *.apk
 *.aab

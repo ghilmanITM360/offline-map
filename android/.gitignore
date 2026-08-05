@@ -6,7 +6,10 @@
 #
 build/
 .idea
+
+# Generated native caches
 .gradle
+.kotlin/
 local.properties
 *.iml
 *.hprof
