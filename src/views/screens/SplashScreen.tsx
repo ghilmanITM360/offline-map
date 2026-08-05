@@ -40,7 +40,7 @@ export function SplashScreen() {
         });
 
         // Run all checks in parallel
-        const [mapStatus, startupStatus, permissionResult, isConnected, graphOnlyModeEnabled, skippedOnlineModeEnabled, hasSeenWelcome] = await Promise.all([
+        const [mapStatus, startupStatus, permissionResult, isConnected, graphOnlyModeEnabled, skippedOnlineModeEnabled, hasSeenWelcome, skippedLocationPermission] = await Promise.all([
           OfflineMapService.getMapStatus(),
           OfflineMapStatusService.validateAtStartup(),
           Location.getForegroundPermissionsAsync(),
@@ -48,6 +48,7 @@ export function SplashScreen() {
           OfflineMapStatusService.isGraphOnlyModeEnabled(),
           OfflineMapStatusService.isSkippedOnlineModeEnabled(),
           OnboardingStatusService.hasSeenWelcome(),
+          OnboardingStatusService.hasSkippedLocationPermission(),
           minVisibleMs,
           // Persisted-store hydration gate (pre-APK correction) — StartupManager/
           // MapStartupController must never see default (unhydrated) persisted values.
@@ -79,9 +80,18 @@ export function SplashScreen() {
 
         setHasLocationPermission(permissionGranted);
 
+        // Real permission is confirmed granted — supersede any earlier "Continue Without
+        // Location" choice so a later revocation is treated as fresh, not a still-standing skip.
+        let effectiveSkippedLocationPermission = skippedLocationPermission;
+        if (permissionGranted && skippedLocationPermission) {
+          await OnboardingStatusService.setSkippedLocationPermission(false);
+          effectiveSkippedLocationPermission = false;
+        }
+
         const { route } = StartupManager.resolve({
           hasSeenWelcome,
           permissionGranted,
+          skippedLocationPermission: effectiveSkippedLocationPermission,
           offlineMapStatus: startupStatus.status,
           graphOnlyModeEnabled,
           skippedOnlineModeEnabled,

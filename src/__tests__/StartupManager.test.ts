@@ -8,6 +8,7 @@ import { StartupManager, StartupChecks } from '../services/StartupManager';
 const base: StartupChecks = {
   hasSeenWelcome: true,
   permissionGranted: true,
+  skippedLocationPermission: false,
   offlineMapStatus: 'downloaded',
   graphOnlyModeEnabled: false,
   skippedOnlineModeEnabled: false,
@@ -27,6 +28,24 @@ describe('StartupManager.resolve', () => {
       phase: 'first_install',
       route: 'Permission',
     });
+  });
+
+  it('bypasses Permission for a returning user who already chose Continue Without Location', () => {
+    expect(
+      StartupManager.resolve({ ...base, permissionGranted: false, skippedLocationPermission: true }),
+    ).toEqual({ phase: 'ready', route: 'Main' });
+  });
+
+  it('still routes a skipped-permission user through DownloadMap/graph-only precedence normally', () => {
+    expect(
+      StartupManager.resolve({
+        ...base,
+        permissionGranted: false,
+        skippedLocationPermission: true,
+        offlineMapStatus: 'not_downloaded',
+        isConnected: true,
+      }),
+    ).toEqual({ phase: 'incomplete_setup', route: 'DownloadMap' });
   });
 
   it('sends returning users with a valid downloaded map straight to Main', () => {

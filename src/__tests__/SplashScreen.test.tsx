@@ -35,7 +35,11 @@ jest.mock('../services/ConnectivityService', () => ({
 }));
 
 jest.mock('../services/OnboardingStatusService', () => ({
-  OnboardingStatusService: { hasSeenWelcome: jest.fn() },
+  OnboardingStatusService: {
+    hasSeenWelcome: jest.fn(),
+    hasSkippedLocationPermission: jest.fn(),
+    setSkippedLocationPermission: jest.fn(),
+  },
 }));
 
 const mockReplaceSpy = jest.fn();
@@ -68,6 +72,8 @@ beforeEach(() => {
   (OfflineMapStatusService.isSkippedOnlineModeEnabled as jest.Mock).mockResolvedValue(false);
   (ConnectivityService.isConnected as jest.Mock).mockResolvedValue(true);
   (OnboardingStatusService.hasSeenWelcome as jest.Mock).mockResolvedValue(true);
+  (OnboardingStatusService.hasSkippedLocationPermission as jest.Mock).mockResolvedValue(false);
+  (OnboardingStatusService.setSkippedLocationPermission as jest.Mock).mockResolvedValue(undefined);
 });
 
 afterEach(() => {

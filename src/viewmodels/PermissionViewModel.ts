@@ -10,6 +10,7 @@ import { useAppStore } from '../store/useAppStore';
 import { OfflineMapService } from '../services/OfflineMapService';
 import { ConnectivityService } from '../services/ConnectivityService';
 import { OfflineMapStatusService } from '../services/OfflineMapStatusService';
+import { OnboardingStatusService } from '../services/OnboardingStatusService';
 
 export function usePermissionViewModel() {
   const { setHasLocationPermission, setOfflineMapStatus } = useAppStore();
@@ -38,6 +39,9 @@ export function usePermissionViewModel() {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status === 'granted') {
         setHasLocationPermission(true);
+        // Supersede any earlier "Continue Without Location" choice now that real permission
+        // is confirmed granted, so a later revocation is treated as fresh next launch.
+        await OnboardingStatusService.setSkippedLocationPermission(false);
         await navigateNext(navigation);
       } else {
         const permission = await Location.getForegroundPermissionsAsync(); // fixed: inspect whether the permission can still be requested in-app
@@ -67,7 +71,17 @@ export function usePermissionViewModel() {
       'You can still explore the map, but live navigation will not work until location is enabled. You can turn it on anytime from Settings.',
       [
         { text: 'Cancel', style: 'cancel' },
-        { text: 'Continue Without Location', onPress: () => { void navigateNext(navigation); } },
+        {
+          text: 'Continue Without Location',
+          onPress: () => {
+            // Persist only on this confirmation action, not on the initial button press —
+            // Cancel must leave no trace of a skip decision.
+            void (async () => {
+              await OnboardingStatusService.setSkippedLocationPermission(true);
+              await navigateNext(navigation);
+            })();
+          },
+        },
       ],
     );
   };
