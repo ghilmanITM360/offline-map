@@ -513,7 +513,6 @@ describe('waitForStoreHydration — exact hydration-generation isolation', () =>
 
     let freshModule: typeof import('../store/useAppStore') | undefined;
     jest.isolateModules(() => {
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
       freshModule = require('../store/useAppStore');
     });
     const freshStore = freshModule!.useAppStore;
