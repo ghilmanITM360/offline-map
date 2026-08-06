@@ -4,7 +4,7 @@
  */
 
 import React from 'react';
-import { Animated, DeviceEventEmitter } from 'react-native';
+import { Alert, Animated, DeviceEventEmitter } from 'react-native';
 import { act, fireEvent, render, screen, userEvent, waitFor } from './test-utils';
 
 import { HomeScreen } from '../views/screens/HomeScreen';
@@ -852,6 +852,40 @@ describe('HomeScreen — navigation completion cleanup', () => {
 
     expect(screen.queryByTestId('selected-place-marker')).not.toBeOnTheScreen();
     expect(setSelectedPlaceSpy).toHaveBeenCalledWith(null);
+  });
+
+  test('v1 completion swaps the navigation marker set for one clean Explore user marker', async () => {
+    const user = userEvent.setup();
+    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+    useAppStore.getState().setCurrentLocation({ ...v1Route.coordinates[0], accuracy: 12 }, 'gps');
+    await render(<HomeScreen />);
+    const input = screen.getByPlaceholderText('Search blocks, rastas, gates');
+    await user.type(input, 'Gate 5');
+    await user.press(await screen.findByTestId('search-result-GATE_05'));
+
+    await act(async () => {
+      useAppStore.getState().startNavigation(v1Destination, v1Route as any, []);
+    });
+    expect(await screen.findByTestId('navigation-user-location-marker')).toBeOnTheScreen();
+    expect(screen.getAllByTestId('navigation-start-marker')).toHaveLength(1);
+    expect(screen.getAllByTestId('navigation-destination-marker')).toHaveLength(1);
+    expect(screen.queryByTestId('browse-user-location-marker')).not.toBeOnTheScreen();
+    expect(screen.queryByTestId('browse-user-accuracy-circle')).not.toBeOnTheScreen();
+    expect(screen.queryByTestId('selected-place-marker')).not.toBeOnTheScreen();
+
+    await user.press(screen.getByTestId('nav-exit-button'));
+    const confirmExit = (alertSpy.mock.calls.at(-1)?.[2] as Array<{ text: string; onPress?: () => void }>).find(
+      (button) => button.text === 'Exit',
+    )?.onPress;
+    await act(async () => confirmExit?.());
+
+    await waitFor(() => expect(screen.queryByTestId('navigation-user-location-marker')).not.toBeOnTheScreen());
+    expect(screen.queryByTestId('navigation-start-marker')).not.toBeOnTheScreen();
+    expect(screen.queryByTestId('navigation-destination-marker')).not.toBeOnTheScreen();
+    expect(screen.getAllByTestId('browse-user-location-marker')).toHaveLength(1);
+    expect(screen.getAllByTestId('browse-user-accuracy-circle')).toHaveLength(1);
+    expect(screen.queryByTestId('selected-place-marker')).not.toBeOnTheScreen();
+    alertSpy.mockRestore();
   });
 });
 
