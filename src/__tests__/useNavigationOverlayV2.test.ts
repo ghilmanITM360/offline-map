@@ -37,6 +37,12 @@ function latestHandler(spy: jest.SpyInstance) {
 // itself only calls Alert.alert (mocked) or the handleExit stub, neither of which touches
 // this tree's own React state, so there's nothing here for act() to flush.
 describe('useNavigationOverlayV2 — hardware back (NAVIGATION vs ARRIVAL)', () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+    mockVm.route = null;
+    mockVm.arrived = false;
+  });
+
   test('back-press handling adapts as the trip progresses from mid-trip to arrival to exit', async () => {
     const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
     const addEventListenerSpy = jest.spyOn(BackHandler, 'addEventListener');
@@ -53,7 +59,7 @@ describe('useNavigationOverlayV2 — hardware back (NAVIGATION vs ARRIVAL)', () 
       mapRef: { current: null },
       mapReady: true,
       mapZoomLevel: 16,
-      hasGoogleMapsKey: true,
+      hasBaseMap: true,
       // useNavigationOverlayV2 only passes this through untouched (never reads/animates
       // it), so a real Animated.Value isn't needed here.
       userPulseAnim: {} as any,
@@ -67,15 +73,18 @@ describe('useNavigationOverlayV2 — hardware back (NAVIGATION vs ARRIVAL)', () 
     let handler = latestHandler(addEventListenerSpy);
     expect(handler).toBeDefined();
     handler!();
-    expect(alertSpy).toHaveBeenCalledWith('Exit navigation?', expect.any(String), expect.any(Array));
+    expect(alertSpy).toHaveBeenCalledWith('Exit navigation?', expect.any(String), expect.any(Array), expect.any(Object));
     expect(mockVm.handleExit).not.toHaveBeenCalled();
 
-    // Arrival: back dismisses straight to map, no confirmation dialog.
+    // Arrival: hardware Back completes immediately, same as visible Done.
+    const cancelButton = (alertSpy.mock.calls.at(-1)?.[2] as Array<{ text: string; onPress?: () => void }>).find((button) => button.text === 'Cancel');
+    cancelButton?.onPress?.();
     alertSpy.mockClear();
     mockVm.arrived = true;
     await rerender(baseProps);
     handler = latestHandler(addEventListenerSpy);
     expect(handler).toBeDefined();
+    handler!();
     handler!();
     expect(alertSpy).not.toHaveBeenCalled();
     expect(mockVm.handleExit).toHaveBeenCalledTimes(1);
@@ -86,5 +95,46 @@ describe('useNavigationOverlayV2 — hardware back (NAVIGATION vs ARRIVAL)', () 
     mockVm.arrived = false;
     await rerender(baseProps);
     expect(latestHandler(addEventListenerSpy)).toBeUndefined();
+  });
+
+  test('direct-guide hardware Back uses the active-navigation confirmation', async () => {
+    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+    const addEventListenerSpy = jest.spyOn(BackHandler, 'addEventListener');
+    mockVm.route = {
+      ...FAKE_ROUTE,
+      outsideRoute: {
+        provider: 'direct-guide',
+        roadFollowing: false,
+      },
+    };
+    mockVm.arrived = false;
+    mockVm.handleExit = jest.fn();
+    const cameraManager = {
+      fitRoute: jest.fn(),
+      fitVenueBounds: jest.fn(),
+      enterNavigationCamera: jest.fn(),
+      exitNavigationCamera: jest.fn(),
+    } as any;
+    const props = {
+      mapRef: { current: null },
+      mapReady: true,
+      mapZoomLevel: 16,
+      hasBaseMap: true,
+      userPulseAnim: {} as any,
+      cameraManager,
+    };
+    await renderHook(() => useNavigationOverlayV2(props));
+
+    const handler = latestHandler(addEventListenerSpy);
+    expect(handler).toBeDefined();
+    expect(handler!()).toBe(true);
+    expect(alertSpy).toHaveBeenCalledWith(
+      'Exit navigation?',
+      expect.any(String),
+      expect.any(Array),
+      expect.any(Object),
+    );
+    expect(mockVm.handleExit).not.toHaveBeenCalled();
+    expect(mockVm.route?.outsideRoute?.provider).toBe('direct-guide');
   });
 });

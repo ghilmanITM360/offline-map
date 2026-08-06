@@ -90,7 +90,10 @@ assert(!handlePlaceSelectBody.includes('bottomSheetRef.current?.close()'), 'hand
 
 assert(homeViewModel.includes('isSheetOpenForReselection') && homeViewModel.includes('lastSheetIndexRef'), 'Re-selection snap-state preservation must survive the transition-ordering rework.');
 assert(
-  homeViewModel.includes('if (sheetPresentTimerRef.current) {') && homeViewModel.includes('clearTimeout(sheetPresentTimerRef.current);'),
+  handlePlaceSelectBody.includes('cancelPendingSheetPresentation();') &&
+    homeViewModel.includes('const cancelPendingSheetPresentation = useCallback(() => {') &&
+    homeViewModel.includes('clearTimeout(sheetPresentTimerRef.current);') &&
+    homeViewModel.includes('sheetPresentTimerRef.current = null;'),
   'Rapid re-selection must cancel a pending sheet-open timer instead of stacking multiple delayed opens (which would flicker/race).',
 );
 

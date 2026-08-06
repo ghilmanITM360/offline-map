@@ -17,6 +17,7 @@ function getReturnObject(source: string): string {
 // docs/MAP_EXPERIENCE_AUDIT.md.
 const navigationChromeSource = readFileSync('src/views/components/navigation/NavigationChromeV2.tsx', 'utf8');
 const navigationOverlaySource = readFileSync('src/viewmodels/useNavigationOverlayV2.ts', 'utf8');
+const navigationExitSource = readFileSync('src/viewmodels/useNavigationExitConfirmation.ts', 'utf8');
 const navigationViewModelSource = readFileSync('src/viewmodels/NavigationViewModelV2.ts', 'utf8');
 
 const navigationVmReturnSource = getReturnObject(navigationViewModelSource);
@@ -26,21 +27,25 @@ assert(
   'v2 navigation overlay must stay wired to v2 navigation view model.',
 );
 assert(
-  navigationOverlaySource.includes('BackHandler.addEventListener(\'hardwareBackPress\''),
+  navigationExitSource.includes("BackHandler.addEventListener('hardwareBackPress'"),
   'Navigation v2 Android back handler must stay registered.',
 );
 assert(
-  navigationOverlaySource.includes('onPress: () => vm.handleExit()'),
-  'Navigation v2 Android back confirm must exit through shared handler.',
+  navigationOverlaySource.includes('onExit: vm.handleExit') &&
+    navigationExitSource.includes('if (arrived) exitOnce();') &&
+    navigationExitSource.includes('else requestNavigationExit();') &&
+    navigationExitSource.includes('onPress: confirmExit') &&
+    navigationExitSource.includes('const completeArrivalNavigation = exitOnce;'),
+  'Navigation v2 Back must complete Arrival immediately and confirm active navigation through one shared exit path.',
 );
 assert(
-  navigationChromeSource.includes('style={styles.exitButton}') && navigationChromeSource.includes('onPress={() => handleExit()}'),
+  navigationChromeSource.includes('style={styles.exitButton}') && navigationChromeSource.includes('onPress={requestNavigationExit}'),
   'Navigation v2 Exit button must stay wired to shared exit handler.',
 );
 assert(
   navigationChromeSource.includes('testID="nav-arrived-done-button"') &&
     navigationChromeSource.includes('style={styles.arrivedButton}') &&
-    navigationChromeSource.includes('onPress={() => handleExit()}'),
+    navigationChromeSource.includes('onPress={completeArrivalNavigation}'),
   'Navigation v2 arrival Done button must stay wired to shared exit handler.',
 );
 assert(
@@ -85,7 +90,7 @@ assert(
   'Navigation v2 reroute pending state must stay visible.',
 );
 
-for (const field of ['reroutePending', 'isWeakGps', 'rerouteStatusMessage', 'handleExit']) {
+for (const field of ['reroutePending', 'isWeakGps', 'rerouteStatusMessage']) {
   assert(
     navigationChromeSource.includes(`${field},`),
     `NavigationChromeV2 must destructure ${field} from the overlay.`,
@@ -95,6 +100,11 @@ for (const field of ['reroutePending', 'isWeakGps', 'rerouteStatusMessage', 'han
     `Navigation v2 view model must return ${field}.`,
   );
 }
+assert(navigationVmReturnSource.includes('handleExit,'), 'Navigation v2 view model must return handleExit.');
+assert(
+  navigationChromeSource.includes('requestNavigationExit,') && navigationChromeSource.includes('completeArrivalNavigation,'),
+  'NavigationChromeV2 must use confirmed active Exit and immediate arrival completion handlers.',
+);
 
 assert(
   navigationViewModelSource.includes('setRerouteStatusMessage(failure.message);'),

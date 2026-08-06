@@ -40,6 +40,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useHomeViewModel } from '../../viewmodels/HomeViewModel';
 import {
   computeMapControlsInset,
+  computeMapContentInsets,
   computeNavControlsInset,
   resolveNavBarHeight,
   resolveOverlayExtent,
@@ -59,6 +60,7 @@ import { Paths } from 'expo-file-system';
 import { DrawerParamList, RootStackParamList } from '../../navigation/RootNavigator';
 import { RoutingService } from '../../services/RoutingService';
 import { MapConfigService } from '../../services/MapConfigService';
+import { resolveBaseMapMode } from '../../services/BaseMapModeResolver';
 import { MapFeatureFlagsService } from '../../services/MapFeatureFlagsService';
 import { MapStartupController } from '../../services/MapStartupController';
 import { V2MapRenderingService, MEDIUM_ZOOM, HIGH_ZOOM } from '../../services/V2MapRenderingService';
@@ -88,6 +90,7 @@ import { NavigationMapLayersV1 } from '../components/navigation/NavigationMapLay
 import { NavigationChromeV1 } from '../components/navigation/NavigationChromeV1';
 import { LocationSheet } from '../components/map/LocationSheet';
 import { UserLocationMarker } from '../components/map/UserLocationMarker';
+import { resolveMapMarkerOwnership } from '../components/map/MapMarkerOwnership';
 import { LocationTutorialTooltip } from '../components/map/LocationTutorialTooltip';
 import { resolveTapCandidate, TapCandidate } from '../../services/TapDisambiguationService';
 import { Z } from '../styles/zLayers';
@@ -167,6 +170,7 @@ export function HomeScreen() {
   const hasSeenLocationTutorial = useAppStore((s) => s.hasSeenLocationTutorial);
   const setHasSeenLocationTutorial = useAppStore((s) => s.setHasSeenLocationTutorial);
   const activeRoute = useAppStore((s) => s.activeRoute);
+  const offlineMapStatus = useAppStore((s) => s.offlineMapStatus);
   const clearRoutePlanner = useAppStore((s) => s.clearRoutePlanner);
   const favorites = useAppStore((s) => s.favorites);
   // Deliberately the raw store primitive, not `mode` — used only below to null out
@@ -205,10 +209,10 @@ export function HomeScreen() {
   const mapRuntimeStatus = MapConfigService.getRuntimeStatus();
   const hasGoogleMapsKey = mapRuntimeStatus.keyPresent;
   const useV2Map = MapFeatureFlagsService.useIjtemaV2Map();
-  const graphOnlyFallbackUsed = !hasGoogleMapsKey;
   const [outsideBannerDismissed, setOutsideBannerDismissed] = useState(false);
   const [layersSheetVisible, setLayersSheetVisible] = useState(false);
   const [mapReady, setMapReadyState] = useState(false);
+  const [googleBaseMapLoaded, setGoogleBaseMapLoaded] = useState(false);
   const [mapLoadFailed, setMapLoadFailed] = useState(false);
   const [topOverlayHeight, setTopOverlayHeight] = useState(0);
   const [isMapDragging, setIsMapDragging] = useState(false);
@@ -225,7 +229,7 @@ export function HomeScreen() {
   const userPulseAnim = useRef(new Animated.Value(0)).current;
   const chipsAnim = useRef(new Animated.Value(1)).current;
 
-  const dismissSearch = useCallback(() => {
+  const dismissSearchOverlay = useCallback(() => {
     setIsSearchFocused(false);
     searchInputRef.current?.blur();
     Keyboard.dismiss();
@@ -235,10 +239,6 @@ export function HomeScreen() {
   // selectPlace/showRoutePreview/startNavigation already exist as handlePlaceSelect/
   // handleOpenDirections/handleStartPreviewNavigation below; they aren't re-wrapped here
   // to avoid two names for the same entry point.
-  const openSearch = useCallback(() => {
-    setIsSearchFocused(true);
-  }, []);
-
   const logHomeControl = useCallback((pressed: string, action: string) => {
     if (__DEV__) {
       console.log(`[HomeControl] pressed=${pressed} action=${action}`);
@@ -268,6 +268,7 @@ export function HomeScreen() {
     setIsMapReady,
     handleSearch,
     handlePlaceSelect,
+    cancelPendingSheetPresentation,
     handleSheetIndexChange,
     handleRecenter,
     handleCompassToggle,
@@ -280,6 +281,16 @@ export function HomeScreen() {
     updateSettings,
     settings,
   } = useHomeViewModel();
+
+  const baseMapMode = resolveBaseMapMode({
+    hasGoogleMapsKey,
+    hasInternet: !isOffline,
+    googleMapLoadFailed: mapLoadFailed,
+    offlineDataDownloaded: offlineData.isDownloaded,
+    offlineMapStatus,
+  });
+  const graphOnlyFallbackUsed = baseMapMode === 'GRAPH_ONLY';
+  const hasBaseMap = baseMapMode !== 'GRAPH_ONLY';
 
   const showDetails = useCallback(() => {
     setDetailsExpanded(true);
@@ -315,16 +326,16 @@ export function HomeScreen() {
       tapFlushScheduledRef.current = false;
       const winner = resolveTapCandidate(candidates, selectedPlaceIdRef.current);
       if (!winner) return;
-      dismissSearch();
+      dismissSearchOverlay();
       handlePlaceSelect(winner.payload);
     });
-  }, [dismissSearch, handlePlaceSelect]);
+  }, [dismissSearchOverlay, handlePlaceSelect]);
 
   const navOverlay = useNavigationOverlayV2({
     mapRef,
     mapReady,
     mapZoomLevel,
-    hasGoogleMapsKey,
+    hasBaseMap,
     userPulseAnim,
     cameraManager,
   });
@@ -336,7 +347,7 @@ export function HomeScreen() {
   const navOverlayV1 = useNavigationOverlayV1({
     mapRef,
     mapReady,
-    hasGoogleMapsKey,
+    hasBaseMap,
     userPulseAnim,
     cameraManager,
   });
@@ -380,6 +391,101 @@ export function HomeScreen() {
     activePreviewRoute,
     selectedPlace,
   });
+  const hasNavigationUserLocation = Boolean(
+    showNavOverlay
+      ? navOverlay.snappedLocation
+      : navOverlayV1.active
+        ? navOverlayV1.snappedLocation
+        : null,
+  );
+  const markerOwnership = resolveMapMarkerOwnership(mode, hasNavigationUserLocation);
+
+  type SheetDismissalReason = 'state-reset' | 'start-navigation' | 'replacement';
+  const sheetRouteDestination = directionsDestination ?? (activePreviewRoute ? routePlannerDest : null);
+  const sheetIdentity = sheetRouteDestination
+    ? `route:${sheetRouteDestination.id}`
+    : selectedPlace
+      ? `place:${selectedPlace.id}`
+      : null;
+  const currentSheetIdentityRef = useRef<string | null>(sheetIdentity);
+  currentSheetIdentityRef.current = sheetIdentity;
+  const closingSheetIdentityRef = useRef<string | null>(null);
+  const programmaticSheetDismissRef = useRef<{ identity: string | null; reason: SheetDismissalReason } | null>(null);
+  const sheetDismissHandledRef = useRef(false);
+
+  const prepareProgrammaticSheetDismiss = useCallback((reason: SheetDismissalReason) => {
+    programmaticSheetDismissRef.current = { identity: currentSheetIdentityRef.current, reason };
+    cancelPendingSheetPresentation();
+  }, [cancelPendingSheetPresentation]);
+
+  const resetDismissedSheetState = useCallback((clearPlanner: boolean) => {
+    cancelPendingSheetPresentation();
+    if (clearPlanner) clearRoutePlanner();
+    setDirectionsDestination(null);
+    setDetailsExpanded(false);
+    setSelectedEntryIdx(0);
+    setSelectedPlace(null);
+    setSheetIndex(-1);
+    handleSheetIndexChange(-1);
+  }, [cancelPendingSheetPresentation, clearRoutePlanner, handleSheetIndexChange, setSelectedPlace]);
+
+  const wasNavigatingRef = useRef(isNavigating);
+  useEffect(() => {
+    const navigationEnded = wasNavigatingRef.current && !isNavigating;
+    wasNavigatingRef.current = isNavigating;
+    if (!navigationEnded) return;
+    // Canonical navigation exit (arrival Done or confirmed mid-trip Exit) already
+    // clears route/runtime state in the store. Retire Home-owned selection/planner
+    // and transient search state here so Explore cannot resurrect destination or
+    // search-result browse pins.
+    clearSearch();
+    resetDismissedSheetState(true);
+  }, [clearSearch, isNavigating, resetDismissedSheetState]);
+
+  const closeSearch = useCallback(() => {
+    clearSearch();
+    dismissSearchOverlay();
+  }, [clearSearch, dismissSearchOverlay]);
+
+  const openSearch = useCallback(() => {
+    const currentIdentity = currentSheetIdentityRef.current;
+    if (currentIdentity) {
+      prepareProgrammaticSheetDismiss('replacement');
+      resetDismissedSheetState(currentIdentity.startsWith('route:'));
+      bottomSheetRef.current?.close();
+    }
+    setIsSearchFocused(true);
+  }, [bottomSheetRef, prepareProgrammaticSheetDismiss, resetDismissedSheetState]);
+
+  const selectCategory = useCallback((category: string) => {
+    const currentIdentity = currentSheetIdentityRef.current;
+    if (currentIdentity) {
+      prepareProgrammaticSheetDismiss('state-reset');
+      resetDismissedSheetState(currentIdentity.startsWith('route:'));
+      bottomSheetRef.current?.close();
+    }
+    handleCategoryPress(category);
+  }, [bottomSheetRef, handleCategoryPress, prepareProgrammaticSheetDismiss, resetDismissedSheetState]);
+
+  const handleSheetDismiss = useCallback(() => {
+    cancelPendingSheetPresentation();
+    if (sheetDismissHandledRef.current) return;
+
+    const dismissedIdentity = closingSheetIdentityRef.current ?? currentSheetIdentityRef.current;
+    const programmaticDismiss = programmaticSheetDismissRef.current;
+    closingSheetIdentityRef.current = null;
+    programmaticSheetDismissRef.current = null;
+    sheetDismissHandledRef.current = true;
+    setSheetIndex(-1);
+    handleSheetIndexChange(-1);
+
+    if (!dismissedIdentity) return;
+    if (programmaticDismiss?.identity === dismissedIdentity) return;
+    // Portal dismissal can finish after a rapid re-selection. Only the identity that
+    // actually began closing may be reset; a newer selection owns the shared sheet now.
+    if (currentSheetIdentityRef.current !== dismissedIdentity) return;
+    resetDismissedSheetState(dismissedIdentity.startsWith('route:'));
+  }, [cancelPendingSheetPresentation, handleSheetIndexChange, resetDismissedSheetState]);
 
   useEffect(() => {
     setSelectedEntryIdx(0);
@@ -410,10 +516,8 @@ export function HomeScreen() {
     return RoutePointService.getDestinationCoordinate(selectedPlace);
   }, [selectedPlace, entryPoints, selectedEntryIdx]);
   const overlayPlaces = useMemo(
-    () => ((mode === 'SEARCH' || searchQuery.length > 1)
-      ? searchResults.filter((item) => (item as any).coordinate && (item as any).id !== selectedPlace?.id)
-      : []),
-    [mode, searchQuery, searchResults, selectedPlace],
+    () => searchResults.filter((item) => (item as any).coordinate && (item as any).id !== selectedPlace?.id),
+    [searchResults, selectedPlace],
   );
 
   const { outside: previewOutsideLegCoordinates, inside: previewInsideLegCoordinates } = useMemo(
@@ -532,7 +636,7 @@ export function HomeScreen() {
         onPress: () => {
           const place = V2PlaceAdapter.getPlaceById(gate.id);
           if (!place) return;
-          dismissSearch();
+          dismissSearchOverlay();
           handlePlaceSelect(place);
         },
       });
@@ -552,7 +656,7 @@ export function HomeScreen() {
         onPress: () => {
           const place = V2PlaceAdapter.getPlaceById(block.id);
           if (!place) return;
-          dismissSearch();
+          dismissSearchOverlay();
           handlePlaceSelect(place);
         },
       });
@@ -572,7 +676,7 @@ export function HomeScreen() {
         onPress: () => {
           const place = V2PlaceAdapter.getPlaceById(rasta.id);
           if (!place) return;
-          dismissSearch();
+          dismissSearchOverlay();
           handlePlaceSelect(place);
         },
       });
@@ -592,14 +696,14 @@ export function HomeScreen() {
         onPress: () => {
           const place = V2PlaceAdapter.getPlaceById(route.id);
           if (!place) return;
-          dismissSearch();
+          dismissSearchOverlay();
           handlePlaceSelect(place);
         },
       });
     }
 
     return items;
-  }, [showNavOverlay, navOverlay.mapLayers.gates, navOverlayV1.active, useV2Map, v2MapLayers, mapZoomLevel, dismissSearch, handlePlaceSelect]);
+  }, [showNavOverlay, navOverlay.mapLayers.gates, navOverlayV1.active, useV2Map, v2MapLayers, mapZoomLevel, dismissSearchOverlay, handlePlaceSelect]);
 
   const effectiveInitialRegion = useV2Map
     ? {
@@ -629,7 +733,7 @@ export function HomeScreen() {
     const destination = selectedPlace && selectedPlace.sourceVersion === 'v2' ? destinationFromPlace(selectedPlace) : null;
     return RoutingServiceV2.recommendOutsideEntryGate(currentLocation, destination) ?? null;
   }, [currentLocation, venueStatus.insideVenue, selectedPlace]);
-  const showMapWarningBanner = !hasGoogleMapsKey || mapLoadFailed;
+  const showMapWarningBanner = baseMapMode === 'GRAPH_ONLY';
   const topInsetBase = Math.max(insets.top, Platform.OS === 'android' ? StatusBar.currentHeight ?? 0 : 0);
   // bannerStackTop used to be a hardcoded `topInsetBase + 140` guess at the combined
   // search bar + chip row height, which under-measured on some font scales/screen sizes
@@ -651,9 +755,23 @@ export function HomeScreen() {
   // button is the 56dp recenter circle at right:12/16 — see mapControlStyles.ts)
   // instead of clipping or overlapping those controls when a label's projected
   // point lands near them.
+  const activeNavBottomBarHeight = showNavOverlay
+    ? navOverlay.bottomBarHeight
+    : navOverlayV1.active
+      ? navOverlayV1.bottomBarHeight
+      : 0;
   const mapLabelEdgeInsets = useMemo(
-    () => ({ top: topOverlayHeight > 0 ? topOverlayHeight + 8 : 0, right: 80 }),
-    [topOverlayHeight],
+    () => computeMapContentInsets({
+      mode,
+      top: topOverlayHeight > 0 ? topOverlayHeight + 8 : 0,
+      right: 80,
+      bottomSafeArea: insets.bottom,
+      windowHeight,
+      snapPoints,
+      sheetIndex,
+      navBarHeight: activeNavBottomBarHeight,
+    }),
+    [activeNavBottomBarHeight, insets.bottom, mode, sheetIndex, snapPoints, topOverlayHeight, windowHeight],
   );
 
   useEffect(() => {
@@ -706,11 +824,12 @@ export function HomeScreen() {
   }, [cameraManager.mode, currentLocation, hasSeenLocationTutorial, setHasSeenLocationTutorial]);
 
   useEffect(() => {
-    if (!hasGoogleMapsKey) {
+    if (!hasGoogleMapsKey || isOffline) {
+      setGoogleBaseMapLoaded(false);
       setMapLoadFailed(false);
       return;
     }
-    if (mapReady) {
+    if (googleBaseMapLoaded) {
       setMapLoadFailed(false);
       return;
     }
@@ -718,7 +837,18 @@ export function HomeScreen() {
       setMapLoadFailed(true);
     }, 7000);
     return () => clearTimeout(timeout);
-  }, [hasGoogleMapsKey, mapReady]);
+  }, [googleBaseMapLoaded, hasGoogleMapsKey, isOffline]);
+
+  const wasOfflineRef = useRef(isOffline);
+  useEffect(() => {
+    const wasOffline = wasOfflineRef.current;
+    wasOfflineRef.current = isOffline;
+    if (!wasOffline || isOffline || !hasGoogleMapsKey) return;
+    // A connectivity recovery is the one explicit retry boundary. The previous
+    // watchdog latch stays stable otherwise, preventing Google/local switching loops.
+    setGoogleBaseMapLoaded(false);
+    setMapLoadFailed(false);
+  }, [hasGoogleMapsKey, isOffline]);
 
   useEffect(() => {
     if (venueStatus.insideVenue) {
@@ -732,15 +862,18 @@ export function HomeScreen() {
   // route-planner state), the same trigger the old floating card relied on to appear.
   useEffect(() => {
     if (!activePreviewRoute || directionsDestination) return;
+    sheetDismissHandledRef.current = false;
+    closingSheetIdentityRef.current = null;
     bottomSheetRef.current?.present();
     bottomSheetRef.current?.snapToIndex(1);
   }, [activePreviewRoute, directionsDestination, bottomSheetRef]);
 
   useEffect(() => {
     if (!showAnyNavOverlay) return;
+    if (!programmaticSheetDismissRef.current) prepareProgrammaticSheetDismiss('start-navigation');
     setDirectionsDestination(null);
     bottomSheetRef.current?.close();
-  }, [showAnyNavOverlay, bottomSheetRef]);
+  }, [showAnyNavOverlay, bottomSheetRef, prepareProgrammaticSheetDismiss]);
 
   const recenterResetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const handleRecenterPress = useCallback(async () => {
@@ -801,11 +934,10 @@ export function HomeScreen() {
   // bottomSheetRef.close()` call sites that existed independently before and didn't
   // account for detailsExpanded/arrived/directionsDestination.
   const closeSheet = useCallback(() => {
-    setSelectedPlace(null);
-    setDirectionsDestination(null);
-    setDetailsExpanded(false);
+    prepareProgrammaticSheetDismiss('state-reset');
+    resetDismissedSheetState(false);
     bottomSheetRef.current?.close();
-  }, [bottomSheetRef, setSelectedPlace]);
+  }, [bottomSheetRef, prepareProgrammaticSheetDismiss, resetDismissedSheetState]);
 
   const handleStartPreviewNavigation = useCallback(() => {
     if (!activePreviewRoute || !previewDestination) return;
@@ -823,8 +955,9 @@ export function HomeScreen() {
       startPlace: routePlannerOrigin,
       currentLocation: routePlannerOrigin ? null : currentLocation,
     });
+    prepareProgrammaticSheetDismiss('start-navigation');
     startNavigation(previewDestination, resolvedRoute, resolvedRoute.instructions);
-  }, [activePreviewRoute, currentLocation, previewDestination, routePlannerOrigin, startNavigation]);
+  }, [activePreviewRoute, currentLocation, prepareProgrammaticSheetDismiss, previewDestination, routePlannerOrigin, startNavigation]);
 
   const handleClearPreviewRoute = useCallback(() => {
     Alert.alert('Cancel route?', 'You will need to choose your destination again.', [
@@ -836,15 +969,15 @@ export function HomeScreen() {
   // Mode-aware hardware back: steps back through the map surface one mode at a time
   // (Google Maps model — MAP is always the root, back never falls through to the
   // drawer/stack while a sheet mode is open) instead of exiting the screen. NAVIGATION/
-  // ARRIVAL are deliberately not handled here — useNavigationOverlayV2 already owns a
-  // separate hardwareBackPress listener for the confirm-exit dialog in those modes.
+  // ARRIVAL are deliberately not handled here — both navigation overlays use the shared
+  // navigation-exit owner for hardware Back and visible Exit semantics.
   // Each branch reuses the exact same handler its mode's own visible Close button
   // already calls (see the onClose wiring on RoutePreviewSection/PlaceSection below) —
   // no new close behavior introduced, just extending it to hardware back.
   useEffect(() => {
     const handler = BackHandler.addEventListener('hardwareBackPress', () => {
       if (mode === 'SEARCH') {
-        dismissSearch();
+        closeSearch();
         return true;
       }
       if (mode === 'DETAILS') {
@@ -863,10 +996,11 @@ export function HomeScreen() {
       return false;
     });
     return () => handler.remove();
-  }, [mode, dismissSearch, closeDetails, directionsDestination, handleCloseDirections, handleClearPreviewRoute, closeSheet]);
+  }, [mode, closeSearch, closeDetails, directionsDestination, handleCloseDirections, handleClearPreviewRoute, closeSheet]);
 
   const handleSearchResultSelect = (place: Place) => {
-    dismissSearch();
+    clearSearch();
+    dismissSearchOverlay();
     handlePlaceSelect(place);
   };
 
@@ -910,7 +1044,7 @@ export function HomeScreen() {
   const openLayerOptions = () => setLayersSheetVisible(true);
 
   const handleMapTypeChange = (nextMapType: 'standard' | 'satellite') => {
-    if (nextMapType === 'satellite' && isOffline) {
+    if (nextMapType === 'satellite' && baseMapMode !== 'GOOGLE_BASEMAP') {
       Alert.alert('Satellite unavailable offline', 'Satellite requires internet or downloaded satellite tiles.');
       return;
     }
@@ -931,7 +1065,7 @@ export function HomeScreen() {
             style={[styles.chip, activeCategory === cat.id && styles.activeChip]}
             onPress={() => {
               logHomeControl('category_chip', `filter_${cat.id}`);
-              handleCategoryPress(cat.id);
+              selectCategory(cat.id);
             }}
             hitSlop={6}
             accessibilityRole="button"
@@ -963,9 +1097,9 @@ export function HomeScreen() {
             testID="home-map-view"
             ref={mapRef}
             style={styles.map}
-            provider={Platform.OS === 'android' && hasGoogleMapsKey ? PROVIDER_GOOGLE : undefined}
+            provider={Platform.OS === 'android' && baseMapMode === 'GOOGLE_BASEMAP' ? PROVIDER_GOOGLE : undefined}
             initialRegion={effectiveInitialRegion}
-            mapType={hasGoogleMapsKey ? (isOffline ? 'none' : mapType) : 'none'}
+            mapType={baseMapMode === 'GOOGLE_BASEMAP' ? mapType : 'none'}
             showsUserLocation={false}
             showsMyLocationButton={false}
             showsCompass={false}
@@ -975,7 +1109,6 @@ export function HomeScreen() {
             onMapReady={() => {
               setIsMapReady(true);
               setMapReadyState(true);
-              setMapLoadFailed(false);
               handleMapRegionChangeComplete(effectiveInitialRegion);
               mapLabelOverlayRef.current?.requestProjection();
 
@@ -1012,7 +1145,10 @@ export function HomeScreen() {
             }}
             onMapLoaded={() => {
               setMapReadyState(true);
-              setMapLoadFailed(false);
+              if (baseMapMode === 'GOOGLE_BASEMAP') {
+                setGoogleBaseMapLoaded(true);
+                setMapLoadFailed(false);
+              }
               mapLabelOverlayRef.current?.requestProjection();
             }}
             onRegionChange={() => {
@@ -1034,8 +1170,7 @@ export function HomeScreen() {
             }}
             onPress={() => {
               if (mode === 'SEARCH') {
-                dismissSearch();
-                clearSearch();
+                closeSearch();
                 return;
               }
               if (selectedPlace) {
@@ -1043,11 +1178,11 @@ export function HomeScreen() {
               }
             }}
           >
-          {isOffline && offlineData.isDownloaded && (
-            <LocalTile pathTemplate={getTilePath()} tileSize={256} zIndex={-1} />
+          {baseMapMode === 'LOCAL_TILES' && (
+            <LocalTile pathTemplate={getTilePath()} testID="local-base-map-tiles" tileSize={256} zIndex={-1} />
           )}
 
-          {mapType === 'satellite' && hasGoogleMapsKey && !isOffline && <SatelliteDimOverlay bounds={SATELLITE_DIM_BOUNDARY} />}
+          {mapType === 'satellite' && baseMapMode === 'GOOGLE_BASEMAP' && <SatelliteDimOverlay bounds={SATELLITE_DIM_BOUNDARY} />}
 
           <VenueBoundary coordinates={useV2Map ? v2MapLayers.venueBoundary : VENUE_BOUNDARY} />
 
@@ -1172,7 +1307,7 @@ export function HomeScreen() {
                 strokeWidth={isSelected ? 3 : 1.5}
                 tappable
                 onPress={() => {
-                  dismissSearch();
+                  dismissSearchOverlay();
                   handlePlaceSelect({
                     id: block.id,
                     name: block.name,
@@ -1231,18 +1366,19 @@ export function HomeScreen() {
             />
           )}
 
-          {mode !== 'NAVIGATION' && overlayPlaces.map((item) => {
+          {mode !== 'NAVIGATION' && mode !== 'ARRIVAL' && overlayPlaces.map((item) => {
             const overlayItem = item as Place | SearchResult;
             const coordinate = overlayItem.coordinate;
             const label = getDisplayName(overlayItem);
             return (
               <Marker
                 key={`search_overlay_${overlayItem.id}`}
+                testID={`search-map-marker-${overlayItem.id}`}
                 coordinate={coordinate}
                 anchor={{ x: 0.5, y: 1 }}
                 tracksViewChanges={false}
                 onPress={() => {
-                  if (isPlace(overlayItem)) handlePlaceSelect(overlayItem);
+                  if (isPlace(overlayItem)) handleSearchResultSelect(overlayItem);
                 }}
               >
                 <View style={styles.searchOverlayMarker}>
@@ -1254,9 +1390,9 @@ export function HomeScreen() {
           })}
 
           {/* Selected place pin — hidden during route preview to avoid duplicate destination marker */}
-          {mode !== 'NAVIGATION' && selectedPlace && selectedPlaceMarkerCoordinate && !activePreviewRoute && (
+          {markerOwnership.showBrowseSelection && selectedPlace && selectedPlaceMarkerCoordinate && !activePreviewRoute && (
             <Marker coordinate={selectedPlaceMarkerCoordinate} tracksViewChanges={false}>
-              <View style={styles.selectedMarker}>
+              <View testID="selected-place-marker" style={styles.selectedMarker}>
                 <MapPin size={markerSizes.destination} color={staticColors.gateAccent} fill={staticColors.gateAccent} />
               </View>
             </Marker>
@@ -1271,7 +1407,7 @@ export function HomeScreen() {
             </Marker>
           )}
 
-          {mode !== 'NAVIGATION' && currentLocation && (
+          {markerOwnership.showBrowseUser && currentLocation && (
             <UserLocationMarker
               coordinate={currentLocation}
               accuracy={currentLocation.accuracy}
@@ -1291,8 +1427,8 @@ export function HomeScreen() {
           )}
           </MapView>
 
-        {(mode === 'NAVIGATION' || mode === 'ARRIVAL') && <NavigationChromeV2 overlay={navOverlay} hasGoogleMapsKey={hasGoogleMapsKey} />}
-        {(mode === 'NAVIGATION' || mode === 'ARRIVAL') && <NavigationChromeV1 overlay={navOverlayV1} hasGoogleMapsKey={hasGoogleMapsKey} />}
+        {(mode === 'NAVIGATION' || mode === 'ARRIVAL') && <NavigationChromeV2 overlay={navOverlay} hasBaseMap={hasBaseMap} />}
+        {(mode === 'NAVIGATION' || mode === 'ARRIVAL') && <NavigationChromeV1 overlay={navOverlayV1} hasBaseMap={hasBaseMap} />}
         <MapLabelOverlay
           ref={mapLabelOverlayRef}
           mapRef={mapRef}
@@ -1303,7 +1439,7 @@ export function HomeScreen() {
 
         {/* Cold-start: avoid a blank map while MapView mounts/renders its first
             frame. mapLoadFailed's 7s-timeout banner takes over if it never loads. */}
-        {hasGoogleMapsKey && !mapReady && !mapLoadFailed && (
+        {baseMapMode === 'GOOGLE_BASEMAP' && !googleBaseMapLoaded && !mapLoadFailed && (
           <View style={styles.mapLoadingOverlay} pointerEvents="none">
             <ActivityIndicator size="small" color={staticColors.recenterBlue} />
             <Text style={styles.mapLoadingText}>Loading map...</Text>
@@ -1333,10 +1469,10 @@ export function HomeScreen() {
               onPress={() => {
                 if (mode === 'SEARCH') {
                   logHomeControl('search_back', 'dismiss_search');
-                  dismissSearch();
+                  closeSearch();
                   return;
                 }
-                dismissSearch();
+                dismissSearchOverlay();
                 logHomeControl('menu', 'open_drawer');
                 nav.dispatch(DrawerActions.openDrawer());
               }}
@@ -1482,15 +1618,15 @@ export function HomeScreen() {
               </View>
             )}
 
-            {!hasGoogleMapsKey && (
+            {showMapWarningBanner && (
               <View style={[styles.mapWarningBanner, styles.bannerStackItem]}>
-                <Text style={styles.mapWarningText}>{MapConfigService.getMissingGoogleMapsMessage()}</Text>
-              </View>
-            )}
-
-            {hasGoogleMapsKey && mapLoadFailed && (
-              <View style={[styles.mapWarningBanner, styles.bannerStackItem]}>
-                <Text style={styles.mapWarningText}>{MapConfigService.getMapLoadFailedMessage()}</Text>
+                <Text style={styles.mapWarningText}>
+                  {hasGoogleMapsKey && mapLoadFailed
+                    ? MapConfigService.getMapLoadFailedMessage()
+                    : isOffline
+                      ? 'Downloaded background map unavailable. Ijtema routes still work.'
+                      : MapConfigService.getMissingGoogleMapsMessage()}
+                </Text>
               </View>
             )}
 
@@ -1651,6 +1787,12 @@ export function HomeScreen() {
           onChange={(index) => {
             setSheetIndex(index);
             handleSheetIndexChange(index);
+            if (index < 0) {
+              closingSheetIdentityRef.current ??= currentSheetIdentityRef.current;
+            } else {
+              sheetDismissHandledRef.current = false;
+              closingSheetIdentityRef.current = null;
+            }
             // Fully expanding the sheet over a selected place is "show me more" —
             // PLACE_SELECTED (preview) -> DETAILS. Only meaningful outside the directions
             // flow, which has its own distinct content.
@@ -1660,6 +1802,7 @@ export function HomeScreen() {
               setDetailsExpanded(false);
             }
           }}
+          onDismiss={handleSheetDismiss}
         >
           {routePreviewSheetDestination ? (
             <LocationSheet

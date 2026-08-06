@@ -45,16 +45,16 @@ assert(
 // --- representative sample of other static markers fixed to false ---------
 
 const staticMarkerPatterns: Array<{ name: string; source: string; pattern: RegExp }> = [
-  { name: 'selected place marker', source: home, pattern: /<Marker coordinate=\{selectedPlaceMarkerCoordinate\}[\s\S]*?<\/Marker>/ },
-  { name: 'preview start marker', source: home, pattern: /<Marker coordinate=\{previewStartCoordinate\}[\s\S]*?<\/Marker>/ },
+  { name: 'selected place marker', source: home, pattern: /<Marker[^>]*coordinate=\{selectedPlaceMarkerCoordinate\}[\s\S]*?<\/Marker>/ },
+  { name: 'preview start marker', source: home, pattern: /<Marker[^>]*coordinate=\{previewStartCoordinate\}[\s\S]*?<\/Marker>/ },
   // Final pass (task #39): these three live-navigation markers (route start pin, destination
   // pin, snapped-user-location pulse) were missing tracksViewChanges entirely, defaulting to
   // react-native-maps' tracksViewChanges=true — continuous re-snapshotting for the whole
   // duration of every nav session. Fixed to false, matching HomeScreen's identical browse-mode
   // pulse marker (same Animated.View pulse technique, already tracksViewChanges={false} there).
-  { name: 'nav route start marker', source: navMapLayers, pattern: /<Marker coordinate=\{startCoordinate\}[\s\S]*?<\/Marker>/ },
-  { name: 'nav route destination marker', source: navMapLayers, pattern: /<Marker coordinate=\{destinationCoordinate\}[\s\S]*?<\/Marker>/ },
-  { name: 'nav snapped-user-location marker', source: navMapLayers, pattern: /<Marker coordinate=\{snappedLocation\}[\s\S]*?<\/Marker>/ },
+  { name: 'nav route start marker', source: navMapLayers, pattern: /<Marker[^>]*coordinate=\{startCoordinate\}[\s\S]*?<\/Marker>/ },
+  { name: 'nav route destination marker', source: navMapLayers, pattern: /<Marker[^>]*coordinate=\{destinationCoordinate\}[\s\S]*?<\/Marker>/ },
+  { name: 'nav snapped-user-location marker', source: navMapLayers, pattern: /<Marker[^>]*coordinate=\{snappedLocation\}[\s\S]*?<\/Marker>/ },
 ];
 
 for (const { name, source, pattern } of staticMarkerPatterns) {

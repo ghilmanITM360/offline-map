@@ -20,7 +20,7 @@ assert(home.includes('routes={previewVisibleSpecialRoutes}') && specialRouteLaye
 assert(home.includes('gates={previewVisibleGateMarkers}') && gateLayer.includes('gates.map('), 'Home must render zoom-aware official gate markers with coordinates');
 assert(gateLayer.includes('gate.needsConnectorVerification'), 'Home must visibly distinguish disconnected gates');
 assert(home.includes('graphOnlyFallbackUsed'), 'Home must track graph-only fallback');
-assert(home.includes("mapType={hasGoogleMapsKey ? (isOffline ? 'none' : mapType) : 'none'}"), 'Home must not require base tiles for graph-only map');
+assert(home.includes("mapType={baseMapMode === 'GOOGLE_BASEMAP' ? mapType : 'none'}"), 'Home must not request live tiles outside resolved Google-basemap mode');
 
 assert(home.includes('handleZoomIn'), 'Zoom in control must call handler');
 assert(home.includes('handleZoomOut'), 'Zoom out control must call handler');

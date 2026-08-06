@@ -61,6 +61,6 @@ assert(offlineMapService.includes('fetch(') || offlineMapService.includes('downl
 assert(downloadViewModel.includes('continueWithVenueMapOnly'), 'Tile failure must keep graph-only navigation available');
 assert(appGuide.includes('Internal search and directions work from bundled Ijtema data'), 'User copy must explain that core navigation remains offline');
 assert(!directionsScreen.includes('MapView'), 'Directions start-selection flow must not depend on base map preview while offline');
-assert(homeScreenForOffline.includes("mapType={hasGoogleMapsKey ? (isOffline ? 'none' : mapType) : 'none'}"), 'Home map (shared by navigation) must not request live base tiles while offline');
+assert(homeScreenForOffline.includes("mapType={baseMapMode === 'GOOGLE_BASEMAP' ? mapType : 'none'}"), 'Home map must request live tiles only in resolved Google-basemap mode');
 
 console.log('Network/offline v2 checks passed.');

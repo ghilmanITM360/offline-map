@@ -2,6 +2,7 @@ import { strict as assert } from 'node:assert';
 import { readFileSync } from 'node:fs';
 import {
   computeMapControlsInset,
+  computeMapContentInsets,
   computeNavControlsInset,
   computeNavRecenterInset,
   MIN_BOTTOM_FLOOR,
@@ -79,6 +80,22 @@ assert.equal(stackAbove(10, 20, 5), 35);
 assert.equal(stackAbove(10, 20), 10 + 20 + OVERLAY_CONTROL_GAP, 'stackAbove defaults to the shared gap');
 assert.equal(MIN_BOTTOM_FLOOR, 16);
 assert.equal(RECENTER_BUTTON_SIZE, 56, 'must match mapControlStyles.recenterButton width/height');
+
+const mapContentBase = {
+  top: 144,
+  right: 80,
+  bottomSafeArea: 24,
+  windowHeight,
+  snapPoints,
+  sheetIndex: -1,
+  navBarHeight: 0,
+} as const;
+assert.equal(computeMapContentInsets({ ...mapContentBase, mode: 'EXPLORE' }).bottom, 24);
+assert.equal(computeMapContentInsets({ ...mapContentBase, mode: 'PLACE_SELECTED', sheetIndex: 0 }).bottom, 120);
+assert.equal(computeMapContentInsets({ ...mapContentBase, mode: 'DETAILS', sheetIndex: 2 }).bottom, 736);
+assert.equal(computeMapContentInsets({ ...mapContentBase, mode: 'ROUTE_PREVIEW', sheetIndex: 1 }).bottom, 400);
+assert.equal(computeMapContentInsets({ ...mapContentBase, mode: 'NAVIGATION', navBarHeight: 196 }).bottom, 196);
+assert.equal(computeMapContentInsets({ ...mapContentBase, mode: 'ARRIVAL' }).bottom, windowHeight);
 
 // Wiring: the real call sites must use the shared calculation, not a reintroduced
 // inline formula. Each of these previously hand-rolled its own bottom-offset math with

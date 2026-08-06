@@ -17,8 +17,8 @@ assert(overlaySource.includes('tappable={false}'), 'Dim scrim must not intercept
 
 assert(home.includes('<SatelliteDimOverlay'), 'HomeScreen must render the satellite dim scrim');
 assert(
-  home.includes("mapType === 'satellite' && hasGoogleMapsKey && !isOffline"),
-  'Dim scrim must only show when satellite tiles are actually the rendered basemap — not when offline forces a graph-only/none basemap while satellite is merely the selected preference',
+  home.includes("mapType === 'satellite' && baseMapMode === 'GOOGLE_BASEMAP'"),
+  'Dim scrim must only show when satellite tiles are the resolved Google basemap',
 );
 assert(home.includes('SATELLITE_DIM_BOUNDARY'), 'Dim scrim bounds must be defined');
 assert(home.includes('IJTEMA_MAP_BOUNDS.minLat - SATELLITE_DIM_LAT_PAD'), 'Dim scrim must be padded beyond the venue bounds to also cover gate approach streets');

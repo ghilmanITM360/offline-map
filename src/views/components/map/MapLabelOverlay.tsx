@@ -247,6 +247,7 @@ export const MapLabelOverlay = React.forwardRef<MapLabelOverlayHandle, MapLabelO
         {items.map((item) => {
           const point = points[item.id];
           if (!point) return null;
+          const size = measuredSizes[item.id] ?? estimateSize(item);
           if (containerSize.width > 0 && containerSize.height > 0) {
             const offscreen =
               point.x < -OFFSCREEN_PAD ||
@@ -255,12 +256,11 @@ export const MapLabelOverlay = React.forwardRef<MapLabelOverlayHandle, MapLabelO
               point.y > containerSize.height + OFFSCREEN_PAD ||
               point.y < (edgeInsets?.top ?? 0) ||
               point.x > containerSize.width - (edgeInsets?.right ?? 0) ||
-              point.y > containerSize.height - (edgeInsets?.bottom ?? 0) ||
+              point.y + size.height / 2 > containerSize.height - (edgeInsets?.bottom ?? 0) ||
               point.x < (edgeInsets?.left ?? 0);
             if (offscreen) return null;
           }
 
-          const size = measuredSizes[item.id] ?? estimateSize(item);
           const labelStyles = getLabelStyles(item);
           const content = (
             <View style={labelStyles.container} onLayout={(e) => handleItemLayout(item.id, e)}>

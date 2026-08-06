@@ -54,7 +54,7 @@ assert(
     downloadViewModel.includes('Background map unavailable. Ijtema routes still work.'),
   'Offline tile failure must show the required fallback message',
 );
-assert(homeScreenForTiles.includes("mapType={hasGoogleMapsKey ? (isOffline ? 'none' : mapType) : 'none'}"), 'Home map (shared by navigation) must not require live tiles when base map is unavailable or internet is offline');
+assert(homeScreenForTiles.includes("baseMapMode === 'LOCAL_TILES'") && homeScreenForTiles.includes("mapType={baseMapMode === 'GOOGLE_BASEMAP' ? mapType : 'none'}"), 'Home map must resolve local tiles separately from Google live tiles');
 assert(navigationMapLayersV2.includes('mapLayers.blocks'), 'V2 navigation graph-only map must render block context');
 assert(navigationMapLayersV2.includes('mapLayers.rastas'), 'V2 navigation graph-only map must render rasta lines');
 // Phase 8 (docs/ROUTING_NAVIGATION_FIX_REPORT.md): route.coordinates was moved

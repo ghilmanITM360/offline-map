@@ -43,6 +43,7 @@ export function UserLocationMarker({ coordinate, accuracy, heading, isFollowing 
     <>
       {typeof accuracy === 'number' && accuracy > 0 && (
         <Circle
+          testID="browse-user-accuracy-circle"
           center={coordinate}
           radius={Math.min(accuracy, 150)}
           strokeColor={staticColors.userAccuracyStroke}
@@ -53,6 +54,7 @@ export function UserLocationMarker({ coordinate, accuracy, heading, isFollowing 
       )}
 
       <Marker
+        testID="browse-user-location-marker"
         coordinate={coordinate}
         anchor={{ x: 0.5, y: 0.5 }}
         tracksViewChanges={false}

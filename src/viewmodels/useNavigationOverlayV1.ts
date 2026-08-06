@@ -4,18 +4,19 @@
  */
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Animated, BackHandler } from 'react-native';
+import { Animated } from 'react-native';
 import MapView from 'react-native-maps';
 import { useAppStore } from '../store/useAppStore';
 import { RoutingService } from '../services/RoutingService';
 import { IJTEMA_DATA, MAP_BOUNDS } from '../constants/data';
 import { useNavigationViewModel } from './NavigationViewModel';
 import { CameraManager } from './useCameraManager';
+import { useNavigationExitConfirmation } from './useNavigationExitConfirmation';
 
 interface Params {
   mapRef: React.RefObject<MapView | null>;
   mapReady: boolean;
-  hasGoogleMapsKey: boolean;
+  hasBaseMap: boolean;
   /** Reuse Home's existing current-location pulse animation instead of starting a second loop. */
   userPulseAnim: Animated.Value;
   cameraManager: CameraManager;
@@ -34,13 +35,17 @@ const VENUE_BOUNDARY = [
  * mirrors useNavigationOverlayV2's shape. Safe to call unconditionally — every effect
  * here already no-ops when there's no active v1 route.
  */
-export function useNavigationOverlayV1({ mapRef, mapReady, hasGoogleMapsKey, userPulseAnim, cameraManager }: Params) {
-  const hasInternet = useAppStore((s) => s.hasInternet);
+export function useNavigationOverlayV1({ mapRef, mapReady, hasBaseMap, userPulseAnim, cameraManager }: Params) {
   const settings = useAppStore((s) => s.settings);
   const currentLocationSource = useAppStore((s) => s.currentLocationSource);
 
   const vm = useNavigationViewModel();
   const { route, snappedLocation, arrived } = vm;
+  const navigationExit = useNavigationExitConfirmation({
+    active: !!route,
+    arrived,
+    onExit: vm.handleExit,
+  });
 
   const [isAutoFollowing, setIsAutoFollowing] = useState(settings.autoFollowLocation);
   const [initialCameraFitDone, setInitialCameraFitDone] = useState(false);
@@ -100,28 +105,11 @@ export function useNavigationOverlayV1({ mapRef, mapReady, hasGoogleMapsKey, use
     if (!route) cameraManager.exitNavigationCamera();
   }, [cameraManager, route]);
 
-  useEffect(() => {
-    if (!route) return;
-    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
-      // Same ARRIVAL-vs-NAVIGATION back distinction as useNavigationOverlayV2 — see its
-      // comment.
-      if (arrived) {
-        vm.handleExit();
-        return true;
-      }
-      Alert.alert('Exit navigation?', 'Do you want to stop navigation and return to map?', [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Exit', style: 'destructive', onPress: () => vm.handleExit() },
-      ]);
-      return true;
-    });
-    return () => sub.remove();
-  }, [route, arrived, vm.handleExit]);
-
-  const graphOnlyFallbackUsed = !hasGoogleMapsKey || !hasInternet;
+  const graphOnlyFallbackUsed = !hasBaseMap;
 
   return {
     ...vm,
+    ...navigationExit,
     active: !!route,
     mapLayers,
     isAutoFollowing,
