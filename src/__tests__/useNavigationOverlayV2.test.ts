@@ -70,7 +70,7 @@ describe('useNavigationOverlayV2 — hardware back (NAVIGATION vs ARRIVAL)', () 
     expect(alertSpy).toHaveBeenCalledWith('Exit navigation?', expect.any(String), expect.any(Array), expect.any(Object));
     expect(mockVm.handleExit).not.toHaveBeenCalled();
 
-    // Arrival: hardware Back still confirms; only visible Done skips confirmation.
+    // Arrival: hardware Back completes immediately, same as visible Done.
     const cancelButton = (alertSpy.mock.calls.at(-1)?.[2] as Array<{ text: string; onPress?: () => void }>).find((button) => button.text === 'Cancel');
     cancelButton?.onPress?.();
     alertSpy.mockClear();
@@ -79,10 +79,8 @@ describe('useNavigationOverlayV2 — hardware back (NAVIGATION vs ARRIVAL)', () 
     handler = latestHandler(addEventListenerSpy);
     expect(handler).toBeDefined();
     handler!();
-    expect(alertSpy).toHaveBeenCalledWith('Exit navigation?', expect.any(String), expect.any(Array), expect.any(Object));
-    expect(mockVm.handleExit).not.toHaveBeenCalled();
-    const exitButton = (alertSpy.mock.calls.at(-1)?.[2] as Array<{ text: string; onPress?: () => void }>).find((button) => button.text === 'Exit');
-    exitButton?.onPress?.();
+    handler!();
+    expect(alertSpy).not.toHaveBeenCalled();
     expect(mockVm.handleExit).toHaveBeenCalledTimes(1);
 
     // Exit completes: route clears, and the listener is torn down entirely.

@@ -36,7 +36,7 @@ describe('useNavigationExitConfirmation', () => {
     expect(onExit).toHaveBeenCalledTimes(1);
   });
 
-  test('hardware Back uses the same confirmation during navigation and arrival', async () => {
+  test('hardware Back confirms mid-navigation and completes Arrival immediately', async () => {
     const onExit = jest.fn();
     const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
     const backSpy = jest.spyOn(BackHandler, 'addEventListener');
@@ -55,10 +55,24 @@ describe('useNavigationExitConfirmation', () => {
     await rerender(undefined);
     back = backSpy.mock.calls.filter(([name]) => name === 'hardwareBackPress').at(-1)?.[1] as () => boolean;
     expect(back()).toBe(true);
-    expect(alertSpy).toHaveBeenCalledTimes(2);
-    expect(onExit).not.toHaveBeenCalled();
-    await act(async () => alertButtons(alertSpy).find((button) => button.text === 'Exit')?.onPress?.());
+    expect(back()).toBe(true);
+    expect(alertSpy).toHaveBeenCalledTimes(1);
     expect(onExit).toHaveBeenCalledTimes(1);
+  });
+
+  test('confirmation callbacks become inert after unmount', async () => {
+    const onExit = jest.fn();
+    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+    const { result, unmount } = await renderHook(() => (
+      useNavigationExitConfirmation({ active: true, arrived: false, onExit })
+    ));
+
+    await act(async () => result.current.requestNavigationExit());
+    const confirm = alertButtons(alertSpy).find((button) => button.text === 'Exit')?.onPress;
+    await unmount();
+    confirm?.();
+
+    expect(onExit).not.toHaveBeenCalled();
   });
 
   test('arrival Done path exits immediately once without opening confirmation', async () => {
