@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Alert, Linking } from 'react-native';
 import * as Location from 'expo-location';
 import { useAppStore } from '../store/useAppStore';
@@ -15,6 +15,9 @@ import { OnboardingStatusService } from '../services/OnboardingStatusService';
 export function usePermissionViewModel() {
   const { setHasLocationPermission, setOfflineMapStatus } = useAppStore();
   const [loading, setLoading] = useState(false);
+  // A ref, not state, so a second confirmation fired before the first's setLoading(true) has
+  // committed still sees the in-flight latch synchronously (React state updates are async).
+  const skipInFlightRef = useRef(false);
 
   const navigateNext = async (navigation: any) => {
     const [mapStatus, statusValidation, isConnected] = await Promise.all([
@@ -65,6 +68,28 @@ export function usePermissionViewModel() {
     }
   };
 
+  const confirmSkipPermission = async (navigation: any) => {
+    if (skipInFlightRef.current) return; // rapid repeated confirmation — first attempt is already in flight
+    skipInFlightRef.current = true;
+    setLoading(true);
+    try {
+      await OnboardingStatusService.setSkippedLocationPermission(true);
+      await navigateNext(navigation);
+    } catch (error) {
+      // Persistence (or the map-status checks navigateNext depends on) failed — stay on this
+      // screen and say so rather than navigating on as if the skip choice had been saved.
+      console.error('[usePermissionViewModel] Failed to save the "Continue Without Location" choice.', error);
+      Alert.alert(
+        "Couldn't save your choice",
+        'Something went wrong and your choice was not saved. Please try again.',
+        [{ text: 'OK' }],
+      );
+    } finally {
+      skipInFlightRef.current = false;
+      setLoading(false);
+    }
+  };
+
   const skipPermission = (navigation: any) => {
     Alert.alert(
       'Continue without location?',
@@ -75,11 +100,10 @@ export function usePermissionViewModel() {
           text: 'Continue Without Location',
           onPress: () => {
             // Persist only on this confirmation action, not on the initial button press —
-            // Cancel must leave no trace of a skip decision.
-            void (async () => {
-              await OnboardingStatusService.setSkippedLocationPermission(true);
-              await navigateNext(navigation);
-            })();
+            // Cancel must leave no trace of a skip decision. Named async handler (not a bare
+            // IIFE) so a persistence rejection is caught inside it instead of becoming an
+            // unhandled promise rejection.
+            void confirmSkipPermission(navigation);
           },
         },
       ],
