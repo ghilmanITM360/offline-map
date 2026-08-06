@@ -87,11 +87,22 @@ export function SplashScreen() {
         setHasLocationPermission(permissionGranted);
 
         // Real permission is confirmed granted — supersede any earlier "Continue Without
-        // Location" choice so a later revocation is treated as fresh, not a still-standing skip.
-        let effectiveSkippedLocationPermission = skippedLocationPermission;
+        // Location" choice so a later revocation is treated as fresh, not a still-standing
+        // skip. Uses the same canonical helper as every other permission-entry surface
+        // (Permission screen, Settings, Home/Recenter, Directions). `effectiveSkippedLocationPermission`
+        // is already computed above and does not depend on this write landing, and this call
+        // is wrapped in its own try/catch (on top of the helper's own internal one) so a
+        // cleanup failure can never fall through to the catch below and override
+        // StartupManager's route resolution with the generic startup-failure fallback — see
+        // the "permission-skip cleanup is isolated from route resolution" tests in
+        // SplashScreen.test.tsx.
+        const effectiveSkippedLocationPermission = permissionGranted ? false : skippedLocationPermission;
         if (permissionGranted && skippedLocationPermission) {
-          await OnboardingStatusService.setSkippedLocationPermission(false);
-          effectiveSkippedLocationPermission = false;
+          try {
+            await OnboardingStatusService.clearSkippedLocationPermissionOnGrant(true);
+          } catch (cleanupError) {
+            console.error('[SplashScreen] Failed to clear the skipped-location-permission preference — continuing startup with the in-memory decision.', cleanupError);
+          }
         }
 
         const { route } = StartupManager.resolve({

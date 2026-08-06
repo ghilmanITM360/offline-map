@@ -39,6 +39,7 @@ jest.mock('../services/OnboardingStatusService', () => ({
     hasSeenWelcome: jest.fn(),
     hasSkippedLocationPermission: jest.fn(),
     setSkippedLocationPermission: jest.fn(),
+    clearSkippedLocationPermissionOnGrant: jest.fn(),
   },
 }));
 
@@ -95,6 +96,7 @@ beforeEach(() => {
   (OnboardingStatusService.hasSeenWelcome as jest.Mock).mockResolvedValue(true);
   (OnboardingStatusService.hasSkippedLocationPermission as jest.Mock).mockResolvedValue(false);
   (OnboardingStatusService.setSkippedLocationPermission as jest.Mock).mockResolvedValue(undefined);
+  (OnboardingStatusService.clearSkippedLocationPermissionOnGrant as jest.Mock).mockResolvedValue(undefined);
 });
 
 afterEach(() => {
@@ -200,5 +202,96 @@ describe('SplashScreen — persisted-store hydration gate', () => {
     await flush();
 
     expect(mockReplaceSpy).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('SplashScreen — permission-skip cleanup is isolated from route resolution', () => {
+  async function renderAndResolveHydration() {
+    const controllable = controllableStorage();
+    useAppStore.persist.setOptions({ storage: controllable.storage });
+    const rehydratePromise = useAppStore.persist.rehydrate();
+
+    await act(async () => {
+      render(<SplashScreen />);
+    });
+    await act(async () => {
+      controllable.resolve(null);
+      await rehydratePromise;
+    });
+    await flush();
+  }
+
+  beforeEach(() => {
+    (OnboardingStatusService.hasSkippedLocationPermission as jest.Mock).mockResolvedValue(true);
+  });
+
+  it('calls the canonical clear helper exactly once when permission is granted and a skip was previously recorded', async () => {
+    await renderAndResolveHydration();
+
+    expect(OnboardingStatusService.clearSkippedLocationPermissionOnGrant).toHaveBeenCalledTimes(1);
+    expect(OnboardingStatusService.clearSkippedLocationPermissionOnGrant).toHaveBeenCalledWith(true);
+    expect(mockReplaceSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('granted + stale skip + successful clear: still resolves the normal route for a downloaded map', async () => {
+    (OfflineMapStatusService.validateAtStartup as jest.Mock).mockResolvedValue({ status: 'downloaded', manifest: null });
+
+    await renderAndResolveHydration();
+
+    expect(mockReplaceSpy).toHaveBeenCalledTimes(1);
+    expect(mockReplaceSpy).toHaveBeenCalledWith('Main');
+  });
+
+  it('a rejected cleanup call does not fall through to the generic startup-failure route — a downloaded map still resolves to Main', async () => {
+    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    (OnboardingStatusService.clearSkippedLocationPermissionOnGrant as jest.Mock).mockRejectedValue(new Error('disk full'));
+    (OfflineMapStatusService.validateAtStartup as jest.Mock).mockResolvedValue({ status: 'downloaded', manifest: null });
+
+    await renderAndResolveHydration();
+
+    expect(mockReplaceSpy).toHaveBeenCalledTimes(1);
+    expect(mockReplaceSpy).toHaveBeenCalledWith('Main');
+    // Proves the real startup-failure catch branch never ran — that branch always sets this
+    // specific message and forces the map status back to not_downloaded.
+    expect(useAppStore.getState().offlineMapStatusMessage).not.toEqual(expect.stringContaining('Startup checks failed'));
+    expect(useAppStore.getState().offlineMapStatus).toBe('downloaded');
+    errorSpy.mockRestore();
+  });
+
+  it('a rejected cleanup call still lets a corrupt map status route to DownloadMap', async () => {
+    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    (OnboardingStatusService.clearSkippedLocationPermissionOnGrant as jest.Mock).mockRejectedValue(new Error('disk full'));
+    (OfflineMapStatusService.validateAtStartup as jest.Mock).mockResolvedValue({ status: 'corrupt', reason: 'checksum mismatch' });
+
+    await renderAndResolveHydration();
+
+    expect(mockReplaceSpy).toHaveBeenCalledTimes(1);
+    expect(mockReplaceSpy).toHaveBeenCalledWith('DownloadMap');
+    errorSpy.mockRestore();
+  });
+
+  it('a rejected cleanup call still lets a needs_update map status route to DownloadMap', async () => {
+    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    (OnboardingStatusService.clearSkippedLocationPermissionOnGrant as jest.Mock).mockRejectedValue(new Error('disk full'));
+    (OfflineMapStatusService.validateAtStartup as jest.Mock).mockResolvedValue({ status: 'needs_update', reason: 'newer version available' });
+
+    await renderAndResolveHydration();
+
+    expect(mockReplaceSpy).toHaveBeenCalledTimes(1);
+    expect(mockReplaceSpy).toHaveBeenCalledWith('DownloadMap');
+    errorSpy.mockRestore();
+  });
+
+  it('never navigates more than once even when the cleanup call rejects', async () => {
+    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    (OnboardingStatusService.clearSkippedLocationPermissionOnGrant as jest.Mock).mockRejectedValue(new Error('disk full'));
+
+    await renderAndResolveHydration();
+
+    expect(mockReplaceSpy).toHaveBeenCalledTimes(1);
+    // The cleanup failure was logged through SplashScreen's own dedicated log line, not the
+    // generic "Startup checks failed" catch-all.
+    expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('Failed to clear the skipped-location-permission preference'), expect.any(Error));
+    errorSpy.mockRestore();
   });
 });
