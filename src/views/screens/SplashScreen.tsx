@@ -24,6 +24,7 @@ export function SplashScreen() {
   const { updateOfflineData, setHasLocationPermission, setOfflineMapStatus } = useAppStore();
   const isMountedRef = useRef(true); // fixed: guard navigation and state writes after unmount
   const minVisibleTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null); // fixed: cancel the splash delay on unmount
+  const hydrationAbortControllerRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     Animated.timing(fadeAnim, {
@@ -33,6 +34,8 @@ export function SplashScreen() {
     }).start();
 
     const checkStatus = async () => {
+      const hydrationAbortController = new AbortController();
+      hydrationAbortControllerRef.current = hydrationAbortController;
       try {
         // Minimum visible time so the logo is seen
         const minVisibleMs = new Promise<void>((resolve) => {
@@ -54,8 +57,11 @@ export function SplashScreen() {
           // MapStartupController must never see default (unhydrated) persisted values.
           // HomeScreen only mounts after this Promise.all resolves and navigation.replace()
           // below runs, so this transitively guards every persisted read (hasSeenMapOverview,
-          // lastKnownLocation, settings, ...) downstream of Splash too.
-          waitForStoreHydration(),
+          // lastKnownLocation, settings, ...) downstream of Splash too. A known rehydration
+          // failure resolves this immediately (see waitForStoreHydration); only a genuine hang
+          // rides out the full timeout. Either way startup proceeds with whatever the store
+          // currently holds — in-memory defaults on failure/timeout, persisted values on success.
+          waitForStoreHydration(undefined, hydrationAbortController.signal),
         ]);
 
         const permissionGranted = permissionResult.status === 'granted';
@@ -115,6 +121,7 @@ export function SplashScreen() {
       if (minVisibleTimeoutRef.current) {
         clearTimeout(minVisibleTimeoutRef.current); // fixed: cancel the pending splash timeout
       }
+      hydrationAbortControllerRef.current?.abort(); // let waitForStoreHydration drop its listeners immediately instead of idling out the timeout
     };
   }, [fadeAnim, navigation, setHasLocationPermission, updateOfflineData]);
 
