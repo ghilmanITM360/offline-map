@@ -8,6 +8,10 @@ import { OnboardingStatusService } from '../services/OnboardingStatusService';
 
 beforeEach(async () => {
   await AsyncStorage.clear();
+  // The async-storage jest mock's setItem/getItem are module-level jest.fn()s that persist
+  // across tests in this file — clear their call history so per-test spy assertions below
+  // only see calls made within that test.
+  jest.clearAllMocks();
 });
 
 describe('OnboardingStatusService.hasSkippedLocationPermission', () => {
@@ -36,5 +40,55 @@ describe('OnboardingStatusService.hasSkippedLocationPermission', () => {
 
     await OnboardingStatusService.setSkippedLocationPermission(true);
     expect(await OnboardingStatusService.hasSeenWelcome()).toBe(true);
+  });
+});
+
+describe('OnboardingStatusService.clearSkippedLocationPermissionOnGrant', () => {
+  it('clears a stale skip once permission is confirmed granted', async () => {
+    await OnboardingStatusService.setSkippedLocationPermission(true);
+    await OnboardingStatusService.clearSkippedLocationPermissionOnGrant(true);
+    expect(await OnboardingStatusService.hasSkippedLocationPermission()).toBe(false);
+  });
+
+  it('is a no-op when permission was not granted (denied request)', async () => {
+    await OnboardingStatusService.setSkippedLocationPermission(true);
+    await OnboardingStatusService.clearSkippedLocationPermissionOnGrant(false);
+    expect(await OnboardingStatusService.hasSkippedLocationPermission()).toBe(true);
+  });
+
+  it('does not write to AsyncStorage a second time when nothing is actually skipped (no duplicate clear calls for one grant)', async () => {
+    expect(await OnboardingStatusService.hasSkippedLocationPermission()).toBe(false);
+    // AsyncStorage's jest mock already exports setItem as a jest.fn() — spyOn+mockRestore on an
+    // already-mock function discards its real (in-memory) implementation for the rest of the
+    // file, so drive the existing mock directly instead of re-wrapping/restoring it.
+    const setItemMock = AsyncStorage.setItem as jest.Mock;
+    setItemMock.mockClear();
+    await OnboardingStatusService.clearSkippedLocationPermissionOnGrant(true);
+    expect(setItemMock).not.toHaveBeenCalled();
+  });
+
+  it('swallows a persistence rejection, logs it, and never lets it reach the caller', async () => {
+    await OnboardingStatusService.setSkippedLocationPermission(true);
+    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const setItemMock = AsyncStorage.setItem as jest.Mock;
+    setItemMock.mockImplementationOnce(() => Promise.reject(new Error('disk full')));
+
+    await expect(OnboardingStatusService.clearSkippedLocationPermissionOnGrant(true)).resolves.toBeUndefined();
+    expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('Failed to clear'), expect.any(Error));
+
+    errorSpy.mockRestore();
+  });
+
+  it('grant then a later revoke: the next launch correctly reflects the current (revoked) decision, not the stale clear', async () => {
+    await OnboardingStatusService.setSkippedLocationPermission(true);
+    await OnboardingStatusService.clearSkippedLocationPermissionOnGrant(true); // user grants — skip cleared
+    expect(await OnboardingStatusService.hasSkippedLocationPermission()).toBe(false);
+
+    // Permission is later revoked in OS settings; a subsequent Splash cold-start check finds
+    // it not granted and correctly leaves the (currently-false) skip flag alone rather than
+    // resurrecting the old "true" value — the flag now genuinely reflects "not skipped", so
+    // the app must fall through to StartupManager's normal not-granted/no-skip path.
+    await OnboardingStatusService.clearSkippedLocationPermissionOnGrant(false);
+    expect(await OnboardingStatusService.hasSkippedLocationPermission()).toBe(false);
   });
 });

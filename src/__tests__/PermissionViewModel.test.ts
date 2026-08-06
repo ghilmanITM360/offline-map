@@ -32,7 +32,10 @@ jest.mock('../services/ConnectivityService', () => ({
 }));
 
 jest.mock('../services/OnboardingStatusService', () => ({
-  OnboardingStatusService: { setSkippedLocationPermission: jest.fn() },
+  OnboardingStatusService: {
+    setSkippedLocationPermission: jest.fn(),
+    clearSkippedLocationPermissionOnGrant: jest.fn(),
+  },
 }));
 
 const initialStoreState = useAppStore.getState();
@@ -96,7 +99,7 @@ describe('usePermissionViewModel — Continue Without Location persistence', () 
     });
 
     expect(useAppStore.getState().hasLocationPermission).toBe(true);
-    expect(OnboardingStatusService.setSkippedLocationPermission).toHaveBeenCalledWith(false);
+    expect(OnboardingStatusService.clearSkippedLocationPermissionOnGrant).toHaveBeenCalledWith(true);
     expect(mockNavigation.replace).toHaveBeenCalledWith('Main');
   });
 
@@ -109,7 +112,7 @@ describe('usePermissionViewModel — Continue Without Location persistence', () 
       await result.current.requestPermission(mockNavigation);
     });
 
-    expect(OnboardingStatusService.setSkippedLocationPermission).not.toHaveBeenCalled();
+    expect(OnboardingStatusService.clearSkippedLocationPermissionOnGrant).not.toHaveBeenCalled();
     expect(mockNavigation.replace).not.toHaveBeenCalled();
   });
 });

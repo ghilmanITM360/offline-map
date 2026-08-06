@@ -32,4 +32,32 @@ export class OnboardingStatusService {
   static async setSkippedLocationPermission(skipped: boolean): Promise<void> {
     await AsyncStorage.setItem(LOCATION_PERMISSION_SKIPPED_KEY, skipped ? 'true' : 'false');
   }
+
+  /**
+   * Canonical, single call point for "a foreground location permission grant is now
+   * confirmed" across every entry surface — the Permission screen, Settings, Home/Recenter
+   * and Directions current-location (both via LocationAccessService), and Splash's cold-start
+   * reconciliation. Clears a stale "Continue Without Location" skip so a later revocation is
+   * treated as fresh, not as a still-standing skip.
+   *
+   * A no-op when `granted` is false — denied/cancelled requests must never clear the skip —
+   * and when nothing is actually skipped, which avoids a redundant AsyncStorage write on every
+   * routine permission check (Settings and LocationAccessService call this on every status
+   * read, granted or not). Per-caller "was it just granted" vs. "was it merely found already
+   * granted" distinction is deliberately not made here — either is a safe signal to supersede
+   * a stale skip.
+   *
+   * Never throws: a persistence failure here must not block or fail the caller's actual
+   * location flow, so it's logged and swallowed.
+   */
+  static async clearSkippedLocationPermissionOnGrant(granted: boolean): Promise<void> {
+    if (!granted) return;
+    try {
+      const skipped = await this.hasSkippedLocationPermission();
+      if (!skipped) return;
+      await this.setSkippedLocationPermission(false);
+    } catch (error) {
+      console.error('[OnboardingStatusService] Failed to clear the skipped-location-permission preference after a successful grant.', error);
+    }
+  }
 }

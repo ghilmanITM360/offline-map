@@ -41,7 +41,7 @@ export function usePermissionViewModel() {
         setHasLocationPermission(true);
         // Supersede any earlier "Continue Without Location" choice now that real permission
         // is confirmed granted, so a later revocation is treated as fresh next launch.
-        await OnboardingStatusService.setSkippedLocationPermission(false);
+        await OnboardingStatusService.clearSkippedLocationPermissionOnGrant(true);
         await navigateNext(navigation);
       } else {
         const permission = await Location.getForegroundPermissionsAsync(); // fixed: inspect whether the permission can still be requested in-app
