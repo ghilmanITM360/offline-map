@@ -235,3 +235,127 @@ describe('DirectionsViewModel — outside presentation matches the active routin
     expect(hook.result.current.isOutsideStart).toBe(true); // remembered location is the committedOutsideCoord
   });
 });
+
+// The near-boundary suite above only ever asserts on isOutsideStart — a presentation-layer
+// boolean. It cannot by itself prove resolveActiveOriginCoordinate() is genuinely the *one*
+// function both sides read from, only that they happen to agree in these scenarios. This suite
+// instead captures the actual `currentLocation` field of the real V2DirectionsService.calculatePreview
+// request (the thing calculateRoute truly sends for calculation) and checks it against
+// isOutsideStart at each step — proving the request origin and the presentation classification
+// move together because they share one source, not because two independent computations
+// happened to match.
+describe('DirectionsViewModel — active-origin route-request proof', () => {
+  const insideCoord = { latitude: 24.966, longitude: 67.004 };
+  const nearBoundaryOutsideCoord = { latitude: insideCoord.latitude + 0.00005, longitude: insideCoord.longitude };
+  const committedOutsideCoord = { latitude: insideCoord.latitude + 0.0005, longitude: insideCoord.longitude };
+  const manualOrigin = { latitude: 24.97, longitude: 67.02 };
+
+  let isInsideSpy: jest.SpyInstance;
+  // calculateRoute routes an outside-classified origin through calculateHybridPreview (async,
+  // via the outside-request coordinator) and an inside-classified origin through the plain sync
+  // calculatePreview — both spied without mockImplementation so real behavior (and every other
+  // assertion in this file) is unaffected; this only lets the test inspect what was sent.
+  let previewSpy: jest.SpyInstance;
+  let hybridSpy: jest.SpyInstance;
+
+  beforeEach(() => {
+    isInsideSpy = jest
+      .spyOn(EntryGateRoutingService, 'isInsideIjtemaArea')
+      .mockImplementation(
+        (coord: { latitude: number; longitude: number }) =>
+          coord.latitude === insideCoord.latitude && coord.longitude === insideCoord.longitude,
+      );
+    previewSpy = jest.spyOn(V2DirectionsService, 'calculatePreview');
+    hybridSpy = jest.spyOn(V2DirectionsService, 'calculateHybridPreview');
+  });
+
+  afterEach(() => {
+    isInsideSpy.mockRestore();
+    previewSpy.mockRestore();
+    hybridSpy.mockRestore();
+  });
+
+  // Merges both spies by jest's own global invocationCallOrder so "the last request" is
+  // correct regardless of which of the two underlying methods actually carried it.
+  function lastRequestOrigin() {
+    const fromPreview = previewSpy.mock.calls.map((args, i) => ({
+      order: previewSpy.mock.invocationCallOrder[i],
+      origin: args[0]?.currentLocation,
+    }));
+    const fromHybrid = hybridSpy.mock.calls.map((args, i) => ({
+      order: hybridSpy.mock.invocationCallOrder[i],
+      origin: args[0]?.request?.currentLocation,
+    }));
+    const merged = [...fromPreview, ...fromHybrid].sort((a, b) => a.order - b.order);
+    return merged.at(-1)?.origin;
+  }
+
+  test('1. the route-preview request origin equals the committed live_gps origin, matching isOutsideStart at the same instant', async () => {
+    useAppStore.setState({ currentLocation: insideCoord, currentLocationSource: 'live', lastKnownLocation: insideCoord });
+    const hook = await renderHook(() => useDirectionsViewModel(destination));
+    await waitFor(() => expect(hook.result.current.loadState).toBe('ready'));
+
+    expect(lastRequestOrigin()).toEqual(insideCoord);
+    expect(hook.result.current.isOutsideStart).toBe(false);
+  });
+
+  test('2. a raw currentLocation sample below the movement threshold cannot alter the request origin or the presentation classification', async () => {
+    useAppStore.setState({ currentLocation: insideCoord, currentLocationSource: 'live', lastKnownLocation: insideCoord });
+    const hook = await renderHook(() => useDirectionsViewModel(destination));
+    await waitFor(() => expect(hook.result.current.loadState).toBe('ready'));
+
+    await act(() => {
+      useAppStore.getState().setCurrentLocation(nearBoundaryOutsideCoord, 'live');
+    });
+
+    // routeOriginLocation (calculateRoute's real dependency) never moved — below the movement
+    // threshold — so even if the raw GPS sample changing triggers an unrelated redundant
+    // recalculation (e.g. via lastKnownLocation also being in calculateRoute's deps), that
+    // recalculation's own request must still carry the *committed* origin, never the raw one.
+    await waitFor(() => expect(lastRequestOrigin()).toEqual(insideCoord));
+    expect(hook.result.current.isOutsideStart).toBe(false);
+  });
+
+  test('3. once the committed origin changes, the next request origin and isOutsideStart update together to the same new coordinate', async () => {
+    useAppStore.setState({ currentLocation: insideCoord, currentLocationSource: 'live', lastKnownLocation: insideCoord });
+    const hook = await renderHook(() => useDirectionsViewModel(destination));
+    await waitFor(() => expect(hook.result.current.loadState).toBe('ready'));
+
+    await act(() => {
+      useAppStore.getState().setCurrentLocation(committedOutsideCoord, 'live');
+    });
+
+    await waitFor(() => expect(lastRequestOrigin()).toEqual(committedOutsideCoord));
+    expect(hook.result.current.isOutsideStart).toBe(true);
+  });
+
+  test('4. a manual start origin reaches the request unchanged by the live_gps threshold mechanism', async () => {
+    useAppStore.setState({ currentLocation: insideCoord, currentLocationSource: 'live', lastKnownLocation: insideCoord });
+    const hook = await renderHook(() => useDirectionsViewModel(destination));
+    await waitFor(() => expect(hook.result.current.loadState).toBe('ready'));
+
+    await act(() => hook.result.current.setManualStartPlace({
+      id: 'manual-origin-proof',
+      name: 'Manual origin',
+      category: 'CustomPoint',
+      description: 'Manual origin',
+      coordinate: manualOrigin,
+      sourceVersion: 'v1',
+    }));
+
+    await waitFor(() => expect(hook.result.current.startSource).toBe('manual_place'));
+    await waitFor(() => expect(lastRequestOrigin()).toEqual(manualOrigin));
+  });
+
+  test('5. a remembered-location origin reaches the request unchanged by the live_gps threshold mechanism', async () => {
+    useAppStore.setState({ currentLocation: insideCoord, currentLocationSource: 'live', lastKnownLocation: committedOutsideCoord });
+    const hook = await renderHook(() => useDirectionsViewModel(destination));
+    await waitFor(() => expect(hook.result.current.loadState).toBe('ready'));
+
+    await act(() => expect(hook.result.current.chooseRememberedLocation()).toBe(true));
+
+    await waitFor(() => expect(hook.result.current.startSource).toBe('remembered_location'));
+    await waitFor(() => expect(lastRequestOrigin()).toEqual(committedOutsideCoord));
+    expect(hook.result.current.isOutsideStart).toBe(true);
+  });
+});
