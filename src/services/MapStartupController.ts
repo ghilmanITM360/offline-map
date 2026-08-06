@@ -32,15 +32,21 @@ export type ReturningLaunchCameraDecision =
 
 const RETURNING_LAUNCH_RESOLVE_TIMEOUT_MS = 4000;
 
+// `typeof x === 'number'` alone accepts NaN and +/-Infinity — neither is a usable camera
+// target, and both can genuinely come out of a native location bridge (e.g. a malformed or
+// zeroed-out fix). Number.isFinite() is the one check that rejects both while still accepting
+// every real coordinate value, including 0.
+function isFiniteCoordinateValue(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value);
+}
+
 function isLiveCoordinate(result: LocationResolveResult | null): result is LocationResolveResult & { coordinate: Coordinate } {
-  return (
-    !!result &&
-    result.ok === true &&
-    result.source === 'live' &&
-    !!result.coordinate &&
-    typeof result.coordinate.latitude === 'number' &&
-    typeof result.coordinate.longitude === 'number'
-  );
+  if (!result || result.ok !== true || result.source !== 'live' || !result.coordinate) return false;
+  const { latitude, longitude } = result.coordinate;
+  if (!isFiniteCoordinateValue(latitude) || !isFiniteCoordinateValue(longitude)) return false;
+  if (latitude < -90 || latitude > 90) return false;
+  if (longitude < -180 || longitude > 180) return false;
+  return true;
 }
 
 /**
@@ -125,7 +131,16 @@ export class MapStartupController {
 
       const timeoutId = setTimeout(() => finish(null), timeoutMs);
 
-      resolveFreshLocation()
+      // Promise.resolve().then(() => resolveFreshLocation()) normalizes a resolver that throws
+      // *synchronously*, before ever returning a Promise, into the same rejection path as one
+      // that returns a Promise which later rejects — both then funnel through the single
+      // .catch(() => finish(null)) below. Calling resolveFreshLocation() directly here would let
+      // a synchronous throw escape this executor entirely (a throw inside a Promise executor
+      // rejects the *outer* promise directly, bypassing finish()'s clearTimeout and — since
+      // resolveReturningLaunchCamera's await has no try/catch — propagating as an unhandled
+      // rejection through this method's caller instead of normalizing to `no_gps`).
+      Promise.resolve()
+        .then(() => resolveFreshLocation())
         .then((result) => finish(result ?? null))
         .catch(() => finish(null));
     });

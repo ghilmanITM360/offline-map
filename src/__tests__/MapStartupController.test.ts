@@ -46,6 +46,22 @@ function resolverThatNeverSettles() {
   return jest.fn(() => new Promise<LocationResolveResult>(() => {}));
 }
 
+function resolverThrowingSynchronously(error: unknown) {
+  return jest.fn((): Promise<LocationResolveResult> => {
+    throw error;
+  });
+}
+
+function liveResultWith(coordinate: unknown): LocationResolveResult {
+  return {
+    ok: true,
+    coordinate: coordinate as any,
+    source: 'live',
+    permissionState: basePermissionState,
+    message: null,
+  };
+}
+
 describe('MapStartupController.resolveReturningLaunchCamera', () => {
   it('1. first install + GPS: venue overview remains the first camera move, resolver never consulted', async () => {
     const resolveFreshLocation = resolverReturning({ ok: true, coordinate: liveCoordinate, source: 'live', permissionState: basePermissionState, message: null });
@@ -276,5 +292,143 @@ describe('MapStartupController.resolveColdLaunchCamera (unchanged sync decision,
         gpsCoordinate: null,
       }),
     ).toEqual({ action: 'FIT_VENUE_BOUNDS', reason: 'no_gps' });
+  });
+});
+
+describe('MapStartupController.resolveReturningLaunchCamera — rigorous live-coordinate validation', () => {
+  const checks = { hasSeenMapOverview: true, hasLocationPermission: true };
+
+  it('rejects NaN latitude (with an otherwise-valid longitude)', async () => {
+    const resolveFreshLocation = resolverReturning(liveResultWith({ latitude: Number.NaN, longitude: 67.005 }));
+    const decision = await MapStartupController.resolveReturningLaunchCamera(checks, resolveFreshLocation);
+    expect(decision).toEqual({ action: 'FIT_VENUE_BOUNDS', reason: 'no_gps' });
+  });
+
+  it('rejects NaN longitude (with an otherwise-valid latitude)', async () => {
+    const resolveFreshLocation = resolverReturning(liveResultWith({ latitude: 24.965, longitude: Number.NaN }));
+    const decision = await MapStartupController.resolveReturningLaunchCamera(checks, resolveFreshLocation);
+    expect(decision).toEqual({ action: 'FIT_VENUE_BOUNDS', reason: 'no_gps' });
+  });
+
+  it('rejects +Infinity latitude', async () => {
+    const resolveFreshLocation = resolverReturning(liveResultWith({ latitude: Number.POSITIVE_INFINITY, longitude: 67.005 }));
+    const decision = await MapStartupController.resolveReturningLaunchCamera(checks, resolveFreshLocation);
+    expect(decision).toEqual({ action: 'FIT_VENUE_BOUNDS', reason: 'no_gps' });
+  });
+
+  it('rejects -Infinity longitude', async () => {
+    const resolveFreshLocation = resolverReturning(liveResultWith({ latitude: 24.965, longitude: Number.NEGATIVE_INFINITY }));
+    const decision = await MapStartupController.resolveReturningLaunchCamera(checks, resolveFreshLocation);
+    expect(decision).toEqual({ action: 'FIT_VENUE_BOUNDS', reason: 'no_gps' });
+  });
+
+  it('rejects latitude just above the valid range (90.0001)', async () => {
+    const resolveFreshLocation = resolverReturning(liveResultWith({ latitude: 90.0001, longitude: 67.005 }));
+    const decision = await MapStartupController.resolveReturningLaunchCamera(checks, resolveFreshLocation);
+    expect(decision).toEqual({ action: 'FIT_VENUE_BOUNDS', reason: 'no_gps' });
+  });
+
+  it('rejects latitude just below the valid range (-90.0001)', async () => {
+    const resolveFreshLocation = resolverReturning(liveResultWith({ latitude: -90.0001, longitude: 67.005 }));
+    const decision = await MapStartupController.resolveReturningLaunchCamera(checks, resolveFreshLocation);
+    expect(decision).toEqual({ action: 'FIT_VENUE_BOUNDS', reason: 'no_gps' });
+  });
+
+  it('rejects longitude just above the valid range (180.0001)', async () => {
+    const resolveFreshLocation = resolverReturning(liveResultWith({ latitude: 24.965, longitude: 180.0001 }));
+    const decision = await MapStartupController.resolveReturningLaunchCamera(checks, resolveFreshLocation);
+    expect(decision).toEqual({ action: 'FIT_VENUE_BOUNDS', reason: 'no_gps' });
+  });
+
+  it('rejects longitude just below the valid range (-180.0001)', async () => {
+    const resolveFreshLocation = resolverReturning(liveResultWith({ latitude: 24.965, longitude: -180.0001 }));
+    const decision = await MapStartupController.resolveReturningLaunchCamera(checks, resolveFreshLocation);
+    expect(decision).toEqual({ action: 'FIT_VENUE_BOUNDS', reason: 'no_gps' });
+  });
+
+  it('rejects a missing coordinate object entirely', async () => {
+    const resolveFreshLocation = resolverReturning({
+      ok: true,
+      coordinate: null,
+      source: 'live',
+      permissionState: basePermissionState,
+      message: null,
+    });
+    const decision = await MapStartupController.resolveReturningLaunchCamera(checks, resolveFreshLocation);
+    expect(decision).toEqual({ action: 'FIT_VENUE_BOUNDS', reason: 'no_gps' });
+  });
+
+  it('accepts exact valid boundary values (latitude ±90, longitude ±180)', async () => {
+    for (const coordinate of [
+      { latitude: 90, longitude: 180 },
+      { latitude: -90, longitude: -180 },
+    ]) {
+      const resolveFreshLocation = resolverReturning(liveResultWith(coordinate));
+      const decision = await MapStartupController.resolveReturningLaunchCamera(checks, resolveFreshLocation);
+      expect(decision).toEqual({ action: 'ANIMATE_TO_USER', coordinate, source: 'live' });
+    }
+  });
+
+  it('accepts a normal valid Karachi coordinate', async () => {
+    const coordinate = { latitude: 24.965, longitude: 67.005 };
+    const resolveFreshLocation = resolverReturning(liveResultWith(coordinate));
+    const decision = await MapStartupController.resolveReturningLaunchCamera(checks, resolveFreshLocation);
+    expect(decision).toEqual({ action: 'ANIMATE_TO_USER', coordinate, source: 'live' });
+  });
+});
+
+describe('MapStartupController.resolveReturningLaunchCamera — synchronous resolver throws are caught', () => {
+  const checks = { hasSeenMapOverview: true, hasLocationPermission: true };
+
+  it('a resolver that throws synchronously (before ever returning a Promise) normalizes to venue overview, not an unhandled throw', async () => {
+    const resolveFreshLocation = resolverThrowingSynchronously(new Error('native module unavailable'));
+
+    await expect(
+      MapStartupController.resolveReturningLaunchCamera(checks, resolveFreshLocation),
+    ).resolves.toEqual({ action: 'FIT_VENUE_BOUNDS', reason: 'no_gps' });
+  });
+
+  it('a resolver that throws synchronously does not leave the bounded timeout dangling', async () => {
+    jest.useFakeTimers();
+    try {
+      const resolveFreshLocation = resolverThrowingSynchronously(new Error('native module unavailable'));
+
+      await MapStartupController.resolveReturningLaunchCamera(checks, resolveFreshLocation, 1000);
+
+      expect(jest.getTimerCount()).toBe(0);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('an asynchronously rejected resolver promise still normalizes to venue overview (distinct code path from the synchronous-throw case above)', async () => {
+    const resolveFreshLocation = resolverRejecting(new Error('async rejection, not a synchronous throw'));
+
+    await expect(
+      MapStartupController.resolveReturningLaunchCamera(checks, resolveFreshLocation),
+    ).resolves.toEqual({ action: 'FIT_VENUE_BOUNDS', reason: 'no_gps' });
+  });
+
+  it('the bounded timeout still fires normally for a resolver that never settles, unaffected by the synchronous-throw handling', async () => {
+    jest.useFakeTimers();
+    try {
+      const resolveFreshLocation = resolverThatNeverSettles();
+
+      const decisionPromise = MapStartupController.resolveReturningLaunchCamera(checks, resolveFreshLocation, 1000);
+      await jest.advanceTimersByTimeAsync(1000);
+
+      await expect(decisionPromise).resolves.toEqual({ action: 'FIT_VENUE_BOUNDS', reason: 'no_gps' });
+      expect(jest.getTimerCount()).toBe(0);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('no watcher/subscription is created when the resolver throws synchronously', async () => {
+    const resolveFreshLocation = resolverThrowingSynchronously(new Error('native module unavailable'));
+
+    await MapStartupController.resolveReturningLaunchCamera(checks, resolveFreshLocation);
+
+    expect(resolveFreshLocation).toHaveBeenCalledTimes(1);
   });
 });
