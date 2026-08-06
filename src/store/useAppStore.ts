@@ -221,32 +221,45 @@ function beginHydrationAttempt(): number {
   return hydrationGeneration;
 }
 
-/** Records the outcome of a hydration attempt and notifies every still-pending waiter. */
+/**
+ * Records the outcome of a hydration attempt and notifies every still-pending waiter.
+ *
+ * `lastHydrationSettleEvent` only ever advances forward: a late settle from an older,
+ * already-superseded generation (only reachable in tests that call persist.rehydrate()
+ * repeatedly, or across a Fast Refresh module recreation) must not clobber the recorded
+ * state for a newer generation that has already settled. Listeners are still notified with
+ * their own event unconditionally — each one filters by its own exact generation below — so
+ * an old generation's genuinely-pending waiter is unaffected by this ordering guard.
+ */
 function settleHydrationAttempt(generation: number, outcome: HydrationOutcome, error?: unknown): void {
   const event: HydrationSettleEvent = { generation, outcome, error };
-  lastHydrationSettleEvent = event;
+  if (!lastHydrationSettleEvent || generation >= lastHydrationSettleEvent.generation) {
+    lastHydrationSettleEvent = event;
+  }
   // Iterate a snapshot: a listener's own cleanup (see subscribeHydrationOutcome) mutates the
   // Set it's stored in as part of firing, which would otherwise skip entries mid-forEach.
   Array.from(hydrationOutcomeListeners).forEach((listener) => listener(event));
 }
 
 /**
- * Notifies `listener` once an attempt numbered >= `minGeneration` settles (resolves
- * synchronously against the latest known outcome if one already settled). Listeners for an
- * older, already-superseded generation are never matched, so a stray in-flight settle from a
- * prior rehydrate() call (only possible in tests that call persist.rehydrate() repeatedly)
- * can't resolve a waiter that's actually watching a newer attempt.
+ * Notifies `listener` once the attempt numbered exactly `generation` settles (resolves
+ * synchronously against the latest known outcome if that exact generation already settled).
+ * Matching is exact, not `>=`: a waiter opened for generation N must only ever be resolved by
+ * generation N settling. Under `>=`, a newer generation N+1 settling first (e.g. a fast
+ * superseding rehydrate() in tests, or a Fast Refresh module recreation racing an in-flight
+ * wait from the previous module instance) would incorrectly resolve a still-pending N waiter
+ * with a result that was never actually produced for its own attempt.
  */
 function subscribeHydrationOutcome(
-  minGeneration: number,
+  generation: number,
   listener: (event: HydrationSettleEvent) => void
 ): () => void {
-  if (lastHydrationSettleEvent && lastHydrationSettleEvent.generation >= minGeneration) {
+  if (lastHydrationSettleEvent && lastHydrationSettleEvent.generation === generation) {
     listener(lastHydrationSettleEvent);
     return () => {};
   }
   const wrapped = (event: HydrationSettleEvent) => {
-    if (event.generation < minGeneration) return;
+    if (event.generation !== generation) return;
     hydrationOutcomeListeners.delete(wrapped);
     listener(event);
   };
@@ -522,6 +535,14 @@ export function waitForStoreHydration(timeoutMs = HYDRATION_TIMEOUT_MS, signal?:
   const generation = hydrationGeneration;
   return new Promise((resolve) => {
     let settled = false;
+    // Idempotent no-op placeholder, replaced with the real unsubscribe function immediately
+    // below. subscribeHydrationOutcome() can invoke its listener *synchronously*, inside the
+    // same call that produces the real unsubscribe function, whenever this exact generation
+    // already settled before this waiter was created — a `const unsubscribe = subscribe(...)`
+    // pattern would leave `unsubscribe` in its temporal dead zone at the moment that
+    // synchronous replay tries to call it from within `finish`. Pre-binding it to a no-op
+    // means that replay path calls a valid (harmless) function instead of throwing.
+    let unsubscribe: () => void = () => {};
     const finish = (result: HydrationWaitResult) => {
       if (settled) return;
       settled = true;
@@ -535,7 +556,7 @@ export function waitForStoreHydration(timeoutMs = HYDRATION_TIMEOUT_MS, signal?:
       console.warn(`[useAppStore] Hydration timed out after ${timeoutMs}ms — proceeding with current in-memory state.`);
       finish({ outcome: 'timeout' });
     }, timeoutMs);
-    const unsubscribe = subscribeHydrationOutcome(generation, (event) => {
+    unsubscribe = subscribeHydrationOutcome(generation, (event) => {
       if (event.outcome === 'failure') {
         console.warn('[useAppStore] Hydration failed — proceeding with current in-memory state.', event.error);
       }
