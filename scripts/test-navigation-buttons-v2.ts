@@ -31,8 +31,12 @@ assert(
   'Navigation v2 Android back handler must stay registered.',
 );
 assert(
-  navigationOverlaySource.includes('onExit: vm.handleExit') && navigationExitSource.includes('onPress: exitOnce'),
-  'Navigation v2 Android back confirm must exit through shared handler.',
+  navigationOverlaySource.includes('onExit: vm.handleExit') &&
+    navigationExitSource.includes('if (arrived) exitOnce();') &&
+    navigationExitSource.includes('else requestNavigationExit();') &&
+    navigationExitSource.includes('onPress: confirmExit') &&
+    navigationExitSource.includes('const completeArrivalNavigation = exitOnce;'),
+  'Navigation v2 Back must complete Arrival immediately and confirm active navigation through one shared exit path.',
 );
 assert(
   navigationChromeSource.includes('style={styles.exitButton}') && navigationChromeSource.includes('onPress={requestNavigationExit}'),
