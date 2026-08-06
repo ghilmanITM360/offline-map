@@ -2,6 +2,7 @@ import type { Place } from '../models/types';
 import { V2PlaceAdapter } from '../services/V2PlaceAdapter';
 import { useAppStore } from '../store/useAppStore';
 import { V2DirectionsService } from '../services/V2DirectionsService';
+import { EntryGateRoutingService } from '../services/EntryGateRoutingService';
 import { useDirectionsViewModel } from '../viewmodels/DirectionsViewModel';
 import { act, renderHook, waitFor } from './test-utils';
 
@@ -156,5 +157,81 @@ describe('DirectionsViewModel hybrid outside routing', () => {
     expect(hook.result.current.loadState).toBe('ready');
     expect(hook.result.current.routeRefreshing).toBe(false);
     previewSpy.mockRestore();
+  });
+});
+
+// Near-boundary regression coverage: isOutsideStart (and everything LocationSheet derives from
+// it — loading copy, provider status text, gate-entry wording) must always agree with the
+// coordinate calculateRoute actually uses (routeOriginLocation for live_gps, not the raw,
+// not-yet-committed currentLocation GPS sample). isInsideIjtemaArea is mocked to an exact
+// coordinate-identity check so these tests exercise the threshold/commit mechanism itself,
+// independent of the real venue polygon.
+describe('DirectionsViewModel — outside presentation matches the active routing origin (near-boundary)', () => {
+  const insideCoord = { latitude: 24.966, longitude: 67.004 };
+  // ~5.6m from insideCoord — outside, but below DIRECTIONS_RECALCULATE_ORIGIN_MOVEMENT_M (20m).
+  const nearBoundaryOutsideCoord = { latitude: insideCoord.latitude + 0.00005, longitude: insideCoord.longitude };
+  // ~55.7m from insideCoord — outside, and above the movement threshold.
+  const committedOutsideCoord = { latitude: insideCoord.latitude + 0.0005, longitude: insideCoord.longitude };
+
+  let isInsideSpy: jest.SpyInstance;
+
+  beforeEach(() => {
+    isInsideSpy = jest
+      .spyOn(EntryGateRoutingService, 'isInsideIjtemaArea')
+      .mockImplementation(
+        (coord: { latitude: number; longitude: number }) =>
+          coord.latitude === insideCoord.latitude && coord.longitude === insideCoord.longitude,
+      );
+  });
+
+  afterEach(() => {
+    isInsideSpy.mockRestore();
+  });
+
+  test('1. a newer GPS sample outside but below the movement threshold does not flip the UI away from the still-inside active route origin', async () => {
+    useAppStore.setState({ currentLocation: insideCoord, currentLocationSource: 'live', lastKnownLocation: insideCoord });
+    const hook = await renderHook(() => useDirectionsViewModel(destination));
+    expect(hook.result.current.isOutsideStart).toBe(false);
+
+    await act(() => {
+      useAppStore.getState().setCurrentLocation(nearBoundaryOutsideCoord, 'live');
+    });
+
+    // routeOriginLocation must not have moved (below threshold) — presentation must still agree.
+    expect(hook.result.current.isOutsideStart).toBe(false);
+  });
+
+  test('2. once the GPS sample moves past the recalculation threshold, the UI commits to outside together with the active route origin', async () => {
+    useAppStore.setState({ currentLocation: insideCoord, currentLocationSource: 'live', lastKnownLocation: insideCoord });
+    const hook = await renderHook(() => useDirectionsViewModel(destination));
+    expect(hook.result.current.isOutsideStart).toBe(false);
+
+    await act(() => {
+      useAppStore.getState().setCurrentLocation(committedOutsideCoord, 'live');
+    });
+
+    expect(hook.result.current.isOutsideStart).toBe(true);
+  });
+
+  test('3. reverse: once the origin commits back inside past the threshold, the UI returns to inside too', async () => {
+    useAppStore.setState({ currentLocation: committedOutsideCoord, currentLocationSource: 'live', lastKnownLocation: committedOutsideCoord });
+    const hook = await renderHook(() => useDirectionsViewModel(destination));
+    expect(hook.result.current.isOutsideStart).toBe(true);
+
+    await act(() => {
+      useAppStore.getState().setCurrentLocation(insideCoord, 'live');
+    });
+
+    expect(hook.result.current.isOutsideStart).toBe(false);
+  });
+
+  test('4. manual and remembered start sources are unaffected by the live_gps movement threshold — they read their own coordinate directly, consistent with the fix', async () => {
+    useAppStore.setState({ currentLocation: insideCoord, currentLocationSource: 'live', lastKnownLocation: committedOutsideCoord });
+    const hook = await renderHook(() => useDirectionsViewModel(destination));
+    expect(hook.result.current.isOutsideStart).toBe(false); // live_gps, inside
+
+    await act(() => expect(hook.result.current.chooseRememberedLocation()).toBe(true));
+    expect(hook.result.current.startSource).toBe('remembered_location');
+    expect(hook.result.current.isOutsideStart).toBe(true); // remembered location is the committedOutsideCoord
   });
 });

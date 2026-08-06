@@ -103,6 +103,27 @@ export function useDirectionsViewModel(destination: Place | null) {
   const rememberedLocationInsideVenue = !!lastKnownLocation && isInsideVenueForDestination(lastKnownLocation);
   const currentRouteOriginInsideVenue = !!routeOriginLocation && isInsideVenueForDestination(routeOriginLocation);
 
+  // The single authoritative origin coordinate for this destination — inside/outside
+  // presentation (isOutsideStart below, and everything LocationSheet derives from it: loading
+  // copy, provider status text, gate-entry wording) and the actual route calculation
+  // (calculateRoute's originCoord) must always agree, so both read through this one function
+  // rather than keeping two independently-drifting computations.
+  //
+  // For live_gps this is deliberately `routeOriginLocation` (the thresholded, already-committed
+  // origin a route was last calculated from — see the recalculate-movement effect above), not
+  // the raw `currentLocation` GPS sample. Near the Ijtema boundary, a newer GPS fix can read
+  // outside while still under DIRECTIONS_RECALCULATE_ORIGIN_MOVEMENT_M and therefore hasn't
+  // committed into routeOriginLocation yet — reading raw currentLocation here would flip the
+  // UI to "outside" a beat before the active route/provider actually follows, showing the user
+  // gate-entry copy for a route that hasn't changed. Once the movement threshold is crossed,
+  // routeOriginLocation updates and both presentation and routing move together.
+  const resolveActiveOriginCoordinate = () =>
+    startSource === 'live_gps'
+      ? routeOriginLocation
+      : startSource === 'remembered_location'
+      ? lastKnownLocation
+      : manualStart?.coordinate ?? null;
+
   // Presentation-only "is the active start point outside the venue" check. The routing
   // coordinate determines outside/inside presentation, not the source label — a manually
   // searched or map-selected place whose coordinate is genuinely outside the venue must show
@@ -110,12 +131,7 @@ export function useDirectionsViewModel(destination: Place | null) {
   // forceOutside below (which already applies uniformly to every startSource). Previously
   // manual_place was excluded here, so the routing layer would silently run the outside/gate
   // flow while the UI still claimed the start was inside.
-  const startCoordinateForOutsideCheck =
-    startSource === 'live_gps'
-      ? currentLocation
-      : startSource === 'remembered_location'
-      ? lastKnownLocation
-      : manualStart?.coordinate ?? null;
+  const startCoordinateForOutsideCheck = resolveActiveOriginCoordinate();
   const isOutsideStart =
     destination?.sourceVersion === 'v2' &&
     !!startCoordinateForOutsideCheck &&
@@ -135,12 +151,7 @@ export function useDirectionsViewModel(destination: Place | null) {
       return;
     }
 
-    const originCoord =
-      startSource === 'live_gps'
-        ? routeOriginLocation
-        : startSource === 'remembered_location'
-        ? lastKnownLocation
-        : manualStart?.coordinate;
+    const originCoord = resolveActiveOriginCoordinate();
     if (!originCoord && !(destination?.sourceVersion === 'v2' && startSource === 'manual_place' && manualStart)) {
       setLoadState('needs_origin');
       setErrorMessage('Choose starting point to continue.');
