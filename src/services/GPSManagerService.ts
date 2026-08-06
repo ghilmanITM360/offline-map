@@ -7,6 +7,7 @@ import * as Location from 'expo-location';
 import { AppState, AppStateStatus } from 'react-native';
 import { Coordinate } from '../models/types';
 import { NAVIGATION_WATCH_TIME_INTERVAL_MS } from '../constants/navigation';
+import { OnboardingStatusService } from './OnboardingStatusService';
 
 type LocationCallback = (coord: Coordinate) => void;
 type LocationTrackingMode = 'follow' | 'navigation';
@@ -107,6 +108,9 @@ class GPSManager {
 
     const { status } = await Location.getForegroundPermissionsAsync();
     if (status !== 'granted') return;
+    // Fire-and-forget: clearSkippedLocationPermissionOnGrant never throws (errors are logged
+    // and swallowed internally) and starting the actual GPS watch below must not wait on it.
+    void OnboardingStatusService.clearSkippedLocationPermissionOnGrant(true);
 
     const nextSubscription = await Location.watchPositionAsync(
       this.getWatchOptions(mode),
@@ -153,6 +157,7 @@ class GPSManager {
     if (this.appState !== 'active') return null;
     const { status } = await Location.getForegroundPermissionsAsync();
     if (status !== 'granted') return null;
+    void OnboardingStatusService.clearSkippedLocationPermissionOnGrant(true);
     try {
       const location = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
       return this.publishFix(location);

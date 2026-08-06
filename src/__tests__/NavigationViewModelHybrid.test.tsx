@@ -1,4 +1,4 @@
-import type { Place } from '../models/types';
+import type { Place, V2ActiveRoute } from '../models/types';
 import { V2DirectionsService } from '../services/V2DirectionsService';
 import { V2NavigationAdapter } from '../services/V2NavigationAdapter';
 import { createProductionOutsideRouteSource } from '../services/outsideRouting/ProductionOutsideRouteSource';
@@ -17,10 +17,27 @@ const destination: Place = {
   sourceVersion: 'v2',
 };
 
-beforeEach(async () => {
+// This suite's own async assertions (retryOutsideRoute, selectOutsideGate, ...) each run a
+// real hybrid preview calculation and can legitimately take longer than Jest's 5s default —
+// scoped to this file only (not jest.config.js's global testTimeout), because this file
+// genuinely does more real work per test than a typical unit test. This is separate from, and
+// intentionally larger than, the waitFor(..., { timeout }) values below: those should fail on
+// their own with a specific "condition never became true" message well before this outer bound
+// would ever fire — previously both used the *same* 5s figure, so under any load the two would
+// race and this suite could fail with a generic Jest timeout instead of a diagnosable one.
+jest.setTimeout(15_000);
+
+// The real hybrid-OSM fixture computed below is deterministic for a fixed origin/destination
+// and is never mutated in place by anything under test — every VM action that changes the
+// active route calls setActiveRoute(...) with a *new* object rather than mutating this one (see
+// NavigationViewModelV2.ts). Computing it once here instead of inside beforeEach (as before)
+// means the suite pays for one real routing computation per run, not one per test — this was
+// the actual source of this suite's load-sensitivity, not the waitFor timeouts themselves.
+let sharedActiveRoute: V2ActiveRoute;
+
+beforeAll(async () => {
   delete process.env.EXPO_PUBLIC_IJTEMA_ROUTING_PROXY_BASE_URL;
   process.env.EXPO_PUBLIC_USE_IJTEMA_V2_ROUTING = 'true';
-  useAppStore.setState(initialStoreState, true);
   const preview = await V2DirectionsService.calculateHybridPreview({
     request: { startPlace: null, destination, currentLocation: origin, forceOutside: true },
     token: { requestId: 'navigation-initial', requestVersion: 1 },
@@ -28,12 +45,18 @@ beforeEach(async () => {
     outsideProvider: createProductionOutsideRouteSource({ googleProxyBaseUrl: undefined }),
   });
   if (preview.status !== 'ready' || !preview.route) throw new Error('Hybrid navigation fixture must resolve.');
-  const activeRoute = V2NavigationAdapter.fromPreview({
+  sharedActiveRoute = V2NavigationAdapter.fromPreview({
     previewRoute: preview.route,
     destination,
     currentLocation: origin,
   });
-  useAppStore.getState().startNavigation(destination, activeRoute, activeRoute.instructions);
+});
+
+beforeEach(() => {
+  delete process.env.EXPO_PUBLIC_IJTEMA_ROUTING_PROXY_BASE_URL;
+  process.env.EXPO_PUBLIC_USE_IJTEMA_V2_ROUTING = 'true';
+  useAppStore.setState(initialStoreState, true);
+  useAppStore.getState().startNavigation(destination, sharedActiveRoute, sharedActiveRoute.instructions);
   useAppStore.setState({ currentLocation: origin, currentLocationSource: 'live' });
 });
 

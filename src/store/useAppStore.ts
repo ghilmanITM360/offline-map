@@ -182,6 +182,91 @@ interface AppState {
   setDeveloperModeEnabled: (val: boolean) => void;
 }
 
+// --- Module-level (non-persisted, non-store) hydration outcome tracker ---
+//
+// Declared before useAppStore/create() below because persist's onRehydrateStorage callback
+// (see the onRehydrateStorage option further down) is invoked *synchronously* as part of
+// create()'s own setup — zustand's hydrate() runs once, immediately, at store creation, not
+// deferred to a later microtask. beginHydrationAttempt() below therefore runs before this
+// module has finished evaluating top-to-bottom; defining it (and the state it closes over)
+// after the store would reference `let` bindings still in their temporal dead zone and throw
+// "Cannot access before initialization" the moment this module is imported anywhere.
+//
+// zustand's own persist.hasHydrated()/onFinishHydration() only ever fire on a *successful*
+// rehydration pass (see node_modules/zustand/middleware.js hydrate(): the .catch() branch
+// calls onRehydrateStorage's callback with an error but never flips _hasHydrated or notifies
+// finishHydrationListeners). That made a known, already-logged rehydration failure
+// indistinguishable from a genuine AsyncStorage hang — both silently rode out the same
+// five-second timeout in waitForStoreHydration below.
+//
+// This tracker is fed exclusively from the onRehydrateStorage callback below, which zustand
+// guarantees fires exactly once per hydrate() attempt on both the success and failure paths.
+// It is deliberately plain module state, not a store field: recording it via set() would
+// schedule an extra persisted write-back on every rehydration (see the onRehydrateStorage
+// comment below for why that previously crashed the plain-Node scripts/*.ts suite).
+type HydrationOutcome = 'success' | 'failure';
+interface HydrationSettleEvent {
+  generation: number;
+  outcome: HydrationOutcome;
+  error?: unknown;
+}
+
+let hydrationGeneration = 0;
+let lastHydrationSettleEvent: HydrationSettleEvent | null = null;
+const hydrationOutcomeListeners = new Set<(event: HydrationSettleEvent) => void>();
+
+/** Opens a new hydration attempt. Called once per hydrate() call, including the automatic one at store creation. */
+function beginHydrationAttempt(): number {
+  hydrationGeneration += 1;
+  return hydrationGeneration;
+}
+
+/**
+ * Records the outcome of a hydration attempt and notifies every still-pending waiter.
+ *
+ * `lastHydrationSettleEvent` only ever advances forward: a late settle from an older,
+ * already-superseded generation (only reachable in tests that call persist.rehydrate()
+ * repeatedly, or across a Fast Refresh module recreation) must not clobber the recorded
+ * state for a newer generation that has already settled. Listeners are still notified with
+ * their own event unconditionally — each one filters by its own exact generation below — so
+ * an old generation's genuinely-pending waiter is unaffected by this ordering guard.
+ */
+function settleHydrationAttempt(generation: number, outcome: HydrationOutcome, error?: unknown): void {
+  const event: HydrationSettleEvent = { generation, outcome, error };
+  if (!lastHydrationSettleEvent || generation >= lastHydrationSettleEvent.generation) {
+    lastHydrationSettleEvent = event;
+  }
+  // Iterate a snapshot: a listener's own cleanup (see subscribeHydrationOutcome) mutates the
+  // Set it's stored in as part of firing, which would otherwise skip entries mid-forEach.
+  Array.from(hydrationOutcomeListeners).forEach((listener) => listener(event));
+}
+
+/**
+ * Notifies `listener` once the attempt numbered exactly `generation` settles (resolves
+ * synchronously against the latest known outcome if that exact generation already settled).
+ * Matching is exact, not `>=`: a waiter opened for generation N must only ever be resolved by
+ * generation N settling. Under `>=`, a newer generation N+1 settling first (e.g. a fast
+ * superseding rehydrate() in tests, or a Fast Refresh module recreation racing an in-flight
+ * wait from the previous module instance) would incorrectly resolve a still-pending N waiter
+ * with a result that was never actually produced for its own attempt.
+ */
+function subscribeHydrationOutcome(
+  generation: number,
+  listener: (event: HydrationSettleEvent) => void
+): () => void {
+  if (lastHydrationSettleEvent && lastHydrationSettleEvent.generation === generation) {
+    listener(lastHydrationSettleEvent);
+    return () => {};
+  }
+  const wrapped = (event: HydrationSettleEvent) => {
+    if (event.generation !== generation) return;
+    hydrationOutcomeListeners.delete(wrapped);
+    listener(event);
+  };
+  hydrationOutcomeListeners.add(wrapped);
+  return () => hydrationOutcomeListeners.delete(wrapped);
+}
+
 export const useAppStore = create<AppState>()(
   persist(
     (set, get) => ({
@@ -359,6 +444,33 @@ export const useAppStore = create<AppState>()(
       name: 'ijtema-app-store',
       storage: createJSONStorage(() => AsyncStorage),
       version: 2,
+      onRehydrateStorage: () => {
+        // Deliberately does NOT call any store set()/action here — every set() on this
+        // persisted store schedules its own write-back to AsyncStorage (see zustand's persist
+        // middleware), and that write-back is itself unguarded. In an environment where
+        // AsyncStorage is unavailable (e.g. the plain-Node scripts/*.ts test suite, which has
+        // no real AsyncStorage shim), a set() called from here previously turned a benign,
+        // already-handled read failure into an unhandled promise rejection that crashed the
+        // whole process. See waitForStoreHydration() below, which watches a module-level
+        // (non-persisted) hydration outcome tracker fed only from this callback — no store
+        // mutation involved.
+        //
+        // zustand calls this outer factory once per hydrate() attempt (including the initial,
+        // automatic one at store creation), so it's the correct place to open a new hydration
+        // "generation" — see beginHydrationAttempt() below.
+        const generation = beginHydrationAttempt();
+        return (_state, error) => {
+          if (error) {
+            // Known failure (bad JSON, storage.getItem rejection, migrate/merge throw, ...):
+            // leave in-memory defaults in place rather than throwing or hanging, and let any
+            // waiter resolve immediately instead of idling out the full timeout window.
+            console.error('[useAppStore] Failed to rehydrate persisted state — continuing with default values.', error);
+            settleHydrationAttempt(generation, 'failure', error);
+          } else {
+            settleHydrationAttempt(generation, 'success');
+          }
+        };
+      },
       migrate: (persistedState) => {
         if (!persistedState || typeof persistedState !== 'object') return persistedState;
         const state = persistedState as Partial<AppState>;
@@ -396,3 +508,63 @@ export const useAppStore = create<AppState>()(
     }
   )
 );
+
+const HYDRATION_TIMEOUT_MS = 5000;
+
+export type HydrationWaitOutcome = 'success' | 'failure' | 'timeout' | 'aborted';
+export interface HydrationWaitResult {
+  outcome: HydrationWaitOutcome;
+}
+
+/**
+ * Single canonical way to wait for the persisted store's one-shot AsyncStorage rehydration.
+ *
+ * Resolves as soon as the current hydration attempt settles:
+ * - 'success' — the persisted state (or in-memory defaults on a fresh install) is in the store.
+ * - 'failure' — a known, already-logged rehydration error occurred; in-memory defaults stand.
+ *   This resolves as soon as the failure is known, without waiting out `timeoutMs`.
+ * - 'timeout' — a genuine hang (no callback at all within `timeoutMs`); a degraded-startup
+ *   fallback, not an impossible path — callers must treat it the same as 'failure'.
+ * - 'aborted' — `signal` fired before the attempt settled (e.g. the caller unmounted).
+ *
+ * Every internal subscription (the outcome listener and the timeout) is torn down on whichever
+ * of these four outcomes occurs first, so concurrent callers never leak listeners into each other.
+ */
+export function waitForStoreHydration(timeoutMs = HYDRATION_TIMEOUT_MS, signal?: AbortSignal): Promise<HydrationWaitResult> {
+  if (useAppStore.persist.hasHydrated()) return Promise.resolve({ outcome: 'success' });
+  const generation = hydrationGeneration;
+  return new Promise((resolve) => {
+    let settled = false;
+    // Idempotent no-op placeholder, replaced with the real unsubscribe function immediately
+    // below. subscribeHydrationOutcome() can invoke its listener *synchronously*, inside the
+    // same call that produces the real unsubscribe function, whenever this exact generation
+    // already settled before this waiter was created — a `const unsubscribe = subscribe(...)`
+    // pattern would leave `unsubscribe` in its temporal dead zone at the moment that
+    // synchronous replay tries to call it from within `finish`. Pre-binding it to a no-op
+    // means that replay path calls a valid (harmless) function instead of throwing.
+    let unsubscribe: () => void = () => {};
+    const finish = (result: HydrationWaitResult) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeoutId);
+      unsubscribe();
+      signal?.removeEventListener('abort', onAbort);
+      resolve(result);
+    };
+    const onAbort = () => finish({ outcome: 'aborted' });
+    const timeoutId = setTimeout(() => {
+      console.warn(`[useAppStore] Hydration timed out after ${timeoutMs}ms — proceeding with current in-memory state.`);
+      finish({ outcome: 'timeout' });
+    }, timeoutMs);
+    unsubscribe = subscribeHydrationOutcome(generation, (event) => {
+      if (event.outcome === 'failure') {
+        console.warn('[useAppStore] Hydration failed — proceeding with current in-memory state.', event.error);
+      }
+      finish({ outcome: event.outcome });
+    });
+    if (signal) {
+      if (signal.aborted) finish({ outcome: 'aborted' });
+      else signal.addEventListener('abort', onAbort, { once: true });
+    }
+  });
+}

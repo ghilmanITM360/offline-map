@@ -8,7 +8,7 @@ import { View, Text, StyleSheet, Animated } from 'react-native';
 import { Map as MapIcon } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
 import * as Location from 'expo-location';
-import { useAppStore } from '../../store/useAppStore';
+import { useAppStore, waitForStoreHydration } from '../../store/useAppStore';
 import { ConnectivityService } from '../../services/ConnectivityService';
 import { OfflineMapService } from '../../services/OfflineMapService';
 import { OfflineMapStatusService } from '../../services/OfflineMapStatusService';
@@ -24,6 +24,7 @@ export function SplashScreen() {
   const { updateOfflineData, setHasLocationPermission, setOfflineMapStatus } = useAppStore();
   const isMountedRef = useRef(true); // fixed: guard navigation and state writes after unmount
   const minVisibleTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null); // fixed: cancel the splash delay on unmount
+  const hydrationAbortControllerRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     Animated.timing(fadeAnim, {
@@ -33,6 +34,8 @@ export function SplashScreen() {
     }).start();
 
     const checkStatus = async () => {
+      const hydrationAbortController = new AbortController();
+      hydrationAbortControllerRef.current = hydrationAbortController;
       try {
         // Minimum visible time so the logo is seen
         const minVisibleMs = new Promise<void>((resolve) => {
@@ -40,7 +43,7 @@ export function SplashScreen() {
         });
 
         // Run all checks in parallel
-        const [mapStatus, startupStatus, permissionResult, isConnected, graphOnlyModeEnabled, skippedOnlineModeEnabled, hasSeenWelcome] = await Promise.all([
+        const [mapStatus, startupStatus, permissionResult, isConnected, graphOnlyModeEnabled, skippedOnlineModeEnabled, hasSeenWelcome, skippedLocationPermission, , hydrationResult] = await Promise.all([
           OfflineMapService.getMapStatus(),
           OfflineMapStatusService.validateAtStartup(),
           Location.getForegroundPermissionsAsync(),
@@ -48,12 +51,35 @@ export function SplashScreen() {
           OfflineMapStatusService.isGraphOnlyModeEnabled(),
           OfflineMapStatusService.isSkippedOnlineModeEnabled(),
           OnboardingStatusService.hasSeenWelcome(),
+          OnboardingStatusService.hasSkippedLocationPermission(),
           minVisibleMs,
+          // Persisted-store hydration gate (pre-APK correction) — StartupManager/
+          // MapStartupController must never see default (unhydrated) persisted values.
+          // HomeScreen only mounts after this Promise.all resolves and navigation.replace()
+          // below runs, so this transitively guards every persisted read (hasSeenMapOverview,
+          // lastKnownLocation, settings, ...) downstream of Splash too. A known rehydration
+          // failure resolves this immediately (see waitForStoreHydration); only a genuine hang
+          // rides out the full timeout. Either way startup proceeds with whatever the store
+          // currently holds — in-memory defaults on failure/timeout, persisted values on success
+          // (persisted values can still reach startup after a bounded timeout too, if the read
+          // simply hadn't finished yet — 'timeout' does not imply the data is unavailable, only
+          // that this particular wait gave up on it).
+          waitForStoreHydration(undefined, hydrationAbortController.signal),
         ]);
 
         const permissionGranted = permissionResult.status === 'granted';
         if (!isMountedRef.current) {
           return; // fixed: stop after async work if the splash screen already unmounted
+        }
+
+        // Explicit, Splash-scoped acknowledgement of the degraded-startup outcome (in addition
+        // to the generation-scoped failure/timeout logs already emitted from inside
+        // waitForStoreHydration itself) — startup below proceeds identically for every outcome
+        // ('success' | 'failure' | 'timeout'; 'aborted' cannot reach here, see the isMountedRef
+        // check above), but this line makes that a deliberate, observable decision rather than
+        // a silently-discarded Promise.all slot.
+        if (hydrationResult.outcome !== 'success') {
+          console.warn(`[SplashScreen] Continuing startup with outcome="${hydrationResult.outcome}" persisted-state hydration — using in-memory defaults for any key not yet confirmed from storage.`);
         }
 
         const { downloadState, setDownloadState } = useAppStore.getState(); // fixed: reconcile persisted download progress with actual disk state on cold start
@@ -73,9 +99,29 @@ export function SplashScreen() {
 
         setHasLocationPermission(permissionGranted);
 
+        // Real permission is confirmed granted — supersede any earlier "Continue Without
+        // Location" choice so a later revocation is treated as fresh, not a still-standing
+        // skip. Uses the same canonical helper as every other permission-entry surface
+        // (Permission screen, Settings, Home/Recenter, Directions). `effectiveSkippedLocationPermission`
+        // is already computed above and does not depend on this write landing, and this call
+        // is wrapped in its own try/catch (on top of the helper's own internal one) so a
+        // cleanup failure can never fall through to the catch below and override
+        // StartupManager's route resolution with the generic startup-failure fallback — see
+        // the "permission-skip cleanup is isolated from route resolution" tests in
+        // SplashScreen.test.tsx.
+        const effectiveSkippedLocationPermission = permissionGranted ? false : skippedLocationPermission;
+        if (permissionGranted && skippedLocationPermission) {
+          try {
+            await OnboardingStatusService.clearSkippedLocationPermissionOnGrant(true);
+          } catch (cleanupError) {
+            console.error('[SplashScreen] Failed to clear the skipped-location-permission preference — continuing startup with the in-memory decision.', cleanupError);
+          }
+        }
+
         const { route } = StartupManager.resolve({
           hasSeenWelcome,
           permissionGranted,
+          skippedLocationPermission: effectiveSkippedLocationPermission,
           offlineMapStatus: startupStatus.status,
           graphOnlyModeEnabled,
           skippedOnlineModeEnabled,
@@ -99,6 +145,7 @@ export function SplashScreen() {
       if (minVisibleTimeoutRef.current) {
         clearTimeout(minVisibleTimeoutRef.current); // fixed: cancel the pending splash timeout
       }
+      hydrationAbortControllerRef.current?.abort(); // let waitForStoreHydration drop its listeners immediately instead of idling out the timeout
     };
   }, [fadeAnim, navigation, setHasLocationPermission, updateOfflineData]);
 

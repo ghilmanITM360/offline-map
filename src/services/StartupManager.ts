@@ -13,6 +13,11 @@ export type StartupRoute = Extract<keyof RootStackParamList, 'Welcome' | 'Permis
 export interface StartupChecks {
   hasSeenWelcome: boolean;
   permissionGranted: boolean;
+  /** True once the user has confirmed "Continue Without Location" — see
+   * OnboardingStatusService.hasSkippedLocationPermission(). Bypasses the mandatory
+   * Permission route below so a returning user who already skipped isn't re-prompted
+   * every launch. */
+  skippedLocationPermission: boolean;
   offlineMapStatus: OfflineMapStatus;
   graphOnlyModeEnabled: boolean;
   skippedOnlineModeEnabled: boolean;
@@ -36,7 +41,7 @@ export class StartupManager {
       return { phase: 'first_install', route: 'Welcome' };
     }
 
-    if (!checks.permissionGranted) {
+    if (!checks.permissionGranted && !checks.skippedLocationPermission) {
       return { phase: 'first_install', route: 'Permission' };
     }
 
