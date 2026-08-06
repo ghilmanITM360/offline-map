@@ -16,10 +16,11 @@ import { BlockLayer } from '../map/BlockLayer';
 import { navOverlayStyles as styles } from './navOverlayStyles';
 import { markerSizes, staticColors } from '../../../theme';
 import { OutsideRoutePolyline } from './OutsideRoutePolyline';
+import { resolveMapMarkerOwnership } from '../map/MapMarkerOwnership';
 
 /** Renders as children of the shared MapView while a v2 route is being navigated. */
 export function NavigationMapLayersV2({ overlay }: { overlay: NavigationOverlayV2 }) {
-  const { route, snappedLocation, reroutePending, mapLayers, userPulseAnim, currentLocationSource } = overlay;
+  const { route, snappedLocation, arrived, reroutePending, mapLayers, userPulseAnim, currentLocationSource } = overlay;
   // useMemo must run unconditionally on every render (Rules of Hooks) — this
   // sits above the `!route` early return below, matching HomeScreen's
   // equivalent preview-path memo (activePreviewRoute?.coordinates ?? []).
@@ -37,6 +38,7 @@ export function NavigationMapLayersV2({ overlay }: { overlay: NavigationOverlayV
 
   const startCoordinate = route.origin.coordinate;
   const destinationCoordinate = route.destination.coordinate;
+  const markerOwnership = resolveMapMarkerOwnership(arrived ? 'ARRIVAL' : 'NAVIGATION', !!snappedLocation);
 
   return (
     <>
@@ -71,26 +73,26 @@ export function NavigationMapLayersV2({ overlay }: { overlay: NavigationOverlayV
         </>
       )}
 
-      <Marker coordinate={startCoordinate} title={route.origin.label} anchor={{ x: 0.5, y: 0.5 }} tracksViewChanges={false}>
+      {markerOwnership.showNavigationStart && <Marker testID="navigation-start-marker" coordinate={startCoordinate} title={route.origin.label} anchor={{ x: 0.5, y: 0.5 }} tracksViewChanges={false}>
         <View style={styles.startMarkerWrap}>
           <View style={styles.startMarkerDot} />
           <View style={styles.startMarkerLabel}>
             <Text style={styles.startMarkerLabelText}>START</Text>
           </View>
         </View>
-      </Marker>
+      </Marker>}
 
-      <Marker coordinate={destinationCoordinate} title={route.destination.label} anchor={{ x: 0.5, y: 1 }} tracksViewChanges={false}>
+      {markerOwnership.showNavigationDestination && <Marker testID="navigation-destination-marker" coordinate={destinationCoordinate} title={route.destination.label} anchor={{ x: 0.5, y: 1 }} tracksViewChanges={false}>
         <View style={styles.destinationMarker}>
           <MapPin size={markerSizes.destination} color={staticColors.gateAccent} fill={staticColors.gateAccent} />
         </View>
-      </Marker>
+      </Marker>}
 
-      {snappedLocation && (
+      {markerOwnership.showNavigationUser && snappedLocation && (
         // tracksViewChanges={false} matches HomeScreen's identical browse-mode pulse marker
         // (the Animated.View pulse still renders correctly with it off; leaving it default/true
         // here would make this marker re-snapshot continuously during every nav session).
-        <Marker coordinate={snappedLocation} flat anchor={{ x: 0.5, y: 0.5 }} tracksViewChanges={false}>
+        <Marker testID="navigation-user-location-marker" coordinate={snappedLocation} flat anchor={{ x: 0.5, y: 0.5 }} tracksViewChanges={false}>
           <View style={styles.userMarkerWrap}>
             <Animated.View
               style={[

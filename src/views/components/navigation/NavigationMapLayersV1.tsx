@@ -13,15 +13,17 @@ import { RoutePointService } from '../../../services/RoutePointService';
 import { NavigationOverlayV1 } from '../../../viewmodels/useNavigationOverlayV1';
 import { navOverlayStyles as styles } from './navOverlayStyles';
 import { markerSizes, staticColors } from '../../../theme';
+import { resolveMapMarkerOwnership } from '../map/MapMarkerOwnership';
 
 /** Renders as children of the shared MapView while a legacy (v1) route is being
  * navigated — moved verbatim out of the old standalone NavigationScreen. */
 export function NavigationMapLayersV1({ overlay }: { overlay: NavigationOverlayV1 }) {
-  const { route, destination, snappedLocation, reroutePending, mapLayers, userPulseAnim, currentLocationSource } = overlay;
+  const { route, destination, snappedLocation, arrived, reroutePending, mapLayers, userPulseAnim, currentLocationSource } = overlay;
   if (!route) return null;
 
   const startCoordinate = route.coordinates[0] ?? null;
   const destinationCoordinate = destination ? RoutePointService.getDestinationCoordinate(destination) : null;
+  const markerOwnership = resolveMapMarkerOwnership(arrived ? 'ARRIVAL' : 'NAVIGATION', !!snappedLocation);
 
   return (
     <>
@@ -75,8 +77,8 @@ export function NavigationMapLayersV1({ overlay }: { overlay: NavigationOverlayV
         zIndex={21}
       />
 
-      {startCoordinate && (
-        <Marker coordinate={startCoordinate} title="Start" anchor={{ x: 0.5, y: 0.5 }} tracksViewChanges={false}>
+      {markerOwnership.showNavigationStart && startCoordinate && (
+        <Marker testID="navigation-start-marker" coordinate={startCoordinate} title="Start" anchor={{ x: 0.5, y: 0.5 }} tracksViewChanges={false}>
           <View style={styles.startMarkerWrap}>
             <View style={styles.startMarkerDot} />
             <View style={styles.startMarkerLabel}>
@@ -86,16 +88,16 @@ export function NavigationMapLayersV1({ overlay }: { overlay: NavigationOverlayV
         </Marker>
       )}
 
-      {destination && destinationCoordinate && (
-        <Marker coordinate={destinationCoordinate} title={destination.name} anchor={{ x: 0.5, y: 1 }} tracksViewChanges={false}>
+      {markerOwnership.showNavigationDestination && destination && destinationCoordinate && (
+        <Marker testID="navigation-destination-marker" coordinate={destinationCoordinate} title={destination.name} anchor={{ x: 0.5, y: 1 }} tracksViewChanges={false}>
           <View style={styles.destinationMarker}>
             <MapPin size={markerSizes.destination} color={staticColors.gateAccent} fill={staticColors.gateAccent} />
           </View>
         </Marker>
       )}
 
-      {snappedLocation && (
-        <Marker coordinate={snappedLocation} flat anchor={{ x: 0.5, y: 0.5 }} tracksViewChanges={false}>
+      {markerOwnership.showNavigationUser && snappedLocation && (
+        <Marker testID="navigation-user-location-marker" coordinate={snappedLocation} flat anchor={{ x: 0.5, y: 0.5 }} tracksViewChanges={false}>
           <View style={styles.userMarkerWrap}>
             <Animated.View
               style={[

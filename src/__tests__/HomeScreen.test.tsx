@@ -677,6 +677,23 @@ describe('HomeScreen — canonical bottom-sheet dismissal', () => {
   });
 });
 
+describe('HomeScreen — navigation completion cleanup', () => {
+  test('ending navigation clears selected-place state before Explore can revive its marker', async () => {
+    const user = userEvent.setup();
+    await render(<HomeScreen />);
+    const input = screen.getByPlaceholderText('Search blocks, rastas, gates');
+    await user.type(input, 'Gate 5');
+    await user.press(await screen.findByTestId('search-result-GATE_05'));
+    expect(screen.getByTestId('selected-place-marker')).toBeOnTheScreen();
+
+    await act(async () => useAppStore.setState({ isNavigating: true }));
+    await act(async () => useAppStore.getState().stopNavigation());
+
+    expect(screen.queryByTestId('selected-place-marker')).not.toBeOnTheScreen();
+    expect(setSelectedPlaceSpy).toHaveBeenCalledWith(null);
+  });
+});
+
 describe('HomeScreen — resolved base-map rendering', () => {
   function useDownloadedTilesViewModel() {
     return { ...useFakeHomeViewModel(), isOffline: false, offlineData: { isDownloaded: true } };

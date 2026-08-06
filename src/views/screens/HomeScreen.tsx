@@ -89,6 +89,7 @@ import { NavigationMapLayersV1 } from '../components/navigation/NavigationMapLay
 import { NavigationChromeV1 } from '../components/navigation/NavigationChromeV1';
 import { LocationSheet } from '../components/map/LocationSheet';
 import { UserLocationMarker } from '../components/map/UserLocationMarker';
+import { resolveMapMarkerOwnership } from '../components/map/MapMarkerOwnership';
 import { LocationTutorialTooltip } from '../components/map/LocationTutorialTooltip';
 import { resolveTapCandidate, TapCandidate } from '../../services/TapDisambiguationService';
 import { Z } from '../styles/zLayers';
@@ -389,6 +390,14 @@ export function HomeScreen() {
     activePreviewRoute,
     selectedPlace,
   });
+  const hasNavigationUserLocation = Boolean(
+    showNavOverlay
+      ? navOverlay.snappedLocation
+      : navOverlayV1.active
+        ? navOverlayV1.snappedLocation
+        : null,
+  );
+  const markerOwnership = resolveMapMarkerOwnership(mode, hasNavigationUserLocation);
 
   type SheetDismissalReason = 'state-reset' | 'start-navigation' | 'replacement';
   const sheetRouteDestination = directionsDestination ?? (activePreviewRoute ? routePlannerDest : null);
@@ -418,6 +427,17 @@ export function HomeScreen() {
     setSheetIndex(-1);
     handleSheetIndexChange(-1);
   }, [cancelPendingSheetPresentation, clearRoutePlanner, handleSheetIndexChange, setSelectedPlace]);
+
+  const wasNavigatingRef = useRef(isNavigating);
+  useEffect(() => {
+    const navigationEnded = wasNavigatingRef.current && !isNavigating;
+    wasNavigatingRef.current = isNavigating;
+    if (!navigationEnded) return;
+    // Canonical navigation exit (arrival Done or confirmed mid-trip Exit) already
+    // clears route/runtime state in the store. Retire Home-owned selection/planner
+    // state here so Explore cannot resurrect the destination browse pin.
+    resetDismissedSheetState(true);
+  }, [isNavigating, resetDismissedSheetState]);
 
   const closeSearch = useCallback(() => {
     clearSearch();
@@ -1345,7 +1365,7 @@ export function HomeScreen() {
           })}
 
           {/* Selected place pin — hidden during route preview to avoid duplicate destination marker */}
-          {mode !== 'NAVIGATION' && selectedPlace && selectedPlaceMarkerCoordinate && !activePreviewRoute && (
+          {markerOwnership.showBrowseSelection && selectedPlace && selectedPlaceMarkerCoordinate && !activePreviewRoute && (
             <Marker coordinate={selectedPlaceMarkerCoordinate} tracksViewChanges={false}>
               <View testID="selected-place-marker" style={styles.selectedMarker}>
                 <MapPin size={markerSizes.destination} color={staticColors.gateAccent} fill={staticColors.gateAccent} />
@@ -1362,7 +1382,7 @@ export function HomeScreen() {
             </Marker>
           )}
 
-          {mode !== 'NAVIGATION' && currentLocation && (
+          {markerOwnership.showBrowseUser && currentLocation && (
             <UserLocationMarker
               coordinate={currentLocation}
               accuracy={currentLocation.accuracy}
