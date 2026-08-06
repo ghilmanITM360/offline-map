@@ -6,41 +6,74 @@
 import { useAppStore, waitForStoreHydration } from '../store/useAppStore';
 
 const initialStoreState = useAppStore.getState();
+const realPersistOptions = useAppStore.persist.getOptions();
+
+function controllableStorage() {
+  let resolveGetItem!: (value: unknown) => void;
+  let rejectGetItem!: (error: unknown) => void;
+  const getItemPromise = new Promise((resolve, reject) => {
+    resolveGetItem = resolve;
+    rejectGetItem = reject;
+  });
+  return {
+    storage: {
+      getItem: () => getItemPromise,
+      setItem: () => Promise.resolve(),
+      removeItem: () => Promise.resolve(),
+    },
+    resolve: (value: unknown) => resolveGetItem(value),
+    reject: (error: unknown) => rejectGetItem(error),
+  };
+}
 
 beforeEach(() => {
   useAppStore.setState(initialStoreState, true);
 });
 
+afterEach(() => {
+  // Each test below points persist.setOptions at a scratch storage to control rehydration
+  // timing precisely — restore the real one so later tests/files rehydrate normally.
+  useAppStore.persist.setOptions(realPersistOptions);
+});
+
 describe('waitForStoreHydration', () => {
-  it('resolves immediately when the store has already hydrated', async () => {
-    useAppStore.setState({ hasHydrated: true });
+  it('resolves immediately once a real rehydration pass has already completed', async () => {
+    await useAppStore.persist.rehydrate();
+    expect(useAppStore.persist.hasHydrated()).toBe(true);
     await expect(waitForStoreHydration()).resolves.toBeUndefined();
   });
 
-  it('waits for a delayed hydration flip before resolving', async () => {
-    useAppStore.setState({ hasHydrated: false });
+  it('waits for a delayed hydration pass before resolving', async () => {
+    const controllable = controllableStorage();
+    useAppStore.persist.setOptions({ storage: controllable.storage });
+    const rehydratePromise = useAppStore.persist.rehydrate();
+
     let resolved = false;
-    const promise = waitForStoreHydration(5000).then(() => {
+    const waitPromise = waitForStoreHydration(5000).then(() => {
       resolved = true;
     });
 
-    // Give pending microtasks a chance to run — must NOT have resolved yet.
     await Promise.resolve();
     await Promise.resolve();
     expect(resolved).toBe(false);
+    expect(useAppStore.persist.hasHydrated()).toBe(false);
 
-    useAppStore.getState().setHasHydrated(true);
-    await promise;
+    controllable.resolve(null); // storage has nothing stored — a normal fresh-install read
+    await rehydratePromise;
+    await waitPromise;
     expect(resolved).toBe(true);
   });
 
-  it('falls back safely with a bounded timeout if hydration never completes (failure/hang case)', async () => {
+  it('falls back safely with a bounded timeout if hydration never completes (a genuine AsyncStorage hang)', async () => {
     jest.useFakeTimers();
     try {
-      useAppStore.setState({ hasHydrated: false });
+      const controllable = controllableStorage(); // getItem promise deliberately never settles
+      useAppStore.persist.setOptions({ storage: controllable.storage });
+      void useAppStore.persist.rehydrate();
+
       const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
       let resolved = false;
-      const promise = waitForStoreHydration(1000).then(() => {
+      const waitPromise = waitForStoreHydration(1000).then(() => {
         resolved = true;
       });
 
@@ -49,7 +82,7 @@ describe('waitForStoreHydration', () => {
       expect(resolved).toBe(false);
 
       jest.advanceTimersByTime(2);
-      await promise;
+      await waitPromise;
       expect(resolved).toBe(true);
       expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('Hydration timed out'));
       warnSpy.mockRestore();
@@ -58,12 +91,31 @@ describe('waitForStoreHydration', () => {
     }
   });
 
-  it('does not persist hasHydrated itself — every cold start must start unhydrated', () => {
-    // Guard against a future partialize edit accidentally starting hasHydrated=true from
-    // AsyncStorage, which would defeat the whole point of waiting for a *real* rehydration.
-    useAppStore.setState({ hasHydrated: true });
-    const persistOptions = (useAppStore as unknown as { persist: { getOptions: () => { partialize: (s: unknown) => Record<string, unknown> } } }).persist;
-    const persisted = persistOptions.getOptions().partialize(useAppStore.getState());
-    expect(persisted).not.toHaveProperty('hasHydrated');
+  it('also falls back via the timeout when the read genuinely fails (onFinishHydration never fires on error)', async () => {
+    jest.useFakeTimers();
+    try {
+      const controllable = controllableStorage();
+      useAppStore.persist.setOptions({ storage: controllable.storage });
+      const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+      const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+
+      const rehydratePromise = useAppStore.persist.rehydrate();
+      const waitPromise = waitForStoreHydration(1000).then(() => 'done');
+
+      controllable.reject(new Error('AsyncStorage read failed'));
+      await rehydratePromise;
+      await Promise.resolve();
+      expect(useAppStore.persist.hasHydrated()).toBe(false);
+      expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('Failed to rehydrate'), expect.any(Error));
+
+      jest.advanceTimersByTime(1000);
+      await expect(waitPromise).resolves.toBe('done');
+      expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('Hydration timed out'));
+
+      errorSpy.mockRestore();
+      warnSpy.mockRestore();
+    } finally {
+      jest.useRealTimers();
+    }
   });
 });

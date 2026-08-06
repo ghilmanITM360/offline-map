@@ -180,14 +180,6 @@ interface AppState {
   setShowRouteDiagnostics: (val: boolean) => void;
   developerModeEnabled: boolean;
   setDeveloperModeEnabled: (val: boolean) => void;
-
-  // --- Persisted-store hydration (pre-APK correction: startup/camera decisions must never
-  // read default values before AsyncStorage rehydration completes) ---
-  // Starts false on every cold start (deliberately excluded from partialize) and flips true
-  // exactly once, via the persist config's onRehydrateStorage below, on success OR failure —
-  // see waitForStoreHydration() for the single canonical way callers should wait on this.
-  hasHydrated: boolean;
-  setHasHydrated: (val: boolean) => void;
 }
 
 export const useAppStore = create<AppState>()(
@@ -362,21 +354,24 @@ export const useAppStore = create<AppState>()(
       setShowRouteDiagnostics: (val) => set({ showRouteDiagnostics: val }),
       developerModeEnabled: false,
       setDeveloperModeEnabled: (val) => set({ developerModeEnabled: val }),
-
-      hasHydrated: false,
-      setHasHydrated: (val) => set({ hasHydrated: val }),
     }),
     {
       name: 'ijtema-app-store',
       storage: createJSONStorage(() => AsyncStorage),
       version: 2,
       onRehydrateStorage: () => (_state, error) => {
+        // Deliberately does NOT call any store set()/action here — every set() on this
+        // persisted store schedules its own write-back to AsyncStorage (see zustand's persist
+        // middleware), and that write-back is itself unguarded. In an environment where
+        // AsyncStorage is unavailable (e.g. the plain-Node scripts/*.ts test suite, which has
+        // no real AsyncStorage shim), a set() called from here previously turned a benign,
+        // already-handled read failure into an unhandled promise rejection that crashed the
+        // whole process. See waitForStoreHydration() below, which watches zustand's own
+        // persist.hasHydrated()/onFinishHydration() instead — no store mutation involved.
         if (error) {
-          // Safe fallback: leave in-memory defaults in place rather than throwing or hanging —
-          // callers (see waitForStoreHydration) still get unblocked below.
+          // Safe fallback: leave in-memory defaults in place rather than throwing or hanging.
           console.error('[useAppStore] Failed to rehydrate persisted state — continuing with default values.', error);
         }
-        useAppStore.getState().setHasHydrated(true);
       },
       migrate: (persistedState) => {
         if (!persistedState || typeof persistedState !== 'object') return persistedState;
@@ -411,8 +406,6 @@ export const useAppStore = create<AppState>()(
         showSpecialRoutesLayer: state.showSpecialRoutesLayer,
         showRouteDiagnostics: state.showRouteDiagnostics,
         developerModeEnabled: state.developerModeEnabled,
-        // hasHydrated is deliberately excluded — it must start false on every cold start so
-        // waitForStoreHydration() below always waits for a real rehydration pass.
       }),
     }
   )
@@ -421,26 +414,32 @@ export const useAppStore = create<AppState>()(
 const HYDRATION_TIMEOUT_MS = 5000;
 
 /**
- * Single canonical way to wait for the persisted store's one-shot AsyncStorage rehydration
- * (see onRehydrateStorage above — fires on success or failure). Bounded by a safety timeout
- * so a pathological AsyncStorage hang (a read that never resolves or rejects) can't block
- * startup forever; if the timeout wins, hydration may still complete later in the background
- * and this resolves anyway with whatever state is currently in memory.
+ * Single canonical way to wait for the persisted store's one-shot AsyncStorage rehydration.
+ * Deliberately built on zustand persist's own persist.hasHydrated()/onFinishHydration() APIs
+ * rather than a custom store field+set() — every set() on this store schedules its own
+ * write-back to AsyncStorage, so a custom flag flipped via set() would trigger an extra,
+ * unguarded write on every rehydration (this previously crashed the plain-Node
+ * scripts/*.ts test suite, which has no real AsyncStorage shim, with an unhandled rejection).
+ * Reading zustand's internal hydration state involves no store mutation at all.
+ *
+ * Bounded by a safety timeout so a pathological AsyncStorage hang (a read that never resolves
+ * or rejects) can't block startup forever. Note onFinishHydration only fires on a *successful*
+ * rehydration pass (zustand's own hydrate() skips it on error) — a failed read is therefore
+ * also caught by this same timeout, not resolved early; onRehydrateStorage above still logs
+ * the failure immediately via console.error.
  */
 export function waitForStoreHydration(timeoutMs = HYDRATION_TIMEOUT_MS): Promise<void> {
-  if (useAppStore.getState().hasHydrated) return Promise.resolve();
+  if (useAppStore.persist.hasHydrated()) return Promise.resolve();
   return new Promise((resolve) => {
     const timeoutId = setTimeout(() => {
       console.warn(`[useAppStore] Hydration timed out after ${timeoutMs}ms — proceeding with current in-memory state.`);
       unsubscribe();
       resolve();
     }, timeoutMs);
-    const unsubscribe = useAppStore.subscribe((state) => {
-      if (state.hasHydrated) {
-        clearTimeout(timeoutId);
-        unsubscribe();
-        resolve();
-      }
+    const unsubscribe = useAppStore.persist.onFinishHydration(() => {
+      clearTimeout(timeoutId);
+      unsubscribe();
+      resolve();
     });
   });
 }

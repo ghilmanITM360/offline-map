@@ -54,6 +54,27 @@ jest.mock('@react-navigation/native', () => {
 });
 
 const initialStoreState = useAppStore.getState();
+const realPersistOptions = useAppStore.persist.getOptions();
+
+// Lets each test control exactly when the store's rehydration pass "completes", independent
+// of SplashScreen's other awaited checks — mirrors the technique in
+// useAppStoreHydration.test.ts. Resolving with `null` simulates a fresh install (nothing
+// stored yet); resolving with `{ state, version }` simulates a returning user's real
+// persisted values arriving as part of the same rehydration pass.
+function controllableStorage() {
+  let resolveGetItem!: (value: unknown) => void;
+  const getItemPromise = new Promise((resolve) => {
+    resolveGetItem = resolve;
+  });
+  return {
+    storage: {
+      getItem: () => getItemPromise,
+      setItem: () => Promise.resolve(),
+      removeItem: () => Promise.resolve(),
+    },
+    resolve: (value: unknown) => resolveGetItem(value),
+  };
+}
 
 async function flush() {
   await act(async () => {
@@ -78,12 +99,15 @@ beforeEach(() => {
 
 afterEach(() => {
   jest.useRealTimers();
+  useAppStore.persist.setOptions(realPersistOptions);
 });
 
 describe('SplashScreen — persisted-store hydration gate', () => {
   it('fresh install: navigates to Welcome only after hydration completes', async () => {
     (OnboardingStatusService.hasSeenWelcome as jest.Mock).mockResolvedValue(false);
-    useAppStore.setState({ hasHydrated: false });
+    const controllable = controllableStorage();
+    useAppStore.persist.setOptions({ storage: controllable.storage });
+    const rehydratePromise = useAppStore.persist.rehydrate();
 
     await act(async () => {
       render(<SplashScreen />);
@@ -94,7 +118,8 @@ describe('SplashScreen — persisted-store hydration gate', () => {
     expect(mockReplaceSpy).not.toHaveBeenCalled();
 
     await act(async () => {
-      useAppStore.getState().setHasHydrated(true);
+      controllable.resolve(null);
+      await rehydratePromise;
     });
     await flush();
 
@@ -103,7 +128,9 @@ describe('SplashScreen — persisted-store hydration gate', () => {
   });
 
   it('returning user: navigates to Main only after hydration completes, exactly once', async () => {
-    useAppStore.setState({ hasHydrated: false });
+    const controllable = controllableStorage();
+    useAppStore.persist.setOptions({ storage: controllable.storage });
+    const rehydratePromise = useAppStore.persist.rehydrate();
 
     await act(async () => {
       render(<SplashScreen />);
@@ -112,7 +139,8 @@ describe('SplashScreen — persisted-store hydration gate', () => {
     expect(mockReplaceSpy).not.toHaveBeenCalled();
 
     await act(async () => {
-      useAppStore.getState().setHasHydrated(true);
+      controllable.resolve(null);
+      await rehydratePromise;
     });
     await flush();
 
@@ -122,9 +150,12 @@ describe('SplashScreen — persisted-store hydration gate', () => {
 
   it('does not evaluate hasSeenMapOverview from a pre-hydration default — waits for the real persisted value', async () => {
     // hasSeenMapOverview defaults to false; simulate a returning user whose real persisted
-    // value is true, arriving only once hydration completes (mirrors what HomeScreen's
-    // cold-launch camera decision reads once Main mounts after Splash navigates).
-    useAppStore.setState({ hasHydrated: false, hasSeenMapOverview: false });
+    // value is true, arriving only once the rehydration read resolves (mirrors what
+    // HomeScreen's cold-launch camera decision reads once Main mounts after Splash navigates).
+    const controllable = controllableStorage();
+    useAppStore.persist.setOptions({ storage: controllable.storage });
+    const rehydratePromise = useAppStore.persist.rehydrate();
+    expect(useAppStore.getState().hasSeenMapOverview).toBe(false);
 
     await act(async () => {
       render(<SplashScreen />);
@@ -133,9 +164,8 @@ describe('SplashScreen — persisted-store hydration gate', () => {
     expect(mockReplaceSpy).not.toHaveBeenCalled();
 
     await act(async () => {
-      // The real rehydration pass overwrites the in-memory default with the persisted value
-      // as part of the same state transition that flips hasHydrated.
-      useAppStore.setState({ hasSeenMapOverview: true, hasHydrated: true });
+      controllable.resolve({ version: 2, state: { hasSeenMapOverview: true } });
+      await rehydratePromise;
     });
     await flush();
 
@@ -145,21 +175,27 @@ describe('SplashScreen — persisted-store hydration gate', () => {
     expect(useAppStore.getState().hasSeenMapOverview).toBe(true);
   });
 
-  it('never calls navigation.replace more than once even if hydration flips after other checks already settled', async () => {
-    useAppStore.setState({ hasHydrated: false });
+  it('never calls navigation.replace more than once even if a second rehydration pass runs after the first completed', async () => {
+    const controllable = controllableStorage();
+    useAppStore.persist.setOptions({ storage: controllable.storage });
+    const rehydratePromise = useAppStore.persist.rehydrate();
 
     await act(async () => {
       render(<SplashScreen />);
     });
 
     await act(async () => {
-      useAppStore.getState().setHasHydrated(true);
+      controllable.resolve(null);
+      await rehydratePromise;
     });
     await flush();
-    // Flipping again must not trigger a second navigation — Splash's effect runs once per mount.
+    expect(mockReplaceSpy).toHaveBeenCalledTimes(1);
+
+    // A redundant later rehydration (e.g. another part of the app calling rehydrate() again)
+    // must not trigger a second navigation — Splash's effect only ever awaits its own single
+    // waitForStoreHydration() call from the original mount.
     await act(async () => {
-      useAppStore.getState().setHasHydrated(false);
-      useAppStore.getState().setHasHydrated(true);
+      await useAppStore.persist.rehydrate();
     });
     await flush();
 
