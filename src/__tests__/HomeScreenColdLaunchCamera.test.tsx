@@ -110,7 +110,21 @@ beforeAll(() => {
   initialStoreState = useAppStore.getState();
 });
 
+// The mocked MapView (jest.setup.ts) exposes a real pointForCoordinate() via
+// useImperativeHandle, so mapReady genuinely kicks off MapLabelOverlay's
+// requestAnimationFrame -> Promise.all(pointForCoordinate) -> setPoints chain (see
+// MapLabelOverlay.tsx's project()) — this is not a no-op in this file. React Native's own jest
+// preset (node_modules/react-native/jest/setup.js) defines requestAnimationFrame as
+// `setTimeout(() => callback(jest.now()), 0)`, looked up dynamically at call time — so once
+// fake timers are installed, rAF resolves via the *fake* setTimeout queue regardless of any
+// `doNotFake` option (there's no real, independent rAF clock to exclude it from in this
+// environment). Fake timers are therefore installed explicitly here and the chain is flushed
+// deterministically with advanceTimersByTimeAsync (not the old bare jest.runOnlyPendingTimers(),
+// which — called with no fake timers ever installed — was a silent no-op: nothing was pending
+// for it to flush, so the real chain settled on its own real-clock schedule, sometimes after
+// the test had already ended and RNTL had unmounted).
 beforeEach(() => {
+  jest.useFakeTimers();
   jest.clearAllMocks();
   useAppStore.setState(initialStoreState, true);
   useNavigation.mockReturnValue({ navigate: jest.fn(), dispatch: jest.fn(), goBack: jest.fn() });
@@ -122,6 +136,20 @@ beforeEach(() => {
     handleClose: jest.fn(),
   });
 });
+
+afterEach(() => {
+  jest.useRealTimers();
+});
+
+// Advances the fake clock enough to fire the pending rAF/setTimeout callback and, via the
+// "Async" timer API, yields to the microtask queue between ticks so the chained
+// Promise.all(pointForCoordinate).then(setPoints).finally() continuation also fully drains
+// before the test ends and RNTL auto-unmounts.
+async function flushProjectionTimers() {
+  await act(async () => {
+    await jest.advanceTimersByTimeAsync(100);
+  });
+}
 
 describe('HomeScreen — cold-launch camera (Google Maps principles, adapted for a venue)', () => {
   test('first install: fits the venue overview and marks the overview as seen', async () => {
@@ -136,12 +164,9 @@ describe('HomeScreen — cold-launch camera (Google Maps principles, adapted for
       fireEvent(screen.getByTestId('home-map-view'), 'mapReady');
     });
     // onMapReady also kicks off MapLabelOverlay's rAF-coalesced projection (see
-    // requestProjection calls in HomeScreen.tsx / project() in MapLabelOverlay.tsx). Flush
-    // it here, before the test ends and RNTL auto-unmounts, so it can't resolve later
-    // against an unmounted instance during a DIFFERENT test file sharing this Jest worker.
-    await act(async () => {
-      jest.runOnlyPendingTimers();
-    });
+    // requestProjection calls in HomeScreen.tsx / project() in MapLabelOverlay.tsx) — let it
+    // fully settle before the test ends and RNTL auto-unmounts.
+    await flushProjectionTimers();
 
     expect(cameraFitVenueBoundsSpy).toHaveBeenCalledTimes(1);
     expect(cameraAnimateToUserSpy).not.toHaveBeenCalled();
@@ -157,12 +182,9 @@ describe('HomeScreen — cold-launch camera (Google Maps principles, adapted for
       fireEvent(screen.getByTestId('home-map-view'), 'mapReady');
     });
     // onMapReady also kicks off MapLabelOverlay's rAF-coalesced projection (see
-    // requestProjection calls in HomeScreen.tsx / project() in MapLabelOverlay.tsx). Flush
-    // it here, before the test ends and RNTL auto-unmounts, so it can't resolve later
-    // against an unmounted instance during a DIFFERENT test file sharing this Jest worker.
-    await act(async () => {
-      jest.runOnlyPendingTimers();
-    });
+    // requestProjection calls in HomeScreen.tsx / project() in MapLabelOverlay.tsx) — let it
+    // fully settle before the test ends and RNTL auto-unmounts.
+    await flushProjectionTimers();
 
     expect(cameraAnimateToUserSpy).toHaveBeenCalledTimes(1);
     expect(cameraAnimateToUserSpy).toHaveBeenCalledWith(coord);
@@ -182,12 +204,9 @@ describe('HomeScreen — cold-launch camera (Google Maps principles, adapted for
       fireEvent(screen.getByTestId('home-map-view'), 'mapReady');
     });
     // onMapReady also kicks off MapLabelOverlay's rAF-coalesced projection (see
-    // requestProjection calls in HomeScreen.tsx / project() in MapLabelOverlay.tsx). Flush
-    // it here, before the test ends and RNTL auto-unmounts, so it can't resolve later
-    // against an unmounted instance during a DIFFERENT test file sharing this Jest worker.
-    await act(async () => {
-      jest.runOnlyPendingTimers();
-    });
+    // requestProjection calls in HomeScreen.tsx / project() in MapLabelOverlay.tsx) — let it
+    // fully settle before the test ends and RNTL auto-unmounts.
+    await flushProjectionTimers();
 
     expect(cameraFitVenueBoundsSpy).toHaveBeenCalledTimes(1);
     expect(cameraAnimateToUserSpy).not.toHaveBeenCalled();
