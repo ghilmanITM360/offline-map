@@ -809,16 +809,18 @@ describe('HomeScreen — canonical bottom-sheet dismissal', () => {
   test('stale dismissal from a previous selection does not clear rapid replacement', async () => {
     await render(<HomeScreen />);
     const user = await selectGate();
+    const selectionASheetProps = __getLastBottomSheetModalProps();
     await act(async () => {
-      __getLastBottomSheetModalProps().onChange(-1);
+      selectionASheetProps.onChange(-1);
     });
     await user.press(screen.getByTestId('facility_marker_LM_MASJID_MAIN'));
+    expect(await screen.findByText('Main Masjid')).toBeOnTheScreen();
 
     await act(async () => {
-      __getLastBottomSheetModalProps().onDismiss();
+      selectionASheetProps.onDismiss();
     });
 
-    expect(await screen.findByText('Main Masjid')).toBeOnTheScreen();
+    expect(screen.getByText('Main Masjid')).toBeOnTheScreen();
     expect(screen.getByTestId('selected-place-marker')).toBeOnTheScreen();
   });
 
@@ -958,6 +960,32 @@ describe('HomeScreen — resolved base-map rendering', () => {
 
     await act(async () => {
       jest.advanceTimersByTime(7_100);
+    });
+
+    expect(screen.getAllByTestId('local-base-map-tiles')).toHaveLength(1);
+    expect(screen.getByTestId('home-map-view').props.mapType).toBe('none');
+  });
+
+  test('late Google map-loaded event cannot replace watchdog LocalTile fallback', async () => {
+    jest.spyOn(MapConfigService, 'getRuntimeStatus').mockReturnValue({
+      keyPresent: true,
+      keyPreview: null,
+      packageName: 'com.test',
+      platform: 'android',
+      source: 'env',
+    });
+    mockedUseHomeViewModel.mockImplementation(useDownloadedTilesViewModel);
+    await render(<HomeScreen />);
+
+    await act(async () => {
+      jest.advanceTimersByTime(7_100);
+    });
+    const map = screen.getByTestId('home-map-view');
+    expect(screen.getAllByTestId('local-base-map-tiles')).toHaveLength(1);
+    expect(map.props.mapType).toBe('none');
+
+    await act(async () => {
+      map.props.onMapLoaded();
     });
 
     expect(screen.getAllByTestId('local-base-map-tiles')).toHaveLength(1);
