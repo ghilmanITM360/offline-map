@@ -36,7 +36,7 @@ describe('useNavigationExitConfirmation', () => {
     expect(onExit).toHaveBeenCalledTimes(1);
   });
 
-  test('hardware Back uses confirmation mid-trip and immediate completion at arrival', async () => {
+  test('hardware Back uses the same confirmation during navigation and arrival', async () => {
     const onExit = jest.fn();
     const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
     const backSpy = jest.spyOn(BackHandler, 'addEventListener');
@@ -55,6 +55,9 @@ describe('useNavigationExitConfirmation', () => {
     await rerender(undefined);
     back = backSpy.mock.calls.filter(([name]) => name === 'hardwareBackPress').at(-1)?.[1] as () => boolean;
     expect(back()).toBe(true);
+    expect(alertSpy).toHaveBeenCalledTimes(2);
+    expect(onExit).not.toHaveBeenCalled();
+    await act(async () => alertButtons(alertSpy).find((button) => button.text === 'Exit')?.onPress?.());
     expect(onExit).toHaveBeenCalledTimes(1);
   });
 

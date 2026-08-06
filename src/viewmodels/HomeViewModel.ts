@@ -380,8 +380,6 @@ export function useHomeViewModel() {
   };
 
   const handleCategoryPress = (category: string) => {
-    setSelectedPlace(null);
-    bottomSheetRef.current?.close();
     if (activeCategory === category) {
       setActiveCategory(null);
       setSearchResults([]);

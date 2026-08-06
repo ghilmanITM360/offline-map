@@ -477,6 +477,20 @@ describe('HomeScreen — search', () => {
     expect(screen.queryByTestId('search-map-marker-GATE_05')).not.toBeOnTheScreen();
   });
 
+  test('selecting a map search-result marker dismisses Search before opening LocationSheet', async () => {
+    const user = userEvent.setup();
+    await render(<HomeScreen />);
+    const input = screen.getByPlaceholderText('Search blocks, rastas, gates');
+    await user.type(input, 'Gate 5');
+
+    await user.press(await screen.findByTestId('search-map-marker-GATE_05'));
+
+    expect(screen.queryByLabelText('Back')).not.toBeOnTheScreen();
+    expect(input.props.value).toBe('');
+    expect(screen.queryByTestId('search-map-marker-GATE_05')).not.toBeOnTheScreen();
+    expect(await screen.findByText('Directions')).toBeOnTheScreen();
+  });
+
   test('opening Search over a place sheet clears the old selection before cancel returns to Explore', async () => {
     const user = userEvent.setup();
     await render(<HomeScreen />);
@@ -564,6 +578,19 @@ describe('HomeScreen — canonical bottom-sheet dismissal', () => {
 
     expect(screen.queryByLabelText('Back')).not.toBeOnTheScreen();
     expect(setSelectedPlaceSpy).toHaveBeenCalledWith(null);
+  });
+
+  test('category selection from DETAILS uses canonical reset and returns to Explore', async () => {
+    await render(<HomeScreen />);
+    const user = await selectGate();
+    await user.press(screen.getByText('Details'));
+    expect(screen.getByLabelText('Back')).toBeOnTheScreen();
+
+    await user.press(screen.getByLabelText('Gates'));
+
+    expect(setSelectedPlaceSpy).toHaveBeenCalledWith(null);
+    expect(screen.queryByLabelText('Back')).not.toBeOnTheScreen();
+    expect(screen.queryByTestId('selected-place-marker')).not.toBeOnTheScreen();
   });
 
   test('pan-down route-preview dismissal clears planner and returns to Explore', async () => {

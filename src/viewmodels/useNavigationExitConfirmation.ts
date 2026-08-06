@@ -50,12 +50,11 @@ export function useNavigationExitConfirmation({ active, arrived, onExit }: Navig
   useEffect(() => {
     if (!active) return;
     const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
-      if (arrived) completeArrivalNavigation();
-      else requestNavigationExit();
+      requestNavigationExit();
       return true;
     });
     return () => subscription.remove();
-  }, [active, arrived, completeArrivalNavigation, requestNavigationExit]);
+  }, [active, arrived, requestNavigationExit]);
 
   return { requestNavigationExit, completeArrivalNavigation };
 }

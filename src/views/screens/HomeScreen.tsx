@@ -455,6 +455,16 @@ export function HomeScreen() {
     setIsSearchFocused(true);
   }, [bottomSheetRef, prepareProgrammaticSheetDismiss, resetDismissedSheetState]);
 
+  const selectCategory = useCallback((category: string) => {
+    const currentIdentity = currentSheetIdentityRef.current;
+    if (currentIdentity) {
+      prepareProgrammaticSheetDismiss('state-reset');
+      resetDismissedSheetState(currentIdentity.startsWith('route:'));
+      bottomSheetRef.current?.close();
+    }
+    handleCategoryPress(category);
+  }, [bottomSheetRef, handleCategoryPress, prepareProgrammaticSheetDismiss, resetDismissedSheetState]);
+
   const handleSheetDismiss = useCallback(() => {
     cancelPendingSheetPresentation();
     if (sheetDismissHandledRef.current) return;
@@ -1055,7 +1065,7 @@ export function HomeScreen() {
             style={[styles.chip, activeCategory === cat.id && styles.activeChip]}
             onPress={() => {
               logHomeControl('category_chip', `filter_${cat.id}`);
-              handleCategoryPress(cat.id);
+              selectCategory(cat.id);
             }}
             hitSlop={6}
             accessibilityRole="button"
@@ -1368,7 +1378,7 @@ export function HomeScreen() {
                 anchor={{ x: 0.5, y: 1 }}
                 tracksViewChanges={false}
                 onPress={() => {
-                  if (isPlace(overlayItem)) handlePlaceSelect(overlayItem);
+                  if (isPlace(overlayItem)) handleSearchResultSelect(overlayItem);
                 }}
               >
                 <View style={styles.searchOverlayMarker}>
