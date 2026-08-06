@@ -43,7 +43,7 @@ export function SplashScreen() {
         });
 
         // Run all checks in parallel
-        const [mapStatus, startupStatus, permissionResult, isConnected, graphOnlyModeEnabled, skippedOnlineModeEnabled, hasSeenWelcome, skippedLocationPermission] = await Promise.all([
+        const [mapStatus, startupStatus, permissionResult, isConnected, graphOnlyModeEnabled, skippedOnlineModeEnabled, hasSeenWelcome, skippedLocationPermission, , hydrationResult] = await Promise.all([
           OfflineMapService.getMapStatus(),
           OfflineMapStatusService.validateAtStartup(),
           Location.getForegroundPermissionsAsync(),
@@ -60,13 +60,26 @@ export function SplashScreen() {
           // lastKnownLocation, settings, ...) downstream of Splash too. A known rehydration
           // failure resolves this immediately (see waitForStoreHydration); only a genuine hang
           // rides out the full timeout. Either way startup proceeds with whatever the store
-          // currently holds — in-memory defaults on failure/timeout, persisted values on success.
+          // currently holds — in-memory defaults on failure/timeout, persisted values on success
+          // (persisted values can still reach startup after a bounded timeout too, if the read
+          // simply hadn't finished yet — 'timeout' does not imply the data is unavailable, only
+          // that this particular wait gave up on it).
           waitForStoreHydration(undefined, hydrationAbortController.signal),
         ]);
 
         const permissionGranted = permissionResult.status === 'granted';
         if (!isMountedRef.current) {
           return; // fixed: stop after async work if the splash screen already unmounted
+        }
+
+        // Explicit, Splash-scoped acknowledgement of the degraded-startup outcome (in addition
+        // to the generation-scoped failure/timeout logs already emitted from inside
+        // waitForStoreHydration itself) — startup below proceeds identically for every outcome
+        // ('success' | 'failure' | 'timeout'; 'aborted' cannot reach here, see the isMountedRef
+        // check above), but this line makes that a deliberate, observable decision rather than
+        // a silently-discarded Promise.all slot.
+        if (hydrationResult.outcome !== 'success') {
+          console.warn(`[SplashScreen] Continuing startup with outcome="${hydrationResult.outcome}" persisted-state hydration — using in-memory defaults for any key not yet confirmed from storage.`);
         }
 
         const { downloadState, setDownloadState } = useAppStore.getState(); // fixed: reconcile persisted download progress with actual disk state on cold start

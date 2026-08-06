@@ -64,8 +64,10 @@ const realPersistOptions = useAppStore.persist.getOptions();
 // persisted values arriving as part of the same rehydration pass.
 function controllableStorage() {
   let resolveGetItem!: (value: unknown) => void;
-  const getItemPromise = new Promise((resolve) => {
+  let rejectGetItem!: (error: unknown) => void;
+  const getItemPromise = new Promise((resolve, reject) => {
     resolveGetItem = resolve;
+    rejectGetItem = reject;
   });
   return {
     storage: {
@@ -74,6 +76,7 @@ function controllableStorage() {
       removeItem: () => Promise.resolve(),
     },
     resolve: (value: unknown) => resolveGetItem(value),
+    reject: (error: unknown) => rejectGetItem(error),
   };
 }
 
@@ -293,5 +296,117 @@ describe('SplashScreen — permission-skip cleanup is isolated from route resolu
     // generic "Startup checks failed" catch-all.
     expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('Failed to clear the skipped-location-permission preference'), expect.any(Error));
     errorSpy.mockRestore();
+  });
+});
+
+describe('SplashScreen — hydration degradation is route-safe', () => {
+  it('a known hydration failure still resolves exactly one deterministic route, with a distinguishing log', async () => {
+    const controllable = controllableStorage();
+    useAppStore.persist.setOptions({ storage: controllable.storage });
+    const rehydratePromise = useAppStore.persist.rehydrate();
+    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+
+    await act(async () => {
+      render(<SplashScreen />);
+    });
+    await flush();
+    expect(mockReplaceSpy).not.toHaveBeenCalled();
+
+    await act(async () => {
+      controllable.reject(new Error('AsyncStorage read failed'));
+      await rehydratePromise.catch(() => {});
+    });
+    await flush();
+
+    expect(mockReplaceSpy).toHaveBeenCalledTimes(1);
+    expect(mockReplaceSpy).toHaveBeenCalledWith('Main');
+    // The failure log is distinguishable from a timeout log by message text — not merged into
+    // one generic "something went wrong with hydration" line.
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('Hydration failed'), expect.any(Error));
+    expect(warnSpy).not.toHaveBeenCalledWith(expect.stringContaining('Hydration timed out'));
+    // Splash itself explicitly acknowledges the outcome (not just useAppStore internally).
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('[SplashScreen]'));
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('outcome="failure"'));
+
+    errorSpy.mockRestore();
+    warnSpy.mockRestore();
+  });
+
+  it('a genuine hydration hang times out and still resolves exactly one deterministic route, with a distinguishing log', async () => {
+    const controllable = controllableStorage(); // getItem deliberately never settles
+    useAppStore.persist.setOptions({ storage: controllable.storage });
+    void useAppStore.persist.rehydrate();
+    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+
+    await act(async () => {
+      render(<SplashScreen />);
+    });
+    await flush(); // 2s elapsed — short of the 5s hydration timeout
+    expect(mockReplaceSpy).not.toHaveBeenCalled();
+
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(3500); // 5.5s total — past HYDRATION_TIMEOUT_MS
+    });
+
+    expect(mockReplaceSpy).toHaveBeenCalledTimes(1);
+    expect(mockReplaceSpy).toHaveBeenCalledWith('Main');
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('Hydration timed out'));
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('[SplashScreen]'));
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('outcome="timeout"'));
+
+    warnSpy.mockRestore();
+  });
+
+  it('a corrupt map status still routes to DownloadMap after a hydration failure, not the generic Main fallback', async () => {
+    (OfflineMapStatusService.validateAtStartup as jest.Mock).mockResolvedValue({ status: 'corrupt', reason: 'checksum mismatch' });
+    const controllable = controllableStorage();
+    useAppStore.persist.setOptions({ storage: controllable.storage });
+    const rehydratePromise = useAppStore.persist.rehydrate();
+    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+
+    await act(async () => {
+      render(<SplashScreen />);
+    });
+    await act(async () => {
+      controllable.reject(new Error('AsyncStorage read failed'));
+      await rehydratePromise.catch(() => {});
+    });
+    await flush();
+
+    expect(mockReplaceSpy).toHaveBeenCalledTimes(1);
+    expect(mockReplaceSpy).toHaveBeenCalledWith('DownloadMap');
+    // Proves the real startup-failure catch branch (which always forces Main) never ran.
+    expect(useAppStore.getState().offlineMapStatusMessage).not.toEqual(expect.stringContaining('Startup checks failed'));
+
+    errorSpy.mockRestore();
+    warnSpy.mockRestore();
+  });
+
+  it('unmounting before hydration settles aborts the wait and never navigates, even if hydration later resolves', async () => {
+    const controllable = controllableStorage();
+    useAppStore.persist.setOptions({ storage: controllable.storage });
+    const rehydratePromise = useAppStore.persist.rehydrate();
+
+    let unmount!: () => Promise<void>;
+    await act(async () => {
+      const result = await render(<SplashScreen />);
+      unmount = result.unmount;
+    });
+    await flush();
+    expect(mockReplaceSpy).not.toHaveBeenCalled();
+
+    await act(async () => {
+      await unmount();
+    });
+
+    await act(async () => {
+      controllable.resolve(null); // late settle, after unmount
+      await rehydratePromise;
+    });
+    await flush();
+
+    expect(mockReplaceSpy).not.toHaveBeenCalled();
   });
 });
