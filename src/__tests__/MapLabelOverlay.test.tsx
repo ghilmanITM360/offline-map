@@ -110,6 +110,57 @@ describe('MapLabelOverlay', () => {
     expect(callsAfterBurst).toBeLessThanOrEqual(2);
   });
 
+  it('culls a label whose box overlaps dynamic bottom occlusion', async () => {
+    const pointForCoordinate = jest.fn(() => Promise.resolve({ x: 100, y: 590 }));
+    await render(
+      <MapLabelOverlay
+        mapRef={makeMapRef(pointForCoordinate)}
+        items={[gateItem({ text: 'Boundary Gate' })]}
+        edgeInsets={{ bottom: 200 }}
+      />,
+    );
+    await screen.findByText('Boundary Gate');
+    fireEvent(screen.getByTestId('map-label-overlay'), 'layout', {
+      nativeEvent: { layout: { x: 0, y: 0, width: 400, height: 800 } },
+    });
+
+    await waitFor(() => expect(screen.queryByText('Boundary Gate')).not.toBeOnTheScreen());
+  });
+
+  it('keeps a label whose full box remains above the occlusion boundary', async () => {
+    const pointForCoordinate = jest.fn(() => Promise.resolve({ x: 100, y: 580 }));
+    await render(
+      <MapLabelOverlay
+        mapRef={makeMapRef(pointForCoordinate)}
+        items={[gateItem({ text: 'Visible Boundary Gate' })]}
+        edgeInsets={{ bottom: 200 }}
+      />,
+    );
+    await screen.findByText('Visible Boundary Gate');
+    fireEvent(screen.getByTestId('map-label-overlay'), 'layout', {
+      nativeEvent: { layout: { x: 0, y: 0, width: 400, height: 800 } },
+    });
+
+    expect(screen.getByText('Visible Boundary Gate')).toBeOnTheScreen();
+  });
+
+  it('culls selected label text behind bottom chrome while its marker remains separately owned', async () => {
+    const pointForCoordinate = jest.fn(() => Promise.resolve({ x: 100, y: 650 }));
+    await render(
+      <MapLabelOverlay
+        mapRef={makeMapRef(pointForCoordinate)}
+        items={[gateItem({ text: 'Selected Hidden Gate', isSelected: true })]}
+        edgeInsets={{ bottom: 200 }}
+      />,
+    );
+    await screen.findByText('Selected Hidden Gate');
+    fireEvent(screen.getByTestId('map-label-overlay'), 'layout', {
+      nativeEvent: { layout: { x: 0, y: 0, width: 400, height: 800 } },
+    });
+
+    await waitFor(() => expect(screen.queryByText('Selected Hidden Gate')).not.toBeOnTheScreen());
+  });
+
   it('does not update state or warn after unmount while a projection is still in flight', async () => {
     // Synchronous rAF stub sidesteps real-timer/act-scope races entirely — project()'s
     // callback runs inline during render, so pointForCoordinate is already in flight (and

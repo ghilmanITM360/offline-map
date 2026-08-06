@@ -4,6 +4,7 @@
  */
 
 import { spacing } from '../theme';
+import type { MapMode } from './useMapMode';
 
 /**
  * Single source of truth for "how far up from the screen's bottom edge must a
@@ -79,4 +80,47 @@ export function computeNavRecenterInset(navBarHeight: number): number {
 /** Bottom offset for navigation's compass/zoom control stack — stacks above the recenter button. */
 export function computeNavControlsInset(navBarHeight: number): number {
   return stackAbove(computeNavRecenterInset(navBarHeight), RECENTER_BUTTON_SIZE, OVERLAY_CONTROL_GAP);
+}
+
+export interface MapContentInsetInputs {
+  mode: MapMode;
+  top: number;
+  right: number;
+  bottomSafeArea: number;
+  windowHeight: number;
+  snapPoints: readonly string[];
+  sheetIndex: number;
+  navBarHeight: number;
+}
+
+/** Canonical visible-map rectangle used by projected labels. Floating controls own
+ * top/right; sheets, trip bar, arrival surface, and safe area own bottom. */
+export function computeMapContentInsets(inputs: MapContentInsetInputs): {
+  top: number;
+  right: number;
+  bottom: number;
+  left: number;
+} {
+  const safeBottom = Math.max(inputs.bottomSafeArea, 0);
+  let bottom = safeBottom;
+  if (inputs.mode === 'ARRIVAL') {
+    bottom = Math.max(inputs.windowHeight, safeBottom);
+  } else if (inputs.mode === 'NAVIGATION') {
+    bottom = Math.max(resolveNavBarHeight(inputs.navBarHeight, safeBottom), safeBottom);
+  } else if (
+    inputs.mode === 'PLACE_SELECTED' ||
+    inputs.mode === 'DETAILS' ||
+    inputs.mode === 'ROUTE_PREVIEW'
+  ) {
+    bottom = Math.max(
+      safeBottom,
+      resolveOverlayExtent({
+        kind: 'sheet',
+        windowHeight: inputs.windowHeight,
+        snapPoints: inputs.snapPoints,
+        sheetIndex: inputs.sheetIndex,
+      }),
+    );
+  }
+  return { top: inputs.top, right: inputs.right, bottom, left: 0 };
 }

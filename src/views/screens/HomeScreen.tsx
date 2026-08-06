@@ -40,6 +40,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useHomeViewModel } from '../../viewmodels/HomeViewModel';
 import {
   computeMapControlsInset,
+  computeMapContentInsets,
   computeNavControlsInset,
   resolveNavBarHeight,
   resolveOverlayExtent,
@@ -744,9 +745,23 @@ export function HomeScreen() {
   // button is the 56dp recenter circle at right:12/16 — see mapControlStyles.ts)
   // instead of clipping or overlapping those controls when a label's projected
   // point lands near them.
+  const activeNavBottomBarHeight = showNavOverlay
+    ? navOverlay.bottomBarHeight
+    : navOverlayV1.active
+      ? navOverlayV1.bottomBarHeight
+      : 0;
   const mapLabelEdgeInsets = useMemo(
-    () => ({ top: topOverlayHeight > 0 ? topOverlayHeight + 8 : 0, right: 80 }),
-    [topOverlayHeight],
+    () => computeMapContentInsets({
+      mode,
+      top: topOverlayHeight > 0 ? topOverlayHeight + 8 : 0,
+      right: 80,
+      bottomSafeArea: insets.bottom,
+      windowHeight,
+      snapPoints,
+      sheetIndex,
+      navBarHeight: activeNavBottomBarHeight,
+    }),
+    [activeNavBottomBarHeight, insets.bottom, mode, sheetIndex, snapPoints, topOverlayHeight, windowHeight],
   );
 
   useEffect(() => {
