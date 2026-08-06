@@ -56,7 +56,8 @@ export function NavigationChromeV2({ overlay, hasBaseMap }: { overlay: Navigatio
     availableOutsideGates,
     retryOutsideRoute,
     selectOutsideGate,
-    handleExit,
+    requestNavigationExit,
+    completeArrivalNavigation,
     setIsAutoFollowing,
     bottomBarHeight,
     setBottomBarHeight,
@@ -230,7 +231,7 @@ export function NavigationChromeV2({ overlay, hasBaseMap }: { overlay: Navigatio
             <Pressable
               testID="nav-exit-button"
               style={styles.exitButton}
-              onPress={() => handleExit()}
+              onPress={requestNavigationExit}
               hitSlop={NAV_TOUCH_TARGET_HIT_SLOP}
               accessibilityRole="button"
               accessibilityLabel="Exit navigation"
@@ -283,7 +284,7 @@ export function NavigationChromeV2({ overlay, hasBaseMap }: { overlay: Navigatio
               <Pressable
                 testID="nav-arrived-done-button"
                 style={styles.arrivedButton}
-                onPress={() => handleExit()}
+                onPress={completeArrivalNavigation}
                 hitSlop={NAV_TOUCH_TARGET_HIT_SLOP}
                 accessibilityRole="button"
                 accessibilityLabel="Done, return to map"

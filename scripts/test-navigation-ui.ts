@@ -51,7 +51,8 @@ assert(navMapLayers.includes('route.destination.coordinate'), 'v2 navigation mus
 assert(navMapLayers.includes('snappedLocation') && navMapLayers.includes('userMarker'), 'v2 navigation must render current/user marker');
 assert(navChrome.includes('Weak GPS signal detected'), 'v2 navigation must show weak GPS warning');
 assert(navChrome.includes('Recalculating...'), 'v2 navigation must show reroute state without clearing map');
-assert(navChrome.includes('onPress={() => handleExit()}'), 'v2 navigation exit must be wired');
+assert(navChrome.includes('onPress={requestNavigationExit}'), 'v2 active navigation exit must request confirmation');
+assert(navChrome.includes('onPress={completeArrivalNavigation}'), 'v2 arrival Done must exit immediately');
 assert(navChrome.includes('LocateFixed') && navOverlay.includes('cameraManager.enterNavigationCamera('), 'v2 navigation recenter must be wired');
 
 assert(navAdapter.includes('This gate needs connector verification before navigation.'), 'Missing/disconnected gates must show connector verification message');

@@ -4,12 +4,13 @@
  */
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Animated, BackHandler } from 'react-native';
+import { Animated } from 'react-native';
 import MapView from 'react-native-maps';
 import { useAppStore } from '../store/useAppStore';
 import { V2MapRenderingService } from '../services/V2MapRenderingService';
 import { useNavigationViewModelV2 } from './NavigationViewModelV2';
 import { CameraManager } from './useCameraManager';
+import { useNavigationExitConfirmation } from './useNavigationExitConfirmation';
 
 declare const __DEV__: boolean;
 
@@ -35,6 +36,11 @@ export function useNavigationOverlayV2({ mapRef, mapReady, mapZoomLevel, hasBase
 
   const vm = useNavigationViewModelV2();
   const { route, destination, snappedLocation, arrived } = vm;
+  const navigationExit = useNavigationExitConfirmation({
+    active: !!route,
+    arrived,
+    onExit: vm.handleExit,
+  });
 
   const [isAutoFollowing, setIsAutoFollowing] = useState(settings.autoFollowLocation);
   const [initialCameraFitDone, setInitialCameraFitDone] = useState(false);
@@ -103,29 +109,11 @@ export function useNavigationOverlayV2({ mapRef, mapReady, mapZoomLevel, hasBase
     if (!route) cameraManager.exitNavigationCamera();
   }, [cameraManager, route]);
 
-  useEffect(() => {
-    if (!route) return;
-    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
-      // ARRIVAL is a distinct MapMode above NAVIGATION (see useMapMode.ts) — back here
-      // mirrors the arrival sheet's own "Done" button (dismiss straight to map), not the
-      // mid-trip exit confirmation (nothing to lose by leaving, the trip is already over).
-      if (arrived) {
-        vm.handleExit();
-        return true;
-      }
-      Alert.alert('Exit navigation?', 'Do you want to stop navigation and return to map?', [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Exit', style: 'destructive', onPress: () => vm.handleExit() },
-      ]);
-      return true;
-    });
-    return () => sub.remove();
-  }, [route, arrived, vm.handleExit]);
-
   const graphOnlyFallbackUsed = !hasBaseMap && mapLayers.graphOnlyFallbackSupported;
 
   return {
     ...vm,
+    ...navigationExit,
     active: !!route,
     mapLayers,
     isAutoFollowing,

@@ -55,6 +55,8 @@ function baseOverlay(overrides: Partial<NavigationOverlayV1> = {}): NavigationOv
     settings: { distanceUnit: 'meters', keepNorthFixed: false, voiceInstructions: true, walkingSpeed: 1.4, autoReroute: true },
     graphOnlyFallbackUsed: false,
     handleExit: jest.fn(),
+    requestNavigationExit: jest.fn(),
+    completeArrivalNavigation: jest.fn(),
     setIsAutoFollowing: jest.fn(),
     bottomBarHeight: 0,
     setBottomBarHeight: jest.fn(),
@@ -83,15 +85,16 @@ describe('NavigationChromeV1 — Exit/recenter/mute touch targets', () => {
     expect(screen.getByText('Gate 8')).toBeOnTheScreen();
   });
 
-  test('pressing Exit invokes the real handleExit handler (no navigation object involved)', async () => {
+  test('pressing Exit requests confirmation instead of stopping directly', async () => {
     const handleExit = jest.fn();
+    const requestNavigationExit = jest.fn();
     const user = userEvent.setup();
-    await render(<NavigationChromeV1 overlay={baseOverlay({ handleExit })} hasBaseMap />);
+    await render(<NavigationChromeV1 overlay={baseOverlay({ handleExit, requestNavigationExit })} hasBaseMap />);
 
     await user.press(screen.getByTestId('nav-exit-button'));
 
-    expect(handleExit).toHaveBeenCalledTimes(1);
-    expect(handleExit).toHaveBeenCalledWith();
+    expect(requestNavigationExit).toHaveBeenCalledTimes(1);
+    expect(handleExit).not.toHaveBeenCalled();
   });
 
   test('pressing the mute toggle invokes setIsMuted with the flipped value', async () => {
@@ -141,14 +144,16 @@ describe('NavigationChromeV1 — Exit/recenter/mute touch targets', () => {
       expect(setIsAutoFollowing).toHaveBeenCalledWith(true);
     });
 
-    test('pressing Done in the arrival sheet invokes handleExit', async () => {
+    test('pressing Done in the arrival sheet completes immediately', async () => {
       const handleExit = jest.fn();
+      const completeArrivalNavigation = jest.fn();
       const user = userEvent.setup();
-      await render(<NavigationChromeV1 overlay={baseOverlay({ arrived: true, handleExit })} hasBaseMap />);
+      await render(<NavigationChromeV1 overlay={baseOverlay({ arrived: true, handleExit, completeArrivalNavigation })} hasBaseMap />);
 
       await user.press(screen.getByTestId('nav-arrived-done-button'));
 
-      expect(handleExit).toHaveBeenCalledTimes(1);
+      expect(completeArrivalNavigation).toHaveBeenCalledTimes(1);
+      expect(handleExit).not.toHaveBeenCalled();
     });
   });
 });

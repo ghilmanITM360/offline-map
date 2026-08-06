@@ -58,6 +58,8 @@ function baseOverlay(overrides: Partial<NavigationOverlayV2> = {}): NavigationOv
     settings: { distanceUnit: 'meters', keepNorthFixed: false, voiceInstructions: true, walkingSpeed: 1.4, autoReroute: true },
     graphOnlyFallbackUsed: false,
     handleExit: jest.fn(),
+    requestNavigationExit: jest.fn(),
+    completeArrivalNavigation: jest.fn(),
     setIsAutoFollowing: jest.fn(),
     ...overrides,
   } as unknown as NavigationOverlayV2;
@@ -97,7 +99,9 @@ describe('NavigationChromeV2 — direct outside guide', () => {
     expect(screen.getByText('Google walking route unavailable. Using offline walking roads.')).toBeOnTheScreen();
   });
 
-  test('shows direct-guide warning and suppresses road instruction fields', async () => {
+  test('shows direct-guide warning, suppresses road fields, and uses confirmed Exit', async () => {
+    const requestNavigationExit = jest.fn();
+    const user = userEvent.setup();
     const directRoute: V2ActiveRoute = {
       ...route,
       outsideLegCoordinateCount: 1,
@@ -131,7 +135,7 @@ describe('NavigationChromeV2 — direct outside guide', () => {
       },
     };
     await render(<NavigationChromeV2
-      overlay={baseOverlay({ route: directRoute, instructions: directRoute.instructions })}
+      overlay={baseOverlay({ route: directRoute, instructions: directRoute.instructions, requestNavigationExit })}
       hasBaseMap
     />);
 
@@ -141,6 +145,8 @@ describe('NavigationChromeV2 — direct outside guide', () => {
     expect(screen.queryByText('Turn right on Imaginary Road')).not.toBeOnTheScreen();
     expect(screen.queryByText('5 min')).not.toBeOnTheScreen();
     expect(screen.queryByText(/ETA/)).not.toBeOnTheScreen();
+    await user.press(screen.getByTestId('nav-exit-button'));
+    expect(requestNavigationExit).toHaveBeenCalledTimes(1);
   });
 
   test('connects retry and official-gate actions during active direct guidance', async () => {
@@ -203,14 +209,16 @@ describe('NavigationChromeV2 — Exit/recenter/mute touch targets', () => {
     expect(screen.getByTestId('nav-recenter-button').props.hitSlop).toEqual(NAV_TOUCH_TARGET_HIT_SLOP);
   });
 
-  test('pressing Exit invokes the real handleExit handler', async () => {
+  test('pressing Exit requests confirmation instead of stopping directly', async () => {
     const handleExit = jest.fn();
+    const requestNavigationExit = jest.fn();
     const user = userEvent.setup();
-    await render(<NavigationChromeV2 overlay={baseOverlay({ handleExit })} hasBaseMap />);
+    await render(<NavigationChromeV2 overlay={baseOverlay({ handleExit, requestNavigationExit })} hasBaseMap />);
 
     await user.press(screen.getByTestId('nav-exit-button'));
 
-    expect(handleExit).toHaveBeenCalledTimes(1);
+    expect(requestNavigationExit).toHaveBeenCalledTimes(1);
+    expect(handleExit).not.toHaveBeenCalled();
   });
 
   test('pressing recenter invokes setIsAutoFollowing(true)', async () => {
@@ -245,13 +253,15 @@ describe('NavigationChromeV2 — arrival sheet', () => {
     expect(setIsAutoFollowing).toHaveBeenCalledWith(true);
   });
 
-  test('pressing Done in the arrival sheet invokes handleExit', async () => {
+  test('pressing Done in the arrival sheet completes immediately', async () => {
     const handleExit = jest.fn();
+    const completeArrivalNavigation = jest.fn();
     const user = userEvent.setup();
-    await render(<NavigationChromeV2 overlay={baseOverlay({ arrived: true, handleExit })} hasBaseMap />);
+    await render(<NavigationChromeV2 overlay={baseOverlay({ arrived: true, handleExit, completeArrivalNavigation })} hasBaseMap />);
 
     await user.press(screen.getByTestId('nav-arrived-done-button'));
 
-    expect(handleExit).toHaveBeenCalledTimes(1);
+    expect(completeArrivalNavigation).toHaveBeenCalledTimes(1);
+    expect(handleExit).not.toHaveBeenCalled();
   });
 });

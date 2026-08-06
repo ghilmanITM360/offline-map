@@ -4,13 +4,14 @@
  */
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Animated, BackHandler } from 'react-native';
+import { Animated } from 'react-native';
 import MapView from 'react-native-maps';
 import { useAppStore } from '../store/useAppStore';
 import { RoutingService } from '../services/RoutingService';
 import { IJTEMA_DATA, MAP_BOUNDS } from '../constants/data';
 import { useNavigationViewModel } from './NavigationViewModel';
 import { CameraManager } from './useCameraManager';
+import { useNavigationExitConfirmation } from './useNavigationExitConfirmation';
 
 interface Params {
   mapRef: React.RefObject<MapView | null>;
@@ -40,6 +41,11 @@ export function useNavigationOverlayV1({ mapRef, mapReady, hasBaseMap, userPulse
 
   const vm = useNavigationViewModel();
   const { route, snappedLocation, arrived } = vm;
+  const navigationExit = useNavigationExitConfirmation({
+    active: !!route,
+    arrived,
+    onExit: vm.handleExit,
+  });
 
   const [isAutoFollowing, setIsAutoFollowing] = useState(settings.autoFollowLocation);
   const [initialCameraFitDone, setInitialCameraFitDone] = useState(false);
@@ -99,28 +105,11 @@ export function useNavigationOverlayV1({ mapRef, mapReady, hasBaseMap, userPulse
     if (!route) cameraManager.exitNavigationCamera();
   }, [cameraManager, route]);
 
-  useEffect(() => {
-    if (!route) return;
-    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
-      // Same ARRIVAL-vs-NAVIGATION back distinction as useNavigationOverlayV2 — see its
-      // comment.
-      if (arrived) {
-        vm.handleExit();
-        return true;
-      }
-      Alert.alert('Exit navigation?', 'Do you want to stop navigation and return to map?', [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Exit', style: 'destructive', onPress: () => vm.handleExit() },
-      ]);
-      return true;
-    });
-    return () => sub.remove();
-  }, [route, arrived, vm.handleExit]);
-
   const graphOnlyFallbackUsed = !hasBaseMap;
 
   return {
     ...vm,
+    ...navigationExit,
     active: !!route,
     mapLayers,
     isAutoFollowing,

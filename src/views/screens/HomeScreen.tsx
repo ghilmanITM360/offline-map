@@ -959,8 +959,8 @@ export function HomeScreen() {
   // Mode-aware hardware back: steps back through the map surface one mode at a time
   // (Google Maps model — MAP is always the root, back never falls through to the
   // drawer/stack while a sheet mode is open) instead of exiting the screen. NAVIGATION/
-  // ARRIVAL are deliberately not handled here — useNavigationOverlayV2 already owns a
-  // separate hardwareBackPress listener for the confirm-exit dialog in those modes.
+  // ARRIVAL are deliberately not handled here — both navigation overlays use the shared
+  // navigation-exit owner for hardware Back and visible Exit semantics.
   // Each branch reuses the exact same handler its mode's own visible Close button
   // already calls (see the onClose wiring on RoutePreviewSection/PlaceSection below) —
   // no new close behavior introduced, just extending it to hardware back.

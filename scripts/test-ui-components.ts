@@ -70,7 +70,8 @@ assert(navigation.includes('route.coordinates'), 'Navigation must render route p
 assert(navigation.includes('title="Start"'), 'Navigation must render a start marker');
 assert(navigation.includes('destinationMarker'), 'Navigation must render a destination marker');
 assert(navigation.includes('userMarker'), 'Navigation must render current/user marker');
-assert(navigation.includes('handleExit()'), 'Navigation exit button must be wired');
+assert(navigation.includes('onPress={requestNavigationExit}'), 'Navigation active Exit must use confirmation owner');
+assert(navigation.includes('onPress={completeArrivalNavigation}'), 'Navigation arrival Done must exit immediately');
 assert(navigation.includes('styles.tripTextWrap'), 'Navigation bottom trip text must be constrained separately from Exit button');
 assert(navigation.includes('cameraManager.enterNavigationCamera(') && navigation.includes('LocateFixed'), 'Navigation recenter button must animate camera');
 assert(

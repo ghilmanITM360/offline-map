@@ -67,7 +67,7 @@ describe('useNavigationOverlayV2 — hardware back (NAVIGATION vs ARRIVAL)', () 
     let handler = latestHandler(addEventListenerSpy);
     expect(handler).toBeDefined();
     handler!();
-    expect(alertSpy).toHaveBeenCalledWith('Exit navigation?', expect.any(String), expect.any(Array));
+    expect(alertSpy).toHaveBeenCalledWith('Exit navigation?', expect.any(String), expect.any(Array), expect.any(Object));
     expect(mockVm.handleExit).not.toHaveBeenCalled();
 
     // Arrival: back dismisses straight to map, no confirmation dialog.

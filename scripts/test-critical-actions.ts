@@ -192,8 +192,8 @@ assert(
   'Navigation mute button must toggle mute state',
 );
 assert(
-  navScreen.includes('handleExit()'),
-  'Navigation exit action must be wired',
+  navScreen.includes('onPress={requestNavigationExit}') && navScreen.includes('onPress={completeArrivalNavigation}'),
+  'Navigation active Exit and arrival Done actions must use their canonical paths',
 );
 assert(
   readFileSync('src/viewmodels/DownloadMapViewModel.ts', 'utf8').includes('downloadInProgressRef'),
