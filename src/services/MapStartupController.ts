@@ -4,6 +4,7 @@
  */
 
 import { Coordinate } from '../models/types';
+import type { LocationResolveResult } from './LocationAccessService';
 
 export interface MapStartupChecks {
   /** False only until the very first cold-launch venue-overview fit has completed —
@@ -19,17 +20,27 @@ export type MapStartupCameraDecision =
   | { action: 'ANIMATE_TO_USER'; coordinate: Coordinate };
 
 /**
- * Minimal shape MapStartupController needs from LocationAccessService.resolveCurrentLocation
- * — kept as a local interface (not a direct service import) so this stays a pure, easily
- * unit-testable decision class with no service-layer coupling. `source` is only ever treated
- * as "fresh" when it is exactly 'live' — a device-level cached fix ('device_last_known') is
- * NOT fresh and must not auto-animate the camera, same as the app's own persisted
- * lastKnownLocation (see resolveReturningLaunchCamera below).
+ * resolveReturningLaunchCamera's decision shape. Distinct from MapStartupCameraDecision above
+ * (resolveColdLaunchCamera's return type, unchanged) because the ANIMATE_TO_USER case here
+ * carries the canonical `source: 'live'` alongside the coordinate — the eventual HomeScreen
+ * integration needs that to commit marker/store state (setCurrentLocation(coordinate, source))
+ * before animating the camera, not just the coordinate.
  */
-export interface FreshLocationResolution {
-  ok: boolean;
-  coordinate: Coordinate | null;
-  source: string | null;
+export type ReturningLaunchCameraDecision =
+  | { action: 'FIT_VENUE_BOUNDS'; reason: 'first_overview' | 'no_gps' }
+  | { action: 'ANIMATE_TO_USER'; coordinate: Coordinate; source: 'live' };
+
+const RETURNING_LAUNCH_RESOLVE_TIMEOUT_MS = 4000;
+
+function isLiveCoordinate(result: LocationResolveResult | null): result is LocationResolveResult & { coordinate: Coordinate } {
+  return (
+    !!result &&
+    result.ok === true &&
+    result.source === 'live' &&
+    !!result.coordinate &&
+    typeof result.coordinate.latitude === 'number' &&
+    typeof result.coordinate.longitude === 'number'
+  );
 }
 
 /**
@@ -64,11 +75,22 @@ export class MapStartupController {
    * result explicitly labelled 'live' — never a stale persisted or device-cached fallback.
    * First-install and no-permission short-circuit before the resolver is ever invoked, so
    * neither path's behavior or timing changes from resolveColdLaunchCamera above.
+   *
+   * Every non-live outcome — permission denied, services disabled, resolution failure, a
+   * rejected resolver promise, a malformed result, or the resolver simply never settling —
+   * normalizes to the same `{ action: 'FIT_VENUE_BOUNDS', reason: 'no_gps' }` fallback as a
+   * missing GPS fix, so callers don't need to special-case any of them. Bounded by
+   * `timeoutMs` (a genuine one-shot timer, not a continuous watch — this never subscribes to
+   * GPS updates itself) so a hung resolver can't block the cold-launch camera decision
+   * forever; a resolver result that arrives after the timeout has already fired is discarded.
+   * This method never mutates camera or store state itself — it only returns a decision, same
+   * as resolveColdLaunchCamera above.
    */
   static async resolveReturningLaunchCamera(
     checks: { hasSeenMapOverview: boolean; hasLocationPermission: boolean },
-    resolveFreshLocation: () => Promise<FreshLocationResolution>,
-  ): Promise<MapStartupCameraDecision> {
+    resolveFreshLocation: () => Promise<LocationResolveResult>,
+    timeoutMs = RETURNING_LAUNCH_RESOLVE_TIMEOUT_MS,
+  ): Promise<ReturningLaunchCameraDecision> {
     if (!checks.hasSeenMapOverview) {
       return { action: 'FIT_VENUE_BOUNDS', reason: 'first_overview' };
     }
@@ -77,11 +99,35 @@ export class MapStartupController {
       return { action: 'FIT_VENUE_BOUNDS', reason: 'no_gps' };
     }
 
-    const resolved = await resolveFreshLocation();
-    if (resolved.ok && resolved.source === 'live' && resolved.coordinate) {
-      return { action: 'ANIMATE_TO_USER', coordinate: resolved.coordinate };
+    const resolved = await this.resolveWithTimeout(resolveFreshLocation, timeoutMs);
+    if (isLiveCoordinate(resolved)) {
+      return { action: 'ANIMATE_TO_USER', coordinate: resolved.coordinate, source: 'live' };
     }
 
     return { action: 'FIT_VENUE_BOUNDS', reason: 'no_gps' };
+  }
+
+  /** One-shot race between the resolver settling and `timeoutMs` elapsing — whichever comes
+   * first wins; the other is discarded (a rejection or a late resolution after timeout never
+   * surfaces to the caller, and never becomes an unhandled promise rejection). */
+  private static resolveWithTimeout(
+    resolveFreshLocation: () => Promise<LocationResolveResult>,
+    timeoutMs: number,
+  ): Promise<LocationResolveResult | null> {
+    return new Promise((resolve) => {
+      let settled = false;
+      const finish = (value: LocationResolveResult | null) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timeoutId);
+        resolve(value);
+      };
+
+      const timeoutId = setTimeout(() => finish(null), timeoutMs);
+
+      resolveFreshLocation()
+        .then((result) => finish(result ?? null))
+        .catch(() => finish(null));
+    });
   }
 }
