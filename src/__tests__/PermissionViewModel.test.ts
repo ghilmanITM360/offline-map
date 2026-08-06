@@ -210,3 +210,198 @@ describe('usePermissionViewModel — Continue Without Location persistence', () 
     expect(result.current.loading).toBe(false);
   });
 });
+
+describe('usePermissionViewModel — Continue Without Location confirmation is guarded across unmount', () => {
+  function deferredSkipPersistence() {
+    let resolve!: () => void;
+    let reject!: (error: unknown) => void;
+    const promise = new Promise<void>((res, rej) => {
+      resolve = res;
+      reject = rej;
+    });
+    (OnboardingStatusService.setSkippedLocationPermission as jest.Mock).mockImplementation(() => promise);
+    return { resolve, reject };
+  }
+
+  async function confirmViaAlert(result: { current: ReturnType<typeof usePermissionViewModel> }) {
+    await act(() => {
+      result.current.skipPermission(mockNavigation);
+    });
+    const call = (Alert.alert as jest.Mock).mock.calls.at(-1);
+    const buttons = call?.[2] as Array<{ text: string; onPress?: () => void }>;
+    const confirmButton = buttons.find((b) => b.text === 'Continue Without Location');
+    await act(async () => {
+      confirmButton?.onPress?.();
+    });
+  }
+
+  it('1. unmounting while persistence is pending suppresses the eventual success navigation', async () => {
+    const { resolve } = deferredSkipPersistence();
+    const { result, unmount } = await renderHook(() => usePermissionViewModel());
+
+    await confirmViaAlert(result);
+    expect(OnboardingStatusService.setSkippedLocationPermission).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      await unmount();
+    });
+
+    await act(async () => {
+      resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(mockNavigation.replace).not.toHaveBeenCalled();
+  });
+
+  it('2. unmounting before persistence rejects suppresses the retry Alert and console.error', async () => {
+    const { reject } = deferredSkipPersistence();
+    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const { result, unmount } = await renderHook(() => usePermissionViewModel());
+
+    await confirmViaAlert(result);
+    (Alert.alert as jest.Mock).mockClear(); // clear the confirmation-dialog call itself
+
+    await act(async () => {
+      await unmount();
+    });
+
+    await act(async () => {
+      reject(new Error('disk full'));
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(Alert.alert).not.toHaveBeenCalled();
+    expect(errorSpy).not.toHaveBeenCalled();
+    expect(mockNavigation.replace).not.toHaveBeenCalled();
+
+    errorSpy.mockRestore();
+  });
+
+  it('3. unmounting while navigateNext\'s own checks are still pending suppresses the late navigation', async () => {
+    (OnboardingStatusService.setSkippedLocationPermission as jest.Mock).mockResolvedValue(undefined);
+    let resolveMapStatus!: (value: { isDownloaded: boolean }) => void;
+    (OfflineMapService.getMapStatus as jest.Mock).mockImplementation(
+      () => new Promise((resolve) => { resolveMapStatus = resolve; }),
+    );
+    const { result, unmount } = await renderHook(() => usePermissionViewModel());
+
+    await confirmViaAlert(result);
+    // setSkippedLocationPermission already resolved; navigateNext's own Promise.all is now the
+    // thing still in flight (getMapStatus never resolved yet).
+
+    await act(async () => {
+      await unmount();
+    });
+
+    await act(async () => {
+      resolveMapStatus({ isDownloaded: true });
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(mockNavigation.replace).not.toHaveBeenCalled();
+  });
+
+  it('4. an old failed request completing after a newer (remounted) retry begins does not affect the newer attempt', async () => {
+    const { reject } = deferredSkipPersistence();
+    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+
+    // First mount: start a confirmation that will be left pending, then unmount (simulating
+    // the user backing out of the Permission screen) before it settles.
+    const first = await renderHook(() => usePermissionViewModel());
+    await confirmViaAlert(first.result);
+    await act(async () => {
+      await first.unmount();
+    });
+
+    // Second mount (simulating the user navigating back to Permission and retrying): its own
+    // confirmation succeeds normally, independent of the first attempt still being unsettled.
+    (OnboardingStatusService.setSkippedLocationPermission as jest.Mock).mockResolvedValueOnce(undefined);
+    const second = await renderHook(() => usePermissionViewModel());
+    await confirmViaAlert(second.result);
+
+    expect(mockNavigation.replace).toHaveBeenCalledTimes(1);
+    expect(mockNavigation.replace).toHaveBeenCalledWith('Main');
+
+    // The first (unmounted) attempt's persistence now finally rejects, late — must not affect
+    // anything: no additional Alert, no additional navigation, no error thrown.
+    await act(async () => {
+      reject(new Error('disk full — stale'));
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(mockNavigation.replace).toHaveBeenCalledTimes(1);
+
+    errorSpy.mockRestore();
+  });
+
+  it('5. rapid double confirmation remains suppressed even with the unmount guard in place', async () => {
+    let resolveSkip!: () => void;
+    (OnboardingStatusService.setSkippedLocationPermission as jest.Mock).mockImplementation(
+      () => new Promise<void>((resolve) => { resolveSkip = resolve; }),
+    );
+    const { result } = await renderHook(() => usePermissionViewModel());
+
+    await act(() => {
+      result.current.skipPermission(mockNavigation);
+    });
+    const call = (Alert.alert as jest.Mock).mock.calls.at(-1);
+    const buttons = call?.[2] as Array<{ text: string; onPress?: () => void }>;
+    const confirmButton = buttons.find((b) => b.text === 'Continue Without Location');
+
+    await act(async () => {
+      confirmButton?.onPress?.();
+      confirmButton?.onPress?.();
+      await Promise.resolve();
+    });
+
+    expect(OnboardingStatusService.setSkippedLocationPermission).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      resolveSkip();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(mockNavigation.replace).toHaveBeenCalledTimes(1);
+  });
+
+  it('6. one successful mounted confirmation still navigates normally', async () => {
+    (OnboardingStatusService.setSkippedLocationPermission as jest.Mock).mockResolvedValue(undefined);
+    const { result } = await renderHook(() => usePermissionViewModel());
+
+    await confirmViaAlert(result);
+
+    expect(mockNavigation.replace).toHaveBeenCalledWith('Main');
+    expect(result.current.loading).toBe(false);
+  });
+
+  it('7. unmounting mid-confirmation produces no act()/unmounted-state warnings', async () => {
+    const { resolve } = deferredSkipPersistence();
+    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const { result, unmount } = await renderHook(() => usePermissionViewModel());
+
+    await confirmViaAlert(result);
+    await act(async () => {
+      await unmount();
+    });
+    await act(async () => {
+      resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    const allWarnings = [...warnSpy.mock.calls, ...errorSpy.mock.calls].map((args) => String(args[0]));
+    expect(allWarnings.some((message) => /not wrapped in act/i.test(message))).toBe(false);
+    expect(allWarnings.some((message) => /unmounted component/i.test(message))).toBe(false);
+
+    warnSpy.mockRestore();
+    errorSpy.mockRestore();
+  });
+});
