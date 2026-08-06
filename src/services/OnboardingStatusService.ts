@@ -9,6 +9,11 @@ const ONBOARDING_WELCOME_SEEN_KEY = 'ijtema.onboarding.welcome_seen.v1';
 const LOCATION_PERMISSION_SKIPPED_KEY = 'ijtema.onboarding.location_permission_skipped.v1';
 
 export class OnboardingStatusService {
+  // Tracks a single in-flight clear so concurrent granted-status confirmations (e.g.
+  // GPSManagerService.start() and .forceFix() both resolving "granted" around the same tick)
+  // reuse one AsyncStorage read/write pair instead of racing duplicate ones.
+  private static clearSkipInFlight: Promise<void> | null = null;
+
   static async hasSeenWelcome(): Promise<boolean> {
     return (await AsyncStorage.getItem(ONBOARDING_WELCOME_SEEN_KEY)) === 'true';
   }
@@ -52,12 +57,29 @@ export class OnboardingStatusService {
    */
   static async clearSkippedLocationPermissionOnGrant(granted: boolean): Promise<void> {
     if (!granted) return;
+    if (this.clearSkipInFlight) {
+      // A concurrent granted-status path is already clearing the flag — reuse its outcome
+      // instead of issuing a second, redundant read/write pair against AsyncStorage.
+      return this.clearSkipInFlight;
+    }
+    const attempt = (async () => {
+      try {
+        const skipped = await this.hasSkippedLocationPermission();
+        if (!skipped) return;
+        await this.setSkippedLocationPermission(false);
+      } catch (error) {
+        console.error('[OnboardingStatusService] Failed to clear the skipped-location-permission preference after a successful grant.', error);
+      }
+    })();
+    this.clearSkipInFlight = attempt;
     try {
-      const skipped = await this.hasSkippedLocationPermission();
-      if (!skipped) return;
-      await this.setSkippedLocationPermission(false);
-    } catch (error) {
-      console.error('[OnboardingStatusService] Failed to clear the skipped-location-permission preference after a successful grant.', error);
+      await attempt;
+    } finally {
+      // Always cleared, success or failure, so a later retry (this grant confirmation or the
+      // next one) is never permanently poisoned by one failed attempt.
+      if (this.clearSkipInFlight === attempt) {
+        this.clearSkipInFlight = null;
+      }
     }
   }
 }

@@ -91,4 +91,52 @@ describe('OnboardingStatusService.clearSkippedLocationPermissionOnGrant', () => 
     await OnboardingStatusService.clearSkippedLocationPermissionOnGrant(false);
     expect(await OnboardingStatusService.hasSkippedLocationPermission()).toBe(false);
   });
+
+  it('two concurrent granted-status callers issue only one AsyncStorage write, and both resolve', async () => {
+    await OnboardingStatusService.setSkippedLocationPermission(true);
+    const setItemMock = AsyncStorage.setItem as jest.Mock;
+    const getItemMock = AsyncStorage.getItem as jest.Mock;
+    setItemMock.mockClear();
+    getItemMock.mockClear();
+
+    // Simulates GPSManagerService.start() and .forceFix() both confirming a foreground grant
+    // around the same tick and calling the canonical clear helper concurrently.
+    const [a, b] = await Promise.all([
+      OnboardingStatusService.clearSkippedLocationPermissionOnGrant(true),
+      OnboardingStatusService.clearSkippedLocationPermissionOnGrant(true),
+    ]);
+
+    expect(a).toBeUndefined();
+    expect(b).toBeUndefined();
+    expect(setItemMock).toHaveBeenCalledTimes(1);
+    expect(await OnboardingStatusService.hasSkippedLocationPermission()).toBe(false);
+  });
+
+  it('after an in-flight clear completes, a later call correctly recognizes nothing remains to clear', async () => {
+    await OnboardingStatusService.setSkippedLocationPermission(true);
+    await OnboardingStatusService.clearSkippedLocationPermissionOnGrant(true);
+    expect(await OnboardingStatusService.hasSkippedLocationPermission()).toBe(false);
+
+    const setItemMock = AsyncStorage.setItem as jest.Mock;
+    setItemMock.mockClear();
+    await OnboardingStatusService.clearSkippedLocationPermissionOnGrant(true);
+    expect(setItemMock).not.toHaveBeenCalled();
+  });
+
+  it('a failed clear does not permanently poison a later retry', async () => {
+    await OnboardingStatusService.setSkippedLocationPermission(true);
+    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const setItemMock = AsyncStorage.setItem as jest.Mock;
+    setItemMock.mockImplementationOnce(() => Promise.reject(new Error('disk full')));
+
+    await OnboardingStatusService.clearSkippedLocationPermissionOnGrant(true);
+    expect(await OnboardingStatusService.hasSkippedLocationPermission()).toBe(true); // still skipped — the write failed
+
+    // A later retry (e.g. the next GPS start/forceFix confirming granted again) must not be
+    // stuck behind the failed attempt's now-cleared in-flight slot.
+    await OnboardingStatusService.clearSkippedLocationPermissionOnGrant(true);
+    expect(await OnboardingStatusService.hasSkippedLocationPermission()).toBe(false);
+
+    errorSpy.mockRestore();
+  });
 });
