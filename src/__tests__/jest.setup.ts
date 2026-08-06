@@ -55,6 +55,7 @@ jest.mock('react-native-maps', () => {
     __esModule: true,
     default: MapView,
     Marker: makeMock('Marker'),
+    Circle: makeMock('Circle'),
     Polygon: makeMock('Polygon'),
     Polyline: makeMock('Polyline'),
     Callout: makeMock('Callout'),

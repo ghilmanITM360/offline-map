@@ -1,6 +1,22 @@
 import { resolveMapMarkerOwnership } from '../views/components/map/MapMarkerOwnership';
 
 describe('resolveMapMarkerOwnership', () => {
+  test.each([
+    'EXPLORE',
+    'SEARCH',
+    'PLACE_SELECTED',
+    'DETAILS',
+    'ROUTE_PREVIEW',
+  ] as const)('%s keeps browse ownership and hides navigation identities', (mode) => {
+    expect(resolveMapMarkerOwnership(mode, true)).toEqual({
+      showBrowseUser: true,
+      showBrowseSelection: true,
+      showNavigationStart: false,
+      showNavigationDestination: false,
+      showNavigationUser: false,
+    });
+  });
+
   test('active navigation owns start, destination, and snapped user markers', () => {
     expect(resolveMapMarkerOwnership('NAVIGATION', true)).toEqual({
       showBrowseUser: false,
@@ -31,13 +47,4 @@ describe('resolveMapMarkerOwnership', () => {
     });
   });
 
-  test('explore owns browse location and selection only', () => {
-    expect(resolveMapMarkerOwnership('EXPLORE', false)).toEqual({
-      showBrowseUser: true,
-      showBrowseSelection: true,
-      showNavigationStart: false,
-      showNavigationDestination: false,
-      showNavigationUser: false,
-    });
-  });
 });

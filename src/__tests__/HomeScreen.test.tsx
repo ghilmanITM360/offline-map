@@ -4,7 +4,7 @@
  */
 
 import React from 'react';
-import { DeviceEventEmitter } from 'react-native';
+import { Animated, DeviceEventEmitter } from 'react-native';
 import { act, fireEvent, render, screen, userEvent, waitFor } from './test-utils';
 
 import { HomeScreen } from '../views/screens/HomeScreen';
@@ -12,6 +12,7 @@ import { useHomeViewModel } from '../viewmodels/HomeViewModel';
 import { useDirectionsViewModel } from '../viewmodels/DirectionsViewModel';
 import { useAppStore } from '../store/useAppStore';
 import { MapConfigService } from '../services/MapConfigService';
+import * as NavigationOverlayV1Module from '../viewmodels/useNavigationOverlayV1';
 import type { Place } from '../models/types';
 
 // requestAnimationFrame stays real (not faked): MapLabelOverlay's projection pipeline
@@ -72,6 +73,60 @@ const gateResult: Place = {
   sourceKind: 'gate',
 } as Place;
 
+const v1Destination: Place = {
+  id: 'GATE_08',
+  name: 'Gate 8',
+  category: 'Gate',
+  description: 'Official Gate 8.',
+  coordinate: { latitude: 24.903, longitude: 67.103 },
+  sourceVersion: 'v1',
+};
+
+const v1Route = {
+  id: 'route-v1-marker-policy',
+  nodes: ['A', 'B'],
+  coordinates: [
+    { latitude: 24.9, longitude: 67.1 },
+    v1Destination.coordinate,
+  ],
+  totalDistance: 300,
+  estimatedTimeMin: 5,
+  segments: [],
+};
+
+const v2ArrivalRoute = {
+  id: 'route-v2-arrival-marker-policy',
+  routeId: 'route-v2-arrival-marker-policy',
+  sourceVersion: 'v2' as const,
+  nodes: ['A', 'B'],
+  coordinates: [
+    { latitude: 24.9, longitude: 67.1 },
+    gateResult.coordinate,
+  ],
+  totalDistance: 300,
+  totalDistanceM: 300,
+  estimatedTimeMin: 5,
+  etaMinutes: 5,
+  segments: [],
+  origin: {
+    coordinate: { latitude: 24.9, longitude: 67.1 },
+    label: 'Current location',
+    type: 'inside_snap' as const,
+  },
+  destination: {
+    coordinate: gateResult.coordinate,
+    label: gateResult.name,
+    type: 'gate' as const,
+    gateId: gateResult.id,
+  },
+  instructions: [],
+  metadata: {
+    startedOutside: false,
+    usesOfficialGateEntry: false,
+    graphVersion: 'test',
+  },
+};
+
 const handleCategoryPressSpy = jest.fn();
 const handleSearchSpy = jest.fn();
 const handlePlaceSelectSpy = jest.fn();
@@ -82,10 +137,10 @@ const cameraFollowUserSpy = jest.fn();
 const cameraStopFollowingSpy = jest.fn();
 const handleRecenterSpy = jest.fn();
 
-function useFakeHomeViewModel() {
+function useFakeHomeViewModel(initialSearchResults: Place[] = []) {
   const [activeCategory, setActiveCategory] = React.useState<string | null>(null);
   const [searchQuery, setSearchQuery] = React.useState('');
-  const [searchResults, setSearchResults] = React.useState<Place[]>([]);
+  const [searchResults, setSearchResults] = React.useState<Place[]>(initialSearchResults);
   const [selectedPlace, setSelectedPlaceState] = React.useState<Place | null>(null);
   const [cameraMode, setCameraMode] = React.useState<'IDLE' | 'EXPLORING' | 'FOLLOWING_USER'>('IDLE');
   // Real useRef (matches production useHomeViewModel's own bottomSheetRef) — a fresh
@@ -536,6 +591,83 @@ describe('HomeScreen — search', () => {
   });
 });
 
+describe('HomeScreen — search-result marker mode policy', () => {
+  function useHomeWithInitialResults() {
+    return useFakeHomeViewModel([gateResult]);
+  }
+
+  function startV1Navigation(currentLocation: { latitude: number; longitude: number }) {
+    useAppStore.getState().setCurrentLocation(currentLocation, 'gps');
+    useAppStore.getState().startNavigation(v1Destination, v1Route as any, []);
+  }
+
+  function startArrivedV2Navigation() {
+    useAppStore.getState().setCurrentLocation({ ...gateResult.coordinate, accuracy: 5 }, 'gps');
+    useAppStore.getState().startNavigation(gateResult, v2ArrivalRoute, []);
+  }
+
+  test('Explore with current results renders their map pins', async () => {
+    mockedUseHomeViewModel.mockImplementation(useHomeWithInitialResults);
+    await render(<HomeScreen />);
+
+    expect(screen.getByTestId('search-map-marker-GATE_05')).toBeOnTheScreen();
+  });
+
+  test('route preview keeps result pins cleared by destination selection', async () => {
+    mockedUseHomeViewModel.mockImplementation(useHomeWithInitialResults);
+    mockedUseDirectionsViewModel.mockReturnValue({
+      route: null,
+      startSource: 'live_gps',
+      rememberedLocationAgeLabel: '',
+      rememberedLocationAvailable: false,
+      rememberedLocationInsideVenue: false,
+      currentRouteOriginInsideVenue: true,
+      loadState: 'idle',
+      errorMessage: null,
+      manualStart: null,
+      chooseManualStart: jest.fn(),
+      setIsEditingManualStart: jest.fn(),
+      setManualStartPlace: jest.fn(),
+      chooseCurrentLocation: jest.fn(async () => true),
+      chooseRememberedLocation: jest.fn(() => true),
+      calculateRoute: jest.fn(async () => {}),
+      showManualStartSearch: false,
+    });
+    const user = userEvent.setup();
+    await render(<HomeScreen />);
+    await user.press(screen.getByTestId('facility_marker_LM_MASJID_MAIN'));
+    await user.press(await screen.findByText('Directions'));
+
+    expect(await screen.findByText('Get Directions')).toBeOnTheScreen();
+    expect(screen.queryByTestId('search-map-marker-GATE_05')).not.toBeOnTheScreen();
+  });
+
+  test('navigation hides result pins', async () => {
+    mockedUseHomeViewModel.mockImplementation(useHomeWithInitialResults);
+    startV1Navigation(v1Route.coordinates[0]);
+    await render(<HomeScreen />);
+
+    expect(await screen.findByTestId('nav-exit-button')).toBeOnTheScreen();
+    expect(screen.queryByTestId('search-map-marker-GATE_05')).not.toBeOnTheScreen();
+  });
+
+  test('Arrival hides result pins and Done clears them before returning to Explore', async () => {
+    mockedUseHomeViewModel.mockImplementation(useHomeWithInitialResults);
+    startArrivedV2Navigation();
+    const user = userEvent.setup();
+    await render(<HomeScreen />);
+
+    const done = await screen.findByTestId('nav-arrived-done-button');
+    expect(screen.queryByTestId('search-map-marker-GATE_05')).not.toBeOnTheScreen();
+    await user.press(done);
+
+    await waitFor(() => expect(clearSearchSpy).toHaveBeenCalled());
+    expect(screen.queryByTestId('search-map-marker-GATE_05')).not.toBeOnTheScreen();
+    await user.type(screen.getByPlaceholderText('Search blocks, rastas, gates'), '');
+    expect(screen.queryByTestId('search-map-marker-GATE_05')).not.toBeOnTheScreen();
+  });
+});
+
 describe('HomeScreen — canonical bottom-sheet dismissal', () => {
   async function selectGate() {
     const user = userEvent.setup();
@@ -718,6 +850,61 @@ describe('HomeScreen — navigation completion cleanup', () => {
 
     expect(screen.queryByTestId('selected-place-marker')).not.toBeOnTheScreen();
     expect(setSelectedPlaceSpy).toHaveBeenCalledWith(null);
+  });
+});
+
+describe('HomeScreen — v1 Arrival marker fallback', () => {
+  test('renders one browse user fallback with accuracy and one v1 destination when snapped location is unavailable', async () => {
+    useAppStore.getState().setCurrentLocation({ latitude: 24.902, longitude: 67.102, accuracy: 12 }, 'gps');
+    const overlaySpy = jest.spyOn(NavigationOverlayV1Module, 'useNavigationOverlayV1').mockReturnValue({
+      active: true,
+      route: v1Route,
+      destination: v1Destination,
+      instructions: [],
+      currentStepIndex: 0,
+      isMuted: false,
+      setIsMuted: jest.fn(),
+      remainingDistance: 0,
+      arrived: true,
+      reroutePending: false,
+      isWeakGps: false,
+      rerouteStatusMessage: null,
+      snappedLocation: null,
+      mapLayers: {
+        venueBoundary: [
+          { latitude: 24.89, longitude: 67.09 },
+          { latitude: 24.91, longitude: 67.11 },
+        ],
+        blocks: [],
+        edges: [],
+      },
+      userPulseAnim: new Animated.Value(0),
+      currentLocationSource: 'gps',
+      settings: {
+        distanceUnit: 'meters',
+        keepNorthFixed: false,
+        voiceInstructions: true,
+        walkingSpeed: 1.4,
+        autoReroute: true,
+      },
+      graphOnlyFallbackUsed: false,
+      requestNavigationExit: jest.fn(),
+      completeArrivalNavigation: jest.fn(),
+      setIsAutoFollowing: jest.fn(),
+      bottomBarHeight: 0,
+      setBottomBarHeight: jest.fn(),
+    } as unknown as ReturnType<typeof NavigationOverlayV1Module.useNavigationOverlayV1>);
+
+    await render(<HomeScreen />);
+
+    expect(screen.getAllByTestId('browse-user-location-marker')).toHaveLength(1);
+    expect(screen.getAllByTestId('browse-user-accuracy-circle')).toHaveLength(1);
+    expect(screen.queryByTestId('navigation-user-location-marker')).not.toBeOnTheScreen();
+    expect(screen.queryByTestId('navigation-start-marker')).not.toBeOnTheScreen();
+    expect(screen.getAllByTestId('navigation-destination-marker')).toHaveLength(1);
+    expect(screen.queryByTestId('selected-place-marker')).not.toBeOnTheScreen();
+
+    overlaySpy.mockRestore();
   });
 });
 

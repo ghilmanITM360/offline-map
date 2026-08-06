@@ -436,9 +436,11 @@ export function HomeScreen() {
     if (!navigationEnded) return;
     // Canonical navigation exit (arrival Done or confirmed mid-trip Exit) already
     // clears route/runtime state in the store. Retire Home-owned selection/planner
-    // state here so Explore cannot resurrect the destination browse pin.
+    // and transient search state here so Explore cannot resurrect destination or
+    // search-result browse pins.
+    clearSearch();
     resetDismissedSheetState(true);
-  }, [isNavigating, resetDismissedSheetState]);
+  }, [clearSearch, isNavigating, resetDismissedSheetState]);
 
   const closeSearch = useCallback(() => {
     clearSearch();
@@ -514,10 +516,8 @@ export function HomeScreen() {
     return RoutePointService.getDestinationCoordinate(selectedPlace);
   }, [selectedPlace, entryPoints, selectedEntryIdx]);
   const overlayPlaces = useMemo(
-    () => (mode === 'SEARCH'
-      ? searchResults.filter((item) => (item as any).coordinate && (item as any).id !== selectedPlace?.id)
-      : []),
-    [mode, searchResults, selectedPlace],
+    () => searchResults.filter((item) => (item as any).coordinate && (item as any).id !== selectedPlace?.id),
+    [searchResults, selectedPlace],
   );
 
   const { outside: previewOutsideLegCoordinates, inside: previewInsideLegCoordinates } = useMemo(
@@ -1366,7 +1366,7 @@ export function HomeScreen() {
             />
           )}
 
-          {mode !== 'NAVIGATION' && overlayPlaces.map((item) => {
+          {mode !== 'NAVIGATION' && mode !== 'ARRIVAL' && overlayPlaces.map((item) => {
             const overlayItem = item as Place | SearchResult;
             const coordinate = overlayItem.coordinate;
             const label = getDisplayName(overlayItem);
