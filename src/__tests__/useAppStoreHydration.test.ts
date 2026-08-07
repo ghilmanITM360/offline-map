@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import { getEventListeners } from 'node:events';
 import { useAppStore, waitForStoreHydration } from '../store/useAppStore';
 
 const initialStoreState = useAppStore.getState();
@@ -527,5 +528,191 @@ describe('waitForStoreHydration — exact hydration-generation isolation', () =>
     freshStorage.resolve(null);
     await freshRehydrate;
     await expect(freshWaiter).resolves.toEqual({ outcome: 'success' });
+  });
+});
+
+describe('waitForStoreHydration — AbortSignal listener cleanup (all outcomes)', () => {
+  it('already-settled success (synchronous replay) leaves no abort listener attached', async () => {
+    const controllable = controllableStorage();
+    useAppStore.persist.setOptions({ storage: controllable.storage });
+    const rehydratePromise = useAppStore.persist.rehydrate();
+    controllable.resolve(null);
+    await rehydratePromise;
+    await Promise.resolve();
+
+    const controller = new AbortController();
+    const result = await waitForStoreHydration(5000, controller.signal);
+
+    expect(result).toEqual({ outcome: 'success' });
+    expect(getEventListeners(controller.signal, 'abort')).toHaveLength(0);
+  });
+
+  it('already-settled failure (synchronous replay) leaves no abort listener attached — rejected: false', async () => {
+    const controllable = controllableStorage();
+    useAppStore.persist.setOptions({ storage: controllable.storage });
+    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const rehydratePromise = useAppStore.persist.rehydrate();
+    controllable.reject(new Error('AsyncStorage read failed'));
+    await rehydratePromise.catch(() => {});
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    const controller = new AbortController();
+    let rejected = false;
+    const result = await waitForStoreHydration(5000, controller.signal).catch((error) => {
+      rejected = true;
+      throw error;
+    });
+
+    expect(rejected).toBe(false);
+    expect(result).toEqual({ outcome: 'failure' });
+    expect(getEventListeners(controller.signal, 'abort')).toHaveLength(0);
+
+    errorSpy.mockRestore();
+    warnSpy.mockRestore();
+  });
+
+  it('async success (not yet settled at call time) leaves no abort listener attached once resolved', async () => {
+    const controllable = controllableStorage();
+    useAppStore.persist.setOptions({ storage: controllable.storage });
+    const rehydratePromise = useAppStore.persist.rehydrate();
+    const controller = new AbortController();
+    const waitPromise = waitForStoreHydration(5000, controller.signal);
+    expect(getEventListeners(controller.signal, 'abort')).toHaveLength(1);
+
+    controllable.resolve(null);
+    await rehydratePromise;
+    await expect(waitPromise).resolves.toEqual({ outcome: 'success' });
+    expect(getEventListeners(controller.signal, 'abort')).toHaveLength(0);
+  });
+
+  it('async failure (not yet settled at call time) leaves no abort listener attached once resolved', async () => {
+    const controllable = controllableStorage();
+    useAppStore.persist.setOptions({ storage: controllable.storage });
+    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const rehydratePromise = useAppStore.persist.rehydrate();
+    const controller = new AbortController();
+    const waitPromise = waitForStoreHydration(5000, controller.signal);
+
+    controllable.reject(new Error('boom'));
+    await rehydratePromise.catch(() => {});
+    await expect(waitPromise).resolves.toEqual({ outcome: 'failure' });
+    expect(getEventListeners(controller.signal, 'abort')).toHaveLength(0);
+
+    errorSpy.mockRestore();
+    warnSpy.mockRestore();
+  });
+
+  it('timeout leaves no abort listener attached once resolved', async () => {
+    jest.useFakeTimers();
+    try {
+      const controllable = controllableStorage(); // getItem deliberately never settles
+      useAppStore.persist.setOptions({ storage: controllable.storage });
+      void useAppStore.persist.rehydrate();
+      const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+      const controller = new AbortController();
+
+      const waitPromise = waitForStoreHydration(1000, controller.signal);
+      expect(getEventListeners(controller.signal, 'abort')).toHaveLength(1);
+
+      jest.advanceTimersByTime(1000);
+      await expect(waitPromise).resolves.toEqual({ outcome: 'timeout' });
+      expect(getEventListeners(controller.signal, 'abort')).toHaveLength(0);
+
+      warnSpy.mockRestore();
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('abort leaves no abort listener attached once resolved', async () => {
+    const controllable = controllableStorage(); // never settles on its own
+    useAppStore.persist.setOptions({ storage: controllable.storage });
+    void useAppStore.persist.rehydrate();
+    const controller = new AbortController();
+
+    const waitPromise = waitForStoreHydration(5000, controller.signal);
+    expect(getEventListeners(controller.signal, 'abort')).toHaveLength(1);
+
+    controller.abort();
+    await expect(waitPromise).resolves.toEqual({ outcome: 'aborted' });
+    expect(getEventListeners(controller.signal, 'abort')).toHaveLength(0);
+  });
+
+  it('a late settlement after this waiter already timed out leaves no lingering listener and does not throw', async () => {
+    jest.useFakeTimers();
+    try {
+      const controllable = controllableStorage();
+      useAppStore.persist.setOptions({ storage: controllable.storage });
+      void useAppStore.persist.rehydrate();
+      const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+      const controller = new AbortController();
+
+      const waitPromise = waitForStoreHydration(1000, controller.signal);
+      jest.advanceTimersByTime(1000);
+      await expect(waitPromise).resolves.toEqual({ outcome: 'timeout' });
+      expect(getEventListeners(controller.signal, 'abort')).toHaveLength(0);
+
+      controllable.resolve(null); // late real settle
+      await Promise.resolve();
+      await Promise.resolve();
+      expect(getEventListeners(controller.signal, 'abort')).toHaveLength(0);
+
+      warnSpy.mockRestore();
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('a late real settlement after abort does not throw and leaves no lingering listener', async () => {
+    const controllable = controllableStorage();
+    useAppStore.persist.setOptions({ storage: controllable.storage });
+    void useAppStore.persist.rehydrate();
+    const controller = new AbortController();
+
+    const waitPromise = waitForStoreHydration(5000, controller.signal);
+    controller.abort();
+    await expect(waitPromise).resolves.toEqual({ outcome: 'aborted' });
+    expect(getEventListeners(controller.signal, 'abort')).toHaveLength(0);
+
+    controllable.resolve(null);
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(getEventListeners(controller.signal, 'abort')).toHaveLength(0);
+  });
+
+  it('an already-aborted signal at call time resolves aborted immediately with no listener ever attached', async () => {
+    const controllable = controllableStorage(); // never settles
+    useAppStore.persist.setOptions({ storage: controllable.storage });
+    void useAppStore.persist.rehydrate();
+    const controller = new AbortController();
+    controller.abort();
+
+    const result = await waitForStoreHydration(5000, controller.signal);
+
+    expect(result).toEqual({ outcome: 'aborted' });
+    expect(getEventListeners(controller.signal, 'abort')).toHaveLength(0);
+  });
+
+  it('multiple waiters sharing one signal all resolve aborted and leave no listeners behind', async () => {
+    const controllable = controllableStorage(); // never settles
+    useAppStore.persist.setOptions({ storage: controllable.storage });
+    void useAppStore.persist.rehydrate();
+    const controller = new AbortController();
+
+    const first = waitForStoreHydration(5000, controller.signal);
+    const second = waitForStoreHydration(5000, controller.signal);
+    const third = waitForStoreHydration(5000, controller.signal);
+    expect(getEventListeners(controller.signal, 'abort')).toHaveLength(3);
+
+    controller.abort();
+
+    await expect(first).resolves.toEqual({ outcome: 'aborted' });
+    await expect(second).resolves.toEqual({ outcome: 'aborted' });
+    await expect(third).resolves.toEqual({ outcome: 'aborted' });
+    expect(getEventListeners(controller.signal, 'abort')).toHaveLength(0);
   });
 });

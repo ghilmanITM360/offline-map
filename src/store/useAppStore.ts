@@ -562,7 +562,13 @@ export function waitForStoreHydration(timeoutMs = HYDRATION_TIMEOUT_MS, signal?:
       }
       finish({ outcome: event.outcome });
     });
-    if (signal) {
+    // `!settled` guards against the synchronous-replay path above: subscribeHydrationOutcome()
+    // can call its listener (and therefore finish()) synchronously, inside the
+    // `unsubscribe = subscribeHydrationOutcome(...)` call itself, whenever this exact
+    // generation already settled before this waiter was created. Without this guard, an
+    // already-resolved promise would still reach `signal.addEventListener` below and attach a
+    // listener nothing will ever remove.
+    if (signal && !settled) {
       if (signal.aborted) finish({ outcome: 'aborted' });
       else signal.addEventListener('abort', onAbort, { once: true });
     }
