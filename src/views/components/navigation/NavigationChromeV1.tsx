@@ -75,30 +75,13 @@ export function NavigationChromeV1({ overlay, hasBaseMap }: { overlay: Navigatio
 
   return (
     <>
-      {(!hasBaseMap || graphOnlyFallbackUsed) && (
-        <View style={styles.mapUnavailableBanner}>
-          <Text style={styles.mapUnavailableText}>
-            {graphOnlyFallbackUsed ? 'Graph-only map is active. Base map tiles are unavailable.' : 'Base map tiles are unavailable.'}
-          </Text>
-        </View>
-      )}
-
       <AnimatedSafeAreaView
+        testID="navigation-top-stack-v1"
         style={[
           styles.topBar,
           { opacity: mountAnim, transform: [{ translateY: mountAnim.interpolate({ inputRange: [0, 1], outputRange: [-16, 0] }) }] },
         ]}
       >
-        {isWeakGps && (
-          <View style={styles.weakGpsBanner}>
-            <Text style={styles.weakGpsText}>Weak GPS signal detected. Route updates may be slower.</Text>
-          </View>
-        )}
-        {rerouteStatusMessage && !reroutePending && (
-          <View style={styles.rerouteHintBanner}>
-            <Text style={styles.rerouteHintText}>{rerouteStatusMessage}</Text>
-          </View>
-        )}
         {reroutePending ? (
           <View style={[styles.instructionCard, styles.rerouteCard]}>
             <RefreshCw size={28} color={staticColors.white} />
@@ -135,6 +118,25 @@ export function NavigationChromeV1({ overlay, hasBaseMap }: { overlay: Navigatio
             </Pressable>
           </View>
         ) : null}
+        <View style={styles.topStatusStack}>
+          {isWeakGps && (
+            <View style={styles.weakGpsBanner}>
+              <Text style={styles.weakGpsText}>Weak GPS signal detected. Route updates may be slower.</Text>
+            </View>
+          )}
+          {rerouteStatusMessage && !reroutePending && (
+            <View style={styles.rerouteHintBanner}>
+              <Text style={styles.rerouteHintText}>{rerouteStatusMessage}</Text>
+            </View>
+          )}
+          {(!hasBaseMap || graphOnlyFallbackUsed) && (
+            <View style={styles.mapUnavailableBanner}>
+              <Text style={styles.mapUnavailableText}>
+                {graphOnlyFallbackUsed ? 'Graph-only map is active. Base map tiles are unavailable.' : 'Base map tiles are unavailable.'}
+              </Text>
+            </View>
+          )}
+        </View>
       </AnimatedSafeAreaView>
 
       {!arrived && (

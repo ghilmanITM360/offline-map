@@ -4,7 +4,7 @@
  */
 
 import React from 'react';
-import { render, screen, userEvent } from './test-utils';
+import { render, screen, userEvent, within } from './test-utils';
 
 import { NavigationChromeV1 } from '../views/components/navigation/NavigationChromeV1';
 import { NAV_TOUCH_TARGET_HIT_SLOP } from '../views/components/navigation/navOverlayStyles';
@@ -83,6 +83,14 @@ describe('NavigationChromeV1 — Exit/recenter/mute touch targets', () => {
     expect(screen.getByText('Continue Straight')).toBeOnTheScreen();
     expect(screen.getByText('Continue ahead')).toBeOnTheScreen();
     expect(screen.getByText('Gate 8')).toBeOnTheScreen();
+  });
+
+  test('keeps base-map status below the maneuver in the shared top stack', async () => {
+    await render(<NavigationChromeV1 overlay={baseOverlay()} hasBaseMap={false} />);
+
+    const stack = screen.getByTestId('navigation-top-stack-v1');
+    expect(within(stack).getByText('Continue Straight')).toBeOnTheScreen();
+    expect(within(stack).getByText('Base map tiles are unavailable.')).toBeOnTheScreen();
   });
 
   test('pressing Exit requests confirmation instead of stopping directly', async () => {

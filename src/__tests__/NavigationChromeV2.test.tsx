@@ -4,7 +4,7 @@
  */
 
 import React from 'react';
-import { render, screen, userEvent } from './test-utils';
+import { render, screen, userEvent, within } from './test-utils';
 
 import { NavigationChromeV2 } from '../views/components/navigation/NavigationChromeV2';
 import { NAV_TOUCH_TARGET_HIT_SLOP } from '../views/components/navigation/navOverlayStyles';
@@ -66,6 +66,42 @@ function baseOverlay(overrides: Partial<NavigationOverlayV2> = {}): NavigationOv
 }
 
 describe('NavigationChromeV2 — direct outside guide', () => {
+  test('owns maneuver and subordinate status surfaces in one ordered top stack', async () => {
+    const outsideRoute: V2ActiveRoute = {
+      ...route,
+      outsideLegCoordinateCount: 1,
+      outsideRoute: {
+        schemaVersion: 1,
+        candidateId: 'nav-stack',
+        requestId: 'nav-stack',
+        requestVersion: 1,
+        provider: 'offline-osm',
+        gateId: 'GATE_05',
+        distanceM: 120,
+        durationSeconds: null,
+        coordinates: route.coordinates,
+        steps: [],
+        roadFollowing: true,
+        distanceKind: 'walking-route',
+        warnings: [],
+        fallbackHistory: [{ provider: 'google', code: 'proxy-unconfigured', retryable: true }],
+      },
+      metadata: { ...route.metadata, startedOutside: true, entryGateId: 'GATE_05', usesOfficialGateEntry: true },
+    };
+
+    await render(<NavigationChromeV2
+      overlay={baseOverlay({ route: outsideRoute, instructions: outsideRoute.instructions })}
+      hasBaseMap={false}
+    />);
+
+    const stack = screen.getByTestId('navigation-top-stack');
+    const stackContent = within(stack);
+    expect(stackContent.getByTestId('navigation-maneuver-surface')).toBeOnTheScreen();
+    expect(stackContent.getByTestId('navigation-subordinate-surfaces')).toBeOnTheScreen();
+    expect(stackContent.getByText('Offline walking route')).toBeOnTheScreen();
+    expect(stackContent.getByText(/Base map tiles are unavailable/)).toBeOnTheScreen();
+  });
+
   test('shows accurate road provider identity while outside leg is active', async () => {
     const offlineRoute: V2ActiveRoute = {
       ...route,

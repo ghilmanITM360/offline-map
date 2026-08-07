@@ -96,117 +96,124 @@ export function NavigationChromeV2({ overlay, hasBaseMap }: { overlay: Navigatio
 
   return (
     <>
-      {!hasBaseMap && (
-        <View style={styles.mapUnavailableBanner}>
-          <Text style={styles.mapUnavailableText}>
-            {graphOnlyFallbackUsed ? 'Graph-only v2 map is active. Base map tiles are unavailable.' : 'Base map tiles are unavailable.'}
-          </Text>
-        </View>
-      )}
-      {route.metadata.startedOutside && route.metadata.entryGateId && (
-        <View style={styles.v2EntryGateBanner}>
-          <Text style={styles.v2EntryGateText}>Route starts from {route.origin.label}.</Text>
-        </View>
-      )}
-      {outsidePhaseActive && outsideRoute && (
-        <OutsideRouteStatusCard
-          route={outsideRoute}
-          gateLabel={directGateLabel}
-          retrying={reroutePending}
-          onRetry={() => void retryOutsideRoute()}
-          onChooseGate={() => setShowGateOptions((visible) => !visible)}
-        />
-      )}
-      {directOutsideActive && showGateOptions && (
-        <View style={styles.directGateOptions}>
-          <Text style={styles.directGateOptionsTitle}>Choose official entry gate</Text>
-          {availableOutsideGates.map((gate) => (
-            <Button
-              key={gate.id}
-              variant={manualGateId === gate.id ? 'secondary' : 'outline'}
-              label={gate.label}
-              accessibilityLabel={`Use ${gate.label}`}
-              onPress={() => {
-                setShowGateOptions(false);
-                void selectOutsideGate(gate.id);
-              }}
-            />
-          ))}
-        </View>
-      )}
-
       <AnimatedSafeAreaView
+        testID="navigation-top-stack"
         style={[
           styles.topBar,
           { opacity: mountAnim, transform: [{ translateY: mountAnim.interpolate({ inputRange: [0, 1], outputRange: [-16, 0] }) }] },
         ]}
       >
-        {gpsSignalState === 'GPS_LOST' && (
-          <View style={styles.weakGpsBanner}>
-            <Text style={styles.weakGpsText}>Searching for GPS signal. Your position may be out of date.</Text>
-          </View>
-        )}
-        {isWeakGps && (
-          <View style={styles.weakGpsBanner}>
-            <Text style={styles.weakGpsText}>Weak GPS signal detected. Route updates may be slower.</Text>
-          </View>
-        )}
-        {rerouteStatusMessage && !reroutePending && (
-          <View style={styles.rerouteHintBanner}>
-            <Text style={styles.rerouteHintText}>{rerouteStatusMessage}</Text>
-          </View>
-        )}
-        {reroutePending ? (
-          <View style={[styles.instructionCard, styles.rerouteCard]}>
-            <RefreshCw size={28} color={staticColors.white} />
-            <Text style={styles.rerouteText}>Recalculating...</Text>
-          </View>
-        ) : directOutsideActive && !arrived ? (
-          <View
-            style={styles.instructionCard}
-            accessibilityLabel={outsideRouteMessage('direct.heading', 'en', { gate: directGateLabel })}
-          >
-            <View style={styles.instructionIcon}>
-              <Navigation size={32} color={staticColors.white} />
+        <View testID="navigation-maneuver-surface">
+          {reroutePending ? (
+            <View style={[styles.instructionCard, styles.rerouteCard]}>
+              <RefreshCw size={28} color={staticColors.white} />
+              <Text style={styles.rerouteText}>Recalculating...</Text>
             </View>
-            <View style={styles.instructionTextContainer}>
-              <Text style={styles.maneuverLabel}>Direct gate guide</Text>
-              <Text style={styles.nextStepText}>
-                {outsideRouteMessage('direct.heading', 'en', { gate: directGateLabel })}
-              </Text>
-            </View>
-          </View>
-        ) : currentStep && !arrived ? (
-          <View style={styles.instructionCard} accessibilityLabel={currentStep.text}>
-            <View style={styles.instructionIcon}>
-              <StepIcon type={currentStep.type} size={32} />
-            </View>
-            <View style={styles.instructionTextContainer}>
-              <Text style={styles.maneuverLabel}>{InstructionService.maneuverLabel(currentStep.type)}</Text>
-              <Text style={styles.instructionDistance}>
-                {currentStep.distanceM > 0 ? InstructionService.formatDistance(currentStep.distanceM, settings.distanceUnit) : ''}
-              </Text>
-              <Text style={styles.roadNameText} numberOfLines={1} ellipsizeMode="tail">
-                {currentStep.roadName ?? InstructionService.ROAD_NAME_FALLBACK}
-              </Text>
-              {nextStep && (
-                <Text style={styles.nextStepText} numberOfLines={1}>
-                  Then: {nextStep.text}
-                </Text>
-              )}
-            </View>
-            <Pressable
-              testID="nav-mute-toggle"
-              onPress={() => setIsMuted(!isMuted)}
-              style={styles.muteButton}
-              hitSlop={NAV_TOUCH_TARGET_HIT_SLOP}
-              accessibilityRole="button"
-              accessibilityLabel={isMuted ? 'Unmute voice guidance' : 'Mute voice guidance'}
+          ) : directOutsideActive && !arrived ? (
+            <View
+              style={styles.instructionCard}
+              accessibilityLabel={outsideRouteMessage('direct.heading', 'en', { gate: directGateLabel })}
             >
-              {isMuted ? <VolumeX size={24} color={staticColors.white} /> : <Volume2 size={24} color={staticColors.white} />}
-            </Pressable>
-          </View>
-        ) : null}
+              <View style={styles.instructionIcon}>
+                <Navigation size={32} color={staticColors.white} />
+              </View>
+              <View style={styles.instructionTextContainer}>
+                <Text style={styles.maneuverLabel}>Direct gate guide</Text>
+                <Text style={styles.nextStepText}>
+                  {outsideRouteMessage('direct.heading', 'en', { gate: directGateLabel })}
+                </Text>
+              </View>
+            </View>
+          ) : currentStep && !arrived ? (
+            <View style={styles.instructionCard} accessibilityLabel={currentStep.text}>
+              <View style={styles.instructionIcon}>
+                <StepIcon type={currentStep.type} size={32} />
+              </View>
+              <View style={styles.instructionTextContainer}>
+                <Text style={styles.maneuverLabel}>{InstructionService.maneuverLabel(currentStep.type)}</Text>
+                <Text style={styles.instructionDistance}>
+                  {currentStep.distanceM > 0 ? InstructionService.formatDistance(currentStep.distanceM, settings.distanceUnit) : ''}
+                </Text>
+                <Text style={styles.roadNameText} numberOfLines={1} ellipsizeMode="tail">
+                  {currentStep.roadName ?? InstructionService.ROAD_NAME_FALLBACK}
+                </Text>
+                {nextStep && (
+                  <Text style={styles.nextStepText} numberOfLines={1}>
+                    Then: {nextStep.text}
+                  </Text>
+                )}
+              </View>
+              <Pressable
+                testID="nav-mute-toggle"
+                onPress={() => setIsMuted(!isMuted)}
+                style={styles.muteButton}
+                hitSlop={NAV_TOUCH_TARGET_HIT_SLOP}
+                accessibilityRole="button"
+                accessibilityLabel={isMuted ? 'Unmute voice guidance' : 'Mute voice guidance'}
+              >
+                {isMuted ? <VolumeX size={24} color={staticColors.white} /> : <Volume2 size={24} color={staticColors.white} />}
+              </Pressable>
+            </View>
+          ) : null}
+        </View>
+
+        <View testID="navigation-subordinate-surfaces" style={styles.topStatusStack}>
+          {gpsSignalState === 'GPS_LOST' && (
+            <View style={styles.weakGpsBanner}>
+              <Text style={styles.weakGpsText}>Searching for GPS signal. Your position may be out of date.</Text>
+            </View>
+          )}
+          {isWeakGps && (
+            <View style={styles.weakGpsBanner}>
+              <Text style={styles.weakGpsText}>Weak GPS signal detected. Route updates may be slower.</Text>
+            </View>
+          )}
+          {rerouteStatusMessage && !reroutePending && (
+            <View style={styles.rerouteHintBanner}>
+              <Text style={styles.rerouteHintText}>{rerouteStatusMessage}</Text>
+            </View>
+          )}
+          {!hasBaseMap && (
+            <View style={styles.mapUnavailableBanner}>
+              <Text style={styles.mapUnavailableText}>
+                {graphOnlyFallbackUsed ? 'Graph-only v2 map is active. Base map tiles are unavailable.' : 'Base map tiles are unavailable.'}
+              </Text>
+            </View>
+          )}
+          {route.metadata.startedOutside && route.metadata.entryGateId && (
+            <View style={styles.v2EntryGateBanner}>
+              <Text style={styles.v2EntryGateText}>Route starts from {route.origin.label}.</Text>
+            </View>
+          )}
+          {outsidePhaseActive && outsideRoute && (
+            <View style={styles.outsideStatusCardWrap}>
+              <OutsideRouteStatusCard
+                route={outsideRoute}
+                gateLabel={directGateLabel}
+                retrying={reroutePending}
+                onRetry={() => void retryOutsideRoute()}
+                onChooseGate={() => setShowGateOptions((visible) => !visible)}
+              />
+            </View>
+          )}
+          {directOutsideActive && showGateOptions && (
+            <View style={styles.directGateOptions}>
+              <Text style={styles.directGateOptionsTitle}>Choose official entry gate</Text>
+              {availableOutsideGates.map((gate) => (
+                <Button
+                  key={gate.id}
+                  variant={manualGateId === gate.id ? 'secondary' : 'outline'}
+                  label={gate.label}
+                  accessibilityLabel={`Use ${gate.label}`}
+                  onPress={() => {
+                    setShowGateOptions(false);
+                    void selectOutsideGate(gate.id);
+                  }}
+                />
+              ))}
+            </View>
+          )}
+        </View>
       </AnimatedSafeAreaView>
 
       {!arrived && (

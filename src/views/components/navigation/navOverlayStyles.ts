@@ -147,10 +147,7 @@ export const navOverlayStyles = StyleSheet.create({
     fontWeight: '600',
   },
   mapUnavailableBanner: {
-    position: 'absolute',
-    left: 12,
-    right: 12,
-    top: 58,
+    marginHorizontal: 12,
     paddingHorizontal: 12,
     paddingVertical: 10,
     borderRadius: 10,
@@ -165,10 +162,7 @@ export const navOverlayStyles = StyleSheet.create({
     lineHeight: 20,
   },
   v2EntryGateBanner: {
-    position: 'absolute',
-    left: 12,
-    right: 12,
-    top: 108,
+    marginHorizontal: 12,
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 10,
@@ -202,6 +196,13 @@ export const navOverlayStyles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
+  },
+  topStatusStack: {
+    paddingTop: 8,
+    gap: 8,
+  },
+  outsideStatusCardWrap: {
+    marginHorizontal: 12,
   },
   weakGpsBanner: {
     marginHorizontal: 12,
