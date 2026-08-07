@@ -33,6 +33,7 @@ import {
 import { useDirectionsViewModel } from '../../../viewmodels/DirectionsViewModel';
 import { InstructionService } from '../../../services/InstructionService';
 import { SearchService } from '../../../services/SearchService';
+import { destinationFromPlace } from '../../../services/V2DirectionsService';
 import { useAppStore } from '../../../store/useAppStore';
 import { Place, RoutePreview, BlockEntryPoint, Gate } from '../../../models/types';
 import { IJTEMA_DATA } from '../../../constants/data';
@@ -632,7 +633,7 @@ function RoutePreviewSection({
                 variant="primary"
                 label={outsideRoute?.provider === 'direct-guide' ? 'Start Direct Guide' : 'Start Navigation'}
                 onPress={() => {
-                  if (destination.sourceVersion === 'v2') {
+                  if (destinationFromPlace(destination)) {
                     // Built from the resolved preview route already sitting in the store
                     // (see HomeScreen.handleStartPreviewNavigation) — starts NavigationOverlayV2
                     // in place, then reveals the map the same way v1 does below.

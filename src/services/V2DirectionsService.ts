@@ -3,6 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import { IJTEMA_DATA, LANDMARK_NEAREST_NODE, LANDMARK_PLACES } from '../constants/data';
+import { findNearestGraphNode, IJTEMA_NAVIGATION_GRAPH_V2 } from '../data/ijtema';
 import { NavigationInstruction, Place } from '../models/types';
 import type {
   NormalizedOutsideCandidate,
@@ -60,15 +62,41 @@ function routeMessageForUnavailablePlace(place: Place): string {
 }
 
 export function destinationFromPlace(place: Place): RoutingDestinationV2 | null {
-  if (place.category === 'Block') return { type: 'block', blockId: place.id };
-  if (place.category === 'Gate') return { type: 'gate', gateId: place.id };
-  if (place.category === 'Rasta') return { type: 'rasta', rastaId: place.id };
-  if (place.category === 'SpecialRoute') return { type: 'special_route', routeId: place.id };
-  return null;
+  if (place.sourceVersion === 'v2') {
+    if (place.category === 'Block') return { type: 'block', blockId: place.id };
+    if (place.category === 'Gate') return { type: 'gate', gateId: place.id };
+    if (place.category === 'Rasta') return { type: 'rasta', rastaId: place.id };
+    if (place.category === 'SpecialRoute') return { type: 'special_route', routeId: place.id };
+    return null;
+  }
+
+  if (!['Masjid', 'Landmark', 'Terminal', 'Help'].includes(place.category)) return null;
+  const canonicalFacility = LANDMARK_PLACES.find(
+    (candidate) => candidate.id === place.id && (candidate.category === 'Masjid' || candidate.category === 'Landmark'),
+  );
+  const mappedNodeId = canonicalFacility ? LANDMARK_NEAREST_NODE[canonicalFacility.id] : undefined;
+  if (!canonicalFacility || !mappedNodeId) return null;
+
+  const mappedV2Node = IJTEMA_NAVIGATION_GRAPH_V2.nodes[mappedNodeId];
+  const mappedNodeConnected = mappedV2Node && IJTEMA_NAVIGATION_GRAPH_V2.adjacency[mappedNodeId]?.length > 0;
+  let nodeId = mappedNodeConnected ? mappedNodeId : null;
+  if (!nodeId) {
+    const mappedLegacyNode = IJTEMA_DATA.nodes[mappedNodeId];
+    if (!mappedLegacyNode) return null;
+    const nearest = findNearestGraphNode(
+      { lat: mappedLegacyNode.lat, lng: mappedLegacyNode.lng },
+      IJTEMA_NAVIGATION_GRAPH_V2.nodes,
+    );
+    if (!nearest || !IJTEMA_NAVIGATION_GRAPH_V2.adjacency[nearest.node.id]?.length) return null;
+    nodeId = nearest.node.id;
+  }
+
+  return { type: 'facility', facilityId: canonicalFacility.id, nodeId, label: place.name };
 }
 
 function startFromPlace(place: Place): RoutingStartV2 | null {
-  return destinationFromPlace(place);
+  const destination = destinationFromPlace(place);
+  return destination?.type === 'facility' ? null : destination;
 }
 
 function instructionType(maneuver: OutsideWalkingManeuver): NavigationInstruction['type'] {

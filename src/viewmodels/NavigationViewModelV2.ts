@@ -67,14 +67,25 @@ function isArrived(route: V2ActiveRoute, coordinate: Coordinate | null): boolean
 
 function placeFromV2Destination(route: V2ActiveRoute, existingDestination: Place | null): Place | null {
   if (existingDestination) return existingDestination;
+  const destination = route.destination;
+  if (destination.type === 'facility') {
+    return {
+      id: destination.facilityId ?? route.routeId,
+      name: destination.label,
+      category: 'Landmark',
+      description: destination.label,
+      coordinate: destination.coordinate,
+      sourceVersion: 'v1',
+    };
+  }
   return {
-    id: route.destination.blockId ?? route.destination.gateId ?? route.routeId,
-    name: route.destination.label,
-    category: route.destination.type === 'gate' ? 'Gate' : route.destination.type === 'rasta' ? 'Rasta' : 'Block',
-    description: route.destination.label,
-    coordinate: route.destination.coordinate,
+    id: destination.blockId ?? destination.gateId ?? route.routeId,
+    name: destination.label,
+    category: destination.type === 'gate' ? 'Gate' : destination.type === 'rasta' ? 'Rasta' : 'Block',
+    description: destination.label,
+    coordinate: destination.coordinate,
     sourceVersion: 'v2',
-    sourceKind: route.destination.type,
+    sourceKind: destination.type,
   };
 }
 

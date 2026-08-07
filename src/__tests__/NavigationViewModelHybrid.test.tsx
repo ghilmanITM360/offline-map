@@ -1,4 +1,5 @@
 import type { Place, V2ActiveRoute } from '../models/types';
+import { LANDMARK_PLACES } from '../constants/data';
 import { V2DirectionsService } from '../services/V2DirectionsService';
 import { V2NavigationAdapter } from '../services/V2NavigationAdapter';
 import { createProductionOutsideRouteSource } from '../services/outsideRouting/ProductionOutsideRouteSource';
@@ -61,6 +62,51 @@ beforeEach(() => {
 });
 
 describe('NavigationViewModelV2 hybrid rerouting', () => {
+  test('preserves Facility place and metadata across hybrid reroute', async () => {
+    const facility = LANDMARK_PLACES.find((place) => place.id === 'LM_MASJID_MAIN')!;
+    const insidePreview = V2DirectionsService.calculatePreview({
+      startPlace: null,
+      destination: facility,
+      currentLocation: { latitude: 24.966, longitude: 67.004 },
+    });
+    expect(insidePreview.status).toBe('ready');
+    const facilityRoute = V2NavigationAdapter.fromPreview({
+      previewRoute: insidePreview.route!,
+      destination: facility,
+      currentLocation: { latitude: 24.966, longitude: 67.004 },
+    });
+    useAppStore.getState().startNavigation(facility, facilityRoute, facilityRoute.instructions);
+    useAppStore.setState({
+      currentLocation: origin,
+      currentLocationSource: 'live',
+    });
+    const previewSpy = jest.spyOn(V2DirectionsService, 'calculateHybridPreview');
+    const hook = await renderHook(() => useNavigationViewModelV2());
+
+    await act(() => hook.result.current.retryOutsideRoute());
+    await waitFor(() => expect(hook.result.current.reroutePending).toBe(false), { timeout: 5_000 });
+
+    expect(previewSpy).toHaveBeenCalledWith(expect.objectContaining({
+      request: expect.objectContaining({
+        destination: expect.objectContaining({
+          id: 'LM_MASJID_MAIN',
+          name: 'Main Masjid',
+          category: 'Masjid',
+          sourceVersion: 'v1',
+        }),
+      }),
+    }));
+    expect(useAppStore.getState().activeRoute).toMatchObject({
+      destination: {
+        type: 'facility',
+        facilityId: 'LM_MASJID_MAIN',
+        entryNodeId: 'P6',
+        label: 'Main Masjid',
+      },
+    });
+    previewSpy.mockRestore();
+  });
+
   test('explicit retry uses hybrid flow and keeps navigation active', async () => {
     const hook = await renderHook(() => useNavigationViewModelV2());
 

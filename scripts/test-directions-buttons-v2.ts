@@ -40,8 +40,8 @@ assert(
   'Directions screen must call handleStartNavigation for legacy destinations.',
 );
 assert(
-  directionsScreenSource.includes("destination.sourceVersion === 'v2'"),
-  'Directions screen primary button must branch on destination.sourceVersion.',
+  directionsScreenSource.includes('destinationFromPlace(destination)'),
+  'Directions screen primary button must branch on unified V2-routing destination support.',
 );
 // LocationSheet doesn't depend on react-navigation at all anymore — it's rendered inline
 // inside HomeScreen's bottom sheet, not as a routed screen, and starting navigation (v1 or v2)

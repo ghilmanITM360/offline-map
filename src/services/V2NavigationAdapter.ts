@@ -15,6 +15,7 @@ import {
 } from '../models/types';
 import { MapFeatureFlagsService } from './MapFeatureFlagsService';
 import { RoutePreviewV2 } from './RoutingServiceV2';
+import { destinationFromPlace } from './V2DirectionsService';
 import { V2PlaceAdapter } from './V2PlaceAdapter';
 
 export interface V2NavigationAdapterInput {
@@ -34,7 +35,6 @@ export interface V2NavigationStartCheck {
   message: string;
 }
 
-const ROUTABLE_DESTINATION_CATEGORIES = new Set<Place['category']>(['Block', 'Gate', 'Rasta']);
 const RAW_ID_PATTERN = /\b(?:P\d+|S\d+|T\d+|C\d+|R\d+-\d+|SPNP-\d+|SPSP-\d+|SPWP-\d+|B\d+_C\d+)\b/;
 const GATE_CONNECTOR_VERIFICATION_MESSAGE = 'This gate needs connector verification before navigation.';
 
@@ -51,18 +51,13 @@ function edgeForHop(from: string, to: string) {
   return IJTEMA_NAVIGATION_GRAPH_V2.adjacency[from]?.find((edge) => edge.to === to);
 }
 
-function destinationType(place: Place): V2ActiveRoute['destination']['type'] {
-  if (place.category === 'Block') return 'block';
-  if (place.category === 'Gate') return 'gate';
-  if (place.category === 'Rasta') return 'rasta';
-  return 'special_route';
-}
-
 function destinationMetadata(
   destination: Place,
   previewRoute: RoutePreviewV2,
 ): V2ActiveRoute['destination'] {
-  const type = destinationType(destination);
+  const routingDestination = destinationFromPlace(destination);
+  if (!routingDestination) throw new Error('V2 active route requires a routable V2 destination.');
+  const type = routingDestination.type;
   const finalNodeId = previewRoute.destinationEntryNodeId ?? previewRoute.nodes[previewRoute.nodes.length - 1];
   const coordinate =
     nodeCoordinate(finalNodeId) ??
@@ -76,7 +71,8 @@ function destinationMetadata(
     blockId: type === 'block' ? destination.id : undefined,
     gateId: type === 'gate' ? destination.id : undefined,
     rastaId: type === 'rasta' ? destination.id : undefined,
-    entryNodeId: type === 'block' ? finalNodeId : undefined,
+    facilityId: type === 'facility' ? routingDestination.facilityId : undefined,
+    entryNodeId: type === 'block' || type === 'facility' ? finalNodeId : undefined,
   };
 }
 
@@ -177,14 +173,14 @@ export class V2NavigationAdapter {
       };
     }
 
-    if (!input.destination || input.destination.sourceVersion !== 'v2') {
+    if (!input.destination || !destinationFromPlace(input.destination)) {
       return {
         canStart: false,
-        message: 'Choose a v2 destination to start v2 navigation.',
+        message: 'Choose a destination available for V2 navigation.',
       };
     }
 
-    if (input.destination.isRoutable === false || !ROUTABLE_DESTINATION_CATEGORIES.has(input.destination.category)) {
+    if (input.destination.isRoutable === false) {
       if (input.destination.category === 'Gate' && input.destination.routingStatus === 'needs_connector_verification') {
         return {
           canStart: false,
@@ -211,8 +207,8 @@ export class V2NavigationAdapter {
   }
 
   static fromPreview(input: V2NavigationAdapterInput): V2ActiveRoute {
-    if (input.destination.sourceVersion !== 'v2') {
-      throw new Error('V2 active route requires a v2 destination.');
+    if (!destinationFromPlace(input.destination)) {
+      throw new Error('V2 active route requires a routable V2 destination.');
     }
 
     if (input.previewRoute.coordinates.length < 2 || input.previewRoute.totalDistance <= 0) {

@@ -316,10 +316,11 @@ export interface V2ActiveRoute extends V2RoutePreview {
   destination: {
     coordinate: Coordinate;
     label: string;
-    type: 'block' | 'gate' | 'rasta' | 'special_route';
+    type: 'block' | 'gate' | 'rasta' | 'special_route' | 'facility';
     blockId?: string;
     gateId?: string;
     rastaId?: string;
+    facilityId?: string;
     entryNodeId?: string;
   };
   edges: Array<{

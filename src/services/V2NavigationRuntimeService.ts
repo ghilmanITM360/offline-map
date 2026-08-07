@@ -127,6 +127,14 @@ export function keepCurrentRouteAfterRerouteFailureV2(route: V2ActiveRoute): {
 }
 
 export function destinationToRoutingV2(route: V2ActiveRoute): RoutingDestinationV2 {
+  if (route.destination.type === 'facility') {
+    return {
+      type: 'facility',
+      facilityId: route.destination.facilityId ?? '',
+      nodeId: route.destination.entryNodeId ?? '',
+      label: route.destination.label,
+    };
+  }
   if (route.destination.type === 'gate' && route.destination.gateId) {
     return { type: 'gate', gateId: route.destination.gateId };
   }

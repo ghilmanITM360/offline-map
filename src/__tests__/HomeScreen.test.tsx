@@ -1151,6 +1151,73 @@ describe('HomeScreen — facility markers (Google Maps POI parity)', () => {
 });
 
 describe('HomeScreen — route preview "Start Navigation" (real handler wiring)', () => {
+  test('canonical v1 Facility preview is visible and starts with Facility metadata preserved', async () => {
+    const destination: Place = {
+      id: 'LM_MASJID_MAIN',
+      name: 'Main Masjid',
+      category: 'Masjid',
+      description: 'Central prayer hall for the Ijtema ground.',
+      coordinate: { latitude: 24.9682, longitude: 67.003 },
+      sourceVersion: 'v1',
+    };
+    const previewRoute = {
+      id: 'v2_route_P3_P6',
+      sourceVersion: 'v2' as const,
+      nodes: ['P3', 'P6'],
+      coordinates: [
+        { latitude: 24.97, longitude: 67.0025 },
+        { latitude: 24.9682, longitude: 67.003 },
+      ],
+      totalDistance: 200,
+      estimatedTimeMin: 3,
+      segments: [{ fromId: 'P3', toId: 'P6', distance: 200, isRasta: true }],
+      startLabel: 'Current location',
+      destinationLabel: destination.name,
+      destinationEntryNodeId: 'P6',
+      startResolution: { mode: 'inside' as const, coordinate: { latitude: 24.97, longitude: 67.0025 } },
+      instructions: [{
+        id: 'i1',
+        text: 'Continue to Main Masjid',
+        distance: 200,
+        type: 'straight' as const,
+        coordinate: { latitude: 24.97, longitude: 67.0025 },
+      }],
+    };
+    mockedUseHomeViewModel.mockImplementation(() => ({ ...useFakeHomeViewModel(), selectedPlace: destination }));
+    mockedUseDirectionsViewModel.mockReturnValue({
+      route: previewRoute,
+      startSource: 'live_gps',
+      startSourceLabel: 'My current location',
+      rememberedLocationAgeLabel: '',
+      rememberedLocationAvailable: false,
+      rememberedLocationInsideVenue: false,
+      currentRouteOriginInsideVenue: true,
+      loadState: 'ready',
+      errorMessage: null,
+      manualStart: null,
+      chooseManualStart: jest.fn(),
+      setIsEditingManualStart: jest.fn(),
+      setManualStartPlace: jest.fn(),
+      chooseCurrentLocation: jest.fn(async () => true),
+      chooseRememberedLocation: jest.fn(() => true),
+      calculateRoute: jest.fn(async () => {}),
+      showManualStartSearch: false,
+    });
+    useAppStore.setState({
+      routePlannerDest: destination,
+      activeRoute: previewRoute,
+      currentLocation: previewRoute.coordinates[0],
+    });
+
+    await render(<HomeScreen />);
+    await userEvent.setup().press(await screen.findByText('Start Navigation'));
+
+    expect(useAppStore.getState().isNavigating).toBe(true);
+    expect(useAppStore.getState().activeRoute).toMatchObject({
+      destination: { type: 'facility', facilityId: 'LM_MASJID_MAIN', entryNodeId: 'P6', label: 'Main Masjid' },
+    });
+  });
+
   test('pressing "Start Navigation" on an active preview calls startNavigation in place, without navigating to a new screen', async () => {
     const navigateSpy = jest.fn();
     useNavigation.mockReturnValue({ navigate: navigateSpy, dispatch: jest.fn(), goBack: jest.fn() });

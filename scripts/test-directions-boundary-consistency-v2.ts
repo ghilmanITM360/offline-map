@@ -45,7 +45,7 @@ assert(
   'Legacy live-gps route-validity gate must stay on coarse geometry',
 );
 assert(
-  directionsViewModelSource.includes("destination?.sourceVersion !== 'v2' && !RoutingService.isInsideVenue(resolved.coordinate)"),
+  directionsViewModelSource.includes('!isV2Destination && !RoutingService.isInsideVenue(resolved.coordinate)'),
   'Legacy chooseCurrentLocation route-validity gate must stay on coarse geometry',
 );
 

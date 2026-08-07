@@ -15,7 +15,10 @@ const storeSource = readFileSync('src/store/useAppStore.ts', 'utf8');
 const legacyDataSource = readFileSync('src/constants/data.ts', 'utf8');
 
 assert(searchSource.includes('MapFeatureFlagsService.useIjtemaV2Map()'), 'SearchService must centralize v1 rollback behind the v2 map flag');
-assert(directionsVmSource.includes("destination.sourceVersion === 'v2'"), 'DirectionsViewModel must branch v2 destinations away from v1 routing');
+assert(
+  directionsVmSource.includes('const isV2Destination = Boolean(destination && destinationFromPlace(destination))'),
+  'DirectionsViewModel must branch only unified V2-routing destinations away from legacy routing',
+);
 // v2 active navigation now starts from Home's route preview card (the single consolidated
 // start-navigation path), not from a per-screen Directions handler.
 assert(homeScreenSource.includes('V2NavigationAdapter.fromPreview'), 'Home start-navigation handler must adapt v2 previews before active navigation');

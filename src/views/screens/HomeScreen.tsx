@@ -405,7 +405,7 @@ export function HomeScreen() {
 
   const activePreviewRoute = useMemo(() => {
     if (isNavigating) return null;
-    if (!routePlannerDest || routePlannerDest.sourceVersion !== 'v2') return null;
+    if (!routePlannerDest || !destinationFromPlace(routePlannerDest)) return null;
     return isV2PreviewRoute(activeRoute) ? activeRoute : null;
   }, [activeRoute, isNavigating, routePlannerDest]);
 
@@ -857,7 +857,7 @@ export function HomeScreen() {
     // Destination-aware whenever a place is already selected, so this banner can
     // never disagree with the gate Directions would actually route through for the
     // same position + destination (see RoutingServiceV2.recommendOutsideEntryGate).
-    const destination = selectedPlace && selectedPlace.sourceVersion === 'v2' ? destinationFromPlace(selectedPlace) : null;
+    const destination = selectedPlace ? destinationFromPlace(selectedPlace) : null;
     return RoutingServiceV2.recommendOutsideEntryGate(currentLocation, destination) ?? null;
   }, [currentLocation, venueStatus.insideVenue, selectedPlace]);
   const showMapWarningBanner = baseMapMode === 'GRAPH_ONLY';

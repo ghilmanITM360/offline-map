@@ -49,7 +49,8 @@ export type RoutingDestinationV2 =
   | { type: 'gate'; gateId: string }
   | { type: 'block'; blockId: string }
   | { type: 'rasta'; rastaId: string }
-  | { type: 'special_route'; routeId: string };
+  | { type: 'special_route'; routeId: string }
+  | { type: 'facility'; facilityId: string; nodeId: string; label: string };
 
 export interface CalculateRouteV2Options {
   start: RoutingStartV2;
@@ -233,6 +234,8 @@ const destinationRequestKey = (destination: RoutingDestinationV2): string => {
       return `rasta:${destination.rastaId}`;
     case 'special_route':
       return `special_route:${destination.routeId}`;
+    case 'facility':
+      return `facility:${destination.facilityId}:${destination.nodeId}`;
   }
 };
 
@@ -396,6 +399,13 @@ const resolveStartCandidates = (start: RoutingStartV2): RouteCandidateSet => {
 };
 
 const resolveDestinationCandidates = (destination: RoutingDestinationV2): RouteCandidateSet => {
+  if (destination.type === 'facility') {
+    return {
+      nodeIds: getConnectedCandidates([destination.nodeId]),
+      label: destination.label,
+    };
+  }
+
   if (destination.type === 'gate') {
     const gate = getGate(destination.gateId);
     return {
@@ -886,7 +896,10 @@ export class RoutingServiceV2 {
       startLabel: selected.startLabel,
       destinationLabel: destinationCandidates.label,
       startResolution: selected.startResolution,
-      destinationEntryNodeId: options.destination.type === 'block' ? path.nodes[path.nodes.length - 1] : undefined,
+      destinationEntryNodeId:
+        options.destination.type === 'block' || options.destination.type === 'facility'
+          ? path.nodes[path.nodes.length - 1]
+          : undefined,
       routeCostM: Math.round(selected.routeCostM),
       startConnectorDistanceM: selected.startConnectorDistanceM,
       // Non-zero only for a true outside-venue start (mode 'outside') — an
@@ -1040,7 +1053,10 @@ export class RoutingServiceV2 {
       startLabel: selected.startLabel,
       destinationLabel: plan.destinationLabel,
       startResolution: selected.startResolution,
-      destinationEntryNodeId: plan.destination.type === 'block' ? path.nodes[path.nodes.length - 1] : undefined,
+      destinationEntryNodeId:
+        plan.destination.type === 'block' || plan.destination.type === 'facility'
+          ? path.nodes[path.nodes.length - 1]
+          : undefined,
       routeCostM: Math.round(selected.routeCostM),
       startConnectorDistanceM: selected.startConnectorDistanceM,
       outsideLegCoordinateCount,

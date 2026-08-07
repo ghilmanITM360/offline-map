@@ -11,7 +11,11 @@ import { InstructionService, Instruction } from '../services/InstructionService'
 import { Place, RouteAlternative, RoutePreview } from '../models/types';
 import { LocationAccessService } from '../services/LocationAccessService';
 import { MapFeatureFlagsService } from '../services/MapFeatureFlagsService';
-import { V2DirectionsService, type V2DirectionsPreviewResult } from '../services/V2DirectionsService';
+import {
+  V2DirectionsService,
+  destinationFromPlace,
+  type V2DirectionsPreviewResult,
+} from '../services/V2DirectionsService';
 import { V2NavigationAdapter } from '../services/V2NavigationAdapter';
 import { EntryGateRoutingService } from '../services/EntryGateRoutingService';
 import { RoutePointService } from '../services/RoutePointService';
@@ -74,7 +78,7 @@ export function useDirectionsViewModel(destination: Place | null) {
   const outsideRequestCoordinatorRef = useRef(new OutsideRouteRequestCoordinator());
   routeRef.current = route;
   const manualGateOptions = getRoutableOfficialGates().map((gate) => ({ gateId: gate.id, label: gate.name.en }));
-  const isV2Destination = destination?.sourceVersion === 'v2';
+  const isV2Destination = Boolean(destination && destinationFromPlace(destination));
   const v2NavigationStartCheck = isV2Destination
     ? V2NavigationAdapter.canStartActiveNavigation({ route: route as any, destination })
     : { canStart: Boolean(route), message: '' };
@@ -106,7 +110,7 @@ export function useDirectionsViewModel(destination: Place | null) {
   // legacy (v1) destinations keep the coarse rectangle, which is what the v1
   // graph's own coverage is actually defined by.
   const isInsideVenueForDestination = (coordinate: NonNullable<typeof currentLocation>): boolean =>
-    destination?.sourceVersion === 'v2'
+    isV2Destination
       ? EntryGateRoutingService.isInsideIjtemaArea(coordinate)
       : RoutingService.isInsideVenue(coordinate);
 
@@ -145,7 +149,7 @@ export function useDirectionsViewModel(destination: Place | null) {
   // flow while the UI still claimed the start was inside.
   const startCoordinateForOutsideCheck = resolveActiveOriginCoordinate();
   const isOutsideStart =
-    destination?.sourceVersion === 'v2' &&
+    isV2Destination &&
     !!startCoordinateForOutsideCheck &&
     !EntryGateRoutingService.isInsideIjtemaArea(startCoordinateForOutsideCheck);
 
@@ -177,7 +181,7 @@ export function useDirectionsViewModel(destination: Place | null) {
     }
 
     const originCoord = resolveActiveOriginCoordinate();
-    if (!originCoord && !(destination?.sourceVersion === 'v2' && startSource === 'manual_place' && manualStart)) {
+    if (!originCoord && !(isV2Destination && startSource === 'manual_place' && manualStart)) {
       setLoadState('needs_origin');
       setErrorMessage('Choose starting point to continue.');
       setRoute(null);
@@ -187,7 +191,7 @@ export function useDirectionsViewModel(destination: Place | null) {
       return;
     }
 
-    const shouldUseV2Destination = destination.sourceVersion === 'v2';
+    const shouldUseV2Destination = isV2Destination;
     if (shouldUseV2Destination) {
       const previousRoute = routeDestinationIdRef.current === destination.id ? routeRef.current : null;
       const replacingCurrentRoute = Boolean(previousRoute);
@@ -410,7 +414,7 @@ export function useDirectionsViewModel(destination: Place | null) {
       setLoadState('error');
       setErrorMessage('Route calculation failed. Please retry.');
     }
-  }, [destination, lastKnownLocation, manualGateId, manualStart, routeOriginLocation, setActiveRoute, setRouteAlternatives, setRouteInstructions, setSelectedRouteIndex, settings.walkingSpeed, startSource]);
+  }, [destination, isV2Destination, lastKnownLocation, manualGateId, manualStart, routeOriginLocation, setActiveRoute, setRouteAlternatives, setRouteInstructions, setSelectedRouteIndex, settings.walkingSpeed, startSource]);
 
   useEffect(() => {
     void calculateRoute();
@@ -456,7 +460,7 @@ export function useDirectionsViewModel(destination: Place | null) {
 
       setCurrentLocation(resolved.coordinate, resolved.source ?? 'live');
       setRouteOriginLocation(resolved.coordinate);
-      if (destination?.sourceVersion !== 'v2' && !RoutingService.isInsideVenue(resolved.coordinate)) {
+      if (!isV2Destination && !RoutingService.isInsideVenue(resolved.coordinate)) {
         setStartSource('manual_place');
         setIsEditingManualStart(true);
         setLoadState('needs_origin');
@@ -468,7 +472,7 @@ export function useDirectionsViewModel(destination: Place | null) {
       setIsEditingManualStart(false);
       setManualStart(null);
       setErrorMessage(
-        destination?.sourceVersion === 'v2' && !EntryGateRoutingService.isInsideIjtemaArea(resolved.coordinate)
+        isV2Destination && !EntryGateRoutingService.isInsideIjtemaArea(resolved.coordinate)
           ? "You are outside Ijtema. We'll enter through nearest official gate."
           : null,
       );
@@ -483,7 +487,7 @@ export function useDirectionsViewModel(destination: Place | null) {
   };
 
   const chooseRememberedLocation = (): boolean => {
-    if (!lastKnownLocation || (destination?.sourceVersion !== 'v2' && !RoutingService.isInsideVenue(lastKnownLocation))) {
+    if (!lastKnownLocation || (!isV2Destination && !RoutingService.isInsideVenue(lastKnownLocation))) {
       setStartSource('manual_place');
       setIsEditingManualStart(true);
       setLoadState('needs_origin');
@@ -520,7 +524,7 @@ export function useDirectionsViewModel(destination: Place | null) {
   // HomeScreen's route-preview card (handleStartPreviewNavigation), which
   // reuses this same store action for the v2-shaped route instead.
   const handleStartNavigation = () => {
-    if (!destination || !route || destination.sourceVersion === 'v2') return;
+    if (!destination || !route || isV2Destination) return;
     const endNodeId = route.nodes[route.nodes.length - 1];
     const resolvedDestination = endNodeId
       ? RoutePointService.enrichPlaceWithRoutingNode(destination, endNodeId)
@@ -563,8 +567,8 @@ export function useDirectionsViewModel(destination: Place | null) {
     handleStartNavigation,
     showRememberedStartAction: rememberedLocationAvailable,
     showManualStartSearch: isEditingManualStart || startSource === 'manual_place',
-    canStartNavigation: destination?.sourceVersion === 'v2' ? v2NavigationStartCheck.canStart : Boolean(route),
+    canStartNavigation: isV2Destination ? v2NavigationStartCheck.canStart : Boolean(route),
     startNavigationDisabledReason: v2NavigationStartCheck.message,
-    isV2PreviewOnly: destination?.sourceVersion === 'v2' && !MapFeatureFlagsService.useIjtemaV2Navigation(),
+    isV2PreviewOnly: isV2Destination && !MapFeatureFlagsService.useIjtemaV2Navigation(),
   };
 }

@@ -1,4 +1,5 @@
 import type { Place } from '../models/types';
+import { LANDMARK_PLACES } from '../constants/data';
 import { V2PlaceAdapter } from '../services/V2PlaceAdapter';
 import { useAppStore } from '../store/useAppStore';
 import { V2DirectionsService } from '../services/V2DirectionsService';
@@ -16,6 +17,7 @@ const destination: Place = {
   coordinate: { latitude: 24.966, longitude: 67.004 },
   sourceVersion: 'v2',
 };
+const facilityDestination = LANDMARK_PLACES.find((place) => place.id === 'LM_MASJID_MAIN')!;
 
 function outsideManualPlace(coordinate = origin, id = 'outside-manual'): Place {
   return {
@@ -40,6 +42,43 @@ beforeEach(() => {
 });
 
 describe('DirectionsViewModel hybrid outside routing', () => {
+  test.each([
+    ['live', 'live_gps'],
+    ['device_last_known', 'device_last_known'],
+  ] as const)('routes canonical v1 Facility from %s outside provenance through V2', async (locationSource, expectedSource) => {
+    useAppStore.setState({ currentLocation: origin, currentLocationSource: locationSource });
+
+    const hook = await renderHook(() => useDirectionsViewModel(facilityDestination));
+
+    await waitFor(() => expect(hook.result.current.loadState).toBe('ready'), { timeout: 5_000 });
+    expect(hook.result.current.startSource).toBe(expectedSource);
+    expect(hook.result.current.route).toMatchObject({
+      sourceVersion: 'v2',
+      destinationEntryNodeId: 'P6',
+      destinationLabel: 'Main Masjid',
+    });
+    expect(hook.result.current.route?.outsideRoute?.provider).toBe('offline-osm');
+    expect(useAppStore.getState().routePlannerDest).toBe(facilityDestination);
+  });
+
+  test('routes canonical v1 Facility from remembered and manual outside provenance through V2', async () => {
+    const inside = { latitude: 24.966, longitude: 67.004 };
+    useAppStore.setState({ currentLocation: inside, currentLocationSource: 'live', lastKnownLocation: origin });
+    const hook = await renderHook(() => useDirectionsViewModel(facilityDestination));
+    await waitFor(() => expect(hook.result.current.loadState).toBe('ready'), { timeout: 5_000 });
+
+    await act(() => expect(hook.result.current.chooseRememberedLocation()).toBe(true));
+    await waitFor(() => expect(hook.result.current.route?.outsideRoute?.provider).toBe('offline-osm'), { timeout: 5_000 });
+    expect(hook.result.current.startSource).toBe('remembered_location');
+    expect(hook.result.current.route?.destinationEntryNodeId).toBe('P6');
+
+    await act(() => hook.result.current.setManualStartPlace(outsideManualPlace(origin, 'facility-manual-outside')));
+    await waitFor(() => expect(hook.result.current.startSource).toBe('manual_place'));
+    await waitFor(() => expect(hook.result.current.route?.outsideRoute?.provider).toBe('offline-osm'), { timeout: 5_000 });
+    expect(hook.result.current.activeOriginCoordinate).toEqual(origin);
+    expect(hook.result.current.route?.destinationEntryNodeId).toBe('P6');
+  });
+
   test.each([
     ['live', 'live_gps', 'My current location', 'Using live GPS location now.', true],
     ['device_last_known', 'device_last_known', 'Device last known location', 'Using device last known location because live GPS is unavailable.', false],
