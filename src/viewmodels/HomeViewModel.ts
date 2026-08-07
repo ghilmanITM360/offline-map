@@ -97,11 +97,13 @@ export function useHomeViewModel() {
   const [isMapReady, setIsMapReady] = useState(false);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [mapZoomLevel, setMapZoomLevel] = useState(DEFAULT_HOME_MAP_ZOOM);
-  // Venue status — updated on GPS changes
-  const [venueStatus, setVenueStatus] = useState<{ insideVenue: boolean; insideBlock: string | null }>({
-    insideVenue: false,
-    insideBlock: null,
-  });
+  // Keep venue status in lockstep with the store's committed location. A returning launch
+  // commits fresh GPS before releasing the watcher, so an effect or watcher-only update
+  // would expose one render with a new location and stale outside-venue UI.
+  const venueStatus = useMemo(
+    () => currentLocation ? getHomeVenueStatus(currentLocation) : { insideVenue: false, insideBlock: null },
+    [currentLocation],
+  );
   // Session-only (not persisted, like Google Maps' own compass state) — NORTH_UP is the
   // resting/default state; FOLLOW_HEADING rotates the camera bearing to match the device
   // compass on every GPS tick, via cameraManager.rotateToHeading, until toggled off.
@@ -157,13 +159,6 @@ export function useHomeViewModel() {
       if (compassMode === 'FOLLOW_HEADING' && !isNavigating && typeof coord.heading === 'number' && coord.heading >= 0) {
         cameraManager.rotateToHeading(coord.heading);
       }
-      // Phase 4 — update venue/block status on each GPS tick
-      setVenueStatus((previous) => {
-        const next = getHomeVenueStatus(coord);
-        return previous.insideVenue === next.insideVenue && previous.insideBlock === next.insideBlock
-          ? previous
-          : next;
-      });
     },
     [cameraManager, compassMode, isNavigating, settings.autoFollowLocation],
   );
@@ -243,7 +238,6 @@ export function useHomeViewModel() {
       // the map away (HomeScreen's onPanDrag calls cameraManager.stopFollowing()).
       cameraManager.followUser(location);
       setSnappedLocation(getHomeSnappedCoordinate(location));
-      setVenueStatus(getHomeVenueStatus(location));
       return true;
     };
 
