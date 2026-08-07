@@ -249,6 +249,9 @@ describe('DirectionsViewModel — active-origin route-request proof', () => {
   const nearBoundaryOutsideCoord = { latitude: insideCoord.latitude + 0.00005, longitude: insideCoord.longitude };
   const committedOutsideCoord = { latitude: insideCoord.latitude + 0.0005, longitude: insideCoord.longitude };
   const manualOrigin = { latitude: 24.97, longitude: 67.02 };
+  // ~5.6m from committedOutsideCoord — still outside, but below the 20m movement threshold,
+  // so it must not move the committed origin away from committedOutsideCoord.
+  const nearCommittedOutsideCoord = { latitude: committedOutsideCoord.latitude + 0.00005, longitude: committedOutsideCoord.longitude };
 
   let isInsideSpy: jest.SpyInstance;
   // calculateRoute routes an outside-classified origin through calculateHybridPreview (async,
@@ -288,6 +291,17 @@ describe('DirectionsViewModel — active-origin route-request proof', () => {
     }));
     const merged = [...fromPreview, ...fromHybrid].sort((a, b) => a.order - b.order);
     return merged.at(-1)?.origin;
+  }
+
+  // Same merge-by-call-order technique as lastRequestOrigin(), but reports which of the two
+  // underlying methods actually carried the most recent request — proves the request didn't
+  // just carry the right origin by coincidence, but went through the correct provider path
+  // for that origin's inside/outside classification.
+  function lastRequestSource(): 'preview' | 'hybrid' | undefined {
+    const fromPreview = previewSpy.mock.invocationCallOrder.map((order) => ({ order, source: 'preview' as const }));
+    const fromHybrid = hybridSpy.mock.invocationCallOrder.map((order) => ({ order, source: 'hybrid' as const }));
+    const merged = [...fromPreview, ...fromHybrid].sort((a, b) => a.order - b.order);
+    return merged.at(-1)?.source;
   }
 
   test('1. the route-preview request origin equals the committed live_gps origin, matching isOutsideStart at the same instant', async () => {
@@ -357,5 +371,32 @@ describe('DirectionsViewModel — active-origin route-request proof', () => {
     await waitFor(() => expect(hook.result.current.startSource).toBe('remembered_location'));
     await waitFor(() => expect(lastRequestOrigin()).toEqual(committedOutsideCoord));
     expect(hook.result.current.isOutsideStart).toBe(true);
+  });
+
+  test('6. reverse: a committed outside origin routes through calculateHybridPreview; once it commits back inside past the threshold, the request switches to calculatePreview with the new origin', async () => {
+    useAppStore.setState({ currentLocation: committedOutsideCoord, currentLocationSource: 'live', lastKnownLocation: committedOutsideCoord });
+    const hook = await renderHook(() => useDirectionsViewModel(destination));
+    await waitFor(() => expect(hook.result.current.loadState).toBe('ready'));
+
+    expect(lastRequestOrigin()).toEqual(committedOutsideCoord);
+    expect(lastRequestSource()).toBe('hybrid');
+    expect(hook.result.current.isOutsideStart).toBe(true);
+
+    // A below-threshold raw GPS sample must change neither presentation nor the request origin.
+    await act(() => {
+      useAppStore.getState().setCurrentLocation(nearCommittedOutsideCoord, 'live');
+    });
+    expect(lastRequestOrigin()).toEqual(committedOutsideCoord);
+    expect(lastRequestSource()).toBe('hybrid');
+    expect(hook.result.current.isOutsideStart).toBe(true);
+
+    // Crossing back past the threshold commits the new (inside) origin.
+    await act(() => {
+      useAppStore.getState().setCurrentLocation(insideCoord, 'live');
+    });
+
+    await waitFor(() => expect(lastRequestOrigin()).toEqual(insideCoord));
+    expect(lastRequestSource()).toBe('preview');
+    expect(hook.result.current.isOutsideStart).toBe(false);
   });
 });
