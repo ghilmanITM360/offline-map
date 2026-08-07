@@ -25,7 +25,14 @@ assert(vm.includes('ROUTE_TIMEOUT_MS'), 'Directions route calculation should inc
 assert(vm.includes('forceOutside'), 'Directions should pass outside start mode into v2 preview service');
 assert(vm.includes('Start and destination are the same'), 'Directions should handle same start/destination case');
 assert(vm.includes('setLoadState(\'needs_origin\')'), 'Directions should avoid routing without a valid origin');
-assert(vm.includes("type StartSource = 'live_gps' | 'remembered_location' | 'manual_place'"), 'Directions should model explicit start source types');
+assert(
+  vm.includes("type StartSource = 'live_gps' | 'device_last_known' | 'remembered_location' | 'manual_place'"),
+  'Directions should model live, device-cached, remembered, and manual start provenance explicitly',
+);
+assert(
+  vm.includes('startSourceSupportingCopy') && vm.includes('isCurrentLocationStartActive'),
+  'Directions should expose source-aware presentation instead of inferring current-location state from coordinates',
+);
 assert(vm.includes('rememberedLocationAgeLabel'), 'Directions should expose remembered-location age metadata');
 
 console.log('Directions UX checks passed.');

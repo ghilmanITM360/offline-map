@@ -40,6 +40,25 @@ beforeEach(() => {
 });
 
 describe('DirectionsViewModel hybrid outside routing', () => {
+  test.each([
+    ['live', 'live_gps', 'My current location', 'Using live GPS location now.', true],
+    ['device_last_known', 'device_last_known', 'Device last known location', 'Using device last known location because live GPS is unavailable.', false],
+  ] as const)(
+    'preserves %s provenance in route-origin presentation',
+    async (locationSource, expectedStartSource, primaryLabel, supportingCopy, currentOptionActive) => {
+      useAppStore.setState({ currentLocation: origin, currentLocationSource: locationSource });
+
+      const hook = await renderHook(() => useDirectionsViewModel(destination));
+
+      await waitFor(() => expect(hook.result.current.loadState).toBe('ready'), { timeout: 5_000 });
+      expect(hook.result.current.startSource).toBe(expectedStartSource);
+      expect(hook.result.current.startSourceLabel).toBe(primaryLabel);
+      expect(hook.result.current.startSourceSupportingCopy).toBe(supportingCopy);
+      expect(hook.result.current.isCurrentLocationStartActive).toBe(currentOptionActive);
+      expect(hook.result.current.activeOriginCoordinate).toEqual(origin);
+    },
+  );
+
   test('uses production provider flow and exposes all routable official gates', async () => {
     const hook = await renderHook(() => useDirectionsViewModel(destination));
 
@@ -120,6 +139,39 @@ describe('DirectionsViewModel hybrid outside routing', () => {
     // A manual start that is genuinely inside the venue must present as inside — the fix only
     // removes the blanket manual_place exclusion, it does not force manual starts outside.
     expect(hook.result.current.isOutsideStart).toBe(false);
+  });
+
+  test('remembered origin keeps remembered label, age disclosure, inactive current option, and coordinate', async () => {
+    useAppStore.setState({
+      currentLocation: origin,
+      currentLocationSource: 'live',
+      lastKnownLocation: origin,
+      lastKnownLocationUpdatedAt: new Date(Date.now() - 5 * 60_000).toISOString(),
+    });
+    const hook = await renderHook(() => useDirectionsViewModel(destination));
+
+    await act(() => expect(hook.result.current.chooseRememberedLocation()).toBe(true));
+    await waitFor(() => expect(hook.result.current.startSource).toBe('remembered_location'));
+
+    expect(hook.result.current.startSourceLabel).toContain('Last known location');
+    expect(hook.result.current.startSourceSupportingCopy).toContain('Using last known location');
+    expect(hook.result.current.isCurrentLocationStartActive).toBe(false);
+    expect(hook.result.current.activeOriginCoordinate).toEqual(origin);
+  });
+
+  test.each([
+    ['manual outside', outsideManualPlace(origin, 'manual-outside')],
+    ['searched outside', { ...outsideManualPlace(origin, 'searched-outside'), name: 'Searched outside start' }],
+  ])('%s origin keeps its selected-place identity and coordinate', async (_caseName, place) => {
+    const hook = await renderHook(() => useDirectionsViewModel(destination));
+
+    await act(() => hook.result.current.setManualStartPlace(place));
+    await waitFor(() => expect(hook.result.current.startSource).toBe('manual_place'));
+
+    expect(hook.result.current.startSourceLabel).toBe(place.name);
+    expect(hook.result.current.startSourceSupportingCopy).toBe(`Starting from ${place.name}.`);
+    expect(hook.result.current.isCurrentLocationStartActive).toBe(false);
+    expect(hook.result.current.activeOriginCoordinate).toEqual(place.coordinate);
   });
 
   test('manual outside start falls through OSM failure to labelled direct guide', async () => {

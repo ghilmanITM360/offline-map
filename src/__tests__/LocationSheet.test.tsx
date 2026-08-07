@@ -62,6 +62,8 @@ function baseViewModel(overrides: Record<string, unknown> = {}) {
     route: null,
     startSource: 'live_gps',
     startSourceLabel: 'My current location',
+    startSourceSupportingCopy: 'Using live GPS location now.',
+    isCurrentLocationStartActive: true,
     rememberedLocationAgeLabel: 'from 5 minutes ago',
     rememberedLocationAvailable: true,
     rememberedLocationInsideVenue: true,
@@ -165,12 +167,33 @@ describe('LocationSheet (routePreview) — start option selection', () => {
   });
 
   test('active start option is visually reflected via accessible state', async () => {
-    mockedUseDirectionsViewModel.mockReturnValue(baseViewModel({ startSource: 'remembered_location' }));
+    mockedUseDirectionsViewModel.mockReturnValue(baseViewModel({
+      startSource: 'remembered_location',
+      startSourceLabel: 'Last known location (from 5 minutes ago)',
+      startSourceSupportingCopy: 'Using last known location from 5 minutes ago.',
+      isCurrentLocationStartActive: false,
+    }));
     await render(<LocationSheet mode="routePreview" destination={destination} onClose={onCloseSpy} />);
 
     // The status card reflects the active start source's message — real, user-visible output,
     // not an internal implementation detail.
     expect(screen.getByText(/Using last known location/)).toBeOnTheScreen();
+  });
+
+  test('device last-known origin is disclosed and does not activate the current-location option', async () => {
+    mockedUseDirectionsViewModel.mockReturnValue(baseViewModel({
+      startSource: 'device_last_known',
+      startSourceLabel: 'Device last known location',
+      startSourceSupportingCopy: 'Using device last known location because live GPS is unavailable.',
+      isCurrentLocationStartActive: false,
+    }));
+    const user = userEvent.setup();
+    await render(<LocationSheet mode="routePreview" destination={destination} onClose={onCloseSpy} />);
+
+    expect(screen.getByText('Device last known location')).toBeOnTheScreen();
+    expect(screen.getByText('Using device last known location because live GPS is unavailable.')).toBeOnTheScreen();
+    await user.press(screen.getByText('Change Start'));
+    expect(screen.getByRole('button', { name: /Use my current location/ }).props.accessibilityState).toMatchObject({ selected: false });
   });
 });
 

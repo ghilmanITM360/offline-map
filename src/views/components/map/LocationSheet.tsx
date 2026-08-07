@@ -231,6 +231,8 @@ function RoutePreviewSection({
     route,
     startSource,
     startSourceLabel,
+    startSourceSupportingCopy,
+    isCurrentLocationStartActive,
     rememberedLocationAgeLabel,
     rememberedLocationAvailable,
     rememberedLocationInsideVenue,
@@ -238,7 +240,6 @@ function RoutePreviewSection({
     isOutsideStart,
     loadState,
     errorMessage,
-    manualStart,
     chooseManualStart,
     setIsEditingManualStart,
     setManualStartPlace,
@@ -260,7 +261,7 @@ function RoutePreviewSection({
   // "Change Start" — picking one collapses back to the compact summary automatically.
   const [showStartOptions, setShowStartOptions] = useState(false);
   const startIcon =
-    startSource === 'remembered_location' ? (
+    startSource === 'remembered_location' || startSource === 'device_last_known' ? (
       <MapPin size={20} color={staticColors.info} />
     ) : startSource === 'manual_place' ? (
       <Navigation size={20} color={staticColors.info} />
@@ -289,14 +290,8 @@ function RoutePreviewSection({
   const routeDistance = route ? InstructionService.formatDistance(route.totalDistance, distanceUnit) : null;
   const routeEta = route ? InstructionService.formatDuration(route.estimatedTimeMin) : null;
   const routeStatusMessage = outsideStart
-    ? "You are outside Ijtema. We'll enter through best eligible official gate."
-    : startSource === 'remembered_location' && rememberedLocationAvailable
-    ? `Using last known location ${rememberedLocationAgeLabel}.`
-    : startSource === 'manual_place' && manualStart
-    ? `Starting from ${manualStart.name}.`
-    : startSource === 'live_gps'
-    ? 'Using live GPS location now.'
-    : 'Choose a start point to continue.';
+    ? `${startSourceSupportingCopy} We'll enter through best eligible official gate.`
+    : startSourceSupportingCopy;
 
   const routeEntrySummary = entryGateName
     ? `Enter through ${entryGateName}`
@@ -439,8 +434,8 @@ function RoutePreviewSection({
                 <Text style={styles.sectionTitle}>Where are you starting from?</Text>
 
                 <StartOption
-                  active={startSource === 'live_gps'}
-                  icon={<LocateFixed size={18} color={startSource === 'live_gps' ? staticColors.white : staticColors.info} />}
+                  active={isCurrentLocationStartActive}
+                  icon={<LocateFixed size={18} color={isCurrentLocationStartActive ? staticColors.white : staticColors.info} />}
                   title="Use my current location"
                   subtitle="Find best eligible official gate automatically"
                   onPress={() => {
@@ -546,9 +541,7 @@ function RoutePreviewSection({
                 {outsideStart ? 'Outside Ijtema' : 'Start ready'}
               </Text>
               <Text style={styles.statusText}>
-                {outsideStart
-                  ? "You are outside Ijtema. Route will enter through best eligible official gate."
-                  : routeStatusMessage}
+                {routeStatusMessage}
               </Text>
               {startSource === 'live_gps' && currentRouteOriginInsideVenue === false && (
                 <Text style={styles.statusHint}>We will route to selected official gate first, then continue inside venue.</Text>

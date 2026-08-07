@@ -25,7 +25,17 @@ const DIRECTIONS_RECALCULATE_ORIGIN_MOVEMENT_M = 20;
 const productionOutsideRouteSource = createProductionOutsideRouteSource();
 
 type RouteLoadState = 'idle' | 'loading' | 'ready' | 'error' | 'needs_origin';
-export type StartSource = 'live_gps' | 'remembered_location' | 'manual_place';
+export type StartSource = 'live_gps' | 'device_last_known' | 'remembered_location' | 'manual_place';
+
+function resolveInitialStartSource(
+  hasLocation: boolean,
+  source: ReturnType<typeof useAppStore.getState>['currentLocationSource'],
+): StartSource {
+  if (!hasLocation || source === 'manual') return 'manual_place';
+  if (source === 'device_last_known') return 'device_last_known';
+  if (source === 'remembered') return 'remembered_location';
+  return 'live_gps';
+}
 
 export function useDirectionsViewModel(destination: Place | null) {
   const currentLocation = useAppStore((s) => s.currentLocation);
@@ -52,7 +62,9 @@ export function useDirectionsViewModel(destination: Place | null) {
   const [loadState, setLoadState] = useState<RouteLoadState>('idle');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [manualStart, setManualStart] = useState<Place | null>(null);
-  const [startSource, setStartSource] = useState<StartSource>(currentLocation ? 'live_gps' : 'manual_place');
+  const [startSource, setStartSource] = useState<StartSource>(
+    resolveInitialStartSource(Boolean(currentLocation), currentLocationSource),
+  );
   const [routeOriginLocation, setRouteOriginLocation] = useState(currentLocation);
   const [isEditingManualStart, setIsEditingManualStart] = useState(false);
   const [manualGateId, setManualGateId] = useState<string | null>(null);
@@ -118,7 +130,7 @@ export function useDirectionsViewModel(destination: Place | null) {
   // gate-entry copy for a route that hasn't changed. Once the movement threshold is crossed,
   // routeOriginLocation updates and both presentation and routing move together.
   const resolveActiveOriginCoordinate = () =>
-    startSource === 'live_gps'
+    startSource === 'live_gps' || startSource === 'device_last_known'
       ? routeOriginLocation
       : startSource === 'remembered_location'
       ? lastKnownLocation
@@ -139,10 +151,23 @@ export function useDirectionsViewModel(destination: Place | null) {
 
   const startSourceLabel =
     startSource === 'live_gps'
-      ? (currentLocation ? (currentLocationSource === 'remembered' ? 'Last known location' : 'My current location') : 'Choose starting point')
+      ? (currentLocation ? 'My current location' : 'Choose starting point')
+      : startSource === 'device_last_known'
+      ? 'Device last known location'
       : startSource === 'remembered_location'
       ? `Last known location (${rememberedLocationAgeLabel})`
       : (manualStart?.name ?? 'Choose starting point');
+  const startSourceSupportingCopy =
+    startSource === 'live_gps'
+      ? 'Using live GPS location now.'
+      : startSource === 'device_last_known'
+      ? 'Using device last known location because live GPS is unavailable.'
+      : startSource === 'remembered_location'
+      ? `Using last known location ${rememberedLocationAgeLabel}.`
+      : manualStart
+      ? `Starting from ${manualStart.name}.`
+      : 'Choose a start point to continue.';
+  const isCurrentLocationStartActive = startSource === 'live_gps';
 
   const calculateRoute = useCallback(async () => {
     if (!destination) {
@@ -439,7 +464,7 @@ export function useDirectionsViewModel(destination: Place | null) {
         return false;
       }
 
-      setStartSource('live_gps');
+      setStartSource(resolved.source === 'device_last_known' ? 'device_last_known' : 'live_gps');
       setIsEditingManualStart(false);
       setManualStart(null);
       setErrorMessage(
@@ -510,6 +535,9 @@ export function useDirectionsViewModel(destination: Place | null) {
     selectAlternative,
     instructions,
     startSourceLabel,
+    startSourceSupportingCopy,
+    isCurrentLocationStartActive,
+    activeOriginCoordinate: startCoordinateForOutsideCheck,
     startSource,
     rememberedLocationAgeLabel,
     rememberedLocationAvailable,
