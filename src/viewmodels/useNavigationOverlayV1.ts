@@ -38,6 +38,7 @@ const VENUE_BOUNDARY = [
 export function useNavigationOverlayV1({ mapRef, mapReady, hasBaseMap, userPulseAnim, cameraManager }: Params) {
   const settings = useAppStore((s) => s.settings);
   const currentLocationSource = useAppStore((s) => s.currentLocationSource);
+  const navigationSessionId = useAppStore((s) => s.navigationSessionId);
 
   const vm = useNavigationViewModel();
   const { route, snappedLocation, arrived } = vm;
@@ -47,7 +48,7 @@ export function useNavigationOverlayV1({ mapRef, mapReady, hasBaseMap, userPulse
     onExit: vm.handleExit,
   });
 
-  const [isAutoFollowing, setIsAutoFollowing] = useState(settings.autoFollowLocation);
+  const [isAutoFollowing, setIsAutoFollowing] = useState(true);
   const [initialCameraFitDone, setInitialCameraFitDone] = useState(false);
   // Measured (not guessed) height of NavigationChromeV1's bottom trip-info bar — same
   // reasoning as useNavigationOverlayV2's bottomBarHeight.
@@ -65,8 +66,9 @@ export function useNavigationOverlayV1({ mapRef, mapReady, hasBaseMap, userPulse
   );
 
   useEffect(() => {
+    setIsAutoFollowing(true);
     setInitialCameraFitDone(false);
-  }, [route?.id]);
+  }, [navigationSessionId]);
 
   useEffect(() => {
     if (!route || !mapReady || initialCameraFitDone || !mapRef.current) return;

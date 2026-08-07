@@ -117,6 +117,7 @@ interface AppState {
   // without a circular dependency). See scripts/test-navigation-architecture-audit.ts Finding 6
   // for the regression guard enforcing this closed list — add a new direct reader there too.
   isNavigating: boolean;
+  navigationSessionId: number;
   destination: Place | null;
   startNavigation: (destination: Place, route?: RoutePreview | V2ActiveRoute | null, instructions?: Array<NavigationInstruction | V2NavigationInstruction>) => void;
   stopNavigation: () => void;
@@ -351,14 +352,16 @@ export const useAppStore = create<AppState>()(
 
       // --- Navigation ---
       isNavigating: false,
+      navigationSessionId: 0,
       destination: null,
       startNavigation: (dest, route = null, instructions = []) =>
-        set({
+        set((state) => ({
           isNavigating: true,
+          navigationSessionId: state.navigationSessionId + 1,
           destination: dest,
           activeRoute: route,
           routeInstructions: instructions,
-        }),
+        })),
       stopNavigation: () =>
         set({ isNavigating: false, destination: null, activeRoute: null, routeInstructions: [], reroutePending: false }),
       activeRoute: null,

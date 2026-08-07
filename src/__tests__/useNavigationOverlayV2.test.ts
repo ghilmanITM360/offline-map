@@ -5,8 +5,9 @@
 
 import { Alert, BackHandler } from 'react-native';
 
-import { renderHook } from './test-utils';
+import { act, renderHook, waitFor } from './test-utils';
 import { useNavigationOverlayV2 } from '../viewmodels/useNavigationOverlayV2';
+import { useAppStore } from '../store/useAppStore';
 
 const mockVm = {
   route: null as any,
@@ -20,7 +21,12 @@ jest.mock('../viewmodels/NavigationViewModelV2', () => ({
   useNavigationViewModelV2: () => mockVm,
 }));
 
-const FAKE_ROUTE = { destination: { blockId: 'B1' }, coordinates: [], totalDistanceM: 0, etaMinutes: 0 };
+const FAKE_ROUTE = {
+  id: 'route-v2', routeId: 'route-v2', sourceVersion: 'v2', destination: { blockId: 'B1' },
+  coordinates: [{ latitude: 24.9, longitude: 67.1 }, { latitude: 24.901, longitude: 67.101 }],
+  totalDistanceM: 100, etaMinutes: 2,
+};
+const DESTINATION = { id: 'B1', name: 'Block 1', category: 'Block', description: 'Block 1', sourceVersion: 'v2' } as any;
 
 function latestHandler(spy: jest.SpyInstance) {
   const calls = spy.mock.calls.filter(([eventName]) => eventName === 'hardwareBackPress');
@@ -136,5 +142,81 @@ describe('useNavigationOverlayV2 — hardware back (NAVIGATION vs ARRIVAL)', () 
     );
     expect(mockVm.handleExit).not.toHaveBeenCalled();
     expect(mockVm.route?.outsideRoute?.provider).toBe('direct-guide');
+  });
+});
+
+describe('useNavigationOverlayV2 — per-trip camera ownership', () => {
+  afterEach(() => {
+    useAppStore.getState().stopNavigation();
+    mockVm.route = null;
+    mockVm.snappedLocation = null;
+    mockVm.arrived = false;
+  });
+
+  test.each(['exit', 'arrival'] as const)('a new trip follows after %s ends the previous free-pan trip', async (ending) => {
+    const cameraManager = {
+      fitRoute: jest.fn(), fitVenueBounds: jest.fn(), enterNavigationCamera: jest.fn(), exitNavigationCamera: jest.fn(),
+    } as any;
+    const props = {
+      mapRef: { current: {} as any }, mapReady: true, mapZoomLevel: 16, hasBaseMap: true,
+      userPulseAnim: {} as any, cameraManager,
+    };
+    mockVm.route = FAKE_ROUTE;
+    mockVm.snappedLocation = FAKE_ROUTE.coordinates[0];
+    useAppStore.getState().startNavigation(DESTINATION, FAKE_ROUTE as any, []);
+    const hook = await renderHook(() => useNavigationOverlayV2(props));
+    expect(hook.result.current.isAutoFollowing).toBe(true);
+    await waitFor(() => expect(cameraManager.enterNavigationCamera).toHaveBeenCalledTimes(1));
+    cameraManager.enterNavigationCamera.mockClear();
+
+    await act(() => hook.result.current.setIsAutoFollowing(false));
+    mockVm.snappedLocation = { latitude: 24.9002, longitude: 67.1002 };
+    await hook.rerender(undefined);
+    expect(cameraManager.enterNavigationCamera).not.toHaveBeenCalled();
+
+    if (ending === 'arrival') {
+      mockVm.arrived = true;
+      await hook.rerender(undefined);
+    }
+    await act(() => useAppStore.getState().stopNavigation());
+    mockVm.route = null;
+    mockVm.arrived = false;
+    await hook.rerender(undefined);
+    const nextRoute = { ...FAKE_ROUTE, id: 'trip-2', routeId: 'trip-2' };
+    mockVm.route = nextRoute;
+    await act(() => useAppStore.getState().startNavigation(DESTINATION, nextRoute as any, []));
+    await hook.rerender(undefined);
+
+    expect(hook.result.current.isAutoFollowing).toBe(true);
+    await waitFor(() => expect(cameraManager.enterNavigationCamera).toHaveBeenCalledTimes(1));
+  });
+
+  test('initial fit runs once; follow and free-pan ownership survive multiple reroutes', async () => {
+    const cameraManager = {
+      fitRoute: jest.fn(), fitVenueBounds: jest.fn(), enterNavigationCamera: jest.fn(), exitNavigationCamera: jest.fn(),
+    } as any;
+    const props = {
+      mapRef: { current: {} as any }, mapReady: true, mapZoomLevel: 16, hasBaseMap: true,
+      userPulseAnim: {} as any, cameraManager,
+    };
+    mockVm.route = FAKE_ROUTE;
+    mockVm.snappedLocation = FAKE_ROUTE.coordinates[0];
+    useAppStore.getState().startNavigation(DESTINATION, FAKE_ROUTE as any, []);
+    const hook = await renderHook(() => useNavigationOverlayV2(props));
+    await waitFor(() => expect(cameraManager.fitRoute).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(cameraManager.enterNavigationCamera).toHaveBeenCalledTimes(1));
+
+    mockVm.route = { ...FAKE_ROUTE, id: 'reroute-1', routeId: 'reroute-1' };
+    await hook.rerender(undefined);
+    expect(cameraManager.fitRoute).toHaveBeenCalledTimes(1);
+    expect(hook.result.current.isAutoFollowing).toBe(true);
+
+    await act(() => hook.result.current.setIsAutoFollowing(false));
+    mockVm.route = { ...FAKE_ROUTE, id: 'reroute-2', routeId: 'reroute-2' };
+    mockVm.snappedLocation = { latitude: 24.9004, longitude: 67.1004 };
+    await hook.rerender(undefined);
+    expect(cameraManager.fitRoute).toHaveBeenCalledTimes(1);
+    expect(cameraManager.enterNavigationCamera).toHaveBeenCalledTimes(2);
+    expect(hook.result.current.isAutoFollowing).toBe(false);
   });
 });

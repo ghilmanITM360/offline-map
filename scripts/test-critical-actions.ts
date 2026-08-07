@@ -164,8 +164,10 @@ assert(
   'Navigation should expose recenter control',
 );
 assert(
-  navScreen.includes('settings.autoFollowLocation'),
-  'Navigation auto-follow behavior should honor Settings auto-follow toggle',
+  navScreen.includes('navigationSessionId') &&
+    navScreen.includes('useState(true)') &&
+    navScreen.includes('setIsAutoFollowing(true)'),
+  'Navigation should establish fresh auto-follow ownership for each navigation session',
 );
 assert(
   navScreen.includes('settings.keepNorthFixed'),

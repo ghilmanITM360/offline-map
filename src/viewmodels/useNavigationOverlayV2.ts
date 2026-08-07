@@ -33,6 +33,7 @@ export function useNavigationOverlayV2({ mapRef, mapReady, mapZoomLevel, hasBase
   const developerMode = useAppStore((s) => s.developerModeEnabled);
   const settings = useAppStore((s) => s.settings);
   const currentLocationSource = useAppStore((s) => s.currentLocationSource);
+  const navigationSessionId = useAppStore((s) => s.navigationSessionId);
 
   const vm = useNavigationViewModelV2();
   const { route, destination, snappedLocation, arrived } = vm;
@@ -42,7 +43,7 @@ export function useNavigationOverlayV2({ mapRef, mapReady, mapZoomLevel, hasBase
     onExit: vm.handleExit,
   });
 
-  const [isAutoFollowing, setIsAutoFollowing] = useState(settings.autoFollowLocation);
+  const [isAutoFollowing, setIsAutoFollowing] = useState(true);
   const [initialCameraFitDone, setInitialCameraFitDone] = useState(false);
   // Measured (not guessed) height of NavigationChromeV2's bottom trip-info bar — grows with
   // font scaling/device width, so anything anchored above it (recenter button, HomeScreen's
@@ -67,8 +68,9 @@ export function useNavigationOverlayV2({ mapRef, mapReady, mapZoomLevel, hasBase
   }, [destination, developerMode, hasBaseMap, route, mapZoomLevel]);
 
   useEffect(() => {
+    setIsAutoFollowing(true);
     setInitialCameraFitDone(false);
-  }, [route?.routeId]);
+  }, [navigationSessionId]);
 
   useEffect(() => {
     if (!route || !mapReady || initialCameraFitDone || !mapRef.current) return;
