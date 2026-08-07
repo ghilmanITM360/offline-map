@@ -18,6 +18,8 @@ import { RootStackParamList } from '../../navigation/RootNavigator';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { staticColors } from '../../theme';
 
+export const SPLASH_BACKGROUND_COLOR = staticColors.arrivalGreen;
+
 export function SplashScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -208,7 +210,7 @@ export function SplashScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: staticColors.arrivalGreen,
+    backgroundColor: SPLASH_BACKGROUND_COLOR,
     justifyContent: 'center',
     alignItems: 'center',
   },

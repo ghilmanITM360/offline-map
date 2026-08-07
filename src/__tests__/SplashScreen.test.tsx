@@ -5,7 +5,8 @@
 
 import React from 'react';
 import * as Location from 'expo-location';
-import { SplashScreen } from '../views/screens/SplashScreen';
+import { SplashScreen, SPLASH_BACKGROUND_COLOR } from '../views/screens/SplashScreen';
+import appConfig from '../../app.json';
 import { OfflineMapService } from '../services/OfflineMapService';
 import { OfflineMapStatusService } from '../services/OfflineMapStatusService';
 import { ConnectivityService } from '../services/ConnectivityService';
@@ -108,6 +109,10 @@ afterEach(() => {
 });
 
 describe('SplashScreen — persisted-store hydration gate', () => {
+  test('uses the same background color as the native Expo splash', () => {
+    expect(SPLASH_BACKGROUND_COLOR).toBe(appConfig.expo.splash.backgroundColor);
+  });
+
   it('fresh install: navigates to Welcome only after hydration completes', async () => {
     (OnboardingStatusService.hasSeenWelcome as jest.Mock).mockResolvedValue(false);
     const controllable = controllableStorage();
