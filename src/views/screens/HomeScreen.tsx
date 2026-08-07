@@ -51,7 +51,7 @@ import { SHEET_CORNER_RADIUS } from '../components/common/SheetHeader';
 import { markerColors, markerSizes, shadows, staticColors } from '../../theme';
 import { getDistance } from 'geolib';
 import { GRAPH_VALIDATION, IJTEMA_DATA, LANDMARK_PLACES, MAP_BOUNDS } from '../../constants/data';
-import { Place, RoutePreview, SearchResult } from '../../models/types';
+import { Coordinate, Place, RoutePreview, SearchResult } from '../../models/types';
 import { PlaceDetailService } from '../../services/PlaceDetailService';
 import { FavoriteService } from '../../services/FavoriteService';
 import { useAppStore } from '../../store/useAppStore';
@@ -63,6 +63,7 @@ import { MapConfigService } from '../../services/MapConfigService';
 import { resolveBaseMapMode } from '../../services/BaseMapModeResolver';
 import { MapFeatureFlagsService } from '../../services/MapFeatureFlagsService';
 import { MapStartupController } from '../../services/MapStartupController';
+import { LocationAccessService } from '../../services/LocationAccessService';
 import { V2MapRenderingService, MEDIUM_ZOOM, HIGH_ZOOM } from '../../services/V2MapRenderingService';
 import { V2NavigationAdapter } from '../../services/V2NavigationAdapter';
 import { RoutingServiceV2 } from '../../services/RoutingServiceV2';
@@ -163,10 +164,10 @@ export function HomeScreen() {
   const nav = useNavigation<HomeScreenNavigationProp>();
   const currentLocation = useAppStore((s) => s.currentLocation);
   const currentLocationSource = useAppStore((s) => s.currentLocationSource);
-  const lastKnownLocation = useAppStore((s) => s.lastKnownLocation);
   const hasLocationPermission = useAppStore((s) => s.hasLocationPermission);
   const hasSeenMapOverview = useAppStore((s) => s.hasSeenMapOverview);
   const setHasSeenMapOverview = useAppStore((s) => s.setHasSeenMapOverview);
+  const setCurrentLocation = useAppStore((s) => s.setCurrentLocation);
   const hasSeenLocationTutorial = useAppStore((s) => s.hasSeenLocationTutorial);
   const setHasSeenLocationTutorial = useAppStore((s) => s.setHasSeenLocationTutorial);
   const activeRoute = useAppStore((s) => s.activeRoute);
@@ -202,8 +203,16 @@ export function HomeScreen() {
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const searchInputRef = useRef<TextInput>(null);
   const mapLabelOverlayRef = useRef<MapLabelOverlayHandle>(null);
-  // Cold-launch camera decision (see onMapReady below) fires once per mount only.
-  const coldLaunchCameraDoneRef = useRef(false);
+  // Startup camera ownership (see onMapReady below) fires once per mount only. Returning
+  // launches resolve fresh GPS asynchronously, so the request/intent refs keep late results
+  // from stealing camera ownership after a newer user action.
+  const startupCameraRequestStartedRef = useRef(false);
+  const startupCameraCommittedRef = useRef(false);
+  const startupCameraRequestGenerationRef = useRef(0);
+  const startupCameraIntentGenerationRef = useRef(0);
+  const startupMapReadyReleasedRef = useRef(false);
+  const mapReadyRef = useRef(false);
+  const mountedRef = useRef(true);
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const mapRuntimeStatus = MapConfigService.getRuntimeStatus();
@@ -282,6 +291,29 @@ export function HomeScreen() {
     settings,
   } = useHomeViewModel();
 
+  const releaseStartupMapReady = useCallback(() => {
+    if (!mapReadyRef.current || startupMapReadyReleasedRef.current) return;
+    startupMapReadyReleasedRef.current = true;
+    setIsMapReady(true);
+  }, [setIsMapReady]);
+
+  const invalidateStartupCameraIntent = useCallback(() => {
+    startupCameraIntentGenerationRef.current += 1;
+    if (startupCameraRequestStartedRef.current && !startupCameraCommittedRef.current) {
+      releaseStartupMapReady();
+    }
+  }, [releaseStartupMapReady]);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      mapReadyRef.current = false;
+      startupCameraIntentGenerationRef.current += 1;
+      startupCameraRequestGenerationRef.current += 1;
+    };
+  }, []);
+
   const baseMapMode = resolveBaseMapMode({
     hasGoogleMapsKey,
     hasInternet: !isOffline,
@@ -316,7 +348,13 @@ export function HomeScreen() {
   const selectedPlaceIdRef = useRef<string | undefined>(undefined);
   selectedPlaceIdRef.current = selectedPlace?.id;
 
+  const handlePlaceSelectWithCameraIntent = useCallback((place: Place) => {
+    invalidateStartupCameraIntent();
+    handlePlaceSelect(place);
+  }, [handlePlaceSelect, invalidateStartupCameraIntent]);
+
   const collectTapCandidate = useCallback((candidate: TapCandidate<Place>) => {
+    invalidateStartupCameraIntent();
     tapCandidatesRef.current.push(candidate);
     if (tapFlushScheduledRef.current) return;
     tapFlushScheduledRef.current = true;
@@ -327,9 +365,9 @@ export function HomeScreen() {
       const winner = resolveTapCandidate(candidates, selectedPlaceIdRef.current);
       if (!winner) return;
       dismissSearchOverlay();
-      handlePlaceSelect(winner.payload);
+      handlePlaceSelectWithCameraIntent(winner.payload);
     });
-  }, [dismissSearchOverlay, handlePlaceSelect]);
+  }, [dismissSearchOverlay, handlePlaceSelectWithCameraIntent, invalidateStartupCameraIntent]);
 
   const navOverlay = useNavigationOverlayV2({
     mapRef,
@@ -368,6 +406,7 @@ export function HomeScreen() {
   // wherever it happened to be when the user picked a destination.
   useEffect(() => {
     if (!activePreviewRoute || activePreviewRoute.coordinates.length < 2) return;
+    invalidateStartupCameraIntent();
     const sheetExtent = resolveOverlayExtent({ kind: 'sheet', windowHeight, snapPoints, sheetIndex });
     cameraManager.fitRoute(activePreviewRoute.coordinates, {
       top: 90,
@@ -375,7 +414,7 @@ export function HomeScreen() {
       bottom: sheetExtent + Math.max(insets.bottom, 16) + 32,
       left: 64,
     });
-  }, [activePreviewRoute, cameraManager, insets.bottom, windowHeight, snapPoints, sheetIndex]);
+  }, [activePreviewRoute, cameraManager, insets.bottom, invalidateStartupCameraIntent, windowHeight, snapPoints, sheetIndex]);
 
   // Single source of truth for "what is the map surface showing right now" — every
   // render/behavior gate below reads `mode`, never the raw isSearchFocused/arrived/etc
@@ -391,6 +430,85 @@ export function HomeScreen() {
     activePreviewRoute,
     selectedPlace,
   });
+  const modeRef = useRef<typeof mode>('EXPLORE');
+  modeRef.current = mode;
+
+  const startupCameraStillOwnsIntent = useCallback((requestGeneration: number, cameraIntentGeneration: number) => (
+    mountedRef.current &&
+    mapReadyRef.current &&
+    startupCameraRequestGenerationRef.current === requestGeneration &&
+    startupCameraIntentGenerationRef.current === cameraIntentGeneration &&
+    !startupCameraCommittedRef.current &&
+    modeRef.current === 'EXPLORE'
+  ), []);
+
+  const commitStartupVenueBounds = useCallback((
+    venueBoundary: Coordinate[],
+    reason: 'first_overview' | 'no_gps',
+    requestGeneration: number,
+    cameraIntentGeneration: number,
+  ) => {
+    if (!startupCameraStillOwnsIntent(requestGeneration, cameraIntentGeneration)) return;
+    startupCameraCommittedRef.current = true;
+    cameraManager.fitVenueBounds(venueBoundary);
+    if (reason === 'first_overview') setHasSeenMapOverview(true);
+    releaseStartupMapReady();
+  }, [cameraManager, releaseStartupMapReady, setHasSeenMapOverview, startupCameraStillOwnsIntent]);
+
+  const commitStartupLiveLocation = useCallback((
+    coordinate: typeof currentLocation,
+    requestGeneration: number,
+    cameraIntentGeneration: number,
+  ) => {
+    if (!coordinate) return;
+    if (!startupCameraStillOwnsIntent(requestGeneration, cameraIntentGeneration)) return;
+    startupCameraCommittedRef.current = true;
+    setCurrentLocation(coordinate, 'live');
+    cameraManager.animateToUser(coordinate);
+    releaseStartupMapReady();
+  }, [cameraManager, releaseStartupMapReady, setCurrentLocation, startupCameraStillOwnsIntent]);
+
+  const beginStartupCameraDecision = useCallback((venueBoundary: Coordinate[]) => {
+    if (startupCameraRequestStartedRef.current) return;
+    startupCameraRequestStartedRef.current = true;
+    const requestGeneration = startupCameraRequestGenerationRef.current + 1;
+    startupCameraRequestGenerationRef.current = requestGeneration;
+    const cameraIntentGeneration = startupCameraIntentGenerationRef.current;
+
+    if (!mountedRef.current || !mapReadyRef.current || modeRef.current !== 'EXPLORE') {
+      releaseStartupMapReady();
+      return;
+    }
+
+    if (!hasSeenMapOverview) {
+      commitStartupVenueBounds(venueBoundary, 'first_overview', requestGeneration, cameraIntentGeneration);
+      return;
+    }
+
+    void MapStartupController.resolveReturningLaunchCamera(
+      { hasSeenMapOverview, hasLocationPermission },
+      () => LocationAccessService.resolveCurrentLocation(false),
+    ).then((decision) => {
+      if (decision.action === 'ANIMATE_TO_USER') {
+        commitStartupLiveLocation(decision.coordinate, requestGeneration, cameraIntentGeneration);
+        return;
+      }
+      commitStartupVenueBounds(venueBoundary, decision.reason, requestGeneration, cameraIntentGeneration);
+    });
+  }, [
+    commitStartupLiveLocation,
+    commitStartupVenueBounds,
+    hasLocationPermission,
+    hasSeenMapOverview,
+    releaseStartupMapReady,
+  ]);
+
+  useEffect(() => {
+    if (mode === 'ROUTE_PREVIEW' || mode === 'NAVIGATION' || mode === 'ARRIVAL') {
+      invalidateStartupCameraIntent();
+    }
+  }, [invalidateStartupCameraIntent, mode]);
+
   const hasNavigationUserLocation = Boolean(
     showNavOverlay
       ? navOverlay.snappedLocation
@@ -448,6 +566,7 @@ export function HomeScreen() {
   }, [clearSearch, dismissSearchOverlay]);
 
   const openSearch = useCallback(() => {
+    invalidateStartupCameraIntent();
     const currentIdentity = currentSheetIdentityRef.current;
     if (currentIdentity) {
       prepareProgrammaticSheetDismiss('replacement');
@@ -455,7 +574,7 @@ export function HomeScreen() {
       bottomSheetRef.current?.close();
     }
     setIsSearchFocused(true);
-  }, [bottomSheetRef, prepareProgrammaticSheetDismiss, resetDismissedSheetState]);
+  }, [bottomSheetRef, invalidateStartupCameraIntent, prepareProgrammaticSheetDismiss, resetDismissedSheetState]);
 
   const selectCategory = useCallback((category: string) => {
     const currentIdentity = currentSheetIdentityRef.current;
@@ -637,7 +756,7 @@ export function HomeScreen() {
           const place = V2PlaceAdapter.getPlaceById(gate.id);
           if (!place) return;
           dismissSearchOverlay();
-          handlePlaceSelect(place);
+          handlePlaceSelectWithCameraIntent(place);
         },
       });
     }
@@ -657,7 +776,7 @@ export function HomeScreen() {
           const place = V2PlaceAdapter.getPlaceById(block.id);
           if (!place) return;
           dismissSearchOverlay();
-          handlePlaceSelect(place);
+          handlePlaceSelectWithCameraIntent(place);
         },
       });
     }
@@ -677,7 +796,7 @@ export function HomeScreen() {
           const place = V2PlaceAdapter.getPlaceById(rasta.id);
           if (!place) return;
           dismissSearchOverlay();
-          handlePlaceSelect(place);
+          handlePlaceSelectWithCameraIntent(place);
         },
       });
     }
@@ -697,13 +816,13 @@ export function HomeScreen() {
           const place = V2PlaceAdapter.getPlaceById(route.id);
           if (!place) return;
           dismissSearchOverlay();
-          handlePlaceSelect(place);
+          handlePlaceSelectWithCameraIntent(place);
         },
       });
     }
 
     return items;
-  }, [showNavOverlay, navOverlay.mapLayers.gates, navOverlayV1.active, useV2Map, v2MapLayers, mapZoomLevel, dismissSearchOverlay, handlePlaceSelect]);
+  }, [showNavOverlay, navOverlay.mapLayers.gates, navOverlayV1.active, useV2Map, v2MapLayers, mapZoomLevel, dismissSearchOverlay, handlePlaceSelectWithCameraIntent]);
 
   const effectiveInitialRegion = useV2Map
     ? {
@@ -878,13 +997,14 @@ export function HomeScreen() {
   const recenterResetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const handleRecenterPress = useCallback(async () => {
     if (recenterState === 'loading') return;
+    invalidateStartupCameraIntent();
     if (recenterResetTimerRef.current) clearTimeout(recenterResetTimerRef.current);
     logHomeControl('recenter', 'resolve_location_and_center');
     setRecenterState('loading');
     const ok = await handleRecenter();
     setRecenterState(ok ? 'success' : 'failure');
     recenterResetTimerRef.current = setTimeout(() => setRecenterState('idle'), 1200);
-  }, [handleRecenter, logHomeControl, recenterState]);
+  }, [handleRecenter, invalidateStartupCameraIntent, logHomeControl, recenterState]);
   useEffect(() => () => {
     if (recenterResetTimerRef.current) clearTimeout(recenterResetTimerRef.current);
   }, []);
@@ -903,6 +1023,7 @@ export function HomeScreen() {
   };
 
   const handleOpenDirections = (place: Place) => {
+    invalidateStartupCameraIntent();
     const destination =
       place.sourceVersion === 'v2'
         ? place
@@ -941,6 +1062,7 @@ export function HomeScreen() {
 
   const handleStartPreviewNavigation = useCallback(() => {
     if (!activePreviewRoute || !previewDestination) return;
+    invalidateStartupCameraIntent();
     const startCheck = V2NavigationAdapter.canStartActiveNavigation({
       route: activePreviewRoute as any,
       destination: previewDestination,
@@ -957,7 +1079,7 @@ export function HomeScreen() {
     });
     prepareProgrammaticSheetDismiss('start-navigation');
     startNavigation(previewDestination, resolvedRoute, resolvedRoute.instructions);
-  }, [activePreviewRoute, currentLocation, prepareProgrammaticSheetDismiss, previewDestination, routePlannerOrigin, startNavigation]);
+  }, [activePreviewRoute, currentLocation, invalidateStartupCameraIntent, prepareProgrammaticSheetDismiss, previewDestination, routePlannerOrigin, startNavigation]);
 
   const handleClearPreviewRoute = useCallback(() => {
     Alert.alert('Cancel route?', 'You will need to choose your destination again.', [
@@ -999,9 +1121,10 @@ export function HomeScreen() {
   }, [mode, closeSearch, closeDetails, directionsDestination, handleCloseDirections, handleClearPreviewRoute, closeSheet]);
 
   const handleSearchResultSelect = (place: Place) => {
+    invalidateStartupCameraIntent();
     clearSearch();
     dismissSearchOverlay();
-    handlePlaceSelect(place);
+    handlePlaceSelectWithCameraIntent(place);
   };
 
   // Phase 5 — shared row renderer for the full-screen search overlay's Recent /
@@ -1107,29 +1230,17 @@ export function HomeScreen() {
             zoomEnabled={!layersSheetVisible}
             rotateEnabled={!layersSheetVisible && !settings.keepNorthFixed}
             onMapReady={() => {
-              setIsMapReady(true);
+              mapReadyRef.current = true;
               setMapReadyState(true);
               handleMapRegionChangeComplete(effectiveInitialRegion);
               mapLabelOverlayRef.current?.requestProjection();
 
-              // Cold-launch camera decision — MapStartupController owns the "what should
-              // happen" logic; this stays the one-shot guard + the actual CameraManager
-              // calls. Recenter/GPS-follow after this point go through CameraManager's own
-              // FOLLOWING_USER flow, untouched here.
-              if (!coldLaunchCameraDoneRef.current) {
-                coldLaunchCameraDoneRef.current = true;
+              // Startup camera decision — MapStartupController owns the "what should
+              // happen" logic. HomeScreen owns the one-shot guard, stale-result checks,
+              // canonical live-location write, and the actual CameraManager calls.
+              if (!startupCameraRequestStartedRef.current) {
                 const venueBoundary = useV2Map ? v2MapLayers.venueBoundary : VENUE_BOUNDARY;
-                const decision = MapStartupController.resolveColdLaunchCamera({
-                  hasSeenMapOverview,
-                  hasLocationPermission,
-                  gpsCoordinate: currentLocation ?? lastKnownLocation,
-                });
-                if (decision.action === 'ANIMATE_TO_USER') {
-                  cameraManager.animateToUser(decision.coordinate);
-                } else {
-                  cameraManager.fitVenueBounds(venueBoundary);
-                  if (decision.reason === 'first_overview') setHasSeenMapOverview(true);
-                }
+                beginStartupCameraDecision(venueBoundary);
               }
 
               if (__DEV__) {
@@ -1164,6 +1275,7 @@ export function HomeScreen() {
               mapLabelOverlayRef.current?.requestProjection();
             }}
             onPanDrag={() => {
+              invalidateStartupCameraIntent();
               navOverlay.setIsAutoFollowing(false);
               cameraManager.stopFollowing();
               setIsMapDragging(true);
@@ -1308,7 +1420,7 @@ export function HomeScreen() {
                 tappable
                 onPress={() => {
                   dismissSearchOverlay();
-                  handlePlaceSelect({
+                  handlePlaceSelectWithCameraIntent({
                     id: block.id,
                     name: block.name,
                     urduName: block.urduName,
@@ -1826,7 +1938,7 @@ export function HomeScreen() {
               isFav={isFav}
               onToggleFavorite={handleToggleFav}
               onSelectGate={(gate) => {
-                handlePlaceSelect({
+                handlePlaceSelectWithCameraIntent({
                   id: gate.id,
                   name: gate.name,
                   urduName: gate.urduName,
