@@ -184,6 +184,7 @@ function useFakeHomeViewModel(initialSearchResults: Place[] = []) {
     clearSearchSpy();
     setSearchQuery('');
     setSearchResults([]);
+    setActiveCategory(null);
   };
 
   return {
@@ -589,6 +590,21 @@ describe('HomeScreen — search', () => {
     expect(screen.getByTestId('search-result-GATE_05')).toBeOnTheScreen();
     expect(input.props.value).toBe('');
   });
+
+  test('dismissing and reopening Search does not retain a stale category selection or empty state', async () => {
+    const user = userEvent.setup();
+    await render(<HomeScreen />);
+    const input = screen.getByPlaceholderText('Search blocks, rastas, gates');
+
+    await user.type(input, '');
+    await user.press(screen.getByRole('button', { name: 'Gates' }));
+    expect(screen.getByRole('button', { name: 'Gates' }).props.accessibilityState).toMatchObject({ selected: true });
+    await user.press(screen.getByLabelText('Back'));
+    await user.type(input, '');
+
+    expect(screen.getByRole('button', { name: 'Gates' }).props.accessibilityState).toMatchObject({ selected: false });
+    expect(screen.queryByText('No places in this category.')).not.toBeOnTheScreen();
+  });
 });
 
 describe('HomeScreen — search-result marker mode policy', () => {
@@ -886,6 +902,26 @@ describe('HomeScreen — navigation completion cleanup', () => {
     expect(screen.getAllByTestId('browse-user-accuracy-circle')).toHaveLength(1);
     expect(screen.queryByTestId('selected-place-marker')).not.toBeOnTheScreen();
     alertSpy.mockRestore();
+  });
+});
+
+describe('HomeScreen — canonical navigation pan ownership', () => {
+  test('manual pan disables the active v1 overlay follow state', async () => {
+    const setIsAutoFollowing = jest.fn();
+    const overlaySpy = jest.spyOn(NavigationOverlayV1Module, 'useNavigationOverlayV1').mockReturnValue({
+      active: true,
+      route: null,
+      arrived: false,
+      snappedLocation: null,
+      mapLayers: { venueBoundary: [], blocks: [], edges: [] },
+      setIsAutoFollowing,
+    } as unknown as ReturnType<typeof NavigationOverlayV1Module.useNavigationOverlayV1>);
+    await render(<HomeScreen />);
+
+    await fireEvent(screen.getByTestId('home-map-view'), 'panDrag');
+
+    expect(setIsAutoFollowing).toHaveBeenCalledWith(false);
+    overlaySpy.mockRestore();
   });
 });
 

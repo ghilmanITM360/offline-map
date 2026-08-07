@@ -376,6 +376,7 @@ export function useHomeViewModel() {
   const clearSearch = () => {
     setSearchQuery('');
     setSearchResults([]);
+    setActiveCategory(null);
     if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
   };
 

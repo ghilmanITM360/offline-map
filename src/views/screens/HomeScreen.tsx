@@ -390,6 +390,14 @@ export function HomeScreen() {
     cameraManager,
   });
   const showAnyNavOverlay = showNavOverlay || navOverlayV1.active;
+  const handleNavigationPan = useCallback(() => {
+    if (showNavOverlay) {
+      navOverlay.setIsAutoFollowing(false);
+    } else if (navOverlayV1.active) {
+      navOverlayV1.setIsAutoFollowing(false);
+    }
+    cameraManager.stopFollowing();
+  }, [cameraManager, navOverlay, navOverlayV1, showNavOverlay]);
   // Real GPS-arrival signal (V2NavigationRuntimeService-backed distance check for v2,
   // inline distance check for v1) — feeds MapMode.ARRIVAL directly instead of a separate,
   // never-set local flag, so "destination reached" actually flips NAVIGATION -> ARRIVAL.
@@ -1276,8 +1284,7 @@ export function HomeScreen() {
             }}
             onPanDrag={() => {
               invalidateStartupCameraIntent();
-              navOverlay.setIsAutoFollowing(false);
-              cameraManager.stopFollowing();
+              handleNavigationPan();
               setIsMapDragging(true);
             }}
             onPress={() => {
