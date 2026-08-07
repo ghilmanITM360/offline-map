@@ -409,4 +409,252 @@ describe('SplashScreen — hydration degradation is route-safe', () => {
 
     expect(mockReplaceSpy).not.toHaveBeenCalled();
   });
+
+  it('unmounting before hydration settles logs a distinguishable abort diagnostic, separate from failure/timeout', async () => {
+    const controllable = controllableStorage();
+    useAppStore.persist.setOptions({ storage: controllable.storage });
+    const rehydratePromise = useAppStore.persist.rehydrate();
+    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+
+    let unmount!: () => Promise<void>;
+    await act(async () => {
+      const result = await render(<SplashScreen />);
+      unmount = result.unmount;
+    });
+    await flush();
+    expect(mockReplaceSpy).not.toHaveBeenCalled();
+
+    await act(async () => {
+      await unmount();
+    });
+
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('[SplashScreen]'));
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('outcome: aborted'));
+    expect(warnSpy).not.toHaveBeenCalledWith(expect.stringContaining('Hydration failed'));
+    expect(warnSpy).not.toHaveBeenCalledWith(expect.stringContaining('Hydration timed out'));
+
+    await act(async () => {
+      controllable.resolve(null); // late settle, after unmount
+      await rehydratePromise;
+    });
+    await flush();
+    expect(mockReplaceSpy).not.toHaveBeenCalled();
+
+    warnSpy.mockRestore();
+  });
+
+  it('does not log the abort diagnostic when unmounting after startup already completed', async () => {
+    const controllable = controllableStorage();
+    useAppStore.persist.setOptions({ storage: controllable.storage });
+    const rehydratePromise = useAppStore.persist.rehydrate();
+    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+
+    let unmount!: () => Promise<void>;
+    await act(async () => {
+      const result = await render(<SplashScreen />);
+      unmount = result.unmount;
+    });
+    await act(async () => {
+      controllable.resolve(null);
+      await rehydratePromise;
+    });
+    await flush();
+    expect(mockReplaceSpy).toHaveBeenCalledTimes(1);
+    warnSpy.mockClear();
+
+    await act(async () => {
+      await unmount();
+    });
+
+    expect(warnSpy).not.toHaveBeenCalledWith(expect.stringContaining('outcome: aborted'));
+
+    warnSpy.mockRestore();
+  });
+});
+
+describe('SplashScreen — unrelated dependency failures cannot bypass StartupManager', () => {
+  async function renderAndSettleHydration() {
+    const controllable = controllableStorage();
+    useAppStore.persist.setOptions({ storage: controllable.storage });
+    const rehydratePromise = useAppStore.persist.rehydrate();
+
+    await act(async () => {
+      render(<SplashScreen />);
+    });
+    await act(async () => {
+      controllable.resolve(null);
+      await rehydratePromise;
+    });
+    await flush();
+  }
+
+  it('a welcome-status read failure does not assume onboarding complete — still routes to Welcome', async () => {
+    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    (OnboardingStatusService.hasSeenWelcome as jest.Mock).mockRejectedValue(new Error('disk full'));
+
+    await renderAndSettleHydration();
+
+    expect(mockReplaceSpy).toHaveBeenCalledTimes(1);
+    expect(mockReplaceSpy).toHaveBeenCalledWith('Welcome');
+    expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('Failed to read welcome status'), expect.any(Error));
+    errorSpy.mockRestore();
+  });
+
+  it('a permission read failure does not assume granted — still routes to Permission', async () => {
+    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    (Location.getForegroundPermissionsAsync as jest.Mock).mockRejectedValue(new Error('native module crashed'));
+
+    await renderAndSettleHydration();
+
+    expect(mockReplaceSpy).toHaveBeenCalledTimes(1);
+    expect(mockReplaceSpy).toHaveBeenCalledWith('Permission');
+    expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('Failed to read location permission status'), expect.any(Error));
+    errorSpy.mockRestore();
+  });
+
+  it('a skipped-permission read failure does not assume skipped — still routes to Permission when not granted', async () => {
+    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    (Location.getForegroundPermissionsAsync as jest.Mock).mockResolvedValue({ status: 'denied', canAskAgain: true });
+    (OnboardingStatusService.hasSkippedLocationPermission as jest.Mock).mockRejectedValue(new Error('disk full'));
+
+    await renderAndSettleHydration();
+
+    expect(mockReplaceSpy).toHaveBeenCalledTimes(1);
+    expect(mockReplaceSpy).toHaveBeenCalledWith('Permission');
+    expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('Failed to read the skipped-location-permission preference'), expect.any(Error));
+    errorSpy.mockRestore();
+  });
+
+  it('a map-status read failure does not assume a healthy downloaded map — still routes to DownloadMap when connected', async () => {
+    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    (OfflineMapStatusService.validateAtStartup as jest.Mock).mockRejectedValue(new Error('AsyncStorage read failed'));
+
+    await renderAndSettleHydration();
+
+    expect(mockReplaceSpy).toHaveBeenCalledTimes(1);
+    expect(mockReplaceSpy).toHaveBeenCalledWith('DownloadMap');
+    expect(useAppStore.getState().offlineMapStatus).toBe('not_downloaded');
+    expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('Failed to validate offline map status'), expect.any(Error));
+    errorSpy.mockRestore();
+  });
+
+  it('a map-status read failure combined with offline still lands on graph-only Main, never a hardcoded fallback', async () => {
+    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    (OfflineMapStatusService.validateAtStartup as jest.Mock).mockRejectedValue(new Error('AsyncStorage read failed'));
+    (ConnectivityService.isConnected as jest.Mock).mockResolvedValue(false);
+
+    await renderAndSettleHydration();
+
+    expect(mockReplaceSpy).toHaveBeenCalledTimes(1);
+    expect(mockReplaceSpy).toHaveBeenCalledWith('Main');
+    // Proves this reached Main via StartupManager's graph-only/offline branch, not the
+    // deleted catch-all — that branch always set this exact message.
+    expect(useAppStore.getState().offlineMapStatusMessage).not.toEqual(expect.stringContaining('Startup checks failed'));
+    errorSpy.mockRestore();
+  });
+
+  it('a connectivity read failure preserves the existing conservative (offline) behavior', async () => {
+    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    (ConnectivityService.isConnected as jest.Mock).mockRejectedValue(new Error('network module crashed'));
+    (OfflineMapStatusService.validateAtStartup as jest.Mock).mockResolvedValue({ status: 'not_downloaded', manifest: null });
+
+    await renderAndSettleHydration();
+
+    expect(mockReplaceSpy).toHaveBeenCalledTimes(1);
+    expect(mockReplaceSpy).toHaveBeenCalledWith('Main'); // no internet + no map -> graph-only Main, same as a real disconnected read
+    expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('Failed to read connectivity status'), expect.any(Error));
+    errorSpy.mockRestore();
+  });
+
+  it('a corrupt map status still routes to DownloadMap even when an unrelated skipped-permission read also fails', async () => {
+    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    (OfflineMapStatusService.validateAtStartup as jest.Mock).mockResolvedValue({ status: 'corrupt', reason: 'checksum mismatch' });
+    (OnboardingStatusService.hasSkippedLocationPermission as jest.Mock).mockRejectedValue(new Error('disk full'));
+
+    await renderAndSettleHydration();
+
+    expect(mockReplaceSpy).toHaveBeenCalledTimes(1);
+    expect(mockReplaceSpy).toHaveBeenCalledWith('DownloadMap');
+    errorSpy.mockRestore();
+  });
+
+  it('a needs_update map status still routes to DownloadMap even when connectivity read fails', async () => {
+    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    (OfflineMapStatusService.validateAtStartup as jest.Mock).mockResolvedValue({ status: 'needs_update', reason: 'newer version available' });
+    (ConnectivityService.isConnected as jest.Mock).mockRejectedValue(new Error('network module crashed'));
+
+    await renderAndSettleHydration();
+
+    expect(mockReplaceSpy).toHaveBeenCalledTimes(1);
+    expect(mockReplaceSpy).toHaveBeenCalledWith('DownloadMap');
+    errorSpy.mockRestore();
+  });
+
+  it('graph-only mode still resolves to Main when an unrelated permission-skip read fails', async () => {
+    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    (OfflineMapStatusService.validateAtStartup as jest.Mock).mockResolvedValue({ status: 'not_downloaded', manifest: null });
+    (OfflineMapStatusService.isGraphOnlyModeEnabled as jest.Mock).mockResolvedValue(true);
+    (OnboardingStatusService.hasSkippedLocationPermission as jest.Mock).mockRejectedValue(new Error('disk full'));
+
+    await renderAndSettleHydration();
+
+    expect(mockReplaceSpy).toHaveBeenCalledTimes(1);
+    expect(mockReplaceSpy).toHaveBeenCalledWith('Main');
+    errorSpy.mockRestore();
+  });
+
+  it('every dependency failing at once still resolves exactly one route via StartupManager (Welcome wins precedence), never a hardcoded fallback', async () => {
+    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    (OnboardingStatusService.hasSeenWelcome as jest.Mock).mockRejectedValue(new Error('a'));
+    (Location.getForegroundPermissionsAsync as jest.Mock).mockRejectedValue(new Error('b'));
+    (OnboardingStatusService.hasSkippedLocationPermission as jest.Mock).mockRejectedValue(new Error('c'));
+    (OfflineMapStatusService.validateAtStartup as jest.Mock).mockRejectedValue(new Error('d'));
+    (ConnectivityService.isConnected as jest.Mock).mockRejectedValue(new Error('e'));
+    (OfflineMapStatusService.isGraphOnlyModeEnabled as jest.Mock).mockRejectedValue(new Error('f'));
+    (OfflineMapStatusService.isSkippedOnlineModeEnabled as jest.Mock).mockRejectedValue(new Error('g'));
+
+    await renderAndSettleHydration();
+
+    expect(mockReplaceSpy).toHaveBeenCalledTimes(1);
+    expect(mockReplaceSpy).toHaveBeenCalledWith('Welcome'); // hasSeenWelcome falls back to false, which StartupManager prioritizes above everything else
+    errorSpy.mockRestore();
+  });
+
+  it('unmounting during a dependency failure produces no navigation, and a late resolution produces no second navigation', async () => {
+    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    let rejectWelcome!: (error: unknown) => void;
+    (OnboardingStatusService.hasSeenWelcome as jest.Mock).mockReturnValue(
+      new Promise((_, reject) => {
+        rejectWelcome = reject;
+      }),
+    );
+    const controllable = controllableStorage();
+    useAppStore.persist.setOptions({ storage: controllable.storage });
+    const rehydratePromise = useAppStore.persist.rehydrate();
+
+    let unmount!: () => Promise<void>;
+    await act(async () => {
+      const result = await render(<SplashScreen />);
+      unmount = result.unmount;
+    });
+    await act(async () => {
+      controllable.resolve(null);
+      await rehydratePromise;
+    });
+    await flush();
+    expect(mockReplaceSpy).not.toHaveBeenCalled();
+
+    await act(async () => {
+      await unmount();
+    });
+
+    await act(async () => {
+      rejectWelcome(new Error('late failure after unmount'));
+      await Promise.resolve();
+    });
+    await flush();
+
+    expect(mockReplaceSpy).not.toHaveBeenCalled();
+    errorSpy.mockRestore();
+  });
 });
