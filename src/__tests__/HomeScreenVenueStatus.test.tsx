@@ -8,6 +8,7 @@ import { act, fireEvent, render, screen, waitFor } from './test-utils';
 import { HomeScreen } from '../views/screens/HomeScreen';
 import { useAppStore } from '../store/useAppStore';
 import { LocationAccessService } from '../services/LocationAccessService';
+import { RoutingServiceV2 } from '../services/RoutingServiceV2';
 import type { LocationResolveResult } from '../services/LocationAccessService';
 
 jest.mock('../services/LocationAccessService', () => ({
@@ -41,6 +42,8 @@ const originalV2MapFlag = process.env.EXPO_PUBLIC_USE_IJTEMA_V2_MAP;
 
 const outsideVenueLiveCoordinate = { latitude: 24.9022, longitude: 67.1024, accuracy: 6 };
 const insideVenueLiveCoordinate = { latitude: 24.965, longitude: 67.005, accuracy: 6 };
+const shortSuggestedGateName = 'Gate 14';
+const longSuggestedGateName = 'Gate 14 East pedestrian entrance beside the main medical camp and accessible shuttle stop';
 const permissionState: LocationResolveResult['permissionState'] = {
   granted: true,
   canAskAgain: true,
@@ -64,6 +67,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  jest.restoreAllMocks();
   jest.clearAllTimers();
   jest.useRealTimers();
   if (originalV2MapFlag === undefined) {
@@ -74,6 +78,23 @@ afterEach(() => {
 });
 
 describe('HomeScreen returning live location venue banner', () => {
+  async function renderOutsideBanner() {
+    useAppStore.setState({
+      hasSeenMapOverview: true,
+      hasLocationPermission: true,
+      currentLocation: null,
+      currentLocationSource: null,
+    });
+
+    await render(<HomeScreen />);
+    await act(async () => {
+      fireEvent(screen.getByTestId('home-map-view'), 'mapReady');
+      await Promise.resolve();
+      await Promise.resolve();
+      await jest.advanceTimersByTimeAsync(200);
+    });
+  }
+
   test('suppresses the outside-venue banner immediately after accepted startup live inside commit without a watcher tick', async () => {
     resolveCurrentLocation.mockResolvedValueOnce({
       ok: true,
@@ -101,7 +122,7 @@ describe('HomeScreen returning live location venue banner', () => {
       expect(resolveCurrentLocation).toHaveBeenCalledWith(false);
       expect(useAppStore.getState().currentLocation).toEqual(insideVenueLiveCoordinate);
       expect(useAppStore.getState().currentLocationSource).toBe('live');
-      expect(screen.queryByText(/Outside Ijtema · Enter through/)).toBeNull();
+      expect(screen.queryByText('Suggested entry')).toBeNull();
     });
   });
 
@@ -125,7 +146,60 @@ describe('HomeScreen returning live location venue banner', () => {
       expect(resolveCurrentLocation).toHaveBeenCalledWith(false);
       expect(useAppStore.getState().currentLocation).toEqual(outsideVenueLiveCoordinate);
       expect(useAppStore.getState().currentLocationSource).toBe('live');
-      expect(screen.getByText(/Outside Ijtema · Enter through/)).toBeTruthy();
+      expect(screen.getByText('Suggested entry')).toBeTruthy();
+    });
+  });
+
+  test('renders short suggested gate in a dedicated accessible text surface', async () => {
+    jest.spyOn(RoutingServiceV2, 'recommendOutsideEntryGate').mockReturnValue({
+      name: { en: shortSuggestedGateName },
+    } as ReturnType<typeof RoutingServiceV2.recommendOutsideEntryGate>);
+
+    await renderOutsideBanner();
+
+    await waitFor(() => {
+      const gateText = screen.getByText(shortSuggestedGateName);
+      expect(screen.getByText('Outside Ijtema')).toBeTruthy();
+      expect(screen.getByText('Suggested entry')).toBeTruthy();
+      expect(gateText.props.numberOfLines).toBeUndefined();
+      expect(gateText.props.ellipsizeMode).toBeUndefined();
+      expect(screen.getByLabelText(`Outside Ijtema. Suggested entry through ${shortSuggestedGateName}. Final entry gate is confirmed when route preview is calculated.`)).toBeTruthy();
+    });
+  });
+
+  test('keeps a long suggested gate identity complete without tail truncation', async () => {
+    jest.spyOn(RoutingServiceV2, 'recommendOutsideEntryGate').mockReturnValue({
+      name: { en: longSuggestedGateName },
+    } as ReturnType<typeof RoutingServiceV2.recommendOutsideEntryGate>);
+
+    await renderOutsideBanner();
+
+    await waitFor(() => {
+      const gateText = screen.getByText(longSuggestedGateName);
+      expect(gateText.props.numberOfLines).toBeUndefined();
+      expect(gateText.props.ellipsizeMode).toBeUndefined();
+      expect(screen.getByLabelText(`Outside Ijtema. Suggested entry through ${longSuggestedGateName}. Final entry gate is confirmed when route preview is calculated.`)).toBeTruthy();
+    });
+  });
+
+  test('keeps no-gate fallback complete and dismisses its accessible banner', async () => {
+    jest.spyOn(RoutingServiceV2, 'recommendOutsideEntryGate').mockReturnValue(undefined);
+
+    await renderOutsideBanner();
+
+    const unavailableText = 'Entry recommendation unavailable';
+    await waitFor(() => {
+      expect(screen.getByText(unavailableText)).toBeTruthy();
+      expect(screen.getByLabelText('Outside Ijtema. Suggested entry unavailable. Final entry gate is confirmed when route preview is calculated.')).toBeTruthy();
+      expect(screen.getByRole('button', { name: 'Dismiss outside Ijtema entry suggestion' })).toBeTruthy();
+    });
+
+    await act(async () => {
+      fireEvent.press(screen.getByRole('button', { name: 'Dismiss outside Ijtema entry suggestion' }));
+    });
+
+    await waitFor(() => {
+      expect(screen.queryByText(unavailableText)).toBeNull();
     });
   });
 });

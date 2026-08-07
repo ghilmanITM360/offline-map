@@ -860,6 +860,9 @@ export function HomeScreen() {
     const destination = selectedPlace ? destinationFromPlace(selectedPlace) : null;
     return RoutingServiceV2.recommendOutsideEntryGate(currentLocation, destination) ?? null;
   }, [currentLocation, venueStatus.insideVenue, selectedPlace]);
+  const outsideBannerAccessibilityLabel = nearestEntryGate
+    ? `Outside Ijtema. Suggested entry through ${nearestEntryGate.name.en}. Final entry gate is confirmed when route preview is calculated.`
+    : 'Outside Ijtema. Suggested entry unavailable. Final entry gate is confirmed when route preview is calculated.';
   const showMapWarningBanner = baseMapMode === 'GRAPH_ONLY';
   const topInsetBase = Math.max(insets.top, Platform.OS === 'android' ? StatusBar.currentHeight ?? 0 : 0);
   // bannerStackTop used to be a hardcoded `topInsetBase + 140` guess at the combined
@@ -1760,13 +1763,21 @@ export function HomeScreen() {
                   },
                 ]}
               >
-                <View style={styles.outsideVenueTextWrap}>
-                  <Text style={styles.outsideVenueText} numberOfLines={1} ellipsizeMode="tail">
-                    {nearestEntryGate ? `Outside Ijtema · Enter through ${nearestEntryGate.name.en}` : 'Outside Ijtema · Nearest gate unavailable'}
+                <View
+                  accessible
+                  accessibilityLabel={outsideBannerAccessibilityLabel}
+                  style={styles.outsideVenueTextWrap}
+                >
+                  <Text style={styles.outsideVenueTitle}>Outside Ijtema</Text>
+                  <Text style={styles.outsideVenueSuggestion}>Suggested entry</Text>
+                  <Text style={styles.outsideVenueGateText}>
+                    {nearestEntryGate?.name.en ?? 'Entry recommendation unavailable'}
                   </Text>
                 </View>
                 <Pressable
                   style={styles.bannerCloseButton}
+                  accessibilityRole="button"
+                  accessibilityLabel="Dismiss outside Ijtema entry suggestion"
                   onPress={() => {
                     logHomeControl('outside_banner_close', 'dismissed');
                     setOutsideBannerDismissed(true);
@@ -2175,13 +2186,15 @@ const styles = StyleSheet.create({
     paddingRight: 8,
     paddingVertical: 10,
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     minHeight: 40,
     elevation: 3,
   },
-  outsideVenueTextWrap: { flex: 1 },
-  outsideVenueText: { color: '#FFFFFF', fontSize: 13, fontWeight: '600' },
-  bannerCloseButton: { padding: 6, marginLeft: 4 },
+  outsideVenueTextWrap: { flex: 1, paddingVertical: 1 },
+  outsideVenueTitle: { color: '#FFFFFF', fontSize: 13, fontWeight: '700' },
+  outsideVenueSuggestion: { color: '#FFFFFF', fontSize: 12, fontWeight: '600', marginTop: 2 },
+  outsideVenueGateText: { color: '#FFFFFF', fontSize: 13, fontWeight: '600', flexShrink: 1 },
+  bannerCloseButton: { minWidth: 44, minHeight: 44, marginLeft: 4, alignItems: 'center', justifyContent: 'center' },
   diagnosticsBanner: {
     position: 'absolute',
     top: 260,

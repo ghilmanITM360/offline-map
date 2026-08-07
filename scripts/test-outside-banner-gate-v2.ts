@@ -3,10 +3,8 @@ import { readFileSync } from 'node:fs';
 
 import { EntryGateRoutingService } from '../src/services/EntryGateRoutingService';
 
-// Phase 8 (task #35): the outside-venue banner used to show a generic two-line message
-// ("Outside Ijtema area" / "Offline routing will enter through nearest connected official
-// gate.") without naming an actual gate. It now names the real nearest routable gate and
-// is a single-line, more compact floating notification (pill shape, smaller minHeight).
+// The banner names the route-consistent recommended gate, but only as a provisional
+// suggestion until route preview determines the final gate.
 
 const home = readFileSync('src/views/screens/HomeScreen.tsx', 'utf8');
 
@@ -21,15 +19,23 @@ assert(
   'Home must compute the outside-venue banner gate through the shared, route-consistent gate selector',
 );
 assert(
-  home.includes('Enter through ${nearestEntryGate.name.en}'),
-  'Outside-venue banner must name the actual nearest gate, not a generic message',
+  home.includes('Suggested entry') && home.includes('nearestEntryGate.name.en'),
+  'Outside-venue banner must name the actual suggested gate in its own text surface',
 );
 assert(
-  home.includes("'Outside Ijtema · Nearest gate unavailable'"),
+  home.includes('Entry recommendation unavailable'),
   'Outside-venue banner must have a sane fallback when no routable gate is found',
 );
-assert(!home.includes('outsideVenueSubtext'), 'Outside-venue banner must be a single-line notification, not a two-line card');
-assert(home.includes('numberOfLines={1}') , 'Outside-venue banner text must be constrained to one line');
+assert(
+  home.includes('Final entry gate is confirmed when route preview is calculated.'),
+  'Outside-venue banner must describe its gate recommendation as provisional',
+);
+assert(
+  !/outsideVenueGateText[^>]*numberOfLines=\{1\}/.test(home) && !/outsideVenueGateText[^>]*ellipsizeMode="tail"/.test(home),
+  'Outside-venue gate identity must not use single-line tail truncation',
+);
+assert(home.includes('accessibilityRole="button"'), 'Outside-venue close action must expose button role');
+assert(home.includes('Dismiss outside Ijtema entry suggestion'), 'Outside-venue close action must expose meaningful accessibility label');
 
 // Compact "floating notification" sizing: smaller than the old 48px two-line card, pill-shaped.
 // Scoped to the banner's own style block — other UI (e.g. accessible touch targets
@@ -39,6 +45,7 @@ assert(!!outsideVenueBannerStyleMatch, 'Home screen must define an outsideVenueB
 const outsideVenueBannerStyle = outsideVenueBannerStyleMatch![0];
 assert(outsideVenueBannerStyle.includes('minHeight: 40'), 'Outside-venue banner must use compact pill sizing, not the old large card height');
 assert(!outsideVenueBannerStyle.includes('minHeight: 48'), 'Old two-line banner height (48) must be gone');
+assert(outsideVenueBannerStyle.includes('marginRight: 76'), 'Outside-venue banner must reserve right-side map controls');
 
 // Sanity: the underlying gate lookup used by the banner is a real, cheap distance-only lookup
 // (not full route computation) and only returns gates that are actually routable/connected.
