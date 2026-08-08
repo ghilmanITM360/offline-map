@@ -576,7 +576,13 @@ function RoutePreviewSection({
 
           {showRouteReady && (
             <Card variant="success">
-              <Text style={styles.statusTitle}>Route ready</Text>
+              <Text style={styles.cardLabel}>Route ready</Text>
+              <View style={styles.routeHeroRow}>
+                {outsideRoute?.durationSeconds !== null && (
+                  <Text style={styles.routeHeroDuration}>{routeEta}</Text>
+                )}
+                <Text style={styles.routeHeroDistance}>{routeDistance}</Text>
+              </View>
               <Text style={styles.statusText}>{routeEntrySummary}</Text>
 
               {outsideRoute && (
@@ -615,19 +621,6 @@ function RoutePreviewSection({
                   ))}
                 </View>
               )}
-
-              <View style={styles.metricsRow}>
-                {outsideRoute?.durationSeconds !== null && (
-                  <View style={styles.metricPill}>
-                    <Clock size={15} color={staticColors.info} />
-                    <Text style={styles.metricText}>ETA: {routeEta}</Text>
-                  </View>
-                )}
-                <View style={styles.metricPill}>
-                  <Navigation size={15} color={staticColors.info} />
-                  <Text style={styles.metricText}>Distance: {routeDistance}</Text>
-                </View>
-              </View>
 
               <Button
                 variant="primary"
@@ -1096,25 +1089,29 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     color: staticColors.iconMuted,
   },
-  metricsRow: {
-    gap: 10,
-  },
   gateOptions: {
     gap: 10,
   },
-  metricPill: {
+  // Hero duration/distance heading — adapted from the Google Maps UI Kit directions
+  // screen, where the route's ETA is the single largest, most prominent element on the
+  // page (24px bold, accent-colored) rather than a small metric pill buried below
+  // secondary info. Uses routeInside (the app's existing route/wayfinding accent,
+  // already used for the route line and recenter icon) instead of Figma's literal
+  // teal, so the hero number reads as "this app's route color" rather than a one-off hex.
+  routeHeroRow: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'baseline',
     gap: 8,
-    backgroundColor: staticColors.infoBackground,
-    borderRadius: 14,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
   },
-  metricText: {
-    fontSize: 14,
+  routeHeroDuration: {
+    fontSize: 30,
+    fontWeight: '800',
+    color: staticColors.routeInside,
+  },
+  routeHeroDistance: {
+    fontSize: 16,
     fontWeight: '600',
-    color: staticColors.infoStrong,
+    color: staticColors.iconMuted,
   },
 });
 

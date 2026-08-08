@@ -417,7 +417,7 @@ describe('LocationSheet (routePreview) — route ready CTA', () => {
 
     expect(screen.getByText('Direct guide — not a road route')).toBeOnTheScreen();
     expect(screen.getByText('Start Direct Guide')).toBeOnTheScreen();
-    expect(screen.queryByText('ETA: 4 min')).not.toBeOnTheScreen();
+    expect(screen.queryByText('4 min')).not.toBeOnTheScreen();
     await user.press(screen.getByRole('button', { name: 'Retry road route' }));
     expect(retryOutsideRoute).toHaveBeenCalledTimes(1);
     await user.press(screen.getByRole('button', { name: 'Choose another gate' }));
@@ -440,7 +440,7 @@ describe('LocationSheet (routePreview) — route ready CTA', () => {
     await render(<LocationSheet mode="routePreview" destination={destination} onClose={onCloseSpy} />);
 
     expect(screen.getByText('Route ready')).toBeOnTheScreen();
-    expect(screen.getByText('ETA: 4 min')).toBeOnTheScreen();
+    expect(screen.getByText('4 min')).toBeOnTheScreen();
   });
 
   test('pressing "Start Navigation" invokes onStartNavigation and closes the sheet for a v2 destination', async () => {
