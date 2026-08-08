@@ -1035,6 +1035,12 @@ export function HomeScreen() {
 
   const handleOpenDirections = (place: Place) => {
     invalidateStartupCameraIntent();
+    // Switching the sheet from "place" to "route" identity re-presents/re-snaps an
+    // already-open BottomSheetModal, which can fire a transient onDismiss for the old
+    // identity. Arm the programmatic-dismiss guard first (same pattern as openSearch/
+    // selectCategory) so handleSheetDismiss recognizes that dismiss as expected instead
+    // of tearing down the directions state it just set.
+    prepareProgrammaticSheetDismiss('replacement');
     const destination =
       place.sourceVersion === 'v2'
         ? place
