@@ -20,12 +20,12 @@ const DISCONNECTED_GATE_IDS = ['GATE_18', 'GATE_19'];
 
 assert.equal(IJTEMA_GATES.length > 0, true, 'Gate data must be loaded.');
 
-// Sanity: no real gate should carry the raw needs_verification status today.
+// Sanity: only the explicitly deferred Gate 19 may carry the raw status.
 const rawNeedsVerification = IJTEMA_GATES.filter((gate) => gate.status === 'needs_verification').map((gate) => gate.id);
 assert.deepEqual(
   rawNeedsVerification,
-  [],
-  `No gate should carry the needs_verification source status today; found: ${rawNeedsVerification.join(', ') || 'none'}.`,
+  ['GATE_19'],
+  `Only Gate 19 should carry needs_verification pending connector ground truth; found: ${rawNeedsVerification.join(', ') || 'none'}.`,
 );
 
 const places = IJTEMA_GATES.map((gate) => ({
@@ -33,13 +33,13 @@ const places = IJTEMA_GATES.map((gate) => ({
   place: V2PlaceAdapter.gateToPlace(gate, { includeUnavailableGates: true }),
 }));
 
-// --- No real gate should have a verification warning today ----------------
+// --- Only Gate 19 should have a current verification warning ---------------
 
 for (const { gate, place } of places) {
   assert.equal(
     place.verificationWarning,
-    undefined,
-    `${gate.id} must not carry a verification warning (no gate currently needs_verification).`,
+    gate.id === 'GATE_19' ? VERIFICATION_WARNING : undefined,
+    `${gate.id} verification warning must reflect its source status.`,
   );
 }
 
@@ -83,16 +83,16 @@ for (const { gate, place } of places) {
 }
 
 // --- Disconnected gates keep their pre-existing connector-verification ----
-// message and must NOT pick up the new verificationWarning mechanism —
-// these are two separate, non-merging systems.
+// message. Gate 19 also keeps its source-verification warning; the two
+// signals describe different evidence and must not silently cancel each other.
 
 for (const gateId of DISCONNECTED_GATE_IDS) {
   const entry = places.find(({ gate }) => gate.id === gateId);
   assert(entry, `${gateId} must exist in gate data.`);
   assert.equal(
     entry!.place.verificationWarning,
-    undefined,
-    `${gateId} must not pick up the GATE_13/GATE_14-style verification warning.`,
+    gateId === 'GATE_19' ? VERIFICATION_WARNING : undefined,
+    `${gateId} source-verification warning must remain independent of connector routing status.`,
   );
   assert.equal(
     entry!.place.routingStatus,

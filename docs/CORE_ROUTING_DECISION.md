@@ -155,13 +155,12 @@ navigation." warning (`V2PlaceAdapter`'s `gateVerificationWarning`) are both
 purely `gate.status === 'needs_verification'`-driven, general mechanisms —
 not hardcoded to Gate 13/14 by ID. Updating both gates' coordinates and
 dropping their `needs_verification` status removes the penalty and warning
-for them as a direct consequence; no gate today carries `needs_verification`.
-The mechanism itself is still fully intact and tested (now via a synthetic
-gate in `test-gate-verification-warning-v2.ts`, so it isn't coupled to real
-Gate 13/14 data) — it will apply correctly again if a future gate's
-coordinates need the same "not yet verified" treatment. No other gate's
-penalty, the disconnected-gate check, or outside-entry eligibility were
-touched.
+for them as a direct consequence. Gate 19 is now the sole current gate with
+that status: it also has `connectorStatus: 'ground_truth_required'` and is
+excluded from outside-entry eligibility until physical connectivity is
+verified. The warning mechanism remains independently tested with a synthetic
+gate so its routing-neutral behavior is not coupled to Gate 19's separate
+connector block.
 
 ## Known OSM counterexample
 
