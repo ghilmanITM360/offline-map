@@ -38,6 +38,9 @@ export interface V2BlockLayer {
 
 export interface V2PolylineLayer {
   id: string;
+  /** Search/selection identity when one logical Rasta renders as multiple surveyed segments. */
+  sourceId?: string;
+  isPrimarySegment?: boolean;
   label: string;
   /** Bilingual EN/UR source name — see MapLocalizationService. */
   name: LocalizedLabel;
@@ -366,16 +369,25 @@ export class V2MapRenderingService {
         };
       });
 
-    const rastas = IJTEMA_RASTAS.map((rasta) => {
-      const polyline = rasta.points.map((point) => V2PlaceAdapter.toCoordinate(point.coordinate));
-      return {
-        id: rasta.id,
-        label: rasta.visual.label,
-        name: rasta.name,
-        polyline,
-        labelCoordinate: midpoint(polyline),
-        isSelected: false,
-      };
+    const rastas = IJTEMA_RASTAS.flatMap((rasta) => {
+      const pointById = new Map(rasta.points.map((point) => [point.id, point]));
+      return rasta.segments.map((segment, index) => {
+        const polyline = segment.pointIds.map((pointId) => {
+          const point = pointById.get(pointId);
+          if (!point) throw new Error(`${segment.id} references missing point ${pointId}`);
+          return V2PlaceAdapter.toCoordinate(point.coordinate);
+        });
+        return {
+          id: index === 0 ? rasta.id : segment.id,
+          sourceId: rasta.id,
+          isPrimarySegment: index === 0,
+          label: rasta.visual.label,
+          name: rasta.name,
+          polyline,
+          labelCoordinate: midpoint(polyline),
+          isSelected: false,
+        };
+      });
     });
 
     const specialRoutes = IJTEMA_SPECIAL_ROUTES.map((route) => {
@@ -499,7 +511,7 @@ export class V2MapRenderingService {
     const rastas = showRastas
       ? baseLayers.rastas.map((rasta) => ({
           ...rasta,
-          isSelected: selectedId === rasta.id,
+          isSelected: selectedId === (rasta.sourceId ?? rasta.id),
         }))
       : [];
     const specialRoutes = showSpecialRoutes
@@ -541,9 +553,10 @@ export class V2MapRenderingService {
       zoomLevel,
       competingSuppression,
     );
+    const primaryVisibleRastas = visibleRastas.filter((rasta) => rasta.isPrimarySegment !== false);
     const visibleRastaLabels = mapFilter === 'rastas'
-      ? rastas
-      : pickByZoom(visibleRastas, zoomLevel, selectedId, 2, (_, index) => index % 3 === 0);
+      ? primaryVisibleRastas
+      : pickByZoom(primaryVisibleRastas, zoomLevel, selectedId, 2, (_, index) => index % 3 === 0);
     const visibleSpecialRouteLabels = mapFilter === 'special_routes'
       ? specialRoutes
       : zoomLevel < MEDIUM_ZOOM

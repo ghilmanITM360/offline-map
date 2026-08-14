@@ -52,6 +52,7 @@ export interface Gate {
   routingStatus: 'routable' | 'missing_coordinate';
   isOfficialEntry: true;
   canStartRouteFromOutside: boolean;
+  connectorStatus: 'verified_by_geometry' | 'ground_truth_required';
   userFacingBehavior: {
     normalSearch: 'searchable' | 'unavailable';
     mapDisplay: 'visible' | 'unavailable';
@@ -71,11 +72,25 @@ export interface RastaPoint {
   developerLabel?: string;
 }
 
+export interface RastaSegment {
+  id: string;
+  pointIds: Array<RastaPoint['id']>;
+}
+
+export interface RastaJunction {
+  fromPointId: RastaPoint['id'];
+  toPointId: RastaPoint['id'];
+}
+
 export interface Rasta {
   id: `R${number}`;
   number: number;
   name: LocalizedLabel;
   points: RastaPoint[];
+  /** Independently surveyed polylines. Adjacent points connect only inside a segment. */
+  segments: RastaSegment[];
+  /** Explicit surveyed links between nearby points on separate segments of the same Rasta. */
+  junctions: RastaJunction[];
   aliases: string[];
   category: 'rasta';
   visual: {

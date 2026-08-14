@@ -30,7 +30,8 @@ assert.equal(layers.gates.some((gate) => gate.id === 'GATE_15'), true, 'Active G
 assert.equal(layers.gates.find((gate) => gate.id === 'GATE_18')?.isRoutable, false, 'Disconnected Gate 18 marker must not be route-enabled');
 assert(layers.gates.every((gate) => gate.coordinate), 'Rendered gates must all have real coordinates');
 
-assert.equal(layers.rastas.length, 11, 'Rasta 01-11 must be renderable');
+assert.equal(layers.rastas.length, 14, 'All 14 surveyed Rasta segments must be renderable');
+assert.equal(new Set(layers.rastas.map((rasta) => rasta.sourceId ?? rasta.id)).size, 11, 'Rasta 01-11 must remain the logical map identities');
 assert(layers.rastas.every((rasta) => rasta.polyline.length >= 2), 'Each rasta must have a renderable polyline');
 assert(layers.rastas.every((rasta) => /^Rasta \d{2}$/.test(rasta.label)), 'Rasta labels must be user-facing names');
 assert.equal(layers.rastas.some((rasta) => rasta.label === 'Rasta 12' || rasta.id === 'R12'), false, 'Hidden bridge must not render as public Rasta 12');
@@ -46,7 +47,7 @@ const rastaLayers = V2MapRenderingService.getHomeLayers({
   developerMode: false,
   graphOnlyFallback: true,
 });
-assert.equal(rastaLayers.rastas.find((rasta) => rasta.id === 'R9')?.isSelected, true, 'Selected rasta highlight must exist');
+assert.equal(rastaLayers.rastas.find((rasta) => (rasta.sourceId ?? rasta.id) === 'R9')?.isSelected, true, 'Selected rasta highlight must exist');
 
 const normalLabels = [
   ...layers.blocks.map((block) => block.label),

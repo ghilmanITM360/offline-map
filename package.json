@@ -35,6 +35,8 @@
     "test:facility-routing": "node --import tsx scripts/test-facility-routing.ts",
     "test:map-data-v2": "node --import tsx scripts/test-map-data-v2.ts",
     "test:navigation-graph-v2": "node --import tsx scripts/test-navigation-graph-v2.ts",
+    "test:r7-r8-topology-v2": "node --import tsx scripts/test-r7-r8-topology-v2.ts",
+    "test:r7-r8-route-regression-v2": "node --import tsx scripts/test-r7-r8-route-regression-v2.ts",
     "test:entry-gate-routing": "node --import tsx scripts/test-entry-gate-routing.ts",
     "test:unified-gate-routing-v2": "node --import tsx scripts/test-unified-gate-routing.ts",
     "test:route-smoke-v2": "node --import tsx scripts/test-route-smoke-v2.ts",

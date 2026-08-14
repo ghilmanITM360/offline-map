@@ -117,15 +117,17 @@ for (const edge of graph.edges.filter((item) => item.pathType === 'block_connect
 }
 
 for (const rasta of IJTEMA_RASTAS) {
-  for (let i = 0; i < rasta.points.length - 1; i += 1) {
-    const from = rasta.points[i].id;
-    const to = rasta.points[i + 1].id;
-    assert(graph.nodes[from], `${from} rasta node missing`);
-    assert(graph.nodes[to], `${to} rasta node missing`);
-    assert(
-      graph.edges.some((edge) => edge.from === from && edge.to === to && edge.pathType === 'rasta'),
-      `${from}->${to} sequential rasta edge missing`,
-    );
+  for (const segment of rasta.segments) {
+    for (let i = 0; i < segment.pointIds.length - 1; i += 1) {
+      const from = segment.pointIds[i];
+      const to = segment.pointIds[i + 1];
+      assert(graph.nodes[from], `${from} rasta node missing`);
+      assert(graph.nodes[to], `${to} rasta node missing`);
+      assert(
+        graph.edges.some((edge) => edge.from === from && edge.to === to && edge.pathType === 'rasta'),
+        `${segment.id} ${from}->${to} sequential rasta edge missing`,
+      );
+    }
   }
 }
 

@@ -81,7 +81,7 @@ function RastaLayerImpl({ rastas, variant, focused = false, keyPrefix, onPressRa
                 strokeWidth={16}
                 zIndex={20}
                 tappable
-                onPress={(e) => onPressRasta(rasta.id, e.nativeEvent.coordinate)}
+                onPress={(e) => onPressRasta(rasta.sourceId ?? rasta.id, e.nativeEvent.coordinate)}
               />
             )}
             {start && end && (

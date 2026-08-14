@@ -28,8 +28,10 @@ const gate = (
   coordinate: Coordinate | undefined,
   status: Gate['status'] = coordinate ? 'provided' : 'missing_coordinate',
   sourceNotes?: string[],
+  connectorStatus: Gate['connectorStatus'] = 'verified_by_geometry',
 ): Gate => {
   const hasCoordinate = Boolean(coordinate);
+  const connectorVerified = connectorStatus === 'verified_by_geometry';
 
   return {
     id: `GATE_${pad(number)}`,
@@ -42,12 +44,20 @@ const gate = (
     entryRole: 'official_entry_exit',
     routingStatus: hasCoordinate ? 'routable' : 'missing_coordinate',
     isOfficialEntry: true,
-    canStartRouteFromOutside: hasCoordinate,
-    userFacingBehavior: hasCoordinate
+    canStartRouteFromOutside: hasCoordinate && connectorVerified,
+    connectorStatus,
+    userFacingBehavior: hasCoordinate && connectorVerified
       ? {
           normalSearch: 'searchable',
           mapDisplay: 'visible',
           routeSelection: 'enabled',
+        }
+      : hasCoordinate
+      ? {
+          normalSearch: 'unavailable',
+          mapDisplay: 'visible',
+          routeSelection: 'disabled',
+          unavailableReason: 'Gate connection requires physical ground-truth verification.',
         }
       : {
           normalSearch: 'unavailable',
@@ -74,7 +84,13 @@ export const IJTEMA_GATES: Gate[] = [
   gate(16, c(24.970886, 67.010603)),
   gate(17, c(24.972517, 67.01325)),
   gate(18, c(24.975395, 67.014922)),
-  gate(19, c(24.975367, 67.012898)),
+  gate(
+    19,
+    c(24.975367, 67.012898),
+    'needs_verification',
+    ['Gate19 field connectivity is deferred pending physical ground truth.'],
+    'ground_truth_required',
+  ),
   gate(20, c(24.975164, 67.011027)),
   gate(21, c(24.975087, 67.008953)),
   gate(22, c(24.975062, 67.007182)),

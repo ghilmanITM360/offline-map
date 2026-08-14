@@ -200,6 +200,46 @@ const addSequentialEdges = (
   }
 };
 
+const addRastaJunctions = (
+  nodes: Record<string, GraphNode>,
+  edges: GraphEdge[],
+  edgeKeys: Set<string>,
+  rasta: Rasta,
+  report: IntersectionConnectorReport[],
+): void => {
+  for (const junction of rasta.junctions) {
+    const from = nodes[junction.fromPointId];
+    const to = nodes[junction.toPointId];
+    if (!from || !to) {
+      throw new Error(`${rasta.id} junction references a missing point: ${junction.fromPointId} -> ${junction.toPointId}`);
+    }
+    const distanceM = distanceMeters(from.coordinate, to.coordinate);
+    addEdge(
+      edges,
+      {
+        from: from.id,
+        to: to.id,
+        distanceM: Math.max(1, Math.round(distanceM)),
+        bidirectional: true,
+        pathType: 'intersection_connector',
+        name: {
+          en: 'Rasta intersection',
+          ur: 'راستہ چوراہا',
+          romanUrdu: 'Rasta intersection',
+        },
+        developerLabel: `${from.id} -> ${to.id}`,
+      },
+      edgeKeys,
+    );
+    report.push({
+      from: from.id,
+      to: to.id,
+      distanceM: Math.round(distanceM),
+      name: 'Rasta intersection',
+    });
+  }
+};
+
 const addCentralConnectors = (
   nodes: Record<string, GraphNode>,
   edges: GraphEdge[],
@@ -427,7 +467,16 @@ export const buildNavigationGraphV2 = (): { graph: NavigationGraphV2; report: Na
 
   for (const rasta of IJTEMA_RASTAS) {
     rasta.points.forEach((point) => addNode(nodes, pointNode(point)));
-    addSequentialEdges(edges, edgeKeys, rasta, rasta.points, 'rasta');
+    const pointById = new Map(rasta.points.map((point) => [point.id, point]));
+    for (const segment of rasta.segments) {
+      const segmentPoints = segment.pointIds.map((pointId) => {
+        const point = pointById.get(pointId);
+        if (!point) throw new Error(`${segment.id} references missing point ${pointId}`);
+        return point;
+      });
+      addSequentialEdges(edges, edgeKeys, rasta, segmentPoints, 'rasta');
+    }
+    addRastaJunctions(nodes, edges, edgeKeys, rasta, intersectionConnectors);
   }
 
   for (const connector of IJTEMA_PERIMETER_CONNECTORS) {
@@ -490,6 +539,13 @@ export const buildNavigationGraphV2 = (): { graph: NavigationGraphV2; report: Na
       nearestNodeId: nearest?.node.id,
       distanceM: nearest ? Math.round(nearest.distanceM) : undefined,
     };
+
+    if (gate.connectorStatus === 'ground_truth_required') {
+      report.warning = 'Physical ground truth is required before enabling this gate connector.';
+      warnings.push(`${gate.id}: ${report.warning}`);
+      gateConnectors.push(report);
+      continue;
+    }
 
     if (!nearest || nearest.distanceM > GATE_CONNECTOR_MAX_M) {
       report.warning = `No valid graph connector within ${GATE_CONNECTOR_MAX_M}m.`;
