@@ -24,6 +24,38 @@ const forbiddenEdges = [
   ['R8-06', 'R8-07'],
 ] as const;
 
+const authoritativeNewNodeCoordinates = {
+  'R7-05': { lat: 24.972557, lng: 67.006536 },
+  'R7-06': { lat: 24.972550, lng: 67.007154 },
+  'R7-07': { lat: 24.972543, lng: 67.008944 },
+  'R7-08': { lat: 24.972495, lng: 67.010625 },
+  'R8-04': { lat: 24.974910, lng: 67.007261 },
+  'R8-05': { lat: 24.974945, lng: 67.008926 },
+  'R8-06': { lat: 24.975059, lng: 67.010935 },
+  'R8-07': { lat: 24.973377, lng: 67.007191 },
+  'R8-08': { lat: 24.973346, lng: 67.008916 },
+  'R8-09': { lat: 24.973348, lng: 67.010156 },
+  'R8-10': { lat: 24.973345, lng: 67.010741 },
+} as const;
+
+const expectedNonBlockOrGateIncidentEdges = [
+  'intersection_connector:R6-02<->R7-05',
+  'intersection_connector:R7-01<->R8-04',
+  'intersection_connector:R7-02<->R8-07',
+  'intersection_connector:R7-03<->R7-06',
+  'intersection_connector:R7-07<->R8-03',
+  'intersection_connector:R8-01<->R8-05',
+  'intersection_connector:R8-02<->R8-08',
+  'rasta:R7-05<->R7-06',
+  'rasta:R7-06<->R7-07',
+  'rasta:R7-07<->R7-08',
+  'rasta:R8-04<->R8-05',
+  'rasta:R8-05<->R8-06',
+  'rasta:R8-07<->R8-08',
+  'rasta:R8-08<->R8-09',
+  'rasta:R8-09<->R8-10',
+] as const;
+
 const edgeExists = (from: string, to: string): boolean =>
   IJTEMA_NAVIGATION_GRAPH_V2.edges.some(
     (edge) =>
@@ -33,6 +65,14 @@ const edgeExists = (from: string, to: string): boolean =>
 
 for (const nodeId of expectedSegments.flat()) {
   assert(IJTEMA_NAVIGATION_GRAPH_V2.nodes[nodeId], `${nodeId} must be present in the graph`);
+}
+
+for (const [nodeId, coordinate] of Object.entries(authoritativeNewNodeCoordinates)) {
+  assert.deepEqual(
+    IJTEMA_NAVIGATION_GRAPH_V2.nodes[nodeId]?.coordinate,
+    coordinate,
+    `${nodeId} must retain its authoritative coordinate`,
+  );
 }
 
 for (const segment of expectedSegments) {
@@ -48,6 +88,28 @@ for (const [from, to] of expectedJunctions) {
 for (const [from, to] of forbiddenEdges) {
   assert(!edgeExists(from, to), `${from} -> ${to} artificial cross-segment diagonal must not exist`);
 }
+
+assert(
+  !edgeExists('R8-05', 'NPC-02'),
+  'R8-05 <-> NPC-02 undocumented proximity edge must not exist',
+);
+
+const newNodeIds = new Set(Object.keys(authoritativeNewNodeCoordinates));
+const actualNonBlockOrGateIncidentEdges = IJTEMA_NAVIGATION_GRAPH_V2.edges
+  .filter(
+    (edge) =>
+      (newNodeIds.has(edge.from) || newNodeIds.has(edge.to)) &&
+      edge.pathType !== 'block_connector' &&
+      edge.pathType !== 'gate_connector',
+  )
+  .map((edge) => `${edge.pathType}:${[edge.from, edge.to].sort().join('<->')}`)
+  .sort();
+
+assert.deepEqual(
+  actualNonBlockOrGateIncidentEdges,
+  [...expectedNonBlockOrGateIncidentEdges].sort(),
+  'New R7/R8 nodes must have only the documented non-block/non-gate incident edges',
+);
 
 for (const edge of IJTEMA_NAVIGATION_GRAPH_V2.edges) {
   assert(edge.distanceM > 0, `${edge.id} must not be zero length`);

@@ -37,6 +37,11 @@ const CENTRAL_CONNECTOR_THRESHOLD_M = 18;
 const GATE_CONNECTOR_MAX_M = 320;
 const BLOCK_CONNECTOR_MAX_M = 230;
 
+const FORBIDDEN_INFERRED_INTERSECTION_PAIRS = new Set(['NPC-02<->R8-05']);
+
+const intersectionPairKey = (leftNodeId: string, rightNodeId: string): string =>
+  [leftNodeId, rightNodeId].sort().join('<->');
+
 const routeGroupForNode = (nodeId: string): string => {
   const rastaMatch = nodeId.match(/^R\d+-/);
   if (rastaMatch) return nodeId.split('-')[0];
@@ -291,6 +296,7 @@ const addIntersectionConnectors = (
       const left = walkNodes[leftIndex];
       const right = walkNodes[rightIndex];
       if (routeGroupForNode(left.id) === routeGroupForNode(right.id)) continue;
+      if (FORBIDDEN_INFERRED_INTERSECTION_PAIRS.has(intersectionPairKey(left.id, right.id))) continue;
 
       const distanceM = distanceMeters(left.coordinate, right.coordinate);
       if (distanceM > INTERSECTION_THRESHOLD_M) continue;
