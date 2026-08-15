@@ -38,7 +38,24 @@ const authoritativeNewNodeCoordinates = {
   'R8-10': { lat: 24.973345, lng: 67.010741 },
 } as const;
 
-const expectedNonBlockOrGateIncidentEdges = [
+const expectedIncidentEdges = [
+  'block_connector:B25_C2<->R8-04',
+  'block_connector:B25_C3<->R7-05',
+  'block_connector:B25_C4<->R7-06',
+  'block_connector:B26_C1<->R8-04',
+  'block_connector:B26_C3<->R8-07',
+  'block_connector:B26_C4<->R8-08',
+  'block_connector:B27_C2<->R8-09',
+  'block_connector:B27_C4<->R8-09',
+  'block_connector:B28_C2<->R8-08',
+  'block_connector:B29_C2<->R8-09',
+  'block_connector:B29_C3<->R7-07',
+  'block_connector:B29_C4<->R7-08',
+  'block_connector:B30_C1<->R7-05',
+  'block_connector:B32_C1<->R7-07',
+  'block_connector:B32_C2<->R7-08',
+  'gate_connector:GATE_17<->R7-08',
+  'gate_connector:GATE_20<->R8-06',
   'intersection_connector:R6-02<->R7-05',
   'intersection_connector:R7-01<->R8-04',
   'intersection_connector:R7-02<->R8-07',
@@ -95,20 +112,17 @@ assert(
 );
 
 const newNodeIds = new Set(Object.keys(authoritativeNewNodeCoordinates));
-const actualNonBlockOrGateIncidentEdges = IJTEMA_NAVIGATION_GRAPH_V2.edges
+const actualIncidentEdges = IJTEMA_NAVIGATION_GRAPH_V2.edges
   .filter(
-    (edge) =>
-      (newNodeIds.has(edge.from) || newNodeIds.has(edge.to)) &&
-      edge.pathType !== 'block_connector' &&
-      edge.pathType !== 'gate_connector',
+    (edge) => newNodeIds.has(edge.from) || newNodeIds.has(edge.to),
   )
   .map((edge) => `${edge.pathType}:${[edge.from, edge.to].sort().join('<->')}`)
   .sort();
 
 assert.deepEqual(
-  actualNonBlockOrGateIncidentEdges,
-  [...expectedNonBlockOrGateIncidentEdges].sort(),
-  'New R7/R8 nodes must have only the documented non-block/non-gate incident edges',
+  actualIncidentEdges,
+  [...expectedIncidentEdges].sort(),
+  'New R7/R8 nodes must have exactly the documented incident edges of every path type',
 );
 
 for (const edge of IJTEMA_NAVIGATION_GRAPH_V2.edges) {
