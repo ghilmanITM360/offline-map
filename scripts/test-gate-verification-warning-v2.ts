@@ -11,10 +11,12 @@ const CONNECTOR_VERIFICATION_UNAVAILABLE_SUFFIX = 'needs connector verification 
 // the only real-world example of this mechanism. The project owner has since
 // supplied verified, distinct coordinates for both — see
 // src/data/ijtema/gates.ts and the GATE_13_14_NEAR_DUPLICATE entry in
-// src/data/ijtema/dataIssues.ts. No gate should carry needs_verification
-// today, so the mechanism itself (assert further below) is now exercised
-// with a synthetic gate rather than real Gate 13/14 data.
-const DISCONNECTED_GATE_IDS = ['GATE_03', 'GATE_17', 'GATE_18', 'GATE_19'];
+// src/data/ijtema/dataIssues.ts. Gate 19 is now the sole current example: its
+// physical connector is deliberately deferred pending ground truth, so it
+// carries both a source-verification warning and a connector-routing block.
+// Gate 03 was resolved by owner-supplied Gate03/R2-06/R2-07 ground truth and
+// is no longer in this set.
+const DISCONNECTED_GATE_IDS = ['GATE_18', 'GATE_19'];
 
 assert.equal(IJTEMA_GATES.length > 0, true, 'Gate data must be loaded.');
 

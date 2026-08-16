@@ -145,6 +145,7 @@ assert.deepEqual(
   [
     'GATE_01',
     'GATE_02',
+    'GATE_03',
     'GATE_04',
     'GATE_05',
     'GATE_07',
@@ -164,8 +165,8 @@ assert.deepEqual(
 
 assert.deepEqual(
   outcomes.filter((outcome) => outcome.status === 'BLOCKED').map((outcome) => outcome.gateId).sort(),
-  ['GATE_03', 'GATE_18', 'GATE_19'],
-  'Only Gates 03, 18, and 19 may remain blocked',
+  ['GATE_18', 'GATE_19'],
+  'Only Gates 18 and 19 may remain blocked',
 );
 
 assert.deepEqual(

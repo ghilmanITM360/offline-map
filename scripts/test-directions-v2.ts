@@ -50,7 +50,7 @@ const outsidePreview = V2DirectionsService.calculatePreview({
 });
 assert.equal(outsidePreview.status, 'ready', 'Outside west coordinate must route via nearest connected official gate');
 assert(outsidePreview.route?.startResolution?.startType === 'nearest_official_gate', 'Outside route must start at nearest official gate');
-assert.notEqual(outsidePreview.route?.startResolution?.gate?.id, 'GATE_03', 'Outside helper must not choose disconnected Gate 03');
+assert.notEqual(outsidePreview.route?.startResolution?.gate?.id, 'GATE_03', 'Outside helper must pick the nearest gate to this far-west fixture coordinate, not Gate 03');
 
 const outsideInsideBroadBoundsPreview = V2DirectionsService.calculatePreview({
   startPlace: null,

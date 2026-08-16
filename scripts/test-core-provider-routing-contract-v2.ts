@@ -84,8 +84,8 @@ assert(
   plan.candidates.every((candidate) => candidate.penaltyM === 0),
   'no current gate carries a needs_verification penalty after the Gate 13/14 fix',
 );
-assert(!plan.candidates.some((candidate) => candidate.gateId === 'GATE_03'), 'disconnected Gate 03 must be excluded from eligible candidates');
-for (const disconnected of ['GATE_17', 'GATE_18', 'GATE_19']) {
+assert(plan.candidates.some((candidate) => candidate.gateId === 'GATE_03'), 'owner-supplied Gate03/R2-06/R2-07 ground truth must make Gate03 an eligible candidate');
+for (const disconnected of ['GATE_18', 'GATE_19']) {
   assert(!plan.candidates.some((candidate) => candidate.gateId === disconnected), `disconnected ${disconnected} must be excluded from eligible candidates`);
 }
 assert.equal(plan.requestId, RoutingServiceV2.prepareOutsideRoutingPlan({ userCoordinate: OUTSIDE_NORTH_EAST, destination: DESTINATION })!.requestId, 'requestId must be stable/deterministic for identical inputs');
@@ -203,7 +203,7 @@ assert.equal(
   assert.equal(manualResult.selectedOutsideCandidateId, 'manual-gate-15');
 
   assert.equal(
-    RoutingServiceV2.prepareOutsideRoutingPlan({ userCoordinate: OUTSIDE_NORTH_EAST, destination: DESTINATION, manualGateId: 'GATE_03' }),
+    RoutingServiceV2.prepareOutsideRoutingPlan({ userCoordinate: OUTSIDE_NORTH_EAST, destination: DESTINATION, manualGateId: 'GATE_18' }),
     null,
     'manual selection of a disconnected gate must not produce a plan',
   );

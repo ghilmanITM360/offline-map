@@ -79,7 +79,8 @@ describe('V2DirectionsService hybrid core integration', () => {
     expect(result.status).toBe('ready');
     expect(routeToGates).toHaveBeenCalledTimes(1);
     const providerRequest = routeToGates.mock.calls[0][0];
-    expect(providerRequest.gates).toHaveLength(14);
+    expect(providerRequest.gates).toHaveLength(16);
+    expect(providerRequest.gates).toContainEqual(expect.objectContaining({ gateId: 'GATE_17' }));
     expect(providerRequest.gates).toContainEqual(expect.objectContaining({
       gateId: 'GATE_12',
       routeTargetCoordinate: { latitude: 24.963676, longitude: 67.006339 },

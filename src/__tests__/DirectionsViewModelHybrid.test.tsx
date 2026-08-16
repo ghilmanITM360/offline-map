@@ -103,7 +103,8 @@ describe('DirectionsViewModel hybrid outside routing', () => {
 
     await waitFor(() => expect(hook.result.current.loadState).toBe('ready'), { timeout: 5_000 });
     expect(hook.result.current.route?.outsideRoute?.provider).toBe('offline-osm');
-    expect(hook.result.current.manualGateOptions).toHaveLength(14);
+    expect(hook.result.current.manualGateOptions).toHaveLength(16);
+    expect(hook.result.current.manualGateOptions).toContainEqual({ gateId: 'GATE_17', label: 'Gate 17' });
     expect(hook.result.current.manualGateOptions).toContainEqual({ gateId: 'GATE_12', label: 'Gate 12' });
   });
 
