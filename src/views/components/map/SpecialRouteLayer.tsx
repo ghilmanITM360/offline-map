@@ -8,6 +8,7 @@ import { Polyline } from 'react-native-maps';
 
 import { V2PolylineLayer } from '../../../services/V2MapRenderingService';
 import { Coordinate } from '../../../models/types';
+import { staticColors } from '../../../theme';
 
 interface SpecialRouteLayerProps {
   routes: V2PolylineLayer[];
@@ -32,7 +33,7 @@ function SpecialRouteLayerImpl({ routes, variant, focused = false, keyPrefix, on
           <Polyline
             key={`${keyPrefix}_${route.id}`}
             coordinates={route.polyline}
-            strokeColor={route.isSelected ? '#8E24AA' : 'rgba(142,36,170,0.48)'}
+            strokeColor={route.isSelected ? staticColors.specialRouteAccent : `${staticColors.specialRouteAccent}7A`}
             strokeWidth={route.isSelected ? 5 : 3}
             zIndex={3}
           />
@@ -47,7 +48,13 @@ function SpecialRouteLayerImpl({ routes, variant, focused = false, keyPrefix, on
         <React.Fragment key={`${keyPrefix}_${route.id}`}>
           <Polyline
             coordinates={route.polyline}
-            strokeColor={route.isSelected ? '#6A0DAD' : focused ? 'rgba(106,13,173,0.65)' : 'rgba(142,36,170,0.55)'}
+            strokeColor={
+              route.isSelected
+                ? staticColors.specialRouteAccentFocused
+                : focused
+                  ? `${staticColors.specialRouteAccentFocused}A6`
+                  : `${staticColors.specialRouteAccent}8C`
+            }
             strokeWidth={route.isSelected ? 7 : focused ? 8 : 3}
             zIndex={route.isSelected ? 10 : focused ? 6 : 4}
           />

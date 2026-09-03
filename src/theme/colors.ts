@@ -73,6 +73,11 @@ export const staticColors = {
   // — distinct from block green / gate red / route blue so the map's tappable
   // object families stay visually distinguishable at a glance.
   facilityAccent: '#00897B',
+  // Special routes / Shahr-e-Pindal polylines and labels — previously only existed
+  // as raw literals duplicated across SpecialRouteLayer.tsx and mapLayerStyles.ts.
+  // Values copied verbatim from those call sites (pixel-identical migration).
+  specialRouteAccent: '#8E24AA',
+  specialRouteAccentFocused: '#6A0DAD',
 
   // neutrals used on chrome that's white/dark regardless of app theme (button labels,
   // icons on colored surfaces, hairline borders drawn over the map)

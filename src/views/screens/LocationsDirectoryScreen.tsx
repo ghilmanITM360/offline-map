@@ -232,7 +232,10 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
-    borderRadius: radii.pill,
+    // radii.pill (999) is a sentinel meant to be applied as Math.min(height, width) / 2
+    // at the call site (see radii.ts), not used as a bare literal — radii.xxl still
+    // renders a full pill at this ~36dp height without relying on the sentinel value.
+    borderRadius: radii.xxl,
     backgroundColor: staticColors.infoBackground,
   },
   viewMapLabel: {
@@ -272,9 +275,20 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.sm,
   },
   chip: {
+    // Fixed height (not content-driven padding) — on some Android devices this chip's
+    // Text intermittently painted at its full natural size before Yoga's layout pass had
+    // measured it, one frame ahead of the box that was about to contain it, and the
+    // chip's own rounded-corner clipping cut off the top of every letter until the next
+    // layout pass caught up (confirmed on-device, reproduced intermittently, not tied to
+    // any one style property). A height fixed from the very first frame — with no
+    // dependency on text measurement — removes the race entirely.
+    height: 36,
+    justifyContent: 'center',
+    alignItems: 'center',
     paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
-    borderRadius: radii.pill,
+    // See viewMapButton above — radii.pill (999) is meant to be applied as
+    // Math.min(height, width) / 2, not used as a bare literal on a ~36dp chip.
+    borderRadius: radii.xxl,
     backgroundColor: staticColors.white,
     borderWidth: 1,
     borderColor: staticColors.border,
@@ -285,6 +299,7 @@ const styles = StyleSheet.create({
   },
   chipText: {
     fontSize: 14,
+    lineHeight: 20,
     fontWeight: '500',
     color: staticColors.textPrimary,
   },

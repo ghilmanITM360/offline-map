@@ -113,7 +113,8 @@ const styles = StyleSheet.create({
     borderBottomWidth: 13,
     borderLeftColor: 'transparent',
     borderRightColor: 'transparent',
-    borderBottomColor: 'rgba(26,115,232,0.85)',
+    // markerColors.route at ~0.85 alpha (matches the original rgba(26,115,232,0.85)).
+    borderBottomColor: `${markerColors.route}D9`,
     marginBottom: -4,
   },
   dot: {
@@ -132,10 +133,11 @@ const styles = StyleSheet.create({
   },
   rememberedLabel: {
     marginTop: 2,
-    backgroundColor: 'rgba(26,115,232,0.92)',
+    // markerColors.route at ~0.92 alpha (matches the original rgba(26,115,232,0.92)).
+    backgroundColor: `${markerColors.route}EB`,
     borderRadius: 7,
     paddingHorizontal: 5,
     paddingVertical: 2,
   },
-  rememberedLabelText: { color: '#FFFFFF', fontSize: 9, fontWeight: '700' },
+  rememberedLabelText: { color: staticColors.white, fontSize: 9, fontWeight: '700' },
 });

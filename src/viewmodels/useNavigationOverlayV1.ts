@@ -55,6 +55,9 @@ export function useNavigationOverlayV1({ mapRef, mapReady, hasBaseMap, userPulse
   const [bottomBarHeight, setBottomBarHeight] = useState(0);
   const bottomBarHeightRef = useRef(0);
   bottomBarHeightRef.current = bottomBarHeight;
+  // Measured height of NavigationChromeV1's top instruction+banner stack — same
+  // reasoning as useNavigationOverlayV2's topCardHeight.
+  const [topCardHeight, setTopCardHeight] = useState(0);
 
   const mapLayers = useMemo(
     () => ({
@@ -118,6 +121,8 @@ export function useNavigationOverlayV1({ mapRef, mapReady, hasBaseMap, userPulse
     setIsAutoFollowing,
     bottomBarHeight,
     setBottomBarHeight,
+    topCardHeight,
+    setTopCardHeight,
     userPulseAnim,
     currentLocationSource,
     settings,

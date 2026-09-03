@@ -443,6 +443,66 @@ describe('LocationSheet (routePreview) — route ready CTA', () => {
     expect(screen.getByText('4 min')).toBeOnTheScreen();
   });
 
+  test('formats total distance in meters for a sub-1000m route', async () => {
+    mockedUseDirectionsViewModel.mockReturnValue(
+      baseViewModel({
+        loadState: 'ready',
+        route: { nodes: ['A', 'B'], coordinates: [], totalDistance: 850, estimatedTimeMin: 4 },
+      }),
+    );
+    await render(<LocationSheet mode="routePreview" destination={destination} onClose={onCloseSpy} />);
+
+    expect(screen.getByText('850 m')).toBeOnTheScreen();
+  });
+
+  test('formats total distance in kilometers for a route at or above 1000m', async () => {
+    mockedUseDirectionsViewModel.mockReturnValue(
+      baseViewModel({
+        loadState: 'ready',
+        route: { nodes: ['A', 'B'], coordinates: [], totalDistance: 1400, estimatedTimeMin: 18 },
+      }),
+    );
+    await render(<LocationSheet mode="routePreview" destination={destination} onClose={onCloseSpy} />);
+
+    expect(screen.getByText('1.4 km')).toBeOnTheScreen();
+  });
+
+  test('a newly calculated route replaces the previously shown distance', async () => {
+    mockedUseDirectionsViewModel.mockReturnValue(
+      baseViewModel({
+        loadState: 'ready',
+        route: { nodes: ['A', 'B'], coordinates: [], totalDistance: 250, estimatedTimeMin: 4 },
+      }),
+    );
+    const { rerender } = await render(<LocationSheet mode="routePreview" destination={destination} onClose={onCloseSpy} />);
+    expect(screen.getByText('250 m')).toBeOnTheScreen();
+
+    mockedUseDirectionsViewModel.mockReturnValue(
+      baseViewModel({
+        loadState: 'ready',
+        route: { nodes: ['A', 'C'], coordinates: [], totalDistance: 1800, estimatedTimeMin: 22 },
+      }),
+    );
+    await rerender(<LocationSheet mode="routePreview" destination={destination} onClose={onCloseSpy} />);
+
+    expect(screen.queryByText('250 m')).not.toBeOnTheScreen();
+    expect(screen.getByText('1.8 km')).toBeOnTheScreen();
+  });
+
+  test('shows no distance while the route is still loading or has failed', async () => {
+    mockedUseDirectionsViewModel.mockReturnValue(baseViewModel({ loadState: 'loading' }));
+    const { rerender } = await render(<LocationSheet mode="routePreview" destination={destination} onClose={onCloseSpy} />);
+    expect(screen.queryByText(/^\d+(\.\d+)?\s(m|km)$/)).not.toBeOnTheScreen();
+
+    mockedUseDirectionsViewModel.mockReturnValue(
+      baseViewModel({ loadState: 'error', errorMessage: 'Could not calculate route.' }),
+    );
+    await rerender(<LocationSheet mode="routePreview" destination={destination} onClose={onCloseSpy} />);
+
+    expect(screen.getByText('Route problem')).toBeOnTheScreen();
+    expect(screen.queryByText(/^\d+(\.\d+)?\s(m|km)$/)).not.toBeOnTheScreen();
+  });
+
   test('pressing "Start Navigation" invokes onStartNavigation and closes the sheet for a v2 destination', async () => {
     mockedUseDirectionsViewModel.mockReturnValue(
       baseViewModel({

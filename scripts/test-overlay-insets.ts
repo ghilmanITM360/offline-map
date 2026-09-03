@@ -89,6 +89,7 @@ const mapContentBase = {
   snapPoints,
   sheetIndex: -1,
   navBarHeight: 0,
+  navTopHeight: 0,
 } as const;
 assert.equal(computeMapContentInsets({ ...mapContentBase, mode: 'EXPLORE' }).bottom, 24);
 assert.equal(computeMapContentInsets({ ...mapContentBase, mode: 'PLACE_SELECTED', sheetIndex: 0 }).bottom, 120);
@@ -96,6 +97,25 @@ assert.equal(computeMapContentInsets({ ...mapContentBase, mode: 'DETAILS', sheet
 assert.equal(computeMapContentInsets({ ...mapContentBase, mode: 'ROUTE_PREVIEW', sheetIndex: 1 }).bottom, 400);
 assert.equal(computeMapContentInsets({ ...mapContentBase, mode: 'NAVIGATION', navBarHeight: 196 }).bottom, 196);
 assert.equal(computeMapContentInsets({ ...mapContentBase, mode: 'ARRIVAL' }).bottom, windowHeight);
+
+// Regression: NAVIGATION mode must bound labels by the measured top nav banner stack
+// (navTopHeight), not by the stale EXPLORE-mode search-bar height in `top` — the bug
+// that let the "map tiles unavailable" banner overlap gate labels during navigation.
+assert.equal(
+  computeMapContentInsets({ ...mapContentBase, mode: 'NAVIGATION', navTopHeight: 320 }).top,
+  320 + OVERLAY_CONTROL_GAP,
+  'NAVIGATION mode must use the measured nav-chrome top height, not the EXPLORE-mode top',
+);
+assert.equal(
+  computeMapContentInsets({ ...mapContentBase, mode: 'NAVIGATION', navTopHeight: 0 }).top,
+  mapContentBase.top,
+  'Before the nav chrome has reported a layout (navTopHeight 0), fall back to the existing top rather than 0',
+);
+assert.equal(
+  computeMapContentInsets({ ...mapContentBase, mode: 'EXPLORE' }).top,
+  mapContentBase.top,
+  'Non-navigation modes are unaffected by navTopHeight',
+);
 
 // Wiring: the real call sites must use the shared calculation, not a reintroduced
 // inline formula. Each of these previously hand-rolled its own bottom-offset math with
@@ -117,6 +137,10 @@ assert(
   !/Math\.max\(insets\.bottom, 1[26]\) \+ 140/.test(homeScreen),
   'HomeScreen must not reintroduce the old inline 140px trip-bar fallback',
 );
+assert(
+  homeScreen.includes('navTopHeight: activeNavTopHeight'),
+  'HomeScreen mapLabelEdgeInsets must pass the measured nav-chrome top height so labels never render under it',
+);
 
 const chromeV1 = readFileSync('src/views/components/navigation/NavigationChromeV1.tsx', 'utf8');
 const chromeV2 = readFileSync('src/views/components/navigation/NavigationChromeV2.tsx', 'utf8');
@@ -127,6 +151,10 @@ for (const [name, source] of [['NavigationChromeV1', chromeV1], ['NavigationChro
     `${name} recenter button must derive its bottom offset from computeNavRecenterInset`,
   );
   assert(!source.includes('+ 140) + 12'), `${name} must not reintroduce the old inline recenter formula`);
+  assert(
+    source.includes('onLayout={(e) => setTopCardHeight(e.nativeEvent.layout.height)}'),
+    `${name} must measure its top instruction+banner stack height via setTopCardHeight`,
+  );
 }
 
 console.log('Overlay inset checks passed.');

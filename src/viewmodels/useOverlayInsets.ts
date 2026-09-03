@@ -91,6 +91,13 @@ export interface MapContentInsetInputs {
   snapPoints: readonly string[];
   sheetIndex: number;
   navBarHeight: number;
+  /** Measured height of NavigationChromeV1/V2's top instruction+banner stack
+   * ("navigation-top-stack"). Only meaningful in NAVIGATION mode — HomeScreen's
+   * EXPLORE-mode search bar/chip overlay (what `top` is normally derived from) doesn't
+   * render during navigation, so its stale height must not bound label placement while
+   * the (usually much taller) navigation banner stack is what's actually covering the
+   * top of the map. */
+  navTopHeight: number;
 }
 
 /** Canonical visible-map rectangle used by projected labels. Floating controls own
@@ -103,10 +110,12 @@ export function computeMapContentInsets(inputs: MapContentInsetInputs): {
 } {
   const safeBottom = Math.max(inputs.bottomSafeArea, 0);
   let bottom = safeBottom;
+  let top = inputs.top;
   if (inputs.mode === 'ARRIVAL') {
     bottom = Math.max(inputs.windowHeight, safeBottom);
   } else if (inputs.mode === 'NAVIGATION') {
     bottom = Math.max(resolveNavBarHeight(inputs.navBarHeight, safeBottom), safeBottom);
+    top = inputs.navTopHeight > 0 ? inputs.navTopHeight + OVERLAY_CONTROL_GAP : inputs.top;
   } else if (
     inputs.mode === 'PLACE_SELECTED' ||
     inputs.mode === 'DETAILS' ||
@@ -122,5 +131,5 @@ export function computeMapContentInsets(inputs: MapContentInsetInputs): {
       }),
     );
   }
-  return { top: inputs.top, right: inputs.right, bottom, left: 0 };
+  return { top, right: inputs.right, bottom, left: 0 };
 }

@@ -61,6 +61,7 @@ export function NavigationChromeV2({ overlay, hasBaseMap }: { overlay: Navigatio
     setIsAutoFollowing,
     bottomBarHeight,
     setBottomBarHeight,
+    setTopCardHeight,
   } = overlay;
   const [showGateOptions, setShowGateOptions] = useState(false);
 
@@ -102,6 +103,7 @@ export function NavigationChromeV2({ overlay, hasBaseMap }: { overlay: Navigatio
           styles.topBar,
           { opacity: mountAnim, transform: [{ translateY: mountAnim.interpolate({ inputRange: [0, 1], outputRange: [-16, 0] }) }] },
         ]}
+        onLayout={(e) => setTopCardHeight(e.nativeEvent.layout.height)}
       >
         <View testID="navigation-maneuver-surface">
           {reroutePending ? (

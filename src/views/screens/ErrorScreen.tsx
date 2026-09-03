@@ -8,6 +8,8 @@ import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AlertTriangle, RefreshCw, WifiOff } from 'lucide-react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import { Button } from '../components/common/Button';
+import { staticColors } from '../../theme';
 
 export function ErrorScreen() {
   const navigation = useNavigation<any>();
@@ -27,19 +29,21 @@ export function ErrorScreen() {
       <View style={styles.content}>
         <View style={styles.iconContainer}>
           {type === 'connectivity' ? (
-            <WifiOff size={64} color="#D32F2F" />
+            <WifiOff size={64} color={staticColors.danger} />
           ) : (
-            <AlertTriangle size={64} color="#D32F2F" />
+            <AlertTriangle size={64} color={staticColors.danger} />
           )}
         </View>
-        
+
         <Text style={styles.title}>{title}</Text>
         <Text style={styles.message}>{message}</Text>
 
-        <Pressable style={styles.retryButton} onPress={handleRetry}>
-          <RefreshCw size={20} color="#FFFFFF" />
-          <Text style={styles.retryText}>Retry</Text>
-        </Pressable>
+        <Button
+          label="Retry"
+          onPress={handleRetry}
+          icon={<RefreshCw size={20} color={staticColors.white} />}
+          style={styles.retryButton}
+        />
 
         <Pressable style={styles.backButton} onPress={() => navigation.canGoBack() ? navigation.goBack() : navigation.navigate('Main')}>
           <Text style={styles.backText}>Go Back</Text>
@@ -72,7 +76,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#333',
+    color: staticColors.drawerText,
     marginBottom: 12,
     textAlign: 'center',
   },
@@ -84,21 +88,7 @@ const styles = StyleSheet.create({
     marginBottom: 40,
   },
   retryButton: {
-    backgroundColor: '#2E7D32',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 14,
-    paddingHorizontal: 32,
-    borderRadius: 10,
-    width: '100%',
-    marginBottom: 16,
-  },
-  retryText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
-    marginLeft: 10,
+    marginBottom: 4,
   },
   backButton: {
     padding: 12,

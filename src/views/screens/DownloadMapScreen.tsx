@@ -30,6 +30,7 @@ import { useDownloadMapViewModel } from '../../viewmodels/DownloadMapViewModel';
 import { useAppStore } from '../../store/useAppStore';
 import { RootStackParamList } from '../../navigation/RootNavigator';
 import { OfflineMapStatusService } from '../../services/OfflineMapStatusService';
+import { staticColors } from '../../theme';
 
 type DownloadMapScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'DownloadMap'>;
 
@@ -140,11 +141,11 @@ export function DownloadMapScreen() {
         <View style={styles.card}>
           <View style={styles.cardHeader}>
             {isComplete ? (
-              <CheckCircle size={28} color="#2E7D32" />
+              <CheckCircle size={28} color={staticColors.success} />
             ) : isCorrupt ? (
               <AlertTriangle size={28} color="#D97706" />
             ) : (
-              <Download size={28} color="#2E7D32" />
+              <Download size={28} color={staticColors.success} />
             )}
             <Text style={styles.cardTitle}>Karachi Ijtema Ground</Text>
           </View>
@@ -185,7 +186,7 @@ export function DownloadMapScreen() {
 
           {blockingMessage && (
             <View style={styles.errorBox}>
-              <AlertTriangle size={20} color="#D32F2F" />
+              <AlertTriangle size={20} color={staticColors.danger} />
               <Text style={styles.errorText}>{blockingMessage}</Text>
             </View>
           )}
@@ -193,14 +194,14 @@ export function DownloadMapScreen() {
           <View style={styles.actionRow}>
             {(isIdle || isCorrupt) && (
               <Pressable style={styles.primaryButton} onPress={() => startDownload(navigation)}>
-                <Download size={20} color="#FFFFFF" />
+                <Download size={20} color={staticColors.white} />
                 <Text style={styles.primaryButtonText}>Download Offline Map</Text>
               </Pressable>
             )}
 
             {isDownloading && (
               <Pressable style={styles.secondaryButton} onPress={pauseDownload}>
-                <Pause size={18} color="#2E7D32" />
+                <Pause size={18} color={staticColors.success} />
                 <Text style={styles.secondaryButtonText}>Pause</Text>
               </Pressable>
             )}
@@ -208,7 +209,7 @@ export function DownloadMapScreen() {
             {isPaused && (
               <>
                 <Pressable style={styles.primaryButton} onPress={() => resumeDownload(navigation)}>
-                  <Play size={18} color="#FFFFFF" />
+                  <Play size={18} color={staticColors.white} />
                   <Text style={styles.primaryButtonText}>Resume</Text>
                 </Pressable>
                 <Pressable style={styles.cancelButton} onPress={confirmCancel}>
@@ -219,21 +220,21 @@ export function DownloadMapScreen() {
 
             {isError && (
               <Pressable style={styles.primaryButton} onPress={() => retryDownload(navigation)}>
-                <RotateCcw size={18} color="#FFFFFF" />
+                <RotateCcw size={18} color={staticColors.white} />
                 <Text style={styles.primaryButtonText}>Try Again</Text>
               </Pressable>
             )}
 
             {isCorrupt && (
               <Pressable style={styles.secondaryButton} onPress={repairDownload}>
-                <Wrench size={18} color="#2E7D32" />
+                <Wrench size={18} color={staticColors.success} />
                 <Text style={styles.secondaryButtonText}>Repair Download</Text>
               </Pressable>
             )}
 
             {showContinueFallback && (
               <Pressable style={styles.continueButton} onPress={() => continueToMain(navigation)}>
-                <ArrowRight size={18} color="#FFFFFF" />
+                <ArrowRight size={18} color={staticColors.white} />
                 <Text style={styles.primaryButtonText}>Continue to Map</Text>
               </Pressable>
             )}
@@ -283,11 +284,11 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 30,
     fontWeight: 'bold',
-    color: '#202124',
+    color: staticColors.textPrimary,
   },
   urduTitle: {
     fontSize: 20,
-    color: '#2E7D32',
+    color: staticColors.success,
     marginTop: 2,
   },
   subtitle: {
@@ -296,11 +297,11 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
   card: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: staticColors.white,
     borderRadius: 20,
     padding: 24,
     elevation: 4,
-    shadowColor: '#000',
+    shadowColor: staticColors.black,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
@@ -313,7 +314,7 @@ const styles = StyleSheet.create({
   cardTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#202124',
+    color: staticColors.textPrimary,
     marginLeft: 12,
   },
   benefitList: {
@@ -329,19 +330,19 @@ const styles = StyleSheet.create({
   },
   progressBarBg: {
     height: 12,
-    backgroundColor: '#E8F5E9',
+    backgroundColor: staticColors.lightGreenSubtext,
     borderRadius: 6,
     overflow: 'hidden',
   },
   progressBarFill: {
     height: '100%',
-    backgroundColor: '#2E7D32',
+    backgroundColor: staticColors.success,
     borderRadius: 6,
   },
   progressText: {
     fontSize: 15,
     fontWeight: 'bold',
-    color: '#2E7D32',
+    color: staticColors.success,
     textAlign: 'center',
     marginTop: 8,
   },
@@ -353,7 +354,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   successText: {
-    color: '#2E7D32',
+    color: staticColors.success,
     fontWeight: '600',
   },
   warningBox: {
@@ -380,7 +381,7 @@ const styles = StyleSheet.create({
   },
   errorText: {
     marginLeft: 8,
-    color: '#D32F2F',
+    color: staticColors.danger,
     flex: 1,
     fontSize: 14,
   },
@@ -391,7 +392,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   primaryButton: {
-    backgroundColor: '#2E7D32',
+    backgroundColor: staticColors.success,
     borderRadius: 12,
     paddingVertical: 13,
     paddingHorizontal: 16,
@@ -401,12 +402,12 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   primaryButtonText: {
-    color: '#FFFFFF',
+    color: staticColors.white,
     fontSize: 15,
     fontWeight: '700',
   },
   secondaryButton: {
-    backgroundColor: '#E8F5E9',
+    backgroundColor: staticColors.lightGreenSubtext,
     borderRadius: 12,
     paddingVertical: 12,
     paddingHorizontal: 14,
@@ -415,7 +416,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   secondaryButtonText: {
-    color: '#2E7D32',
+    color: staticColors.success,
     fontSize: 14,
     fontWeight: '700',
   },
@@ -427,12 +428,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   cancelButtonText: {
-    color: '#C5221F',
+    color: staticColors.dangerText,
     fontSize: 14,
     fontWeight: '700',
   },
   continueButton: {
-    backgroundColor: '#1A73E8',
+    backgroundColor: staticColors.info,
     borderRadius: 12,
     paddingVertical: 13,
     paddingHorizontal: 16,
@@ -445,7 +446,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginTop: 24,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: staticColors.white,
     borderRadius: 12,
     padding: 12,
     gap: 10,
@@ -464,7 +465,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   skipText: {
-    color: '#1A73E8',
+    color: staticColors.info,
     fontSize: 14,
     fontWeight: '600',
   },

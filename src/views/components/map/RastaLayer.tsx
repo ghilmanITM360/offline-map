@@ -10,6 +10,7 @@ import { Marker, Polyline } from 'react-native-maps';
 import { V2PolylineLayer } from '../../../services/V2MapRenderingService';
 import { Coordinate } from '../../../models/types';
 import { mapLayerStyles as styles } from './mapLayerStyles';
+import { staticColors } from '../../../theme';
 
 interface RastaLayerProps {
   rastas: V2PolylineLayer[];
@@ -36,7 +37,7 @@ function RastaLayerImpl({ rastas, variant, focused = false, keyPrefix, onPressRa
             <Polyline coordinates={rasta.polyline} strokeColor="rgba(60,64,67,0.38)" strokeWidth={7} zIndex={1} />
             <Polyline
               coordinates={rasta.polyline}
-              strokeColor={rasta.isSelected ? '#1A73E8' : 'rgba(255,255,255,0.86)'}
+              strokeColor={rasta.isSelected ? staticColors.selectedRoute : 'rgba(255,255,255,0.86)'}
               strokeWidth={rasta.isSelected ? 5 : 4}
               zIndex={2}
             />
@@ -51,7 +52,7 @@ function RastaLayerImpl({ rastas, variant, focused = false, keyPrefix, onPressRa
       {rastas.map((rasta) => {
         const start = rasta.polyline[0];
         const end = rasta.polyline[rasta.polyline.length - 1];
-        const dotColor = rasta.isSelected ? '#1A73E8' : focused ? '#202124' : 'rgba(60,64,67,0.75)';
+        const dotColor = rasta.isSelected ? staticColors.selectedRoute : focused ? staticColors.textPrimary : 'rgba(60,64,67,0.75)';
         const dotStyle = rasta.isSelected || focused ? styles.rastaEndpointDotEmphasized : styles.rastaEndpointDot;
         return (
           <React.Fragment key={`${keyPrefix}_${rasta.id}`}>
@@ -63,7 +64,7 @@ function RastaLayerImpl({ rastas, variant, focused = false, keyPrefix, onPressRa
             />
             <Polyline
               coordinates={rasta.polyline}
-              strokeColor={rasta.isSelected ? '#1A73E8' : focused ? '#202124' : 'rgba(255,255,255,0.9)'}
+              strokeColor={rasta.isSelected ? staticColors.selectedRoute : focused ? staticColors.textPrimary : 'rgba(255,255,255,0.9)'}
               strokeWidth={rasta.isSelected ? 6 : focused ? 7 : 4}
               zIndex={rasta.isSelected ? 9 : focused ? 5 : 3}
             />

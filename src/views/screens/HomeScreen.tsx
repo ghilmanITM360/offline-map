@@ -891,6 +891,16 @@ export function HomeScreen() {
     : navOverlayV1.active
       ? navOverlayV1.bottomBarHeight
       : 0;
+  // Measured height of NavigationChromeV1/V2's top instruction+banner stack — the
+  // EXPLORE-mode search bar/chip overlay that topOverlayHeight tracks doesn't render
+  // during navigation, so without this, labels used a stale (too-small) top bound and
+  // could render underneath the navigation banners (e.g. the "map tiles unavailable"
+  // banner overlapping gate labels).
+  const activeNavTopHeight = showNavOverlay
+    ? navOverlay.topCardHeight
+    : navOverlayV1.active
+      ? navOverlayV1.topCardHeight
+      : 0;
   const mapLabelEdgeInsets = useMemo(
     () => computeMapContentInsets({
       mode,
@@ -901,8 +911,9 @@ export function HomeScreen() {
       snapPoints,
       sheetIndex,
       navBarHeight: activeNavBottomBarHeight,
+      navTopHeight: activeNavTopHeight,
     }),
-    [activeNavBottomBarHeight, insets.bottom, mode, sheetIndex, snapPoints, topOverlayHeight, windowHeight],
+    [activeNavBottomBarHeight, activeNavTopHeight, insets.bottom, mode, sheetIndex, snapPoints, topOverlayHeight, windowHeight],
   );
 
   useEffect(() => {
@@ -2039,7 +2050,7 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   mapLoadingText: {
-    color: '#5F6368',
+    color: staticColors.iconMuted,
     fontSize: 13,
     fontWeight: '600',
   },
@@ -2049,15 +2060,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 7,
     paddingVertical: 4,
     borderRadius: 8,
-    backgroundColor: '#1A73E8',
+    backgroundColor: staticColors.info,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.9)',
+    borderColor: `${staticColors.white}E6`,
     flexDirection: 'row',
     gap: 4,
   },
   searchOverlayText: {
     maxWidth: 82,
-    color: '#FFFFFF',
+    color: staticColors.white,
     fontSize: 10,
     fontWeight: '700',
   },
@@ -2138,7 +2149,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#70757A',
+    color: staticColors.iconSubtle,
     textTransform: 'uppercase',
     paddingHorizontal: 16,
     paddingTop: 12,
@@ -2148,31 +2159,31 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#F1F3F4',
+    borderBottomColor: staticColors.neutralSurface,
   },
   searchResultIcon: { width: 40, alignItems: 'center' },
   searchResultText: { flex: 1, marginLeft: 4, minWidth: 0 },
   searchResultNameRow: { flexDirection: 'row', alignItems: 'baseline' },
-  searchResultName: { fontSize: 15, color: '#202124', fontWeight: '500', flexShrink: 1 },
-  searchResultNameUrdu: { fontSize: 13, color: '#70757A', marginLeft: 6, flexShrink: 1 },
-  searchResultCategory: { fontSize: 13, color: '#70757A', marginTop: 1 },
+  searchResultName: { fontSize: 15, color: staticColors.textPrimary, fontWeight: '500', flexShrink: 1 },
+  searchResultNameUrdu: { fontSize: 13, color: staticColors.iconSubtle, marginLeft: 6, flexShrink: 1 },
+  searchResultCategory: { fontSize: 13, color: staticColors.iconSubtle, marginTop: 1 },
   chipsContainer: { marginTop: 10 },
   chipsContent: { paddingLeft: 12, paddingRight: 88, paddingBottom: 8 },
   chip: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: staticColors.white,
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 20,
     marginRight: 8,
     elevation: 2,
     borderWidth: 1,
-    borderColor: '#DADCE0',
+    borderColor: staticColors.border,
     minWidth: 64,
     alignItems: 'center',
   },
-  activeChip: { backgroundColor: '#1A73E8', borderColor: '#1A73E8' },
-  chipText: { fontSize: 13, color: '#3C4043', fontWeight: '500' },
-  activeChipText: { color: '#FFFFFF', fontWeight: '700' },
+  activeChip: { backgroundColor: staticColors.info, borderColor: staticColors.info },
+  chipText: { fontSize: 13, color: staticColors.textSecondaryStrong, fontWeight: '500' },
+  activeChipText: { color: staticColors.white, fontWeight: '700' },
   allLocationsChip: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -2192,14 +2203,15 @@ const styles = StyleSheet.create({
   offlineIndicator: {
     alignSelf: 'flex-start',
     marginLeft: 12,
-    backgroundColor: 'rgba(32, 33, 36, 0.9)',
+    // staticColors.textPrimary at ~0.9 alpha (matches the original rgba(32,33,36,0.9)).
+    backgroundColor: `${staticColors.textPrimary}E6`,
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 16,
   },
-  offlineText: { color: '#FFFFFF', fontSize: 12, fontWeight: '600', marginLeft: 6 },
+  offlineText: { color: staticColors.white, fontSize: 12, fontWeight: '600', marginLeft: 6 },
   mapWarningBanner: {
     marginHorizontal: 12,
     backgroundColor: '#FFF3CD',
@@ -2207,7 +2219,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 8,
   },
-  mapWarningText: { color: '#7C4A03', fontSize: 12, fontWeight: '600' },
+  mapWarningText: { color: staticColors.warningText, fontSize: 12, fontWeight: '600' },
   outsideVenueBanner: {
     marginLeft: 12,
     marginRight: 76,
@@ -2222,21 +2234,21 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   outsideVenueTextWrap: { flex: 1, paddingVertical: 1 },
-  outsideVenueTitle: { color: '#FFFFFF', fontSize: 13, fontWeight: '700' },
-  outsideVenueSuggestion: { color: '#FFFFFF', fontSize: 12, fontWeight: '600', marginTop: 2 },
-  outsideVenueGateText: { color: '#FFFFFF', fontSize: 13, fontWeight: '600', flexShrink: 1 },
+  outsideVenueTitle: { color: staticColors.white, fontSize: 13, fontWeight: '700' },
+  outsideVenueSuggestion: { color: staticColors.white, fontSize: 12, fontWeight: '600', marginTop: 2 },
+  outsideVenueGateText: { color: staticColors.white, fontSize: 13, fontWeight: '600', flexShrink: 1 },
   bannerCloseButton: { minWidth: 44, minHeight: 44, marginLeft: 4, alignItems: 'center', justifyContent: 'center' },
   diagnosticsBanner: {
     position: 'absolute',
     top: 260,
     left: 12,
     right: 12,
-    backgroundColor: 'rgba(32,33,36,0.9)',
+    backgroundColor: `${staticColors.textPrimary}E6`,
     borderRadius: 8,
     padding: 8,
     zIndex: Z.mapControls,
   },
-  diagnosticsText: { color: '#FFFFFF', fontSize: 11, marginBottom: 2 },
+  diagnosticsText: { color: staticColors.white, fontSize: 11, marginBottom: 2 },
   debugNode: {
     minWidth: 22,
     height: 22,
@@ -2245,14 +2257,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 4,
   },
-  debugNodeText: { color: '#FFFFFF', fontSize: 9, fontWeight: '700' },
+  debugNodeText: { color: staticColors.white, fontSize: 9, fontWeight: '700' },
   rastaLabel: {
     backgroundColor: 'rgba(0,0,0,0.6)',
     borderRadius: 8,
     paddingHorizontal: 6,
     paddingVertical: 3,
   },
-  rastaLabelText: { color: '#FFFFFF', fontSize: 10, fontWeight: '600' },
+  rastaLabelText: { color: staticColors.white, fontSize: 10, fontWeight: '600' },
   selectedMarker: { alignItems: 'center', justifyContent: 'center' },
   previewStartMarker: {
     width: markerSizes.userLocation,
@@ -2269,7 +2281,7 @@ const styles = StyleSheet.create({
     bottom: 96,
     left: 12,
     right: 12,
-    backgroundColor: 'rgba(32,33,36,0.88)',
+    backgroundColor: `${staticColors.textPrimary}E0`,
     borderRadius: 10,
     padding: 6,
     flexDirection: 'row',
@@ -2277,7 +2289,7 @@ const styles = StyleSheet.create({
     zIndex: Z.mapControls,
   },
   debugBtn: { backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4 },
-  debugBtnText: { color: '#FFFFFF', fontSize: 11, fontWeight: '600' },
+  debugBtnText: { color: staticColors.white, fontSize: 11, fontWeight: '600' },
   // Google Maps-style capsule handle — was width-only (36) with no explicit
   // height/radius, relying on the bottom-sheet library's own default bar shape.
   sheetIndicator: { backgroundColor: staticColors.border, width: 36, height: 4, borderRadius: 2 },
@@ -2289,27 +2301,27 @@ const styles = StyleSheet.create({
     bottom: 100,
     left: 16,
     right: 16,
-    backgroundColor: 'rgba(32, 33, 36, 0.9)',
+    backgroundColor: `${staticColors.textPrimary}E6`,
     borderRadius: 12,
     padding: 16,
     alignItems: 'center',
     zIndex: Z.mapControls,
   },
   emptyOfflineTitle: {
-    color: '#FFFFFF',
+    color: staticColors.white,
     fontSize: 15,
     fontWeight: '600',
     textAlign: 'center',
     marginBottom: 12,
   },
   emptyOfflineButton: {
-    backgroundColor: '#2E7D32',
+    backgroundColor: staticColors.success,
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 8,
   },
   emptyOfflineButtonText: {
-    color: '#FFFFFF',
+    color: staticColors.white,
     fontSize: 14,
     fontWeight: '600',
   },

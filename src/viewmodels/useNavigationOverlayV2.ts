@@ -51,6 +51,9 @@ export function useNavigationOverlayV2({ mapRef, mapReady, mapZoomLevel, hasBase
   const [bottomBarHeight, setBottomBarHeight] = useState(0);
   const bottomBarHeightRef = useRef(0);
   bottomBarHeightRef.current = bottomBarHeight;
+  // Measured height of NavigationChromeV2's top instruction+banner stack — feeds
+  // mapLabelEdgeInsets so gate/block/route labels don't render underneath it.
+  const [topCardHeight, setTopCardHeight] = useState(0);
 
   const mapLayers = useMemo(() => {
     const baseLayers = V2MapRenderingService.getHomeLayers({
@@ -122,6 +125,8 @@ export function useNavigationOverlayV2({ mapRef, mapReady, mapZoomLevel, hasBase
     setIsAutoFollowing,
     bottomBarHeight,
     setBottomBarHeight,
+    topCardHeight,
+    setTopCardHeight,
     userPulseAnim,
     currentLocationSource,
     settings,
