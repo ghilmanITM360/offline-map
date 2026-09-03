@@ -130,6 +130,16 @@ interface AppState {
   selectedPlace: Place | null;
   setSelectedPlace: (place: Place | null) => void;
 
+  // --- Locations directory hand-off ---
+  // Ephemeral bridge from the Locations Directory screen (a RootStack sibling of Main,
+  // reached before or pushed on top of it) into HomeViewModel's existing
+  // handlePlaceSelect — never persisted, cleared the instant it's consumed. See
+  // useHomeViewModel's consuming effect. Deliberately not `selectedPlace` itself: that
+  // field belongs to HomeViewModel/CameraManager's synchronous selection flow, and the
+  // directory screen may set this before HomeScreen has even mounted.
+  pendingDirectorySelection: Place | null;
+  setPendingDirectorySelection: (place: Place | null) => void;
+
   // --- Route planner (From/To, Phase 3) ---
   routePlannerOrigin: Place | null;       // null = use current GPS
   routePlannerDest: Place | null;
@@ -430,6 +440,10 @@ export const useAppStore = create<AppState>()(
       // --- Place selection ---
       selectedPlace: null,
       setSelectedPlace: (place) => set({ selectedPlace: place }),
+
+      // --- Locations directory hand-off ---
+      pendingDirectorySelection: null,
+      setPendingDirectorySelection: (place) => set({ pendingDirectorySelection: place }),
 
       // --- Route planner ---
       routePlannerOrigin: null,

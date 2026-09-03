@@ -80,6 +80,8 @@ export function useHomeViewModel() {
   const setSelectedPlace = useAppStore((s) => s.setSelectedPlace);
   const setSearchQuery = useAppStore((s) => s.setSearchQuery);
   const setSearchResults = useAppStore((s) => s.setSearchResults);
+  const pendingDirectorySelection = useAppStore((s) => s.pendingDirectorySelection);
+  const setPendingDirectorySelection = useAppStore((s) => s.setPendingDirectorySelection);
 
   const isOffline = !hasInternet;
   const [isMapReady, setIsMapReady] = useState(false);
@@ -216,6 +218,16 @@ export function useHomeViewModel() {
     // 3. Sheet springs in once the (short) camera pan has landed, instead of racing it.
     sheetPresentTimerRef.current = setTimeout(openSheet, PLACE_SELECTION_CAMERA_DURATION_MS);
   };
+
+  // Consumes a destination handed off by the Locations Directory screen (a RootStack
+  // sibling reached before/pushed on top of Main) through the exact same selection
+  // pipeline as a map tap or search result — no parallel selection path. The field is
+  // cleared the instant it's consumed so it never re-fires on a later unrelated render.
+  useEffect(() => {
+    if (!pendingDirectorySelection) return;
+    handlePlaceSelect(pendingDirectorySelection);
+    setPendingDirectorySelection(null);
+  }, [pendingDirectorySelection, handlePlaceSelect, setPendingDirectorySelection]);
 
   const handleRecenter = useCallback(async (): Promise<boolean> => {
     const recenterTo = (location: typeof currentLocation) => {

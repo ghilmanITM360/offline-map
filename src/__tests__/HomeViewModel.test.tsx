@@ -1,6 +1,7 @@
 import { act, renderHook } from './test-utils';
 import { useHomeViewModel } from '../viewmodels/HomeViewModel';
 import { useAppStore } from '../store/useAppStore';
+import { Place } from '../models/types';
 
 const initialStoreState = useAppStore.getState();
 const originalV2MapFlag = process.env.EXPO_PUBLIC_USE_IJTEMA_V2_MAP;
@@ -16,6 +17,38 @@ afterEach(() => {
     return;
   }
   process.env.EXPO_PUBLIC_USE_IJTEMA_V2_MAP = originalV2MapFlag;
+});
+
+describe('HomeViewModel pending directory selection', () => {
+  const directoryPlace: Place = {
+    id: 'B1',
+    name: 'Block 1',
+    category: 'Block',
+    description: 'Block 1 of Karachi Ijtema ground.',
+    coordinate: { latitude: 24.9, longitude: 67.0 },
+    sourceVersion: 'v2',
+    sourceKind: 'block',
+  };
+
+  test('consumes a destination handed off by the Locations Directory screen through the existing selection pipeline', async () => {
+    const hook = await renderHook(() => useHomeViewModel());
+
+    await act(() => {
+      useAppStore.getState().setPendingDirectorySelection(directoryPlace);
+    });
+
+    // Routed through the same handlePlaceSelect every map tap/search result uses —
+    // selectedPlace updates and the hand-off field clears itself immediately after.
+    expect(hook.result.current.selectedPlace).toEqual(directoryPlace);
+    expect(useAppStore.getState().pendingDirectorySelection).toBeNull();
+  });
+
+  test('does nothing when no destination is pending', async () => {
+    const hook = await renderHook(() => useHomeViewModel());
+
+    expect(hook.result.current.selectedPlace).toBeNull();
+    expect(useAppStore.getState().pendingDirectorySelection).toBeNull();
+  });
 });
 
 describe('HomeViewModel search reset', () => {
