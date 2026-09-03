@@ -76,6 +76,7 @@ export function useDirectionsViewModel(destination: Place | null) {
   const routeRef = useRef<RoutePreview | null>(null);
   const routeDestinationIdRef = useRef<string | null>(null);
   const outsideRequestCoordinatorRef = useRef(new OutsideRouteRequestCoordinator());
+  const requestGenerationRef = useRef(0);
   routeRef.current = route;
   const manualGateOptions = getRoutableOfficialGates().map((gate) => ({ gateId: gate.id, label: gate.name.en }));
   const isV2Destination = Boolean(destination && destinationFromPlace(destination));
@@ -174,7 +175,27 @@ export function useDirectionsViewModel(destination: Place | null) {
   const isCurrentLocationStartActive = startSource === 'live_gps';
 
   const calculateRoute = useCallback(async () => {
+    // Single route-ownership policy: local route/alternatives/instructions and the
+    // global store's activeRoute/routeAlternatives/routeInstructions always change
+    // together via this one function, so neither can go stale relative to the other
+    // on failure, reset, cancellation, or a destination change.
+    const resetRouteState = () => {
+      setRoute(null);
+      setAlternatives([]);
+      setInstructions([]);
+      setRouteAlternatives([]);
+      setActiveRoute(null);
+      setRouteInstructions([]);
+    };
+    // Request-generation guard: bump on every invocation (including this one) so an
+    // older in-flight calculateRoute() call — superseded by a destination change, a
+    // manual retry, or a fresh recalculation — becomes a no-op instead of overwriting
+    // whatever the newest call already committed.
+    const myGeneration = ++requestGenerationRef.current;
+    const isStale = () => requestGenerationRef.current !== myGeneration;
+
     if (!destination) {
+      resetRouteState();
       setLoadState('error');
       setErrorMessage('Destination missing. Please go back and select a destination.');
       return;
@@ -182,12 +203,9 @@ export function useDirectionsViewModel(destination: Place | null) {
 
     const originCoord = resolveActiveOriginCoordinate();
     if (!originCoord && !(isV2Destination && startSource === 'manual_place' && manualStart)) {
+      resetRouteState();
       setLoadState('needs_origin');
       setErrorMessage('Choose starting point to continue.');
-      setRoute(null);
-      setAlternatives([]);
-      setInstructions([]);
-      setRouteAlternatives([]);
       return;
     }
 
@@ -197,7 +215,7 @@ export function useDirectionsViewModel(destination: Place | null) {
       const replacingCurrentRoute = Boolean(previousRoute);
       if (!replacingCurrentRoute) {
         setLoadState('loading');
-        setRoute(null);
+        resetRouteState();
       }
       setRouteRefreshing(replacingCurrentRoute);
       setErrorMessage(null);
@@ -236,17 +254,17 @@ export function useDirectionsViewModel(destination: Place | null) {
           message: 'Outside routing is temporarily unavailable.',
         };
       }
-      if (requestHandle && !requestHandle.canCommit()) return;
+      if (isStale() || (requestHandle && !requestHandle.canCommit())) {
+        requestHandle?.finish();
+        return;
+      }
 
       if (preview.status === 'disabled' || !MapFeatureFlagsService.useIjtemaV2Routing()) {
         setLoadState('error');
         setErrorMessage('V2 route preview is disabled. Enable EXPO_PUBLIC_USE_IJTEMA_V2_ROUTING to calculate this route.');
         setRouteRefreshing(false);
         if (!previousRoute) {
-          setRoute(null);
-          setAlternatives([]);
-          setInstructions([]);
-          setRouteAlternatives([]);
+          resetRouteState();
         } else {
           setLoadState('ready');
         }
@@ -259,10 +277,7 @@ export function useDirectionsViewModel(destination: Place | null) {
         setErrorMessage(preview.message || 'Could not calculate v2 route preview.');
         setRouteRefreshing(false);
         if (!previousRoute) {
-          setRoute(null);
-          setAlternatives([]);
-          setInstructions([]);
-          setRouteAlternatives([]);
+          resetRouteState();
         } else {
           setLoadState('ready');
         }
@@ -293,42 +308,30 @@ export function useDirectionsViewModel(destination: Place | null) {
     }
 
     if (!originCoord) {
+      resetRouteState();
       setLoadState('needs_origin');
       setErrorMessage('Choose starting point to continue.');
-      setRoute(null);
-      setAlternatives([]);
-      setInstructions([]);
-      setRouteAlternatives([]);
       return;
     }
 
     if (startSource === 'live_gps' && !RoutingService.isInsideVenue(originCoord)) {
+      resetRouteState();
       setLoadState('needs_origin');
       setErrorMessage('Legacy route preview supports starts inside Ijtema only. Choose an inside start point.');
-      setRoute(null);
-      setAlternatives([]);
-      setInstructions([]);
-      setRouteAlternatives([]);
       return;
     }
 
     if (startSource !== 'live_gps' && !RoutingService.isInsideVenue(originCoord)) {
+      resetRouteState();
       setLoadState('needs_origin');
       setErrorMessage('Legacy route preview supports starts inside Ijtema only. Choose an inside start point.');
-      setRoute(null);
-      setAlternatives([]);
-      setInstructions([]);
-      setRouteAlternatives([]);
       return;
     }
 
     if (startSource === 'manual_place' && manualStart && destination && manualStart.id === destination.id) {
+      resetRouteState();
       setLoadState('error');
       setErrorMessage('Start and destination are the same. Choose a different starting point.');
-      setRoute(null);
-      setAlternatives([]);
-      setInstructions([]);
-      setRouteAlternatives([]);
       return;
     }
 
@@ -359,6 +362,7 @@ export function useDirectionsViewModel(destination: Place | null) {
       });
 
       const alts = await Promise.race([routePromise, timeoutPromise]);
+      if (isStale()) return;
       const best = alts[0]?.route ?? null;
 
       if (!best) {
@@ -370,27 +374,21 @@ export function useDirectionsViewModel(destination: Place | null) {
           nodePlan.targetNodeIds.length > 0 &&
           nodePlan.startNodeIds.every((startNodeId) => nodePlan.targetNodeIds.every((destNodeId) => destNodeId === startNodeId));
 
+        resetRouteState();
         setLoadState('error');
         setErrorMessage(
           sameOnly
             ? 'Start and destination are the same. Choose a different start point.'
             : 'Could not calculate route. Choose a different start point.',
         );
-        setRoute(null);
-        setAlternatives([]);
-        setInstructions([]);
-        setRouteAlternatives([]);
         return;
       }
 
       const generated = InstructionService.generateInstructions(best.nodes);
       if (generated.length === 0) {
+        resetRouteState();
         setLoadState('error');
         setErrorMessage('Could not generate route steps. Choose a different start point.');
-        setRoute(null);
-        setAlternatives([]);
-        setInstructions([]);
-        setRouteAlternatives([]);
         return;
       }
 
@@ -406,6 +404,8 @@ export function useDirectionsViewModel(destination: Place | null) {
       setRoutePlannerOrigin(startSource === 'manual_place' ? manualStart : null);
       setLoadState('ready');
     } catch (error) {
+      if (isStale()) return;
+      resetRouteState();
       if ((error as Error).message === 'timeout') {
         setLoadState('error');
         setErrorMessage('Could not calculate route. Choose a different start point.');

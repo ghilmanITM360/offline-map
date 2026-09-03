@@ -13,7 +13,6 @@ import { SearchService } from '../services/SearchService';
 import { GPSManagerService } from '../services/GPSManagerService';
 import { RoutingService } from '../services/RoutingService';
 import { LocationAccessService } from '../services/LocationAccessService';
-import { RoutePointService } from '../services/RoutePointService';
 import { EntryGateRoutingService } from '../services/EntryGateRoutingService';
 import { MapFeatureFlagsService } from '../services/MapFeatureFlagsService';
 import { IJTEMA_MAP_REGION } from '../data/ijtema';
@@ -33,16 +32,6 @@ function isInsideHomeVenue(coord: { latitude: number; longitude: number }): bool
   return MapFeatureFlagsService.useIjtemaV2Map()
     ? EntryGateRoutingService.isInsideIjtemaArea(coord)
     : RoutingService.isInsideVenue(coord);
-}
-
-function getHomeSnappedCoordinate(coord: { latitude: number; longitude: number }) {
-  if (MapFeatureFlagsService.useIjtemaV2Map()) {
-    const resolved = EntryGateRoutingService.resolveRouteStartForUser(coord);
-    return resolved.candidateNodes.length > 0 ? resolved.coordinate : coord;
-  }
-
-  const nearestNode = RoutingService.findNearestNode(coord);
-  return RoutePointService.nodeToCoordinate(nearestNode);
 }
 
 export function useHomeViewModel() {
@@ -86,7 +75,6 @@ export function useHomeViewModel() {
   const isNavigating = useAppStore((s) => s.isNavigating);
   const updateSettings = useAppStore((s) => s.updateSettings);
   const setCurrentLocation = useAppStore((s) => s.setCurrentLocation);
-  const setSnappedLocation = useAppStore((s) => s.setSnappedLocation);
   const setHasLocationPermission = useAppStore((s) => s.setHasLocationPermission);
   const addRecentSearch = useAppStore((s) => s.addRecentSearch);
   const setSelectedPlace = useAppStore((s) => s.setSelectedPlace);
@@ -237,7 +225,6 @@ export function useHomeViewModel() {
       // handleGPS above keeps tracking every subsequent GPS tick until the user drags
       // the map away (HomeScreen's onPanDrag calls cameraManager.stopFollowing()).
       cameraManager.followUser(location);
-      setSnappedLocation(getHomeSnappedCoordinate(location));
       return true;
     };
 
@@ -330,7 +317,7 @@ export function useHomeViewModel() {
       Alert.alert('Location error', 'Could not read location right now. Please try again.');
       return false;
     }
-  }, [cameraManager, lastKnownLocation, lastKnownLocationUpdatedAt, setCurrentLocation, setHasLocationPermission, setSnappedLocation]);
+  }, [cameraManager, lastKnownLocation, lastKnownLocationUpdatedAt, setCurrentLocation, setHasLocationPermission]);
 
   // Compass button: NORTH_UP <-> FOLLOW_HEADING toggle (Google Maps compass model).
   // NORTH_UP -> tap -> lock bearing to north-up (unchanged Phase 11 behavior).

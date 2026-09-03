@@ -4,7 +4,7 @@
  */
 
 import { create } from 'zustand';
-import { persist, createJSONStorage } from 'zustand/middleware';
+import { persist, createJSONStorage, StateStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   UserSettings,
@@ -79,8 +79,6 @@ interface AppState {
   lastKnownLocation: Coordinate | null;
   lastKnownLocationUpdatedAt: string | null;
   setLastKnownLocation: (loc: Coordinate | null) => void;
-  snappedLocation: Coordinate | null;
-  setSnappedLocation: (loc: Coordinate | null) => void;
 
   // --- Permissions / connectivity ---
   hasLocationPermission: boolean;
@@ -268,6 +266,66 @@ function subscribeHydrationOutcome(
   return () => hydrationOutcomeListeners.delete(wrapped);
 }
 
+// zustand's persist middleware writes to storage on every set() call, regardless of whether
+// the persisted (partialize'd) fields actually changed. partialize below already excludes
+// pure GPS/navigation runtime state (currentLocation, activeRoute, routeInstructions, ...),
+// but `lastKnownLocation`/`lastKnownLocationUpdatedAt` genuinely are persisted (needed at next
+// cold start / when live GPS is unavailable — see DirectionsViewModel's "remembered location"
+// start option) and setCurrentLocation() updates both on every live GPS fix, ~1/sec during
+// navigation — a plain identical-value dedupe never catches this because the timestamp differs
+// every tick. This wrapper both (a) skips a truly identical write outright and (b) throttles
+// genuinely-changing writes to at most one per PERSIST_WRITE_THROTTLE_MS, always flushing the
+// latest pending value on the trailing edge so nothing is lost — bounding "how stale can the
+// on-disk remembered location be" to the throttle window, which that feature's own
+// minutes-granularity age label already tolerates, instead of writing to disk every GPS tick.
+const PERSIST_WRITE_THROTTLE_MS = 4000;
+
+export function createDedupingStorage(storage: StateStorage, throttleMs = PERSIST_WRITE_THROTTLE_MS): StateStorage {
+  let lastWritten: string | null = null;
+  let lastWriteAt = 0;
+  let pendingTimer: ReturnType<typeof setTimeout> | null = null;
+  let pendingName: string | null = null;
+  let pendingValue: string | null = null;
+
+  const flush = (name: string, value: string) => {
+    lastWritten = value;
+    lastWriteAt = Date.now();
+    pendingTimer = null;
+    pendingName = null;
+    pendingValue = null;
+    return storage.setItem(name, value);
+  };
+
+  return {
+    getItem: (name) => storage.getItem(name),
+    setItem: (name, value) => {
+      if (value === lastWritten) return;
+      const elapsed = Date.now() - lastWriteAt;
+      if (lastWriteAt === 0 || elapsed >= throttleMs) {
+        return flush(name, value);
+      }
+      pendingName = name;
+      pendingValue = value;
+      if (!pendingTimer) {
+        pendingTimer = setTimeout(() => {
+          if (pendingName != null && pendingValue != null) void flush(pendingName, pendingValue);
+        }, throttleMs - elapsed);
+      }
+    },
+    removeItem: (name) => {
+      lastWritten = null;
+      lastWriteAt = 0;
+      pendingName = null;
+      pendingValue = null;
+      if (pendingTimer) {
+        clearTimeout(pendingTimer);
+        pendingTimer = null;
+      }
+      return storage.removeItem(name);
+    },
+  };
+}
+
 export const useAppStore = create<AppState>()(
   persist(
     (set, get) => ({
@@ -335,8 +393,6 @@ export const useAppStore = create<AppState>()(
       lastKnownLocation: null,
       lastKnownLocationUpdatedAt: null,
       setLastKnownLocation: (loc) => set({ lastKnownLocation: loc, lastKnownLocationUpdatedAt: loc ? new Date().toISOString() : null }),
-      snappedLocation: null,
-      setSnappedLocation: (loc) => set({ snappedLocation: loc }),
 
       // --- Permissions / connectivity ---
       hasLocationPermission: false,
@@ -445,7 +501,7 @@ export const useAppStore = create<AppState>()(
     }),
     {
       name: 'ijtema-app-store',
-      storage: createJSONStorage(() => AsyncStorage),
+      storage: createJSONStorage(() => createDedupingStorage(AsyncStorage)),
       version: 2,
       onRehydrateStorage: () => {
         // Deliberately does NOT call any store set()/action here — every set() on this
