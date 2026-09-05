@@ -7,6 +7,7 @@ import React from 'react';
 import { render, screen, userEvent } from './test-utils';
 
 import { LocationSheet } from '../views/components/map/LocationSheet';
+import { LIGHT_THEME } from '../services/ThemeService';
 import { useDirectionsViewModel } from '../viewmodels/DirectionsViewModel';
 import { SearchService } from '../services/SearchService';
 import type { Place } from '../models/types';
@@ -100,14 +101,14 @@ beforeEach(() => {
 describe('LocationSheet (routePreview) — start option selection', () => {
   test('renders the destination being routed to', async () => {
     mockedUseDirectionsViewModel.mockReturnValue(baseViewModel());
-    await render(<LocationSheet mode="routePreview" destination={destination} onClose={onCloseSpy} />);
+    await render(<LocationSheet mode="routePreview" destination={destination} theme={LIGHT_THEME} onClose={onCloseSpy} />);
 
     expect(screen.getByText('Block 1')).toBeOnTheScreen();
   });
 
   test('defaults to current GPS location without showing the start picker first', async () => {
     mockedUseDirectionsViewModel.mockReturnValue(baseViewModel());
-    await render(<LocationSheet mode="routePreview" destination={destination} onClose={onCloseSpy} />);
+    await render(<LocationSheet mode="routePreview" destination={destination} theme={LIGHT_THEME} onClose={onCloseSpy} />);
 
     expect(screen.getByText('My current location')).toBeOnTheScreen();
     expect(screen.getByText('Change Start')).toBeOnTheScreen();
@@ -120,7 +121,7 @@ describe('LocationSheet (routePreview) — start option selection', () => {
     const chooseCurrentLocation = jest.fn(async () => true);
     mockedUseDirectionsViewModel.mockReturnValue(baseViewModel({ chooseCurrentLocation }));
     const user = userEvent.setup();
-    await render(<LocationSheet mode="routePreview" destination={destination} onClose={onCloseSpy} />);
+    await render(<LocationSheet mode="routePreview" destination={destination} theme={LIGHT_THEME} onClose={onCloseSpy} />);
 
     await user.press(screen.getByText('Change Start'));
     await user.press(screen.getByText('Use my current location'));
@@ -134,7 +135,7 @@ describe('LocationSheet (routePreview) — start option selection', () => {
       baseViewModel({ chooseRememberedLocation, rememberedLocationAvailable: true }),
     );
     const user = userEvent.setup();
-    await render(<LocationSheet mode="routePreview" destination={destination} onClose={onCloseSpy} />);
+    await render(<LocationSheet mode="routePreview" destination={destination} theme={LIGHT_THEME} onClose={onCloseSpy} />);
 
     await user.press(screen.getByText('Change Start'));
     await user.press(screen.getByText('Use last known location'));
@@ -147,7 +148,7 @@ describe('LocationSheet (routePreview) — start option selection', () => {
       baseViewModel({ rememberedLocationAvailable: false }),
     );
     const user = userEvent.setup();
-    await render(<LocationSheet mode="routePreview" destination={destination} onClose={onCloseSpy} />);
+    await render(<LocationSheet mode="routePreview" destination={destination} theme={LIGHT_THEME} onClose={onCloseSpy} />);
 
     await user.press(screen.getByText('Change Start'));
 
@@ -158,7 +159,7 @@ describe('LocationSheet (routePreview) — start option selection', () => {
     const chooseManualStart = jest.fn();
     mockedUseDirectionsViewModel.mockReturnValue(baseViewModel({ chooseManualStart }));
     const user = userEvent.setup();
-    await render(<LocationSheet mode="routePreview" destination={destination} onClose={onCloseSpy} />);
+    await render(<LocationSheet mode="routePreview" destination={destination} theme={LIGHT_THEME} onClose={onCloseSpy} />);
 
     await user.press(screen.getByText('Change Start'));
     await user.press(screen.getByText('Choose start manually'));
@@ -173,7 +174,7 @@ describe('LocationSheet (routePreview) — start option selection', () => {
       startSourceSupportingCopy: 'Using last known location from 5 minutes ago.',
       isCurrentLocationStartActive: false,
     }));
-    await render(<LocationSheet mode="routePreview" destination={destination} onClose={onCloseSpy} />);
+    await render(<LocationSheet mode="routePreview" destination={destination} theme={LIGHT_THEME} onClose={onCloseSpy} />);
 
     // The status card reflects the active start source's message — real, user-visible output,
     // not an internal implementation detail.
@@ -188,7 +189,7 @@ describe('LocationSheet (routePreview) — start option selection', () => {
       isCurrentLocationStartActive: false,
     }));
     const user = userEvent.setup();
-    await render(<LocationSheet mode="routePreview" destination={destination} onClose={onCloseSpy} />);
+    await render(<LocationSheet mode="routePreview" destination={destination} theme={LIGHT_THEME} onClose={onCloseSpy} />);
 
     expect(screen.getByText('Device last known location')).toBeOnTheScreen();
     expect(screen.getByText('Using device last known location because live GPS is unavailable.')).toBeOnTheScreen();
@@ -204,7 +205,7 @@ describe('LocationSheet (routePreview) — manual start search ("Search")', () =
       baseViewModel({ startSource: 'manual_place', showManualStartSearch: true }),
     );
     const user = userEvent.setup();
-    await render(<LocationSheet mode="routePreview" destination={destination} onClose={onCloseSpy} />);
+    await render(<LocationSheet mode="routePreview" destination={destination} theme={LIGHT_THEME} onClose={onCloseSpy} />);
 
     const input = screen.getByPlaceholderText('Search start point: gate, rasta, block');
     await user.type(input, 'Gate');
@@ -219,7 +220,7 @@ describe('LocationSheet (routePreview) — manual start search ("Search")', () =
       baseViewModel({ startSource: 'manual_place', showManualStartSearch: true }),
     );
     const user = userEvent.setup();
-    await render(<LocationSheet mode="routePreview" destination={destination} onClose={onCloseSpy} />);
+    await render(<LocationSheet mode="routePreview" destination={destination} theme={LIGHT_THEME} onClose={onCloseSpy} />);
 
     const input = screen.getByPlaceholderText('Search start point: gate, rasta, block');
     await user.type(input, 'zzz');
@@ -234,7 +235,7 @@ describe('LocationSheet (routePreview) — manual start search ("Search")', () =
       baseViewModel({ startSource: 'manual_place', showManualStartSearch: true, setManualStartPlace }),
     );
     const user = userEvent.setup();
-    await render(<LocationSheet mode="routePreview" destination={destination} onClose={onCloseSpy} />);
+    await render(<LocationSheet mode="routePreview" destination={destination} theme={LIGHT_THEME} onClose={onCloseSpy} />);
 
     const input = screen.getByPlaceholderText('Search start point: gate, rasta, block');
     await user.type(input, 'Gate');
@@ -254,6 +255,7 @@ describe('LocationSheet (routePreview) — change destination', () => {
     await render(
       <LocationSheet
         mode="routePreview"
+        theme={LIGHT_THEME}
         destination={destination}
         onClose={onCloseSpy}
         onChangeDestination={onChangeDestination}
@@ -273,6 +275,7 @@ describe('LocationSheet (routePreview) — change destination', () => {
     await render(
       <LocationSheet
         mode="routePreview"
+        theme={LIGHT_THEME}
         destination={destination}
         onClose={onCloseSpy}
         onChangeDestination={jest.fn()}
@@ -294,6 +297,7 @@ describe('LocationSheet (routePreview) — change destination', () => {
     await render(
       <LocationSheet
         mode="routePreview"
+        theme={LIGHT_THEME}
         destination={destination}
         onClose={onCloseSpy}
         onChangeDestination={jest.fn()}
@@ -315,6 +319,7 @@ describe('LocationSheet (routePreview) — change destination', () => {
     await render(
       <LocationSheet
         mode="routePreview"
+        theme={LIGHT_THEME}
         destination={destination}
         onClose={onCloseSpy}
         onChangeDestination={onChangeDestination}
@@ -339,6 +344,7 @@ describe('LocationSheet (routePreview) — change destination', () => {
     await render(
       <LocationSheet
         mode="routePreview"
+        theme={LIGHT_THEME}
         destination={destination}
         onClose={onCloseSpy}
         onChangeDestination={onChangeDestination}
@@ -361,7 +367,7 @@ describe('LocationSheet (routePreview) — change destination', () => {
   test('falls back to onClose when onChangeDestination is not provided', async () => {
     mockedUseDirectionsViewModel.mockReturnValue(baseViewModel());
     const user = userEvent.setup();
-    await render(<LocationSheet mode="routePreview" destination={destination} onClose={onCloseSpy} />);
+    await render(<LocationSheet mode="routePreview" destination={destination} theme={LIGHT_THEME} onClose={onCloseSpy} />);
 
     await user.press(screen.getByText('Change destination'));
 
@@ -413,7 +419,7 @@ describe('LocationSheet (routePreview) — route ready CTA', () => {
       }),
     );
     const user = userEvent.setup();
-    await render(<LocationSheet mode="routePreview" destination={v2Destination} onClose={onCloseSpy} />);
+    await render(<LocationSheet mode="routePreview" destination={v2Destination} theme={LIGHT_THEME} onClose={onCloseSpy} />);
 
     expect(screen.getByText('Direct guide — not a road route')).toBeOnTheScreen();
     expect(screen.getByText('Start Direct Guide')).toBeOnTheScreen();
@@ -437,7 +443,7 @@ describe('LocationSheet (routePreview) — route ready CTA', () => {
         },
       }),
     );
-    await render(<LocationSheet mode="routePreview" destination={destination} onClose={onCloseSpy} />);
+    await render(<LocationSheet mode="routePreview" destination={destination} theme={LIGHT_THEME} onClose={onCloseSpy} />);
 
     expect(screen.getByText('Route ready')).toBeOnTheScreen();
     expect(screen.getByText('4 min')).toBeOnTheScreen();
@@ -450,7 +456,7 @@ describe('LocationSheet (routePreview) — route ready CTA', () => {
         route: { nodes: ['A', 'B'], coordinates: [], totalDistance: 850, estimatedTimeMin: 4 },
       }),
     );
-    await render(<LocationSheet mode="routePreview" destination={destination} onClose={onCloseSpy} />);
+    await render(<LocationSheet mode="routePreview" destination={destination} theme={LIGHT_THEME} onClose={onCloseSpy} />);
 
     expect(screen.getByText('850 m')).toBeOnTheScreen();
   });
@@ -462,7 +468,7 @@ describe('LocationSheet (routePreview) — route ready CTA', () => {
         route: { nodes: ['A', 'B'], coordinates: [], totalDistance: 1400, estimatedTimeMin: 18 },
       }),
     );
-    await render(<LocationSheet mode="routePreview" destination={destination} onClose={onCloseSpy} />);
+    await render(<LocationSheet mode="routePreview" destination={destination} theme={LIGHT_THEME} onClose={onCloseSpy} />);
 
     expect(screen.getByText('1.4 km')).toBeOnTheScreen();
   });
@@ -474,7 +480,7 @@ describe('LocationSheet (routePreview) — route ready CTA', () => {
         route: { nodes: ['A', 'B'], coordinates: [], totalDistance: 250, estimatedTimeMin: 4 },
       }),
     );
-    const { rerender } = await render(<LocationSheet mode="routePreview" destination={destination} onClose={onCloseSpy} />);
+    const { rerender } = await render(<LocationSheet mode="routePreview" destination={destination} theme={LIGHT_THEME} onClose={onCloseSpy} />);
     expect(screen.getByText('250 m')).toBeOnTheScreen();
 
     mockedUseDirectionsViewModel.mockReturnValue(
@@ -483,7 +489,7 @@ describe('LocationSheet (routePreview) — route ready CTA', () => {
         route: { nodes: ['A', 'C'], coordinates: [], totalDistance: 1800, estimatedTimeMin: 22 },
       }),
     );
-    await rerender(<LocationSheet mode="routePreview" destination={destination} onClose={onCloseSpy} />);
+    await rerender(<LocationSheet mode="routePreview" destination={destination} theme={LIGHT_THEME} onClose={onCloseSpy} />);
 
     expect(screen.queryByText('250 m')).not.toBeOnTheScreen();
     expect(screen.getByText('1.8 km')).toBeOnTheScreen();
@@ -491,13 +497,13 @@ describe('LocationSheet (routePreview) — route ready CTA', () => {
 
   test('shows no distance while the route is still loading or has failed', async () => {
     mockedUseDirectionsViewModel.mockReturnValue(baseViewModel({ loadState: 'loading' }));
-    const { rerender } = await render(<LocationSheet mode="routePreview" destination={destination} onClose={onCloseSpy} />);
+    const { rerender } = await render(<LocationSheet mode="routePreview" destination={destination} theme={LIGHT_THEME} onClose={onCloseSpy} />);
     expect(screen.queryByText(/^\d+(\.\d+)?\s(m|km)$/)).not.toBeOnTheScreen();
 
     mockedUseDirectionsViewModel.mockReturnValue(
       baseViewModel({ loadState: 'error', errorMessage: 'Could not calculate route.' }),
     );
-    await rerender(<LocationSheet mode="routePreview" destination={destination} onClose={onCloseSpy} />);
+    await rerender(<LocationSheet mode="routePreview" destination={destination} theme={LIGHT_THEME} onClose={onCloseSpy} />);
 
     expect(screen.getByText('Route problem')).toBeOnTheScreen();
     expect(screen.queryByText(/^\d+(\.\d+)?\s(m|km)$/)).not.toBeOnTheScreen();
@@ -520,6 +526,7 @@ describe('LocationSheet (routePreview) — route ready CTA', () => {
     await render(
       <LocationSheet
         mode="routePreview"
+        theme={LIGHT_THEME}
         destination={v2Destination}
         onClose={onCloseSpy}
         onStartNavigation={onStartNavigation}
@@ -549,6 +556,7 @@ describe('LocationSheet (routePreview) — route ready CTA', () => {
     await render(
       <LocationSheet
         mode="routePreview"
+        theme={LIGHT_THEME}
         destination={v2Destination}
         onClose={onCloseSpy}
         onCancelRoute={onCancelRoute}
@@ -578,7 +586,7 @@ describe('LocationSheet (routePreview) — route ready CTA', () => {
       }),
     );
     const user = userEvent.setup();
-    await render(<LocationSheet mode="routePreview" destination={destination} onClose={onCloseSpy} />);
+    await render(<LocationSheet mode="routePreview" destination={destination} theme={LIGHT_THEME} onClose={onCloseSpy} />);
 
     await user.press(screen.getByText('Start Navigation'));
 
@@ -592,7 +600,7 @@ describe('LocationSheet (routePreview) — route ready CTA', () => {
       baseViewModel({ loadState: 'error', errorMessage: 'Could not calculate route.', calculateRoute }),
     );
     const user = userEvent.setup();
-    await render(<LocationSheet mode="routePreview" destination={destination} onClose={onCloseSpy} />);
+    await render(<LocationSheet mode="routePreview" destination={destination} theme={LIGHT_THEME} onClose={onCloseSpy} />);
 
     expect(screen.getByText('Route problem')).toBeOnTheScreen();
     await user.press(screen.getByText('Retry'));
@@ -612,7 +620,7 @@ describe('LocationSheet (routePreview) — route ready CTA', () => {
       baseViewModel({ loadState: 'error', errorMessage: 'Could not calculate route.', calculateRoute }),
     );
     const user = userEvent.setup();
-    await render(<LocationSheet mode="routePreview" destination={destination} onClose={onCloseSpy} />);
+    await render(<LocationSheet mode="routePreview" destination={destination} theme={LIGHT_THEME} onClose={onCloseSpy} />);
 
     const retryButton = screen.getByText('Retry');
     await user.press(retryButton);

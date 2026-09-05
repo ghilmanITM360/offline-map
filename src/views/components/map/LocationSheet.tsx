@@ -90,6 +90,7 @@ export type LocationSheetProps =
   | {
       mode: 'routePreview';
       destination: Place;
+      theme: AppTheme;
       /** Both v1 and v2 destinations reveal the map on start — navigation itself always runs
        * in-place on HomeScreen's persistent map surface (NavigationOverlayV1/V2), never a pushed
        * screen. */
@@ -134,6 +135,7 @@ export function LocationSheet(props: LocationSheetProps) {
     return (
       <RoutePreviewSection
         destination={props.destination}
+        theme={props.theme}
         onClose={props.onClose}
         onStartNavigation={props.onStartNavigation}
         onCancelRoute={props.onCancelRoute}
@@ -201,12 +203,14 @@ function StartOption({
 
 function RoutePreviewSection({
   destination,
+  theme,
   onClose,
   onStartNavigation,
   onCancelRoute,
   onChangeDestination,
 }: {
   destination: Place;
+  theme: AppTheme;
   onClose: () => void;
   onStartNavigation?: () => void;
   onCancelRoute?: () => void;
@@ -316,7 +320,7 @@ function RoutePreviewSection({
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
+      <View style={[styles.header, { borderBottomColor: theme.border }]}>
         <Pressable
           onPress={onClose}
           style={styles.backButton}
@@ -324,9 +328,9 @@ function RoutePreviewSection({
           accessibilityRole="button"
           accessibilityLabel="Back"
         >
-          <ChevronLeft size={28} color={staticColors.textPrimary} />
+          <ChevronLeft size={28} color={theme.text} />
         </Pressable>
-        <Text style={styles.headerTitle}>Get Directions</Text>
+        <Text style={[styles.headerTitle, { color: theme.text }]}>Get Directions</Text>
       </View>
 
       <KeyboardAvoidingView
@@ -901,16 +905,13 @@ function PlaceSection(props: Extract<LocationSheetProps, { mode: 'preview' | 'de
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: staticColors.sheetBackground,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 14,
-    backgroundColor: staticColors.white,
     borderBottomWidth: 1,
-    borderBottomColor: staticColors.borderLight,
   },
   backButton: {
     paddingVertical: 6,
@@ -919,7 +920,6 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 32,
     fontWeight: '800',
-    color: staticColors.textPrimary,
   },
   scroll: {
     flex: 1,
