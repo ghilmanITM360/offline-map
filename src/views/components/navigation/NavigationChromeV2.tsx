@@ -152,6 +152,7 @@ export function NavigationChromeV2({ overlay, hasBaseMap }: { overlay: Navigatio
                 hitSlop={NAV_TOUCH_TARGET_HIT_SLOP}
                 accessibilityRole="button"
                 accessibilityLabel={isMuted ? 'Unmute voice guidance' : 'Mute voice guidance'}
+                accessibilityState={{ selected: isMuted }}
               >
                 {isMuted ? <VolumeX size={24} color={staticColors.white} /> : <Volume2 size={24} color={staticColors.white} />}
               </Pressable>
