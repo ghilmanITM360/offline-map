@@ -29,13 +29,20 @@ interface LayersSheetProps {
 
 function OverlayRow({ label, value, onChange }: { label: string; value: boolean; onChange: (val: boolean) => void }) {
   return (
-    <Pressable style={styles.row} onPress={() => onChange(!value)}>
+    <Pressable
+      style={styles.row}
+      onPress={() => onChange(!value)}
+      accessibilityRole="switch"
+      accessibilityLabel={label}
+      accessibilityState={{ checked: value }}
+    >
       <Text style={styles.rowLabel}>{label}</Text>
       <Switch
         value={value}
         onValueChange={onChange}
         trackColor={{ false: staticColors.border, true: staticColors.info }}
         thumbColor={staticColors.white}
+        importantForAccessibility="no-hide-descendants"
       />
     </Pressable>
   );
