@@ -182,4 +182,33 @@ describe('NavigationViewModelV2 hybrid rerouting', () => {
     await waitFor(() => expect(useAppStore.getState().reroutePending).toBe(false));
     previewSpy.mockRestore();
   });
+
+  // NEW-01: exercises the real hook's location-handling effect end to end (not a re-implemented
+  // copy of the anchor/count/duration bookkeeping) with realistic pedestrian GPS cadence — each
+  // fix ~2m from the last, well under GPSManagerService's navigation-mode distanceInterval.
+  // Before the offRouteAnchorRef fix, "moved distance" was measured between consecutive fixes,
+  // so this exact sequence could never accumulate the 12m of evidence shouldTriggerReroute
+  // requires. It must fire exactly once (cooldown/in-flight guard) once cumulative displacement
+  // from the first off-route fix crosses that bar.
+  test('sustained 2m-cadence off-route walking triggers exactly one real reroute', async () => {
+    const previewSpy = jest
+      .spyOn(V2DirectionsService, 'calculateHybridPreview')
+      .mockResolvedValue({ status: 'unavailable', route: null, instructions: [], message: 'No replacement.' });
+    await renderHook(() => useNavigationViewModelV2());
+
+    const metersPerDegLat = 111320;
+    const baseLat = 24.985;
+    const longitude = 67.02;
+    const stepMeters = 2;
+    const steps = 18; // 18 * 2m = 36m cumulative anchor displacement, well past the 12m bar
+
+    for (let i = 0; i < steps; i++) {
+      const point = { latitude: baseLat + (i * stepMeters) / metersPerDegLat, longitude, accuracy: 5 };
+      await act(async () => useAppStore.setState({ currentLocation: point, currentLocationSource: 'live' }));
+    }
+
+    expect(previewSpy).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(useAppStore.getState().reroutePending).toBe(false));
+    previewSpy.mockRestore();
+  });
 });
