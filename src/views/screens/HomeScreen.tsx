@@ -1265,7 +1265,7 @@ export function HomeScreen() {
       >
         <Pressable
           key="all-locations"
-          style={[styles.chip, styles.allLocationsChip]}
+          style={[styles.chip, styles.allLocationsChip, { backgroundColor: theme.chip, borderColor: theme.border }]}
           onPress={() => {
             logHomeControl('all_locations_chip', 'open_directory');
             nav.navigate('LocationsDirectory');
@@ -1274,15 +1274,19 @@ export function HomeScreen() {
           accessibilityRole="button"
           accessibilityLabel="Browse all locations"
         >
-          <LayoutGrid size={14} color={staticColors.info} />
-          <Text style={[styles.chipText, styles.allLocationsChipText]} numberOfLines={1} ellipsizeMode="tail">
+          <LayoutGrid size={14} color={theme.chipActiveText} />
+          <Text style={[styles.chipText, { color: theme.chipActiveText, fontWeight: '700' }]} numberOfLines={1} ellipsizeMode="tail">
             All Locations
           </Text>
         </Pressable>
         {categoryChips.map((cat) => (
           <Pressable
             key={cat.id}
-            style={[styles.chip, activeCategory === cat.id && styles.activeChip]}
+            style={[
+              styles.chip,
+              { backgroundColor: theme.chip, borderColor: theme.border },
+              activeCategory === cat.id && { backgroundColor: theme.chipActive, borderColor: theme.chipActive },
+            ]}
             onPress={() => {
               logHomeControl('category_chip', `filter_${cat.id}`);
               selectCategory(cat.id);
@@ -1293,7 +1297,11 @@ export function HomeScreen() {
             accessibilityState={{ selected: activeCategory === cat.id }}
           >
             <Text
-              style={[styles.chipText, activeCategory === cat.id && styles.activeChipText]}
+              style={[
+                styles.chipText,
+                { color: theme.chipText },
+                activeCategory === cat.id && { color: theme.chipActiveText, fontWeight: '700' },
+              ]}
               numberOfLines={1}
               ellipsizeMode="tail"
             >
@@ -2227,28 +2235,21 @@ const styles = StyleSheet.create({
   chipsContainer: { marginTop: 10 },
   chipsContent: { paddingLeft: 12, paddingRight: 88, paddingBottom: 8 },
   chip: {
-    backgroundColor: staticColors.white,
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 20,
     marginRight: 8,
     elevation: 2,
     borderWidth: 1,
-    borderColor: staticColors.border,
     minWidth: 64,
     alignItems: 'center',
   },
-  activeChip: { backgroundColor: staticColors.info, borderColor: staticColors.info },
-  chipText: { fontSize: 13, color: staticColors.textSecondaryStrong, fontWeight: '500' },
-  activeChipText: { color: staticColors.white, fontWeight: '700' },
+  chipText: { fontSize: 13, fontWeight: '500' },
   allLocationsChip: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: staticColors.infoBackground,
-    borderColor: staticColors.infoBorder,
   },
-  allLocationsChipText: { color: staticColors.infoStrong, fontWeight: '700' },
   navControls: { position: 'absolute', right: 16, zIndex: Z.mapControls },
   // Single bottom-anchored Layers/Compass/Zoom/Recenter stack (see MapControls) —
   // replaces the old separately-anchored rightControls (top) + bottomControls
