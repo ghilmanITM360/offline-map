@@ -841,7 +841,14 @@ function PlaceSection(props: Extract<LocationSheetProps, { mode: 'preview' | 'de
         />
 
         <View style={sheetStyles.secondaryActions}>
-          <Pressable style={sheetStyles.secondaryAction} onPress={onToggleFavorite} hitSlop={8}>
+          <Pressable
+            style={sheetStyles.secondaryAction}
+            onPress={onToggleFavorite}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel={isFav ? 'Remove from saved' : 'Save location'}
+            accessibilityState={{ selected: isFav }}
+          >
             <Star
               size={20}
               color={isFav ? staticColors.starActive : staticColors.info}
@@ -852,6 +859,8 @@ function PlaceSection(props: Extract<LocationSheetProps, { mode: 'preview' | 'de
           <Pressable
             style={sheetStyles.secondaryAction}
             hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel="Share location"
             onPress={() => {
               if (!place.coordinate) {
                 Alert.alert('Place unavailable', place.unavailableReason ?? `${place.name} is not available on the map yet.`);
@@ -868,7 +877,13 @@ function PlaceSection(props: Extract<LocationSheetProps, { mode: 'preview' | 'de
             <Text style={sheetStyles.secondaryActionText}>Share</Text>
           </Pressable>
           {!isDetails && (
-            <Pressable style={sheetStyles.secondaryAction} onPress={onShowDetails} hitSlop={8}>
+            <Pressable
+              style={sheetStyles.secondaryAction}
+              onPress={onShowDetails}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel="Show details"
+            >
               <MapPin size={20} color={staticColors.info} />
               <Text style={sheetStyles.secondaryActionText}>Details</Text>
             </Pressable>
