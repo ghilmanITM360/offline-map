@@ -27,6 +27,7 @@ import {
   buildV2RerouteRequest,
   calculateNavigationProgressV2,
   deriveGpsSignalStateV2,
+  evaluateArrivalFixV2,
   evaluateRerouteEvidenceV2,
   GPS_LOST_TIMEOUT_MS,
   GpsSignalStateV2,
@@ -60,11 +61,6 @@ function instructionIndexForProgress(route: V2ActiveRoute, progressMeters: numbe
   return bestIndex;
 }
 
-function isArrived(route: V2ActiveRoute, coordinate: Coordinate | null): boolean {
-  if (!coordinate) return false;
-  return getDistance(coordinate, route.destination.coordinate) <= ARRIVAL_THRESHOLD_METERS;
-}
-
 function placeFromV2Destination(route: V2ActiveRoute, existingDestination: Place | null): Place | null {
   if (existingDestination) return existingDestination;
   const destination = route.destination;
@@ -93,6 +89,7 @@ export function useNavigationViewModelV2() {
   const destinationFromStore = useAppStore((s) => s.destination);
   const activeRoute = useAppStore((s) => s.activeRoute);
   const isNavigating = useAppStore((s) => s.isNavigating);
+  const navigationSessionId = useAppStore((s) => s.navigationSessionId);
   const routeInstructions = useAppStore((s) => s.routeInstructions);
   const currentLocation = useAppStore((s) => s.currentLocation);
   const settings = useAppStore((s) => s.settings);
@@ -135,6 +132,25 @@ export function useNavigationViewModelV2() {
   const lastFixAtRef = useRef<number | null>(null);
   const offRouteStartRef = useRef<number | null>(null);
   const consecutiveOffRouteRef = useRef(0);
+  // Mirrors `arrived` state so the per-fix arrival check below can latch (and skip re-evaluating
+  // once true) without needing `arrived` in its effect's dependency array. Once true, the trip's
+  // arrival can only be cleared by the reset effects below (new navigationSessionId, or route
+  // becoming null) — never by a subsequent GPS fix, however far off or noisy.
+  const arrivedRef = useRef(false);
+  // True when the previous fix was a qualifying moderate-accuracy (fast-path, moderate-path]
+  // observation still awaiting its consecutive corroborating fix. Any non-qualifying fix (out of
+  // the arrival radius, or accuracy beyond the moderate-path ceiling) resets it — see
+  // evaluateArrivalFixV2. Also reset on reroute/route replacement below, since a corroborating
+  // fix from before a reroute says nothing about the (potentially very different) post-reroute
+  // position.
+  const pendingArrivalCorroborationRef = useRef(false);
+  // The location effect below lists etaMinutes/currentStepIndex in its own dependency array
+  // (both of which it writes), so it can re-run more than once for a single real GPS fix once
+  // those state updates commit — harmless for a pure distance check, but fatal for
+  // hasPendingCorroboration's "one qualifying observation" contract, which would otherwise see
+  // the same physical fix twice and false-corroborate on it. Tracks the currentLocation object
+  // last fed into arrival evaluation so a same-fix re-run of the effect is skipped there.
+  const lastArrivalFixLocationRef = useRef<Coordinate | null>(null);
   const lastRerouteAtRef = useRef(0);
   const lastSpokenInstructionIdRef = useRef<string | null>(null);
   const outsideRequestCoordinatorRef = useRef(new OutsideRouteRequestCoordinator());
@@ -143,18 +159,43 @@ export function useNavigationViewModelV2() {
     // GPSManagerService updates currentLocation through the store updater wired in RootNavigator.
   }, []);
 
+  // Per-trip arrival reset #1: a genuinely new trip (startNavigation() bumps navigationSessionId
+  // in the store — see useAppStore.ts). Deliberately NOT keyed on route?.routeId: a reroute
+  // replaces activeRoute (and its routeId) via setActiveRoute without touching
+  // navigationSessionId, and earned arrival must survive that (see the "reroute must not
+  // un-arrive" latch semantics below).
   useEffect(() => {
-    // Reset arrival first (and unconditionally) — this hook now runs unconditionally inside
-    // HomeScreen for the app's lifetime, so without this a stale `arrived: true` from a
-    // previous trip would survive exit and immediately re-trigger MapMode.ARRIVAL the next
-    // time navigation starts, before any GPS update has run to correct it.
     setArrived(false);
+    arrivedRef.current = false;
+    pendingArrivalCorroborationRef.current = false;
+    lastArrivalFixLocationRef.current = null;
+  }, [navigationSessionId]);
+
+  // Per-trip arrival reset #2: Done/cancel, i.e. `route` becoming null (isNavigating false, or
+  // activeRoute no longer v2-shaped). Guarded so a reroute — which swaps `route` to a new
+  // non-null object — never runs this body.
+  useEffect(() => {
+    if (route) return;
+    setArrived(false);
+    arrivedRef.current = false;
+    pendingArrivalCorroborationRef.current = false;
+    lastArrivalFixLocationRef.current = null;
+    // This hook runs unconditionally inside HomeScreen for the app's lifetime, so without this a
+    // stale `arrived: true` from a previous trip would survive exit and immediately re-trigger
+    // MapMode.ARRIVAL the next time navigation starts, before any GPS update has run to correct it.
+  }, [route]);
+
+  useEffect(() => {
     if (!route) return;
     setRemainingDistance(route.totalDistanceM);
     setEtaMinutes(route.etaMinutes);
     setSnappedLocation(route.origin.coordinate);
     setCurrentStepIndex(0);
     progressRef.current = 0;
+    // A route replacement (fresh trip or mid-trip reroute) invalidates any in-flight moderate-path
+    // corroboration — see evaluateArrivalFixV2's hasPendingCorroboration contract. Earned arrival
+    // itself (arrivedRef) is untouched here; it only resets via the two effects above.
+    pendingArrivalCorroborationRef.current = false;
   }, [route?.routeId]);
 
   useEffect(() => () => outsideRequestCoordinatorRef.current.cancelCurrent(), []);
@@ -305,6 +346,12 @@ export function useNavigationViewModelV2() {
       consecutiveOffRouteRef.current = 0;
       offRouteStartRef.current = null;
       lastRerouteAtRef.current = Date.now();
+      // Cleared here directly (not only via the route?.routeId-keyed effect below) because
+      // RoutingServiceV2 derives routeId deterministically from the resolved start/end graph
+      // nodes — a reroute whose new start snaps to the same nearest node as the route it
+      // replaces produces an identical routeId, which would silently skip that effect and let
+      // stale pending corroboration survive the reroute.
+      pendingArrivalCorroborationRef.current = false;
       setReroutePending(false);
       outsideHandle?.finish();
     } finally {
@@ -369,7 +416,24 @@ export function useNavigationViewModelV2() {
     setSnappedLocation(progress.snappedCoordinate);
     setRemainingDistance(progress.remainingDistanceM);
     setEtaMinutes(progress.etaMinutes);
-    setArrived(isArrived(route, currentLocation));
+
+    // Latch only: once arrived, this trip never un-arrives from a later fix (drift, overshoot,
+    // or renewed poor accuracy) — only the reset effects above (new navigationSessionId, or
+    // route becoming null) may clear it.
+    if (!arrivedRef.current && currentLocation !== lastArrivalFixLocationRef.current) {
+      lastArrivalFixLocationRef.current = currentLocation;
+      const evaluation = evaluateArrivalFixV2({
+        distanceToDestinationM: getDistance(currentLocation, route.destination.coordinate),
+        accuracyM,
+        hasPendingCorroboration: pendingArrivalCorroborationRef.current,
+        arrivalThresholdM: ARRIVAL_THRESHOLD_METERS,
+      });
+      pendingArrivalCorroborationRef.current = evaluation.pendingCorroboration;
+      if (evaluation.arrived) {
+        arrivedRef.current = true;
+        setArrived(true);
+      }
+    }
 
     const nextIndex = Math.max(currentStepIndex, instructionIndexForProgress(route, progress.progressMeters));
     if (nextIndex !== currentStepIndex) {

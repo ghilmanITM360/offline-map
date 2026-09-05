@@ -10,7 +10,11 @@ import { RoutingDestinationV2, RoutingStartV2 } from './RoutingServiceV2';
 // Deliberately from constants/navigation, not GPSManagerService (which imports react-native
 // and would drag a native module import into this otherwise plain, node/tsx-testable file —
 // see the comment on NAVIGATION_WATCH_TIME_INTERVAL_MS for why it lives there).
-import { NAVIGATION_WATCH_TIME_INTERVAL_MS } from '../constants/navigation';
+import {
+  ARRIVAL_FAST_PATH_ACCURACY_M,
+  ARRIVAL_MODERATE_PATH_ACCURACY_M,
+  NAVIGATION_WATCH_TIME_INTERVAL_MS,
+} from '../constants/navigation';
 
 export interface NavigationProgressV2Input {
   route: V2ActiveRoute;
@@ -43,6 +47,39 @@ export interface RerouteEvidenceV2 {
 
 export function shouldIgnorePoorAccuracyMovementV2(input: { movedDistanceM: number; accuracyM?: number }): boolean {
   return (input.accuracyM ?? 0) > 50 && input.movedDistanceM < 10;
+}
+
+export interface ArrivalFixEvaluationV2 {
+  /** True once this fix earns the latch (fast path, or the second of two consecutive moderate-path fixes). */
+  arrived: boolean;
+  /** Carry forward as `hasPendingCorroboration` for the next fix; any non-qualifying fix (out of
+   * distance, or accuracy beyond the moderate-path ceiling) resets this to false. */
+  pendingCorroboration: boolean;
+}
+
+/**
+ * Per-trip arrival latch decision for one live-navigation GPS fix. Distance <= threshold with
+ * accuracy <= ARRIVAL_FAST_PATH_ACCURACY_M arrives on this fix alone; distance <= threshold with
+ * accuracy in (fast-path, ARRIVAL_MODERATE_PATH_ACCURACY_M] requires this same qualifying
+ * evidence on two *consecutive* fixes (`hasPendingCorroboration` from the prior fix); anything
+ * outside distance or beyond the moderate ceiling never arrives and clears pending evidence, so a
+ * single disqualifying fix between two moderate fixes forces the corroboration to restart.
+ */
+export function evaluateArrivalFixV2(input: {
+  distanceToDestinationM: number;
+  accuracyM: number;
+  hasPendingCorroboration: boolean;
+  arrivalThresholdM: number;
+}): ArrivalFixEvaluationV2 {
+  const qualifies =
+    input.distanceToDestinationM <= input.arrivalThresholdM && input.accuracyM <= ARRIVAL_MODERATE_PATH_ACCURACY_M;
+  if (!qualifies) {
+    return { arrived: false, pendingCorroboration: false };
+  }
+  if (input.accuracyM <= ARRIVAL_FAST_PATH_ACCURACY_M || input.hasPendingCorroboration) {
+    return { arrived: true, pendingCorroboration: false };
+  }
+  return { arrived: false, pendingCorroboration: true };
 }
 
 // Google-Maps-style GPS state for live v2 navigation. GPS_GOOD/GPS_WEAK reflect the accuracy
