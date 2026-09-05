@@ -167,6 +167,7 @@ export function HomeScreen() {
   const currentLocationSource = useAppStore((s) => s.currentLocationSource);
   const hasLocationPermission = useAppStore((s) => s.hasLocationPermission);
   const hasSeenMapOverview = useAppStore((s) => s.hasSeenMapOverview);
+  const isDarkMode = useAppStore((s) => s.settings.darkMode);
   const setHasSeenMapOverview = useAppStore((s) => s.setHasSeenMapOverview);
   const setCurrentLocation = useAppStore((s) => s.setCurrentLocation);
   const hasSeenLocationTutorial = useAppStore((s) => s.hasSeenLocationTutorial);
@@ -1318,8 +1319,8 @@ export function HomeScreen() {
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <View style={styles.container}>
-        <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
+      <View style={[styles.container, { backgroundColor: theme.background }]}>
+        <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} backgroundColor="transparent" translucent />
 
         <MapView
             testID="home-map-view"
@@ -1656,7 +1657,7 @@ export function HomeScreen() {
         {/* Cold-start: avoid a blank map while MapView mounts/renders its first
             frame. mapLoadFailed's 7s-timeout banner takes over if it never loads. */}
         {baseMapMode === 'GOOGLE_BASEMAP' && !googleBaseMapLoaded && !mapLoadFailed && (
-          <View style={styles.mapLoadingOverlay} pointerEvents="none">
+          <View style={[styles.mapLoadingOverlay, { backgroundColor: theme.background }]} pointerEvents="none">
             <ActivityIndicator size="small" color={staticColors.recenterBlue} />
             <Text style={styles.mapLoadingText}>Loading map...</Text>
           </View>
@@ -1829,7 +1830,7 @@ export function HomeScreen() {
           <View style={[styles.bannerStack, { top: bannerStackTop }]}>
             {isOffline && (
               <View style={[styles.offlineIndicator, styles.bannerStackItem]}>
-                <WifiOff size={14} color="#FFFFFF" />
+                <WifiOff size={14} color={staticColors.white} />
                 <Text style={styles.offlineText}>Offline</Text>
               </View>
             )}
@@ -1877,7 +1878,7 @@ export function HomeScreen() {
                     setOutsideBannerDismissed(true);
                   }}
                 >
-                  <X size={16} color="#FFFFFF" />
+                  <X size={16} color={staticColors.white} />
                 </Pressable>
               </Animated.View>
             )}
@@ -1903,7 +1904,12 @@ export function HomeScreen() {
         {mode !== 'NAVIGATION' && isOffline && !offlineData.isDownloaded && (
           <View style={styles.emptyOfflineState}>
             <Text style={styles.emptyOfflineTitle}>Background map not downloaded. Ijtema routes still work.</Text>
-            <Pressable style={styles.emptyOfflineButton} onPress={() => nav.navigate('DownloadMap')}>
+            <Pressable
+              style={styles.emptyOfflineButton}
+              onPress={() => nav.navigate('DownloadMap')}
+              accessibilityRole="button"
+              accessibilityLabel="Download background map"
+            >
               <Text style={styles.emptyOfflineButtonText}>Download background map</Text>
             </Pressable>
           </View>
@@ -2037,6 +2043,7 @@ export function HomeScreen() {
             <LocationSheet
               mode="routePreview"
               destination={routePreviewSheetDestination}
+              theme={theme}
               onClose={directionsDestination ? handleCloseDirections : handleClearPreviewRoute}
               onStartNavigation={handleStartPreviewNavigation}
               onCancelRoute={activePreviewRoute ? handleClearPreviewRoute : undefined}
@@ -2272,7 +2279,7 @@ const styles = StyleSheet.create({
   offlineText: { color: staticColors.white, fontSize: 12, fontWeight: '600', marginLeft: 6 },
   mapWarningBanner: {
     marginHorizontal: 12,
-    backgroundColor: '#FFF3CD',
+    backgroundColor: staticColors.warningBackground,
     borderRadius: 8,
     paddingHorizontal: 10,
     paddingVertical: 8,
@@ -2281,7 +2288,9 @@ const styles = StyleSheet.create({
   outsideVenueBanner: {
     marginLeft: 12,
     marginRight: 76,
-    backgroundColor: '#F29900',
+    // #F29900 with white text fails WCAG AA (2.25:1) — same defect already fixed for
+    // weakGpsBackground; reusing that darkened token (5.10:1) instead of a new one.
+    backgroundColor: staticColors.weakGpsBackground,
     borderRadius: 20,
     paddingLeft: 14,
     paddingRight: 8,

@@ -1656,3 +1656,16 @@ describe('HomeScreen — recenter follow mode (Google Maps parity)', () => {
     expect(await screen.findByLabelText('Center map on my current location')).toBeOnTheScreen();
   });
 });
+
+describe('HomeScreen — offline background-map empty state', () => {
+  test('"Download background map" is exposed as an accessible button', async () => {
+    mockedUseHomeViewModel.mockImplementation(() => ({
+      ...useFakeHomeViewModel(),
+      isOffline: true,
+      offlineData: { isDownloaded: false },
+    }));
+    await render(<HomeScreen />);
+
+    expect(screen.getByRole('button', { name: 'Download background map' })).toBeOnTheScreen();
+  });
+});
