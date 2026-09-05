@@ -65,6 +65,7 @@ export function MapControls({ variant, compassMode, onLayers, onCompassToggle, o
         accessibilityLabel={
           isHeadingFollow ? 'Map rotates with your compass heading. Tap to return to north-up.' : 'Map is north-up. Tap to rotate with your compass heading.'
         }
+        accessibilityState={{ selected: isHeadingFollow }}
       >
         <Compass size={22} color={isHeadingFollow ? staticColors.info : staticColors.iconMuted} />
       </Pressable>
@@ -104,6 +105,7 @@ export function MapControls({ variant, compassMode, onLayers, onCompassToggle, o
                 ? 'Following my current location. Tap to re-center.'
                 : 'Center map on my current location'
             }
+            accessibilityState={{ selected: recenter.state === 'active', busy: recenter.state === 'loading', disabled: recenter.state === 'loading' }}
           >
             {recenter.state === 'loading' ? (
               <ActivityIndicator size="small" color={staticColors.recenterBlue} />
