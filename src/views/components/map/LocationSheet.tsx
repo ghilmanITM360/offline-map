@@ -344,7 +344,7 @@ function RoutePreviewSection({
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"
         >
-          <Card gap={14}>
+          <Card theme={theme} gap={14}>
             <FadeContent transitionKey={showDestinationOptions ? 'destOptions' : 'destSummary'}>
             {showDestinationOptions ? (
               <>
@@ -412,7 +412,7 @@ function RoutePreviewSection({
                   </View>
                 </View>
                 {(destination.verificationWarning || destination.unavailableReason) && (
-                  <Card variant="warning" style={styles.destinationWarningCard}>
+                  <Card theme={theme} variant="warning" style={styles.destinationWarningCard}>
                     <Text style={[styles.statusTitle, styles.statusTitleWarning]}>Heads up</Text>
                     <Text style={styles.statusText}>
                       {destination.verificationWarning ?? destination.unavailableReason}
@@ -432,7 +432,7 @@ function RoutePreviewSection({
             </FadeContent>
           </Card>
 
-          <Card gap={14}>
+          <Card theme={theme} gap={14}>
             <FadeContent transitionKey={showStartOptions || showManualStartSearch ? 'options' : 'summary'}>
             {showStartOptions || showManualStartSearch ? (
               <>
@@ -541,7 +541,7 @@ function RoutePreviewSection({
 
           <FadeContent transitionKey={loadState}>
           {showStartHint && (
-            <Card variant={outsideStart ? 'warning' : 'neutral'}>
+            <Card theme={theme} variant={outsideStart ? 'warning' : 'neutral'}>
               <Text style={[styles.statusTitle, outsideStart && styles.statusTitleWarning]}>
                 {outsideStart ? 'Outside Ijtema' : 'Start ready'}
               </Text>
@@ -555,7 +555,7 @@ function RoutePreviewSection({
           )}
 
           {showLoading && (
-            <Card variant="info">
+            <Card theme={theme} variant="info">
               <View style={styles.statusRow}>
                 <RefreshCw size={18} color={staticColors.info} />
                 <Text style={styles.statusTitle}>Finding route...</Text>
@@ -565,7 +565,7 @@ function RoutePreviewSection({
           )}
 
           {showError && (
-            <Card variant="error">
+            <Card theme={theme} variant="error">
               <Text style={[styles.statusTitle, styles.statusTitleError]}>Route problem</Text>
               <Text style={styles.statusText}>{errorMessage}</Text>
               <Button
@@ -579,7 +579,7 @@ function RoutePreviewSection({
           )}
 
           {showRouteReady && (
-            <Card variant="success">
+            <Card theme={theme} variant="success">
               <Text style={styles.cardLabel}>Route ready</Text>
               <View style={styles.routeHeroRow}>
                 {outsideRoute?.durationSeconds !== null && (

@@ -6,6 +6,7 @@
 import React from 'react';
 import { StyleProp, StyleSheet, View, ViewProps, ViewStyle } from 'react-native';
 
+import { AppTheme } from '../../../services/ThemeService';
 import { radii, staticColors } from '../../../theme';
 
 /**
@@ -20,23 +21,35 @@ const CARD_RADIUS = radii.xxl;
 const CARD_PADDING = 18;
 const CARD_GAP = 10;
 
-const VARIANTS: Record<CardVariant, ViewStyle> = {
-  neutral: { backgroundColor: staticColors.white, borderColor: staticColors.borderLight },
-  warning: { backgroundColor: staticColors.warningBackground, borderColor: staticColors.warning },
-  info: { backgroundColor: staticColors.infoBackground, borderColor: staticColors.infoBorder },
-  error: { backgroundColor: staticColors.dangerBackground, borderColor: staticColors.dangerBorder },
-  success: { backgroundColor: staticColors.white, borderColor: staticColors.infoBorder },
-};
+// neutral/success use the app's surface tokens (theme.card/theme.border) so the card
+// isn't a hardcoded white rectangle in dark mode. warning/info/error keep their fixed
+// pastel status colors — those are semantic accents, not the "light-only surface" bug.
+function variantStyle(variant: CardVariant, theme: AppTheme): ViewStyle {
+  switch (variant) {
+    case 'warning':
+      return { backgroundColor: staticColors.warningBackground, borderColor: staticColors.warning };
+    case 'info':
+      return { backgroundColor: staticColors.infoBackground, borderColor: staticColors.infoBorder };
+    case 'error':
+      return { backgroundColor: staticColors.dangerBackground, borderColor: staticColors.dangerBorder };
+    case 'success':
+      return { backgroundColor: theme.card, borderColor: staticColors.infoBorder };
+    case 'neutral':
+    default:
+      return { backgroundColor: theme.card, borderColor: theme.border };
+  }
+}
 
 interface CardProps extends ViewProps {
+  theme: AppTheme;
   variant?: CardVariant;
   gap?: number;
   style?: StyleProp<ViewStyle>;
 }
 
-export function Card({ variant = 'neutral', gap = CARD_GAP, style, children, ...props }: CardProps) {
+export function Card({ theme, variant = 'neutral', gap = CARD_GAP, style, children, ...props }: CardProps) {
   return (
-    <View style={[styles.base, VARIANTS[variant], { gap }, style]} {...props}>
+    <View style={[styles.base, variantStyle(variant, theme), { gap }, style]} {...props}>
       {children}
     </View>
   );
