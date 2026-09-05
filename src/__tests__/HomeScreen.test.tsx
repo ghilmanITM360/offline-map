@@ -82,6 +82,18 @@ const v1Destination: Place = {
   sourceVersion: 'v1',
 };
 
+// Real IJTEMA_DATA block B2 ("Block 2") — the only block whose `gates` array
+// resolves to actual gate-typed nodes (C1-C4) via PlaceDetailService.getBlockGates,
+// so it's the one block that renders a "Nearby Gates" chip row in LocationSheet.
+const block2Result: Place = {
+  id: 'B2',
+  name: 'Block 2',
+  category: 'Block',
+  description: 'Block 2 — part of Karachi Ijtema ground.',
+  coordinate: { latitude: 24.9685, longitude: 66.999917 },
+  sourceVersion: 'v1',
+};
+
 const v1Route = {
   id: 'route-v1-marker-policy',
   nodes: ['A', 'B'],
@@ -702,9 +714,23 @@ describe('HomeScreen — canonical bottom-sheet dismissal', () => {
     await waitFor(() => expect(cancelPendingSheetPresentationSpy).toHaveBeenCalled());
   }
 
+  // Models the native confirmation that a present()/snapToIndex() call actually landed
+  // (BottomSheetModal reporting an open index) — the real-world event the P0 fix's
+  // pendingNativeSheetEchoRef waits for before treating a later dismiss as genuine. Real
+  // native round-trips are async; this mock fires nothing on its own, so any test whose
+  // dismiss is meant to be a *real* user pan-down (not a same-sheet-replacement echo)
+  // must call this first, exactly as a real device would eventually confirm it.
+  async function settleSheet(index = 1) {
+    const sheetProps = __getLastBottomSheetModalProps();
+    await act(async () => {
+      sheetProps.onChange(index);
+    });
+  }
+
   test('pan-down preview dismissal clears selection, marker, and pending presentation', async () => {
     await render(<HomeScreen />);
     await selectGate();
+    await settleSheet();
     expect(screen.getByTestId('selected-place-marker')).toBeOnTheScreen();
 
     await dismissSheet();
@@ -719,6 +745,7 @@ describe('HomeScreen — canonical bottom-sheet dismissal', () => {
   test('pan-down details dismissal clears DETAILS instead of leaving hidden state', async () => {
     await render(<HomeScreen />);
     const user = await selectGate();
+    await settleSheet();
     await user.press(screen.getByText('Details'));
     expect(screen.getByLabelText('Back')).toBeOnTheScreen();
 
@@ -763,6 +790,10 @@ describe('HomeScreen — canonical bottom-sheet dismissal', () => {
     await render(<HomeScreen />);
     const user = await selectGate();
     await user.press(screen.getByText('Directions'));
+    // The Directions tap re-presents the sheet under a new (route:) identity — model
+    // that the replacement has genuinely landed before treating the coming dismiss as
+    // a real user pan-down rather than the tap's own transient close echo.
+    await settleSheet();
     await act(async () => {
       useAppStore.setState({ routePlannerDest: gateResult });
     });
@@ -843,6 +874,7 @@ describe('HomeScreen — canonical bottom-sheet dismissal', () => {
   test('repeated onDismiss calls are idempotent', async () => {
     await render(<HomeScreen />);
     await selectGate();
+    await settleSheet();
     const sheetProps = __getLastBottomSheetModalProps();
     await act(async () => {
       sheetProps.onChange(-1);
@@ -851,6 +883,128 @@ describe('HomeScreen — canonical bottom-sheet dismissal', () => {
     });
 
     expect(setSelectedPlaceSpy.mock.calls.filter(([place]) => place === null)).toHaveLength(1);
+  });
+
+  // ── P0 regression coverage: BottomSheet identity-transition race ──────────────────
+  // The sheet's programmatic-dismiss guard used to compare two independently-captured
+  // identity snapshots (the FROM identity at arm time vs. whatever was "current" when
+  // the native echo happened to arrive). Once a synchronous identity-changing state
+  // update outran the async native echo, those two snapshots silently stopped meaning
+  // the same thing, and a same-sheet transient echo could wipe out state that had
+  // already moved on. Each test below reproduces one such transition with the echo
+  // deliberately arriving *after* the identity change has already committed — the
+  // "late echo" ordering the old mechanism got wrong.
+  const directionsIdleViewModel = () => ({
+    route: null,
+    startSource: 'live_gps' as const,
+    rememberedLocationAgeLabel: '',
+    rememberedLocationAvailable: false,
+    rememberedLocationInsideVenue: false,
+    currentRouteOriginInsideVenue: true,
+    loadState: 'idle' as const,
+    errorMessage: null,
+    manualStart: null,
+    chooseManualStart: jest.fn(),
+    setIsEditingManualStart: jest.fn(),
+    setManualStartPlace: jest.fn(),
+    chooseCurrentLocation: jest.fn(async () => true),
+    chooseRememberedLocation: jest.fn(() => true),
+    calculateRoute: jest.fn(async () => {}),
+    showManualStartSearch: false,
+  });
+
+  test('P0-1: late dismiss echo from Open Directions arriving after the place->route identity switch does not clear the route', async () => {
+    mockedUseDirectionsViewModel.mockReturnValue(directionsIdleViewModel());
+    await render(<HomeScreen />);
+    const user = await selectGate();
+    await settleSheet();
+
+    await user.press(screen.getByText('Directions'));
+    expect(await screen.findByText('Get Directions')).toBeOnTheScreen();
+    // The transient echo produced by re-presenting the sheet under the new "route:"
+    // identity arrives only now — after setDirectionsDestination has already
+    // committed and currentSheetIdentityRef already reflects "route:GATE_05".
+    const sheetProps = __getLastBottomSheetModalProps();
+    await act(async () => {
+      sheetProps.onChange(-1);
+      sheetProps.onDismiss();
+    });
+
+    expect(screen.getByText('Get Directions')).toBeOnTheScreen();
+    expect(setSelectedPlaceSpy).not.toHaveBeenCalledWith(null);
+  });
+
+  test('P0-2: late dismiss echo from Open Directions does not clear a destination already swapped via Change Destination', async () => {
+    mockedUseDirectionsViewModel.mockReturnValue(directionsIdleViewModel());
+    await render(<HomeScreen />);
+    const user = await selectGate();
+    await settleSheet();
+
+    await user.press(screen.getByText('Directions'));
+    // Deliberately do not settle here — Open Directions' own native echo is still
+    // "in flight" when Change Destination fires next, same as a user tapping through
+    // before the previous transition's round-trip has confirmed.
+    await user.press(await screen.findByLabelText('Change destination'));
+    await user.type(
+      await screen.findByPlaceholderText('Search destination: gate, rasta, block'),
+      'Gate 8',
+    );
+    await user.press(await screen.findByLabelText('Gate 08, Gate'));
+    expect(await screen.findByText('Gate 08')).toBeOnTheScreen();
+
+    const sheetProps = __getLastBottomSheetModalProps();
+    await act(async () => {
+      sheetProps.onChange(-1);
+      sheetProps.onDismiss();
+    });
+
+    expect(screen.getByText('Get Directions')).toBeOnTheScreen();
+    expect(screen.getByText('Gate 08')).toBeOnTheScreen();
+    expect(setSelectedPlaceSpy).not.toHaveBeenCalledWith(null);
+  });
+
+  test('P0-3: late dismiss echo arriving after a rapid reselection has already committed does not clear the newer selection', async () => {
+    await render(<HomeScreen />);
+    const user = await selectGate();
+    const sheetProps = __getLastBottomSheetModalProps();
+    // No settle and no onChange(-1) yet — Gate 5's own native echo has not arrived at
+    // all when the user immediately taps a different object (unlike the existing
+    // "stale dismissal from a previous selection" test above, which fires onChange(-1)
+    // *before* the reselection and was already safe under the old mechanism).
+    await user.press(screen.getByTestId('facility_marker_LM_MASJID_MAIN'));
+    expect(await screen.findByText('Main Masjid')).toBeOnTheScreen();
+
+    await act(async () => {
+      sheetProps.onChange(-1);
+      sheetProps.onDismiss();
+    });
+
+    expect(screen.getByText('Main Masjid')).toBeOnTheScreen();
+    expect(screen.getByTestId('selected-place-marker')).toBeOnTheScreen();
+    expect(setSelectedPlaceSpy).not.toHaveBeenCalledWith(null);
+  });
+
+  test('P0-4: late dismiss echo arriving after selecting a nearby gate from Block details does not clear the gate', async () => {
+    // Block 2 is seeded directly as the selected place (the fake hook's handleSearch
+    // always returns a single fixed gate result regardless of query text, so it can't
+    // be used to search this block into view) — onSelectGate's identity-changing
+    // handlePlaceSelectWithCameraIntent call is what's under test, not how Block 2
+    // itself got selected.
+    mockedUseHomeViewModel.mockImplementation(() => ({ ...useFakeHomeViewModel(), selectedPlace: block2Result }));
+    const user = userEvent.setup();
+    await render(<HomeScreen />);
+    expect(await screen.findByText('Block 2')).toBeOnTheScreen();
+    const sheetProps = __getLastBottomSheetModalProps();
+
+    await user.press(await screen.findByLabelText('Gate C1'));
+
+    await act(async () => {
+      sheetProps.onChange(-1);
+      sheetProps.onDismiss();
+    });
+
+    expect(screen.getByTestId('selected-place-marker')).toBeOnTheScreen();
+    expect(setSelectedPlaceSpy).not.toHaveBeenCalledWith(null);
   });
 });
 
