@@ -400,9 +400,10 @@ describe('HomeScreen — filter chips', () => {
     const gatesChip = screen.getByText('Gates');
     await user.press(gatesChip);
 
-    // The active chip gets bold white text (styles.activeChipText) — real, user-visible output.
+    // The active chip gets bold theme.chipActiveText — real, user-visible output. Same
+    // WCAG-AA-checked token pair the search-results category tile grid already used.
     await waitFor(() => {
-      expect(gatesChip).toHaveStyle({ color: '#FFFFFF', fontWeight: '700' });
+      expect(gatesChip).toHaveStyle({ color: '#174EA6', fontWeight: '700' });
     });
   });
 
