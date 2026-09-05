@@ -11,6 +11,8 @@ import { Layers, Satellite, Map as MapIcon } from 'lucide-react-native';
 import { SheetHandle } from '../common/SheetHandle';
 import { SheetHeader, SHEET_CORNER_RADIUS } from '../common/SheetHeader';
 import { radii, shadows, spacing, staticColors } from '../../../theme';
+import { useTheme } from '../../../services/useTheme';
+import type { AppTheme } from '../../../services/ThemeService';
 
 interface LayersSheetProps {
   visible: boolean;
@@ -27,20 +29,20 @@ interface LayersSheetProps {
   onToggleSpecialRoutes: (val: boolean) => void;
 }
 
-function OverlayRow({ label, value, onChange }: { label: string; value: boolean; onChange: (val: boolean) => void }) {
+function OverlayRow({ label, value, onChange, theme }: { label: string; value: boolean; onChange: (val: boolean) => void; theme: AppTheme }) {
   return (
     <Pressable
-      style={styles.row}
+      style={[styles.row, { borderBottomColor: theme.border }]}
       onPress={() => onChange(!value)}
       accessibilityRole="switch"
       accessibilityLabel={label}
       accessibilityState={{ checked: value }}
     >
-      <Text style={styles.rowLabel}>{label}</Text>
+      <Text style={[styles.rowLabel, { color: theme.text }]}>{label}</Text>
       <Switch
         value={value}
         onValueChange={onChange}
-        trackColor={{ false: staticColors.border, true: staticColors.info }}
+        trackColor={{ false: theme.border, true: theme.accent }}
         thumbColor={staticColors.white}
         importantForAccessibility="no-hide-descendants"
       />
@@ -63,6 +65,7 @@ export function LayersSheet({
   onToggleSpecialRoutes,
 }: LayersSheetProps) {
   const insets = useSafeAreaInsets();
+  const theme = useTheme();
 
   // Modal renders as its own native layer and already blocks touches from reaching the
   // MapView underneath — no extra interaction-lock prop needed here. The caller (HomeScreen)
@@ -71,35 +74,41 @@ export function LayersSheet({
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <Pressable style={styles.backdrop} onPress={onClose} />
-      <View style={[styles.sheet, { paddingBottom: Math.max(insets.bottom, 16) + 12 }]}>
+      <View style={[styles.sheet, { backgroundColor: theme.card, paddingBottom: Math.max(insets.bottom, 16) + 12 }]}>
         <SheetHandle />
-        <SheetHeader title="Map Layers" icon={<Layers size={18} color="#202124" />} onClose={onClose} />
+        <SheetHeader title="Map Layers" icon={<Layers size={18} color={theme.text} />} onClose={onClose} />
 
         <ScrollView bounces={false}>
-          <Text style={styles.sectionLabel}>Map Type</Text>
-          <View style={styles.segmentedControl}>
+          <Text style={[styles.sectionLabel, { color: theme.subtext }]}>Map Type</Text>
+          <View style={[styles.segmentedControl, { backgroundColor: theme.background }]}>
             <Pressable
-              style={[styles.segment, mapType === 'standard' && styles.segmentActive]}
+              style={[styles.segment, mapType === 'standard' && [styles.segmentActive, { backgroundColor: theme.card }]]}
               onPress={() => onMapTypeChange('standard')}
+              accessibilityRole="button"
+              accessibilityLabel="Standard map type"
+              accessibilityState={{ selected: mapType === 'standard' }}
             >
-              <MapIcon size={16} color={mapType === 'standard' ? staticColors.info : staticColors.iconMuted} />
-              <Text style={[styles.segmentText, mapType === 'standard' && styles.segmentTextActive]}>Standard</Text>
+              <MapIcon size={16} color={mapType === 'standard' ? theme.accent : theme.subtext} />
+              <Text style={[styles.segmentText, { color: mapType === 'standard' ? theme.accent : theme.subtext }]}>Standard</Text>
             </Pressable>
             <Pressable
-              style={[styles.segment, mapType === 'satellite' && styles.segmentActive]}
+              style={[styles.segment, mapType === 'satellite' && [styles.segmentActive, { backgroundColor: theme.card }]]}
               onPress={() => onMapTypeChange('satellite')}
+              accessibilityRole="button"
+              accessibilityLabel="Satellite map type"
+              accessibilityState={{ selected: mapType === 'satellite' }}
             >
-              <Satellite size={16} color={mapType === 'satellite' ? staticColors.info : staticColors.iconMuted} />
-              <Text style={[styles.segmentText, mapType === 'satellite' && styles.segmentTextActive]}>Satellite</Text>
+              <Satellite size={16} color={mapType === 'satellite' ? theme.accent : theme.subtext} />
+              <Text style={[styles.segmentText, { color: mapType === 'satellite' ? theme.accent : theme.subtext }]}>Satellite</Text>
             </Pressable>
           </View>
 
-          <Text style={styles.sectionLabel}>Show on Map</Text>
-          <View style={styles.overlayGroup}>
-            <OverlayRow label="Blocks" value={showBlockPolygons} onChange={onToggleBlocks} />
-            <OverlayRow label="Gates" value={showGatesLayer} onChange={onToggleGates} />
-            <OverlayRow label="Rastas" value={showRastasLayer} onChange={onToggleRastas} />
-            <OverlayRow label="Shahr-e-Pindal" value={showSpecialRoutesLayer} onChange={onToggleSpecialRoutes} />
+          <Text style={[styles.sectionLabel, { color: theme.subtext }]}>Show on Map</Text>
+          <View style={[styles.overlayGroup, { backgroundColor: theme.background }]}>
+            <OverlayRow label="Blocks" value={showBlockPolygons} onChange={onToggleBlocks} theme={theme} />
+            <OverlayRow label="Gates" value={showGatesLayer} onChange={onToggleGates} theme={theme} />
+            <OverlayRow label="Rastas" value={showRastasLayer} onChange={onToggleRastas} theme={theme} />
+            <OverlayRow label="Shahr-e-Pindal" value={showSpecialRoutesLayer} onChange={onToggleSpecialRoutes} theme={theme} />
           </View>
         </ScrollView>
       </View>
@@ -113,7 +122,6 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.35)',
   },
   sheet: {
-    backgroundColor: staticColors.white,
     borderTopLeftRadius: SHEET_CORNER_RADIUS,
     borderTopRightRadius: SHEET_CORNER_RADIUS,
     paddingHorizontal: spacing.xl,
@@ -124,7 +132,6 @@ const styles = StyleSheet.create({
   sectionLabel: {
     fontSize: 13,
     fontWeight: '600',
-    color: staticColors.iconMuted,
     textTransform: 'uppercase',
     letterSpacing: 0.4,
     marginTop: spacing.lg,
@@ -132,7 +139,6 @@ const styles = StyleSheet.create({
   },
   segmentedControl: {
     flexDirection: 'row',
-    backgroundColor: '#F1F3F4',
     borderRadius: radii.md,
     padding: 4,
     gap: 4,
@@ -147,19 +153,13 @@ const styles = StyleSheet.create({
     borderRadius: radii.md - 3,
   },
   segmentActive: {
-    backgroundColor: staticColors.white,
     ...shadows.low,
   },
   segmentText: {
     fontSize: 15,
     fontWeight: '500',
-    color: staticColors.iconMuted,
-  },
-  segmentTextActive: {
-    color: staticColors.info,
   },
   overlayGroup: {
-    backgroundColor: '#F8F9FA',
     borderRadius: radii.md,
     overflow: 'hidden',
   },
@@ -170,12 +170,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.lg,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#E8EAED',
     minHeight: 56,
   },
   rowLabel: {
     fontSize: 16,
-    color: '#202124',
     fontWeight: '500',
   },
 });
