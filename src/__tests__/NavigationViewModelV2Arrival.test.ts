@@ -150,16 +150,23 @@ describe('NavigationViewModelV2 arrival latch', () => {
     expect(hook.result.current.arrived).toBe(false);
   });
 
-  test('a fix swallowed by the poor-accuracy-movement filter does not reset pending corroboration', async () => {
+  test('R1: a genuinely new fix swallowed by the poor-accuracy-movement filter still breaks pending arrival corroboration', async () => {
+    // Former expectation here was that a fix "swallowed" by shouldIgnorePoorAccuracyMovementV2
+    // (used to gate movement/off-route/reroute processing) was invisible to arrival evidence too,
+    // so it could not reset pending moderate-path corroboration. That was unsafe: the filter only
+    // means "don't treat this as movement for reroute purposes" — it is still a genuinely new
+    // sensor observation, and 22-good -> 90-poor -> 22-good must stay NOT ARRIVED (the poor fix
+    // breaks the two-consecutive-fix requirement) just like any other disqualifying accuracy.
     const hook = await renderHook(() => useNavigationViewModelV2());
     await pushFix(hook, 10, 22);
     expect(hook.result.current.arrived).toBe(false);
     // accuracy>50 and (near-zero) movement from the last accepted fix is swallowed by
-    // shouldIgnorePoorAccuracyMovementV2 before arrival is ever evaluated for it — it must not
-    // count as a disqualifying observation.
+    // shouldIgnorePoorAccuracyMovementV2 for movement/off-route purposes, but arrival evidence
+    // must still see it and treat it as disqualifying (accuracy 90 > moderate ceiling).
     await pushFix(hook, 10, 90);
-    expect(hook.result.current.arrived).toBe(false);
     await pushFix(hook, 10, 22, 46);
+    expect(hook.result.current.arrived).toBe(false);
+    await pushFix(hook, 10, 22, 47);
     expect(hook.result.current.arrived).toBe(true);
   });
 
@@ -179,6 +186,27 @@ describe('NavigationViewModelV2 arrival latch', () => {
 
     await pushFix(hook, 10, 22, 46);
     expect(hook.result.current.arrived).toBe(false);
+  });
+
+  test('R3: undefined/NaN/negative accuracy at destination never arrives or corroborates', async () => {
+    const hook = await renderHook(() => useNavigationViewModelV2());
+    await pushFix(hook, 10, undefined as unknown as number);
+    expect(hook.result.current.arrived).toBe(false);
+    await pushFix(hook, 10, NaN, 46);
+    expect(hook.result.current.arrived).toBe(false);
+    await pushFix(hook, 10, -1, 47);
+    expect(hook.result.current.arrived).toBe(false);
+    await pushFix(hook, 10, Infinity, 48);
+    expect(hook.result.current.arrived).toBe(false);
+    // A prior qualifying moderate fix's pending corroboration must not survive an invalid-accuracy
+    // observation in between (it is a genuinely new sensor sample, just an untrustworthy one).
+    await pushFix(hook, 10, 22, 49);
+    expect(hook.result.current.arrived).toBe(false);
+    await pushFix(hook, 10, undefined as unknown as number, 50);
+    await pushFix(hook, 10, 22, 51);
+    expect(hook.result.current.arrived).toBe(false);
+    await pushFix(hook, 10, 22, 52);
+    expect(hook.result.current.arrived).toBe(true);
   });
 
   test('10. weak fixes then a good (<=15m accuracy) fix arrives', async () => {
@@ -249,6 +277,37 @@ describe('NavigationViewModelV2 arrival latch', () => {
       useAppStore.getState().startNavigation(destinationPlace, sharedActiveRoute, sharedActiveRoute.instructions),
     );
     expect(hook.result.current.arrived).toBe(false);
+  });
+
+  test('R2 probe: Done then a new trip must not re-arrive on the stale pre-Done fix before any fresh GPS', async () => {
+    const hook = await renderHook(() => useNavigationViewModelV2());
+    await pushFix(hook, 10, 10);
+    expect(hook.result.current.arrived).toBe(true);
+    await act(async () => useAppStore.getState().stopNavigation());
+    expect(hook.result.current.arrived).toBe(false);
+    // New trip starts, but currentLocation in the store is still the stale arrival fix from the
+    // finished trip — no fresh GPS observation has arrived yet for the new session.
+    await act(async () =>
+      useAppStore.getState().startNavigation(destinationPlace, sharedActiveRoute, sharedActiveRoute.instructions),
+    );
+    expect(hook.result.current.arrived).toBe(false);
+  });
+
+  test('R8: ARRIVED suppresses automatic reroute even under sustained off-route drift', async () => {
+    const hook = await renderHook(() => useNavigationViewModelV2());
+    await pushFix(hook, 10, 10);
+    expect(hook.result.current.arrived).toBe(true);
+    const originalRouteId = hook.result.current.route?.routeId;
+    // Three consecutive far-off-route, well-separated, good-accuracy fixes — comfortably past
+    // shouldTriggerReroute's consecutiveOffRouteCount>=3 / movedDistance>=12 thresholds — would
+    // fire an automatic reroute pre-arrival. Post-arrival, ARRIVED is terminal: this must not
+    // start a reroute or replace the route.
+    await pushFix(hook, 150, 10, 90);
+    await pushFix(hook, 150, 10, 100);
+    await pushFix(hook, 150, 10, 110);
+    expect(hook.result.current.reroutePending).toBe(false);
+    expect(hook.result.current.route?.routeId).toBe(originalRouteId);
+    expect(hook.result.current.arrived).toBe(true);
   });
 
   test('18. repeated post-arrival qualifying fixes do not disturb the latch', async () => {

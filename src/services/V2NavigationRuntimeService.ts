@@ -65,6 +65,18 @@ export interface ArrivalFixEvaluationV2 {
  * outside distance or beyond the moderate ceiling never arrives and clears pending evidence, so a
  * single disqualifying fix between two moderate fixes forces the corroboration to restart.
  */
+/**
+ * Untrusted accuracy (undefined/null/NaN/Infinity/<=0) must never qualify as arrival evidence —
+ * mapped to Infinity so it always fails evaluateArrivalFixV2's accuracy ceiling, both for
+ * fast/moderate-path qualification and for breaking a pending moderate corroboration (an
+ * untrustworthy fix is still a genuinely new sensor observation, just not usable evidence).
+ */
+export function sanitizeArrivalAccuracyM(accuracyM: number | undefined | null): number {
+  return typeof accuracyM === 'number' && Number.isFinite(accuracyM) && accuracyM > 0
+    ? accuracyM
+    : Number.POSITIVE_INFINITY;
+}
+
 export function evaluateArrivalFixV2(input: {
   distanceToDestinationM: number;
   accuracyM: number;

@@ -32,6 +32,7 @@ import {
   GPS_LOST_TIMEOUT_MS,
   GpsSignalStateV2,
   keepCurrentRouteAfterRerouteFailureV2,
+  sanitizeArrivalAccuracyM,
   shouldIgnorePoorAccuracyMovementV2,
 } from '../services/V2NavigationRuntimeService';
 import { ARRIVAL_THRESHOLD_METERS } from '../constants/navigation';
@@ -151,6 +152,16 @@ export function useNavigationViewModelV2() {
   // the same physical fix twice and false-corroborate on it. Tracks the currentLocation object
   // last fed into arrival evaluation so a same-fix re-run of the effect is skipped there.
   const lastArrivalFixLocationRef = useRef<Coordinate | null>(null);
+  // Same-observation check for lastArrivalFixLocationRef: prefer native GPS timestamp identity
+  // (observedAtMs, set by GPSManagerService from Expo's LocationObject.timestamp) when both
+  // sides have one — this is what actually identifies "the same physical sensor sample" and
+  // dedupes a forceFix/watch race delivering the same fix twice. Falls back to object identity
+  // when either side lacks it (e.g. tests that construct fixes without observedAtMs).
+  const isSameGpsObservation = (a: Coordinate, b: Coordinate | null): boolean => {
+    if (!b) return false;
+    if (a.observedAtMs != null && b.observedAtMs != null) return a.observedAtMs === b.observedAtMs;
+    return a === b;
+  };
   const lastRerouteAtRef = useRef(0);
   const lastSpokenInstructionIdRef = useRef<string | null>(null);
   const outsideRequestCoordinatorRef = useRef(new OutsideRouteRequestCoordinator());
@@ -168,7 +179,12 @@ export function useNavigationViewModelV2() {
     setArrived(false);
     arrivedRef.current = false;
     pendingArrivalCorroborationRef.current = false;
-    lastArrivalFixLocationRef.current = null;
+    // Deliberately NOT touching lastArrivalFixLocationRef here: it already holds whatever
+    // observation was last consumed as arrival evidence (or its initial `null`, if none ever
+    // was). Leaving it alone is what lets a fresh mount's already-known ambient location count as
+    // this session's first fix, while a stale fix already consumed by the trip that just ended
+    // (arrive -> Done -> start again with no new GPS) is correctly recognized as "already seen"
+    // and excluded — see isSameGpsObservation below.
   }, [navigationSessionId]);
 
   // Per-trip arrival reset #2: Done/cancel, i.e. `route` becoming null (isNavigating false, or
@@ -179,7 +195,8 @@ export function useNavigationViewModelV2() {
     setArrived(false);
     arrivedRef.current = false;
     pendingArrivalCorroborationRef.current = false;
-    lastArrivalFixLocationRef.current = null;
+    // See the matching comment in the navigationSessionId reset above: lastArrivalFixLocationRef
+    // is deliberately left alone here too.
     // This hook runs unconditionally inside HomeScreen for the app's lifetime, so without this a
     // stale `arrived: true` from a previous trip would survive exit and immediately re-trigger
     // MapMode.ARRIVAL the next time navigation starts, before any GPS update has run to correct it.
@@ -394,6 +411,27 @@ export function useNavigationViewModelV2() {
     const movedDistanceM = lastAcceptedLocationRef.current
       ? getDistance(lastAcceptedLocationRef.current, currentLocation)
       : Infinity;
+
+    // Arrival evidence runs for every genuinely new sensor observation BEFORE the
+    // poor-accuracy-movement filter below can hide it. That filter only means "don't treat this
+    // as movement for reroute/progress purposes" — it is still a real new GPS fix, and a
+    // disqualifying one (out of radius, or beyond the moderate-accuracy ceiling) must still break
+    // any pending moderate-path corroboration, exactly like any other disqualifying fix would.
+    if (!arrivedRef.current && !isSameGpsObservation(currentLocation, lastArrivalFixLocationRef.current)) {
+      lastArrivalFixLocationRef.current = currentLocation;
+      const evaluation = evaluateArrivalFixV2({
+        distanceToDestinationM: getDistance(currentLocation, route.destination.coordinate),
+        accuracyM: sanitizeArrivalAccuracyM(currentLocation.accuracy),
+        hasPendingCorroboration: pendingArrivalCorroborationRef.current,
+        arrivalThresholdM: ARRIVAL_THRESHOLD_METERS,
+      });
+      pendingArrivalCorroborationRef.current = evaluation.pendingCorroboration;
+      if (evaluation.arrived) {
+        arrivedRef.current = true;
+        setArrived(true);
+      }
+    }
+
     if (shouldIgnorePoorAccuracyMovementV2({ movedDistanceM, accuracyM })) {
       setIsWeakGps(true);
       setGpsSignalState(deriveGpsSignalStateV2({ isWeakGps: true, lastFixAtMs: fixAtMs, nowMs: fixAtMs }));
@@ -417,24 +455,6 @@ export function useNavigationViewModelV2() {
     setRemainingDistance(progress.remainingDistanceM);
     setEtaMinutes(progress.etaMinutes);
 
-    // Latch only: once arrived, this trip never un-arrives from a later fix (drift, overshoot,
-    // or renewed poor accuracy) — only the reset effects above (new navigationSessionId, or
-    // route becoming null) may clear it.
-    if (!arrivedRef.current && currentLocation !== lastArrivalFixLocationRef.current) {
-      lastArrivalFixLocationRef.current = currentLocation;
-      const evaluation = evaluateArrivalFixV2({
-        distanceToDestinationM: getDistance(currentLocation, route.destination.coordinate),
-        accuracyM,
-        hasPendingCorroboration: pendingArrivalCorroborationRef.current,
-        arrivalThresholdM: ARRIVAL_THRESHOLD_METERS,
-      });
-      pendingArrivalCorroborationRef.current = evaluation.pendingCorroboration;
-      if (evaluation.arrived) {
-        arrivedRef.current = true;
-        setArrived(true);
-      }
-    }
-
     const nextIndex = Math.max(currentStepIndex, instructionIndexForProgress(route, progress.progressMeters));
     if (nextIndex !== currentStepIndex) {
       setCurrentStepIndex(nextIndex);
@@ -448,6 +468,14 @@ export function useNavigationViewModelV2() {
 
     const thresholdM = RerouteService.getDynamicOffRouteThresholdMeters(accuracyM);
     if (route.outsideRoute?.provider === 'direct-guide' && !EntryGateRoutingService.isInsideIjtemaArea(currentLocation)) {
+      return;
+    }
+    if (arrivedRef.current) {
+      // ARRIVED is terminal for this navigation session — automatic reroute must never re-fire
+      // afterward (drift, venue-boundary crossing, etc.). Only user Done/Cancel or an explicit
+      // new navigation session may move the trip on from here.
+      consecutiveOffRouteRef.current = 0;
+      offRouteStartRef.current = null;
       return;
     }
     const isOffRoute = progress.distanceToRouteMeters > thresholdM;

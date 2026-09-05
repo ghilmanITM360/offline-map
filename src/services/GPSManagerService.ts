@@ -133,7 +133,13 @@ class GPSManager {
       // undefined (not 0) when the device has no reliable heading — 0 is a valid
       // "facing true north" reading and must stay distinguishable from "unknown".
       heading: location.coords.heading == null || location.coords.heading < 0 ? undefined : location.coords.heading,
-      accuracy: location.coords.accuracy ?? 0, // fixed: normalize null/undefined accuracy values coming from Expo Location
+      // Untrusted accuracy (null/undefined/NaN/<=0) is left undefined rather than normalized to
+      // 0 — for navigation arrival evidence, 0 would read as perfect accuracy and wrongly permit
+      // fast-path arrival/corroboration on evidence that never actually qualified.
+      accuracy: Number.isFinite(location.coords.accuracy) && (location.coords.accuracy as number) > 0
+        ? (location.coords.accuracy as number)
+        : undefined,
+      observedAtMs: location.timestamp,
     };
 
     // Update global store via the injected callback (no direct store import)
