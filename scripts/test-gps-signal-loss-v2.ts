@@ -142,8 +142,8 @@ assert(
   'Navigation v2 view model must return gpsSignalState to its consumers',
 );
 
-// Critical constraint: GPS_LOST must be purely a display-state concern. attemptReroute and
-// isArrived must stay completely unaware of it.
+// Critical constraint: GPS_LOST must be purely a display-state concern. attemptReroute and the
+// arrival-latch evaluation must stay completely unaware of it.
 const attemptRerouteStart = navigationViewModelSource.indexOf('const attemptReroute = useCallback');
 const attemptRerouteEnd = navigationViewModelSource.indexOf('\n\n', attemptRerouteStart);
 assert(attemptRerouteStart >= 0 && attemptRerouteEnd > attemptRerouteStart, 'attemptReroute definition must be found');
@@ -153,13 +153,21 @@ assert(
   'attemptReroute must stay completely unaware of GPS_LOST — GPS loss must never itself trigger a reroute',
 );
 
-const isArrivedStart = navigationViewModelSource.indexOf('function isArrived(');
-const isArrivedEnd = navigationViewModelSource.indexOf('\n}', isArrivedStart);
-assert(isArrivedStart >= 0 && isArrivedEnd > isArrivedStart, 'isArrived definition must be found');
-const isArrivedBody = navigationViewModelSource.slice(isArrivedStart, isArrivedEnd);
+// Arrival is decided by evaluateArrivalFixV2 (V2NavigationRuntimeService), called from a guarded
+// block in the view model's location effect (NavigationViewModelV2 no longer has a standalone
+// isArrived function — the accuracy-aware fast/moderate-path latch lives in that pure function).
+const arrivalBlockStart = navigationViewModelSource.indexOf('if (!arrivedRef.current');
+const arrivalBlockEnd = navigationViewModelSource.indexOf('\n\n', arrivalBlockStart);
+assert(arrivalBlockStart >= 0 && arrivalBlockEnd > arrivalBlockStart, 'arrival-latch evaluation block must be found');
+const arrivalBlockBody = navigationViewModelSource.slice(arrivalBlockStart, arrivalBlockEnd);
 assert(
-  !isArrivedBody.includes('gpsSignalState') && !isArrivedBody.includes('GPS_LOST'),
-  'isArrived must stay completely unaware of GPS_LOST — arrival detection must be unaffected by signal-loss display state',
+  !arrivalBlockBody.includes('gpsSignalState') && !arrivalBlockBody.includes('GPS_LOST'),
+  'arrival-latch evaluation must stay completely unaware of GPS_LOST — arrival detection must be unaffected by signal-loss display state',
+);
+const runtimeServiceEvaluateArrivalSource = runtimeServiceSource.includes('export function evaluateArrivalFixV2(');
+assert(
+  runtimeServiceEvaluateArrivalSource,
+  'V2NavigationRuntimeService must expose the pure arrival-fix evaluation function',
 );
 
 // The banner reuses the exact existing weak-GPS banner mechanism (same styles) rather than

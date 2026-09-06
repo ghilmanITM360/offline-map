@@ -8,6 +8,11 @@ export interface Coordinate {
   longitude: number;
   heading?: number;
   accuracy?: number;
+  /** Native GPS fix timestamp (epoch ms, from Expo LocationObject.timestamp) — set only on
+   * live-navigation fixes published by GPSManagerService. Identifies the physical sensor
+   * observation so duplicate deliveries (e.g. forceFix racing the ambient watch subscription)
+   * can be deduped by sensor identity instead of JS object reference. */
+  observedAtMs?: number;
 }
 
 export type LocationSource = 'live' | 'device_last_known' | 'remembered' | 'manual';

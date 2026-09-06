@@ -8,6 +8,14 @@
 // v1/v2 isolation boundary enforced by test:v1-v2-isolation.
 export const ARRIVAL_THRESHOLD_METERS = 20;
 
+// v2-only arrival accuracy gates (NavigationViewModelV2's per-trip arrival latch). At or below
+// the fast-path accuracy, one qualifying fix is enough to latch arrival; above it (through the
+// moderate-path ceiling) two *consecutive* qualifying fixes are required; beyond the moderate
+// ceiling, no amount of corroboration may latch arrival — poor accuracy must never widen the
+// ARRIVAL_THRESHOLD_METERS radius.
+export const ARRIVAL_FAST_PATH_ACCURACY_M = 15;
+export const ARRIVAL_MODERATE_PATH_ACCURACY_M = 25;
+
 // Minimum ms between fixes requested from watchPositionAsync while GPSManagerService is in
 // 'navigation' mode (a listener is registered with this mode for the whole time
 // NavigationViewModelV2 is driving live navigation — see its
