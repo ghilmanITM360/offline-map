@@ -324,6 +324,44 @@ describe('NavigationViewModelV2 arrival latch', () => {
     expect(hook.result.current.arrived).toBe(true);
   });
 
+  test('R9: ARRIVED survives an inside-venue -> outside-venue boundary crossing (no automatic reroute, navigation stays active)', async () => {
+    // Historical runtime anomaly: a post-arrival venue-boundary crossing (destination is inside
+    // an IJTEMA_BLOCKS polygon, `origin` above resolves outside it — see
+    // EntryGateRoutingService.isInsideIjtemaArea) risked re-entering the outside-routing branch
+    // of attemptReroute and resurrecting active navigation after ARRIVED. The arrivedRef.current
+    // terminal check in NavigationViewModelV2's location effect must short-circuit before that
+    // branch is ever reached, regardless of which side of the boundary the drifting fix lands on.
+    const hook = await renderHook(() => useNavigationViewModelV2());
+    const originalRouteId = hook.result.current.route?.routeId;
+
+    // Arrive at the (inside-venue) destination.
+    await pushFix(hook, 10, 10);
+    expect(hook.result.current.arrived).toBe(true);
+
+    // Post-arrival fix still inside the venue.
+    await act(async () => {
+      useAppStore.setState({
+        currentLocation: { ...sharedActiveRoute.destination.coordinate, accuracy: 10 },
+        currentLocationSource: 'live',
+      });
+    });
+    expect(hook.result.current.arrived).toBe(true);
+    expect(hook.result.current.reroutePending).toBe(false);
+
+    // Post-arrival fix outside the venue (crosses the boundary) — must not un-arrive or reroute.
+    await act(async () => {
+      useAppStore.setState({
+        currentLocation: { ...origin, accuracy: 10 },
+        currentLocationSource: 'live',
+      });
+    });
+    expect(hook.result.current.arrived).toBe(true);
+    expect(hook.result.current.reroutePending).toBe(false);
+    expect(hook.result.current.route?.routeId).toBe(originalRouteId);
+    // Active navigation must not resurrect into a fresh (non-arrived) state.
+    expect(hook.result.current.route).not.toBeNull();
+  });
+
   test('18. repeated post-arrival qualifying fixes do not disturb the latch', async () => {
     const hook = await renderHook(() => useNavigationViewModelV2());
     await pushFix(hook, 10, 10);
