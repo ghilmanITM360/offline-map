@@ -68,6 +68,20 @@ async function pushFix(hook: Hook, distanceM: number, accuracy: number, bearing 
   return hook.result.current.arrived;
 }
 
+// Same as pushFix but stamps observedAtMs — the native-GPS-timestamp identity
+// GPSManagerService attaches to every real fix (see Coordinate.observedAtMs) and the only
+// identity isSameGpsObservation trusts for dedupe once it's present on both sides.
+async function pushFixAt(hook: Hook, distanceM: number, accuracy: number, observedAtMs: number, bearing = 45) {
+  const point = nearDestination(distanceM, bearing);
+  await act(async () => {
+    useAppStore.setState({
+      currentLocation: { latitude: point.latitude, longitude: point.longitude, accuracy, observedAtMs },
+      currentLocationSource: 'live',
+    });
+  });
+  return hook.result.current.arrived;
+}
+
 function rerouteWithinSameSession() {
   const rerouted: V2ActiveRoute = { ...sharedActiveRoute, routeId: `${sharedActiveRoute.routeId}-rerouted` };
   return act(async () => useAppStore.getState().setActiveRoute(rerouted));
@@ -316,6 +330,37 @@ describe('NavigationViewModelV2 arrival latch', () => {
     expect(hook.result.current.arrived).toBe(true);
     await pushFix(hook, 10, 10, 46);
     await pushFix(hook, 10, 12, 47);
+    expect(hook.result.current.arrived).toBe(true);
+  });
+
+  test('H4: replaying the identical observedAtMs does not count as a second corroborating fix', async () => {
+    const hook = await renderHook(() => useNavigationViewModelV2());
+    // First moderate-path fix: qualifies, awaits corroboration.
+    await pushFixAt(hook, 10, 22, 1000);
+    expect(hook.result.current.arrived).toBe(false);
+    // Same physical sensor sample delivered twice (e.g. forceFix racing the ambient watch) must
+    // be ignored entirely by arrival evidence, not consumed as the corroborating second fix.
+    await pushFixAt(hook, 10, 22, 1000);
+    expect(hook.result.current.arrived).toBe(false);
+    // A genuinely new observation (new observedAtMs) still corroborates normally.
+    await pushFixAt(hook, 10, 22, 2000, 46);
+    expect(hook.result.current.arrived).toBe(true);
+  });
+
+  test('next navigation session does not reuse the previous session\'s observedAtMs fix', async () => {
+    const hook = await renderHook(() => useNavigationViewModelV2());
+    await pushFixAt(hook, 10, 10, 1000);
+    expect(hook.result.current.arrived).toBe(true);
+    await act(async () => useAppStore.getState().stopNavigation());
+    expect(hook.result.current.arrived).toBe(false);
+    await act(async () =>
+      useAppStore.getState().startNavigation(destinationPlace, sharedActiveRoute, sharedActiveRoute.instructions),
+    );
+    // Store still holds the stale pre-Done fix (same observedAtMs) — no fresh GPS observation
+    // has arrived yet for the new session, so it must not resurrect arrival.
+    expect(hook.result.current.arrived).toBe(false);
+    // A fresh observation (new observedAtMs) in the new session arrives normally.
+    await pushFixAt(hook, 10, 10, 2000, 46);
     expect(hook.result.current.arrived).toBe(true);
   });
 });
