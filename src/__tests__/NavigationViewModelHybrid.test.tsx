@@ -182,4 +182,185 @@ describe('NavigationViewModelV2 hybrid rerouting', () => {
     await waitFor(() => expect(useAppStore.getState().reroutePending).toBe(false));
     previewSpy.mockRestore();
   });
+
+  // NEW-01 R1: real hook, realistic pedestrian GPS cadence (~2m/fix — GPSManagerService's own
+  // navigation-mode distanceInterval). "Moved distance" evidence measured between consecutive
+  // fixes never crosses shouldTriggerReroute's 12m gate at this cadence even after sustained
+  // off-route walking; it must be measured cumulatively from a stable off-route anchor instead.
+  test('R1: sustained 2m-cadence off-route walking triggers exactly one automatic reroute', async () => {
+    const previewSpy = jest
+      .spyOn(V2DirectionsService, 'calculateHybridPreview')
+      .mockResolvedValue({ status: 'unavailable', route: null, instructions: [], message: 'No replacement.' });
+    await renderHook(() => useNavigationViewModelV2());
+
+    const metersPerDegLat = 111320;
+    const baseLat = 24.985;
+    const longitude = 67.02;
+    const stepMeters = 2;
+    const steps = 18; // 18 * 2m = 36m cumulative anchor displacement, well past the 12m bar
+
+    for (let i = 0; i < steps; i++) {
+      const point = { latitude: baseLat + (i * stepMeters) / metersPerDegLat, longitude, accuracy: 5 };
+      await act(async () => useAppStore.setState({ currentLocation: point, currentLocationSource: 'live' }));
+    }
+
+    expect(previewSpy).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(useAppStore.getState().reroutePending).toBe(false));
+    previewSpy.mockRestore();
+  });
+
+  // NEW-01 R2: bounded GPS jitter around a fixed off-route point (never more than ~10m from the
+  // anchor, well under the 12m evidence gate) must never accumulate into a reroute, however many
+  // fixes arrive — proves the anchor model rejects noise instead of just rejecting slow movement.
+  test('R2: bounded stationary GPS jitter does not trigger an automatic reroute', async () => {
+    const previewSpy = jest
+      .spyOn(V2DirectionsService, 'calculateHybridPreview')
+      .mockResolvedValue({ status: 'unavailable', route: null, instructions: [], message: 'No replacement.' });
+    await renderHook(() => useNavigationViewModelV2());
+
+    const metersPerDegLat = 111320;
+    const baseLat = 24.985;
+    const longitude = 67.02;
+    const jitterOffsetsM = [0, 3, -2, 4, -3, 2, -4, 3, -1, 4, -2, 3];
+
+    for (const offsetM of jitterOffsetsM) {
+      const point = { latitude: baseLat + offsetM / metersPerDegLat, longitude, accuracy: 5 };
+      await act(async () => useAppStore.setState({ currentLocation: point, currentLocationSource: 'live' }));
+    }
+
+    expect(previewSpy).not.toHaveBeenCalled();
+    previewSpy.mockRestore();
+  });
+
+  // NEW-01 R4: off-route evidence must restart from zero once the user returns on-route — a
+  // stale anchor surviving the return could let a short second excursion look, from the OLD
+  // anchor's point of view, like it already crossed the 12m bar.
+  test('R4: returning on-route resets the off-route anchor for the next excursion', async () => {
+    const previewSpy = jest
+      .spyOn(V2DirectionsService, 'calculateHybridPreview')
+      .mockResolvedValue({ status: 'unavailable', route: null, instructions: [], message: 'No replacement.' });
+    await renderHook(() => useNavigationViewModelV2());
+
+    const metersPerDegLat = 111320;
+    const farAnchor = { latitude: 24.985, longitude: 67.02 }; // off-route, per R1 above
+    // ~15m north of farAnchor — still off-route, and far enough from farAnchor that measuring
+    // from the STALE anchor (bug) vs the reset anchor (fix) gives different verdicts below.
+    const secondExcursionStart = { latitude: farAnchor.latitude + 15 / metersPerDegLat, longitude: farAnchor.longitude };
+
+    // First excursion: one off-route fix, anchored at farAnchor.
+    await act(async () => useAppStore.setState({
+      currentLocation: { ...farAnchor, accuracy: 5 },
+      currentLocationSource: 'live',
+    }));
+
+    // Return on-route: resets count/timer/anchor.
+    await act(async () => useAppStore.setState({ currentLocation: { ...origin, accuracy: 5 }, currentLocationSource: 'live' }));
+    expect(previewSpy).not.toHaveBeenCalled();
+
+    // Second excursion: 3 fixes (satisfies the count>=3 gate) drifting only ~2m total from its
+    // own start — under 12m from the correct (reset) anchor, but ~15-17m from the stale one.
+    for (const stepM of [0, 1, 2]) {
+      const point = {
+        latitude: secondExcursionStart.latitude + stepM / metersPerDegLat,
+        longitude: secondExcursionStart.longitude,
+        accuracy: 5,
+      };
+      await act(async () => useAppStore.setState({ currentLocation: point, currentLocationSource: 'live' }));
+    }
+
+    expect(previewSpy).not.toHaveBeenCalled();
+    previewSpy.mockRestore();
+  });
+
+  // NEW-01 R5: off-route evidence from a trip that ended (Done/Cancel) before reaching the
+  // reroute gates must not seed the very next trip — otherwise a leftover count/anchor could
+  // combine with the new trip's first real fix into a false-positive reroute.
+  test('R5: off-route evidence does not survive Done/Cancel into the next trip', async () => {
+    const previewSpy = jest
+      .spyOn(V2DirectionsService, 'calculateHybridPreview')
+      .mockResolvedValue({ status: 'unavailable', route: null, instructions: [], message: 'No replacement.' });
+    const hook = await renderHook(() => useNavigationViewModelV2());
+
+    // Trip A: 2 off-route fixes (below the count>=3 gate) far from trip B's route, then Done.
+    const staleAnchor = { latitude: 24.99, longitude: 67.03 };
+    await act(async () => useAppStore.setState({ currentLocation: { ...staleAnchor, accuracy: 5 }, currentLocationSource: 'live' }));
+    await act(async () => useAppStore.setState({
+      currentLocation: { latitude: staleAnchor.latitude + 3 / 111320, longitude: staleAnchor.longitude, accuracy: 5 },
+      currentLocationSource: 'live',
+    }));
+    expect(previewSpy).not.toHaveBeenCalled();
+    await act(async () => hook.result.current.handleExit());
+
+    // Trip B: fresh route, first fix is off-route and far from staleAnchor. If evidence leaked,
+    // this single fix would push count to 3 (2 + 1) with a huge stale-anchor distance — an
+    // immediate false reroute on the very first fix of the new trip.
+    await act(async () => {
+      useAppStore.getState().startNavigation(destination, sharedActiveRoute, sharedActiveRoute.instructions);
+      useAppStore.setState({ currentLocation: { latitude: 24.985, longitude: 67.02, accuracy: 5 }, currentLocationSource: 'live' });
+    });
+
+    expect(previewSpy).not.toHaveBeenCalled();
+    previewSpy.mockRestore();
+  });
+
+  // NEW-01 R6: a successful reroute must reset the anchor relative to the replacement route —
+  // otherwise leftover pre-reroute evidence could immediately re-fire against the new route.
+  test('R6: a successful reroute resets off-route evidence for the replacement route', async () => {
+    const previewSpy = jest.spyOn(V2DirectionsService, 'calculateHybridPreview').mockResolvedValue({
+      status: 'ready',
+      route: sharedActiveRoute,
+      instructions: sharedActiveRoute.instructions,
+    } as Awaited<ReturnType<typeof V2DirectionsService.calculateHybridPreview>>);
+    await renderHook(() => useNavigationViewModelV2());
+
+    const metersPerDegLat = 111320;
+    const baseLat = 24.985;
+    const longitude = 67.02;
+
+    for (let i = 0; i < 18; i++) {
+      const point = { latitude: baseLat + (i * 2) / metersPerDegLat, longitude, accuracy: 5 };
+      await act(async () => useAppStore.setState({ currentLocation: point, currentLocationSource: 'live' }));
+    }
+    await waitFor(() => expect(useAppStore.getState().reroutePending).toBe(false));
+    expect(previewSpy).toHaveBeenCalledTimes(1);
+
+    // One more off-route fix right after the successful reroute: if evidence weren't reset, this
+    // alone (count already >=3, anchor already far away) could immediately re-fire.
+    await act(async () => useAppStore.setState({
+      currentLocation: { latitude: baseLat + (18 * 2) / metersPerDegLat, longitude, accuracy: 5 },
+      currentLocationSource: 'live',
+    }));
+
+    expect(previewSpy).toHaveBeenCalledTimes(1);
+    previewSpy.mockRestore();
+  });
+
+  // NEW-01 R8: NEW-04's ARRIVED latch is terminal — sustained off-route drift after arrival must
+  // never accumulate reroute evidence, start a timer, move the anchor, or request a reroute.
+  test('R8: sustained off-route drift after ARRIVED triggers zero automatic reroutes', async () => {
+    const previewSpy = jest
+      .spyOn(V2DirectionsService, 'calculateHybridPreview')
+      .mockResolvedValue({ status: 'unavailable', route: null, instructions: [], message: 'No replacement.' });
+    const hook = await renderHook(() => useNavigationViewModelV2());
+
+    // Arrive at the destination first.
+    await act(async () => useAppStore.setState({
+      currentLocation: { ...sharedActiveRoute.destination.coordinate, accuracy: 10 },
+      currentLocationSource: 'live',
+    }));
+    expect(hook.result.current.arrived).toBe(true);
+
+    // Same 2m-cadence off-route walk that triggers a reroute pre-arrival (R1) — now must not.
+    const metersPerDegLat = 111320;
+    const baseLat = 24.985;
+    const longitude = 67.02;
+    for (let i = 0; i < 18; i++) {
+      const point = { latitude: baseLat + (i * 2) / metersPerDegLat, longitude, accuracy: 5 };
+      await act(async () => useAppStore.setState({ currentLocation: point, currentLocationSource: 'live' }));
+    }
+
+    expect(previewSpy).not.toHaveBeenCalled();
+    expect(hook.result.current.arrived).toBe(true);
+    previewSpy.mockRestore();
+  });
 });
