@@ -1,0 +1,5 @@
+Owner: HomeScreen and NavigationChrome V1/V2 render an inline priority ternary over existing states; no BannerManager, no new mutable state.
+Inputs/states: showMapWarningBanner/isOffline/showOutsideBanner (Explore); gpsSignalState/isWeakGps/rerouteStatusMessage/hasBaseMap (Navigation).
+Why: At most one top system/safety warning must show; route/gate context (outside-venue suggestion) is task-relevant, not a warning, so it keeps its own slot. Also removes API-key-preview logging and developer Maps wording ("Google Cloud restrictions", "Maps SDK for Android", "graph-only v2") from product-facing text.
+Invariant: basemap/provider degradation outranks passive offline; navigation safety (GPS) outranks rerouting status, which outranks basemap degradation. Never more than one of these renders at once. Logs never carry key characters.
+Regression test: scripts/test-map-config.ts (forbidden-phrase + no-key-preview guard); NavigationChromeV1/V2.test.tsx precedence tests; scripts/test-navigation-ui.ts.

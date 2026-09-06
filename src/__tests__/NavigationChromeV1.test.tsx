@@ -90,7 +90,21 @@ describe('NavigationChromeV1 — Exit/recenter/mute touch targets', () => {
 
     const stack = screen.getByTestId('navigation-top-stack-v1');
     expect(within(stack).getByText('Continue Straight')).toBeOnTheScreen();
-    expect(within(stack).getByText('Base map tiles are unavailable.')).toBeOnTheScreen();
+    expect(within(stack).getByText('Base map unavailable. Offline route guidance continues.')).toBeOnTheScreen();
+  });
+
+  test('shows only the highest-priority status when weak GPS, reroute, and basemap loss all apply', async () => {
+    await render(
+      <NavigationChromeV1
+        overlay={baseOverlay({ isWeakGps: true, rerouteStatusMessage: 'Recalculating your route' })}
+        hasBaseMap={false}
+      />,
+    );
+
+    const stack = screen.getByTestId('navigation-top-stack-v1');
+    expect(within(stack).getByText('Weak GPS signal detected. Route updates may be slower.')).toBeOnTheScreen();
+    expect(within(stack).queryByText('Recalculating your route')).not.toBeOnTheScreen();
+    expect(within(stack).queryByText('Base map unavailable. Offline route guidance continues.')).not.toBeOnTheScreen();
   });
 
   test('pressing Exit requests confirmation instead of stopping directly', async () => {

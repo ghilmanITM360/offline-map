@@ -99,7 +99,22 @@ describe('NavigationChromeV2 — direct outside guide', () => {
     expect(stackContent.getByTestId('navigation-maneuver-surface')).toBeOnTheScreen();
     expect(stackContent.getByTestId('navigation-subordinate-surfaces')).toBeOnTheScreen();
     expect(stackContent.getByText('Offline walking route')).toBeOnTheScreen();
-    expect(stackContent.getByText(/Base map tiles are unavailable/)).toBeOnTheScreen();
+    expect(stackContent.getByText('Base map unavailable. Offline route guidance continues.')).toBeOnTheScreen();
+  });
+
+  test('shows only the highest-priority status when GPS lost and basemap loss both apply', async () => {
+    await render(
+      <NavigationChromeV2
+        overlay={baseOverlay({ gpsSignalState: 'GPS_LOST', rerouteStatusMessage: 'Recalculating your route' })}
+        hasBaseMap={false}
+      />,
+    );
+
+    const stack = screen.getByTestId('navigation-top-stack');
+    const stackContent = within(stack);
+    expect(stackContent.getByText('Searching for GPS signal. Your position may be out of date.')).toBeOnTheScreen();
+    expect(stackContent.queryByText('Recalculating your route')).not.toBeOnTheScreen();
+    expect(stackContent.queryByText('Base map unavailable. Offline route guidance continues.')).not.toBeOnTheScreen();
   });
 
   test('shows accurate road provider identity while outside leg is active', async () => {

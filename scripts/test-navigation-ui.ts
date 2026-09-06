@@ -34,8 +34,11 @@ assert(navMapLayers.includes('mapLayers.specialRoutes') && navMapLayers.includes
 // navOverlay.mapLayers.gates — see docs/TARGETED_FIX_SPRINT_REPORT.md Phase 5.
 assert(!navMapLayers.includes('GateLayer'), 'v2 nav map layers must not render its own GateLayer (gate labels moved to the shared MapLabelOverlay)');
 assert(homeScreen.includes('navOverlay.mapLayers.gates.map('), 'v2 navigation must render gate context via HomeScreen\'s shared mapLabelItems/MapLabelOverlay');
-assert(navOverlay.includes('graphOnlyFallbackUsed') && navChrome.includes('graphOnlyFallbackUsed'), 'v2 navigation must expose graph-only fallback status');
-assert(navChrome.includes('Graph-only v2 map is active'), 'v2 navigation must show clear graph-only fallback message');
+assert(navOverlay.includes('graphOnlyFallbackUsed'), 'v2 navigation overlay must expose graph-only fallback status');
+assert(
+  navChrome.includes('Base map unavailable. Offline route guidance continues.') && !navChrome.includes('graph-only v2') && !navChrome.includes('Graph-only v2'),
+  'v2 navigation must show basemap-unavailable status without exposing internal graph-only wording',
+);
 
 // Phase 8 (docs/ROUTING_NAVIGATION_FIX_REPORT.md): route.coordinates was moved
 // into a useMemo above the `!route` early return (Rules of Hooks), so the

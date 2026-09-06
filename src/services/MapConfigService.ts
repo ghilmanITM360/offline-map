@@ -28,10 +28,8 @@ function logDevDiagnostics(status: GoogleMapsRuntimeStatus): void {
     typeof process.env.EXPO_PUBLIC_GOOGLE_MAPS_IOS_API_KEY !== 'undefined';
   console.log('[MapConfig] .env loaded:', envLoaded);
   console.log('[MapConfig] Android Maps key present:', status.keyPresent);
+  console.log('[MapConfig] Android Maps key source:', status.source);
   console.log('[MapConfig] Android package:', status.packageName ?? 'unknown');
-  if (status.keyPreview) {
-    console.log('[MapConfig] Android key preview:', status.keyPreview);
-  }
 }
 
 export class MapConfigService {

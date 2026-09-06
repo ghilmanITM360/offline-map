@@ -232,19 +232,33 @@ assert.equal(statusWithoutEnv.source, 'none', 'Map config should report none sou
 
 assert.equal(
   GOOGLE_MAPS_KEY_NOT_CONFIGURED_MESSAGE,
-  'Google Maps key is not configured. Offline venue data still works.',
-  'Missing-key warning message must match product copy',
+  'Base map unavailable. Offline venue map still works.',
+  'Missing-key warning message must match approved product copy and never mention keys/config',
 );
 assert.equal(
   GOOGLE_MAPS_LOAD_FAILED_MESSAGE,
-  'Map failed to load. Check Google Cloud restrictions and Maps SDK for Android.',
-  'Map-failed warning message must match product copy',
+  'Base map unavailable. Offline venue map still works.',
+  'Map-failed warning message must match approved product copy and never mention Google Cloud/SDK internals',
 );
 assert(
   homeScreen.includes('MapConfigService.getMissingGoogleMapsMessage()') &&
     homeScreen.includes('MapConfigService.getMapLoadFailedMessage()') &&
     homeScreen.includes('hasGoogleMapsKey && mapLoadFailed'),
   'Home warning logic should show missing-key text only when key is missing, and map-failed text when key exists but map fails',
+);
+
+const mapConfigResolverSrc = readFileSync('src/services/MapConfigResolver.ts', 'utf8');
+const mapConfigServiceSrc = readFileSync('src/services/MapConfigService.ts', 'utf8');
+const forbiddenDevPhrases = ['Google Cloud restrictions', 'Maps SDK for Android', 'graph-only v2', 'Graph-only v2'];
+for (const phrase of forbiddenDevPhrases) {
+  assert(!homeScreen.includes(phrase), `Home UI must never expose developer wording: "${phrase}"`);
+  assert(!mapConfigResolverSrc.includes(phrase), `MapConfigResolver must never expose developer wording: "${phrase}"`);
+}
+assert(
+  !mapConfigResolverSrc.includes('keyPreview') &&
+    !mapConfigResolverSrc.includes('maskKey') &&
+    !mapConfigServiceSrc.includes('keyPreview'),
+  'Map config must never generate or log a partial API key preview',
 );
 assert(
   homeScreen.includes("provider={Platform.OS === 'android' && baseMapMode === 'GOOGLE_BASEMAP' ? PROVIDER_GOOGLE : undefined}"),

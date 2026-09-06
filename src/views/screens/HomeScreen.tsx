@@ -1829,16 +1829,12 @@ export function HomeScreen() {
         </SafeAreaView>
         )}
 
+        {/* Basemap/provider degradation outranks passive offline status — the two never stack.
+            Route/gate context (outside-venue suggestion) is task-relevant, not a system
+            warning, so it keeps its own slot alongside whichever status above shows. */}
         {chrome.browseStatus && (isOffline || showMapWarningBanner || showOutsideBanner) && (
           <View style={[styles.bannerStack, { top: bannerStackTop }]}>
-            {isOffline && (
-              <View style={[styles.offlineIndicator, styles.bannerStackItem]}>
-                <WifiOff size={14} color={staticColors.white} />
-                <Text style={styles.offlineText}>Offline</Text>
-              </View>
-            )}
-
-            {showMapWarningBanner && (
+            {showMapWarningBanner ? (
               <View style={[styles.mapWarningBanner, styles.bannerStackItem]}>
                 <Text style={styles.mapWarningText}>
                   {hasGoogleMapsKey && mapLoadFailed
@@ -1848,7 +1844,12 @@ export function HomeScreen() {
                       : MapConfigService.getMissingGoogleMapsMessage()}
                 </Text>
               </View>
-            )}
+            ) : isOffline ? (
+              <View style={[styles.offlineIndicator, styles.bannerStackItem]}>
+                <WifiOff size={14} color={staticColors.white} />
+                <Text style={styles.offlineText}>Offline</Text>
+              </View>
+            ) : null}
 
             {showOutsideBanner && (
               <Animated.View

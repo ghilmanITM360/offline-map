@@ -40,23 +40,16 @@ export type GoogleMapsRuntimeStatus = {
   keyPresent: boolean;
   source: RuntimeStatusSource;
   packageName: string | null;
-  keyPreview: string | null;
 };
 
+/** Product copy only — never mention keys, SDKs, or cloud console config to end users. */
 export const GOOGLE_MAPS_KEY_NOT_CONFIGURED_MESSAGE =
-  'Google Maps key is not configured. Offline venue data still works.';
+  'Base map unavailable. Offline venue map still works.';
 export const GOOGLE_MAPS_LOAD_FAILED_MESSAGE =
-  'Map failed to load. Check Google Cloud restrictions and Maps SDK for Android.';
+  'Base map unavailable. Offline venue map still works.';
 
 function hasEnvKey(value: string | undefined): boolean {
   return typeof value === 'string' && value.trim().length > 0;
-}
-
-function maskKey(key: string | undefined): string | null {
-  if (!hasEnvKey(key)) return null;
-  const trimmed = key!.trim();
-  if (trimmed.length <= 10) return '***';
-  return `${trimmed.slice(0, 6)}...${trimmed.slice(-4)}`;
 }
 
 function resolveExpectedEnvVariable(platform: RuntimePlatform): string {
@@ -97,7 +90,6 @@ export function getGoogleMapsRuntimeStatusFromInputs(params: {
   const envHasKey = hasEnvKey(envKey);
   const source: RuntimeStatusSource = configHasKey ? 'expo_config' : envHasKey ? 'env' : 'none';
   const packageName = platform === 'android' ? (expoConfig?.android?.package ?? null) : null;
-  const keyPreview = maskKey(configHasKey ? configKey : envKey);
 
   return {
     platform,
@@ -105,6 +97,5 @@ export function getGoogleMapsRuntimeStatusFromInputs(params: {
     keyPresent: configHasKey || envHasKey,
     source,
     packageName,
-    keyPreview,
   };
 }
