@@ -185,4 +185,27 @@ describe('DirectionsViewModel — route ownership (local/global) and stale-reque
     expect(hook.result.current.loadState).toBe('ready');
     expect(useAppStore.getState().activeRoute).toBe(routeB[0].route);
   });
+
+  test('6. closing directions while a route is in flight prevents the unmounted request from publishing stale route state', async () => {
+    const destA = legacyPlace('DEST_A');
+    const routeA: RouteAlternative[] = [{ label: 'Fastest', labelUr: 'تیز ترین', route: fakeRoute(['START', 'DEST_A']) }];
+    let resolveA: (alts: RouteAlternative[]) => void = () => {};
+    const deferredA = new Promise<RouteAlternative[]>((resolve) => {
+      resolveA = resolve;
+    });
+    mockNodeResolution('DEST_A');
+    jest.spyOn(RoutingService, 'calculateRoutes').mockReturnValue(deferredA as unknown as RouteAlternative[]);
+
+    const hook = await renderHook(() => useDirectionsViewModel(destA));
+    await waitFor(() => expect(hook.result.current.loadState).toBe('loading'));
+
+    await hook.unmount();
+    await act(async () => {
+      resolveA(routeA);
+      await deferredA;
+    });
+
+    expect(useAppStore.getState().activeRoute).toBeNull();
+    expect(useAppStore.getState().routeInstructions).toEqual([]);
+  });
 });

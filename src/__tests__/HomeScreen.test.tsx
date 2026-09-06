@@ -356,6 +356,62 @@ describe('HomeScreen — hardware back button (mode-aware, Google Maps parity)',
     expect(await screen.findByText('Gate 5')).toBeOnTheScreen();
     expect(setSelectedPlaceSpy).not.toHaveBeenCalledWith(null);
   });
+
+  test('hardware back on a resolved ROUTE_PREVIEW asks before cancelling, then returns to the selected place', async () => {
+    const previewRoute = {
+      nodes: ['start', 'end'],
+      coordinates: [{ latitude: 24.9, longitude: 67.1 }, gateResult.coordinate],
+      totalDistance: 180,
+      estimatedTimeMin: 3,
+      segments: [],
+      startLabel: 'Current location',
+      destinationLabel: gateResult.name,
+      startResolution: { mode: 'inside', coordinate: { latitude: 24.9, longitude: 67.1 } },
+      instructions: [],
+    };
+    mockedUseDirectionsViewModel.mockReturnValue({
+      route: previewRoute,
+      startSource: 'live_gps',
+      startSourceLabel: 'My current location',
+      rememberedLocationAgeLabel: '',
+      rememberedLocationAvailable: false,
+      rememberedLocationInsideVenue: false,
+      currentRouteOriginInsideVenue: true,
+      loadState: 'ready',
+      errorMessage: null,
+      manualStart: null,
+      chooseManualStart: jest.fn(),
+      setIsEditingManualStart: jest.fn(),
+      setManualStartPlace: jest.fn(),
+      chooseCurrentLocation: jest.fn(async () => true),
+      chooseRememberedLocation: jest.fn(() => true),
+      calculateRoute: jest.fn(async () => {}),
+      showManualStartSearch: false,
+    });
+    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+    const user = userEvent.setup();
+    await render(<HomeScreen />);
+    const input = screen.getByPlaceholderText('Search blocks, rastas, gates');
+    await user.type(input, 'Gate 5');
+    await user.press(await screen.findByTestId('search-result-GATE_05'));
+    await user.press(await screen.findByText('Directions'));
+    await act(async () => {
+      useAppStore.setState({ routePlannerDest: gateResult, activeRoute: previewRoute as any });
+    });
+
+    await pressHardwareBack();
+
+    expect(alertSpy).toHaveBeenCalledWith('Cancel route?', expect.any(String), expect.any(Array));
+    expect(useAppStore.getState().activeRoute).toBe(previewRoute);
+    const confirmCancel = (alertSpy.mock.calls.at(-1)?.[2] as Array<{ text: string; onPress?: () => void }>).find(
+      (button) => button.text === 'Cancel route',
+    )?.onPress;
+    await act(async () => confirmCancel?.());
+    expect(useAppStore.getState().activeRoute).toBeNull();
+    expect(screen.queryByText('Get Directions')).not.toBeOnTheScreen();
+    expect(await screen.findByText('Directions')).toBeOnTheScreen();
+    alertSpy.mockRestore();
+  });
 });
 
 // Stage 4 audit scenario 7 — selecting a different object while the sheet is already open
@@ -867,6 +923,67 @@ describe('HomeScreen — canonical bottom-sheet dismissal', () => {
     expect(useAppStore.getState().activeRoute).not.toBeNull();
   });
 
+  test('Cancel Route confirmation clears the resolved preview and returns to the selected place', async () => {
+    const destination = gateResult;
+    const previewRoute = {
+      nodes: ['start', 'end'],
+      coordinates: [
+        { latitude: 24.9, longitude: 67.1 },
+        destination.coordinate,
+      ],
+      totalDistance: 180,
+      estimatedTimeMin: 3,
+      segments: [],
+      startLabel: 'Current location',
+      destinationLabel: destination.name,
+      startResolution: { mode: 'inside', coordinate: { latitude: 24.9, longitude: 67.1 } },
+      instructions: [],
+    };
+    mockedUseDirectionsViewModel.mockReturnValue({
+      route: previewRoute,
+      startSource: 'live_gps',
+      startSourceLabel: 'My current location',
+      rememberedLocationAgeLabel: '',
+      rememberedLocationAvailable: false,
+      rememberedLocationInsideVenue: false,
+      currentRouteOriginInsideVenue: true,
+      loadState: 'ready',
+      errorMessage: null,
+      manualStart: null,
+      chooseManualStart: jest.fn(),
+      setIsEditingManualStart: jest.fn(),
+      setManualStartPlace: jest.fn(),
+      chooseCurrentLocation: jest.fn(async () => true),
+      chooseRememberedLocation: jest.fn(() => true),
+      calculateRoute: jest.fn(async () => {}),
+      showManualStartSearch: false,
+    });
+    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+    await render(<HomeScreen />);
+    const user = await selectGate();
+    await user.press(screen.getByText('Directions'));
+    await act(async () => {
+      useAppStore.setState({
+        routePlannerDest: destination,
+        activeRoute: previewRoute as any,
+        currentLocation: { latitude: 24.9, longitude: 67.1 },
+      });
+    });
+    expect(await screen.findByText('Cancel Route')).toBeOnTheScreen();
+
+    await user.press(screen.getByText('Cancel Route'));
+    const confirmCancel = (alertSpy.mock.calls.at(-1)?.[2] as Array<{ text: string; onPress?: () => void }>).find(
+      (button) => button.text === 'Cancel route',
+    )?.onPress;
+    await act(async () => confirmCancel?.());
+
+    expect(useAppStore.getState().routePlannerDest).toBeNull();
+    expect(useAppStore.getState().activeRoute).toBeNull();
+    expect(screen.queryByText('Get Directions')).not.toBeOnTheScreen();
+    expect(await screen.findByText('Directions')).toBeOnTheScreen();
+    alertSpy.mockRestore();
+  });
+
   test('stale dismissal from a previous selection does not clear rapid replacement', async () => {
     await render(<HomeScreen />);
     const user = await selectGate();
@@ -1085,6 +1202,47 @@ describe('HomeScreen — navigation completion cleanup', () => {
     expect(screen.getAllByTestId('browse-user-location-marker')).toHaveLength(1);
     expect(screen.getAllByTestId('browse-user-accuracy-circle')).toHaveLength(1);
     expect(screen.queryByTestId('selected-place-marker')).not.toBeOnTheScreen();
+    alertSpy.mockRestore();
+  });
+
+  test('confirmed Exit permits selecting a fresh destination and opening a new route preview', async () => {
+    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+    mockedUseDirectionsViewModel.mockReturnValue({
+      route: null,
+      startSource: 'live_gps',
+      rememberedLocationAgeLabel: '',
+      rememberedLocationAvailable: false,
+      rememberedLocationInsideVenue: false,
+      currentRouteOriginInsideVenue: true,
+      loadState: 'loading',
+      errorMessage: null,
+      manualStart: null,
+      chooseManualStart: jest.fn(),
+      setIsEditingManualStart: jest.fn(),
+      setManualStartPlace: jest.fn(),
+      chooseCurrentLocation: jest.fn(async () => true),
+      chooseRememberedLocation: jest.fn(() => true),
+      calculateRoute: jest.fn(async () => {}),
+      showManualStartSearch: false,
+    });
+    useAppStore.getState().setCurrentLocation({ ...v1Route.coordinates[0], accuracy: 12 }, 'gps');
+    useAppStore.getState().startNavigation(v1Destination, v1Route as any, []);
+    const user = userEvent.setup();
+    await render(<HomeScreen />);
+
+    await user.press(await screen.findByTestId('nav-exit-button'));
+    const confirmExit = (alertSpy.mock.calls.at(-1)?.[2] as Array<{ text: string; onPress?: () => void }>).find(
+      (button) => button.text === 'Exit',
+    )?.onPress;
+    await act(async () => confirmExit?.());
+
+    const input = await screen.findByPlaceholderText('Search blocks, rastas, gates');
+    await user.type(input, 'Gate 5');
+    await user.press(await screen.findByTestId('search-result-GATE_05'));
+    await user.press(await screen.findByText('Directions'));
+
+    expect(await screen.findByText('Get Directions')).toBeOnTheScreen();
+    expect(screen.queryByTestId('nav-exit-button')).not.toBeOnTheScreen();
     alertSpy.mockRestore();
   });
 });

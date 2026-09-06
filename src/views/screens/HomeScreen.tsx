@@ -1166,12 +1166,20 @@ export function HomeScreen() {
     startNavigation(previewDestination, resolvedRoute, resolvedRoute.instructions);
   }, [activePreviewRoute, currentLocation, invalidateStartupCameraIntent, previewDestination, routePlannerOrigin, startNavigation]);
 
+  const commitClearPreviewRoute = useCallback(() => {
+    // A resolved preview can still retain the transient destination that originally opened
+    // Directions. Clear both owners together so cancellation cannot immediately re-enter the
+    // route sheet (or let its still-mounted ViewModel recalculate the route).
+    setDirectionsDestination(null);
+    clearRoutePlanner();
+  }, [clearRoutePlanner]);
+
   const handleClearPreviewRoute = useCallback(() => {
     Alert.alert('Cancel route?', 'You will need to choose your destination again.', [
       { text: 'Keep route', style: 'cancel' },
-      { text: 'Cancel route', style: 'destructive', onPress: () => clearRoutePlanner() },
+      { text: 'Cancel route', style: 'destructive', onPress: commitClearPreviewRoute },
     ]);
-  }, [clearRoutePlanner]);
+  }, [commitClearPreviewRoute]);
 
   // Mode-aware hardware back: steps back through the map surface one mode at a time
   // (Google Maps model — MAP is always the root, back never falls through to the
@@ -1192,8 +1200,8 @@ export function HomeScreen() {
         return true;
       }
       if (mode === 'ROUTE_PREVIEW') {
-        if (directionsDestination) handleCloseDirections();
-        else handleClearPreviewRoute();
+        if (activePreviewRoute) handleClearPreviewRoute();
+        else handleCloseDirections();
         return true;
       }
       if (mode === 'PLACE_SELECTED') {
@@ -1203,7 +1211,7 @@ export function HomeScreen() {
       return false;
     });
     return () => handler.remove();
-  }, [mode, closeSearch, closeDetails, directionsDestination, handleCloseDirections, handleClearPreviewRoute, closeSheet]);
+  }, [mode, closeSearch, closeDetails, activePreviewRoute, handleCloseDirections, handleClearPreviewRoute, closeSheet]);
 
   const handleSearchResultSelect = (place: Place) => {
     invalidateStartupCameraIntent();
@@ -2048,7 +2056,7 @@ export function HomeScreen() {
               mode="routePreview"
               destination={routePreviewSheetDestination}
               theme={theme}
-              onClose={directionsDestination ? handleCloseDirections : handleClearPreviewRoute}
+              onClose={activePreviewRoute ? handleClearPreviewRoute : handleCloseDirections}
               onStartNavigation={handleStartPreviewNavigation}
               onCancelRoute={activePreviewRoute ? handleClearPreviewRoute : undefined}
               onChangeDestination={handleChangeDestination}
