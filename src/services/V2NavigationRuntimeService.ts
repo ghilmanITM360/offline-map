@@ -190,6 +190,9 @@ export function destinationToRoutingV2(route: V2ActiveRoute): RoutingDestination
   if (route.destination.type === 'rasta') {
     return { type: 'rasta', rastaId: route.destination.rastaId ?? route.destination.entryNodeId?.split('-')[0] ?? '' };
   }
+  if (route.destination.type === 'special_route') {
+    return { type: 'special_route', routeId: route.destination.specialRouteId ?? '' };
+  }
   return { type: 'block', blockId: route.destination.blockId ?? '' };
 }
 

@@ -326,6 +326,7 @@ export interface V2ActiveRoute extends V2RoutePreview {
     gateId?: string;
     rastaId?: string;
     facilityId?: string;
+    specialRouteId?: string;
     entryNodeId?: string;
   };
   edges: Array<{
