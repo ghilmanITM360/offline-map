@@ -363,4 +363,238 @@ describe('NavigationViewModelV2 hybrid rerouting', () => {
     expect(hook.result.current.arrived).toBe(true);
     previewSpy.mockRestore();
   });
+
+  // NEW-03: a manually selected outside entry gate is user routing intent for the whole
+  // navigation session, not a one-shot property of a single calculated route. The automatic
+  // NEW-01 off-route reroute at the location-watch effect's `void attemptReroute(currentLocation)`
+  // call (no RerouteOptions) must still honor it, same as the explicit retryOutsideRoute() path.
+  describe('NEW-03: manual gate retention through automatic reroute', () => {
+    // selectOutsideGate() itself runs a reroute (setting lastRerouteAtRef), and the automatic
+    // path's own evidence gate refuses to fire inside REROUTE_COOLDOWN_MS (25s) of the last
+    // reroute — real, correct anti-flap behavior, not part of what NEW-03 is testing. Spying on
+    // Date.now() (not full fake timers, which would also stall RTL's waitFor polling) lets each
+    // test fast-forward past that cooldown between steps while keeping real promise/timer
+    // scheduling intact.
+    let dateNowSpy: jest.SpyInstance<number, []>;
+    let simulatedNowMs: number;
+    const COOLDOWN_CLEAR_MS = 26_000;
+
+    beforeEach(() => {
+      simulatedNowMs = Date.now();
+      dateNowSpy = jest.spyOn(Date, 'now').mockImplementation(() => simulatedNowMs);
+    });
+
+    afterEach(() => {
+      dateNowSpy.mockRestore();
+    });
+
+    test('M2: automatic off-route reroute request still carries the manually selected gate', async () => {
+      const previewSpy = jest
+        .spyOn(V2DirectionsService, 'calculateHybridPreview')
+        .mockResolvedValue({ status: 'unavailable', route: null, instructions: [], message: 'No replacement.' });
+      const hook = await renderHook(() => useNavigationViewModelV2());
+
+      await act(() => hook.result.current.selectOutsideGate('GATE_12'));
+      await waitFor(() => expect(hook.result.current.manualGateId).toBe('GATE_12'));
+      previewSpy.mockClear();
+      simulatedNowMs += COOLDOWN_CLEAR_MS;
+
+      // Same sustained 2m-cadence off-route walk as R1 above — proven to cross the automatic
+      // reroute evidence bar while never leaving the outside branch of attemptReroute.
+      const metersPerDegLat = 111320;
+      const baseLat = 24.985;
+      const longitude = 67.02;
+      for (let i = 0; i < 18; i++) {
+        const point = { latitude: baseLat + (i * 2) / metersPerDegLat, longitude, accuracy: 5 };
+        await act(async () => useAppStore.setState({ currentLocation: point, currentLocationSource: 'live' }));
+      }
+      await waitFor(() => expect(useAppStore.getState().reroutePending).toBe(false));
+
+      expect(previewSpy).toHaveBeenCalledTimes(1);
+      expect(previewSpy).toHaveBeenCalledWith(expect.objectContaining({
+        request: expect.objectContaining({ manualGateId: 'GATE_12' }),
+      }));
+      previewSpy.mockRestore();
+    });
+
+    test('M3: a second automatic reroute after the first still carries the manually selected gate', async () => {
+      const previewSpy = jest
+        .spyOn(V2DirectionsService, 'calculateHybridPreview')
+        .mockResolvedValue({ status: 'unavailable', route: null, instructions: [], message: 'No replacement.' });
+      const hook = await renderHook(() => useNavigationViewModelV2());
+
+      await act(() => hook.result.current.selectOutsideGate('GATE_12'));
+      await waitFor(() => expect(hook.result.current.manualGateId).toBe('GATE_12'));
+      previewSpy.mockClear();
+      simulatedNowMs += COOLDOWN_CLEAR_MS;
+
+      const metersPerDegLat = 111320;
+      const baseLat = 24.985;
+      const longitude = 67.02;
+      for (let i = 0; i < 18; i++) {
+        const point = { latitude: baseLat + (i * 2) / metersPerDegLat, longitude, accuracy: 5 };
+        await act(async () => useAppStore.setState({ currentLocation: point, currentLocationSource: 'live' }));
+      }
+      await waitFor(() => expect(useAppStore.getState().reroutePending).toBe(false));
+      expect(previewSpy).toHaveBeenCalledTimes(1);
+
+      // Return on-route to reset the off-route anchor (per R4), clear cooldown again, then drift
+      // off-route far enough from the reset anchor for a second reroute.
+      await act(async () => useAppStore.setState({ currentLocation: origin, currentLocationSource: 'live' }));
+      simulatedNowMs += COOLDOWN_CLEAR_MS;
+      const secondBaseLat = 24.986;
+      for (let i = 0; i < 18; i++) {
+        const point = { latitude: secondBaseLat + (i * 2) / metersPerDegLat, longitude, accuracy: 5 };
+        await act(async () => useAppStore.setState({ currentLocation: point, currentLocationSource: 'live' }));
+      }
+      await waitFor(() => expect(useAppStore.getState().reroutePending).toBe(false));
+
+      expect(previewSpy).toHaveBeenCalledTimes(2);
+      for (const call of previewSpy.mock.calls) {
+        expect(call[0]).toMatchObject({ request: expect.objectContaining({ manualGateId: 'GATE_12' }) });
+      }
+      previewSpy.mockRestore();
+    });
+
+    test('M5/M6: manual gate survives a failed automatic reroute and the following explicit retry', async () => {
+      const previewSpy = jest
+        .spyOn(V2DirectionsService, 'calculateHybridPreview')
+        .mockResolvedValue({ status: 'unavailable', route: null, instructions: [], message: 'No replacement.' });
+      const hook = await renderHook(() => useNavigationViewModelV2());
+
+      await act(() => hook.result.current.selectOutsideGate('GATE_12'));
+      await waitFor(() => expect(hook.result.current.manualGateId).toBe('GATE_12'));
+      previewSpy.mockClear();
+      simulatedNowMs += COOLDOWN_CLEAR_MS;
+
+      const metersPerDegLat = 111320;
+      const baseLat = 24.985;
+      const longitude = 67.02;
+      for (let i = 0; i < 18; i++) {
+        const point = { latitude: baseLat + (i * 2) / metersPerDegLat, longitude, accuracy: 5 };
+        await act(async () => useAppStore.setState({ currentLocation: point, currentLocationSource: 'live' }));
+      }
+      await waitFor(() => expect(useAppStore.getState().reroutePending).toBe(false));
+      expect(previewSpy).toHaveBeenCalledTimes(1);
+      // Failure keeps current route/session intent — manualGateId state must be untouched.
+      expect(hook.result.current.manualGateId).toBe('GATE_12');
+
+      await act(() => hook.result.current.retryOutsideRoute());
+      await waitFor(() => expect(hook.result.current.reroutePending).toBe(false));
+
+      expect(previewSpy).toHaveBeenCalledTimes(2);
+      expect(previewSpy).toHaveBeenLastCalledWith(expect.objectContaining({
+        request: expect.objectContaining({ manualGateId: 'GATE_12' }),
+      }));
+      previewSpy.mockRestore();
+    });
+
+    test('M1: a manual gate baked into the initial route seeds session intent without selectOutsideGate', async () => {
+      const preview = await V2DirectionsService.calculateHybridPreview({
+        request: {
+          startPlace: null,
+          destination,
+          currentLocation: origin,
+          forceOutside: true,
+          manualGateId: 'GATE_12',
+        },
+        token: { requestId: 'manual-gate-initial', requestVersion: 1 },
+        signal: new AbortController().signal,
+        outsideProvider: createProductionOutsideRouteSource({ googleProxyBaseUrl: undefined }),
+      });
+      if (preview.status !== 'ready' || !preview.route) throw new Error('Manual Gate 12 fixture must resolve.');
+      const manualGateRoute = V2NavigationAdapter.fromPreview({
+        previewRoute: preview.route,
+        destination,
+        currentLocation: origin,
+      });
+      expect(manualGateRoute.origin.manuallySelectedGate).toBe(true);
+      expect(manualGateRoute.origin.gateId).toBe('GATE_12');
+
+      useAppStore.getState().startNavigation(destination, manualGateRoute, manualGateRoute.instructions);
+      useAppStore.setState({ currentLocation: origin, currentLocationSource: 'live' });
+      const hook = await renderHook(() => useNavigationViewModelV2());
+
+      // No selectOutsideGate() call anywhere — the pick came entirely from the preview route.
+      expect(hook.result.current.manualGateId).toBe('GATE_12');
+    });
+
+    test('M7: explicitly picking a different gate replaces the prior manual gate with no leak', async () => {
+      const previewSpy = jest
+        .spyOn(V2DirectionsService, 'calculateHybridPreview')
+        .mockResolvedValue({ status: 'unavailable', route: null, instructions: [], message: 'No replacement.' });
+      const hook = await renderHook(() => useNavigationViewModelV2());
+
+      await act(() => hook.result.current.selectOutsideGate('GATE_12'));
+      await waitFor(() => expect(hook.result.current.manualGateId).toBe('GATE_12'));
+      previewSpy.mockClear();
+
+      await act(() => hook.result.current.selectOutsideGate('GATE_20'));
+      await waitFor(() => expect(hook.result.current.manualGateId).toBe('GATE_20'));
+
+      expect(previewSpy).toHaveBeenLastCalledWith(expect.objectContaining({
+        request: expect.objectContaining({ manualGateId: 'GATE_20' }),
+      }));
+      simulatedNowMs += COOLDOWN_CLEAR_MS;
+      previewSpy.mockClear();
+
+      const metersPerDegLat = 111320;
+      const baseLat = 24.985;
+      const longitude = 67.02;
+      for (let i = 0; i < 18; i++) {
+        const point = { latitude: baseLat + (i * 2) / metersPerDegLat, longitude, accuracy: 5 };
+        await act(async () => useAppStore.setState({ currentLocation: point, currentLocationSource: 'live' }));
+      }
+      await waitFor(() => expect(useAppStore.getState().reroutePending).toBe(false));
+
+      expect(previewSpy).toHaveBeenCalledTimes(1);
+      expect(previewSpy).toHaveBeenCalledWith(expect.objectContaining({
+        request: expect.objectContaining({ manualGateId: 'GATE_20' }),
+      }));
+      previewSpy.mockRestore();
+    });
+
+    test('M8: a stale manual gate from a finished trip does not leak into a fresh automatic-mode trip', async () => {
+      const previewSpy = jest
+        .spyOn(V2DirectionsService, 'calculateHybridPreview')
+        .mockResolvedValue({ status: 'unavailable', route: null, instructions: [], message: 'No replacement.' });
+      const hook = await renderHook(() => useNavigationViewModelV2());
+
+      await act(() => hook.result.current.selectOutsideGate('GATE_12'));
+      await waitFor(() => expect(hook.result.current.manualGateId).toBe('GATE_12'));
+
+      await act(async () => hook.result.current.handleExit());
+
+      // New trip, no manual gate chosen — starts a fresh navigationSessionId.
+      await act(async () => {
+        useAppStore.getState().startNavigation(destination, sharedActiveRoute, sharedActiveRoute.instructions);
+        useAppStore.setState({ currentLocation: origin, currentLocationSource: 'live' });
+      });
+
+      expect(hook.result.current.manualGateId).toBeNull();
+      previewSpy.mockRestore();
+    });
+
+    test('M10: automatic gate mode (no manual selection) is unaffected — automatic reroute still omits manualGateId', async () => {
+      const previewSpy = jest
+        .spyOn(V2DirectionsService, 'calculateHybridPreview')
+        .mockResolvedValue({ status: 'unavailable', route: null, instructions: [], message: 'No replacement.' });
+      await renderHook(() => useNavigationViewModelV2());
+
+      const metersPerDegLat = 111320;
+      const baseLat = 24.985;
+      const longitude = 67.02;
+      for (let i = 0; i < 18; i++) {
+        const point = { latitude: baseLat + (i * 2) / metersPerDegLat, longitude, accuracy: 5 };
+        await act(async () => useAppStore.setState({ currentLocation: point, currentLocationSource: 'live' }));
+      }
+      await waitFor(() => expect(useAppStore.getState().reroutePending).toBe(false));
+
+      expect(previewSpy).toHaveBeenCalledTimes(1);
+      expect(previewSpy).toHaveBeenCalledWith(expect.objectContaining({
+        request: expect.objectContaining({ manualGateId: undefined }),
+      }));
+      previewSpy.mockRestore();
+    });
+  });
 });
