@@ -41,6 +41,21 @@ describe('MapControls — compass toggle state', () => {
 });
 
 describe('MapControls — recenter state', () => {
+  test.each(['nav', 'recenter'] as const)('%s suppresses browse layers and zoom', async (variant) => {
+    await render(<MapControls variant={variant} compassMode="NORTH_UP"
+      onCompassToggle={jest.fn()} onZoomIn={jest.fn()} onZoomOut={jest.fn()}
+      recenter={variant === 'recenter' ? { state: 'idle', onPress: jest.fn() } : undefined} />);
+    expect(screen.queryByRole('button', { name: 'Map layers and filters' })).not.toBeOnTheScreen();
+    expect(screen.queryByRole('button', { name: 'Zoom in' })).not.toBeOnTheScreen();
+    expect(screen.queryByRole('button', { name: 'Zoom out' })).not.toBeOnTheScreen();
+    if (variant === 'recenter') {
+      expect(screen.queryByRole('button', { name: /Map is north-up/ })).not.toBeOnTheScreen();
+      expect(screen.getByRole('button', { name: 'Center map on my current location' })).toBeOnTheScreen();
+    } else {
+      expect(screen.getByRole('button', { name: /Map is north-up/ })).toBeOnTheScreen();
+    }
+  });
+
   test('exposes "active" (following) recenter state as selected', async () => {
     await render(
       <MapControls

@@ -271,22 +271,19 @@ describe('NavigationChromeV2 — Exit/recenter/mute touch targets', () => {
 // Phase 7 (Google Maps style navigation experience): MapMode.ARRIVAL sheet must offer both
 // a Recenter map action and a Done action, per spec.
 describe('NavigationChromeV2 — arrival sheet', () => {
-  test('shows You\'ve Arrived and offers Recenter + Done actions when arrived is true', async () => {
+  test('shows arrival with Done as its only action', async () => {
     await render(<NavigationChromeV2 overlay={baseOverlay({ arrived: true })} hasBaseMap />);
 
     expect(screen.getByText("You've Arrived!")).toBeOnTheScreen();
-    expect(screen.getByTestId('nav-arrived-recenter-button')).toBeOnTheScreen();
+    expect(screen.queryByTestId('nav-arrived-recenter-button')).not.toBeOnTheScreen();
     expect(screen.getByTestId('nav-arrived-done-button')).toBeOnTheScreen();
   });
 
-  test('pressing Recenter in the arrival sheet invokes setIsAutoFollowing(true)', async () => {
-    const setIsAutoFollowing = jest.fn();
-    const user = userEvent.setup();
-    await render(<NavigationChromeV2 overlay={baseOverlay({ arrived: true, setIsAutoFollowing })} hasBaseMap />);
-
-    await user.press(screen.getByTestId('nav-arrived-recenter-button'));
-
-    expect(setIsAutoFollowing).toHaveBeenCalledWith(true);
+  test('arrival removes stale navigation status, Exit, and floating recenter', async () => {
+    await render(<NavigationChromeV2 overlay={baseOverlay({ arrived: true, reroutePending: true, isWeakGps: true })} hasBaseMap={false} />);
+    expect(screen.queryByTestId('navigation-top-stack')).not.toBeOnTheScreen();
+    expect(screen.queryByTestId('nav-exit-button')).not.toBeOnTheScreen();
+    expect(screen.queryByTestId('nav-recenter-button')).not.toBeOnTheScreen();
   });
 
   test('pressing Done in the arrival sheet completes immediately', async () => {

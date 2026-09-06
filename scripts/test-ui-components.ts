@@ -74,10 +74,7 @@ assert(navigation.includes('onPress={requestNavigationExit}'), 'Navigation activ
 assert(navigation.includes('onPress={completeArrivalNavigation}'), 'Navigation arrival Done must exit immediately');
 assert(navigation.includes('styles.tripTextWrap'), 'Navigation bottom trip text must be constrained separately from Exit button');
 assert(navigation.includes('cameraManager.enterNavigationCamera(') && navigation.includes('LocateFixed'), 'Navigation recenter button must animate camera');
-assert(
-  navigation.includes('testID="nav-arrived-recenter-button"') && navigation.includes('testID="nav-arrived-done-button"'),
-  'Navigation arrival sheet must offer both Recenter map and Done actions',
-);
+// Done-only arrival actions and dispatch are exercised by NavigationChromeV1.test.tsx.
 
 assert(settings.includes("disabled={type !== 'toggle' && !onPress}"), 'Settings info-only rows must be disabled');
 assert(settings.includes('numberOfLines={1}') && settings.includes('ellipsizeMode="tail"'), 'Settings labels/values must constrain long text');

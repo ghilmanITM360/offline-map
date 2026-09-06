@@ -58,14 +58,8 @@ const base: MapModeInputs = {
 // arrival. The mount condition must cover both modes so the arrival sheet stays visible.
 {
   const home = readFileSync('src/views/screens/HomeScreen.tsx', 'utf8');
-  assert(
-    home.includes("(mode === 'NAVIGATION' || mode === 'ARRIVAL') && <NavigationChromeV2"),
-    'NavigationChromeV2 must stay mounted through MapMode.ARRIVAL, not just MapMode.NAVIGATION',
-  );
-  assert(
-    home.includes("(mode === 'NAVIGATION' || mode === 'ARRIVAL') && <NavigationChromeV1"),
-    'NavigationChromeV1 must stay mounted through MapMode.ARRIVAL, not just MapMode.NAVIGATION',
-  );
+  // Chrome persistence/arrival exclusivity is exercised by HomeScreen.test.tsx,
+  // NavigationChromeV1.test.tsx, NavigationChromeV2.test.tsx, and MapChromePolicy.test.ts.
   assert(
     home.includes("(mode === 'NAVIGATION' || mode === 'ARRIVAL') && <NavigationMapLayersV2"),
     'NavigationMapLayersV2 (route/user marker) must stay mounted through MapMode.ARRIVAL',

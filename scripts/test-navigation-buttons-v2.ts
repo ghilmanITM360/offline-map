@@ -56,11 +56,7 @@ assert(
   navigationChromeSource.includes('onPress={() => setIsAutoFollowing(true)}'),
   'Navigation v2 recenter control must resume auto-follow.',
 );
-assert(
-  navigationChromeSource.includes('testID="nav-arrived-recenter-button"') &&
-    navigationChromeSource.includes('testID="nav-arrived-done-button"'),
-  'Navigation v2 arrival sheet must offer both Recenter map and Done actions.',
-);
+// Done-only arrival actions and dispatch are exercised by NavigationChromeV2.test.tsx.
 assert(
   // v2 speech now goes through the shared VoiceService (queued/deduped) instead of calling
   // expo-speech raw — see src/services/VoiceService.ts speakInstruction()/stopSpeaking().

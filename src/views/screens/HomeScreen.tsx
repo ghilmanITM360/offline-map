@@ -85,6 +85,7 @@ import { LayersSheet } from '../components/map/LayersSheet';
 import { useNavigationOverlayV2 } from '../../viewmodels/useNavigationOverlayV2';
 import { useNavigationOverlayV1 } from '../../viewmodels/useNavigationOverlayV1';
 import { useMapMode } from '../../viewmodels/useMapMode';
+import { resolveMapChromePolicy } from '../../viewmodels/MapChromePolicy';
 import { NavigationMapLayersV2 } from '../components/navigation/NavigationMapLayersV2';
 import { OutsideRoutePolyline } from '../components/navigation/OutsideRoutePolyline';
 import { NavigationChromeV2 } from '../components/navigation/NavigationChromeV2';
@@ -489,6 +490,7 @@ export function HomeScreen() {
     selectedPlace,
   });
   const modeRef = useRef<typeof mode>('EXPLORE');
+  const chrome = resolveMapChromePolicy(mode);
   modeRef.current = mode;
 
   const startupCameraStillOwnsIntent = useCallback((requestGeneration: number, cameraIntentGeneration: number) => (
@@ -1105,6 +1107,7 @@ export function HomeScreen() {
     // so handleSheetDismiss recognizes that dismiss as expected instead of tearing
     // down the directions state it just set.
     armSheetTransition(computeSheetIdentity(destination, null), 'replacement');
+    setDetailsExpanded(false);
     setDirectionsDestination(destination);
     presentSheetForIdentity(1);
   };
@@ -1644,8 +1647,8 @@ export function HomeScreen() {
           )}
           </MapView>
 
-        {(mode === 'NAVIGATION' || mode === 'ARRIVAL') && <NavigationChromeV2 overlay={navOverlay} hasBaseMap={hasBaseMap} />}
-        {(mode === 'NAVIGATION' || mode === 'ARRIVAL') && <NavigationChromeV1 overlay={navOverlayV1} hasBaseMap={hasBaseMap} />}
+        {(chrome.navigation || chrome.arrival) && <NavigationChromeV2 overlay={navOverlay} mode={mode} hasBaseMap={hasBaseMap} />}
+        {(chrome.navigation || chrome.arrival) && <NavigationChromeV1 overlay={navOverlayV1} mode={mode} hasBaseMap={hasBaseMap} />}
         <MapLabelOverlay
           ref={mapLabelOverlayRef}
           mapRef={mapRef}
@@ -1656,14 +1659,14 @@ export function HomeScreen() {
 
         {/* Cold-start: avoid a blank map while MapView mounts/renders its first
             frame. mapLoadFailed's 7s-timeout banner takes over if it never loads. */}
-        {baseMapMode === 'GOOGLE_BASEMAP' && !googleBaseMapLoaded && !mapLoadFailed && (
+        {chrome.browseStatus && baseMapMode === 'GOOGLE_BASEMAP' && !googleBaseMapLoaded && !mapLoadFailed && (
           <View style={[styles.mapLoadingOverlay, { backgroundColor: theme.background }]} pointerEvents="none">
             <ActivityIndicator size="small" color={staticColors.recenterBlue} />
             <Text style={styles.mapLoadingText}>Loading map...</Text>
           </View>
         )}
 
-        {mode !== 'NAVIGATION' && !directionsDestination && (
+        {chrome.search && (
         <SafeAreaView
           style={[styles.topOverlay, mode === 'SEARCH' && styles.topOverlaySearch]}
           pointerEvents="box-none"
@@ -1734,7 +1737,7 @@ export function HomeScreen() {
               (never unmounted/removed); this content view just covers it with
               a solid background until dismissed via back button or a result
               selection, matching the Google Maps search flow. */}
-          {mode === 'SEARCH' && (
+          {chrome.searchResults && (
             <Animated.View
               style={[
                 styles.searchOverlayContent,
@@ -1818,7 +1821,7 @@ export function HomeScreen() {
             </Animated.View>
           )}
 
-          {mode !== 'SEARCH' && (
+          {chrome.chips && (
             <Animated.View style={{ opacity: chipsAnim }} pointerEvents={isMapDragging ? 'none' : 'box-none'}>
               {renderChips()}
             </Animated.View>
@@ -1826,7 +1829,7 @@ export function HomeScreen() {
         </SafeAreaView>
         )}
 
-        {mode !== 'NAVIGATION' && (isOffline || showMapWarningBanner || showOutsideBanner) && (
+        {chrome.browseStatus && (isOffline || showMapWarningBanner || showOutsideBanner) && (
           <View style={[styles.bannerStack, { top: bannerStackTop }]}>
             {isOffline && (
               <View style={[styles.offlineIndicator, styles.bannerStackItem]}>
@@ -1885,7 +1888,7 @@ export function HomeScreen() {
           </View>
         )}
 
-        {mode !== 'NAVIGATION' && __DEV__ && developerModeEnabled && showRouteDiagnostics && (
+        {chrome.browseStatus && __DEV__ && developerModeEnabled && showRouteDiagnostics && (
           <View style={styles.diagnosticsBanner}>
             <Text style={styles.diagnosticsText}>
               {GRAPH_VALIDATION.isValid ? 'Graph validation: PASS' : 'Graph validation: FAIL'}
@@ -1901,7 +1904,7 @@ export function HomeScreen() {
           </View>
         )}
 
-        {mode !== 'NAVIGATION' && isOffline && !offlineData.isDownloaded && (
+        {chrome.browseStatus && isOffline && !offlineData.isDownloaded && (
           <View style={styles.emptyOfflineState}>
             <Text style={styles.emptyOfflineTitle}>Background map not downloaded. Ijtema routes still work.</Text>
             <Pressable
@@ -1915,11 +1918,11 @@ export function HomeScreen() {
           </View>
         )}
 
-        {mode !== 'NAVIGATION' && mode !== 'SEARCH' && (
+        {(chrome.browseControls || chrome.recenter) && (
           <>
             <View style={[styles.controlStack, { bottom: controlStackBottom }]}>
               <MapControls
-                variant="browse"
+                variant={chrome.browseControls ? 'browse' : 'recenter'}
                 compassMode={compassMode}
                 onLayers={() => {
                   logHomeControl('layer', 'open_options');
@@ -1941,14 +1944,14 @@ export function HomeScreen() {
               />
             </View>
 
-            {showLocationTutorial && (
+            {chrome.browseControls && showLocationTutorial && (
               <LocationTutorialTooltip
                 bottomOffset={controlStackBottom + 340}
                 onDismiss={() => setShowLocationTutorial(false)}
               />
             )}
 
-            {__DEV__ && developerModeEnabled && (
+            {chrome.browseControls && __DEV__ && developerModeEnabled && (
               <View style={styles.debugCard}>
                 <Pressable style={styles.debugBtn} onPress={() => setShowGraphNodes(!showGraphNodes)}>
                   <Text style={styles.debugBtnText}>Nodes {showGraphNodes ? 'ON' : 'OFF'}</Text>
@@ -1964,7 +1967,7 @@ export function HomeScreen() {
           </>
         )}
 
-        {mode === 'NAVIGATION' && (
+        {chrome.compass && (
           <View
             style={[
               styles.navControls,
@@ -2039,7 +2042,7 @@ export function HomeScreen() {
           }}
           onDismiss={handleSheetDismiss}
         >
-          {routePreviewSheetDestination ? (
+          {chrome.routeSheet && routePreviewSheetDestination ? (
             <LocationSheet
               mode="routePreview"
               destination={routePreviewSheetDestination}
@@ -2049,7 +2052,7 @@ export function HomeScreen() {
               onCancelRoute={activePreviewRoute ? handleClearPreviewRoute : undefined}
               onChangeDestination={handleChangeDestination}
             />
-          ) : selectedPlace ? (
+          ) : chrome.placeSheet && selectedPlace ? (
             <LocationSheet
               mode={mode === 'DETAILS' ? 'details' : 'preview'}
               place={selectedPlace}
@@ -2079,13 +2082,13 @@ export function HomeScreen() {
               onCloseDetails={closeDetails}
               developerModeEnabled={developerModeEnabled}
             />
-          ) : (
+          ) : chrome.placeSheet || chrome.routeSheet ? (
             <BottomSheetScrollView contentContainerStyle={styles.sheetContent}>
               <View style={styles.emptySheet}>
                 <Text style={styles.emptySheetText}>Tap a block or search to see details</Text>
               </View>
             </BottomSheetScrollView>
-          )}
+          ) : null}
         </BottomSheetModal>
 
         {/* LayersSheet is intentionally not part of MapMode — it's a modal that overlays
@@ -2093,7 +2096,7 @@ export function HomeScreen() {
             gesture props above are the actual interaction lock; the sheet is a Modal so
             touches can't reach the map underneath either way (see zLayers.ts). */}
         <LayersSheet
-          visible={layersSheetVisible}
+          visible={chrome.browseControls && layersSheetVisible}
           onClose={() => setLayersSheetVisible(false)}
           mapType={mapType}
           onMapTypeChange={handleMapTypeChange}

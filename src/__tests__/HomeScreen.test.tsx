@@ -536,13 +536,13 @@ describe('HomeScreen — search', () => {
 
     // SEARCH overlay dismissed (MapMode.PLACE_SELECTED now, not SEARCH)...
     expect(screen.queryByLabelText('Back')).not.toBeOnTheScreen();
-    expect(screen.getByLabelText('Open menu')).toBeOnTheScreen();
+    expect(screen.queryByLabelText('Open menu')).not.toBeOnTheScreen();
     // ...and LocationSheet opened for the selected place — real content, not just a spy call.
     expect(await screen.findByText('Gate 5')).toBeOnTheScreen();
     expect(screen.getByText('Gate')).toBeOnTheScreen();
     expect(screen.getByText('Directions')).toBeOnTheScreen();
     expect(screen.getByText('Share')).toBeOnTheScreen();
-    expect(input.props.value).toBe('');
+    expect(screen.queryByPlaceholderText('Search blocks, rastas, gates')).not.toBeOnTheScreen();
     expect(screen.queryByTestId('search-map-marker-GATE_05')).not.toBeOnTheScreen();
   });
 
@@ -555,12 +555,12 @@ describe('HomeScreen — search', () => {
     await user.press(await screen.findByTestId('search-map-marker-GATE_05'));
 
     expect(screen.queryByLabelText('Back')).not.toBeOnTheScreen();
-    expect(input.props.value).toBe('');
+    expect(screen.queryByPlaceholderText('Search blocks, rastas, gates')).not.toBeOnTheScreen();
     expect(screen.queryByTestId('search-map-marker-GATE_05')).not.toBeOnTheScreen();
     expect(await screen.findByText('Directions')).toBeOnTheScreen();
   });
 
-  test('opening Search over a place sheet clears the old selection before cancel returns to Explore', async () => {
+  test('selected place owns attention until closing its sheet returns discovery chrome', async () => {
     const user = userEvent.setup();
     await render(<HomeScreen />);
     const input = screen.getByPlaceholderText('Search blocks, rastas, gates');
@@ -568,7 +568,16 @@ describe('HomeScreen — search', () => {
     await user.press(await screen.findByTestId('search-result-GATE_05'));
     expect(screen.getByTestId('selected-place-marker')).toBeOnTheScreen();
 
-    await user.type(input, '');
+    expect(screen.queryByPlaceholderText('Search blocks, rastas, gates')).not.toBeOnTheScreen();
+    expect(screen.queryByRole('button', { name: 'Map layers and filters' })).not.toBeOnTheScreen();
+    expect(screen.queryByRole('button', { name: 'Zoom in' })).not.toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: 'Center map on my current location' })).toBeOnTheScreen();
+    await act(async () => __getLastBottomSheetModalProps().onChange(1));
+    await act(async () => {
+      __getLastBottomSheetModalProps().onChange(-1);
+      __getLastBottomSheetModalProps().onDismiss();
+    });
+    await user.type(screen.getByPlaceholderText('Search blocks, rastas, gates'), '');
     await user.press(await screen.findByLabelText('Back'));
 
     expect(setSelectedPlaceSpy).toHaveBeenCalledWith(null);
@@ -756,12 +765,16 @@ describe('HomeScreen — canonical bottom-sheet dismissal', () => {
     expect(setSelectedPlaceSpy).toHaveBeenCalledWith(null);
   });
 
-  test('category selection from DETAILS uses canonical reset and returns to Explore', async () => {
+  test('DETAILS hides discovery until sheet dismissal restores category selection', async () => {
     await render(<HomeScreen />);
     const user = await selectGate();
     await user.press(screen.getByText('Details'));
     expect(screen.getByLabelText('Back')).toBeOnTheScreen();
 
+    expect(screen.queryByLabelText('Gates')).not.toBeOnTheScreen();
+    expect(screen.queryByRole('button', { name: 'Center map on my current location' })).not.toBeOnTheScreen();
+    await settleSheet(2);
+    await dismissSheet();
     await user.press(screen.getByLabelText('Gates'));
 
     expect(setSelectedPlaceSpy).toHaveBeenCalledWith(null);
@@ -914,6 +927,20 @@ describe('HomeScreen — canonical bottom-sheet dismissal', () => {
     showManualStartSearch: false,
   });
 
+  test('Directions from DETAILS immediately gives route preview ownership before the native snap echo', async () => {
+    mockedUseDirectionsViewModel.mockReturnValue(directionsIdleViewModel());
+    await render(<HomeScreen />);
+    const user = await selectGate();
+    await user.press(screen.getByText('Details'));
+    await settleSheet(2);
+    await user.press(screen.getByText('Directions'));
+
+    expect(await screen.findByText('Get Directions')).toBeOnTheScreen();
+    expect(screen.queryByPlaceholderText('Search blocks, rastas, gates')).not.toBeOnTheScreen();
+    expect(screen.queryByRole('button', { name: 'Zoom in' })).not.toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: 'Center map on my current location' })).toBeOnTheScreen();
+  });
+
   test('P0-1: late dismiss echo from Open Directions arriving after the place->route identity switch does not clear the route', async () => {
     mockedUseDirectionsViewModel.mockReturnValue(directionsIdleViewModel());
     await render(<HomeScreen />);
@@ -1038,6 +1065,8 @@ describe('HomeScreen — navigation completion cleanup', () => {
       useAppStore.getState().startNavigation(v1Destination, v1Route as any, []);
     });
     expect(await screen.findByTestId('navigation-user-location-marker')).toBeOnTheScreen();
+    expect(screen.queryByRole('button', { name: 'Zoom in' })).not.toBeOnTheScreen();
+    expect(screen.queryByRole('button', { name: 'Map layers and filters' })).not.toBeOnTheScreen();
     expect(screen.getAllByTestId('navigation-start-marker')).toHaveLength(1);
     expect(screen.getAllByTestId('navigation-destination-marker')).toHaveLength(1);
     expect(screen.queryByTestId('browse-user-location-marker')).not.toBeOnTheScreen();
@@ -1130,6 +1159,12 @@ describe('HomeScreen — v1 Arrival marker fallback', () => {
     expect(screen.queryByTestId('navigation-start-marker')).not.toBeOnTheScreen();
     expect(screen.getAllByTestId('navigation-destination-marker')).toHaveLength(1);
     expect(screen.queryByTestId('selected-place-marker')).not.toBeOnTheScreen();
+
+    expect(screen.queryByPlaceholderText('Search blocks, rastas, gates')).not.toBeOnTheScreen();
+    expect(screen.queryByRole('button', { name: 'Map layers and filters' })).not.toBeOnTheScreen();
+    expect(screen.queryByRole('button', { name: 'Zoom in' })).not.toBeOnTheScreen();
+    expect(screen.queryByTestId('navigation-top-stack-v1')).not.toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: 'Done, return to map' })).toBeOnTheScreen();
 
     overlaySpy.mockRestore();
   });

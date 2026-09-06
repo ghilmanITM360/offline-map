@@ -15,7 +15,7 @@ assert(mapControls.includes('export function MapControls'), 'MapControls compone
 assert(mapControls.includes("variant: 'browse' | 'nav'"), 'MapControls must accept a browse/nav variant');
 assert(mapControls.includes("variant === 'browse'"), "MapControls must gate the Layers button + north-up badge to browse mode");
 assert((home.match(/<MapControls/g) ?? []).length === 2, 'HomeScreen must render MapControls exactly twice: browse and nav-overlay');
-assert(home.includes('variant="browse"') && home.includes('variant="nav"'), 'HomeScreen must pass both variants to MapControls');
+// Browse/nav/recenter visibility is exercised by MapControls.test.tsx and HomeScreen.test.tsx.
 
 // The old duplicated inline button styles must be gone from HomeScreen — they now live in mapControlStyles.ts.
 for (const deadStyleKey of ['controlButton: {', 'controlButtonActive: {', 'controlHelperBadge: {', 'controlHelperText: {', 'zoomControls: {', 'zoomButton: {', 'zoomDivider: {']) {

@@ -62,9 +62,8 @@ assert(runtime.includes('getDynamicOffRouteThresholdMeters'), 'v2 runtime must r
 assert(runtime.includes('shouldTriggerReroute'), 'v2 runtime must require consecutive reroute evidence');
 assert(navVmV2.includes('REROUTE_COOLDOWN_MS'), 'v2 VM must enforce reroute cooldown');
 
-// Phase 2 (map-experience redesign): live navigation reuses Home's own zoom/compass controls
-// (same shared MapView/mapRef) instead of hiding all map controls during navigation.
-assert(homeScreen.includes("mode === 'NAVIGATION' && (") && homeScreen.includes('styles.navControls'), 'Home must render map controls while navigating, not just while browsing');
+// Navigation compass ownership and browse-control suppression are exercised by
+// MapControls.test.tsx and HomeScreen.test.tsx against the rendered controls.
 assert(
   homeScreen.includes("logHomeControl('nav_compass',") && homeScreen.includes('handleCompassToggle'),
   'Nav-mode controls must reuse the compass toggle handler',

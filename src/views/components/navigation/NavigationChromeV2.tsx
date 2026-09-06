@@ -12,6 +12,8 @@ import { InstructionService } from '../../../services/InstructionService';
 import { IJTEMA_GATES } from '../../../data/ijtema';
 import { staticColors } from '../../../theme';
 import { NAV_TRANSITION_TIMINGS } from '../../../constants/navigationTransitions';
+import { resolveMapChromePolicy } from '../../../viewmodels/MapChromePolicy';
+import type { MapMode } from '../../../viewmodels/useMapMode';
 import { NavigationOverlayV2 } from '../../../viewmodels/useNavigationOverlayV2';
 import { computeNavRecenterInset, resolveNavBarHeight } from '../../../viewmodels/useOverlayInsets';
 import { NAV_TOUCH_TARGET_HIT_SLOP, navOverlayStyles as styles } from './navOverlayStyles';
@@ -34,7 +36,7 @@ function StepIcon({ type, size = 32 }: { type: string; size?: number }) {
 /** Overlay chrome (banners, instruction/trip cards, recenter, arrival modal) shown over the
  * shared MapView while a v2 route is being navigated. Renders as a sibling of the MapView,
  * not inside it. */
-export function NavigationChromeV2({ overlay, hasBaseMap }: { overlay: NavigationOverlayV2; hasBaseMap: boolean }) {
+export function NavigationChromeV2({ overlay, hasBaseMap, mode }: { overlay: NavigationOverlayV2; hasBaseMap: boolean; mode?: MapMode }) {
   const insets = useSafeAreaInsets();
   const {
     route,
@@ -76,6 +78,7 @@ export function NavigationChromeV2({ overlay, hasBaseMap }: { overlay: Navigatio
   }, [mountAnim]);
 
   if (!route) return null;
+  const chrome = resolveMapChromePolicy(mode ?? (arrived ? 'ARRIVAL' : 'NAVIGATION'));
 
   const currentStep = instructions[currentStepIndex];
   const nextStep = instructions[currentStepIndex + 1];
@@ -97,7 +100,7 @@ export function NavigationChromeV2({ overlay, hasBaseMap }: { overlay: Navigatio
 
   return (
     <>
-      <AnimatedSafeAreaView
+      {chrome.navigation && <AnimatedSafeAreaView
         testID="navigation-top-stack"
         style={[
           styles.topBar,
@@ -217,9 +220,9 @@ export function NavigationChromeV2({ overlay, hasBaseMap }: { overlay: Navigatio
             </View>
           )}
         </View>
-      </AnimatedSafeAreaView>
+      </AnimatedSafeAreaView>}
 
-      {!arrived && (
+      {chrome.navigation && (
         <Animated.View
           style={[
             styles.bottomBar,
@@ -253,7 +256,7 @@ export function NavigationChromeV2({ overlay, hasBaseMap }: { overlay: Navigatio
         </Animated.View>
       )}
 
-      {snappedLocation && (
+      {chrome.navigation && snappedLocation && (
         <Pressable
           testID="nav-recenter-button"
           style={[
@@ -272,7 +275,7 @@ export function NavigationChromeV2({ overlay, hasBaseMap }: { overlay: Navigatio
         </Pressable>
       )}
 
-      <Modal visible={arrived} transparent animationType="slide">
+      <Modal visible={chrome.arrival} transparent animationType="slide">
         <View style={styles.arrivedOverlay}>
           <View style={styles.arrivedCard}>
             <MapPin size={52} color={staticColors.arrivalGreen} />
@@ -280,17 +283,6 @@ export function NavigationChromeV2({ overlay, hasBaseMap }: { overlay: Navigatio
             <Text style={styles.arrivedUrdu}>منزل پر پہنچ گئے</Text>
             <Text style={styles.arrivedSubtitle}>{route.destination.label}</Text>
             <View style={styles.arrivedActionsRow}>
-              <Pressable
-                testID="nav-arrived-recenter-button"
-                style={styles.arrivedSecondaryButton}
-                onPress={() => setIsAutoFollowing(true)}
-                hitSlop={NAV_TOUCH_TARGET_HIT_SLOP}
-                accessibilityRole="button"
-                accessibilityLabel="Re-center map on my location"
-              >
-                <LocateFixed size={18} color={staticColors.routeInside} />
-                <Text style={styles.arrivedSecondaryButtonText}>Recenter</Text>
-              </Pressable>
               <Pressable
                 testID="nav-arrived-done-button"
                 style={styles.arrivedButton}

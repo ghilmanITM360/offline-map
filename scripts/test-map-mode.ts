@@ -91,7 +91,7 @@ assert(
 assert(!home.includes('const [arrived, setArrived] = useState'), 'HomeScreen must not own a separate, never-set local `arrived` flag');
 assert(home.includes('!layersSheetVisible'), 'MapView gesture props must lock on layersSheetVisible (MAP_SETTINGS is not part of MapMode)');
 assert(!home.includes('!showNavOverlay &&') && !home.includes('showNavOverlay && <'), 'Render-visibility checks must go through mode, not raw showNavOverlay');
-assert(home.includes("mode === 'SEARCH' &&") && home.includes("mode !== 'SEARCH' &&"), 'Search dropdown/chips visibility must go through mode (SEARCH), not raw isSearchFocused');
+// Search/chip exclusivity is exercised by MapChromePolicy.test.ts and HomeScreen.test.tsx.
 
 // Regression guard: isSearchFocused is the raw trigger fed INTO useMapMode (declaration +
 // the single input line below), never a render/behavior gate read back out elsewhere —

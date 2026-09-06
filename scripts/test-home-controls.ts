@@ -48,7 +48,7 @@ assert(
   'MapControls must share one component across browse and nav modes',
 );
 assert(home.includes('<MapControls'), 'Home must render the shared MapControls component');
-assert(home.includes('variant="browse"'), 'Home browse controls must use the shared MapControls component');
+// Per-mode control visibility is exercised by MapControls.test.tsx and HomeScreen.test.tsx.
 assert(home.includes('variant="nav"'), 'Home nav-overlay controls must use the shared MapControls component');
 
 assert(homeVm.includes('MapFeatureFlagsService.useIjtemaV2Map'), 'Home VM must use v2 production default flag');

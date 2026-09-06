@@ -20,9 +20,8 @@ export interface MapControlsRecenter {
 }
 
 interface MapControlsProps {
-  /** 'browse' shows the Layers button + north-up/free-rotate helper badge; 'nav' omits both
-   * (no layer switching while actively navigating, per Phase 2's control-stack scoping). */
-  variant: 'browse' | 'nav';
+  /** Browse owns layers/compass/zoom; nav owns compass; selected/preview recenter only. */
+  variant: 'browse' | 'nav' | 'recenter';
   /** NORTH_UP (resting, neutral icon) vs FOLLOW_HEADING (bearing tracks device compass,
    * blue active icon) — see useCameraManager's CompassMode and HomeViewModel's
    * handleCompassToggle for the tap-to-cycle behavior. */
@@ -58,7 +57,7 @@ export function MapControls({ variant, compassMode, onLayers, onCompassToggle, o
           <Layers size={22} color={staticColors.iconMuted} />
         </Pressable>
       )}
-      <Pressable
+      {variant !== 'recenter' && <Pressable
         style={[styles.controlButton, isHeadingFollow && styles.controlButtonActive]}
         onPress={onCompassToggle}
         accessibilityRole="button"
@@ -68,13 +67,13 @@ export function MapControls({ variant, compassMode, onLayers, onCompassToggle, o
         accessibilityState={{ selected: isHeadingFollow }}
       >
         <Compass size={22} color={isHeadingFollow ? staticColors.info : staticColors.iconMuted} />
-      </Pressable>
+      </Pressable>}
       {variant === 'browse' && (
         <View style={styles.controlHelperBadge}>
           <Text style={styles.controlHelperText}>{isHeadingFollow ? 'Compass' : 'North-up'}</Text>
         </View>
       )}
-      <View style={styles.zoomControls}>
+      {variant === 'browse' && <View style={styles.zoomControls}>
         <Pressable
           style={styles.zoomButton}
           onPress={onZoomIn}
@@ -92,7 +91,7 @@ export function MapControls({ variant, compassMode, onLayers, onCompassToggle, o
         >
           <Minus size={22} color={staticColors.iconMuted} />
         </Pressable>
-      </View>
+      </View>}
       {recenter && (
         <View style={styles.recenterButtonWrap}>
           <Pressable
