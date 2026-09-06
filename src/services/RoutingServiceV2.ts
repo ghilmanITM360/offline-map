@@ -134,16 +134,16 @@ interface SelectedRoutePath {
 
 /**
  * `providerRouteTargetCoordinate` is always the gate's own literal
- * coordinate (not a graph-discretized approach point) — any provider can
- * route directly to an arbitrary lat/lng, so there is no snapping gap for
- * core to bridge. `connectorCostM` is therefore correctly 0 today for every
- * candidate; the field stays in the contract (rather than being omitted)
- * because the cost boundary in Task 3 requires it to exist as a real,
- * core-owned line item, not because a nonzero value is being withheld. If a
- * future provider integration needs to route to a different point than the
- * gate's own coordinate, this is the field that would carry the real gap —
- * inventing a nonzero value for it today, with no surveyed offset to back
- * it, would violate "do not invent graph connectivity."
+ * coordinate (not a graph-discretized approach point) — every provider is
+ * *asked* to route to that exact lat/lng. A provider may still snap its
+ * actual returned endpoint away from it (Google's Routes API documents this;
+ * `assertNormalizedRoute` tolerates it up to `MAX_ROUTE_ENDPOINT_OFFSET_M`),
+ * so a real, provider-specific gap can exist — `connectorCostM` here is
+ * always 0 because this plan is built *before* any provider has responded,
+ * not because the gap is assumed away. The real, measured gap (when a
+ * provider's `distanceM` doesn't already fold it in) is computed once the
+ * provider's actual endpoints are known, in `finalizeOutsideRoutingPlan`
+ * (see `measuredProviderConnectorM`) — not here, and not invented.
  *
  * `internalCostM` is the gate's best pedestrian cost (via `findBestPath`) to
  * the request's destination, precomputed here so a gate with no valid
@@ -223,6 +223,27 @@ const v2ToAppCoordinate = (coordinate: { lat: number; lng: number }): AppCoordin
   latitude: coordinate.lat,
   longitude: coordinate.lng,
 });
+
+/**
+ * Real, measured gap (NEW-06) between the exact requested origin/gate and a
+ * provider route's own endpoints — the join segments `pathCoordinates` below
+ * already draws on the map. `offline-osm`'s own `distanceM` already folds
+ * both gaps in (see `resolveOfflineOsmOutsideCandidate`'s doc comment), so
+ * charging them again here would double-count; every other provider's
+ * `distanceM` is a pure route-leg figure (Ps -> Pe) that never included them.
+ * Bounded by the same `MAX_ROUTE_ENDPOINT_OFFSET_M` identity tolerance
+ * `assertNormalizedRoute` already validated the route against, so this is
+ * never an unbounded/unverified distance.
+ */
+const measuredProviderConnectorM = (userCoordinate: AppCoordinate, outside: NormalizedOutsideCandidate, gate: Gate): number => {
+  if (outside.provider === 'offline-osm') return 0;
+  const routeStart = outside.coordinates[0];
+  const routeEnd = outside.coordinates[outside.coordinates.length - 1];
+  return (
+    distanceMeters(appToV2Coordinate(userCoordinate), appToV2Coordinate(routeStart)) +
+    distanceMeters(appToV2Coordinate(routeEnd), gate.coordinate!)
+  );
+};
 
 const destinationRequestKey = (destination: RoutingDestinationV2): string => {
   switch (destination.type) {
@@ -978,7 +999,7 @@ export class RoutingServiceV2 {
 
     const planByCandidateId = new Map(plan.candidates.map((candidate) => [candidate.candidateId, candidate]));
 
-    let winner: { planCandidate: CoreOutsideCandidateGate; outside: NormalizedOutsideCandidate; totalCostM: number } | undefined;
+    let winner: { planCandidate: CoreOutsideCandidateGate; outside: NormalizedOutsideCandidate; totalCostM: number; connectorM: number } | undefined;
     for (const outcome of outsideCandidates.outcomes) {
       if (outcome.status !== 'routed') continue;
       const planCandidate = planByCandidateId.get(outcome.gateId);
@@ -990,9 +1011,11 @@ export class RoutingServiceV2 {
         const gate = getGate(planCandidate.gateId);
         if (!gate) continue;
 
+        const connectorM = measuredProviderConnectorM(plan.userCoordinate, outside, gate);
+
         const totalCostM =
           outside.distanceM +
-          planCandidate.connectorCostM +
+          connectorM +
           planCandidate.penaltyM +
           planCandidate.internalCostM +
           gate.number * TIE_BREAK_EPSILON_M;
@@ -1002,7 +1025,7 @@ export class RoutingServiceV2 {
           totalCostM < winner.totalCostM ||
           (totalCostM === winner.totalCostM && outside.candidateId.localeCompare(winner.outside.candidateId) < 0)
         ) {
-          winner = { planCandidate, outside, totalCostM };
+          winner = { planCandidate, outside, totalCostM, connectorM };
         }
       }
     }
@@ -1027,8 +1050,8 @@ export class RoutingServiceV2 {
       startLabel: gate.name.en,
       startResolution,
       startCoordinate: plan.userCoordinate,
-      startConnectorDistanceM: Math.round(winner.outside.distanceM + winner.planCandidate.connectorCostM),
-      routeCostM: winner.outside.distanceM + winner.planCandidate.connectorCostM + winner.planCandidate.penaltyM + internalPath.costM,
+      startConnectorDistanceM: Math.round(winner.outside.distanceM + winner.connectorM),
+      routeCostM: winner.outside.distanceM + winner.connectorM + winner.planCandidate.penaltyM + internalPath.costM,
       outsideLegCoordinates: winner.outside.coordinates.map(appToV2Coordinate),
       outsideLegSanityCapExceeded: winner.outside.warnings.some((warning) => warning.code === 'distance-sanity-cap-exceeded'),
     };
