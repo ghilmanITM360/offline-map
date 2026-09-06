@@ -104,6 +104,12 @@ interface SelectedRoutePath {
   outsideLegTopologyCoordinates?: AppCoordinate[];
   outsideLegTopologyDistancesM?: number[];
   outsideLegTopologyNames?: Array<string | undefined>;
+  /** Raw user coordinate -> `outsideLegTopologyCoordinates[0]` snap distance — NOT included in
+   * `outsideLegTopologyDistancesM` (see StreetOutsidePathResult.approachDistanceM). Needed so
+   * `prependOutsideApproachInstruction` can give this leg its own instruction instead of silently
+   * dropping it from turn-by-turn guidance while `startConnectorDistanceM`/`totalDistance` still
+   * account for it. */
+  outsideLegApproachDistanceM?: number;
 }
 
 // ─── Core/provider two-phase outside-routing contract ──────────────────────
@@ -569,7 +575,27 @@ const prependOutsideApproachInstruction = (
       gateLabel,
     );
     if (streetSteps.length > 0) {
-      return [...streetSteps, ...renumberAndRewriteEntry(instructions, streetSteps.length, gateLabel)];
+      // The street topology starts AT the snapped street node, not at the user's raw coordinate —
+      // that snap gap (`outsideLegApproachDistanceM`) needs its own instruction, or live guidance
+      // (which measures from the user's real position) disagrees with streetSteps[0]'s own
+      // displayed distance (which only covers snapped-node -> first topology maneuver). See
+      // NEW-05 P1.
+      const approachDistanceM = selected.outsideLegApproachDistanceM ?? 0;
+      const approachStep: NavigationInstruction[] = approachDistanceM > 0
+        ? [{
+            id: 'v2-outside-connector',
+            text: `Walk ${approachDistanceM}m toward ${gateLabel.en}.`,
+            urduText: `${gateLabel.ur} کی طرف ${approachDistanceM} میٹر چلیں۔`,
+            distance: approachDistanceM,
+            type: 'straight',
+            coordinate: selected.outsideLegTopologyCoordinates[0],
+          }]
+        : [];
+      return [
+        ...approachStep,
+        ...streetSteps,
+        ...renumberAndRewriteEntry(instructions, approachStep.length + streetSteps.length, gateLabel),
+      ];
     }
     // Fall through to the beeline-style single instruction if street
     // instruction generation produced nothing (e.g. malformed topology data).
@@ -816,6 +842,7 @@ const selectOutsidePathViaStreetGraph = (
     })),
     outsideLegTopologyDistancesM: streetResult.topologyEdgeDistancesM,
     outsideLegTopologyNames: streetResult.topologyEdgeNames,
+    outsideLegApproachDistanceM: streetResult.approachDistanceM,
   };
 };
 

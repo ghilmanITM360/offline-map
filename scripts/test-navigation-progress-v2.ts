@@ -166,4 +166,54 @@ const hybridMidStepIndex = instructionIndexForProgressFixture(hybridRoute, hybri
 const hybridMidDistance = calculateLiveManeuverDistanceV2({ route: hybridRoute, currentStepIndex: hybridMidStepIndex, progressMeters: hybridMidProgress.progressMeters });
 assert(hybridMidDistance >= 0, 'D13: hybrid route live maneuver distance must stay non-negative while progressing');
 
+// NEW-05 P1 — outside-origin first-maneuver distance contract. A raw GPS
+// origin materially outside the street graph (here ~75m from the nearest
+// street node Ps) must not have its own O->Ps connector silently folded into
+// the first *topology* instruction's live countdown while that instruction's
+// own displayed text/distance still only describes the Ps->boundary hop.
+// The displayed instruction and the live maneuver distance must describe the
+// same action at every tick — this is the invariant the confirmation review
+// caught missing (the old D13 only asserted `hybridStartDistance > 0`, which
+// a text/distance mismatch like "Walk 28m" + "103m" still satisfies).
+const hybridInstruction0 = hybridRoute.instructions[0];
+assert(
+  Math.abs(hybridStartDistance - hybridInstruction0.distanceM) <= 2,
+  `P1-R1: displayed instruction ("${hybridInstruction0.text}", ${hybridInstruction0.distanceM}m) must match the live maneuver distance (${hybridStartDistance}m) at route start`,
+);
+// The O->Ps connector (~75m in this fixture) must surface as its own
+// instruction rather than vanishing — proves the connector wasn't dropped.
+assert(
+  hybridInstruction0.distanceM >= 50,
+  `P1-R2: first hybrid instruction must carry the real O->Ps connector distance, got ${hybridInstruction0.distanceM}m`,
+);
+
+// P1-R6/R7 — once the connector is behind the pedestrian, the first real
+// topology maneuver (previously instructions[0], now instructions[1]) must
+// still count down correctly from its own unchanged hop distance, and later
+// instructions must be unaffected by the connector fix.
+const afterConnectorProgress = calculateNavigationProgressV2({
+  route: hybridRoute,
+  coordinate: hybridRoute.coordinates[hybridInstruction0.routeIndex],
+  previousProgressMeters: 0,
+  walkingSpeedMs: 1.4,
+});
+const firstTopologyInstruction = hybridRoute.instructions[1];
+const firstTopologyDistance = calculateLiveManeuverDistanceV2({
+  route: hybridRoute,
+  currentStepIndex: 1,
+  progressMeters: afterConnectorProgress.progressMeters,
+});
+assert(
+  Math.abs(firstTopologyDistance - firstTopologyInstruction.distanceM) <= 2,
+  `P1-R6: first real topology maneuver (${firstTopologyInstruction.text}) must count down from its own distance, got live=${firstTopologyDistance}m vs displayed=${firstTopologyInstruction.distanceM}m`,
+);
+
+// P1-R9 — NEW-06's complete-journey distance accounting (raw connector still
+// charged into the total) must not regress from this guidance-only fix.
+assert.equal(
+  hybridRoute.totalDistanceM,
+  1639,
+  'P1-R9: NEW-06 total journey distance for this fixture must remain unchanged by the guidance fix',
+);
+
 console.log('Navigation progress v2 checks passed.');
