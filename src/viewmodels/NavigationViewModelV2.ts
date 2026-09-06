@@ -132,6 +132,12 @@ export function useNavigationViewModelV2() {
   // this ref, so GPS_LOST detection can never itself trigger a reroute or arrival.
   const lastFixAtRef = useRef<number | null>(null);
   const offRouteStartRef = useRef<number | null>(null);
+  // Coordinate captured the moment off-route evidence starts accumulating (first fix of the
+  // current off-route streak). Reroute evidence is distance walked away from THIS point, not
+  // distance between consecutive fixes — consecutive-fix distance is capped near zero by
+  // GPSManagerService's own navigation-mode distanceInterval (2m), so gating reroute on it
+  // made the count/duration criteria below unreachable for realistic pedestrian GPS cadence.
+  const offRouteAnchorRef = useRef<Coordinate | null>(null);
   const consecutiveOffRouteRef = useRef(0);
   // Mirrors `arrived` state so the per-fix arrival check below can latch (and skip re-evaluating
   // once true) without needing `arrived` in its effect's dependency array. Once true, the trip's
@@ -179,6 +185,12 @@ export function useNavigationViewModelV2() {
     setArrived(false);
     arrivedRef.current = false;
     pendingArrivalCorroborationRef.current = false;
+    // A new trip must start with clean reroute evidence — otherwise a stale count/anchor/timer
+    // from a just-ended trip (e.g. off-route walking that never reached the reroute gates before
+    // Done/Cancel) could combine with this trip's very first fix to false-trigger a reroute.
+    consecutiveOffRouteRef.current = 0;
+    offRouteStartRef.current = null;
+    offRouteAnchorRef.current = null;
     // Deliberately NOT touching lastArrivalFixLocationRef here: it already holds whatever
     // observation was last consumed as arrival evidence (or its initial `null`, if none ever
     // was). Leaving it alone is what lets a fresh mount's already-known ambient location count as
@@ -195,6 +207,11 @@ export function useNavigationViewModelV2() {
     setArrived(false);
     arrivedRef.current = false;
     pendingArrivalCorroborationRef.current = false;
+    // See the matching comment in the navigationSessionId reset above — same reasoning applies
+    // to the Done/Cancel path (route -> null) as to a fresh startNavigation().
+    consecutiveOffRouteRef.current = 0;
+    offRouteStartRef.current = null;
+    offRouteAnchorRef.current = null;
     // See the matching comment in the navigationSessionId reset above: lastArrivalFixLocationRef
     // is deliberately left alone here too.
     // This hook runs unconditionally inside HomeScreen for the app's lifetime, so without this a
@@ -362,6 +379,7 @@ export function useNavigationViewModelV2() {
       lastAcceptedLocationRef.current = coordinate;
       consecutiveOffRouteRef.current = 0;
       offRouteStartRef.current = null;
+      offRouteAnchorRef.current = null;
       lastRerouteAtRef.current = Date.now();
       // Cleared here directly (not only via the route?.routeId-keyed effect below) because
       // RoutingServiceV2 derives routeId deterministically from the resolved start/end graph
@@ -476,23 +494,29 @@ export function useNavigationViewModelV2() {
       // new navigation session may move the trip on from here.
       consecutiveOffRouteRef.current = 0;
       offRouteStartRef.current = null;
+      offRouteAnchorRef.current = null;
       return;
     }
     const isOffRoute = progress.distanceToRouteMeters > thresholdM;
     if (!isOffRoute || weakGps) {
       consecutiveOffRouteRef.current = 0;
       offRouteStartRef.current = null;
+      offRouteAnchorRef.current = null;
       return;
     }
 
     consecutiveOffRouteRef.current += 1;
     offRouteStartRef.current = offRouteStartRef.current ?? Date.now();
+    const movedDistanceSinceOffRouteAnchorM = offRouteAnchorRef.current
+      ? getDistance(offRouteAnchorRef.current, currentLocation)
+      : 0;
+    offRouteAnchorRef.current = offRouteAnchorRef.current ?? currentLocation;
     const evidence = evaluateRerouteEvidenceV2({
       gpsAccuracyM: accuracyM,
       consecutiveOffRouteCount: consecutiveOffRouteRef.current,
       offRouteDurationMs: Date.now() - offRouteStartRef.current,
       cooldownRemainingMs: Math.max(0, REROUTE_COOLDOWN_MS - (Date.now() - lastRerouteAtRef.current)),
-      movedDistanceSinceLastAcceptedM: movedDistanceM,
+      movedDistanceSinceLastAcceptedM: movedDistanceSinceOffRouteAnchorM,
     });
 
     if (evidence.shouldReroute) {
