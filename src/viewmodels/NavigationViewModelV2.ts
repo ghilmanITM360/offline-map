@@ -25,6 +25,7 @@ import { createProductionOutsideRouteSource } from '../services/outsideRouting/P
 import { getRoutableOfficialGates } from '../data/ijtema/entryPolicy';
 import {
   buildV2RerouteRequest,
+  calculateLiveManeuverDistanceV2,
   calculateNavigationProgressV2,
   deriveGpsSignalStateV2,
   evaluateArrivalFixV2,
@@ -121,6 +122,7 @@ export function useNavigationViewModelV2() {
   const destination = route ? placeFromV2Destination(route, destinationFromStore) : destinationFromStore;
   const [snappedLocation, setSnappedLocation] = useState<Coordinate | null>(route?.origin.coordinate ?? null);
   const [remainingDistance, setRemainingDistance] = useState(route?.totalDistanceM ?? 0);
+  const [maneuverDistance, setManeuverDistance] = useState(route?.instructions[0]?.distanceM ?? 0);
   const [etaMinutes, setEtaMinutes] = useState(route?.etaMinutes ?? 0);
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [arrived, setArrived] = useState(false);
@@ -237,6 +239,7 @@ export function useNavigationViewModelV2() {
     setEtaMinutes(route.etaMinutes);
     setSnappedLocation(route.origin.coordinate);
     setCurrentStepIndex(0);
+    setManeuverDistance(calculateLiveManeuverDistanceV2({ route, currentStepIndex: 0, progressMeters: 0 }));
     progressRef.current = 0;
     // A route replacement (fresh trip or mid-trip reroute) invalidates any in-flight moderate-path
     // corroboration — see evaluateArrivalFixV2's hasPendingCorroboration contract. Earned arrival
@@ -489,6 +492,7 @@ export function useNavigationViewModelV2() {
     if (nextIndex !== currentStepIndex) {
       setCurrentStepIndex(nextIndex);
     }
+    setManeuverDistance(calculateLiveManeuverDistanceV2({ route, currentStepIndex: nextIndex, progressMeters: progress.progressMeters }));
 
     const currentInstruction = instructions[nextIndex];
     if (settings.voiceInstructions && !isMuted && currentInstruction && currentInstruction.id !== lastSpokenInstructionIdRef.current) {
@@ -554,6 +558,7 @@ export function useNavigationViewModelV2() {
     isMuted,
     setIsMuted,
     remainingDistance,
+    maneuverDistance,
     etaMinutes,
     arrived,
     reroutePending,

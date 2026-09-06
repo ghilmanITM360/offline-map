@@ -4,6 +4,7 @@ import { SearchService } from '../src/services/SearchService';
 import { V2DirectionsService } from '../src/services/V2DirectionsService';
 import { V2NavigationAdapter } from '../src/services/V2NavigationAdapter';
 import {
+  calculateLiveManeuverDistanceV2,
   calculateNavigationProgressV2,
   shouldIgnorePoorAccuracyMovementV2,
 } from '../src/services/V2NavigationRuntimeService';
@@ -72,5 +73,97 @@ assert.equal(
   false,
   'Accurate movement over 10m must be accepted',
 );
+
+// NEW-05: live maneuver distance must count down with route progress instead of staying frozen
+// at the current instruction's immutable original distance. Mirrors NavigationViewModelV2's own
+// (private) currentStepIndex advancement so the fixture exercises the real authoritative logic.
+function instructionIndexForProgressFixture(route: typeof activeRoute, progressMeters: number): number {
+  let bestIndex = 0;
+  route.instructions.forEach((instruction, index) => {
+    const coord = route.coordinates[instruction.routeIndex] ?? instruction.coordinate;
+    const projected = calculateNavigationProgressV2({
+      route,
+      coordinate: coord,
+      previousProgressMeters: 0,
+      walkingSpeedMs: 1.4,
+    });
+    if (projected.progressMeters <= progressMeters + 15) bestIndex = index;
+  });
+  return bestIndex;
+}
+
+function lerpCoord(a: { latitude: number; longitude: number }, b: { latitude: number; longitude: number }, t: number) {
+  return { latitude: a.latitude + (b.latitude - a.latitude) * t, longitude: a.longitude + (b.longitude - a.longitude) * t, accuracy: 8 };
+}
+
+const longLegInstruction = [...activeRoute.instructions].sort((a, b) => b.distanceM - a.distanceM)[0];
+const longLegIndex = activeRoute.instructions.indexOf(longLegInstruction);
+assert(longLegIndex > 0, 'Fixture must contain a real (non-start) instruction to walk through');
+const legStartCoord = activeRoute.coordinates[activeRoute.instructions[longLegIndex - 1]?.routeIndex ?? 0];
+const legEndCoord = activeRoute.coordinates[longLegInstruction.routeIndex];
+
+let stepProgress = 0;
+let currentStepIndex = 0;
+function tickManeuver(coord: ReturnType<typeof lerpCoord>) {
+  const progress = calculateNavigationProgressV2({ route: activeRoute, coordinate: coord, previousProgressMeters: stepProgress, walkingSpeedMs: 1.4 });
+  stepProgress = progress.progressMeters;
+  currentStepIndex = Math.max(currentStepIndex, instructionIndexForProgressFixture(activeRoute, stepProgress));
+  const maneuverDistance = calculateLiveManeuverDistanceV2({ route: activeRoute, currentStepIndex, progressMeters: stepProgress });
+  return { progress, maneuverDistance };
+}
+
+const early = tickManeuver(lerpCoord(legStartCoord, legEndCoord, 0.05));
+const mid = tickManeuver(lerpCoord(legStartCoord, legEndCoord, 0.35));
+const late = tickManeuver(lerpCoord(legStartCoord, legEndCoord, 0.65));
+const nearBoundary = tickManeuver(lerpCoord(legStartCoord, legEndCoord, 0.97));
+
+// D1/D2 — countdown, not frozen at the original static distanceM.
+assert(mid.maneuverDistance < early.maneuverDistance, 'D1: live maneuver distance must decrease as progress advances within the same leg');
+assert(late.maneuverDistance < mid.maneuverDistance, 'D2: live maneuver distance must keep decreasing further into the leg');
+// D5 — must not simply equal the immutable original instruction distance once progress occurs.
+assert.notEqual(mid.maneuverDistance, longLegInstruction.distanceM, 'D5: live maneuver distance must not equal the frozen original instruction distance');
+// D4 — trends toward 0 approaching the maneuver.
+assert(nearBoundary.maneuverDistance < 15, 'D4: live maneuver distance must approach 0 near the maneuver boundary');
+assert(nearBoundary.maneuverDistance >= 0, 'D4: live maneuver distance must never go negative');
+// D3 — maneuver distance and total remaining journey distance are separate, non-impersonating values.
+assert.notEqual(mid.maneuverDistance, mid.progress.remainingDistanceM, 'D3: maneuver distance must not impersonate total remaining journey distance');
+assert(mid.maneuverDistance <= mid.progress.remainingDistanceM + 1, 'D3: maneuver distance must not exceed total remaining journey distance');
+
+// D14 — at exact route start, live maneuver distance approximately matches the first real step's
+// own original distance (the degenerate 0-distance start marker at index 0 must not be the target).
+const firstRealInstruction = activeRoute.instructions.find((instruction) => instruction.distanceM > 0);
+assert(firstRealInstruction, 'Fixture must have a real first instruction');
+const atStart = calculateLiveManeuverDistanceV2({ route: activeRoute, currentStepIndex: 0, progressMeters: 0 });
+assert(
+  Math.abs(atStart - firstRealInstruction!.distanceM) <= 1,
+  `D14: at route start live maneuver distance (${atStart}) must match the first real step's distance (${firstRealInstruction!.distanceM})`,
+);
+
+// D13 — outside-to-inside hybrid route: live maneuver distance must be derivable the same way
+// across the gate transition (no separate outside-only code path).
+const hybridPreview = V2DirectionsService.calculatePreview({
+  startPlace: null,
+  destination: block28,
+  currentLocation: { latitude: 24.9695, longitude: 66.9968 },
+  walkingSpeedMs: 1.4,
+  forceOutside: true,
+});
+assert.equal(hybridPreview.status, 'ready', 'Hybrid outside->inside fixture must route');
+const hybridRoute = V2NavigationAdapter.fromPreview({
+  previewRoute: hybridPreview.route!,
+  destination: block28,
+  currentLocation: { latitude: 24.9695, longitude: 66.9968 },
+});
+const hybridStartDistance = calculateLiveManeuverDistanceV2({ route: hybridRoute, currentStepIndex: 0, progressMeters: 0 });
+assert(hybridStartDistance > 0, 'D13: hybrid route must derive a positive live maneuver distance on its outside leg');
+const hybridMidProgress = calculateNavigationProgressV2({
+  route: hybridRoute,
+  coordinate: hybridRoute.coordinates[Math.min(2, hybridRoute.coordinates.length - 1)],
+  previousProgressMeters: 0,
+  walkingSpeedMs: 1.4,
+});
+const hybridMidStepIndex = instructionIndexForProgressFixture(hybridRoute, hybridMidProgress.progressMeters);
+const hybridMidDistance = calculateLiveManeuverDistanceV2({ route: hybridRoute, currentStepIndex: hybridMidStepIndex, progressMeters: hybridMidProgress.progressMeters });
+assert(hybridMidDistance >= 0, 'D13: hybrid route live maneuver distance must stay non-negative while progressing');
 
 console.log('Navigation progress v2 checks passed.');

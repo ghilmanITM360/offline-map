@@ -49,6 +49,7 @@ function baseOverlay(overrides: Partial<NavigationOverlayV2> = {}): NavigationOv
     isMuted: false,
     setIsMuted: jest.fn(),
     remainingDistance: 300,
+    maneuverDistance: 300,
     etaMinutes: 5,
     arrived: false,
     reroutePending: false,

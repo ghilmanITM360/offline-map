@@ -152,6 +152,30 @@ export function calculateNavigationProgressV2(input: NavigationProgressV2Input):
   };
 }
 
+// currentStepIndex (computed elsewhere, authoritative) lags behind live progress until GPS
+// comes within the step-advancement tolerance of its own boundary — so instructions[currentStepIndex]'s
+// own route position is frequently already behind current progress. Scanning forward from
+// currentStepIndex for the first boundary still ahead of progress (rather than assuming it's
+// exactly instructions[currentStepIndex] or instructions[currentStepIndex + 1]) gives a live
+// distance that counts down smoothly and degrades to 0 once every remaining boundary is behind
+// (reroute replacement / arrival), without independently deciding when currentStepIndex itself advances.
+export function calculateLiveManeuverDistanceV2(input: {
+  route: V2ActiveRoute;
+  currentStepIndex: number;
+  progressMeters: number;
+}): number {
+  const { route, currentStepIndex, progressMeters } = input;
+  for (let i = currentStepIndex; i < route.instructions.length; i += 1) {
+    const instruction = route.instructions[i];
+    const coord = route.coordinates[instruction.routeIndex] ?? instruction.coordinate;
+    const boundaryMeters = RerouteService.projectProgressMetersOnRoute(coord, route).progressMeters;
+    if (boundaryMeters > progressMeters) {
+      return boundaryMeters - progressMeters;
+    }
+  }
+  return 0;
+}
+
 export function evaluateRerouteEvidenceV2(input: RerouteEvidenceV2Input): RerouteEvidenceV2 {
   const thresholdM = RerouteService.getDynamicOffRouteThresholdMeters(input.gpsAccuracyM ?? 0);
   return {
