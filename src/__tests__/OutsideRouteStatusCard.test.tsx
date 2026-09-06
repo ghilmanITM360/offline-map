@@ -73,7 +73,7 @@ describe('OutsideRouteStatusCard', () => {
 
     expect(screen.getByRole('alert')).toBeOnTheScreen();
     expect(screen.getByText('Direct guide — not a road route')).toBeOnTheScreen();
-    expect(screen.getByText('Road navigation is currently unavailable. This guide points directly toward the selected gate and may not follow walkable roads.')).toBeOnTheScreen();
+    expect(screen.getByText('Direct guidance only. This path may not follow roads.')).toBeOnTheScreen();
     expect(screen.getByText('سڑک کے مطابق نیویگیشن اس وقت دستیاب نہیں۔ یہ رہنمائی منتخب گیٹ کی سیدھی سمت دکھاتی ہے اور ضروری نہیں کہ پیدل چلنے کے قابل سڑکوں کے مطابق ہو۔')).toBeOnTheScreen();
     expect(screen.queryByText(/turn (left|right)/i)).not.toBeOnTheScreen();
     expect(screen.queryByText(/continue ahead/i)).not.toBeOnTheScreen();

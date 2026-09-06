@@ -1352,7 +1352,6 @@ describe('HomeScreen — resolved base-map rendering', () => {
   test('online Google map renders without LocalTile conflict', async () => {
     jest.spyOn(MapConfigService, 'getRuntimeStatus').mockReturnValue({
       keyPresent: true,
-      keyPreview: null,
       packageName: 'com.test',
       platform: 'android',
       source: 'env',
@@ -1368,7 +1367,6 @@ describe('HomeScreen — resolved base-map rendering', () => {
   test('Google load watchdog switches once to one LocalTile fallback', async () => {
     jest.spyOn(MapConfigService, 'getRuntimeStatus').mockReturnValue({
       keyPresent: true,
-      keyPreview: null,
       packageName: 'com.test',
       platform: 'android',
       source: 'env',
@@ -1387,7 +1385,6 @@ describe('HomeScreen — resolved base-map rendering', () => {
   test('late Google map-loaded event cannot replace watchdog LocalTile fallback', async () => {
     jest.spyOn(MapConfigService, 'getRuntimeStatus').mockReturnValue({
       keyPresent: true,
-      keyPreview: null,
       packageName: 'com.test',
       platform: 'android',
       source: 'env',
@@ -1422,7 +1419,6 @@ describe('HomeScreen — resolved base-map rendering', () => {
   test('returning online replaces LocalTile with Google without duplicate rendering', async () => {
     jest.spyOn(MapConfigService, 'getRuntimeStatus').mockReturnValue({
       keyPresent: true,
-      keyPreview: null,
       packageName: 'com.test',
       platform: 'android',
       source: 'env',

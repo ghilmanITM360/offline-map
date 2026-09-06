@@ -14,6 +14,8 @@ const homeScreen = readFileSync('src/views/screens/HomeScreen.tsx', 'utf8');
 const navOverlay = readFileSync('src/viewmodels/useNavigationOverlayV2.ts', 'utf8');
 const navMapLayers = readFileSync('src/views/components/navigation/NavigationMapLayersV2.tsx', 'utf8');
 const navChrome = readFileSync('src/views/components/navigation/NavigationChromeV2.tsx', 'utf8');
+const warningPolicy = readFileSync('src/viewmodels/MapWarningPolicy.ts', 'utf8');
+const navigationStatusBanner = readFileSync('src/views/components/navigation/NavigationStatusBanner.tsx', 'utf8');
 const navVmV2 = readFileSync('src/viewmodels/NavigationViewModelV2.ts', 'utf8');
 const navAdapter = readFileSync('src/services/V2NavigationAdapter.ts', 'utf8');
 const runtime = readFileSync('src/services/V2NavigationRuntimeService.ts', 'utf8');
@@ -52,8 +54,12 @@ assert(
 assert(navMapLayers.includes('route.origin.coordinate'), 'v2 navigation must render start marker from v2 route origin');
 assert(navMapLayers.includes('route.destination.coordinate'), 'v2 navigation must render red destination marker from v2 route destination');
 assert(navMapLayers.includes('snappedLocation') && navMapLayers.includes('userMarker'), 'v2 navigation must render current/user marker');
-assert(navChrome.includes('Weak GPS signal detected'), 'v2 navigation must show weak GPS warning');
-assert(navChrome.includes('Recalculating...'), 'v2 navigation must show reroute state without clearing map');
+assert(
+  navChrome.includes('selectMapWarning') && navChrome.includes('reroutePending') && navigationStatusBanner.includes('warning.message'),
+  'v2 navigation must render the shared warning-policy result from active GPS/reroute state',
+);
+assert(warningPolicy.includes('Weak GPS signal detected'), 'shared warning policy must preserve weak GPS safety wording');
+assert(warningPolicy.includes('Recalculating your route…'), 'shared warning policy must expose active rerouting without clearing map');
 assert(navChrome.includes('onPress={requestNavigationExit}'), 'v2 active navigation exit must request confirmation');
 assert(navChrome.includes('onPress={completeArrivalNavigation}'), 'v2 arrival Done must exit immediately');
 assert(navChrome.includes('LocateFixed') && navOverlay.includes('cameraManager.enterNavigationCamera('), 'v2 navigation recenter must be wired');

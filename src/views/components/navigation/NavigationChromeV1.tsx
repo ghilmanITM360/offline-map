@@ -6,7 +6,7 @@
 import React, { useEffect, useRef } from 'react';
 import { Animated, Modal, Pressable, Text, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ArrowLeft, ArrowRight, LocateFixed, MapPin, Navigation, RefreshCw, Volume2, VolumeX, X } from 'lucide-react-native';
+import { ArrowLeft, ArrowRight, LocateFixed, MapPin, Navigation, Volume2, VolumeX, X } from 'lucide-react-native';
 
 import { InstructionService } from '../../../services/InstructionService';
 import { staticColors } from '../../../theme';
@@ -16,6 +16,8 @@ import type { MapMode } from '../../../viewmodels/useMapMode';
 import { NavigationOverlayV1 } from '../../../viewmodels/useNavigationOverlayV1';
 import { computeNavRecenterInset, resolveNavBarHeight } from '../../../viewmodels/useOverlayInsets';
 import { NAV_TOUCH_TARGET_HIT_SLOP, navOverlayStyles as styles } from './navOverlayStyles';
+import { selectMapWarning } from '../../../viewmodels/MapWarningPolicy';
+import { NavigationStatusBanner } from './NavigationStatusBanner';
 
 const AnimatedSafeAreaView = Animated.createAnimatedComponent(SafeAreaView);
 
@@ -76,6 +78,13 @@ export function NavigationChromeV1({ overlay, hasBaseMap, mode }: { overlay: Nav
     hour: '2-digit',
     minute: '2-digit',
   });
+  const warning = selectMapWarning({
+    isWeakGps,
+    reroutePending,
+    rerouteStatusMessage,
+    basemapDegraded: !hasBaseMap || graphOnlyFallbackUsed,
+    basemapMessage: 'Base map unavailable. Offline route guidance continues.',
+  });
 
   return (
     <>
@@ -87,12 +96,7 @@ export function NavigationChromeV1({ overlay, hasBaseMap, mode }: { overlay: Nav
         ]}
         onLayout={(e) => setTopCardHeight(e.nativeEvent.layout.height)}
       >
-        {reroutePending ? (
-          <View style={[styles.instructionCard, styles.rerouteCard]}>
-            <RefreshCw size={28} color={staticColors.white} />
-            <Text style={styles.rerouteText}>Recalculating...</Text>
-          </View>
-        ) : currentStep && !arrived ? (
+        {currentStep && !arrived ? (
           <View style={styles.instructionCard} accessibilityLabel={currentStep.text}>
             <View style={styles.instructionIcon}>
               <StepIcon type={currentStep.type} size={32} />
@@ -123,22 +127,9 @@ export function NavigationChromeV1({ overlay, hasBaseMap, mode }: { overlay: Nav
             </Pressable>
           </View>
         ) : null}
-        {/* Single top safety/status slot — navigation safety (weak GPS) outranks rerouting
-            status, which outranks basemap degradation. Never stack more than one. */}
+        {/* Single top safety/status slot selected by the shared pure priority policy. */}
         <View style={styles.topStatusStack}>
-          {isWeakGps ? (
-            <View style={styles.weakGpsBanner}>
-              <Text style={styles.weakGpsText}>Weak GPS signal detected. Route updates may be slower.</Text>
-            </View>
-          ) : rerouteStatusMessage && !reroutePending ? (
-            <View style={styles.rerouteHintBanner}>
-              <Text style={styles.rerouteHintText}>{rerouteStatusMessage}</Text>
-            </View>
-          ) : !hasBaseMap || graphOnlyFallbackUsed ? (
-            <View style={styles.mapUnavailableBanner}>
-              <Text style={styles.mapUnavailableText}>Base map unavailable. Offline route guidance continues.</Text>
-            </View>
-          ) : null}
+          <NavigationStatusBanner warning={warning} />
         </View>
       </AnimatedSafeAreaView>}
 

@@ -61,6 +61,7 @@ import { Paths } from 'expo-file-system';
 import { DrawerParamList, RootStackParamList } from '../../navigation/RootNavigator';
 import { RoutingService } from '../../services/RoutingService';
 import { MapConfigService } from '../../services/MapConfigService';
+import { selectMapWarning } from '../../viewmodels/MapWarningPolicy';
 import { resolveBaseMapMode } from '../../services/BaseMapModeResolver';
 import { MapFeatureFlagsService } from '../../services/MapFeatureFlagsService';
 import { MapStartupController } from '../../services/MapStartupController';
@@ -910,6 +911,13 @@ export function HomeScreen() {
     ? `Outside Ijtema. Suggested entry through ${nearestEntryGate.name.en}. Final entry gate is confirmed when route preview is calculated.`
     : 'Outside Ijtema. Suggested entry unavailable. Final entry gate is confirmed when route preview is calculated.';
   const showMapWarningBanner = baseMapMode === 'GRAPH_ONLY';
+  const browseWarning = selectMapWarning({
+    basemapDegraded: showMapWarningBanner,
+    basemapMessage: hasGoogleMapsKey && mapLoadFailed
+      ? MapConfigService.getMapLoadFailedMessage()
+      : MapConfigService.getMissingGoogleMapsMessage(),
+    offline: isOffline,
+  });
   const topInsetBase = Math.max(insets.top, Platform.OS === 'android' ? StatusBar.currentHeight ?? 0 : 0);
   // bannerStackTop used to be a hardcoded `topInsetBase + 140` guess at the combined
   // search bar + chip row height, which under-measured on some font scales/screen sizes
@@ -1842,20 +1850,14 @@ export function HomeScreen() {
             warning, so it keeps its own slot alongside whichever status above shows. */}
         {chrome.browseStatus && (isOffline || showMapWarningBanner || showOutsideBanner) && (
           <View style={[styles.bannerStack, { top: bannerStackTop }]}>
-            {showMapWarningBanner ? (
+            {browseWarning?.kind === 'basemap_degradation' ? (
               <View style={[styles.mapWarningBanner, styles.bannerStackItem]}>
-                <Text style={styles.mapWarningText}>
-                  {hasGoogleMapsKey && mapLoadFailed
-                    ? MapConfigService.getMapLoadFailedMessage()
-                    : isOffline
-                      ? 'Downloaded background map unavailable. Ijtema routes still work.'
-                      : MapConfigService.getMissingGoogleMapsMessage()}
-                </Text>
+                <Text style={styles.mapWarningText}>{browseWarning.message}</Text>
               </View>
-            ) : isOffline ? (
+            ) : browseWarning?.kind === 'offline' ? (
               <View style={[styles.offlineIndicator, styles.bannerStackItem]}>
                 <WifiOff size={14} color={staticColors.white} />
-                <Text style={styles.offlineText}>Offline</Text>
+                <Text style={styles.offlineText}>{browseWarning.message}</Text>
               </View>
             ) : null}
 

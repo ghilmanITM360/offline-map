@@ -35,7 +35,7 @@ const MESSAGES: Record<OutsideRouteMessageKey, BilingualMessage> = {
     ur: 'گوگل کا پیدل راستہ دستیاب نہیں۔ آف لائن پیدل سڑکوں کا راستہ استعمال ہو رہا ہے۔',
   },
   'direct.warning': {
-    en: 'Road navigation is currently unavailable. This guide points directly toward the selected gate and may not follow walkable roads.',
+    en: 'Direct guidance only. This path may not follow roads.',
     ur: 'سڑک کے مطابق نیویگیشن اس وقت دستیاب نہیں۔ یہ رہنمائی منتخب گیٹ کی سیدھی سمت دکھاتی ہے اور ضروری نہیں کہ پیدل چلنے کے قابل سڑکوں کے مطابق ہو۔',
   },
   'direct.notRoadRoute': {
