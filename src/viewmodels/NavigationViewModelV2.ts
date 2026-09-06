@@ -51,18 +51,6 @@ interface RerouteOptions {
   allowDirectGuide?: boolean;
 }
 
-function instructionIndexForProgress(route: V2ActiveRoute, progressMeters: number): number {
-  let bestIndex = 0;
-  route.instructions.forEach((instruction, index) => {
-    const coord = route.coordinates[instruction.routeIndex] ?? instruction.coordinate;
-    const projected = RerouteService.projectProgressMetersOnRoute(coord, route);
-    if (projected.progressMeters <= progressMeters + 15) {
-      bestIndex = index;
-    }
-  });
-  return bestIndex;
-}
-
 function placeFromV2Destination(route: V2ActiveRoute, existingDestination: Place | null): Place | null {
   if (existingDestination) return existingDestination;
   const destination = route.destination;
@@ -238,8 +226,9 @@ export function useNavigationViewModelV2() {
     setRemainingDistance(route.totalDistanceM);
     setEtaMinutes(route.etaMinutes);
     setSnappedLocation(route.origin.coordinate);
-    setCurrentStepIndex(0);
-    setManeuverDistance(calculateLiveManeuverDistanceV2({ route, currentStepIndex: 0, progressMeters: 0 }));
+    const initialGuidance = calculateLiveManeuverDistanceV2({ route, currentStepIndex: 0, progressMeters: 0 });
+    setCurrentStepIndex(initialGuidance.stepIndex);
+    setManeuverDistance(initialGuidance.maneuverDistanceM);
     progressRef.current = 0;
     // A route replacement (fresh trip or mid-trip reroute) invalidates any in-flight moderate-path
     // corroboration — see evaluateArrivalFixV2's hasPendingCorroboration contract. Earned arrival
@@ -488,11 +477,12 @@ export function useNavigationViewModelV2() {
     setRemainingDistance(progress.remainingDistanceM);
     setEtaMinutes(progress.etaMinutes);
 
-    const nextIndex = Math.max(currentStepIndex, instructionIndexForProgress(route, progress.progressMeters));
+    const guidance = calculateLiveManeuverDistanceV2({ route, currentStepIndex, progressMeters: progress.progressMeters });
+    const nextIndex = guidance.stepIndex;
     if (nextIndex !== currentStepIndex) {
       setCurrentStepIndex(nextIndex);
     }
-    setManeuverDistance(calculateLiveManeuverDistanceV2({ route, currentStepIndex: nextIndex, progressMeters: progress.progressMeters }));
+    setManeuverDistance(guidance.maneuverDistanceM);
 
     const currentInstruction = instructions[nextIndex];
     if (settings.voiceInstructions && !isMuted && currentInstruction && currentInstruction.id !== lastSpokenInstructionIdRef.current) {

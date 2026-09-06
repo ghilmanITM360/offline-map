@@ -152,28 +152,31 @@ export function calculateNavigationProgressV2(input: NavigationProgressV2Input):
   };
 }
 
-// currentStepIndex (computed elsewhere, authoritative) lags behind live progress until GPS
-// comes within the step-advancement tolerance of its own boundary — so instructions[currentStepIndex]'s
-// own route position is frequently already behind current progress. Scanning forward from
-// currentStepIndex for the first boundary still ahead of progress (rather than assuming it's
-// exactly instructions[currentStepIndex] or instructions[currentStepIndex + 1]) gives a live
-// distance that counts down smoothly and degrades to 0 once every remaining boundary is behind
-// (reroute replacement / arrival), without independently deciding when currentStepIndex itself advances.
+// Single authority for both "which instruction is the active guidance step" and "its live
+// countdown distance" — the two must never be decided independently, or the displayed text and
+// the distance shown with it can end up describing different maneuvers. Each instruction's own
+// routeIndex is the boundary where THAT instruction completes (it describes travel ending there),
+// so the active step is the first instruction (scanning forward from currentStepIndex, never
+// backward) whose own boundary is still ahead of progress; its distance is simply the remaining
+// distance to that same boundary. Once every remaining boundary is behind progress (arrival, or a
+// duplicate-boundary marker immediately following a completed step), this lands on the final
+// instruction with a distance of 0 rather than exposing an inconsistent state.
 export function calculateLiveManeuverDistanceV2(input: {
   route: V2ActiveRoute;
   currentStepIndex: number;
   progressMeters: number;
-}): number {
+}): { stepIndex: number; maneuverDistanceM: number } {
   const { route, currentStepIndex, progressMeters } = input;
-  for (let i = currentStepIndex; i < route.instructions.length; i += 1) {
+  const startIndex = Math.max(0, currentStepIndex);
+  for (let i = startIndex; i < route.instructions.length; i += 1) {
     const instruction = route.instructions[i];
     const coord = route.coordinates[instruction.routeIndex] ?? instruction.coordinate;
     const boundaryMeters = RerouteService.projectProgressMetersOnRoute(coord, route).progressMeters;
     if (boundaryMeters > progressMeters) {
-      return boundaryMeters - progressMeters;
+      return { stepIndex: i, maneuverDistanceM: boundaryMeters - progressMeters };
     }
   }
-  return 0;
+  return { stepIndex: Math.max(0, route.instructions.length - 1), maneuverDistanceM: 0 };
 }
 
 export function evaluateRerouteEvidenceV2(input: RerouteEvidenceV2Input): RerouteEvidenceV2 {
