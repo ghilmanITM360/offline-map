@@ -18,6 +18,10 @@ const gate21 = SearchService.search('Gate 21')[0];
 const block28 = SearchService.search('Block 28')[0];
 const gate05 = SearchService.search('Gate 05')[0];
 const rasta09 = SearchService.search('Rasta 09')[0];
+const gate08 = SearchService.search('Gate 08')[0];
+const shahrNorth = SearchService.search('Shahr-e-Pindal North')[0];
+const shahrSouth = SearchService.search('Shahr-e-Pindal South')[0];
+const shahrWest = SearchService.search('Shahr-e-Pindal West')[0];
 const preview = V2DirectionsService.calculatePreview({
   startPlace: gate21,
   destination: block28,
@@ -155,5 +159,49 @@ const rastaRerouteRequest = buildV2RerouteRequest({
 assert.equal(activeRastaRoute.destination.rastaId, 'R9', 'Active rasta route must preserve selected rasta id');
 assert.equal(rastaRerouteRequest.destination.type, 'rasta', 'Rasta reroute must preserve rasta destination type');
 assert.equal(rastaRerouteRequest.destination.rastaId, 'R9', 'Rasta reroute must preserve selected rasta destination id');
+
+// ─── NEW-02: Shahr-e-Pindal reroute must preserve special_route destination identity ──
+// Historical bug: reroute reconstructed the destination as { type: 'block', blockId: '' }
+// because V2ActiveRoute.destination had no id field for special_route and
+// destinationToRoutingV2 had no special_route branch, silently falling through to block.
+for (const shahr of [shahrNorth, shahrSouth, shahrWest]) {
+  const shahrPreview = V2DirectionsService.calculatePreview({
+    startPlace: gate08,
+    destination: shahr,
+    currentLocation: null,
+    walkingSpeedMs: 1.4,
+  });
+  assert.equal(shahrPreview.status, 'ready', `Gate 08 -> ${shahr.name} must route`);
+  const activeShahrRoute = V2NavigationAdapter.fromPreview({
+    previewRoute: shahrPreview.route!,
+    destination: shahr,
+    startPlace: gate08,
+  });
+  assert.equal(activeShahrRoute.destination.type, 'special_route', `Active route must record ${shahr.name} as special_route`);
+
+  const shahrRerouteRequest = buildV2RerouteRequest({
+    route: activeShahrRoute,
+    coordinate: { latitude: shahr.coordinate.latitude, longitude: shahr.coordinate.longitude, accuracy: 10 },
+    walkingSpeedMs: 1.4,
+  });
+  assert.equal(
+    shahrRerouteRequest.destination.type,
+    'special_route',
+    `${shahr.name} reroute must preserve special_route destination type, not fall back to block`,
+  );
+  assert.equal(
+    (shahrRerouteRequest.destination as { type: 'special_route'; routeId: string }).routeId,
+    shahr.id,
+    `${shahr.name} reroute must preserve exact canonical destination id`,
+  );
+  assert.notEqual(
+    (shahrRerouteRequest.destination as { blockId?: string }).blockId,
+    '',
+    `${shahr.name} reroute must never construct an empty-block fallback destination`,
+  );
+
+  const shahrRerouteCandidate = RoutingServiceV2.calculateRoute(shahrRerouteRequest);
+  assert.ok(shahrRerouteCandidate, `${shahr.name} reroute must not return null solely from lost destination identity`);
+}
 
 console.log('Reroute v2 checks passed.');

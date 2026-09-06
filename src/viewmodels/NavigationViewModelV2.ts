@@ -76,9 +76,13 @@ function placeFromV2Destination(route: V2ActiveRoute, existingDestination: Place
     };
   }
   return {
-    id: destination.blockId ?? destination.gateId ?? route.routeId,
+    id: destination.blockId ?? destination.gateId ?? destination.rastaId ?? destination.specialRouteId ?? route.routeId,
     name: destination.label,
-    category: destination.type === 'gate' ? 'Gate' : destination.type === 'rasta' ? 'Rasta' : 'Block',
+    category:
+      destination.type === 'gate' ? 'Gate' :
+      destination.type === 'rasta' ? 'Rasta' :
+      destination.type === 'special_route' ? 'SpecialRoute' :
+      'Block',
     description: destination.label,
     coordinate: destination.coordinate,
     sourceVersion: 'v2',
