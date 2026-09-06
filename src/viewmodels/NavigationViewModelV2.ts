@@ -201,6 +201,14 @@ export function useNavigationViewModelV2() {
     // this session's first fix, while a stale fix already consumed by the trip that just ended
     // (arrive -> Done -> start again with no new GPS) is correctly recognized as "already seen"
     // and excluded — see isSameGpsObservation below.
+    // NEW-03: a manual gate picked on the pre-navigation preview screen (LocationSheet /
+    // DirectionsViewModel) reaches this hook only through the resulting route's
+    // origin.manuallySelectedGate — startNavigation()'s own signature carries no manualGateId.
+    // Re-deriving manualGateId here, keyed on navigationSessionId (bumped only by
+    // startNavigation, never by a mid-trip reroute), makes that pick this trip's session-scoped
+    // routing intent from the first frame, and guarantees a stale gate from a previous trip can
+    // never leak into this one.
+    setManualGateId(route?.origin.manuallySelectedGate ? route.origin.gateId ?? null : null);
   }, [navigationSessionId]);
 
   // Per-trip arrival reset #2: Done/cancel, i.e. `route` becoming null (isNavigating false, or
@@ -524,9 +532,12 @@ export function useNavigationViewModelV2() {
     });
 
     if (evidence.shouldReroute) {
-      void attemptReroute(currentLocation);
+      // NEW-03: forward the session's manual gate intent, same as retryOutsideRoute — an
+      // automatic reroute must never silently drop the user's explicit gate choice just because
+      // a new route is being calculated.
+      void attemptReroute(currentLocation, { manualGateId: manualGateId ?? undefined });
     }
-  }, [attemptReroute, currentLocation, currentStepIndex, etaMinutes, instructions, isMuted, route, settings.voiceInstructions, settings.walkingSpeed]);
+  }, [attemptReroute, currentLocation, currentStepIndex, etaMinutes, instructions, isMuted, manualGateId, route, settings.voiceInstructions, settings.walkingSpeed]);
 
   const handleExit = useCallback(() => {
     VoiceService.stopSpeaking();

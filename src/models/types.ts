@@ -317,6 +317,11 @@ export interface V2ActiveRoute extends V2RoutePreview {
     label: string;
     type: 'inside_snap' | 'official_gate' | 'manual_place';
     gateId?: string;
+    /** True only when `gateId` was the user's explicit gate pick (EntryGateRoutingService's
+     * 'selected_official_gate' start type), never when routing picked the nearest gate itself —
+     * this is the field NavigationViewModelV2 reads to seed manual-gate routing intent for a
+     * freshly started navigation session. See NEW-03. */
+    manuallySelectedGate?: boolean;
   };
   destination: {
     coordinate: Coordinate;

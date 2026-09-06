@@ -88,6 +88,7 @@ function originMetadata(input: V2NavigationAdapterInput): V2ActiveRoute['origin'
       label: resolution.gate?.name.en ?? input.previewRoute.startLabel,
       type: 'official_gate',
       gateId,
+      manuallySelectedGate: resolution.startType === 'selected_official_gate' ? true : undefined,
     };
   }
 
