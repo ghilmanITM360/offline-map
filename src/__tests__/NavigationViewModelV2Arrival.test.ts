@@ -1,0 +1,404 @@
+import { computeDestinationPoint } from 'geolib';
+import type { Place, V2ActiveRoute } from '../models/types';
+import { V2DirectionsService } from '../services/V2DirectionsService';
+import { V2NavigationAdapter } from '../services/V2NavigationAdapter';
+import { createProductionOutsideRouteSource } from '../services/outsideRouting/ProductionOutsideRouteSource';
+import { useAppStore } from '../store/useAppStore';
+import { useNavigationViewModelV2 } from '../viewmodels/NavigationViewModelV2';
+import { act, renderHook, RenderHookResult, waitFor } from './test-utils';
+
+const initialStoreState = useAppStore.getState();
+const origin = { latitude: 24.9762, longitude: 67.011 };
+const destinationPlace: Place = {
+  id: 'B34',
+  name: 'Block 34',
+  category: 'Block',
+  description: 'Block 34',
+  coordinate: { latitude: 24.966, longitude: 67.004 },
+  sourceVersion: 'v2',
+};
+
+jest.setTimeout(15_000);
+
+let sharedActiveRoute: V2ActiveRoute;
+
+beforeAll(async () => {
+  delete process.env.EXPO_PUBLIC_IJTEMA_ROUTING_PROXY_BASE_URL;
+  process.env.EXPO_PUBLIC_USE_IJTEMA_V2_ROUTING = 'true';
+  const preview = await V2DirectionsService.calculateHybridPreview({
+    request: { startPlace: null, destination: destinationPlace, currentLocation: origin, forceOutside: true },
+    token: { requestId: 'navigation-arrival', requestVersion: 1 },
+    signal: new AbortController().signal,
+    outsideProvider: createProductionOutsideRouteSource({ googleProxyBaseUrl: undefined }),
+  });
+  if (preview.status !== 'ready' || !preview.route) throw new Error('Hybrid navigation fixture must resolve.');
+  sharedActiveRoute = V2NavigationAdapter.fromPreview({
+    previewRoute: preview.route,
+    destination: destinationPlace,
+    currentLocation: origin,
+  });
+});
+
+beforeEach(() => {
+  delete process.env.EXPO_PUBLIC_IJTEMA_ROUTING_PROXY_BASE_URL;
+  process.env.EXPO_PUBLIC_USE_IJTEMA_V2_ROUTING = 'true';
+  useAppStore.setState(initialStoreState, true);
+  useAppStore.getState().startNavigation(destinationPlace, sharedActiveRoute, sharedActiveRoute.instructions);
+  useAppStore.setState({ currentLocation: origin, currentLocationSource: 'live' });
+});
+
+type Hook = RenderHookResult<ReturnType<typeof useNavigationViewModelV2>, unknown>;
+
+function nearDestination(distanceM: number, bearing: number) {
+  if (distanceM === 0) return { ...sharedActiveRoute.destination.coordinate };
+  return computeDestinationPoint(sharedActiveRoute.destination.coordinate, distanceM, bearing);
+}
+
+// Pushes one live-navigation GPS fix through the real store -> real hook path (the same
+// currentLocation write GPSManagerService performs in production) and returns the resulting
+// `arrived` value.
+async function pushFix(hook: Hook, distanceM: number, accuracy: number, bearing = 45) {
+  const point = nearDestination(distanceM, bearing);
+  await act(async () => {
+    useAppStore.setState({
+      currentLocation: { latitude: point.latitude, longitude: point.longitude, accuracy },
+      currentLocationSource: 'live',
+    });
+  });
+  return hook.result.current.arrived;
+}
+
+// Same as pushFix but stamps observedAtMs — the native-GPS-timestamp identity
+// GPSManagerService attaches to every real fix (see Coordinate.observedAtMs) and the only
+// identity isSameGpsObservation trusts for dedupe once it's present on both sides.
+async function pushFixAt(hook: Hook, distanceM: number, accuracy: number, observedAtMs: number, bearing = 45) {
+  const point = nearDestination(distanceM, bearing);
+  await act(async () => {
+    useAppStore.setState({
+      currentLocation: { latitude: point.latitude, longitude: point.longitude, accuracy, observedAtMs },
+      currentLocationSource: 'live',
+    });
+  });
+  return hook.result.current.arrived;
+}
+
+function rerouteWithinSameSession() {
+  const rerouted: V2ActiveRoute = { ...sharedActiveRoute, routeId: `${sharedActiveRoute.routeId}-rerouted` };
+  return act(async () => useAppStore.getState().setActiveRoute(rerouted));
+}
+
+describe('NavigationViewModelV2 arrival latch', () => {
+  test('1. dist<20 & accuracy<15 arrives immediately on one fix', async () => {
+    const hook = await renderHook(() => useNavigationViewModelV2());
+    await pushFix(hook, 10, 10);
+    expect(hook.result.current.arrived).toBe(true);
+  });
+
+  test('2. accuracy=15 fast path arrives on one fix', async () => {
+    const hook = await renderHook(() => useNavigationViewModelV2());
+    await pushFix(hook, 10, 15);
+    expect(hook.result.current.arrived).toBe(true);
+  });
+
+  test('3. accuracy=20 requires two consecutive fixes', async () => {
+    const hook = await renderHook(() => useNavigationViewModelV2());
+    await pushFix(hook, 10, 20);
+    expect(hook.result.current.arrived).toBe(false);
+    await pushFix(hook, 10, 20, 46);
+    expect(hook.result.current.arrived).toBe(true);
+  });
+
+  test('4. accuracy=25 requires two consecutive fixes', async () => {
+    const hook = await renderHook(() => useNavigationViewModelV2());
+    await pushFix(hook, 10, 25);
+    expect(hook.result.current.arrived).toBe(false);
+    await pushFix(hook, 10, 25, 46);
+    expect(hook.result.current.arrived).toBe(true);
+  });
+
+  test('5. accuracy=26 never arrives, even repeated', async () => {
+    const hook = await renderHook(() => useNavigationViewModelV2());
+    for (let i = 0; i < 5; i += 1) {
+      await pushFix(hook, 10, 26, 45 + i);
+      expect(hook.result.current.arrived).toBe(false);
+    }
+  });
+
+  test('6. accuracy=30 at destination stays false', async () => {
+    const hook = await renderHook(() => useNavigationViewModelV2());
+    await pushFix(hook, 10, 30);
+    expect(hook.result.current.arrived).toBe(false);
+  });
+
+  test('7. accuracy=50 at destination stays false', async () => {
+    const hook = await renderHook(() => useNavigationViewModelV2());
+    await pushFix(hook, 10, 50);
+    expect(hook.result.current.arrived).toBe(false);
+  });
+
+  test('8. accuracy=60/100 at destination stays false', async () => {
+    const hook = await renderHook(() => useNavigationViewModelV2());
+    await pushFix(hook, 10, 60);
+    expect(hook.result.current.arrived).toBe(false);
+    await pushFix(hook, 10, 100, 90);
+    expect(hook.result.current.arrived).toBe(false);
+  });
+
+  test('9. moderate + bad-accuracy + moderate stays false (accuracy break resets pending evidence)', async () => {
+    const hook = await renderHook(() => useNavigationViewModelV2());
+    await pushFix(hook, 10, 22);
+    expect(hook.result.current.arrived).toBe(false);
+    await pushFix(hook, 10, 30, 46);
+    expect(hook.result.current.arrived).toBe(false);
+    await pushFix(hook, 10, 22, 47);
+    expect(hook.result.current.arrived).toBe(false);
+  });
+
+  test('consecutive-evidence rule: out-of-radius fix between two qualifying fixes resets pending evidence', async () => {
+    const hook = await renderHook(() => useNavigationViewModelV2());
+    await pushFix(hook, 10, 22);
+    expect(hook.result.current.arrived).toBe(false);
+    await pushFix(hook, 60, 22, 46);
+    expect(hook.result.current.arrived).toBe(false);
+    await pushFix(hook, 10, 22, 47);
+    expect(hook.result.current.arrived).toBe(false);
+  });
+
+  test('R1: a genuinely new fix swallowed by the poor-accuracy-movement filter still breaks pending arrival corroboration', async () => {
+    // Former expectation here was that a fix "swallowed" by shouldIgnorePoorAccuracyMovementV2
+    // (used to gate movement/off-route/reroute processing) was invisible to arrival evidence too,
+    // so it could not reset pending moderate-path corroboration. That was unsafe: the filter only
+    // means "don't treat this as movement for reroute purposes" — it is still a genuinely new
+    // sensor observation, and 22-good -> 90-poor -> 22-good must stay NOT ARRIVED (the poor fix
+    // breaks the two-consecutive-fix requirement) just like any other disqualifying accuracy.
+    const hook = await renderHook(() => useNavigationViewModelV2());
+    await pushFix(hook, 10, 22);
+    expect(hook.result.current.arrived).toBe(false);
+    // accuracy>50 and (near-zero) movement from the last accepted fix is swallowed by
+    // shouldIgnorePoorAccuracyMovementV2 for movement/off-route purposes, but arrival evidence
+    // must still see it and treat it as disqualifying (accuracy 90 > moderate ceiling).
+    await pushFix(hook, 10, 90);
+    await pushFix(hook, 10, 22, 46);
+    expect(hook.result.current.arrived).toBe(false);
+    await pushFix(hook, 10, 22, 47);
+    expect(hook.result.current.arrived).toBe(true);
+  });
+
+  test('reroute through the real production pipeline clears pending corroboration even when the new routeId coincides with the old one', async () => {
+    // RoutingServiceV2 derives routeId deterministically from the resolved start/end graph
+    // nodes, so an in-venue reroute whose new start snaps to the same nearest node as the
+    // current route produces an identical routeId — the route?.routeId-keyed effect would never
+    // fire for that case. attemptReroute must clear pending corroboration itself, unconditionally,
+    // not rely on routeId changing. Exercise the real inside-venue reroute path (not a
+    // hand-mutated routeId) to prove it.
+    const hook = await renderHook(() => useNavigationViewModelV2());
+    await pushFix(hook, 10, 22);
+    expect(hook.result.current.arrived).toBe(false);
+
+    await act(async () => hook.result.current.retryOutsideRoute());
+    await waitFor(() => expect(hook.result.current.reroutePending).toBe(false), { timeout: 5_000 });
+
+    await pushFix(hook, 10, 22, 46);
+    expect(hook.result.current.arrived).toBe(false);
+  });
+
+  test('R3: undefined/NaN/negative accuracy at destination never arrives or corroborates', async () => {
+    const hook = await renderHook(() => useNavigationViewModelV2());
+    await pushFix(hook, 10, undefined as unknown as number);
+    expect(hook.result.current.arrived).toBe(false);
+    await pushFix(hook, 10, NaN, 46);
+    expect(hook.result.current.arrived).toBe(false);
+    await pushFix(hook, 10, -1, 47);
+    expect(hook.result.current.arrived).toBe(false);
+    await pushFix(hook, 10, Infinity, 48);
+    expect(hook.result.current.arrived).toBe(false);
+    // A prior qualifying moderate fix's pending corroboration must not survive an invalid-accuracy
+    // observation in between (it is a genuinely new sensor sample, just an untrustworthy one).
+    await pushFix(hook, 10, 22, 49);
+    expect(hook.result.current.arrived).toBe(false);
+    await pushFix(hook, 10, undefined as unknown as number, 50);
+    await pushFix(hook, 10, 22, 51);
+    expect(hook.result.current.arrived).toBe(false);
+    await pushFix(hook, 10, 22, 52);
+    expect(hook.result.current.arrived).toBe(true);
+  });
+
+  test('10. weak fixes then a good (<=15m accuracy) fix arrives', async () => {
+    const hook = await renderHook(() => useNavigationViewModelV2());
+    await pushFix(hook, 10, 60);
+    await pushFix(hook, 10, 100, 46);
+    expect(hook.result.current.arrived).toBe(false);
+    await pushFix(hook, 10, 12, 47);
+    expect(hook.result.current.arrived).toBe(true);
+  });
+
+  test('11. arrived then 25-50m drift remains arrived', async () => {
+    const hook = await renderHook(() => useNavigationViewModelV2());
+    await pushFix(hook, 10, 10);
+    expect(hook.result.current.arrived).toBe(true);
+    await pushFix(hook, 40, 10, 46);
+    expect(hook.result.current.arrived).toBe(true);
+  });
+
+  test('12. arrived then overshoot remains arrived', async () => {
+    const hook = await renderHook(() => useNavigationViewModelV2());
+    await pushFix(hook, 10, 10);
+    expect(hook.result.current.arrived).toBe(true);
+    await pushFix(hook, 80, 10, 200);
+    expect(hook.result.current.arrived).toBe(true);
+  });
+
+  test('13. weak/stale-like recovery does not falsely arrive early', async () => {
+    const hook = await renderHook(() => useNavigationViewModelV2());
+    await pushFix(hook, 10, 100);
+    await pushFix(hook, 60, 90, 46);
+    await pushFix(hook, 10, 100, 47);
+    expect(hook.result.current.arrived).toBe(false);
+    await pushFix(hook, 10, 12, 48);
+    expect(hook.result.current.arrived).toBe(true);
+  });
+
+  test('14. one moderate fix -> reroute -> next moderate fix alone stays false', async () => {
+    const hook = await renderHook(() => useNavigationViewModelV2());
+    await pushFix(hook, 10, 22);
+    expect(hook.result.current.arrived).toBe(false);
+    await rerouteWithinSameSession();
+    await pushFix(hook, 10, 22, 46);
+    expect(hook.result.current.arrived).toBe(false);
+  });
+
+  test('15. arrived -> reroute (routeId change) within same session remains arrived', async () => {
+    const hook = await renderHook(() => useNavigationViewModelV2());
+    await pushFix(hook, 10, 10);
+    expect(hook.result.current.arrived).toBe(true);
+    await rerouteWithinSameSession();
+    expect(hook.result.current.arrived).toBe(true);
+  });
+
+  test('16. Done/cancel resets arrival', async () => {
+    const hook = await renderHook(() => useNavigationViewModelV2());
+    await pushFix(hook, 10, 10);
+    expect(hook.result.current.arrived).toBe(true);
+    await act(async () => useAppStore.getState().stopNavigation());
+    expect(hook.result.current.arrived).toBe(false);
+  });
+
+  test('17. next navigationSessionId (new trip) resets arrival', async () => {
+    const hook = await renderHook(() => useNavigationViewModelV2());
+    await pushFix(hook, 10, 10);
+    expect(hook.result.current.arrived).toBe(true);
+    await act(async () =>
+      useAppStore.getState().startNavigation(destinationPlace, sharedActiveRoute, sharedActiveRoute.instructions),
+    );
+    expect(hook.result.current.arrived).toBe(false);
+  });
+
+  test('R2 probe: Done then a new trip must not re-arrive on the stale pre-Done fix before any fresh GPS', async () => {
+    const hook = await renderHook(() => useNavigationViewModelV2());
+    await pushFix(hook, 10, 10);
+    expect(hook.result.current.arrived).toBe(true);
+    await act(async () => useAppStore.getState().stopNavigation());
+    expect(hook.result.current.arrived).toBe(false);
+    // New trip starts, but currentLocation in the store is still the stale arrival fix from the
+    // finished trip — no fresh GPS observation has arrived yet for the new session.
+    await act(async () =>
+      useAppStore.getState().startNavigation(destinationPlace, sharedActiveRoute, sharedActiveRoute.instructions),
+    );
+    expect(hook.result.current.arrived).toBe(false);
+  });
+
+  test('R8: ARRIVED suppresses automatic reroute even under sustained off-route drift', async () => {
+    const hook = await renderHook(() => useNavigationViewModelV2());
+    await pushFix(hook, 10, 10);
+    expect(hook.result.current.arrived).toBe(true);
+    const originalRouteId = hook.result.current.route?.routeId;
+    // Three consecutive far-off-route, well-separated, good-accuracy fixes — comfortably past
+    // shouldTriggerReroute's consecutiveOffRouteCount>=3 / movedDistance>=12 thresholds — would
+    // fire an automatic reroute pre-arrival. Post-arrival, ARRIVED is terminal: this must not
+    // start a reroute or replace the route.
+    await pushFix(hook, 150, 10, 90);
+    await pushFix(hook, 150, 10, 100);
+    await pushFix(hook, 150, 10, 110);
+    expect(hook.result.current.reroutePending).toBe(false);
+    expect(hook.result.current.route?.routeId).toBe(originalRouteId);
+    expect(hook.result.current.arrived).toBe(true);
+  });
+
+  test('R9: ARRIVED survives an inside-venue -> outside-venue boundary crossing (no automatic reroute, navigation stays active)', async () => {
+    // Historical runtime anomaly: a post-arrival venue-boundary crossing (destination is inside
+    // an IJTEMA_BLOCKS polygon, `origin` above resolves outside it — see
+    // EntryGateRoutingService.isInsideIjtemaArea) risked re-entering the outside-routing branch
+    // of attemptReroute and resurrecting active navigation after ARRIVED. The arrivedRef.current
+    // terminal check in NavigationViewModelV2's location effect must short-circuit before that
+    // branch is ever reached, regardless of which side of the boundary the drifting fix lands on.
+    const hook = await renderHook(() => useNavigationViewModelV2());
+    const originalRouteId = hook.result.current.route?.routeId;
+
+    // Arrive at the (inside-venue) destination.
+    await pushFix(hook, 10, 10);
+    expect(hook.result.current.arrived).toBe(true);
+
+    // Post-arrival fix still inside the venue.
+    await act(async () => {
+      useAppStore.setState({
+        currentLocation: { ...sharedActiveRoute.destination.coordinate, accuracy: 10 },
+        currentLocationSource: 'live',
+      });
+    });
+    expect(hook.result.current.arrived).toBe(true);
+    expect(hook.result.current.reroutePending).toBe(false);
+
+    // Post-arrival fix outside the venue (crosses the boundary) — must not un-arrive or reroute.
+    await act(async () => {
+      useAppStore.setState({
+        currentLocation: { ...origin, accuracy: 10 },
+        currentLocationSource: 'live',
+      });
+    });
+    expect(hook.result.current.arrived).toBe(true);
+    expect(hook.result.current.reroutePending).toBe(false);
+    expect(hook.result.current.route?.routeId).toBe(originalRouteId);
+    // Active navigation must not resurrect into a fresh (non-arrived) state.
+    expect(hook.result.current.route).not.toBeNull();
+  });
+
+  test('18. repeated post-arrival qualifying fixes do not disturb the latch', async () => {
+    const hook = await renderHook(() => useNavigationViewModelV2());
+    await pushFix(hook, 10, 10);
+    expect(hook.result.current.arrived).toBe(true);
+    await pushFix(hook, 10, 10, 46);
+    await pushFix(hook, 10, 12, 47);
+    expect(hook.result.current.arrived).toBe(true);
+  });
+
+  test('H4: replaying the identical observedAtMs does not count as a second corroborating fix', async () => {
+    const hook = await renderHook(() => useNavigationViewModelV2());
+    // First moderate-path fix: qualifies, awaits corroboration.
+    await pushFixAt(hook, 10, 22, 1000);
+    expect(hook.result.current.arrived).toBe(false);
+    // Same physical sensor sample delivered twice (e.g. forceFix racing the ambient watch) must
+    // be ignored entirely by arrival evidence, not consumed as the corroborating second fix.
+    await pushFixAt(hook, 10, 22, 1000);
+    expect(hook.result.current.arrived).toBe(false);
+    // A genuinely new observation (new observedAtMs) still corroborates normally.
+    await pushFixAt(hook, 10, 22, 2000, 46);
+    expect(hook.result.current.arrived).toBe(true);
+  });
+
+  test('next navigation session does not reuse the previous session\'s observedAtMs fix', async () => {
+    const hook = await renderHook(() => useNavigationViewModelV2());
+    await pushFixAt(hook, 10, 10, 1000);
+    expect(hook.result.current.arrived).toBe(true);
+    await act(async () => useAppStore.getState().stopNavigation());
+    expect(hook.result.current.arrived).toBe(false);
+    await act(async () =>
+      useAppStore.getState().startNavigation(destinationPlace, sharedActiveRoute, sharedActiveRoute.instructions),
+    );
+    // Store still holds the stale pre-Done fix (same observedAtMs) — no fresh GPS observation
+    // has arrived yet for the new session, so it must not resurrect arrival.
+    expect(hook.result.current.arrived).toBe(false);
+    // A fresh observation (new observedAtMs) in the new session arrives normally.
+    await pushFixAt(hook, 10, 10, 2000, 46);
+    expect(hook.result.current.arrived).toBe(true);
+  });
+});

@@ -28,22 +28,30 @@ const base: MapModeInputs = {
   assert.equal(exited, 'EXPLORE', 'Step 3: exiting after arrival must return MapMode.EXPLORE');
 }
 
-// 2. New route after a previous arrival must reset correctly — no stale `arrived` leaking into
-// the next trip. This is a real bug class: NavigationViewModelV2 used to only reset `arrived`
-// conditionally (after an early `if (!route) return`), so a stale `arrived: true` from a
-// completed trip would resurface as MapMode.ARRIVAL the instant the next trip started, before
-// any GPS update had a chance to correct it.
+// 2. Arrival must reset only at real per-trip lifecycle boundaries — a new navigationSessionId
+// (startNavigation()) or the route becoming null (Done/cancel) — never merely because routeId
+// changed (a reroute swaps activeRoute, and its routeId, without starting a new trip). This is
+// NEW-04's arrival-latch fix: NavigationViewModelV2 used to reset `arrived` unconditionally
+// whenever route?.routeId changed, which correctly cleared stale arrival on a genuinely new trip
+// but incorrectly also cleared *earned* arrival on an in-session reroute.
 {
   const navigationVmSource = readFileSync('src/viewmodels/NavigationViewModelV2.ts', 'utf8');
-  const resetEffectStart = navigationVmSource.indexOf('useEffect(() => {\n    // Reset arrival first');
-  assert(resetEffectStart >= 0, 'NavigationViewModelV2 must keep the unconditional arrival-reset effect');
-  const resetEffectBody = navigationVmSource.slice(resetEffectStart, navigationVmSource.indexOf('}, [route?.routeId]);', resetEffectStart));
-  const setArrivedIndex = resetEffectBody.indexOf('setArrived(false);');
-  const earlyReturnIndex = resetEffectBody.indexOf('if (!route) return;');
-  assert(setArrivedIndex >= 0 && earlyReturnIndex >= 0, 'Route-change effect must contain both setArrived(false) and the early return');
+
+  const sessionResetStart = navigationVmSource.indexOf('useEffect(() => {\n    setArrived(false);');
+  assert(sessionResetStart >= 0, 'NavigationViewModelV2 must keep an unconditional arrival-reset effect keyed on navigationSessionId');
+  const sessionResetEnd = navigationVmSource.indexOf('}, [navigationSessionId]);', sessionResetStart);
+  assert(sessionResetEnd > sessionResetStart, 'navigationSessionId-keyed arrival-reset effect must be found');
+
+  const routeNullResetStart = navigationVmSource.indexOf('if (route) return;\n    setArrived(false);');
+  assert(routeNullResetStart >= 0, 'NavigationViewModelV2 must reset arrived when route becomes null (Done/cancel)');
+
+  const routeIdEffectStart = navigationVmSource.indexOf("useEffect(() => {\n    if (!route) return;\n    setRemainingDistance");
+  const routeIdEffectEnd = navigationVmSource.indexOf('}, [route?.routeId]);', routeIdEffectStart);
+  assert(routeIdEffectStart >= 0 && routeIdEffectEnd > routeIdEffectStart, 'route?.routeId-keyed effect must be found');
+  const routeIdEffectBody = navigationVmSource.slice(routeIdEffectStart, routeIdEffectEnd);
   assert(
-    setArrivedIndex < earlyReturnIndex,
-    'setArrived(false) must run BEFORE the early return, so it fires unconditionally on every route change (including to null)',
+    !routeIdEffectBody.includes('setArrived(false)') && !routeIdEffectBody.includes('arrivedRef.current = false'),
+    'route?.routeId-keyed effect (which also fires on reroute) must NOT clear earned arrival — reroute must not un-arrive',
   );
 
   // v1 already resets `arrived` unconditionally on destination change — keep it that way.

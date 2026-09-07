@@ -25,12 +25,15 @@ import { createProductionOutsideRouteSource } from '../services/outsideRouting/P
 import { getRoutableOfficialGates } from '../data/ijtema/entryPolicy';
 import {
   buildV2RerouteRequest,
+  calculateLiveManeuverDistanceV2,
   calculateNavigationProgressV2,
   deriveGpsSignalStateV2,
+  evaluateArrivalFixV2,
   evaluateRerouteEvidenceV2,
   GPS_LOST_TIMEOUT_MS,
   GpsSignalStateV2,
   keepCurrentRouteAfterRerouteFailureV2,
+  sanitizeArrivalAccuracyM,
   shouldIgnorePoorAccuracyMovementV2,
 } from '../services/V2NavigationRuntimeService';
 import { ARRIVAL_THRESHOLD_METERS } from '../constants/navigation';
@@ -48,23 +51,6 @@ interface RerouteOptions {
   allowDirectGuide?: boolean;
 }
 
-function instructionIndexForProgress(route: V2ActiveRoute, progressMeters: number): number {
-  let bestIndex = 0;
-  route.instructions.forEach((instruction, index) => {
-    const coord = route.coordinates[instruction.routeIndex] ?? instruction.coordinate;
-    const projected = RerouteService.projectProgressMetersOnRoute(coord, route);
-    if (projected.progressMeters <= progressMeters + 15) {
-      bestIndex = index;
-    }
-  });
-  return bestIndex;
-}
-
-function isArrived(route: V2ActiveRoute, coordinate: Coordinate | null): boolean {
-  if (!coordinate) return false;
-  return getDistance(coordinate, route.destination.coordinate) <= ARRIVAL_THRESHOLD_METERS;
-}
-
 function placeFromV2Destination(route: V2ActiveRoute, existingDestination: Place | null): Place | null {
   if (existingDestination) return existingDestination;
   const destination = route.destination;
@@ -79,9 +65,13 @@ function placeFromV2Destination(route: V2ActiveRoute, existingDestination: Place
     };
   }
   return {
-    id: destination.blockId ?? destination.gateId ?? route.routeId,
+    id: destination.blockId ?? destination.gateId ?? destination.rastaId ?? destination.specialRouteId ?? route.routeId,
     name: destination.label,
-    category: destination.type === 'gate' ? 'Gate' : destination.type === 'rasta' ? 'Rasta' : 'Block',
+    category:
+      destination.type === 'gate' ? 'Gate' :
+      destination.type === 'rasta' ? 'Rasta' :
+      destination.type === 'special_route' ? 'SpecialRoute' :
+      'Block',
     description: destination.label,
     coordinate: destination.coordinate,
     sourceVersion: 'v2',
@@ -93,6 +83,7 @@ export function useNavigationViewModelV2() {
   const destinationFromStore = useAppStore((s) => s.destination);
   const activeRoute = useAppStore((s) => s.activeRoute);
   const isNavigating = useAppStore((s) => s.isNavigating);
+  const navigationSessionId = useAppStore((s) => s.navigationSessionId);
   const routeInstructions = useAppStore((s) => s.routeInstructions);
   const currentLocation = useAppStore((s) => s.currentLocation);
   const settings = useAppStore((s) => s.settings);
@@ -119,6 +110,7 @@ export function useNavigationViewModelV2() {
   const destination = route ? placeFromV2Destination(route, destinationFromStore) : destinationFromStore;
   const [snappedLocation, setSnappedLocation] = useState<Coordinate | null>(route?.origin.coordinate ?? null);
   const [remainingDistance, setRemainingDistance] = useState(route?.totalDistanceM ?? 0);
+  const [maneuverDistance, setManeuverDistance] = useState(route?.instructions[0]?.distanceM ?? 0);
   const [etaMinutes, setEtaMinutes] = useState(route?.etaMinutes ?? 0);
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [arrived, setArrived] = useState(false);
@@ -134,7 +126,42 @@ export function useNavigationViewModelV2() {
   // this ref, so GPS_LOST detection can never itself trigger a reroute or arrival.
   const lastFixAtRef = useRef<number | null>(null);
   const offRouteStartRef = useRef<number | null>(null);
+  // Coordinate captured the moment off-route evidence starts accumulating (first fix of the
+  // current off-route streak). Reroute evidence is distance walked away from THIS point, not
+  // distance between consecutive fixes — consecutive-fix distance is capped near zero by
+  // GPSManagerService's own navigation-mode distanceInterval (2m), so gating reroute on it
+  // made the count/duration criteria below unreachable for realistic pedestrian GPS cadence.
+  const offRouteAnchorRef = useRef<Coordinate | null>(null);
   const consecutiveOffRouteRef = useRef(0);
+  // Mirrors `arrived` state so the per-fix arrival check below can latch (and skip re-evaluating
+  // once true) without needing `arrived` in its effect's dependency array. Once true, the trip's
+  // arrival can only be cleared by the reset effects below (new navigationSessionId, or route
+  // becoming null) — never by a subsequent GPS fix, however far off or noisy.
+  const arrivedRef = useRef(false);
+  // True when the previous fix was a qualifying moderate-accuracy (fast-path, moderate-path]
+  // observation still awaiting its consecutive corroborating fix. Any non-qualifying fix (out of
+  // the arrival radius, or accuracy beyond the moderate-path ceiling) resets it — see
+  // evaluateArrivalFixV2. Also reset on reroute/route replacement below, since a corroborating
+  // fix from before a reroute says nothing about the (potentially very different) post-reroute
+  // position.
+  const pendingArrivalCorroborationRef = useRef(false);
+  // The location effect below lists etaMinutes/currentStepIndex in its own dependency array
+  // (both of which it writes), so it can re-run more than once for a single real GPS fix once
+  // those state updates commit — harmless for a pure distance check, but fatal for
+  // hasPendingCorroboration's "one qualifying observation" contract, which would otherwise see
+  // the same physical fix twice and false-corroborate on it. Tracks the currentLocation object
+  // last fed into arrival evaluation so a same-fix re-run of the effect is skipped there.
+  const lastArrivalFixLocationRef = useRef<Coordinate | null>(null);
+  // Same-observation check for lastArrivalFixLocationRef: prefer native GPS timestamp identity
+  // (observedAtMs, set by GPSManagerService from Expo's LocationObject.timestamp) when both
+  // sides have one — this is what actually identifies "the same physical sensor sample" and
+  // dedupes a forceFix/watch race delivering the same fix twice. Falls back to object identity
+  // when either side lacks it (e.g. tests that construct fixes without observedAtMs).
+  const isSameGpsObservation = (a: Coordinate, b: Coordinate | null): boolean => {
+    if (!b) return false;
+    if (a.observedAtMs != null && b.observedAtMs != null) return a.observedAtMs === b.observedAtMs;
+    return a === b;
+  };
   const lastRerouteAtRef = useRef(0);
   const lastSpokenInstructionIdRef = useRef<string | null>(null);
   const outsideRequestCoordinatorRef = useRef(new OutsideRouteRequestCoordinator());
@@ -143,18 +170,70 @@ export function useNavigationViewModelV2() {
     // GPSManagerService updates currentLocation through the store updater wired in RootNavigator.
   }, []);
 
+  // Per-trip arrival reset #1: a genuinely new trip (startNavigation() bumps navigationSessionId
+  // in the store — see useAppStore.ts). Deliberately NOT keyed on route?.routeId: a reroute
+  // replaces activeRoute (and its routeId) via setActiveRoute without touching
+  // navigationSessionId, and earned arrival must survive that (see the "reroute must not
+  // un-arrive" latch semantics below).
   useEffect(() => {
-    // Reset arrival first (and unconditionally) — this hook now runs unconditionally inside
-    // HomeScreen for the app's lifetime, so without this a stale `arrived: true` from a
-    // previous trip would survive exit and immediately re-trigger MapMode.ARRIVAL the next
-    // time navigation starts, before any GPS update has run to correct it.
     setArrived(false);
+    arrivedRef.current = false;
+    pendingArrivalCorroborationRef.current = false;
+    // A new trip must start with clean reroute evidence — otherwise a stale count/anchor/timer
+    // from a just-ended trip (e.g. off-route walking that never reached the reroute gates before
+    // Done/Cancel) could combine with this trip's very first fix to false-trigger a reroute.
+    consecutiveOffRouteRef.current = 0;
+    offRouteStartRef.current = null;
+    offRouteAnchorRef.current = null;
+    // Deliberately NOT touching lastArrivalFixLocationRef here: it already holds whatever
+    // observation was last consumed as arrival evidence (or its initial `null`, if none ever
+    // was). Leaving it alone is what lets a fresh mount's already-known ambient location count as
+    // this session's first fix, while a stale fix already consumed by the trip that just ended
+    // (arrive -> Done -> start again with no new GPS) is correctly recognized as "already seen"
+    // and excluded — see isSameGpsObservation below.
+    // NEW-03: a manual gate picked on the pre-navigation preview screen (LocationSheet /
+    // DirectionsViewModel) reaches this hook only through the resulting route's
+    // origin.manuallySelectedGate — startNavigation()'s own signature carries no manualGateId.
+    // Re-deriving manualGateId here, keyed on navigationSessionId (bumped only by
+    // startNavigation, never by a mid-trip reroute), makes that pick this trip's session-scoped
+    // routing intent from the first frame, and guarantees a stale gate from a previous trip can
+    // never leak into this one.
+    setManualGateId(route?.origin.manuallySelectedGate ? route.origin.gateId ?? null : null);
+  }, [navigationSessionId]);
+
+  // Per-trip arrival reset #2: Done/cancel, i.e. `route` becoming null (isNavigating false, or
+  // activeRoute no longer v2-shaped). Guarded so a reroute — which swaps `route` to a new
+  // non-null object — never runs this body.
+  useEffect(() => {
+    if (route) return;
+    setArrived(false);
+    arrivedRef.current = false;
+    pendingArrivalCorroborationRef.current = false;
+    // See the matching comment in the navigationSessionId reset above — same reasoning applies
+    // to the Done/Cancel path (route -> null) as to a fresh startNavigation().
+    consecutiveOffRouteRef.current = 0;
+    offRouteStartRef.current = null;
+    offRouteAnchorRef.current = null;
+    // See the matching comment in the navigationSessionId reset above: lastArrivalFixLocationRef
+    // is deliberately left alone here too.
+    // This hook runs unconditionally inside HomeScreen for the app's lifetime, so without this a
+    // stale `arrived: true` from a previous trip would survive exit and immediately re-trigger
+    // MapMode.ARRIVAL the next time navigation starts, before any GPS update has run to correct it.
+  }, [route]);
+
+  useEffect(() => {
     if (!route) return;
     setRemainingDistance(route.totalDistanceM);
     setEtaMinutes(route.etaMinutes);
     setSnappedLocation(route.origin.coordinate);
-    setCurrentStepIndex(0);
+    const initialGuidance = calculateLiveManeuverDistanceV2({ route, currentStepIndex: 0, progressMeters: 0 });
+    setCurrentStepIndex(initialGuidance.stepIndex);
+    setManeuverDistance(initialGuidance.maneuverDistanceM);
     progressRef.current = 0;
+    // A route replacement (fresh trip or mid-trip reroute) invalidates any in-flight moderate-path
+    // corroboration — see evaluateArrivalFixV2's hasPendingCorroboration contract. Earned arrival
+    // itself (arrivedRef) is untouched here; it only resets via the two effects above.
+    pendingArrivalCorroborationRef.current = false;
   }, [route?.routeId]);
 
   useEffect(() => () => outsideRequestCoordinatorRef.current.cancelCurrent(), []);
@@ -304,7 +383,14 @@ export function useNavigationViewModelV2() {
       lastAcceptedLocationRef.current = coordinate;
       consecutiveOffRouteRef.current = 0;
       offRouteStartRef.current = null;
+      offRouteAnchorRef.current = null;
       lastRerouteAtRef.current = Date.now();
+      // Cleared here directly (not only via the route?.routeId-keyed effect below) because
+      // RoutingServiceV2 derives routeId deterministically from the resolved start/end graph
+      // nodes — a reroute whose new start snaps to the same nearest node as the route it
+      // replaces produces an identical routeId, which would silently skip that effect and let
+      // stale pending corroboration survive the reroute.
+      pendingArrivalCorroborationRef.current = false;
       setReroutePending(false);
       outsideHandle?.finish();
     } finally {
@@ -347,6 +433,27 @@ export function useNavigationViewModelV2() {
     const movedDistanceM = lastAcceptedLocationRef.current
       ? getDistance(lastAcceptedLocationRef.current, currentLocation)
       : Infinity;
+
+    // Arrival evidence runs for every genuinely new sensor observation BEFORE the
+    // poor-accuracy-movement filter below can hide it. That filter only means "don't treat this
+    // as movement for reroute/progress purposes" — it is still a real new GPS fix, and a
+    // disqualifying one (out of radius, or beyond the moderate-accuracy ceiling) must still break
+    // any pending moderate-path corroboration, exactly like any other disqualifying fix would.
+    if (!arrivedRef.current && !isSameGpsObservation(currentLocation, lastArrivalFixLocationRef.current)) {
+      lastArrivalFixLocationRef.current = currentLocation;
+      const evaluation = evaluateArrivalFixV2({
+        distanceToDestinationM: getDistance(currentLocation, route.destination.coordinate),
+        accuracyM: sanitizeArrivalAccuracyM(currentLocation.accuracy),
+        hasPendingCorroboration: pendingArrivalCorroborationRef.current,
+        arrivalThresholdM: ARRIVAL_THRESHOLD_METERS,
+      });
+      pendingArrivalCorroborationRef.current = evaluation.pendingCorroboration;
+      if (evaluation.arrived) {
+        arrivedRef.current = true;
+        setArrived(true);
+      }
+    }
+
     if (shouldIgnorePoorAccuracyMovementV2({ movedDistanceM, accuracyM })) {
       setIsWeakGps(true);
       setGpsSignalState(deriveGpsSignalStateV2({ isWeakGps: true, lastFixAtMs: fixAtMs, nowMs: fixAtMs }));
@@ -369,12 +476,13 @@ export function useNavigationViewModelV2() {
     setSnappedLocation(progress.snappedCoordinate);
     setRemainingDistance(progress.remainingDistanceM);
     setEtaMinutes(progress.etaMinutes);
-    setArrived(isArrived(route, currentLocation));
 
-    const nextIndex = Math.max(currentStepIndex, instructionIndexForProgress(route, progress.progressMeters));
+    const guidance = calculateLiveManeuverDistanceV2({ route, currentStepIndex, progressMeters: progress.progressMeters });
+    const nextIndex = guidance.stepIndex;
     if (nextIndex !== currentStepIndex) {
       setCurrentStepIndex(nextIndex);
     }
+    setManeuverDistance(guidance.maneuverDistanceM);
 
     const currentInstruction = instructions[nextIndex];
     if (settings.voiceInstructions && !isMuted && currentInstruction && currentInstruction.id !== lastSpokenInstructionIdRef.current) {
@@ -386,27 +494,44 @@ export function useNavigationViewModelV2() {
     if (route.outsideRoute?.provider === 'direct-guide' && !EntryGateRoutingService.isInsideIjtemaArea(currentLocation)) {
       return;
     }
+    if (arrivedRef.current) {
+      // ARRIVED is terminal for this navigation session — automatic reroute must never re-fire
+      // afterward (drift, venue-boundary crossing, etc.). Only user Done/Cancel or an explicit
+      // new navigation session may move the trip on from here.
+      consecutiveOffRouteRef.current = 0;
+      offRouteStartRef.current = null;
+      offRouteAnchorRef.current = null;
+      return;
+    }
     const isOffRoute = progress.distanceToRouteMeters > thresholdM;
     if (!isOffRoute || weakGps) {
       consecutiveOffRouteRef.current = 0;
       offRouteStartRef.current = null;
+      offRouteAnchorRef.current = null;
       return;
     }
 
     consecutiveOffRouteRef.current += 1;
     offRouteStartRef.current = offRouteStartRef.current ?? Date.now();
+    const movedDistanceSinceOffRouteAnchorM = offRouteAnchorRef.current
+      ? getDistance(offRouteAnchorRef.current, currentLocation)
+      : 0;
+    offRouteAnchorRef.current = offRouteAnchorRef.current ?? currentLocation;
     const evidence = evaluateRerouteEvidenceV2({
       gpsAccuracyM: accuracyM,
       consecutiveOffRouteCount: consecutiveOffRouteRef.current,
       offRouteDurationMs: Date.now() - offRouteStartRef.current,
       cooldownRemainingMs: Math.max(0, REROUTE_COOLDOWN_MS - (Date.now() - lastRerouteAtRef.current)),
-      movedDistanceSinceLastAcceptedM: movedDistanceM,
+      movedDistanceSinceLastAcceptedM: movedDistanceSinceOffRouteAnchorM,
     });
 
     if (evidence.shouldReroute) {
-      void attemptReroute(currentLocation);
+      // NEW-03: forward the session's manual gate intent, same as retryOutsideRoute — an
+      // automatic reroute must never silently drop the user's explicit gate choice just because
+      // a new route is being calculated.
+      void attemptReroute(currentLocation, { manualGateId: manualGateId ?? undefined });
     }
-  }, [attemptReroute, currentLocation, currentStepIndex, etaMinutes, instructions, isMuted, route, settings.voiceInstructions, settings.walkingSpeed]);
+  }, [attemptReroute, currentLocation, currentStepIndex, etaMinutes, instructions, isMuted, manualGateId, route, settings.voiceInstructions, settings.walkingSpeed]);
 
   const handleExit = useCallback(() => {
     VoiceService.stopSpeaking();
@@ -423,6 +548,7 @@ export function useNavigationViewModelV2() {
     isMuted,
     setIsMuted,
     remainingDistance,
+    maneuverDistance,
     etaMinutes,
     arrived,
     reroutePending,

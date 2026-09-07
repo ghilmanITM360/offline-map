@@ -8,6 +8,11 @@ export interface Coordinate {
   longitude: number;
   heading?: number;
   accuracy?: number;
+  /** Native GPS fix timestamp (epoch ms, from Expo LocationObject.timestamp) — set only on
+   * live-navigation fixes published by GPSManagerService. Identifies the physical sensor
+   * observation so duplicate deliveries (e.g. forceFix racing the ambient watch subscription)
+   * can be deduped by sensor identity instead of JS object reference. */
+  observedAtMs?: number;
 }
 
 export type LocationSource = 'live' | 'device_last_known' | 'remembered' | 'manual';
@@ -312,6 +317,11 @@ export interface V2ActiveRoute extends V2RoutePreview {
     label: string;
     type: 'inside_snap' | 'official_gate' | 'manual_place';
     gateId?: string;
+    /** True only when `gateId` was the user's explicit gate pick (EntryGateRoutingService's
+     * 'selected_official_gate' start type), never when routing picked the nearest gate itself —
+     * this is the field NavigationViewModelV2 reads to seed manual-gate routing intent for a
+     * freshly started navigation session. See NEW-03. */
+    manuallySelectedGate?: boolean;
   };
   destination: {
     coordinate: Coordinate;
@@ -321,6 +331,7 @@ export interface V2ActiveRoute extends V2RoutePreview {
     gateId?: string;
     rastaId?: string;
     facilityId?: string;
+    specialRouteId?: string;
     entryNodeId?: string;
   };
   edges: Array<{

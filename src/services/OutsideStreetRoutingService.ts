@@ -41,6 +41,12 @@ export interface StreetOutsidePathResult {
   topologyEdgeDistancesM: number[];
   /** OSM name per hop (same indexing as topologyEdgeDistancesM), present for ~1% of edges only. */
   topologyEdgeNames: Array<string | undefined>;
+  /** Raw user coordinate -> nearest street node (`topologyCoordinates[0]`) snap distance. Excluded
+   * from `topologyCoordinates`/`topologyEdgeDistancesM` (which start AT the snapped node), so a
+   * caller generating turn-by-turn instructions from those arrays must surface this separately —
+   * otherwise the user's live distance-to-first-maneuver (measured from their real position) and
+   * that instruction's own displayed distance (measured from the snapped node) silently disagree. */
+  approachDistanceM: number;
   /** Snap-to-nearest-node + street-graph traversal + gate connector, i.e. the full outside-leg distance. */
   totalDistanceM: number;
   /** Street-graph traversal only (excludes both connector distances) — what the sanity cap ratio is computed against. */
@@ -191,6 +197,7 @@ export const selectStreetGraphOutsidePath = (
     topologyCoordinates,
     topologyEdgeDistancesM,
     topologyEdgeNames,
+    approachDistanceM: Math.round(nearestUser.distanceM),
     totalDistanceM: nearestUser.distanceM + graphRoutedDistanceM + reachedTarget.connector.distanceM,
     graphRoutedDistanceM,
     sanityCapExceeded: ratio > DISTANCE_SANITY_CAP_RATIO,

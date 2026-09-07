@@ -72,6 +72,7 @@ function destinationMetadata(
     gateId: type === 'gate' ? destination.id : undefined,
     rastaId: type === 'rasta' ? destination.id : undefined,
     facilityId: type === 'facility' ? routingDestination.facilityId : undefined,
+    specialRouteId: type === 'special_route' ? destination.id : undefined,
     entryNodeId: type === 'block' || type === 'facility' ? finalNodeId : undefined,
   };
 }
@@ -87,6 +88,7 @@ function originMetadata(input: V2NavigationAdapterInput): V2ActiveRoute['origin'
       label: resolution.gate?.name.en ?? input.previewRoute.startLabel,
       type: 'official_gate',
       gateId,
+      manuallySelectedGate: resolution.startType === 'selected_official_gate' ? true : undefined,
     };
   }
 
