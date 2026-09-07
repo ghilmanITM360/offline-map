@@ -1101,35 +1101,6 @@ describe('HomeScreen — canonical bottom-sheet dismissal', () => {
     expect(setSelectedPlaceSpy).not.toHaveBeenCalledWith(null);
   });
 
-  test('P0-2: late dismiss echo from Open Directions does not clear a destination already swapped via Change Destination', async () => {
-    mockedUseDirectionsViewModel.mockReturnValue(directionsIdleViewModel());
-    await render(<HomeScreen />);
-    const user = await selectGate();
-    await settleSheet();
-
-    await user.press(screen.getByText('Directions'));
-    // Deliberately do not settle here — Open Directions' own native echo is still
-    // "in flight" when Change Destination fires next, same as a user tapping through
-    // before the previous transition's round-trip has confirmed.
-    await user.press(await screen.findByLabelText('Change destination'));
-    await user.type(
-      await screen.findByPlaceholderText('Search destination: gate, rasta, block'),
-      'Gate 8',
-    );
-    await user.press(await screen.findByLabelText('Gate 08, Gate'));
-    expect(await screen.findByText('Gate 08')).toBeOnTheScreen();
-
-    const sheetProps = __getLastBottomSheetModalProps();
-    await act(async () => {
-      sheetProps.onChange(-1);
-      sheetProps.onDismiss();
-    });
-
-    expect(screen.getByText('Get Directions')).toBeOnTheScreen();
-    expect(screen.getByText('Gate 08')).toBeOnTheScreen();
-    expect(setSelectedPlaceSpy).not.toHaveBeenCalledWith(null);
-  });
-
   test('P0-3: late dismiss echo arriving after a rapid reselection has already committed does not clear the newer selection', async () => {
     await render(<HomeScreen />);
     const user = await selectGate();

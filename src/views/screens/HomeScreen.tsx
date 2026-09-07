@@ -1145,24 +1145,6 @@ export function HomeScreen() {
     setDirectionsDestination(null);
   }, []);
 
-  // "Change Destination" (LocationSheet's routePreview mode) — swaps the destination
-  // in place instead of exiting route preview like the old onClose-only wiring did.
-  // Reuses the exact same directionsDestination state handleOpenDirections already
-  // writes to, so useDirectionsViewModel(destination) picks it up and recalculates the
-  // route itself (see DirectionsViewModel's `[destination, ...]` effect deps) — no new
-  // recalculation path. Camera follow for v2 destinations is likewise already handled
-  // by the existing activePreviewRoute -> cameraManager.fitRoute() effect above once the
-  // new route lands; nothing here calls the camera directly.
-  const handleChangeDestination = useCallback((place: Place) => {
-    // No imperative sheet call happens here — the sheet stays mounted and its content
-    // just swaps reactively. Arming still matters: it records the new toIdentity for
-    // bookkeeping and, more importantly, does NOT clear pendingNativeSheetEchoRef, so
-    // an earlier still-in-flight transition (e.g. the Open Directions call that first
-    // produced this route) keeps protecting this newer identity from its late echo.
-    armSheetTransition(computeSheetIdentity(place, null), 'replacement');
-    setDirectionsDestination(place);
-  }, [armSheetTransition]);
-
   // Full reset to EXPLORE — replaces the two ad hoc `setSelectedPlace(null) +
   // bottomSheetRef.close()` call sites that existed independently before and didn't
   // account for detailsExpanded/arrived/directionsDestination.
@@ -2085,7 +2067,6 @@ export function HomeScreen() {
               onClose={activePreviewRoute ? handleClearPreviewRoute : handleCloseDirections}
               onStartNavigation={handleStartPreviewNavigation}
               onCancelRoute={activePreviewRoute ? handleClearPreviewRoute : undefined}
-              onChangeDestination={handleChangeDestination}
             />
           ) : chrome.placeSheet && selectedPlace ? (
             <LocationSheet

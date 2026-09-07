@@ -13,7 +13,6 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
-  Keyboard,
   Share,
   Alert,
 } from 'react-native';
@@ -42,7 +41,6 @@ import { AppTheme } from '../../../services/ThemeService';
 import { NAV_TRANSITION_TIMINGS } from '../../../constants/navigationTransitions';
 import { Button } from '../common/Button';
 import { Card } from '../common/Card';
-import { SearchBarField } from '../common/SearchBarField';
 import { staticColors } from '../../../theme';
 import { OutsideRouteStatusCard } from '../navigation/OutsideRouteStatusCard';
 import type { NormalizedOutsideCandidate } from '../../../models/outsideRouting';
@@ -103,13 +101,6 @@ export type LocationSheetProps =
        * without picking a different start point. Omitted (e.g. from search's preview state)
        * where there's nothing to cancel yet. */
       onCancelRoute?: () => void;
-      /** Swaps in a newly picked destination in place (mirrors "Change Start" below, which
-       * already does this for the start side) instead of "Change destination" exiting the
-       * sheet entirely. Route recalculation and camera follow both happen as a side effect of
-       * the caller replacing its destination state — see HomeScreen.handleChangeDestination —
-       * not anything this component does directly. Omitted falls back to the old onClose
-       * behavior for callers that haven't wired it up. */
-      onChangeDestination?: (place: Place) => void;
     }
   | {
       mode: 'preview' | 'details';
@@ -139,7 +130,6 @@ export function LocationSheet(props: LocationSheetProps) {
         onClose={props.onClose}
         onStartNavigation={props.onStartNavigation}
         onCancelRoute={props.onCancelRoute}
-        onChangeDestination={props.onChangeDestination}
       />
     );
   }
@@ -162,69 +152,20 @@ function FadeContent({ transitionKey, children }: { transitionKey: string; child
   return <Animated.View style={{ opacity }}>{children}</Animated.View>;
 }
 
-function StartOption({
-  icon,
-  title,
-  subtitle,
-  active,
-  disabled,
-  onPress,
-}: {
-  icon: React.ReactNode;
-  title: string;
-  subtitle: string;
-  active?: boolean;
-  disabled?: boolean;
-  onPress: () => void;
-}) {
-  return (
-    <Pressable
-      style={[
-        styles.startOption,
-        active && styles.startOptionActive,
-        disabled && styles.startOptionDisabled,
-      ]}
-      disabled={disabled}
-      onPress={onPress}
-      accessibilityRole="button"
-      accessibilityLabel={`${title}. ${subtitle}`}
-      accessibilityState={{ selected: !!active, disabled: !!disabled }}
-    >
-      <View style={[styles.startOptionIcon, active && styles.startOptionIconActive]}>{icon}</View>
-      <View style={styles.startOptionBody}>
-        <Text style={[styles.startOptionTitle, active && styles.startOptionTitleActive, disabled && styles.startOptionTitleDisabled]}>
-          {title}
-        </Text>
-        <Text style={[styles.startOptionSubtitle, disabled && styles.startOptionSubtitleDisabled]}>{subtitle}</Text>
-      </View>
-    </Pressable>
-  );
-}
-
 function RoutePreviewSection({
   destination,
   theme,
   onClose,
   onStartNavigation,
   onCancelRoute,
-  onChangeDestination,
 }: {
   destination: Place;
   theme: AppTheme;
   onClose: () => void;
   onStartNavigation?: () => void;
   onCancelRoute?: () => void;
-  onChangeDestination?: (place: Place) => void;
 }) {
-  const currentLocation = useAppStore((s) => s.currentLocation);
   const distanceUnit = useAppStore((s) => s.settings.distanceUnit);
-
-  const [startSearch, setStartSearch] = useState('');
-  // Mirrors showStartOptions/startSearch below — same inline-search pattern ("Change
-  // Start" already reuses SearchService.search this way instead of the full-screen
-  // search overlay), applied to the destination side instead of the start side.
-  const [showDestinationOptions, setShowDestinationOptions] = useState(false);
-  const [destSearch, setDestSearch] = useState('');
   const [showGateOptions, setShowGateOptions] = useState(false);
   // Guards Retry against a same-tick double-tap: loadState only reflects the in-flight
   // request after DirectionsViewModel's state update commits and this component
@@ -237,19 +178,10 @@ function RoutePreviewSection({
     startSource,
     startSourceLabel,
     startSourceSupportingCopy,
-    isCurrentLocationStartActive,
-    rememberedLocationAgeLabel,
-    rememberedLocationAvailable,
-    rememberedLocationInsideVenue,
     currentRouteOriginInsideVenue,
     isOutsideStart,
     loadState,
     errorMessage,
-    chooseManualStart,
-    setIsEditingManualStart,
-    setManualStartPlace,
-    chooseCurrentLocation,
-    chooseRememberedLocation,
     calculateRoute,
     retryOutsideRoute,
     manualGateId,
@@ -258,35 +190,20 @@ function RoutePreviewSection({
     clearManualGateSelection,
     routeRefreshing,
     handleStartNavigation,
-    showManualStartSearch,
   } = useDirectionsViewModel(destination);
 
-  // Google Maps default: route starts from current GPS location, no picker shown up
-  // front. Remembered/manual start only surface once the rider explicitly asks via
-  // "Change Start" — picking one collapses back to the compact summary automatically.
-  const [showStartOptions, setShowStartOptions] = useState(false);
+  // Route Preview always shows the resolved start (current location or the canonical B2
+  // fallback) — no picker. resolveNavigationOrigin/DirectionsViewModel own that decision;
+  // this is presentation only. MapPin marks a fixed place (remembered/last-known/B2
+  // fallback), LocateFixed marks a live GPS-derived start.
   const startIcon =
-    startSource === 'remembered_location' || startSource === 'device_last_known' ? (
+    startSource === 'remembered_location' || startSource === 'device_last_known' || startSource === 'fallback_place' ? (
       <MapPin size={20} color={staticColors.info} />
     ) : startSource === 'manual_place' ? (
       <Navigation size={20} color={staticColors.info} />
     ) : (
       <LocateFixed size={20} color={staticColors.info} />
     );
-
-  const startCandidates = useMemo(() => {
-    if (!showManualStartSearch || startSearch.trim().length < 2) return [];
-    return SearchService.search(startSearch, currentLocation ?? undefined)
-      .filter((candidate) => candidate.id !== destination.id)
-      .slice(0, 8);
-  }, [currentLocation, destination.id, showManualStartSearch, startSearch]);
-
-  const destCandidates = useMemo(() => {
-    if (!showDestinationOptions || destSearch.trim().length < 2) return [];
-    return SearchService.search(destSearch, currentLocation ?? undefined)
-      .filter((candidate) => candidate.id !== destination.id)
-      .slice(0, 8);
-  }, [currentLocation, destination.id, showDestinationOptions, destSearch]);
 
   const outsideStart = isOutsideStart;
   const routeMeta = route as RoutePreviewWithV2Meta | null;
@@ -345,198 +262,34 @@ function RoutePreviewSection({
           keyboardDismissMode="on-drag"
         >
           <Card theme={theme} gap={14}>
-            <FadeContent transitionKey={showDestinationOptions ? 'destOptions' : 'destSummary'}>
-            {showDestinationOptions ? (
-              <>
-                <Text style={styles.sectionTitle}>Where do you want to go?</Text>
-
-                <SearchBarField
-                  value={destSearch}
-                  onChangeText={setDestSearch}
-                  placeholder="Search destination: gate, rasta, block"
-                  onSubmitEditing={Keyboard.dismiss}
-                  autoFocus
-                />
-
-                {destCandidates.length > 0 && (
-                  <View style={styles.searchResults}>
-                    {destCandidates.map((candidate: Place) => (
-                      <Pressable
-                        key={candidate.id}
-                        style={styles.searchItem}
-                        onPress={() => {
-                          setDestSearch('');
-                          setShowDestinationOptions(false);
-                          Keyboard.dismiss();
-                          onChangeDestination?.(candidate);
-                        }}
-                        accessibilityRole="button"
-                        accessibilityLabel={`${candidate.name}, ${candidate.category}`}
-                      >
-                        <MapPin size={16} color={staticColors.iconMuted} />
-                        <View style={styles.searchItemBody}>
-                          <Text style={styles.searchItemName}>{candidate.name}</Text>
-                          <Text style={styles.searchItemMeta}>{candidate.category}</Text>
-                        </View>
-                      </Pressable>
-                    ))}
-                  </View>
-                )}
-
-                {destSearch.trim().length >= 2 && destCandidates.length === 0 && (
-                  <Text style={styles.emptySearchText}>No destinations found.</Text>
-                )}
-
-                <Pressable
-                  style={styles.linkButton}
-                  onPress={() => {
-                    setShowDestinationOptions(false);
-                    setDestSearch('');
-                  }}
-                  accessibilityRole="button"
-                  accessibilityLabel="Cancel changing destination"
-                >
-                  <Text style={styles.linkButtonText}>Cancel</Text>
-                </Pressable>
-              </>
-            ) : (
-              <>
-                <Text style={styles.cardLabel}>Going to</Text>
-                <View style={styles.destinationRow}>
-                  <View style={styles.destinationIconWrap}>
-                    <MapPin size={20} color={staticColors.success} />
-                  </View>
-                  <View style={styles.destinationBody}>
-                    <Text style={styles.destinationName}>{destination.name}</Text>
-                    <Text style={styles.destinationCategory}>{destination.category}</Text>
-                  </View>
-                </View>
-                {(destination.verificationWarning || destination.unavailableReason) && (
-                  <Card theme={theme} variant="warning" style={styles.destinationWarningCard}>
-                    <Text style={[styles.statusTitle, styles.statusTitleWarning]}>Heads up</Text>
-                    <Text style={styles.statusText}>
-                      {destination.verificationWarning ?? destination.unavailableReason}
-                    </Text>
-                  </Card>
-                )}
-                <Pressable
-                  style={styles.linkButton}
-                  onPress={onChangeDestination ? () => setShowDestinationOptions(true) : onClose}
-                  accessibilityRole="button"
-                  accessibilityLabel="Change destination"
-                >
-                  <Text style={styles.linkButtonText}>Change destination</Text>
-                </Pressable>
-              </>
+            <Text style={styles.cardLabel}>Going to</Text>
+            <View style={styles.destinationRow}>
+              <View style={styles.destinationIconWrap}>
+                <MapPin size={20} color={staticColors.success} />
+              </View>
+              <View style={styles.destinationBody}>
+                <Text style={styles.destinationName}>{destination.name}</Text>
+                <Text style={styles.destinationCategory}>{destination.category}</Text>
+              </View>
+            </View>
+            {(destination.verificationWarning || destination.unavailableReason) && (
+              <Card theme={theme} variant="warning" style={styles.destinationWarningCard}>
+                <Text style={[styles.statusTitle, styles.statusTitleWarning]}>Heads up</Text>
+                <Text style={styles.statusText}>
+                  {destination.verificationWarning ?? destination.unavailableReason}
+                </Text>
+              </Card>
             )}
-            </FadeContent>
           </Card>
 
           <Card theme={theme} gap={14}>
-            <FadeContent transitionKey={showStartOptions || showManualStartSearch ? 'options' : 'summary'}>
-            {showStartOptions || showManualStartSearch ? (
-              <>
-                <Text style={styles.sectionTitle}>Where are you starting from?</Text>
-
-                <StartOption
-                  active={isCurrentLocationStartActive}
-                  icon={<LocateFixed size={18} color={isCurrentLocationStartActive ? staticColors.white : staticColors.info} />}
-                  title="Use my current location"
-                  subtitle="Find best eligible official gate automatically"
-                  onPress={() => {
-                    void chooseCurrentLocation().then((ok) => {
-                      if (ok) setShowStartOptions(false);
-                    });
-                  }}
-                />
-
-                <StartOption
-                  active={startSource === 'remembered_location'}
-                  disabled={!rememberedLocationAvailable}
-                  icon={<MapPin size={18} color={startSource === 'remembered_location' ? staticColors.white : staticColors.info} />}
-                  title="Use last known location"
-                  subtitle={
-                    !rememberedLocationAvailable
-                      ? 'No saved location yet'
-                      : rememberedLocationInsideVenue
-                      ? `We will start from nearest path (${rememberedLocationAgeLabel})`
-                      : `We'll enter through best eligible official gate (${rememberedLocationAgeLabel})`
-                  }
-                  onPress={() => {
-                    if (chooseRememberedLocation()) setShowStartOptions(false);
-                  }}
-                />
-
-                <StartOption
-                  active={startSource === 'manual_place'}
-                  icon={<Navigation size={18} color={startSource === 'manual_place' ? staticColors.white : staticColors.info} />}
-                  title="Choose start manually"
-                  subtitle="Select gate, rasta, block, or point"
-                  onPress={chooseManualStart}
-                />
-
-                {showManualStartSearch && (
-                  <View style={styles.manualSection}>
-                    <SearchBarField
-                      value={startSearch}
-                      onChangeText={setStartSearch}
-                      placeholder="Search start point: gate, rasta, block"
-                      onSubmitEditing={Keyboard.dismiss}
-                      onFocus={() => setIsEditingManualStart(true)}
-                    />
-
-                    {startCandidates.length > 0 && (
-                      <View style={styles.searchResults}>
-                        {startCandidates.map((candidate: Place) => (
-                          <Pressable
-                            key={candidate.id}
-                            style={styles.searchItem}
-                            onPress={() => {
-                              setManualStartPlace(candidate);
-                              setStartSearch(candidate.name);
-                              setIsEditingManualStart(false);
-                              setShowStartOptions(false);
-                              Keyboard.dismiss();
-                            }}
-                            accessibilityRole="button"
-                            accessibilityLabel={`${candidate.name}, ${candidate.category}`}
-                          >
-                            <MapPin size={16} color={staticColors.iconMuted} />
-                            <View style={styles.searchItemBody}>
-                              <Text style={styles.searchItemName}>{candidate.name}</Text>
-                              <Text style={styles.searchItemMeta}>{candidate.category}</Text>
-                            </View>
-                          </Pressable>
-                        ))}
-                      </View>
-                    )}
-
-                    {startSearch.trim().length >= 2 && startCandidates.length === 0 && (
-                      <Text style={styles.emptySearchText}>No start points found.</Text>
-                    )}
-                  </View>
-                )}
-              </>
-            ) : (
-              <>
-                <Text style={styles.cardLabel}>Starting from</Text>
-                <View style={styles.destinationRow}>
-                  <View style={styles.destinationIconWrap}>{startIcon}</View>
-                  <View style={styles.destinationBody}>
-                    <Text style={styles.destinationName}>{startSourceLabel}</Text>
-                  </View>
-                </View>
-                <Pressable
-                  style={styles.linkButton}
-                  onPress={() => setShowStartOptions(true)}
-                  accessibilityRole="button"
-                  accessibilityLabel="Change starting point"
-                >
-                  <Text style={styles.linkButtonText}>Change Start</Text>
-                </Pressable>
-              </>
-            )}
-            </FadeContent>
+            <Text style={styles.cardLabel}>Starting from</Text>
+            <View style={styles.destinationRow}>
+              <View style={styles.destinationIconWrap}>{startIcon}</View>
+              <View style={styles.destinationBody}>
+                <Text style={styles.destinationName}>{startSourceLabel}</Text>
+              </View>
+            </View>
           </Card>
 
           <FadeContent transitionKey={loadState}>
