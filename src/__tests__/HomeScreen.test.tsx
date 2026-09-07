@@ -232,6 +232,8 @@ function useFakeHomeViewModel(initialSearchResults: Place[] = []) {
     setIsMapReady: jest.fn(),
     handleSearch,
     handlePlaceSelect,
+    directorySelectionForDirections: null,
+    clearDirectorySelectionForDirections: jest.fn(),
     handleSheetIndexChange: jest.fn(),
     handleRecenter,
     handleCompassToggle: jest.fn(),
@@ -1056,6 +1058,26 @@ describe('HomeScreen — canonical bottom-sheet dismissal', () => {
     expect(screen.queryByPlaceholderText('Search blocks, rastas, gates')).not.toBeOnTheScreen();
     expect(screen.queryByRole('button', { name: 'Zoom in' })).not.toBeOnTheScreen();
     expect(screen.getByRole('button', { name: 'Center map on my current location' })).toBeOnTheScreen();
+  });
+
+  // NEW UX Phase B: a Locations Directory selection must auto-route straight to Directions
+  // — no manual "Directions" tap. directorySelectionForDirections is the one-shot signal
+  // HomeViewModel raises for exactly that hand-off (see HomeViewModel.test.tsx); this checks
+  // HomeScreen actually consumes it by opening Directions itself and then clearing it.
+  test('a Locations Directory hand-off auto-opens Directions without a manual tap', async () => {
+    const clearDirectorySelectionForDirections = jest.fn();
+    mockedUseHomeViewModel.mockImplementation(() => ({
+      ...useFakeHomeViewModel(),
+      selectedPlace: gateResult,
+      directorySelectionForDirections: gateResult,
+      clearDirectorySelectionForDirections,
+    }));
+    mockedUseDirectionsViewModel.mockReturnValue(directionsIdleViewModel());
+
+    await render(<HomeScreen />);
+
+    expect(await screen.findByText('Get Directions')).toBeOnTheScreen();
+    expect(clearDirectorySelectionForDirections).toHaveBeenCalled();
   });
 
   test('P0-1: late dismiss echo from Open Directions arriving after the place->route identity switch does not clear the route', async () => {

@@ -285,6 +285,8 @@ export function HomeScreen() {
     setIsMapReady,
     handleSearch,
     handlePlaceSelect,
+    directorySelectionForDirections,
+    clearDirectorySelectionForDirections,
     cancelPendingSheetPresentation,
     handleSheetIndexChange,
     handleRecenter,
@@ -1127,6 +1129,17 @@ export function HomeScreen() {
     setDirectionsDestination(destination);
     presentSheetForIdentity(1);
   };
+
+  // NEW UX Phase B: a Locations Directory selection auto-routes straight to ROUTE_PREVIEW —
+  // no manual "Directions" tap. HomeViewModel's pendingDirectorySelection hand-off already ran
+  // the ordinary handlePlaceSelect pipeline (selection highlight/camera/recents/entryPoints);
+  // this only fires the exact same Directions call the button itself would, for that one
+  // hand-off, once. An ordinary map tap or search result never touches this signal.
+  useEffect(() => {
+    if (!directorySelectionForDirections) return;
+    handleOpenDirections(directorySelectionForDirections);
+    clearDirectorySelectionForDirections();
+  }, [directorySelectionForDirections]);
 
   const handleCloseDirections = useCallback(() => {
     setDirectionsDestination(null);

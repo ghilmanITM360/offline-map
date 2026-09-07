@@ -49,6 +49,31 @@ describe('HomeViewModel pending directory selection', () => {
     expect(hook.result.current.selectedPlace).toBeNull();
     expect(useAppStore.getState().pendingDirectorySelection).toBeNull();
   });
+
+  // Phase B (NEW UX simplification): a Directory selection must auto-route straight to
+  // ROUTE_PREVIEW without a manual "Directions" tap. handlePlaceSelect alone only shows the
+  // place card, so HomeScreen needs a distinct one-shot signal telling it to also open
+  // Directions for exactly this selection — never for an ordinary map tap or search result.
+  test('also surfaces the destination once for HomeScreen to auto-open Directions', async () => {
+    const hook = await renderHook(() => useHomeViewModel());
+
+    await act(() => {
+      useAppStore.getState().setPendingDirectorySelection(directoryPlace);
+    });
+
+    expect(hook.result.current.directorySelectionForDirections).toEqual(directoryPlace);
+
+    await act(() => hook.result.current.clearDirectorySelectionForDirections());
+    expect(hook.result.current.directorySelectionForDirections).toBeNull();
+  });
+
+  test('does not surface an auto-directions signal for an ordinary place selection', async () => {
+    const hook = await renderHook(() => useHomeViewModel());
+
+    await act(() => hook.result.current.handlePlaceSelect(directoryPlace));
+
+    expect(hook.result.current.directorySelectionForDirections).toBeNull();
+  });
 });
 
 describe('HomeViewModel search reset', () => {

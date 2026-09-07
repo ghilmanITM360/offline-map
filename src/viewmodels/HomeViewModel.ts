@@ -223,11 +223,17 @@ export function useHomeViewModel() {
   // sibling reached before/pushed on top of Main) through the exact same selection
   // pipeline as a map tap or search result — no parallel selection path. The field is
   // cleared the instant it's consumed so it never re-fires on a later unrelated render.
+  const [directorySelectionForDirections, setDirectorySelectionForDirections] = useState<Place | null>(null);
   useEffect(() => {
     if (!pendingDirectorySelection) return;
     handlePlaceSelect(pendingDirectorySelection);
+    // Directory selection (unlike a map tap or search result) means the user already
+    // declared a destination — HomeScreen auto-opens Directions for exactly this one
+    // hand-off instead of waiting for a manual "Directions" tap (NEW UX Phase B).
+    setDirectorySelectionForDirections(pendingDirectorySelection);
     setPendingDirectorySelection(null);
   }, [pendingDirectorySelection, handlePlaceSelect, setPendingDirectorySelection]);
+  const clearDirectorySelectionForDirections = useCallback(() => setDirectorySelectionForDirections(null), []);
 
   const handleRecenter = useCallback(async (): Promise<boolean> => {
     const recenterTo = (location: typeof currentLocation) => {
@@ -421,6 +427,8 @@ export function useHomeViewModel() {
     setIsMapReady,
     handleSearch,
     handlePlaceSelect,
+    directorySelectionForDirections,
+    clearDirectorySelectionForDirections,
     cancelPendingSheetPresentation,
     handleSheetIndexChange,
     handleRecenter,
