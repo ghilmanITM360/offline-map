@@ -148,6 +148,22 @@ describe('LocationsDirectoryScreen — selection hands off to the existing map p
   });
 });
 
+describe('LocationsDirectoryScreen — touch targets (Android 48dp minimum)', () => {
+  test('the View map control meets the 48dp minimum touch target', async () => {
+    mockNav();
+    await render(<LocationsDirectoryScreen />);
+
+    expect(screen.getByLabelText('View map')).toHaveStyle({ minHeight: 48 });
+  });
+
+  test('category chips meet the 48dp minimum touch target', async () => {
+    mockNav();
+    await render(<LocationsDirectoryScreen />);
+
+    expect(screen.getByLabelText('Gates')).toHaveStyle({ minHeight: 48 });
+  });
+});
+
 describe('LocationsDirectoryScreen — Android hardware back', () => {
   test('clears an active search/category filter before falling through to default back behavior', async () => {
     mockNav();

@@ -229,9 +229,14 @@ const styles = StyleSheet.create({
   viewMapButton: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: spacing.xs,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
+    // Android's 48dp minimum touch target — the padding above alone renders at ~36dp.
+    // minHeight only, not a redesign: the pill still hugs its content visually, just
+    // with a taller tappable box centered around it.
+    minHeight: 48,
     // radii.pill (999) is a sentinel meant to be applied as Math.min(height, width) / 2
     // at the call site (see radii.ts), not used as a bare literal — radii.xxl still
     // renders a full pill at this ~36dp height without relying on the sentinel value.
@@ -281,8 +286,10 @@ const styles = StyleSheet.create({
     // chip's own rounded-corner clipping cut off the top of every letter until the next
     // layout pass caught up (confirmed on-device, reproduced intermittently, not tied to
     // any one style property). A height fixed from the very first frame — with no
-    // dependency on text measurement — removes the race entirely.
-    height: 36,
+    // dependency on text measurement — removes the race entirely. 48 (not the original
+    // 36) also meets Android's minimum touch target — still a static, non-content-driven
+    // value, so the race-avoidance property above holds.
+    minHeight: 48,
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: spacing.lg,
