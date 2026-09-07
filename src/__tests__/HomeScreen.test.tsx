@@ -1001,6 +1001,20 @@ describe('HomeScreen — resolved base-map rendering', () => {
     expect(screen.getByTestId('home-map-view').props.mapType).toBe('none');
   });
 
+  test('map padding bottom inset is just the safe area with no sheet open', async () => {
+    await render(<HomeScreen />);
+    expect(screen.getByTestId('home-map-view').props.mapPadding.bottom).toBe(34);
+  });
+
+  test('map padding grows past the safe area to clear the sheet once a place is selected, so Google attribution stays visible (ATTR-001)', async () => {
+    const user = userEvent.setup();
+    await render(<HomeScreen />);
+    await user.press(screen.getByTestId('facility_marker_LM_MASJID_MAIN'));
+    await screen.findByText('Main Masjid');
+
+    expect(screen.getByTestId('home-map-view').props.mapPadding.bottom).toBeGreaterThan(0);
+  });
+
   test('online Google map renders without LocalTile conflict', async () => {
     jest.spyOn(MapConfigService, 'getRuntimeStatus').mockReturnValue({
       keyPresent: true,
