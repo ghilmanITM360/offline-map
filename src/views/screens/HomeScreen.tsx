@@ -2313,7 +2313,7 @@ const styles = StyleSheet.create({
   outsideVenueTitle: { color: staticColors.white, fontSize: 13, fontWeight: '700' },
   outsideVenueSuggestion: { color: staticColors.white, fontSize: 12, fontWeight: '600', marginTop: 2 },
   outsideVenueGateText: { color: staticColors.white, fontSize: 13, fontWeight: '600', flexShrink: 1 },
-  bannerCloseButton: { minWidth: 44, minHeight: 44, marginLeft: 4, alignItems: 'center', justifyContent: 'center' },
+  bannerCloseButton: { minWidth: 48, minHeight: 48, marginLeft: 4, alignItems: 'center', justifyContent: 'center' },
   diagnosticsBanner: {
     position: 'absolute',
     top: 260,

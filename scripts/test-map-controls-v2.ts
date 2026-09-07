@@ -66,4 +66,13 @@ assert(
   'HomeScreen must resolve a single routePreviewSheetDestination (directionsDestination ?? previewDestination) feeding one LocationSheet routePreview render',
 );
 
+// Accessibility: the outside-Ijtema banner's close button was 44dp — visually right at
+// the iOS HIG floor but short of the Android Material 48dp minimum touch target this app
+// (Android-only) actually needs, matching the same floor mapControlStyles' controlButton
+// already uses.
+assert(
+  /bannerCloseButton:\s*\{\s*minWidth:\s*48,\s*minHeight:\s*48,/.test(home),
+  'bannerCloseButton must meet the 48dp Android touch-target minimum (was 44)',
+);
+
 console.log('Map controls v2 checks passed.');
