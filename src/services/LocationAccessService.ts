@@ -23,6 +23,29 @@ export interface LocationResolveResult {
   message: string | null;
 }
 
+// NEW-08 canonical freshness policy (single owner — do not duplicate elsewhere). A last-known
+// fix is "usable" only when: it has a valid timestamp that is not in the future, its age is
+// within LAST_KNOWN_MAX_AGE_MS, and its accuracy is within LAST_KNOWN_REQUIRED_ACCURACY_M.
+// Anything else (missing/invalid timestamp, future timestamp, stale, inaccurate, invalid
+// coordinate) is treated as NO USABLE LOCATION so resolveNavigationOrigin falls back to B2.
+const LAST_KNOWN_MAX_AGE_MS = 60_000;
+const LAST_KNOWN_REQUIRED_ACCURACY_M = 50;
+
+function isUsableLastKnown(position: Location.LocationObject | null): position is Location.LocationObject {
+  if (!position) return false;
+  const { timestamp } = position;
+  const { latitude, longitude, accuracy } = position.coords;
+  if (typeof timestamp !== 'number' || !Number.isFinite(timestamp)) return false;
+  if (typeof latitude !== 'number' || typeof longitude !== 'number' || !Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+    return false;
+  }
+  if (Math.abs(latitude) > 90 || Math.abs(longitude) > 180) return false;
+  const age = Date.now() - timestamp;
+  if (age < 0 || age > LAST_KNOWN_MAX_AGE_MS) return false;
+  if (typeof accuracy !== 'number' || !Number.isFinite(accuracy) || accuracy > LAST_KNOWN_REQUIRED_ACCURACY_M) return false;
+  return true;
+}
+
 export class LocationAccessService {
   static async getPermissionState(): Promise<LocationPermissionState> {
     const permission = await Location.getForegroundPermissionsAsync();
@@ -108,8 +131,11 @@ export class LocationAccessService {
           message: null,
         };
       } catch {
-        const lastKnown = await Location.getLastKnownPositionAsync();
-        if (lastKnown) {
+        const lastKnown = await Location.getLastKnownPositionAsync({
+          maxAge: LAST_KNOWN_MAX_AGE_MS,
+          requiredAccuracy: LAST_KNOWN_REQUIRED_ACCURACY_M,
+        });
+        if (isUsableLastKnown(lastKnown)) {
           return {
             ok: true,
             coordinate: {

@@ -108,3 +108,154 @@ describe('LocationAccessService.resolveCurrentLocation — Home/Recenter + Direc
     expect(await OnboardingStatusService.hasSkippedLocationPermission()).toBe(true);
   });
 });
+
+// NEW-08 canonical freshness policy: last-known cache is only accepted when it is recent
+// and accurate enough to be a trustworthy pedestrian-navigation origin; otherwise treat it
+// as no usable location so NavigationOriginResolver falls back to B2.
+describe('LocationAccessService.resolveCurrentLocation — origin freshness policy (NEW-08)', () => {
+  const NOW = 1_700_000_000_000;
+
+  beforeEach(() => {
+    jest.spyOn(Date, 'now').mockReturnValue(NOW);
+    (Location.getForegroundPermissionsAsync as jest.Mock).mockResolvedValue({ status: 'granted', canAskAgain: true });
+  });
+
+  afterEach(() => {
+    (Date.now as jest.Mock).mockRestore();
+  });
+
+  function lastKnown(ageMs: number | null, accuracy: number | null, overrides: Partial<{ latitude: number; longitude: number }> = {}) {
+    return {
+      coords: { latitude: 24.97, longitude: 67.01, heading: null, accuracy, ...overrides },
+      timestamp: ageMs === null ? undefined : NOW - ageMs,
+    };
+  }
+
+  it('LOC-01: current position succeeds -> live_gps, last-known never consulted', async () => {
+    (Location.getCurrentPositionAsync as jest.Mock).mockResolvedValue({
+      coords: { latitude: 1, longitude: 2, heading: null, accuracy: 5 },
+    });
+
+    const resolved = await LocationAccessService.resolveCurrentLocation();
+
+    expect(resolved.ok).toBe(true);
+    expect(resolved.source).toBe('live');
+    expect(Location.getLastKnownPositionAsync).not.toHaveBeenCalled();
+  });
+
+  it('LOC-02: current fails, last-known age 10s / accuracy 15m -> accepted as device_last_known', async () => {
+    (Location.getCurrentPositionAsync as jest.Mock).mockRejectedValue(new Error('unavailable'));
+    (Location.getLastKnownPositionAsync as jest.Mock).mockResolvedValue(lastKnown(10_000, 15));
+
+    const resolved = await LocationAccessService.resolveCurrentLocation();
+
+    expect(resolved.ok).toBe(true);
+    expect(resolved.source).toBe('device_last_known');
+  });
+
+  it('LOC-03: current fails, last-known age 61s -> rejected (no usable location)', async () => {
+    (Location.getCurrentPositionAsync as jest.Mock).mockRejectedValue(new Error('unavailable'));
+    (Location.getLastKnownPositionAsync as jest.Mock).mockResolvedValue(lastKnown(61_000, 15));
+
+    const resolved = await LocationAccessService.resolveCurrentLocation();
+
+    expect(resolved.ok).toBe(false);
+    expect(resolved.coordinate).toBeNull();
+    expect(resolved.source).toBeNull();
+  });
+
+  it('LOC-04: current fails, last-known accuracy 80m -> rejected (no usable location)', async () => {
+    (Location.getCurrentPositionAsync as jest.Mock).mockRejectedValue(new Error('unavailable'));
+    (Location.getLastKnownPositionAsync as jest.Mock).mockResolvedValue(lastKnown(10_000, 80));
+
+    const resolved = await LocationAccessService.resolveCurrentLocation();
+
+    expect(resolved.ok).toBe(false);
+  });
+
+  it('LOC-05: current fails, last-known missing timestamp -> rejected', async () => {
+    (Location.getCurrentPositionAsync as jest.Mock).mockRejectedValue(new Error('unavailable'));
+    (Location.getLastKnownPositionAsync as jest.Mock).mockResolvedValue(lastKnown(null, 15));
+
+    const resolved = await LocationAccessService.resolveCurrentLocation();
+
+    expect(resolved.ok).toBe(false);
+  });
+
+  it('LOC-06: current fails, last-known has invalid coordinate -> rejected', async () => {
+    (Location.getCurrentPositionAsync as jest.Mock).mockRejectedValue(new Error('unavailable'));
+    (Location.getLastKnownPositionAsync as jest.Mock).mockResolvedValue(
+      lastKnown(10_000, 15, { latitude: Number.NaN }),
+    );
+
+    const resolved = await LocationAccessService.resolveCurrentLocation();
+
+    expect(resolved.ok).toBe(false);
+  });
+
+  it('LOC-07: permission denied -> no usable location', async () => {
+    (Location.getForegroundPermissionsAsync as jest.Mock).mockResolvedValue({ status: 'denied', canAskAgain: true });
+
+    const resolved = await LocationAccessService.resolveCurrentLocation(false);
+
+    expect(resolved.ok).toBe(false);
+    expect(Location.getLastKnownPositionAsync).not.toHaveBeenCalled();
+  });
+
+  it('LOC-08: location services disabled -> no usable location', async () => {
+    (Location.hasServicesEnabledAsync as jest.Mock).mockResolvedValue(false);
+
+    const resolved = await LocationAccessService.resolveCurrentLocation();
+
+    expect(resolved.ok).toBe(false);
+    expect(Location.getLastKnownPositionAsync).not.toHaveBeenCalled();
+  });
+
+  it('LOC-09: no current and no cache -> no usable location', async () => {
+    (Location.getCurrentPositionAsync as jest.Mock).mockRejectedValue(new Error('unavailable'));
+    (Location.getLastKnownPositionAsync as jest.Mock).mockResolvedValue(null);
+
+    const resolved = await LocationAccessService.resolveCurrentLocation();
+
+    expect(resolved.ok).toBe(false);
+  });
+
+  it('LOC-10: fresh current succeeds even when a stale cache exists -> live_gps wins', async () => {
+    (Location.getCurrentPositionAsync as jest.Mock).mockResolvedValue({
+      coords: { latitude: 1, longitude: 2, heading: null, accuracy: 5 },
+    });
+    (Location.getLastKnownPositionAsync as jest.Mock).mockResolvedValue(lastKnown(120_000, 200));
+
+    const resolved = await LocationAccessService.resolveCurrentLocation();
+
+    expect(resolved.source).toBe('live');
+  });
+
+  it('LOC-11: cache exactly at the age/accuracy thresholds is accepted (inclusive boundary)', async () => {
+    (Location.getCurrentPositionAsync as jest.Mock).mockRejectedValue(new Error('unavailable'));
+    (Location.getLastKnownPositionAsync as jest.Mock).mockResolvedValue(lastKnown(60_000, 50));
+
+    const resolved = await LocationAccessService.resolveCurrentLocation();
+
+    expect(resolved.ok).toBe(true);
+    expect(resolved.source).toBe('device_last_known');
+  });
+
+  it('LOC-11b: one millisecond/meter past either threshold is rejected', async () => {
+    (Location.getCurrentPositionAsync as jest.Mock).mockRejectedValue(new Error('unavailable'));
+    (Location.getLastKnownPositionAsync as jest.Mock).mockResolvedValue(lastKnown(60_001, 50));
+
+    const resolved = await LocationAccessService.resolveCurrentLocation();
+
+    expect(resolved.ok).toBe(false);
+  });
+
+  it('LOC-12: future timestamp (clock anomaly) is rejected rather than trusted', async () => {
+    (Location.getCurrentPositionAsync as jest.Mock).mockRejectedValue(new Error('unavailable'));
+    (Location.getLastKnownPositionAsync as jest.Mock).mockResolvedValue(lastKnown(-5_000, 15));
+
+    const resolved = await LocationAccessService.resolveCurrentLocation();
+
+    expect(resolved.ok).toBe(false);
+  });
+});
