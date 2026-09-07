@@ -48,6 +48,7 @@ import {
   stackAbove,
   OverlayState,
 } from '../../viewmodels/useOverlayInsets';
+import { useReducedMotion } from '../../viewmodels/useReducedMotion';
 import { useTheme } from '../../services/useTheme';
 import { SHEET_CORNER_RADIUS } from '../components/common/SheetHeader';
 import { markerColors, markerSizes, shadows, staticColors } from '../../theme';
@@ -242,6 +243,7 @@ export function HomeScreen() {
   const warningAnim = useRef(new Animated.Value(0)).current;
   const userPulseAnim = useRef(new Animated.Value(0)).current;
   const chipsAnim = useRef(new Animated.Value(1)).current;
+  const reducedMotion = useReducedMotion();
 
   const dismissSearchOverlay = useCallback(() => {
     setIsSearchFocused(false);
@@ -991,6 +993,10 @@ export function HomeScreen() {
   }, [isMapDragging, chipsAnim]);
 
   useEffect(() => {
+    // Purely decorative — the blue dot itself already conveys "you are here" with no
+    // motion, so skip the ripple entirely under the OS reduce-motion setting rather than
+    // just slowing or hiding it.
+    if (reducedMotion) return;
     const pulse = Animated.loop(
       Animated.sequence([
         Animated.timing(userPulseAnim, { toValue: 1, duration: 1100, useNativeDriver: true }),
@@ -999,7 +1005,7 @@ export function HomeScreen() {
     );
     pulse.start();
     return () => pulse.stop();
-  }, [userPulseAnim]);
+  }, [userPulseAnim, reducedMotion]);
 
   // First-time "you are here" education — fires once, the first time the camera
   // actually enters FOLLOWING_USER (cold-launch auto-follow or a recenter tap both

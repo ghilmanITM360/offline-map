@@ -75,4 +75,25 @@ assert(
   'bannerCloseButton must meet the 48dp Android touch-target minimum (was 44)',
 );
 
+// Reduced motion: the user-location pulse ripple is purely decorative — the static blue
+// dot alone already conveys "you are here" — so it must be skipped under the OS reduce-
+// motion setting rather than looping unconditionally. See src/viewmodels/useReducedMotion.ts
+// (its own async-resolution behavior is unit-tested in useReducedMotion.test.ts).
+assert(
+  home.includes("from '../../viewmodels/useReducedMotion'"),
+  'HomeScreen must import the shared useReducedMotion hook',
+);
+assert(
+  home.includes('const reducedMotion = useReducedMotion();'),
+  'HomeScreen must read the OS reduce-motion setting',
+);
+assert(
+  /if \(reducedMotion\) return;\s*\n\s*const pulse = Animated\.loop\(/.test(home),
+  'The user-location pulse loop must be skipped when reducedMotion is on',
+);
+assert(
+  home.includes('}, [userPulseAnim, reducedMotion]);'),
+  'The pulse effect must re-run when the OS reduce-motion setting changes, so it stops if the setting flips on mid-session',
+);
+
 console.log('Map controls v2 checks passed.');
