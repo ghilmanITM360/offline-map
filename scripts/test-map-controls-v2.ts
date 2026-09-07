@@ -38,7 +38,10 @@ for (const deadOffsetGuess of ['isOffline ? 42', 'showMapWarningBanner ? 56', 's
 // an independently bottom-anchored recenter button — that old split is exactly what let a
 // route-preview card push the recenter button into the zoom controls (neither side's offset
 // accounted for the other's extent). A single shared bottom value can't collide with itself.
-assert((home.match(/<View style=\{\[styles\.controlStack, \{ bottom: controlStackBottom \}\]\}>/g) ?? []).length >= 1, 'HomeScreen must position the control stack via a single controlStackBottom value');
+assert(
+  (home.match(/<View\s+style=\{\[styles\.controlStack, \{ bottom: controlStackBottom \}\]\}[\s\S]{0,120}?>/g) ?? []).length >= 1,
+  'HomeScreen must position the control stack via a single controlStackBottom value',
+);
 assert(home.includes('recenter={'), 'HomeScreen must pass the recenter button into MapControls\' single stack, not render it separately');
 
 // P0-2 (Google Maps routing parity fix): route preview is a single surface living inside

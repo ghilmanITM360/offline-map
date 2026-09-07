@@ -45,6 +45,7 @@ import {
   computeNavControlsInset,
   resolveNavBarHeight,
   resolveOverlayExtent,
+  stackAbove,
   OverlayState,
 } from '../../viewmodels/useOverlayInsets';
 import { useTheme } from '../../services/useTheme';
@@ -230,6 +231,7 @@ export function HomeScreen() {
   const [isMapDragging, setIsMapDragging] = useState(false);
   const [recenterState, setRecenterState] = useState<'idle' | 'loading' | 'success' | 'failure'>('idle');
   const [showLocationTutorial, setShowLocationTutorial] = useState(false);
+  const [controlStackHeight, setControlStackHeight] = useState(0);
   const [detailsExpanded, setDetailsExpanded] = useState(false);
   // -1 = closed. Tracked (not derived from mode) because PLACE_SELECTED/ROUTE_PREVIEW
   // cover two distinct snap heights (15%/50% peek vs preview) that mode alone can't
@@ -1921,7 +1923,10 @@ export function HomeScreen() {
 
         {(chrome.browseControls || chrome.recenter) && (
           <>
-            <View style={[styles.controlStack, { bottom: controlStackBottom }]}>
+            <View
+              style={[styles.controlStack, { bottom: controlStackBottom }]}
+              onLayout={(e) => setControlStackHeight(e.nativeEvent.layout.height)}
+            >
               <MapControls
                 variant={chrome.browseControls ? 'browse' : 'recenter'}
                 compassMode={compassMode}
@@ -1947,7 +1952,7 @@ export function HomeScreen() {
 
             {chrome.browseControls && showLocationTutorial && (
               <LocationTutorialTooltip
-                bottomOffset={controlStackBottom + 340}
+                bottomOffset={stackAbove(controlStackBottom, controlStackHeight)}
                 onDismiss={() => setShowLocationTutorial(false)}
               />
             )}

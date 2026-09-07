@@ -142,6 +142,27 @@ assert(
   'HomeScreen mapLabelEdgeInsets must pass the measured nav-chrome top height so labels never render under it',
 );
 
+// Regression: LocationTutorialTooltip must stack above the *measured* control-stack
+// height, not a hand-guessed literal (previously `controlStackBottom + 340`, a static
+// approximation of the browse-variant Layers/Compass/Zoom/Recenter cluster's height that
+// could silently drift from the real layout).
+assert(
+  !homeScreen.includes('+ 340'),
+  'HomeScreen must not reintroduce the old hand-guessed +340 tutorial-tooltip offset',
+);
+assert(
+  homeScreen.includes('const [controlStackHeight, setControlStackHeight] = useState(0)'),
+  'HomeScreen must measure the floating control-stack height via state, not guess it',
+);
+assert(
+  homeScreen.includes('onLayout={(e) => setControlStackHeight(e.nativeEvent.layout.height)}'),
+  'HomeScreen controlStack view must report its real height via onLayout',
+);
+assert(
+  homeScreen.includes('bottomOffset={stackAbove(controlStackBottom, controlStackHeight)}'),
+  'LocationTutorialTooltip must derive its offset from stackAbove(controlStackBottom, controlStackHeight), the same primitive used for every other stacked control',
+);
+
 const chromeV1 = readFileSync('src/views/components/navigation/NavigationChromeV1.tsx', 'utf8');
 const chromeV2 = readFileSync('src/views/components/navigation/NavigationChromeV2.tsx', 'utf8');
 for (const [name, source] of [['NavigationChromeV1', chromeV1], ['NavigationChromeV2', chromeV2]] as const) {
