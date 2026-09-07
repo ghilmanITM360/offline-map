@@ -46,13 +46,18 @@ assert(!home.includes('Entry {ep.nodeId}'), 'Home normal entrance chips must not
 
 assert(directions.includes('KeyboardAvoidingView'), 'Directions must use keyboard-aware layout');
 assert(directions.includes('keyboardDismissMode="on-drag"'), 'Directions must dismiss keyboard on scroll');
-assert(directions.includes('Use my current location'), 'Directions must expose current-location start action');
-assert(directions.includes('Use last known location'), 'Directions must expose last-known start action when available');
-assert(directions.includes('Choose start manually'), 'Directions must expose manual start action');
+// Phase C/D simplified Route Preview to plain destination/start summaries: the manual
+// start-source CTAs and in-sheet destination search below were removed — start is
+// auto-resolved (resolveNavigationOrigin/DirectionsViewModel) and destination is changed by
+// going back to Locations Directory, not picking inline. See LocationSheet.test.tsx.
+assert(
+  !directions.includes('Use my current location') && !directions.includes('Use last known location') && !directions.includes('Choose start manually'),
+  'Directions must not reintroduce the removed manual start-source CTAs',
+);
 assert(directions.includes('Start Navigation'), 'Directions must expose a Start Navigation CTA once the route is ready');
 assert(directions.includes('Route ready'), 'Directions must show route-ready state');
-assert(directions.includes('Find best eligible official gate automatically'), 'Directions must explain destination-aware current-location routing behavior');
-assert(directions.includes('Change destination'), 'Directions must keep destination-change action');
+assert(directions.includes('best eligible official gate'), 'Directions must explain destination-aware current-location routing behavior');
+assert(!directions.includes('onChangeDestination'), 'Directions must not reintroduce the removed in-sheet destination-change action');
 
 // Both v1 and v2 live navigation now run in-place on HomeScreen's persistent MapView — v1's
 // runtime (NavigationViewModel) itself rejects a v2-shaped activeRoute rather than relying on

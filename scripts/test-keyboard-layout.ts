@@ -10,12 +10,16 @@ const guide = readFileSync('src/views/screens/AppGuideScreen.tsx', 'utf8');
 // (still real, still covers DETAILS/ROUTE_PREVIEW/PLACE_SELECTED) is exercised by
 // scripts/test-map-mode.ts and src/__tests__/HomeScreen.test.tsx instead.
 
+// Phase A/C's canonical origin resolver later removed the in-sheet manual-start search
+// entirely (no keyboard/results state left to manage here — start is auto-resolved, shown
+// as a plain summary card) — see LocationSheet.test.tsx.
 assert(directions.includes('KeyboardAvoidingView'), 'Directions must protect FROM/TO layout when keyboard opens');
 assert(directions.includes("keyboardShouldPersistTaps=\"handled\""), 'Directions search result taps must work while keyboard is open');
 assert(directions.includes("keyboardDismissMode=\"on-drag\""), 'Directions keyboard should dismiss on scroll');
-assert(directions.includes('onSubmitEditing={Keyboard.dismiss}'), 'Manual start search must dismiss keyboard on submit');
-assert(directions.includes('setIsEditingManualStart(false)') && directions.includes('Keyboard.dismiss()'), 'Manual start result selection must close keyboard/results');
-assert(directions.includes('Choose start manually') && directions.includes('StartOption'), 'Directions start selection must use stacked option cards on small screens');
+assert(
+  !directions.includes('setIsEditingManualStart') && !directions.includes('StartOption'),
+  'Directions must not reintroduce the removed manual-start search UI',
+);
 
 assert(guide.includes('ScrollView'), 'App Guide must scroll on small screens and large font settings');
 assert(guide.includes('contentContainerStyle={styles.content}'), 'App Guide must use constrained scroll content');

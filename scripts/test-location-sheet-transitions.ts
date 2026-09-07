@@ -23,17 +23,17 @@ assert(
   !source.includes('LayoutAnimation.'),
   'LocationSheet must not call LayoutAnimation — it can conflict with BottomSheetModal internals',
 );
+// Phase A/C/D later removed the start-source and destination options/search sections
+// FadeContent used to wrap (both are now plain, non-swapping summary cards — see
+// LocationSheet.test.tsx) — only the route status section (loading/error/ready/hint) still
+// swaps content and needs the cross-fade.
 assert(
-  source.includes("<FadeContent transitionKey={showStartOptions || showManualStartSearch ? 'options' : 'summary'}>"),
-  'The start-source section (summary <-> options/search) must be wrapped in FadeContent',
+  !source.includes('showStartOptions') && !source.includes('showManualStartSearch') && !source.includes('showDestinationOptions'),
+  'LocationSheet must not reintroduce the removed start-source/destination options sections',
 );
 assert(
   source.includes('<FadeContent transitionKey={loadState}>'),
   'The route status section (loading/error/ready/hint) must be wrapped in FadeContent keyed on loadState',
-);
-assert(
-  source.includes("<FadeContent transitionKey={showDestinationOptions ? 'destOptions' : 'destSummary'}>"),
-  'The "Going to" destination section (summary <-> inline destination search) must be wrapped in FadeContent, matching the start-source section',
 );
 
 console.log('LocationSheet transition checks passed.');

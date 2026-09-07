@@ -67,7 +67,6 @@ const MANEUVER_LABEL_SIZE = 24; // primary instruction — not in scope for this
 assert(fontSizeOf(stylesSource, 'weakGpsText') >= SAFETY_TEXT_FLOOR, 'weakGpsText (GPS weak/lost banner, shared by NavigationChromeV1 and V2) must be >= 15px');
 assert(fontSizeOf(stylesSource, 'rerouteHintText') >= SAFETY_TEXT_FLOOR, 'rerouteHintText (reroute notification banner) must be >= 15px');
 assert(fontSizeOf(stylesSource, 'nextStepText') >= SAFETY_TEXT_FLOOR, 'nextStepText (upcoming-turn preview) must be >= 15px');
-assert(fontSizeOf(stylesSource, 'rerouteText') >= SAFETY_TEXT_FLOOR, '"Recalculating..." reroute-card text must be >= 15px');
 
 // Arrival messaging was already at/above the floor before this pass — pin it so it can't regress.
 assert(fontSizeOf(stylesSource, 'arrivedTitle') >= SAFETY_TEXT_FLOOR, 'arrivedTitle must stay >= 15px');
@@ -85,22 +84,33 @@ assert(fontSizeOf(stylesSource, 'startMarkerLabelText') < SAFETY_TEXT_FLOOR, 'st
 // --- Contrast: GPS/reroute banner text must clear WCAG AA (4.5:1) against its own background ---
 const white = '#FFFFFF';
 const weakGpsBackground = hexOf(colorsSource, 'weakGpsBackground');
-const rerouteBackground = hexOf(colorsSource, 'rerouteBackground');
+// rerouteHintBanner/rerouteHintText (the actually-rendered reroute banner, via
+// NavigationStatusBanner) reuse the shared warning tokens, not a dedicated reroute color pair.
+const warningBackground = hexOf(colorsSource, 'warningBackground');
+const warningText = hexOf(colorsSource, 'warningText');
 
 assert(
   contrastRatio(white, weakGpsBackground) >= WCAG_AA_NORMAL_TEXT,
   `weakGpsText (white) on weakGpsBackground (${weakGpsBackground}) must clear WCAG AA 4.5:1, got ${contrastRatio(white, weakGpsBackground).toFixed(2)}:1`,
 );
 assert(
-  contrastRatio(white, rerouteBackground) >= WCAG_AA_NORMAL_TEXT,
-  `rerouteText (white) on rerouteBackground (${rerouteBackground}) must clear WCAG AA 4.5:1, got ${contrastRatio(white, rerouteBackground).toFixed(2)}:1`,
+  contrastRatio(warningText, warningBackground) >= WCAG_AA_NORMAL_TEXT,
+  `rerouteHintText (${warningText}) on warningBackground (${warningBackground}) must clear WCAG AA 4.5:1, got ${contrastRatio(warningText, warningBackground).toFixed(2)}:1`,
 );
 
 // --- The GPS_LOST banner (added alongside weak-GPS handling) must still reuse the same
-// styled banner rather than drifting onto a separate, unaudited style. ---
+// styled banner rather than drifting onto a separate, unaudited style. This ownership later
+// moved out of NavigationChromeV2 into the shared selectMapWarning priority policy
+// (MapWarningPolicy.ts) plus NavigationStatusBanner's single rendering component. ---
+const warningPolicySource = readFileSync('src/viewmodels/MapWarningPolicy.ts', 'utf8');
+const statusBannerSource = readFileSync('src/views/components/navigation/NavigationStatusBanner.tsx', 'utf8');
 assert(
-  /gpsSignalState === 'GPS_LOST'[\s\S]{0,200}styles\.weakGpsBanner[\s\S]{0,200}styles\.weakGpsText/.test(chromeV2Source),
-  'NavigationChromeV2 GPS_LOST banner must reuse styles.weakGpsBanner/styles.weakGpsText (the audited, now-larger, now-contrast-fixed style) — not a separate one-off style',
+  /gpsSignalState === 'GPS_LOST'[\s\S]{0,80}return \{ kind: 'navigation_safety'/.test(warningPolicySource),
+  "MapWarningPolicy must map GPS_LOST to the same 'navigation_safety' kind as weak GPS, not a separate one-off kind",
+);
+assert(
+  /kind === 'navigation_safety'[\s\S]{0,100}styles\.weakGpsBanner[\s\S]{0,100}styles\.weakGpsText/.test(statusBannerSource),
+  'NavigationStatusBanner must render navigation_safety warnings (GPS_LOST and weak GPS alike) using styles.weakGpsBanner/styles.weakGpsText (the audited, now-larger, now-contrast-fixed style) — not a separate one-off style',
 );
 
 // --- allowFontScaling must never be disabled on these components — OS text scaling has

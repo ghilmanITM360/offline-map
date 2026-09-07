@@ -133,7 +133,7 @@ assert(
 assert(
   directionsScreen.includes('Get Directions') &&
     directionsScreen.includes('Start Navigation') &&
-    directionsScreen.includes('Find best eligible official gate automatically'),
+    directionsScreen.includes("best eligible official gate"),
   'Directions should use layman-friendly start-selection flow',
 );
 

@@ -19,6 +19,12 @@ const navigationChromeSource = readFileSync('src/views/components/navigation/Nav
 const navigationOverlaySource = readFileSync('src/viewmodels/useNavigationOverlayV2.ts', 'utf8');
 const navigationExitSource = readFileSync('src/viewmodels/useNavigationExitConfirmation.ts', 'utf8');
 const navigationViewModelSource = readFileSync('src/viewmodels/NavigationViewModelV2.ts', 'utf8');
+// The top-status-slot ternary (GPS_LOST > isWeakGps > reroute > basemap-unavailable) was later
+// extracted out of NavigationChromeV2 into a shared pure priority policy (selectMapWarning,
+// MapWarningPolicy.ts) plus a single rendering component (NavigationStatusBanner) — see
+// src/__tests__/MapWarningPolicy.test.ts for the full priority-ordering behavioral coverage.
+const mapWarningPolicySource = readFileSync('src/viewmodels/MapWarningPolicy.ts', 'utf8');
+const statusBannerSource = readFileSync('src/views/components/navigation/NavigationStatusBanner.tsx', 'utf8');
 
 const navigationVmReturnSource = getReturnObject(navigationViewModelSource);
 
@@ -71,21 +77,28 @@ assert(
   'Navigation v2 auto-follow effect must keep camera recenter on the snapped location.',
 );
 assert(
-  // Consolidated into the single top-status-slot ternary (GPS_LOST > isWeakGps > reroute >
-  // basemap-unavailable) rather than an independently-stacked `{isWeakGps && (...)}` block.
-  navigationChromeSource.includes('isWeakGps ?') &&
-    navigationChromeSource.includes('Weak GPS signal detected. Route updates may be slower.'),
+  navigationChromeSource.includes('selectMapWarning({') && navigationChromeSource.includes('<NavigationStatusBanner warning={warning}'),
+  'NavigationChromeV2 must feed view-model state into selectMapWarning and render the result via NavigationStatusBanner.',
+);
+assert(
+  mapWarningPolicySource.includes('isWeakGps || inputs.gpsSignalState') &&
+    mapWarningPolicySource.includes('Weak GPS signal detected. Route updates may be slower.'),
   'Navigation v2 weak GPS banner must stay visible from view model state.',
 );
 assert(
-  navigationChromeSource.includes('rerouteStatusMessage && !reroutePending ?') &&
-    navigationChromeSource.includes('<Text style={styles.rerouteHintText}>{rerouteStatusMessage}</Text>'),
+  mapWarningPolicySource.includes('inputs.rerouteStatusMessage') &&
+    mapWarningPolicySource.includes("return { kind: 'rerouting', message: inputs.rerouteStatusMessage };"),
   'Navigation v2 reroute status message must stay rendered when reroute settles.',
 );
 assert(
-  navigationChromeSource.includes('{reroutePending ? (') &&
-    navigationChromeSource.includes('<Text style={styles.rerouteText}>Recalculating...</Text>'),
+  mapWarningPolicySource.includes('inputs.reroutePending') &&
+    mapWarningPolicySource.includes("REROUTING_MESSAGE = 'Recalculating your route…'") &&
+    mapWarningPolicySource.includes("message: REROUTING_MESSAGE"),
   'Navigation v2 reroute pending state must stay visible.',
+);
+assert(
+  statusBannerSource.includes("kind === 'rerouting'") && statusBannerSource.includes('styles.rerouteHintText'),
+  'NavigationStatusBanner must render rerouting-kind warnings.',
 );
 
 for (const field of ['reroutePending', 'isWeakGps', 'rerouteStatusMessage']) {

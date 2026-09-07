@@ -5,13 +5,26 @@ const directionsScreenSource = readFileSync('src/views/components/map/LocationSh
 const directionsViewModelSource = readFileSync('src/viewmodels/DirectionsViewModel.ts', 'utf8');
 const homeScreenSource = readFileSync('src/views/screens/HomeScreen.tsx', 'utf8');
 
+// Phase C/D simplified Route Preview to plain destination/start summaries and removed the
+// old in-sheet manual-start question and in-sheet destination search (the "duplicate map
+// destination search") — changing either now means going back to Locations Directory (Phase F's
+// canonical Back to Locations), not picking inline. See LocationSheet.test.tsx and
+// scripts/test-map-controls-v2.ts (Phase D) for the corresponding removal coverage.
 assert(directionsScreenSource.includes('Get Directions'), 'Directions header must say Get Directions.');
 assert(directionsScreenSource.includes('Going to'), 'Directions screen must show destination card title.');
-assert(directionsScreenSource.includes('Where are you starting from?'), 'Directions screen must ask start question plainly.');
-assert(directionsScreenSource.includes('Use my current location'), 'Directions screen must keep current-location start CTA.');
-assert(directionsScreenSource.includes('Use last known location'), 'Directions screen must keep remembered-location CTA.');
-assert(directionsScreenSource.includes('Choose start manually'), 'Directions screen must keep manual-start CTA.');
-assert(directionsScreenSource.includes('Change destination'), 'Directions screen must let user change destination.');
+assert(directionsScreenSource.includes('Starting from'), 'Directions screen must show resolved-start card title.');
+assert(
+  !directionsScreenSource.includes('Where are you starting from?'),
+  'Directions screen must not reintroduce the removed manual start question.',
+);
+assert(
+  !directionsScreenSource.includes('Use my current location') && !directionsScreenSource.includes('Use last known location'),
+  'Directions screen must not reintroduce the removed manual start-source CTAs — start is auto-resolved.',
+);
+assert(
+  !directionsScreenSource.includes('onChangeDestination'),
+  'Directions screen must not reintroduce the removed in-sheet destination search.',
+);
 assert(directionsScreenSource.includes('Finding route'), 'Directions screen must show provider-neutral calculating status copy.');
 assert(directionsScreenSource.includes('Route ready'), 'Directions screen must show success status copy.');
 assert(directionsScreenSource.includes('Start Navigation'), 'Directions screen must expose a Start Navigation CTA.');

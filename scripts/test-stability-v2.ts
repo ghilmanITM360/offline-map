@@ -14,9 +14,9 @@ const downloadScreen = readFileSync('src/views/screens/DownloadMapScreen.tsx', '
 const downloadViewModel = readFileSync('src/viewmodels/DownloadMapViewModel.ts', 'utf8');
 const homeScreen = readFileSync('src/views/screens/HomeScreen.tsx', 'utf8');
 const navigationViewModelV1 = readFileSync('src/viewmodels/NavigationViewModel.ts', 'utf8');
-const permissionScreen = readFileSync('src/views/screens/PermissionScreen.tsx', 'utf8');
 const settingsScreen = readFileSync('src/views/screens/SettingsScreen.tsx', 'utf8');
-const directionsScreen = readFileSync('src/views/components/map/LocationSheet.tsx', 'utf8');
+const homeViewModel = readFileSync('src/viewmodels/HomeViewModel.ts', 'utf8');
+const directionsViewModel = readFileSync('src/viewmodels/DirectionsViewModel.ts', 'utf8');
 
 assert(splash.includes("setDownloadState({ phase: 'idle' })"), 'Cold start must clear stale in-memory downloading state');
 assert(downloadViewModel.includes('STALE') || downloadViewModel.includes('downloadInProgressRef'), 'Download flow must guard duplicate/stuck workers');
@@ -25,7 +25,12 @@ assert(homeScreen.includes('onMapReady={() =>') && homeScreen.includes('setIsMap
 // Navigation (v1 and v2 alike) shares Home's one MapView now, so this single check already
 // covers navigation rendering without a Google key or internet.
 assert(homeScreen.includes("mapType={baseMapMode === 'GOOGLE_BASEMAP' ? mapType : 'none'}"), 'Home map must render graph-only or local fallback without requesting Google tiles');
-assert(permissionScreen.includes('Choose start manually') || directionsScreen.includes('Choose start'), 'Denied GPS must leave a manual routing path');
+// Manual-start ownership moved off PermissionScreen/LocationSheet onto the canonical origin
+// resolver (HomeViewModel's denied-GPS recenter alert, DirectionsViewModel's needs_origin state).
+assert(
+  homeViewModel.includes('Choose start manually') || directionsViewModel.includes('Choose start'),
+  'Denied GPS must leave a manual routing path',
+);
 assert(settingsScreen.includes("AppState.addEventListener('change'"), 'Settings permission state must refresh safely after Android settings return');
 assert(
   navigationViewModelV1.includes("(activeRoute as { sourceVersion?: string }).sourceVersion === 'v2'"),

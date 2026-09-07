@@ -14,8 +14,10 @@ const requiredSections = [
   'Offline Maps',
   'Search Places',
   'Choose Destination',
-  'Choose Start Source',
-  'Directions Screen',
+  // Renamed from "Choose Start Source" / "Directions Screen" when Phase A/C's canonical
+  // origin resolver removed the manual start-source picker this section used to document.
+  'Your Start Point',
+  'Route Preview',
   'Navigation Screen',
   'Map Controls',
   'Settings Meaning',
@@ -29,9 +31,9 @@ for (const section of requiredSections) {
 }
 
 assert(guide.includes('ایپ گائیڈ') || guide.includes('آف لائن نقشہ'), 'Guide should include Urdu text');
-assert(guide.includes('Use My Current Location'), 'Guide should explain live GPS start source');
-assert(guide.includes('Use Last Known Location'), 'Guide should explain last-known start source');
-assert(guide.includes('Choose start manually'), 'Guide should explain manual start source');
+assert(guide.includes('Live GPS'), 'Guide should explain live GPS start source');
+assert(guide.includes('Last known location'), 'Guide should explain last-known start source');
+assert(guide.includes('best eligible official gate'), 'Guide should explain outside-venue gate entry');
 assert(guide.includes('Quick Marker Legend'), 'Guide should include marker legend visuals');
 
 console.log('Settings guide checks passed.');

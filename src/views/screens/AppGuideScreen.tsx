@@ -68,18 +68,18 @@ const GUIDE_SECTIONS: GuideSection[] = [
   {
     key: 'start',
     icon: LocateFixed,
-    title: '5. Choose Start Source',
+    title: '5. Your Start Point',
     urduTitle: '۵۔ آغاز کا مقام',
     body:
-      'Use My Current Location = live GPS now. Use Last Known Location = saved previous valid location. Choose start manually = pick your own start point. If you start outside Ijtema, routes enter from the nearest connected official gate.',
+      'Your start point is resolved automatically — live GPS if available, otherwise your last known location. If you start outside Ijtema, routes enter through the best eligible official gate.',
   },
   {
     key: 'directions',
     icon: Route,
-    title: '6. Directions Screen',
-    urduTitle: '۶۔ ڈائریکشن اسکرین',
+    title: '6. Route Preview',
+    urduTitle: '۶۔ روٹ پریویو',
     body:
-      'Directions helps you choose where you are starting from. Pick current location, last known location, or manual start. When route is ready, tap Show route on map to see blue line, distance, and ETA on Home.',
+      'Route Preview shows your destination and resolved start point. When the route is ready, tap Start Navigation to see the blue line, distance, and ETA on Home.',
   },
   {
     key: 'navigation',
@@ -167,10 +167,10 @@ export function AppGuideScreen() {
         </View>
 
         <View style={styles.quickCard}>
-          <Text style={styles.quickTitle}>Start Source Mini Guide</Text>
-          <Text style={styles.quickBody}>Use My Current Location: Live GPS location now.</Text>
-          <Text style={styles.quickBody}>Use Last Known Location: Last saved valid location (not live).</Text>
-          <Text style={styles.quickBody}>Choose start manually: Pick block/rasta/gate yourself.</Text>
+          <Text style={styles.quickTitle}>Start Point Mini Guide</Text>
+          <Text style={styles.quickBody}>Live GPS: Used automatically when available.</Text>
+          <Text style={styles.quickBody}>Last known location: Used automatically when GPS is unavailable.</Text>
+          <Text style={styles.quickBody}>Outside Ijtema: Routes enter through the best eligible official gate.</Text>
         </View>
 
         {GUIDE_SECTIONS.map((section) => {

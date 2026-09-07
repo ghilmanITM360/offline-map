@@ -97,9 +97,6 @@ export const staticColors = {
   // original orange failed WCAG AA (2.25:1). Same hue, lower lightness — #946500 passes
   // at 5.10:1.
   weakGpsBackground: '#946500',
-  // Darkened from #F57C00 for the same reason: white rerouteText on it failed AA
-  // (2.70:1). #A85100 keeps the hue, passes at 5.47:1.
-  rerouteBackground: '#A85100',
   neutralSurface: '#F1F3F4',
   exitDanger: '#D32F2F',
   destNameMuted: '#888',

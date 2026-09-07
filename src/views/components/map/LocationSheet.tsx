@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Animated,
   View,
@@ -31,7 +31,6 @@ import {
 
 import { useDirectionsViewModel } from '../../../viewmodels/DirectionsViewModel';
 import { InstructionService } from '../../../services/InstructionService';
-import { SearchService } from '../../../services/SearchService';
 import { destinationFromPlace } from '../../../services/V2DirectionsService';
 import { useAppStore } from '../../../store/useAppStore';
 import { Place, RoutePreview, BlockEntryPoint, Gate } from '../../../models/types';

@@ -4,17 +4,19 @@ import { readFileSync } from 'node:fs';
 const screen = readFileSync('src/views/components/map/LocationSheet.tsx', 'utf8');
 const vm = readFileSync('src/viewmodels/DirectionsViewModel.ts', 'utf8');
 
+// Phase A/C's canonical origin resolver removed the manual start question/search/CTAs below —
+// start is auto-resolved and shown as a plain "Starting from" summary card. Phase D removed the
+// in-sheet "Change destination" search — see LocationSheet.test.tsx.
 assert(screen.includes('Get Directions'), 'Directions screen must use layman-friendly heading');
 assert(screen.includes('Going to'), 'Directions screen must show destination card clearly');
-assert(screen.includes('Where are you starting from?'), 'Directions screen must focus on start selection');
-assert(screen.includes('Use my current location'), 'Directions screen must include current-location action');
-assert(screen.includes('Find best eligible official gate automatically'), 'Directions screen should explain destination-aware current-location routing behavior');
-assert(screen.includes('Use last known location'), 'Directions screen should use clear last-known location labeling');
-assert(screen.includes('Choose start manually'), 'Directions screen should expose manual start action explicitly');
-assert(screen.includes('Search start point: gate, rasta, block'), 'Directions screen must include manual start search');
-assert(screen.includes('showManualStartSearch'), 'Directions manual start search should only render while editing manual start');
-assert(screen.includes('rememberedLocationAvailable'), 'Directions should disable last-known action when no remembered location exists');
-assert(screen.includes('Change destination'), 'Directions screen must include destination change action');
+assert(screen.includes('Starting from'), 'Directions screen must show resolved-start card clearly');
+assert(screen.includes('best eligible official gate'), 'Directions screen should explain destination-aware current-location routing behavior');
+assert(
+  !screen.includes('Where are you starting from?') &&
+    !screen.includes('showManualStartSearch') &&
+    !screen.includes('onChangeDestination'),
+  'Directions screen must not reintroduce the removed manual start/destination-search UI',
+);
 assert(screen.includes('ScrollView'), 'Directions screen should use scroll layout');
 assert(screen.includes('paddingBottom'), 'Directions screen should add bottom padding for safe area');
 assert(screen.includes('Start Navigation'), 'Directions screen should expose a Start Navigation CTA once a route is ready');

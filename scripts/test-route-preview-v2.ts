@@ -31,9 +31,13 @@ assert(
   directionsScreenSource.includes('Cancel Route'),
   'LocationSheet routePreview mode must expose Cancel Route action (confirm-gated destructive action, via onCancelRoute).',
 );
+// Phase C (simplify Route Preview to destination/start summaries only) deliberately removed
+// the manual "Change Start" picker: the resolved start is presentation-only now, owned end to
+// end by resolveNavigationOrigin/DirectionsViewModel (the canonical origin resolver) — see the
+// "no picker" comment above LocationSheet's startIcon derivation.
 assert(
-  directionsScreenSource.includes('Change Start'),
-  'LocationSheet routePreview mode must expose Change Start action.',
+  !directionsScreenSource.includes('Change Start'),
+  'LocationSheet routePreview mode must not reintroduce the removed manual Change Start picker.',
 );
 assert(
   directionsScreenSource.includes('Enter through'),

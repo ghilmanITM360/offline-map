@@ -104,6 +104,8 @@ console.log('GPS signal-loss pure-derivation checks passed.');
 
 const navigationViewModelSource = readFileSync('src/viewmodels/NavigationViewModelV2.ts', 'utf8');
 const navigationChromeSource = readFileSync('src/views/components/navigation/NavigationChromeV2.tsx', 'utf8');
+const mapWarningPolicySource = readFileSync('src/viewmodels/MapWarningPolicy.ts', 'utf8');
+const statusBannerSource = readFileSync('src/views/components/navigation/NavigationStatusBanner.tsx', 'utf8');
 const runtimeServiceSource = readFileSync('src/services/V2NavigationRuntimeService.ts', 'utf8');
 const gpsManagerSource = readFileSync('src/services/GPSManagerService.ts', 'utf8');
 const constantsSource = readFileSync('src/constants/navigation.ts', 'utf8');
@@ -170,33 +172,38 @@ assert(
   'V2NavigationRuntimeService must expose the pure arrival-fix evaluation function',
 );
 
-// The banner reuses the exact existing weak-GPS banner mechanism (same styles) rather than
-// building a new UI surface. The pre-existing weak-GPS message is preserved, but its ownership
-// was consolidated into the single top-status-slot ternary (GPS_LOST > isWeakGps > reroute >
-// basemap-unavailable) rather than being stacked as an independent `{isWeakGps && (...)}` block.
+// The banner mechanism was later extracted out of NavigationChromeV2's own ternary into a
+// shared pure priority policy (selectMapWarning, MapWarningPolicy.ts) plus a single rendering
+// component (NavigationStatusBanner) that NavigationChromeV2 just feeds — see
+// src/__tests__/MapWarningPolicy.test.ts for the full priority-ordering behavioral coverage.
+// This block checks the wiring survived that extraction, not the priority logic itself.
 assert(
-  navigationChromeSource.includes("gpsSignalState === 'GPS_LOST'") &&
-    navigationChromeSource.includes('Searching for GPS signal'),
-  'NavigationChromeV2 must show a "Searching for GPS signal" message when gpsSignalState is GPS_LOST',
-);
-const gpsLostBannerStart = navigationChromeSource.indexOf("gpsSignalState === 'GPS_LOST'");
-const gpsLostBannerSnippet = navigationChromeSource.slice(gpsLostBannerStart, gpsLostBannerStart + 200);
-assert(
-  gpsLostBannerSnippet.includes('styles.weakGpsBanner') && gpsLostBannerSnippet.includes('styles.weakGpsText'),
-  'The GPS_LOST banner must reuse the existing weak-GPS banner styles rather than introducing a new UI surface',
+  navigationChromeSource.includes('selectMapWarning({') && navigationChromeSource.includes('gpsSignalState,'),
+  'NavigationChromeV2 must feed gpsSignalState into the shared selectMapWarning priority policy',
 );
 assert(
-  navigationChromeSource.includes('Weak GPS signal detected. Route updates may be slower.'),
-  'The pre-existing weak-GPS banner message must remain untouched alongside the new GPS_LOST banner',
-);
-const gpsTernaryChain = navigationChromeSource.slice(gpsLostBannerStart, gpsLostBannerStart + 400);
-assert(
-  gpsTernaryChain.includes('isWeakGps ?') && gpsTernaryChain.includes('Weak GPS signal detected'),
-  'GPS_LOST must outrank isWeakGps as a lower-priority branch of the SAME single-owner ternary, not two independently-stacked banners',
+  navigationChromeSource.includes('<NavigationStatusBanner warning={warning}'),
+  'NavigationChromeV2 must render its single top status slot via NavigationStatusBanner',
 );
 assert(
-  !navigationChromeSource.includes('{isWeakGps && ('),
-  'The weak-GPS banner must not be reintroduced as an independently-stacked block outside the single-owner warning ternary',
+  mapWarningPolicySource.includes("gpsSignalState === 'GPS_LOST'") &&
+    mapWarningPolicySource.includes('Searching for GPS signal'),
+  'MapWarningPolicy must show a "Searching for GPS signal" message when gpsSignalState is GPS_LOST',
+);
+const gpsLostBranchIndex = mapWarningPolicySource.indexOf("gpsSignalState === 'GPS_LOST'");
+const weakGpsBranchIndex = mapWarningPolicySource.indexOf('isWeakGps || inputs.gpsSignalState');
+assert(
+  gpsLostBranchIndex >= 0 && weakGpsBranchIndex > gpsLostBranchIndex,
+  'GPS_LOST must outrank isWeakGps as an earlier-checked branch of the same priority function, not two independently-stacked banners',
+);
+assert(
+  mapWarningPolicySource.includes('Weak GPS signal detected. Route updates may be slower.'),
+  'The pre-existing weak-GPS message must remain untouched alongside the GPS_LOST message',
+);
+assert(
+  statusBannerSource.includes("kind === 'navigation_safety'") &&
+    statusBannerSource.includes('styles.weakGpsBanner') && statusBannerSource.includes('styles.weakGpsText'),
+  'GPS_LOST and weak-GPS must both reuse the existing weak-GPS banner styles rather than introducing a new UI surface',
 );
 
 console.log('GPS signal-loss wiring checks passed.');
