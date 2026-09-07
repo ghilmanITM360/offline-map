@@ -1201,6 +1201,11 @@ export function HomeScreen() {
             ref={mapRef}
             style={styles.map}
             provider={Platform.OS === 'android' && baseMapMode === 'GOOGLE_BASEMAP' ? PROVIDER_GOOGLE : undefined}
+            // Google attribution/legal text renders relative to the padded map region —
+            // reuse mapLabelEdgeInsets (the same sheet/nav-chrome-derived obstruction
+            // already trusted for label placement) so the logo is never covered by
+            // app-owned bottom/top chrome (ATTR-001).
+            mapPadding={mapLabelEdgeInsets}
             initialRegion={effectiveInitialRegion}
             mapType={baseMapMode === 'GOOGLE_BASEMAP' ? mapType : 'none'}
             showsUserLocation={false}
