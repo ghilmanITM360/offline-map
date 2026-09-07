@@ -42,6 +42,13 @@ export type GoogleMapsRuntimeStatus = {
   packageName: string | null;
 };
 
+export type MapConfigDiagnosticPayload = {
+  envLoaded: boolean;
+  keyPresent: boolean;
+  source: RuntimeStatusSource;
+  packageName: string | null;
+};
+
 /** Product copy only — never mention keys, SDKs, or cloud console config to end users. */
 export const GOOGLE_MAPS_KEY_NOT_CONFIGURED_MESSAGE =
   'Base map unavailable. Offline venue map still works.';
@@ -97,5 +104,18 @@ export function getGoogleMapsRuntimeStatusFromInputs(params: {
     keyPresent: configHasKey || envHasKey,
     source,
     packageName,
+  };
+}
+
+/** Allowlisted diagnostic shape. It cannot carry the underlying credential value. */
+export function createMapConfigDiagnosticPayload(
+  status: Readonly<GoogleMapsRuntimeStatus>,
+  envLoaded: boolean,
+): MapConfigDiagnosticPayload {
+  return {
+    envLoaded,
+    keyPresent: status.keyPresent,
+    source: status.source,
+    packageName: status.packageName,
   };
 }

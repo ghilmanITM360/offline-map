@@ -106,7 +106,7 @@ describe('NavigationChromeV2 — direct outside guide', () => {
   test('shows only the highest-priority status when GPS lost and basemap loss both apply', async () => {
     await render(
       <NavigationChromeV2
-        overlay={baseOverlay({ gpsSignalState: 'GPS_LOST', rerouteStatusMessage: 'Recalculating your route' })}
+        overlay={baseOverlay({ gpsSignalState: 'GPS_LOST', reroutePending: true, rerouteStatusMessage: 'Recalculating your route' })}
         hasBaseMap={false}
       />,
     );
@@ -116,6 +116,19 @@ describe('NavigationChromeV2 — direct outside guide', () => {
     expect(stackContent.getByText('Searching for GPS signal. Your position may be out of date.')).toBeOnTheScreen();
     expect(stackContent.queryByText('Recalculating your route')).not.toBeOnTheScreen();
     expect(stackContent.queryByText('Base map unavailable. Offline route guidance continues.')).not.toBeOnTheScreen();
+  });
+
+  test('active rerouting suppresses basemap degradation when GPS is healthy', async () => {
+    await render(
+      <NavigationChromeV2
+        overlay={baseOverlay({ gpsSignalState: 'GPS_GOOD', reroutePending: true })}
+        hasBaseMap={false}
+      />,
+    );
+
+    const stack = within(screen.getByTestId('navigation-top-stack'));
+    expect(stack.getByText('Recalculating your route…')).toBeOnTheScreen();
+    expect(stack.queryByText('Base map unavailable. Offline route guidance continues.')).not.toBeOnTheScreen();
   });
 
   test('shows accurate road provider identity while outside leg is active', async () => {
@@ -192,6 +205,7 @@ describe('NavigationChromeV2 — direct outside guide', () => {
     />);
 
     expect(screen.getByText('Direct guide — not a road route')).toBeOnTheScreen();
+    expect(screen.getByText('Direct guidance only. This path may not follow roads.')).toBeOnTheScreen();
     expect(screen.getByText('Follow the direction line toward Gate 05.')).toBeOnTheScreen();
     expect(screen.queryByText('Imaginary Road')).not.toBeOnTheScreen();
     expect(screen.queryByText('Turn right on Imaginary Road')).not.toBeOnTheScreen();

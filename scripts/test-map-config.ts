@@ -4,6 +4,7 @@ import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import {
+  createMapConfigDiagnosticPayload,
   getGoogleMapsRuntimeStatusFromInputs,
   GOOGLE_MAPS_KEY_NOT_CONFIGURED_MESSAGE,
   GOOGLE_MAPS_LOAD_FAILED_MESSAGE,
@@ -197,6 +198,25 @@ const statusWithEnv = getGoogleMapsRuntimeStatusFromInputs({
 });
 assert.equal(statusWithEnv.keyPresent, true, 'Map config should report keyPresent=true when EXPO_PUBLIC_GOOGLE_MAPS_ANDROID_API_KEY is set');
 assert.equal(statusWithEnv.source, 'env', 'Map config should report env as source when only env key is provided');
+assert(
+  !JSON.stringify(statusWithEnv).includes('TEST_ANDROID_1234567890'),
+  'Serialized runtime status must never expose credential characters',
+);
+const diagnosticPayload = createMapConfigDiagnosticPayload(statusWithEnv, true);
+assert.deepEqual(
+  diagnosticPayload,
+  {
+    envLoaded: true,
+    keyPresent: true,
+    source: 'env',
+    packageName: null,
+  },
+  'Diagnostic payload may contain only approved non-secret configuration facts',
+);
+assert(
+  !JSON.stringify(diagnosticPayload).includes('TEST_ANDROID_1234567890'),
+  'Serialized diagnostics/log payload must never expose credential characters',
+);
 
 const statusWithExpoExtra = getGoogleMapsRuntimeStatusFromInputs({
   platform: 'android',

@@ -1,5 +1,5 @@
-Owner: HomeScreen and NavigationChrome V1/V2 render an inline priority ternary over existing states; no BannerManager, no new mutable state.
-Inputs/states: showMapWarningBanner/isOffline/showOutsideBanner (Explore); gpsSignalState/isWeakGps/rerouteStatusMessage/hasBaseMap (Navigation).
+Owner: MapWarningPolicy is the pure selector; HomeScreen and NavigationChrome V1/V2 only render its result; no BannerManager or mutable warning state.
+Inputs/states: basemap/offline (Explore); gpsSignalState/isWeakGps/reroutePending/rerouteStatusMessage/hasBaseMap (Navigation); route context stays in its task surface.
 Why: At most one top system/safety warning must show; route/gate context (outside-venue suggestion) is task-relevant, not a warning, so it keeps its own slot. Also removes API-key-preview logging and developer Maps wording ("Google Cloud restrictions", "Maps SDK for Android", "graph-only v2") from product-facing text.
 Invariant: basemap/provider degradation outranks passive offline; navigation safety (GPS) outranks rerouting status, which outranks basemap degradation. Never more than one of these renders at once. Logs never carry key characters.
-Regression test: scripts/test-map-config.ts (forbidden-phrase + no-key-preview guard); NavigationChromeV1/V2.test.tsx precedence tests; scripts/test-navigation-ui.ts.
+Regression test: MapWarningPolicy.test.ts matrix; NavigationChromeV1/V2 tests; OutsideRouteStatusCard/LocationSheet direct-copy tests; scripts/test-map-config.ts sentinel guard.

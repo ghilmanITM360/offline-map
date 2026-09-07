@@ -422,6 +422,7 @@ describe('LocationSheet (routePreview) — route ready CTA', () => {
     await render(<LocationSheet mode="routePreview" destination={v2Destination} theme={LIGHT_THEME} onClose={onCloseSpy} />);
 
     expect(screen.getByText('Direct guide — not a road route')).toBeOnTheScreen();
+    expect(screen.getByText('Direct guidance only. This path may not follow roads.')).toBeOnTheScreen();
     expect(screen.getByText('Start Direct Guide')).toBeOnTheScreen();
     expect(screen.queryByText('4 min')).not.toBeOnTheScreen();
     await user.press(screen.getByRole('button', { name: 'Retry road route' }));

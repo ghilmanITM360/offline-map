@@ -6,7 +6,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { AccessibilityInfo, Animated, Modal, Pressable, Text, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ArrowLeft, ArrowRight, LocateFixed, MapPin, Navigation, RefreshCw, Volume2, VolumeX, X } from 'lucide-react-native';
+import { ArrowLeft, ArrowRight, LocateFixed, MapPin, Navigation, Volume2, VolumeX, X } from 'lucide-react-native';
 
 import { InstructionService } from '../../../services/InstructionService';
 import { IJTEMA_GATES } from '../../../data/ijtema';
@@ -20,6 +20,8 @@ import { NAV_TOUCH_TARGET_HIT_SLOP, navOverlayStyles as styles } from './navOver
 import { OutsideRouteStatusCard } from './OutsideRouteStatusCard';
 import { outsideRouteMessage } from '../../../services/OutsideRouteLocalizationService';
 import { Button } from '../common/Button';
+import { selectMapWarning } from '../../../viewmodels/MapWarningPolicy';
+import { NavigationStatusBanner } from './NavigationStatusBanner';
 
 const AnimatedSafeAreaView = Animated.createAnimatedComponent(SafeAreaView);
 
@@ -104,6 +106,14 @@ export function NavigationChromeV2({ overlay, hasBaseMap, mode }: { overlay: Nav
     hour: '2-digit',
     minute: '2-digit',
   });
+  const warning = selectMapWarning({
+    gpsSignalState,
+    isWeakGps,
+    reroutePending,
+    rerouteStatusMessage,
+    basemapDegraded: !hasBaseMap,
+    basemapMessage: 'Base map unavailable. Offline route guidance continues.',
+  });
 
   return (
     <>
@@ -116,12 +126,7 @@ export function NavigationChromeV2({ overlay, hasBaseMap, mode }: { overlay: Nav
         onLayout={(e) => setTopCardHeight(e.nativeEvent.layout.height)}
       >
         <View testID="navigation-maneuver-surface">
-          {reroutePending ? (
-            <View style={[styles.instructionCard, styles.rerouteCard]}>
-              <RefreshCw size={28} color={staticColors.white} />
-              <Text style={styles.rerouteText}>Recalculating...</Text>
-            </View>
-          ) : directOutsideActive && !arrived ? (
+          {directOutsideActive && !arrived ? (
             <View
               style={styles.instructionCard}
               accessibilityLabel={outsideRouteMessage('direct.heading', 'en', { gate: directGateLabel })}
@@ -170,26 +175,9 @@ export function NavigationChromeV2({ overlay, hasBaseMap, mode }: { overlay: Nav
           ) : null}
         </View>
 
-        {/* Single top safety/status slot — navigation safety (GPS lost/weak) outranks
-            rerouting status, which outranks basemap degradation. Never stack more than one. */}
+        {/* Single top safety/status slot selected by the shared pure priority policy. */}
         <View testID="navigation-subordinate-surfaces" style={styles.topStatusStack}>
-          {gpsSignalState === 'GPS_LOST' ? (
-            <View style={styles.weakGpsBanner}>
-              <Text style={styles.weakGpsText}>Searching for GPS signal. Your position may be out of date.</Text>
-            </View>
-          ) : isWeakGps ? (
-            <View style={styles.weakGpsBanner}>
-              <Text style={styles.weakGpsText}>Weak GPS signal detected. Route updates may be slower.</Text>
-            </View>
-          ) : rerouteStatusMessage && !reroutePending ? (
-            <View style={styles.rerouteHintBanner}>
-              <Text style={styles.rerouteHintText}>{rerouteStatusMessage}</Text>
-            </View>
-          ) : !hasBaseMap ? (
-            <View style={styles.mapUnavailableBanner}>
-              <Text style={styles.mapUnavailableText}>Base map unavailable. Offline route guidance continues.</Text>
-            </View>
-          ) : null}
+          <NavigationStatusBanner warning={warning} />
           {route.metadata.startedOutside && route.metadata.entryGateId && (
             <View style={styles.v2EntryGateBanner}>
               <Text style={styles.v2EntryGateText}>Route starts from {route.origin.label}.</Text>

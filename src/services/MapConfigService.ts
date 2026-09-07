@@ -6,6 +6,7 @@
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 import {
+  createMapConfigDiagnosticPayload,
   getGoogleMapsRuntimeStatusFromInputs,
   GOOGLE_MAPS_KEY_NOT_CONFIGURED_MESSAGE,
   GOOGLE_MAPS_LOAD_FAILED_MESSAGE,
@@ -26,10 +27,7 @@ function logDevDiagnostics(status: GoogleMapsRuntimeStatus): void {
   const envLoaded =
     typeof process.env.EXPO_PUBLIC_GOOGLE_MAPS_ANDROID_API_KEY !== 'undefined' ||
     typeof process.env.EXPO_PUBLIC_GOOGLE_MAPS_IOS_API_KEY !== 'undefined';
-  console.log('[MapConfig] .env loaded:', envLoaded);
-  console.log('[MapConfig] Android Maps key present:', status.keyPresent);
-  console.log('[MapConfig] Android Maps key source:', status.source);
-  console.log('[MapConfig] Android package:', status.packageName ?? 'unknown');
+  console.log('[MapConfig] Runtime status:', createMapConfigDiagnosticPayload(status, envLoaded));
 }
 
 export class MapConfigService {

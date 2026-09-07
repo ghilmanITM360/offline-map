@@ -63,6 +63,7 @@ import { Paths } from 'expo-file-system';
 import { DrawerParamList, RootStackParamList } from '../../navigation/RootNavigator';
 import { RoutingService } from '../../services/RoutingService';
 import { MapConfigService } from '../../services/MapConfigService';
+import { selectMapWarning } from '../../viewmodels/MapWarningPolicy';
 import { resolveBaseMapMode } from '../../services/BaseMapModeResolver';
 import { MapFeatureFlagsService } from '../../services/MapFeatureFlagsService';
 import { MapStartupController } from '../../services/MapStartupController';
@@ -914,6 +915,13 @@ export function HomeScreen() {
     ? `Outside Ijtema. Suggested entry through ${nearestEntryGate.name.en}. Final entry gate is confirmed when route preview is calculated.`
     : 'Outside Ijtema. Suggested entry unavailable. Final entry gate is confirmed when route preview is calculated.';
   const showMapWarningBanner = baseMapMode === 'GRAPH_ONLY';
+  const browseWarning = selectMapWarning({
+    basemapDegraded: showMapWarningBanner,
+    basemapMessage: hasGoogleMapsKey && mapLoadFailed
+      ? MapConfigService.getMapLoadFailedMessage()
+      : MapConfigService.getMissingGoogleMapsMessage(),
+    offline: isOffline,
+  });
   const topInsetBase = Math.max(insets.top, Platform.OS === 'android' ? StatusBar.currentHeight ?? 0 : 0);
   // bannerStackTop used to be a hardcoded `topInsetBase + 140` guess at the combined
   // search bar + chip row height, which under-measured on some font scales/screen sizes
@@ -1174,12 +1182,20 @@ export function HomeScreen() {
     startNavigation(previewDestination, resolvedRoute, resolvedRoute.instructions);
   }, [activePreviewRoute, currentLocation, invalidateStartupCameraIntent, previewDestination, routePlannerOrigin, startNavigation]);
 
+  const commitClearPreviewRoute = useCallback(() => {
+    // A resolved preview can still retain the transient destination that originally opened
+    // Directions. Clear both owners together so cancellation cannot immediately re-enter the
+    // route sheet (or let its still-mounted ViewModel recalculate the route).
+    setDirectionsDestination(null);
+    clearRoutePlanner();
+  }, [clearRoutePlanner]);
+
   const handleClearPreviewRoute = useCallback(() => {
     Alert.alert('Cancel route?', 'You will need to choose your destination again.', [
       { text: 'Keep route', style: 'cancel' },
-      { text: 'Cancel route', style: 'destructive', onPress: () => clearRoutePlanner() },
+      { text: 'Cancel route', style: 'destructive', onPress: commitClearPreviewRoute },
     ]);
-  }, [clearRoutePlanner]);
+  }, [commitClearPreviewRoute]);
 
   // Mode-aware hardware back: steps back through the map surface one mode at a time
   // (Google Maps model — MAP is always the root, back never falls through to the
@@ -1200,8 +1216,8 @@ export function HomeScreen() {
         return true;
       }
       if (mode === 'ROUTE_PREVIEW') {
-        if (directionsDestination) handleCloseDirections();
-        else handleClearPreviewRoute();
+        if (activePreviewRoute) handleClearPreviewRoute();
+        else handleCloseDirections();
         return true;
       }
       if (mode === 'PLACE_SELECTED') {
@@ -1211,7 +1227,7 @@ export function HomeScreen() {
       return false;
     });
     return () => handler.remove();
-  }, [mode, closeSearch, closeDetails, directionsDestination, handleCloseDirections, handleClearPreviewRoute, closeSheet]);
+  }, [mode, closeSearch, closeDetails, activePreviewRoute, handleCloseDirections, handleClearPreviewRoute, closeSheet]);
 
   const handleSearchResultSelect = (place: Place) => {
     invalidateStartupCameraIntent();
@@ -1842,20 +1858,14 @@ export function HomeScreen() {
             warning, so it keeps its own slot alongside whichever status above shows. */}
         {chrome.browseStatus && (isOffline || showMapWarningBanner || showOutsideBanner) && (
           <View style={[styles.bannerStack, { top: bannerStackTop }]}>
-            {showMapWarningBanner ? (
+            {browseWarning?.kind === 'basemap_degradation' ? (
               <View style={[styles.mapWarningBanner, styles.bannerStackItem]}>
-                <Text style={styles.mapWarningText}>
-                  {hasGoogleMapsKey && mapLoadFailed
-                    ? MapConfigService.getMapLoadFailedMessage()
-                    : isOffline
-                      ? 'Downloaded background map unavailable. Ijtema routes still work.'
-                      : MapConfigService.getMissingGoogleMapsMessage()}
-                </Text>
+                <Text style={styles.mapWarningText}>{browseWarning.message}</Text>
               </View>
-            ) : isOffline ? (
+            ) : browseWarning?.kind === 'offline' ? (
               <View style={[styles.offlineIndicator, styles.bannerStackItem]}>
                 <WifiOff size={14} color={staticColors.white} />
-                <Text style={styles.offlineText}>Offline</Text>
+                <Text style={styles.offlineText}>{browseWarning.message}</Text>
               </View>
             ) : null}
 
@@ -2059,7 +2069,7 @@ export function HomeScreen() {
               mode="routePreview"
               destination={routePreviewSheetDestination}
               theme={theme}
-              onClose={directionsDestination ? handleCloseDirections : handleClearPreviewRoute}
+              onClose={activePreviewRoute ? handleClearPreviewRoute : handleCloseDirections}
               onStartNavigation={handleStartPreviewNavigation}
               onCancelRoute={activePreviewRoute ? handleClearPreviewRoute : undefined}
               onChangeDestination={handleChangeDestination}

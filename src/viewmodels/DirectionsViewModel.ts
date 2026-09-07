@@ -90,7 +90,13 @@ export function useDirectionsViewModel(destination: Place | null) {
     }
   }, [routeOriginLocation, startSource]);
 
-  useEffect(() => () => outsideRequestCoordinatorRef.current.cancelCurrent(), []);
+  useEffect(() => () => {
+    // Closing directions unmounts this ViewModel instead of rerendering it with a null
+    // destination. Invalidate every calculation generation as well as the cancellable outside
+    // provider so a late legacy promise cannot publish route state after the user has left.
+    requestGenerationRef.current += 1;
+    outsideRequestCoordinatorRef.current.cancelCurrent();
+  }, []);
 
   useEffect(() => {
     setManualGateId(null);
