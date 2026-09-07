@@ -163,7 +163,9 @@ assert(
 );
 
 // The banner reuses the exact existing weak-GPS banner mechanism (same styles) rather than
-// building a new UI surface, and the pre-existing weak-GPS banner block is left untouched.
+// building a new UI surface. The pre-existing weak-GPS message is preserved, but its ownership
+// was consolidated into the single top-status-slot ternary (GPS_LOST > isWeakGps > reroute >
+// basemap-unavailable) rather than being stacked as an independent `{isWeakGps && (...)}` block.
 assert(
   navigationChromeSource.includes("gpsSignalState === 'GPS_LOST'") &&
     navigationChromeSource.includes('Searching for GPS signal'),
@@ -176,9 +178,17 @@ assert(
   'The GPS_LOST banner must reuse the existing weak-GPS banner styles rather than introducing a new UI surface',
 );
 assert(
-  navigationChromeSource.includes('{isWeakGps && (') &&
-    navigationChromeSource.includes('Weak GPS signal detected. Route updates may be slower.'),
-  'The pre-existing weak-GPS banner must remain untouched alongside the new GPS_LOST banner',
+  navigationChromeSource.includes('Weak GPS signal detected. Route updates may be slower.'),
+  'The pre-existing weak-GPS banner message must remain untouched alongside the new GPS_LOST banner',
+);
+const gpsTernaryChain = navigationChromeSource.slice(gpsLostBannerStart, gpsLostBannerStart + 400);
+assert(
+  gpsTernaryChain.includes('isWeakGps ?') && gpsTernaryChain.includes('Weak GPS signal detected'),
+  'GPS_LOST must outrank isWeakGps as a lower-priority branch of the SAME single-owner ternary, not two independently-stacked banners',
+);
+assert(
+  !navigationChromeSource.includes('{isWeakGps && ('),
+  'The weak-GPS banner must not be reintroduced as an independently-stacked block outside the single-owner warning ternary',
 );
 
 console.log('GPS signal-loss wiring checks passed.');
