@@ -4,7 +4,7 @@
  */
 
 import React, { useEffect, useRef, useState } from 'react';
-import { Animated, Modal, Pressable, Text, View } from 'react-native';
+import { AccessibilityInfo, Animated, Modal, Pressable, Text, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowLeft, ArrowRight, LocateFixed, MapPin, Navigation, RefreshCw, Volume2, VolumeX, X } from 'lucide-react-native';
 
@@ -75,6 +75,14 @@ export function NavigationChromeV2({ overlay, hasBaseMap, mode }: { overlay: Nav
     }, NAV_TRANSITION_TIMINGS.chromeRevealDelayMs);
     return () => clearTimeout(revealTimer);
   }, [mountAnim]);
+
+  // One-time TalkBack/VoiceOver announcement when arrival is reached — the visible "You've
+  // Arrived!" card alone is silent to screen-reader users otherwise.
+  useEffect(() => {
+    if (arrived && route) {
+      AccessibilityInfo.announceForAccessibility(`Arrived at ${route.destination.label}`);
+    }
+  }, [arrived, route]);
 
   if (!route) return null;
   const chrome = resolveMapChromePolicy(mode ?? (arrived ? 'ARRIVAL' : 'NAVIGATION'));
@@ -271,8 +279,14 @@ export function NavigationChromeV2({ overlay, hasBaseMap, mode }: { overlay: Nav
         </Pressable>
       )}
 
-      <Modal visible={chrome.arrival} transparent animationType="slide">
-        <View style={styles.arrivedOverlay}>
+      <Modal
+        testID="nav-arrival-modal"
+        visible={chrome.arrival}
+        transparent
+        animationType="slide"
+        onRequestClose={completeArrivalNavigation}
+      >
+        <View style={styles.arrivedOverlay} accessibilityViewIsModal>
           <View style={styles.arrivedCard}>
             <MapPin size={52} color={staticColors.arrivalGreen} />
             <Text style={styles.arrivedTitle}>You've Arrived!</Text>

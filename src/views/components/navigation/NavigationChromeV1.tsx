@@ -197,8 +197,14 @@ export function NavigationChromeV1({ overlay, hasBaseMap, mode }: { overlay: Nav
         </Pressable>
       )}
 
-      <Modal visible={chrome.arrival} transparent animationType="slide">
-        <View style={styles.arrivedOverlay}>
+      <Modal
+        testID="nav-arrival-modal"
+        visible={chrome.arrival}
+        transparent
+        animationType="slide"
+        onRequestClose={completeArrivalNavigation}
+      >
+        <View style={styles.arrivedOverlay} accessibilityViewIsModal>
           <View style={styles.arrivedCard}>
             <MapPin size={52} color={staticColors.arrivalGreen} />
             <Text style={styles.arrivedTitle}>You've Arrived!</Text>
