@@ -32,8 +32,14 @@ for (const place of bilingualPlaces.slice(0, 5)) {
   assert(secondary === place.urduName, `getSecondaryLabel must surface ${place.id}'s real Urdu name`);
 }
 
+// Phase D (UX simplification): the map-owned search-result list (and its bilingual
+// secondary-label row) was removed — LocationsDirectoryScreen is the one canonical
+// destination discovery/search surface now. On-map labels (gate/block/rasta/route) still
+// render through MapLocalizationService.getSecondaryLabel — see mapLabelItems below.
 const home = readFileSync('src/views/screens/HomeScreen.tsx', 'utf8');
-assert(home.includes('getSecondaryDisplayName'), 'Home search results must render a bilingual secondary label');
-assert(home.includes('MapLocalizationService.getSecondaryLabel({ en: item.name, ur: item.urduName })'), 'Search result secondary label must go through MapLocalizationService, the same service on-map labels use');
+assert(
+  (home.match(/MapLocalizationService\.getSecondaryLabel\(/g) ?? []).length >= 4,
+  'On-map gate/block/rasta/route labels must still render their bilingual secondary label',
+);
 
 console.log('Universal search labels v2 checks passed.');

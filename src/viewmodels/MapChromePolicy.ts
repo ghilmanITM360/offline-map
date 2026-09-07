@@ -3,8 +3,6 @@ import type { MapMode } from './useMapMode';
 /** Visibility only: canonical MapMode retains priority and lifecycle ownership. */
 export function resolveMapChromePolicy(mode: MapMode) {
   return {
-    search: mode === 'EXPLORE' || mode === 'SEARCH',
-    searchResults: mode === 'SEARCH',
     chips: mode === 'EXPLORE',
     browseControls: mode === 'EXPLORE',
     browseStatus: mode === 'EXPLORE',

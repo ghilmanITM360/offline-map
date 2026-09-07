@@ -77,18 +77,24 @@ describe('HomeViewModel pending directory selection', () => {
 });
 
 describe('HomeViewModel search reset', () => {
-  test('clearing a dismissed search session clears its category and transient results', async () => {
+  // LocationsDirectoryScreen (not HomeViewModel/HomeScreen) is the one canonical
+  // destination discovery/search surface — clearSearch is now a defensive reset of
+  // leftover store state, exercised directly against the store rather than through a
+  // map-owned search UI (removed).
+  test('clearSearch resets any stale searchQuery/searchResults left in the store', async () => {
     const hook = await renderHook(() => useHomeViewModel());
 
-    await act(() => hook.result.current.handleCategoryPress('gates'));
-    expect(hook.result.current.activeCategory).toBe('gates');
-    expect(hook.result.current.searchResults.length).toBeGreaterThan(0);
+    await act(() => {
+      useAppStore.getState().setSearchQuery('gate');
+      useAppStore.getState().setSearchResults([{ id: 'g1' } as any]);
+    });
+    expect(useAppStore.getState().searchQuery).toBe('gate');
+    expect(useAppStore.getState().searchResults.length).toBeGreaterThan(0);
 
     await act(() => hook.result.current.clearSearch());
 
-    expect(hook.result.current.activeCategory).toBeNull();
-    expect(hook.result.current.searchQuery).toBe('');
-    expect(hook.result.current.searchResults).toEqual([]);
+    expect(useAppStore.getState().searchQuery).toBe('');
+    expect(useAppStore.getState().searchResults).toEqual([]);
   });
 });
 

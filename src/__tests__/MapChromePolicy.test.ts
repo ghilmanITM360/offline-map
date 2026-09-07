@@ -5,8 +5,7 @@ import { resolveMapChromePolicy } from '../viewmodels/MapChromePolicy';
 describe('map chrome ownership', () => {
   // Independent product matrix: stale lower-priority state must never add chrome.
   test.each<[MapMode, string[]]>([
-    ['EXPLORE', ['search', 'chips', 'browseControls', 'browseStatus']],
-    ['SEARCH', ['search', 'searchResults']],
+    ['EXPLORE', ['chips', 'browseControls', 'browseStatus']],
     ['PLACE_SELECTED', ['placeSheet', 'recenter']],
     ['DETAILS', ['placeSheet']],
     ['ROUTE_PREVIEW', ['routeSheet', 'recenter']],
@@ -20,11 +19,11 @@ describe('map chrome ownership', () => {
 
   test('arrival suppresses navigation and discovery even when all lower states remain set', () => {
     const mode = deriveMapMode({
-      arrived: true, showNavOverlay: true, isSearchFocused: true,
+      arrived: true, showNavOverlay: true,
       detailsExpanded: true, directionsDestination: {}, activePreviewRoute: {}, selectedPlace: {},
     });
     expect(resolveMapChromePolicy(mode)).toMatchObject({
-      arrival: true, navigation: false, search: false, chips: false,
+      arrival: true, navigation: false, chips: false,
       browseControls: false, recenter: false, compass: false,
       placeSheet: false, routeSheet: false, browseStatus: false,
     });

@@ -3,15 +3,10 @@ import { readFileSync } from 'node:fs';
 import { staticColors } from '../src/theme';
 
 const home = readFileSync('src/views/screens/HomeScreen.tsx', 'utf8');
-const homeVm = readFileSync('src/viewmodels/HomeViewModel.ts', 'utf8');
 
-assert(!homeVm.includes('masjids...'), 'Search placeholder must not show ellipsis dots under text.');
-assert(!homeVm.includes('places...'), 'Fallback search placeholder must not show ellipsis dots under text.');
 assert(
-  // Reads mode === 'SEARCH', not the raw isSearchFocused flag — see scripts/test-map-mode.ts
-  // for why every render/behavior gate must go through mode instead of the raw input.
-  home.includes("!activePreviewRoute && mode !== 'SEARCH'") && home.includes('showOutsideBanner'),
-  'Outside banner must hide during route preview and search.',
+  home.includes('!activePreviewRoute;') && home.includes('showOutsideBanner'),
+  'Outside banner must hide during route preview.',
 );
 assert(
   home.includes('strokeColor={staticColors.routeCasing}') &&

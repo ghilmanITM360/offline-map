@@ -9,7 +9,10 @@ const homeScreen = readFileSync('src/views/screens/HomeScreen.tsx', 'utf8');
 const renderService = readFileSync('src/services/V2MapRenderingService.ts', 'utf8');
 
 assert(renderService.includes('mapFilter'), 'V2 map renderer must accept mapFilter option.');
-assert(homeScreen.includes('mapFilter: activeCategory'), 'Home activeCategory must reach V2 map renderer.');
+// Phase D (UX simplification): the map-owned category filter chips were removed — Home
+// always passes a fixed `null` filter now. V2MapRenderingService itself still supports
+// category filtering in full (exercised directly below), just no longer Home-UI-driven.
+assert(homeScreen.includes('mapFilter: null'), 'Home must pass a fixed null filter into V2 map renderer (no map-owned category chips).');
 
 const layerCounts = (filter: string | null) => {
   const layers = V2MapRenderingService.getHomeLayers({ mapFilter: filter, zoomLevel: 17 } as any);

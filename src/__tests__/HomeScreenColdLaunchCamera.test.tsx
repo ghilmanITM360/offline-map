@@ -45,19 +45,12 @@ const mockedUseHomeViewModel = useHomeViewModel as jest.Mock;
 const mockedUseDirectionsViewModel = useDirectionsViewModel as jest.Mock;
 const mockedResolveCurrentLocation = LocationAccessService.resolveCurrentLocation as jest.MockedFunction<typeof LocationAccessService.resolveCurrentLocation>;
 
-const CATEGORY_CHIPS = [
-  { id: 'all', label: 'All' },
-  { id: 'blocks', label: 'Blocks' },
-  { id: 'gates', label: 'Gates' },
-];
-
 const cameraAnimateToUserSpy = jest.fn();
 const cameraFitVenueBoundsSpy = jest.fn();
 const cameraFitRouteSpy = jest.fn();
 const cameraStopFollowingSpy = jest.fn();
 const handlePlaceSelectSpy = jest.fn();
 const handleRecenterSpy = jest.fn(async () => true);
-const handleSearchSpy = jest.fn();
 const clearSearchSpy = jest.fn();
 const setIsMapReadySpy = jest.fn();
 
@@ -123,23 +116,15 @@ function useFakeHomeViewModel(overrides: Record<string, unknown> = {}) {
       exitNavigationCamera: jest.fn(),
     },
     mapType: 'standard' as const,
-    searchQuery: '',
-    searchResults: [],
     selectedPlace: null,
-    suggestedPlaces: [],
-    recentSearches: [],
     snapPoints: ['15%', '50%', '92%'],
     initialRegion: { latitude: 24.9, longitude: 67.1, latitudeDelta: 0.01, longitudeDelta: 0.01 },
     isOffline: false,
     offlineData: { isDownloaded: false },
-    activeCategory: null,
-    categoryChips: CATEGORY_CHIPS,
-    searchPlaceholder: 'Search blocks, rastas, gates',
     mapZoomLevel: 15.5,
     venueStatus: { insideVenue: false, insideBlock: null },
     compassMode: 'NORTH_UP' as const,
     setIsMapReady: setIsMapReadySpy,
-    handleSearch: handleSearchSpy,
     handlePlaceSelect: handlePlaceSelectSpy,
     cancelPendingSheetPresentation: jest.fn(),
     handleSheetIndexChange: jest.fn(),
@@ -149,7 +134,6 @@ function useFakeHomeViewModel(overrides: Record<string, unknown> = {}) {
     handleZoomOut: jest.fn(),
     handleMapRegionChangeComplete: jest.fn(),
     clearSearch: clearSearchSpy,
-    handleCategoryPress: jest.fn(),
     setSelectedPlace: jest.fn(),
     updateSettings: jest.fn(),
     settings: {
@@ -221,17 +205,16 @@ function expectNoLaunchMutationOrCamera() {
   expect(useAppStore.getState().currentLocationSource).toBeNull();
 }
 
+// Phase D (UX simplification): the map-owned search box and its on-map search-result
+// markers were removed — LocationsDirectoryScreen is the one canonical destination
+// discovery/search surface now. 'user pan'/'Recenter'/'facility selection' still cover
+// the underlying invalidateStartupCameraIntent() mechanism these were regression-guarding.
 const invalidatingInteractions: Array<[string, () => Promise<void> | void]> = [
   ['user pan', () => fireEvent(screen.getByTestId('home-map-view'), 'panDrag')],
   ['Recenter', async () => {
     fireEvent.press(screen.getByLabelText('Center map on my current location'));
     await jest.advanceTimersByTimeAsync(1300);
   }],
-  ['Search opening', async () => {
-    fireEvent(screen.getByLabelText('Search destination: gate, rasta, block'), 'focus');
-    await jest.advanceTimersByTimeAsync(200);
-  }],
-  ['search-result selection', () => fireEvent.press(screen.getByTestId(`search-map-marker-${searchResultPlace.id}`))],
   ['facility selection', async () => {
     fireEvent.press(screen.getByTestId('facility_marker_LM_MASJID_MAIN'));
     await jest.advanceTimersByTimeAsync(100);
@@ -430,12 +413,7 @@ describe('HomeScreen - launch camera (Google Maps principles, adapted for a venu
   test.each(invalidatingInteractions)('%s before resolver settlement invalidates the pending returning-launch camera result', async (_label, interact) => {
     const deferred = createDeferred<LocationResolveResult>();
     mockedResolveCurrentLocation.mockReturnValue(deferred.promise);
-    mockedUseHomeViewModel.mockImplementation(() =>
-      useFakeHomeViewModel({
-        searchQuery: 'gate',
-        searchResults: [searchResultPlace],
-      }),
-    );
+    mockedUseHomeViewModel.mockImplementation(() => useFakeHomeViewModel());
     useAppStore.setState({ hasSeenMapOverview: true, hasLocationPermission: true, currentLocation: null });
 
     await renderAndMapReady();

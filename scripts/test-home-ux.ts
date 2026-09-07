@@ -21,7 +21,6 @@ assert(mapControls.includes('North-up') && mapControls.includes('Compass'), 'Hom
 assert(home.includes('[HomeControl] pressed='), 'Home controls should emit dev diagnostics logs');
 assert(home.includes('__DEV__ && developerModeEnabled'), 'Developer controls must be gated behind __DEV__ and developer mode');
 assert(home.includes('marginRight: 76'), 'Outside-area warning should leave room for right-side map controls');
-assert(home.includes('paddingRight: 88'), 'Category chips should have trailing padding so the last chip is not hidden behind controls');
 assert(home.includes('setOutsideBannerDismissed'), 'Outside-area warning should be compact and dismissible');
 assert(
   home.includes('RoutingServiceV2.recommendOutsideEntryGate'),
@@ -31,7 +30,6 @@ assert(
   home.includes('Background map not downloaded. Ijtema routes still work.'),
   'Home screen should explain that missing background tiles do not block Ijtema routing',
 );
-assert(home.includes('categoryChips'), 'Home categories should be data-driven, not hardcoded two chips');
 assert(locationSheet.includes('Member Masjid Gates'), 'Block detail sheet should show Member Masjid gates');
 const userLocationMarker = readFileSync('src/views/components/map/UserLocationMarker.tsx', 'utf8');
 assert(home.includes('<UserLocationMarker'), 'Home should render the shared UserLocationMarker component');

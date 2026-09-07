@@ -41,12 +41,8 @@ assert(home.includes('handleRecenter'), 'Home current-location/recenter control 
 assert(home.includes('handleCompassToggle'), 'Home compass control must be wired');
 assert(home.includes('openLayerOptions'), 'Home layer control must open the layer chooser');
 assert(home.includes('handleOpenDirections'), 'Home selected-place CTA must open Directions');
-assert(home.includes('horizontal') && home.includes('categoryChips.map'), 'Home category chips must be horizontally scrollable');
-assert(home.includes('paddingRight: 88'), 'Home category chips must reserve trailing space near floating controls');
-assert(home.includes('numberOfLines={1}') && home.includes('ellipsizeMode="tail"'), 'Home long search/chip labels must be constrained');
+assert(home.includes('numberOfLines={1}') && home.includes('ellipsizeMode="tail"'), 'Home long chip labels must be constrained');
 assert(!home.includes('Entry {ep.nodeId}'), 'Home normal entrance chips must not expose raw node IDs');
-assert(home.includes('KeyboardAvoidingView'), 'Home must use keyboard-aware layout for search');
-assert(home.includes("keyboardShouldPersistTaps='handled'") || home.includes('keyboardShouldPersistTaps="handled"'), 'Home scrollable touch areas must keep taps working around keyboard');
 
 assert(directions.includes('KeyboardAvoidingView'), 'Directions must use keyboard-aware layout');
 assert(directions.includes('keyboardDismissMode="on-drag"'), 'Directions must dismiss keyboard on scroll');

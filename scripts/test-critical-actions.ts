@@ -185,8 +185,8 @@ assert(
   'Current user marker should have lightweight pulse styling',
 );
 assert(
-  homeScreen.includes('searchFocusAnim') && homeScreen.includes('warningAnim'),
-  'Home should include search focus and warning banner animations',
+  homeScreen.includes('warningAnim'),
+  'Home should include the outside-venue warning banner animation',
 );
 assert(homeScreen.includes("rotateEnabled={!layersSheetVisible && !settings.keepNorthFixed}"), 'Home map should honor North-up behavior');
 assert(

@@ -9,7 +9,6 @@ import { deriveMapMode, type MapModeInputs } from '../src/viewmodels/useMapMode'
 const base: MapModeInputs = {
   arrived: false,
   showNavOverlay: false,
-  isSearchFocused: false,
   detailsExpanded: false,
   directionsDestination: null,
   activePreviewRoute: null,
@@ -60,7 +59,7 @@ const base: MapModeInputs = {
 }
 
 // 3. Navigation chrome/map layers must render only in NAVIGATION or ARRIVAL mode — never in
-// EXPLORE/SEARCH/PLACE_SELECTED/DETAILS/ROUTE_PREVIEW. Regression guard for a real bug found in
+// EXPLORE/PLACE_SELECTED/DETAILS/ROUTE_PREVIEW. Regression guard for a real bug found in
 // this audit: `arrived` outranks NAVIGATION in the mode priority chain, so gating the nav chrome
 // on `mode === 'NAVIGATION'` alone unmounted it (and its arrival sheet) the instant GPS detected
 // arrival. The mount condition must cover both modes so the arrival sheet stays visible.
@@ -81,11 +80,10 @@ const base: MapModeInputs = {
     'Non-navigation (detail) map layers must stay hidden through both NAVIGATION and ARRIVAL',
   );
 
-  // Confirm the other 5 modes never satisfy either half of that OR — mode is a single derived
+  // Confirm the other 4 modes never satisfy either half of that OR — mode is a single derived
   // string, so this is definitional, but assert it explicitly against the real selector.
-  for (const other of ['EXPLORE', 'SEARCH', 'PLACE_SELECTED', 'DETAILS', 'ROUTE_PREVIEW'] as const) {
+  for (const other of ['EXPLORE', 'PLACE_SELECTED', 'DETAILS', 'ROUTE_PREVIEW'] as const) {
     const inputs: MapModeInputs = { ...base };
-    if (other === 'SEARCH') inputs.isSearchFocused = true;
     if (other === 'PLACE_SELECTED') inputs.selectedPlace = { id: 'B1' };
     if (other === 'DETAILS') inputs.detailsExpanded = true;
     if (other === 'ROUTE_PREVIEW') inputs.activePreviewRoute = { routeId: 'r1' };
@@ -243,7 +241,7 @@ const base: MapModeInputs = {
   const navActiveModes: MapModeInputs['showNavOverlay'][] = [false];
   for (const showNavOverlay of navActiveModes) {
     for (const arrived of [false, true]) {
-      const mode = deriveMapMode({ ...base, showNavOverlay, arrived, isSearchFocused: true, detailsExpanded: true, selectedPlace: { id: 'B1' } });
+      const mode = deriveMapMode({ ...base, showNavOverlay, arrived, detailsExpanded: true, selectedPlace: { id: 'B1' } });
       if (arrived) {
         // `arrived` alone still outranks everything and produces ARRIVAL even with
         // showNavOverlay false — this mirrors real usage, where HomeScreen only ever sets

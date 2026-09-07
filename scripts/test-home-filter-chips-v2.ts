@@ -10,7 +10,12 @@ const RAW_SPECIAL_LABEL_PATTERN = /\b(?:SPNP-\d+|SPSP-\d+|SPWP-\d+)\b/;
 
 const homeScreen = readFileSync('src/views/screens/HomeScreen.tsx', 'utf8');
 
-assert(homeScreen.includes('mapFilter: activeCategory'), 'Home must pass active category chip state into v2 map renderer.');
+// Phase D (UX simplification): the map-owned category filter chips were removed —
+// LocationsDirectoryScreen is the one canonical destination discovery/category-browse
+// surface now — so Home always passes a fixed `null` filter into the v2 map renderer.
+// V2MapRenderingService.getHomeLayers itself still supports category filtering (exercised
+// directly below), it's just no longer driven by any Home-owned UI.
+assert(homeScreen.includes('mapFilter: null'), 'Home must pass a fixed null filter into v2 map renderer (no map-owned category chips).');
 
 const allLayers = V2MapRenderingService.getHomeLayers({ mapFilter: 'all', zoomLevel: 17 } as any);
 assert.equal(allLayers.blocks.length, 42, 'All filter must include B1-B42 block polygons.');

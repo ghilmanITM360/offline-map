@@ -27,13 +27,10 @@ assert(home.includes('handleZoomOut'), 'Zoom out control must call handler');
 assert(home.includes('handleRecenter'), 'Current location control must call handler');
 assert(home.includes('handleCompassToggle'), 'Compass control must call handler');
 assert(home.includes('openLayerOptions'), 'Middle/layer map control must call handler');
-assert(home.includes('handleCategoryPress'), 'Category chips must call filter handler');
-assert(home.includes('handlePlaceSelect'), 'Map/search selection must call selection handler');
+assert(home.includes('handlePlaceSelect'), 'Map/facility selection must call selection handler');
 assert(home.includes('bottomSheetRef.current?.'), 'Selected place bottom sheet must be controllable');
 
-assert(home.includes('setIsSearchFocused') && home.includes('Keyboard.dismiss'), 'Search focus and keyboard dismissal must be handled');
-assert(home.includes('BackHandler.addEventListener'), 'Android back should close search before exiting Home');
-assert(home.includes('showsHorizontalScrollIndicator={false}'), 'Category chips must use horizontal scrolling instead of clipping');
+assert(home.includes('BackHandler.addEventListener'), 'Android back must close the open sheet before exiting Home');
 // The Layers/Compass/Zoom/Recenter cluster is one bottom-anchored stack (controlStackBottom)
 // instead of a top-anchored group that had to account for banner stacking height — see
 // docs/TARGETED_FIX_SPRINT_REPORT.md Phase 5 / test-map-controls-v2.ts for the full rationale.

@@ -5,20 +5,18 @@ import { deriveMapMode, type MapModeInputs } from '../src/viewmodels/useMapMode'
 const base: MapModeInputs = {
   arrived: false,
   showNavOverlay: false,
-  isSearchFocused: false,
   detailsExpanded: false,
   directionsDestination: null,
   activePreviewRoute: null,
   selectedPlace: null,
 };
 
-// Each of the seven states, all other inputs at rest.
+// Each of the six states, all other inputs at rest.
 assert.equal(deriveMapMode(base), 'EXPLORE');
 assert.equal(deriveMapMode({ ...base, selectedPlace: { id: 'B1' } }), 'PLACE_SELECTED');
 assert.equal(deriveMapMode({ ...base, activePreviewRoute: { routeId: 'r1' } }), 'ROUTE_PREVIEW');
 assert.equal(deriveMapMode({ ...base, directionsDestination: { id: 'B1' } }), 'ROUTE_PREVIEW');
 assert.equal(deriveMapMode({ ...base, detailsExpanded: true }), 'DETAILS');
-assert.equal(deriveMapMode({ ...base, isSearchFocused: true }), 'SEARCH');
 assert.equal(deriveMapMode({ ...base, showNavOverlay: true }), 'NAVIGATION');
 assert.equal(deriveMapMode({ ...base, arrived: true }), 'ARRIVAL');
 
@@ -36,14 +34,9 @@ assert.equal(
   'DETAILS must outrank ROUTE_PREVIEW',
 );
 assert.equal(
-  deriveMapMode({ ...base, detailsExpanded: true, isSearchFocused: true }),
-  'SEARCH',
-  'SEARCH must outrank DETAILS — full-screen search always takes over',
-);
-assert.equal(
-  deriveMapMode({ ...base, isSearchFocused: true, showNavOverlay: true }),
+  deriveMapMode({ ...base, detailsExpanded: true, showNavOverlay: true }),
   'NAVIGATION',
-  'NAVIGATION must outrank SEARCH — no searching mid-turn-by-turn',
+  'NAVIGATION must outrank DETAILS — no lingering detail sheet mid-turn-by-turn',
 );
 assert.equal(
   deriveMapMode({
@@ -52,7 +45,6 @@ assert.equal(
     activePreviewRoute: { routeId: 'r1' },
     directionsDestination: { id: 'B1' },
     detailsExpanded: true,
-    isSearchFocused: true,
     showNavOverlay: true,
     arrived: true,
   }),
@@ -61,7 +53,7 @@ assert.equal(
 );
 
 // Phase 7 named transitions (Start button / arrival detection / exit) — see
-// src/__tests__/useMapMode.test.ts for the same three cases as Jest specs.
+// src/__tests__/useMapMode.test.ts for the same cases as Jest specs.
 assert.equal(deriveMapMode({ ...base, activePreviewRoute: { routeId: 'r1' } }), 'ROUTE_PREVIEW', 'Start button: before press, mode is ROUTE_PREVIEW');
 assert.equal(deriveMapMode({ ...base, showNavOverlay: true }), 'NAVIGATION', 'Start button: after press, mode is NAVIGATION');
 assert.equal(deriveMapMode({ ...base, showNavOverlay: true, arrived: true }), 'ARRIVAL', 'Arrival detection: NAVIGATION -> ARRIVAL');
@@ -71,12 +63,12 @@ assert.equal(deriveMapMode({ ...base, showNavOverlay: false, arrived: false }), 
 assert.equal(deriveMapMode({ ...base, selectedPlace: null }), 'EXPLORE');
 assert.equal(deriveMapMode({ ...base, directionsDestination: undefined }), 'EXPLORE');
 
-// Real wiring: HomeScreen must actually compute and consume `mode` from these same seven
+// Real wiring: HomeScreen must actually compute and consume `mode` from these same six
 // inputs, not just have the hook available unused.
 const home = readFileSync('src/views/screens/HomeScreen.tsx', 'utf8');
 assert(home.includes("import { useMapMode } from '../../viewmodels/useMapMode';"), 'HomeScreen must import useMapMode');
 assert(home.includes('const mode = useMapMode({'), 'HomeScreen must compute mode via useMapMode');
-for (const key of ['arrived', 'showNavOverlay', 'isSearchFocused', 'detailsExpanded', 'directionsDestination', 'activePreviewRoute', 'selectedPlace']) {
+for (const key of ['arrived', 'showNavOverlay', 'detailsExpanded', 'directionsDestination', 'activePreviewRoute', 'selectedPlace']) {
   assert(new RegExp(`useMapMode\\(\\{[\\s\\S]{0,220}${key}`).test(home), `useMapMode call must pass ${key}`);
 }
 assert((home.match(/mode === 'NAVIGATION'/g) ?? []).length >= 2, 'NAVIGATION chrome (NavigationChromeV2 + nav MapControls) must be gated by mode');
@@ -91,24 +83,10 @@ assert(
 assert(!home.includes('const [arrived, setArrived] = useState'), 'HomeScreen must not own a separate, never-set local `arrived` flag');
 assert(home.includes('!layersSheetVisible'), 'MapView gesture props must lock on layersSheetVisible (MAP_SETTINGS is not part of MapMode)');
 assert(!home.includes('!showNavOverlay &&') && !home.includes('showNavOverlay && <'), 'Render-visibility checks must go through mode, not raw showNavOverlay');
-// Search/chip exclusivity is exercised by MapChromePolicy.test.ts and HomeScreen.test.tsx.
 
-// Regression guard: isSearchFocused is the raw trigger fed INTO useMapMode (declaration +
-// the single input line below), never a render/behavior gate read back out elsewhere —
-// every consumer must key off `mode === 'SEARCH'` so nothing can drift from the priority
-// chain above (e.g. isSearchFocused=true while arrived=true must still resolve ARRIVAL,
-// not be independently treated as "search showing" by some other check).
-assert(!home.includes('if (isSearchFocused)'), 'isSearchFocused must not gate behavior directly — read mode instead');
-assert(!home.includes('!isSearchFocused'), 'isSearchFocused must not gate rendering directly — read mode instead');
-assert(!home.includes('isSearchFocused ?'), 'isSearchFocused must not drive conditional values directly — read mode instead');
-assert(!home.includes('isSearchFocused ||'), 'isSearchFocused must not combine into render conditions directly — read mode instead');
-const isSearchFocusedCodeLines = home
-  .split('\n')
-  .filter((line) => line.includes('isSearchFocused') && !line.trim().startsWith('//'));
-assert.equal(
-  isSearchFocusedCodeLines.length,
-  2,
-  'isSearchFocused should only appear in code as the raw state decl + the single useMapMode input — any new line means a render/behavior check bypassed mode',
-);
+// Phase D (UX simplification): SEARCH is no longer a MapMode — LocationsDirectoryScreen
+// is the one canonical destination discovery/search surface, not the map.
+assert(!home.includes("'SEARCH'"), "HomeScreen must not reference a 'SEARCH' MapMode branch");
+assert(!home.includes('isSearchFocused'), 'HomeScreen must not own search-focus state — search UI was removed from the map');
 
 console.log('Map mode checks passed.');
