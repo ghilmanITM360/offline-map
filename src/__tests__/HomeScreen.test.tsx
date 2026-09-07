@@ -321,6 +321,41 @@ describe('HomeScreen — hardware back button (mode-aware, Google Maps parity)',
     expect(screen.queryByText('Official entry / exit gate')).not.toBeOnTheScreen();
   });
 
+  // Phase F: a Route Preview reached via a Locations Directory selection has no real "place
+  // preview" step in the user's actual history (Phase B skips it programmatically) — Back
+  // must return to Locations directly, not flash an unvisited place-details card. A Route
+  // Preview reached by tapping the map/search keeps its existing "return to place preview"
+  // behavior (see the test above), since that place preview *is* real task history there.
+  test('hardware back press in ROUTE_PREVIEW mode returns to Locations when the destination came from the Locations Directory', async () => {
+    const navigateSpy = jest.fn();
+    useNavigation.mockReturnValue({ navigate: navigateSpy, dispatch: jest.fn(), goBack: jest.fn() });
+    mockedUseHomeViewModel.mockImplementation(() => ({
+      ...useFakeHomeViewModel(),
+      selectedPlace: gateResult,
+      directorySelectionForDirections: gateResult,
+      clearDirectorySelectionForDirections: jest.fn(),
+    }));
+    mockedUseDirectionsViewModel.mockReturnValue({
+      route: null,
+      startSource: 'live_gps',
+      rememberedLocationAgeLabel: '',
+      rememberedLocationAvailable: false,
+      rememberedLocationInsideVenue: false,
+      currentRouteOriginInsideVenue: true,
+      loadState: 'idle',
+      errorMessage: null,
+      manualStart: null,
+      calculateRoute: jest.fn(async () => {}),
+    });
+
+    await render(<HomeScreen />);
+    expect(await screen.findByText('Get Directions')).toBeOnTheScreen();
+
+    await pressHardwareBack();
+
+    expect(navigateSpy).toHaveBeenCalledWith('LocationsDirectory');
+  });
+
   test('hardware back press in ROUTE_PREVIEW mode returns to the place preview, not exit', async () => {
     mockedUseDirectionsViewModel.mockReturnValue({
       route: null,
@@ -412,6 +447,59 @@ describe('HomeScreen — hardware back button (mode-aware, Google Maps parity)',
     expect(useAppStore.getState().activeRoute).toBeNull();
     expect(screen.queryByText('Get Directions')).not.toBeOnTheScreen();
     expect(await screen.findByText('Directions')).toBeOnTheScreen();
+    alertSpy.mockRestore();
+  });
+
+  test('hardware back on a resolved ROUTE_PREVIEW from a Locations Directory hand-off returns to Locations after confirming cancel', async () => {
+    const navigateSpy = jest.fn();
+    useNavigation.mockReturnValue({ navigate: navigateSpy, dispatch: jest.fn(), goBack: jest.fn() });
+    mockedUseHomeViewModel.mockImplementation(() => ({
+      ...useFakeHomeViewModel(),
+      selectedPlace: gateResult,
+      directorySelectionForDirections: gateResult,
+      clearDirectorySelectionForDirections: jest.fn(),
+    }));
+    const previewRoute = {
+      nodes: ['start', 'end'],
+      coordinates: [{ latitude: 24.9, longitude: 67.1 }, gateResult.coordinate],
+      totalDistance: 180,
+      estimatedTimeMin: 3,
+      segments: [],
+      startLabel: 'Current location',
+      destinationLabel: gateResult.name,
+      startResolution: { mode: 'inside', coordinate: { latitude: 24.9, longitude: 67.1 } },
+      instructions: [],
+    };
+    mockedUseDirectionsViewModel.mockReturnValue({
+      route: previewRoute,
+      startSource: 'live_gps',
+      startSourceLabel: 'My current location',
+      rememberedLocationAgeLabel: '',
+      rememberedLocationAvailable: false,
+      rememberedLocationInsideVenue: false,
+      currentRouteOriginInsideVenue: true,
+      loadState: 'ready',
+      errorMessage: null,
+      manualStart: null,
+      calculateRoute: jest.fn(async () => {}),
+    });
+    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+
+    await render(<HomeScreen />);
+    expect(await screen.findByText('Get Directions')).toBeOnTheScreen();
+    await act(async () => {
+      useAppStore.setState({ routePlannerDest: gateResult, activeRoute: previewRoute as any });
+    });
+
+    await pressHardwareBack();
+
+    expect(navigateSpy).not.toHaveBeenCalledWith('LocationsDirectory');
+    const confirmCancel = (alertSpy.mock.calls.at(-1)?.[2] as Array<{ text: string; onPress?: () => void }>).find(
+      (button) => button.text === 'Cancel route',
+    )?.onPress;
+    await act(async () => confirmCancel?.());
+
+    expect(navigateSpy).toHaveBeenCalledWith('LocationsDirectory');
     alertSpy.mockRestore();
   });
 });

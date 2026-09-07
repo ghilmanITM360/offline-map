@@ -1135,15 +1135,32 @@ export function HomeScreen() {
   // the ordinary handlePlaceSelect pipeline (selection highlight/camera/recents/entryPoints);
   // this only fires the exact same Directions call the button itself would, for that one
   // hand-off, once. An ordinary map tap or search result never touches this signal.
+  //
+  // Phase F: that also means this Route Preview has no real "place preview" step in the
+  // user's actual history — Phase B skipped it programmatically — so Back from it must return
+  // to Locations directly instead of flashing an unvisited place-details card. Tracked here
+  // (not derived from directorySelectionForDirections, which self-clears immediately) so it
+  // survives for the lifetime of this one Directions session; a manual "Directions" tap from
+  // an ordinary map/search selection (this component's own onOpenDirections wiring below)
+  // resets it back to false, preserving today's "return to place preview" behavior there.
+  const directionsFromDirectoryRef = useRef(false);
   useEffect(() => {
     if (!directorySelectionForDirections) return;
+    directionsFromDirectoryRef.current = true;
     handleOpenDirections(directorySelectionForDirections);
     clearDirectorySelectionForDirections();
   }, [directorySelectionForDirections]);
 
+  const returnToLocationsIfFromDirectory = useCallback(() => {
+    if (!directionsFromDirectoryRef.current) return;
+    directionsFromDirectoryRef.current = false;
+    nav.navigate('LocationsDirectory');
+  }, [nav]);
+
   const handleCloseDirections = useCallback(() => {
     setDirectionsDestination(null);
-  }, []);
+    returnToLocationsIfFromDirectory();
+  }, [returnToLocationsIfFromDirectory]);
 
   // Full reset to EXPLORE — replaces the two ad hoc `setSelectedPlace(null) +
   // bottomSheetRef.close()` call sites that existed independently before and didn't
@@ -1183,7 +1200,8 @@ export function HomeScreen() {
     // route sheet (or let its still-mounted ViewModel recalculate the route).
     setDirectionsDestination(null);
     clearRoutePlanner();
-  }, [clearRoutePlanner]);
+    returnToLocationsIfFromDirectory();
+  }, [clearRoutePlanner, returnToLocationsIfFromDirectory]);
 
   const handleClearPreviewRoute = useCallback(() => {
     Alert.alert('Cancel route?', 'You will need to choose your destination again.', [
@@ -2092,7 +2110,10 @@ export function HomeScreen() {
                   sourceVersion: 'v1',
                 });
               }}
-              onOpenDirections={() => handleOpenDirections(selectedPlace)}
+              onOpenDirections={() => {
+                directionsFromDirectoryRef.current = false;
+                handleOpenDirections(selectedPlace);
+              }}
               onClose={closeSheet}
               onShowDetails={showDetails}
               onCloseDetails={closeDetails}
