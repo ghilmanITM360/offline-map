@@ -10,6 +10,7 @@ import { RoutingService } from '../services/RoutingService';
 import { InstructionService, Instruction } from '../services/InstructionService';
 import { Place, RouteAlternative, RoutePreview } from '../models/types';
 import { LocationAccessService } from '../services/LocationAccessService';
+import { resolveNavigationOrigin } from '../services/NavigationOriginResolver';
 import { MapFeatureFlagsService } from '../services/MapFeatureFlagsService';
 import {
   V2DirectionsService,
@@ -29,7 +30,7 @@ const DIRECTIONS_RECALCULATE_ORIGIN_MOVEMENT_M = 20;
 const productionOutsideRouteSource = createProductionOutsideRouteSource();
 
 type RouteLoadState = 'idle' | 'loading' | 'ready' | 'error' | 'needs_origin';
-export type StartSource = 'live_gps' | 'device_last_known' | 'remembered_location' | 'manual_place';
+export type StartSource = 'live_gps' | 'device_last_known' | 'remembered_location' | 'manual_place' | 'fallback_place';
 
 function resolveInitialStartSource(
   hasLocation: boolean,
@@ -73,6 +74,12 @@ export function useDirectionsViewModel(destination: Place | null) {
   const [isEditingManualStart, setIsEditingManualStart] = useState(false);
   const [manualGateId, setManualGateId] = useState<string | null>(null);
   const [routeRefreshing, setRouteRefreshing] = useState(false);
+  // Canonical Block 2 / Main Mosque origin, populated only when resolveNavigationOrigin()
+  // (the single automatic-origin authority — see NavigationOriginResolver) finds no usable
+  // current location. Kept separate from manualStart so this automatic fallback never reads
+  // as, or interferes with, an explicit user manual-start choice (NEW-03 manual gate intent).
+  const [fallbackPlace, setFallbackPlace] = useState<Place | null>(null);
+  const [originResolutionAttempted, setOriginResolutionAttempted] = useState(false);
   const routeRef = useRef<RoutePreview | null>(null);
   const routeDestinationIdRef = useRef<string | null>(null);
   const outsideRequestCoordinatorRef = useRef(new OutsideRouteRequestCoordinator());
@@ -89,6 +96,42 @@ export function useDirectionsViewModel(destination: Place | null) {
       setLoadState('needs_origin');
     }
   }, [routeOriginLocation, startSource]);
+
+  // Automatic origin resolution: the normal-flow counterpart to chooseCurrentLocation()'s
+  // manual retry. Runs once per destination/no-location state — never while the user has
+  // explicitly started (or finished) picking a manual start — and prefers a freshly usable
+  // current location, falling back to the canonical B2 place otherwise. This is what lets
+  // the normal flow reach ROUTE_PREVIEW without ever exposing the manual From picker.
+  useEffect(() => {
+    if (startSource !== 'manual_place' || manualStart || isEditingManualStart || originResolutionAttempted) return;
+    setOriginResolutionAttempted(true);
+    let cancelled = false;
+    (async () => {
+      const origin = await resolveNavigationOrigin(false);
+      if (cancelled) return;
+      if (origin.kind === 'current_location') {
+        setCurrentLocation(origin.coordinate, origin.source);
+        setRouteOriginLocation(origin.coordinate);
+        setStartSource(origin.source === 'device_last_known' ? 'device_last_known' : 'live_gps');
+      } else {
+        setFallbackPlace(origin.place);
+        setStartSource('fallback_place');
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [startSource, manualStart, isEditingManualStart, originResolutionAttempted, setCurrentLocation]);
+
+  // A fresh directions session (new destination) deserves a fresh automatic-origin attempt
+  // — mirrors the manualGateId reset below, and keeps a stale B2 fallback from a previous
+  // destination from silently surviving if GPS has since become available. Only rewinds an
+  // automatic fallback_place decision; an explicit manual/live/remembered start is left alone.
+  useEffect(() => {
+    setOriginResolutionAttempted(false);
+    setFallbackPlace(null);
+    setStartSource((current) => (current === 'fallback_place' ? 'manual_place' : current));
+  }, [destination?.id]);
 
   useEffect(() => () => {
     // Closing directions unmounts this ViewModel instead of rerendering it with a null
@@ -145,6 +188,8 @@ export function useDirectionsViewModel(destination: Place | null) {
       ? routeOriginLocation
       : startSource === 'remembered_location'
       ? lastKnownLocation
+      : startSource === 'fallback_place'
+      ? fallbackPlace?.coordinate ?? null
       : manualStart?.coordinate ?? null;
 
   // Presentation-only "is the active start point outside the venue" check. The routing
@@ -167,6 +212,8 @@ export function useDirectionsViewModel(destination: Place | null) {
       ? 'Device last known location'
       : startSource === 'remembered_location'
       ? `Last known location (${rememberedLocationAgeLabel})`
+      : startSource === 'fallback_place'
+      ? (fallbackPlace?.name ?? 'Block 2')
       : (manualStart?.name ?? 'Choose starting point');
   const startSourceSupportingCopy =
     startSource === 'live_gps'
@@ -175,6 +222,8 @@ export function useDirectionsViewModel(destination: Place | null) {
       ? 'Using device last known location because live GPS is unavailable.'
       : startSource === 'remembered_location'
       ? `Using last known location ${rememberedLocationAgeLabel}.`
+      : startSource === 'fallback_place'
+      ? `Current location unavailable. Starting from ${fallbackPlace?.name ?? 'Block 2'}.`
       : manualStart
       ? `Starting from ${manualStart.name}.`
       : 'Choose a start point to continue.';
@@ -209,9 +258,14 @@ export function useDirectionsViewModel(destination: Place | null) {
 
     const originCoord = resolveActiveOriginCoordinate();
     if (!originCoord && !(isV2Destination && startSource === 'manual_place' && manualStart)) {
+      // Automatic origin resolution (see the effect above) hasn't landed yet — this is a
+      // brief in-flight window, not an unresolved state the user needs to act on, so stay
+      // in 'loading' rather than flashing the manual "Choose starting point" error.
+      const isAutomaticResolutionPending =
+        startSource === 'manual_place' && !manualStart && !isEditingManualStart && !originResolutionAttempted;
       resetRouteState();
-      setLoadState('needs_origin');
-      setErrorMessage('Choose starting point to continue.');
+      setLoadState(isAutomaticResolutionPending ? 'loading' : 'needs_origin');
+      if (!isAutomaticResolutionPending) setErrorMessage('Choose starting point to continue.');
       return;
     }
 
@@ -420,7 +474,7 @@ export function useDirectionsViewModel(destination: Place | null) {
       setLoadState('error');
       setErrorMessage('Route calculation failed. Please retry.');
     }
-  }, [destination, isV2Destination, lastKnownLocation, manualGateId, manualStart, routeOriginLocation, setActiveRoute, setRouteAlternatives, setRouteInstructions, setSelectedRouteIndex, settings.walkingSpeed, startSource]);
+  }, [destination, fallbackPlace, isEditingManualStart, isV2Destination, lastKnownLocation, manualGateId, manualStart, originResolutionAttempted, routeOriginLocation, setActiveRoute, setRouteAlternatives, setRouteInstructions, setSelectedRouteIndex, settings.walkingSpeed, startSource]);
 
   useEffect(() => {
     void calculateRoute();
