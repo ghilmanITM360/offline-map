@@ -47,6 +47,15 @@ describe('resolveOverlayExtent', () => {
   it('resolves the peeked (15%) snap state, distinct from the 50% default', () => {
     expect(resolveOverlayExtent({ kind: 'sheet', windowHeight: 800, snapPoints: ['15%', '50%', '92%'], sheetIndex: 0 })).toBe(120);
   });
+
+  it('treats an out-of-bounds sheetIndex (dynamic-sizing "fit to content" past the last snap) as fully covering the map, not uncovered', () => {
+    // @gorhom/bottom-sheet reports index === snapPoints.length when dynamic sizing
+    // expands the sheet beyond our tallest defined snap (92%) — observed on-device as
+    // sheetIndex=3 against a 3-entry snapPoints array, which previously fell through to
+    // 0 (treated as "no overlay") and left the Google logo positioned as if the sheet
+    // covered nothing (ATTR-001 follow-up).
+    expect(resolveOverlayExtent({ kind: 'sheet', windowHeight: 800, snapPoints: ['15%', '50%', '92%'], sheetIndex: 3 })).toBe(800);
+  });
 });
 
 describe('stackAbove', () => {

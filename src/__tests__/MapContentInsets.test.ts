@@ -1,4 +1,4 @@
-import { computeMapContentInsets } from '../viewmodels/useOverlayInsets';
+import { computeMapContentInsets, MIN_TOP_VISIBLE_MAP_FOR_ATTRIBUTION } from '../viewmodels/useOverlayInsets';
 
 const common = {
   top: 144,
@@ -18,13 +18,15 @@ describe('computeMapContentInsets', () => {
   test.each([
     [0, 120],
     [1, 400],
-    // Not 736 (92% of 800): clamped to 560 so the visible band (windowHeight - top -
-    // bottom, with this fixture's top=144) still leaves the Google logo its required
-    // headroom — see MIN_TOP_VISIBLE_MAP_FOR_ATTRIBUTION (ATTR-001 follow-up; the SDK
-    // omits the logo entirely once its headroom gets too small).
-    [2, 560],
   ])('sheet snap index %s reserves its resolved visible height', (sheetIndex, bottom) => {
     expect(computeMapContentInsets({ ...common, mode: 'PLACE_SELECTED', sheetIndex }).bottom).toBe(bottom);
+  });
+
+  test('sheet snap index 2 (92%, 736 raw) is clamped so the Google logo keeps its required headroom above the fixture\'s top=144 (ATTR-001 follow-up)', () => {
+    // Not 736 (92% of 800): the SDK omits the logo entirely once its headroom gets
+    // too small, so bottom is capped at windowHeight - top - MIN_TOP_VISIBLE_MAP_FOR_ATTRIBUTION.
+    const expectedBottom = common.windowHeight - common.top - MIN_TOP_VISIBLE_MAP_FOR_ATTRIBUTION;
+    expect(computeMapContentInsets({ ...common, mode: 'PLACE_SELECTED', sheetIndex: 2 }).bottom).toBe(expectedBottom);
   });
 
   test('route preview uses shared sheet snap extent', () => {
