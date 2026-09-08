@@ -459,6 +459,16 @@ export function HomeScreen() {
   const chrome = resolveMapChromePolicy(mode);
   modeRef.current = mode;
 
+  // The search bar/chip row (and its onLayout) only mounts in EXPLORE — chrome.chips
+  // below — so topOverlayHeight would otherwise keep its last EXPLORE measurement
+  // indefinitely once the row unmounts, misreporting real headroom to every other
+  // mode's mapLabelEdgeInsets (ATTR-001 follow-up: this stale top, combined with a
+  // near-full-height LocationSheet, could push the Google logo's reserved band behind
+  // where the sheet actually, visually, covers the screen).
+  useEffect(() => {
+    if (!chrome.chips) setTopOverlayHeight(0);
+  }, [chrome.chips]);
+
   const startupCameraStillOwnsIntent = useCallback((requestGeneration: number, cameraIntentGeneration: number) => (
     mountedRef.current &&
     mapReadyRef.current &&

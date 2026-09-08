@@ -30,8 +30,10 @@ export const NAV_BAR_FALLBACK_HEIGHT = 140;
 // Google's attribution logo needs real headroom to render at all — Maps Android SDK
 // silently omits the logo (not just clips it) once mapPadding.bottom leaves it too
 // little unobscured space, observed at ~71dp remaining (DETAILS' 92% snap on a real
-// device). Kept comfortably above that empirical floor (ATTR-001 follow-up).
-export const MIN_TOP_VISIBLE_MAP_FOR_ATTRIBUTION = 96;
+// device). 96dp still clipped the logo's top sliver against the sheet on-device (the
+// SDK reserves its own internal margin beyond the padding boundary), so this sits
+// well above both empirical floors (ATTR-001 follow-up).
+export const MIN_TOP_VISIBLE_MAP_FOR_ATTRIBUTION = 160;
 
 export type OverlayState =
   | { kind: 'none' }
@@ -47,6 +49,12 @@ export function resolveOverlayExtent(overlay: OverlayState): number {
       return Math.max(overlay.height, 0);
     case 'sheet': {
       if (overlay.sheetIndex < 0) return 0;
+      // @gorhom/bottom-sheet reports `snapPoints.length` (one past our last defined
+      // snap) when dynamic sizing expands the sheet to fit content taller than our
+      // tallest snap point — that's MORE covered than our last snap, not "no overlay",
+      // so treat any index at/beyond the array as fully covering the map. Silently
+      // falling back to 0 here previously left the sheet's real extent unaccounted for.
+      if (overlay.sheetIndex >= overlay.snapPoints.length) return overlay.windowHeight;
       const raw = overlay.snapPoints[overlay.sheetIndex];
       const pct = raw ? parseFloat(raw) : 0;
       return ((Number.isFinite(pct) ? pct : 0) / 100) * overlay.windowHeight;
