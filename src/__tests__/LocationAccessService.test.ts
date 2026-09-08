@@ -258,4 +258,25 @@ describe('LocationAccessService.resolveCurrentLocation — origin freshness poli
 
     expect(resolved.ok).toBe(false);
   });
+
+  // A device/emulator whose GPS provider never delivers a fresh fix (no active satellite lock,
+  // no network location) can leave the native getCurrentPositionAsync() promise pending
+  // indefinitely. Without a bounded timeout here, the whole origin-resolution flow — and the
+  // B2 fallback that depends on it completing — hangs forever instead of degrading gracefully.
+  it('LOC-13: current position never settles -> times out and falls back to last-known rather than hanging forever', async () => {
+    jest.useFakeTimers({ doNotFake: ['Date'] });
+    try {
+      (Location.getCurrentPositionAsync as jest.Mock).mockReturnValue(new Promise(() => {}));
+      (Location.getLastKnownPositionAsync as jest.Mock).mockResolvedValue(lastKnown(10_000, 15));
+
+      const resolvedPromise = LocationAccessService.resolveCurrentLocation();
+      await jest.advanceTimersByTimeAsync(30_000);
+      const resolved = await resolvedPromise;
+
+      expect(resolved.ok).toBe(true);
+      expect(resolved.source).toBe('device_last_known');
+    } finally {
+      jest.useRealTimers();
+    }
+  });
 });

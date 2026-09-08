@@ -31,6 +31,28 @@ export interface LocationResolveResult {
 const LAST_KNOWN_MAX_AGE_MS = 60_000;
 const LAST_KNOWN_REQUIRED_ACCURACY_M = 50;
 
+// getCurrentPositionAsync() has no built-in timeout: on a device/emulator whose GPS provider
+// never delivers a fresh fix (no satellite lock, no network location), the native promise can
+// stay pending indefinitely, which would hang the whole origin-resolution flow — and the B2
+// fallback that depends on it completing — instead of degrading gracefully to last-known/B2.
+const CURRENT_POSITION_TIMEOUT_MS = 8_000;
+
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('Location request timed out')), timeoutMs);
+    promise.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (error) => {
+        clearTimeout(timer);
+        reject(error);
+      },
+    );
+  });
+}
+
 function isUsableLastKnown(position: Location.LocationObject | null): position is Location.LocationObject {
   if (!position) return false;
   const { timestamp } = position;
@@ -115,9 +137,12 @@ export class LocationAccessService {
       }
 
       try {
-        const current = await Location.getCurrentPositionAsync({
-          accuracy: Location.Accuracy.Balanced,
-        });
+        const current = await withTimeout(
+          Location.getCurrentPositionAsync({
+            accuracy: Location.Accuracy.Balanced,
+          }),
+          CURRENT_POSITION_TIMEOUT_MS,
+        );
         return {
           ok: true,
           coordinate: {

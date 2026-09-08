@@ -213,6 +213,33 @@ describe('LocationSheet (routePreview) — route ready CTA', () => {
     expect(screen.getByText('4 min')).toBeOnTheScreen();
   });
 
+  // Same Critical Safety Rule as the pre-route disclosure test above, but for the state that
+  // actually reaches users in practice: GPS unavailable -> B2 fallback -> a route IS found.
+  // showStartHint (and its startSourceSupportingCopy disclosure) only renders before a route is
+  // ready, so this ready-state disclosure previously vanished the moment routing succeeded from
+  // B2 -- leaving the user with a bare "Block 2" label indistinguishable from a real live start.
+  test('canonical B2 fallback origin stays disclosed once a route is ready', async () => {
+    mockedUseDirectionsViewModel.mockReturnValue(
+      baseViewModel({
+        startSource: 'fallback_place',
+        startSourceLabel: 'Block 2',
+        startSourceSupportingCopy: 'Current location unavailable. Starting from Block 2.',
+        isCurrentLocationStartActive: false,
+        loadState: 'ready',
+        route: {
+          nodes: ['A', 'B'],
+          coordinates: [],
+          totalDistance: 250,
+          estimatedTimeMin: 4,
+        },
+      }),
+    );
+    await render(<LocationSheet mode="routePreview" destination={destination} theme={LIGHT_THEME} onClose={onCloseSpy} />);
+
+    expect(screen.getByText('Route ready')).toBeOnTheScreen();
+    expect(screen.getByText(/Current location unavailable/)).toBeOnTheScreen();
+  });
+
   test('formats total distance in meters for a sub-1000m route', async () => {
     mockedUseDirectionsViewModel.mockReturnValue(
       baseViewModel({

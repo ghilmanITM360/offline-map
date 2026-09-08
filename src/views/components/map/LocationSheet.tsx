@@ -340,6 +340,9 @@ function RoutePreviewSection({
                 <Text style={styles.routeHeroDistance}>{routeDistance}</Text>
               </View>
               <Text style={styles.statusText}>{routeEntrySummary}</Text>
+              {startSource === 'fallback_place' && (
+                <Text style={styles.statusHint}>{startSourceSupportingCopy}</Text>
+              )}
 
               {outsideRoute && (
                 <OutsideRouteStatusCard
