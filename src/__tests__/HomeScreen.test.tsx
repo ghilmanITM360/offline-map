@@ -609,6 +609,57 @@ describe('HomeScreen — canonical bottom-sheet dismissal', () => {
     expect(useAppStore.getState().activeRoute).not.toBeNull();
   });
 
+  test('pressing Start Navigation never shows the Cancel route confirmation', async () => {
+    const destination = gateResult;
+    const previewRoute = {
+      nodes: ['start', 'end'],
+      coordinates: [
+        { latitude: 24.9, longitude: 67.1 },
+        destination.coordinate,
+      ],
+      totalDistance: 180,
+      estimatedTimeMin: 3,
+      segments: [],
+      startLabel: 'Current location',
+      destinationLabel: destination.name,
+      startResolution: { mode: 'inside', coordinate: { latitude: 24.9, longitude: 67.1 } },
+      instructions: [],
+    };
+    mockedUseHomeViewModel.mockImplementation(() => ({ ...useFakeHomeViewModel(), selectedPlace: destination }));
+    mockedUseDirectionsViewModel.mockReturnValue({
+      route: previewRoute,
+      startSource: 'live_gps',
+      startSourceLabel: 'My current location',
+      rememberedLocationAgeLabel: '',
+      rememberedLocationAvailable: false,
+      rememberedLocationInsideVenue: false,
+      currentRouteOriginInsideVenue: true,
+      loadState: 'ready',
+      errorMessage: null,
+      manualStart: null,
+      chooseManualStart: jest.fn(),
+      setIsEditingManualStart: jest.fn(),
+      setManualStartPlace: jest.fn(),
+      chooseCurrentLocation: jest.fn(async () => true),
+      chooseRememberedLocation: jest.fn(() => true),
+      calculateRoute: jest.fn(async () => {}),
+      showManualStartSearch: false,
+    });
+    // Reproduces the arrival-race regression: GPS is already at the destination, so
+    // navigation can evaluate arrival synchronously in the same tick Start Navigation
+    // is pressed. Start Navigation must never trigger the "Cancel route?" confirmation
+    // regardless of how quickly arrival follows.
+    useAppStore.setState({ routePlannerDest: destination, activeRoute: previewRoute as any, currentLocation: destination.coordinate });
+    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+    await render(<HomeScreen />);
+
+    await userEvent.setup().press(await screen.findByText('Start Navigation'));
+
+    expect(alertSpy).not.toHaveBeenCalledWith('Cancel route?', expect.any(String), expect.any(Array));
+    expect(useAppStore.getState().isNavigating).toBe(true);
+    alertSpy.mockRestore();
+  });
+
   test('Cancel Route confirmation clears the resolved preview and returns to the selected place', async () => {
     const destination = gateResult;
     const previewRoute = {

@@ -388,15 +388,17 @@ function RoutePreviewSection({
                   if (destinationFromPlace(destination)) {
                     // Built from the resolved preview route already sitting in the store
                     // (see HomeScreen.handleStartPreviewNavigation) — starts NavigationOverlayV2
-                    // in place, then reveals the map the same way v1 does below.
+                    // in place. HomeScreen's showAnyNavOverlay effect closes this sheet once
+                    // isNavigating flips true — calling onClose() here too would (in
+                    // routePreview mode) invoke the Cancel-route confirmation instead of a
+                    // plain dismiss, since onClose doubles as onCancelRoute while a route is
+                    // active.
                     onStartNavigation?.();
-                    onClose();
                     return;
                   }
-                  // v1: starts the in-place NavigationOverlayV1 (via the store), then
-                  // reveals the map the same way v2 does — no screen navigation either way.
+                  // v1: starts the in-place NavigationOverlayV1 (via the store) — same
+                  // sheet-closing owner as v2, see above.
                   handleStartNavigation();
-                  onClose();
                 }}
               />
 

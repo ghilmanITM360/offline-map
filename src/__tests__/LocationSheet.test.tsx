@@ -300,7 +300,12 @@ describe('LocationSheet (routePreview) — route ready CTA', () => {
     expect(screen.queryByText(/^\d+(\.\d+)?\s(m|km)$/)).not.toBeOnTheScreen();
   });
 
-  test('pressing "Start Navigation" invokes onStartNavigation and closes the sheet for a v2 destination', async () => {
+  // Regression: onClose used to double as "sheet dismissed after navigation started," but in
+  // routePreview mode onClose is also onCancelRoute while a route is active — calling it here
+  // fired the "Cancel route?" confirmation on every Start Navigation press (and, when arrival
+  // evaluates synchronously, produced a stuck dialog on top of the Arrival screen). HomeScreen's
+  // showAnyNavOverlay effect is the sole owner of closing this sheet once navigation begins.
+  test('pressing "Start Navigation" invokes onStartNavigation without closing the sheet for a v2 destination', async () => {
     mockedUseDirectionsViewModel.mockReturnValue(
       baseViewModel({
         loadState: 'ready',
@@ -327,7 +332,7 @@ describe('LocationSheet (routePreview) — route ready CTA', () => {
     await user.press(screen.getByText('Start Navigation'));
 
     expect(onStartNavigation).toHaveBeenCalledTimes(1);
-    expect(onCloseSpy).toHaveBeenCalledTimes(1);
+    expect(onCloseSpy).not.toHaveBeenCalled();
   });
 
   test('pressing "Cancel Route" invokes onCancelRoute when provided', async () => {
@@ -362,6 +367,8 @@ describe('LocationSheet (routePreview) — route ready CTA', () => {
   // Regression: a legacy (v1) destination used to have no working navigation entry point at
   // all — the primary button unconditionally closed the sheet. Now that navigation always runs
   // in-place (no separate NavigationScreen), v1 must behave like v2: start, then reveal the map.
+  // See the onClose regression note above the v2 Start Navigation test — same contract applies
+  // to the v1 path.
   test('pressing "Start Navigation" starts navigation for a legacy (v1) destination and reveals the map', async () => {
     const handleStartNavigation = jest.fn();
     mockedUseDirectionsViewModel.mockReturnValue(
@@ -382,7 +389,7 @@ describe('LocationSheet (routePreview) — route ready CTA', () => {
     await user.press(screen.getByText('Start Navigation'));
 
     expect(handleStartNavigation).toHaveBeenCalledTimes(1);
-    expect(onCloseSpy).toHaveBeenCalledTimes(1);
+    expect(onCloseSpy).not.toHaveBeenCalled();
   });
 
   test('shows an error state with a retry button that invokes calculateRoute', async () => {
