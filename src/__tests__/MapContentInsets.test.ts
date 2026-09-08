@@ -18,7 +18,11 @@ describe('computeMapContentInsets', () => {
   test.each([
     [0, 120],
     [1, 400],
-    [2, 736],
+    // Not 736 (92% of 800): clamped to 560 so the visible band (windowHeight - top -
+    // bottom, with this fixture's top=144) still leaves the Google logo its required
+    // headroom — see MIN_TOP_VISIBLE_MAP_FOR_ATTRIBUTION (ATTR-001 follow-up; the SDK
+    // omits the logo entirely once its headroom gets too small).
+    [2, 560],
   ])('sheet snap index %s reserves its resolved visible height', (sheetIndex, bottom) => {
     expect(computeMapContentInsets({ ...common, mode: 'PLACE_SELECTED', sheetIndex }).bottom).toBe(bottom);
   });

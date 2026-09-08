@@ -27,6 +27,11 @@ export const RECENTER_BUTTON_SIZE = 56;
 // Approximate navigation trip-info bar height, used only for the single frame before
 // its real onLayout height is measured (see resolveNavBarHeight).
 export const NAV_BAR_FALLBACK_HEIGHT = 140;
+// Google's attribution logo needs real headroom to render at all — Maps Android SDK
+// silently omits the logo (not just clips it) once mapPadding.bottom leaves it too
+// little unobscured space, observed at ~71dp remaining (DETAILS' 92% snap on a real
+// device). Kept comfortably above that empirical floor (ATTR-001 follow-up).
+export const MIN_TOP_VISIBLE_MAP_FOR_ATTRIBUTION = 96;
 
 export type OverlayState =
   | { kind: 'none' }
@@ -112,15 +117,19 @@ export function computeMapContentInsets(inputs: MapContentInsetInputs): {
     inputs.mode === 'DETAILS' ||
     inputs.mode === 'ROUTE_PREVIEW'
   ) {
-    bottom = Math.max(
-      safeBottom,
-      resolveOverlayExtent({
-        kind: 'sheet',
-        windowHeight: inputs.windowHeight,
-        snapPoints: inputs.snapPoints,
-        sheetIndex: inputs.sheetIndex,
-      }),
-    );
+    const sheetExtent = resolveOverlayExtent({
+      kind: 'sheet',
+      windowHeight: inputs.windowHeight,
+      snapPoints: inputs.snapPoints,
+      sheetIndex: inputs.sheetIndex,
+    });
+    // Clamp so a tall sheet (e.g. DETAILS' 92% snap) never squeezes out the Google
+    // logo's headroom entirely — see MIN_TOP_VISIBLE_MAP_FOR_ATTRIBUTION. Must account
+    // for `top` too: the visible band is (windowHeight - top - bottom), and top is not
+    // always 0 here, so clamping bottom alone against windowHeight can still leave (or
+    // even go negative on) a degenerate band once top is factored in.
+    const maxBottomForAttribution = Math.max(inputs.windowHeight - top - MIN_TOP_VISIBLE_MAP_FOR_ATTRIBUTION, safeBottom);
+    bottom = Math.min(Math.max(safeBottom, sheetExtent), maxBottomForAttribution);
   }
   return { top: inputs.top, right: inputs.right, bottom, left: 0 };
 }

@@ -4,10 +4,12 @@
  */
 
 import {
+  computeMapContentInsets,
   computeMapControlsInset,
   computeNavControlsInset,
   computeNavRecenterInset,
   MIN_BOTTOM_FLOOR,
+  MIN_TOP_VISIBLE_MAP_FOR_ATTRIBUTION,
   NAV_BAR_FALLBACK_HEIGHT,
   OVERLAY_CONTROL_GAP,
   RECENTER_BUTTON_SIZE,
@@ -96,6 +98,52 @@ describe('computeMapControlsInset — LocationSheet preview/details, route previ
       const inset = computeMapControlsInset(0, overlay);
       expect(inset).toBeGreaterThanOrEqual(resolveOverlayExtent(overlay) + OVERLAY_CONTROL_GAP);
     }
+  });
+});
+
+describe('computeMapContentInsets — Google attribution must always have room to render (ATTR-001 follow-up)', () => {
+  const windowHeight = 800;
+  const snapPoints = ['15%', '50%', '92%'];
+  const baseInputs = {
+    top: 0,
+    right: 80,
+    bottomSafeArea: 0,
+    windowHeight,
+    snapPoints,
+    navBarHeight: 0,
+    navTopHeight: 0,
+  };
+
+  it('DETAILS at the 92% snap leaves at least MIN_TOP_VISIBLE_MAP_FOR_ATTRIBUTION of unobscured map at the top', () => {
+    // 92% of 800 is 736, leaving only 64px of raw headroom — less than the reserved
+    // minimum, so this only passes once computeMapContentInsets clamps bottom for it.
+    const insets = computeMapContentInsets({ ...baseInputs, mode: 'DETAILS', sheetIndex: 2 });
+    expect(windowHeight - insets.top - insets.bottom).toBeGreaterThanOrEqual(MIN_TOP_VISIBLE_MAP_FOR_ATTRIBUTION);
+  });
+
+  it('ROUTE_PREVIEW expanded to the 92% snap also reserves room for attribution', () => {
+    const insets = computeMapContentInsets({ ...baseInputs, mode: 'ROUTE_PREVIEW', sheetIndex: 2 });
+    expect(windowHeight - insets.top - insets.bottom).toBeGreaterThanOrEqual(MIN_TOP_VISIBLE_MAP_FOR_ATTRIBUTION);
+  });
+
+  it('PLACE_SELECTED at the ordinary 50% snap is unaffected by the clamp', () => {
+    const insets = computeMapContentInsets({ ...baseInputs, mode: 'PLACE_SELECTED', sheetIndex: 1 });
+    expect(insets.bottom).toBe(400); // exactly 50% of 800, same as before the fix
+  });
+
+  it('regression: a non-zero top (real device: 232dp leftover search-bar inset) must not let the band go negative', () => {
+    // Exact runtime values captured on-device (Pixel 7 Pro, 3.5x density) that produced
+    // a genuinely negative band (-136) pre-fix, hiding the Google logo entirely: the
+    // first clamp only accounted for `bottom` against `windowHeight`, ignoring `top`.
+    const insets = computeMapContentInsets({
+      ...baseInputs,
+      top: 232,
+      windowHeight: 891.4285714285714,
+      mode: 'DETAILS',
+      sheetIndex: 2,
+    });
+    const band = 891.4285714285714 - insets.top - insets.bottom;
+    expect(band).toBeGreaterThanOrEqual(MIN_TOP_VISIBLE_MAP_FOR_ATTRIBUTION);
   });
 });
 
