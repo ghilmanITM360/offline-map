@@ -40,7 +40,8 @@ import { AppTheme } from '../../../services/ThemeService';
 import { NAV_TRANSITION_TIMINGS } from '../../../constants/navigationTransitions';
 import { Button } from '../common/Button';
 import { Card } from '../common/Card';
-import { staticColors } from '../../../theme';
+import { premium, staticColors } from '../../../theme';
+import { TentSkyline } from '../common/TentSkyline';
 import { OutsideRouteStatusCard } from '../navigation/OutsideRouteStatusCard';
 import type { NormalizedOutsideCandidate } from '../../../models/outsideRouting';
 
@@ -237,6 +238,7 @@ function RoutePreviewSection({
   return (
     <View style={styles.container}>
       <View style={[styles.header, { borderBottomColor: theme.border }]}>
+        <TentSkyline width={110} height={70} style={styles.headerIllustration} />
         <Pressable
           onPress={onClose}
           style={styles.backButton}
@@ -244,9 +246,12 @@ function RoutePreviewSection({
           accessibilityRole="button"
           accessibilityLabel="Back"
         >
-          <ChevronLeft size={28} color={theme.text} />
+          <ChevronLeft size={24} color={premium.textPrimary} />
         </Pressable>
-        <Text style={[styles.headerTitle, { color: theme.text }]}>Get Directions</Text>
+        <View style={styles.headerTextWrap}>
+          <Text style={[styles.headerTitle, { color: theme.text }]}>Get Directions</Text>
+          <Text style={styles.headerSubtitle}>Find the best route to your destination inside Karachi Ijtema.</Text>
+        </View>
       </View>
 
       <KeyboardAvoidingView
@@ -264,7 +269,7 @@ function RoutePreviewSection({
             <Text style={styles.cardLabel}>Going to</Text>
             <View style={styles.destinationRow}>
               <View style={styles.destinationIconWrap}>
-                <MapPin size={20} color={staticColors.success} />
+                <MapPin size={20} color={premium.primary} />
               </View>
               <View style={styles.destinationBody}>
                 <Text style={styles.destinationName}>{destination.name}</Text>
@@ -284,7 +289,7 @@ function RoutePreviewSection({
           <Card theme={theme} gap={14}>
             <Text style={styles.cardLabel}>Starting from</Text>
             <View style={styles.destinationRow}>
-              <View style={styles.destinationIconWrap}>{startIcon}</View>
+              <View style={styles.originIconWrap}>{startIcon}</View>
               <View style={styles.destinationBody}>
                 <Text style={styles.destinationName}>{startSourceLabel}</Text>
               </View>
@@ -334,9 +339,13 @@ function RoutePreviewSection({
             <Card theme={theme} variant="success">
               <Text style={styles.cardLabel}>Route ready</Text>
               <View style={styles.routeHeroRow}>
+                <View style={styles.routeHeroIconWrap}>
+                  <Navigation size={18} color={premium.primary} />
+                </View>
                 {outsideRoute?.durationSeconds !== null && (
                   <Text style={styles.routeHeroDuration}>{routeEta}</Text>
                 )}
+                {outsideRoute?.durationSeconds !== null && <View style={styles.routeHeroDivider} />}
                 <Text style={styles.routeHeroDistance}>{routeDistance}</Text>
               </View>
               <Text style={styles.statusText}>{routeEntrySummary}</Text>
@@ -383,6 +392,7 @@ function RoutePreviewSection({
 
               <Button
                 variant="primary"
+                icon={<Navigation size={20} color={staticColors.white} />}
                 label={outsideRoute?.provider === 'direct-guide' ? 'Start Direct Guide' : 'Start Navigation'}
                 onPress={() => {
                   if (destinationFromPlace(destination)) {
@@ -665,18 +675,40 @@ const styles = StyleSheet.create({
   },
   header: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     paddingHorizontal: 16,
     paddingVertical: 14,
     borderBottomWidth: 1,
+    overflow: 'hidden',
+  },
+  headerIllustration: {
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    opacity: 0.5,
   },
   backButton: {
-    paddingVertical: 6,
-    paddingRight: 12,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: premium.canvasAlt,
+    marginRight: 12,
+  },
+  headerTextWrap: {
+    flex: 1,
   },
   headerTitle: {
-    fontSize: 32,
+    fontSize: 26,
     fontWeight: '800',
+  },
+  headerSubtitle: {
+    fontSize: 14,
+    lineHeight: 20,
+    color: premium.textMuted,
+    marginTop: 4,
+    maxWidth: '85%',
   },
   scroll: {
     flex: 1,
@@ -686,11 +718,11 @@ const styles = StyleSheet.create({
     gap: 14,
   },
   cardLabel: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '700',
-    color: staticColors.textCaption,
+    color: premium.textMuted,
     textTransform: 'uppercase',
-    letterSpacing: 0.4,
+    letterSpacing: 0.6,
   },
   sectionTitle: {
     fontSize: 20,
@@ -711,7 +743,15 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: staticColors.lightGreenSubtext,
+    backgroundColor: premium.mint,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  originIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: premium.originBlueSoft,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -729,7 +769,7 @@ const styles = StyleSheet.create({
     color: staticColors.iconMuted,
   },
   linkButton: {
-    alignSelf: 'flex-start',
+    alignSelf: 'center',
     // Elderly-friendly touch target — the label text alone (~24px tall) falls short of the
     // 44/48px minimum; this padding widens the tappable area without changing visible spacing
     // (the surrounding Card's own gap already accounts for a plain label's footprint).
@@ -872,8 +912,21 @@ const styles = StyleSheet.create({
   // teal, so the hero number reads as "this app's route color" rather than a one-off hex.
   routeHeroRow: {
     flexDirection: 'row',
-    alignItems: 'baseline',
-    gap: 8,
+    alignItems: 'center',
+    gap: 10,
+  },
+  routeHeroIconWrap: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: premium.mint,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  routeHeroDivider: {
+    width: 1,
+    height: 20,
+    backgroundColor: premium.border,
   },
   routeHeroDuration: {
     fontSize: 30,
