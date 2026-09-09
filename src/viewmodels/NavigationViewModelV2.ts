@@ -152,6 +152,14 @@ export function useNavigationViewModelV2() {
   // the same physical fix twice and false-corroborate on it. Tracks the currentLocation object
   // last fed into arrival evaluation so a same-fix re-run of the effect is skipped there.
   const lastArrivalFixLocationRef = useRef<Coordinate | null>(null);
+  // AUD-05: same problem as lastArrivalFixLocationRef above, but for GPS freshness. The location
+  // effect below also lists isMuted/settings.voiceInstructions/manualGateId in its dependency
+  // array (none of them GPS-related), so it can re-run against the exact same stale
+  // currentLocation for a reason that has nothing to do with a new fix arriving. Without this
+  // guard, that re-run unconditionally re-stamps lastFixAtRef to "now" and recomputes
+  // gpsSignalState as fresh — silently reviving a genuine GPS_LOST back to GOOD/WEAK just because
+  // the user toggled mute or some other unrelated UI state changed.
+  const lastFreshnessFixLocationRef = useRef<Coordinate | null>(null);
   // Same-observation check for lastArrivalFixLocationRef: prefer native GPS timestamp identity
   // (observedAtMs, set by GPSManagerService from Expo's LocationObject.timestamp) when both
   // sides have one — this is what actually identifies "the same physical sensor sample" and
@@ -425,11 +433,21 @@ export function useNavigationViewModelV2() {
     if (!route || !currentLocation) return;
 
     const accuracyM = currentLocation.accuracy ?? 0;
+    // AUD-05: only a genuinely new GPS observation may advance freshness state — this effect can
+    // re-run for unrelated reasons (see lastFreshnessFixLocationRef above) against the same
+    // currentLocation, and that must be a no-op here, not a revival.
+    const isNewFix = !isSameGpsObservation(currentLocation, lastFreshnessFixLocationRef.current);
     // A fix arrived (regardless of how it's ultimately treated below) — record it so the
     // GPS_LOST polling effect knows the signal is alive, and immediately resolve the
     // good/weak display state for it via the same pure derivation the poll uses.
-    const fixAtMs = Date.now();
-    lastFixAtRef.current = fixAtMs;
+    // Falls back to Date.now() in the !isNewFix branch purely to keep this a plain `number` —
+    // that value is never actually read unless isNewFix is true (see the `if (isNewFix)` guards
+    // below), where it's always the freshly computed Date.now() from the branch above anyway.
+    const fixAtMs = isNewFix ? Date.now() : (lastFixAtRef.current ?? Date.now());
+    if (isNewFix) {
+      lastFreshnessFixLocationRef.current = currentLocation;
+      lastFixAtRef.current = fixAtMs;
+    }
     const movedDistanceM = lastAcceptedLocationRef.current
       ? getDistance(lastAcceptedLocationRef.current, currentLocation)
       : Infinity;
@@ -455,14 +473,18 @@ export function useNavigationViewModelV2() {
     }
 
     if (shouldIgnorePoorAccuracyMovementV2({ movedDistanceM, accuracyM })) {
-      setIsWeakGps(true);
-      setGpsSignalState(deriveGpsSignalStateV2({ isWeakGps: true, lastFixAtMs: fixAtMs, nowMs: fixAtMs }));
+      if (isNewFix) {
+        setIsWeakGps(true);
+        setGpsSignalState(deriveGpsSignalStateV2({ isWeakGps: true, lastFixAtMs: fixAtMs, nowMs: fixAtMs }));
+      }
       return;
     }
 
     const weakGps = RerouteService.shouldHoldRouteForWeakGps(accuracyM);
-    setIsWeakGps(weakGps);
-    setGpsSignalState(deriveGpsSignalStateV2({ isWeakGps: weakGps, lastFixAtMs: fixAtMs, nowMs: fixAtMs }));
+    if (isNewFix) {
+      setIsWeakGps(weakGps);
+      setGpsSignalState(deriveGpsSignalStateV2({ isWeakGps: weakGps, lastFixAtMs: fixAtMs, nowMs: fixAtMs }));
+    }
     const progress = calculateNavigationProgressV2({
       route,
       coordinate: currentLocation,
