@@ -6,6 +6,7 @@
 import {
   computeMapContentInsets,
   computeMapControlsInset,
+  computeMaxSheetOcclusionForAttribution,
   computeNavControlsInset,
   computeNavRecenterInset,
   MIN_BOTTOM_FLOOR,
@@ -144,6 +145,43 @@ describe('computeMapContentInsets — Google attribution must always have room t
     });
     const band = 891.4285714285714 - insets.top - insets.bottom;
     expect(band).toBeGreaterThanOrEqual(MIN_TOP_VISIBLE_MAP_FOR_ATTRIBUTION);
+  });
+});
+
+describe('computeMaxSheetOcclusionForAttribution — shared ceiling for mapPadding and BottomSheetModal.maxDynamicContentSize (ATTR-001 follow-up)', () => {
+  // @gorhom/bottom-sheet's dynamic sizing (default on, v5) has no ceiling on its own —
+  // without a shared cap, the sheet's *actual* rendered height and the padding clamp
+  // computeMapContentInsets already applies could drift apart, letting the SDK draw the
+  // logo somewhere a taller-than-assumed sheet still covers (Route Preview's clip).
+  it('leaves exactly MIN_TOP_VISIBLE_MAP_FOR_ATTRIBUTION of headroom when that leaves more room than the safe area floor', () => {
+    expect(computeMaxSheetOcclusionForAttribution(800, 0, 0)).toBe(800 - MIN_TOP_VISIBLE_MAP_FOR_ATTRIBUTION);
+  });
+
+  it('accounts for a non-zero top overlay (search bar/chip row) the same way computeMapContentInsets does', () => {
+    expect(computeMaxSheetOcclusionForAttribution(800, 144, 0)).toBe(800 - 144 - MIN_TOP_VISIBLE_MAP_FOR_ATTRIBUTION);
+  });
+
+  it('never goes below the safe-area floor even on a short/degenerate window', () => {
+    expect(computeMaxSheetOcclusionForAttribution(200, 100, 34)).toBe(34);
+  });
+
+  it('matches computeMapContentInsets\' own clamp for the same inputs, so the sheet ceiling and the padding clamp cannot drift apart', () => {
+    const windowHeight = 800;
+    const snapPoints = ['15%', '50%', '92%'];
+    const top = 0;
+    const bottomSafeArea = 24;
+    const insets = computeMapContentInsets({
+      mode: 'ROUTE_PREVIEW',
+      top,
+      right: 80,
+      bottomSafeArea,
+      windowHeight,
+      snapPoints,
+      sheetIndex: 2,
+      navBarHeight: 0,
+      navTopHeight: 0,
+    });
+    expect(insets.bottom).toBe(computeMaxSheetOcclusionForAttribution(windowHeight, top, bottomSafeArea));
   });
 });
 

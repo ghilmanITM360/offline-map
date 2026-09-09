@@ -41,7 +41,9 @@ import { useHomeViewModel } from '../../viewmodels/HomeViewModel';
 import {
   computeMapControlsInset,
   computeMapContentInsets,
+  computeMaxSheetOcclusionForAttribution,
   computeNavControlsInset,
+  MIN_TOP_VISIBLE_MAP_FOR_ATTRIBUTION,
   resolveNavBarHeight,
   resolveOverlayExtent,
   OverlayState,
@@ -953,6 +955,28 @@ export function HomeScreen() {
       navBarHeight: activeNavBottomBarHeight,
     }),
     [activeNavBottomBarHeight, insets.bottom, mode, sheetIndex, snapPoints, topOverlayHeight, windowHeight],
+  );
+  // @gorhom/bottom-sheet computes EVERY snap point — the declared 15/50/92% ones, not
+  // just content-driven dynamic sizing — as a percentage of its own containerHeight.
+  // On this app's real window heights, the plain 92% snap alone already leaves less than
+  // MIN_TOP_VISIBLE_MAP_FOR_ATTRIBUTION above the sheet (measured on-device: ~71dp) — no
+  // dynamic sizing or over-drag needed to reproduce Route Preview's clip, a simple manual
+  // drag to 92% does it. mapLabelEdgeInsets' clamp alone can't fix this: it only changes
+  // what we tell the Google Maps SDK is obstructed, not how tall the sheet actually
+  // renders, so the SDK can still place the logo somewhere the real (taller) sheet covers.
+  // `topInset` is gorhom's own mechanism for this — it shrinks the containerHeight every
+  // snap point (declared and dynamic) is computed against, so 92% of a container that's
+  // already missing the top's reserved band can never reach into it (ATTR-001 follow-up).
+  const sheetTopInset = useMemo(
+    () => (topOverlayHeight > 0 ? topOverlayHeight + 8 : 0) + MIN_TOP_VISIBLE_MAP_FOR_ATTRIBUTION,
+    [topOverlayHeight],
+  );
+  // Backstop for the one case topInset alone doesn't bound: dynamic sizing computing a
+  // detent from content so tall it would still exceed the shrunk container. Same shared
+  // formula the mapPadding clamp above uses, so the two ceilings can't drift apart.
+  const sheetMaxDynamicContentSize = useMemo(
+    () => computeMaxSheetOcclusionForAttribution(windowHeight, topOverlayHeight > 0 ? topOverlayHeight + 8 : 0, insets.bottom),
+    [insets.bottom, topOverlayHeight, windowHeight],
   );
 
   useEffect(() => {
@@ -1978,6 +2002,8 @@ export function HomeScreen() {
           // value, so it must match the snap index every present() caller opens to (1).
           index={1}
           snapPoints={snapPoints}
+          topInset={sheetTopInset}
+          maxDynamicContentSize={sheetMaxDynamicContentSize}
           enablePanDownToClose
           keyboardBehavior="interactive"
           keyboardBlurBehavior="restore"

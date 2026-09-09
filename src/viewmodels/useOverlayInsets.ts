@@ -33,6 +33,20 @@ export const NAV_BAR_FALLBACK_HEIGHT = 140;
 // device). Kept comfortably above that empirical floor (ATTR-001 follow-up).
 export const MIN_TOP_VISIBLE_MAP_FOR_ATTRIBUTION = 96;
 
+/** Maximum height (px, measured up from the screen's bottom edge) anything bottom-anchored
+ * may occupy while still leaving MIN_TOP_VISIBLE_MAP_FOR_ATTRIBUTION of clear map above it.
+ * Shared by two call sites that must never disagree: the mapPadding clamp below (what we
+ * tell the Google Maps SDK is obstructed) and the BottomSheetModal's own maxDynamicContentSize
+ * (what we actually let the sheet grow to, HomeScreen.tsx) — if they drifted apart, the SDK
+ * could draw the logo in a spot the real sheet still covers. That's exactly how Route Preview
+ * clipped the logo before dynamic sizing was capped: @gorhom/bottom-sheet's enableDynamicSizing
+ * (on by default, v5) sizes the sheet to fit its content with no ceiling unless
+ * maxDynamicContentSize is set, so a tall enough card stack could render past the mapPadding
+ * clamp's assumed extent even though the padding math itself was already correct. */
+export function computeMaxSheetOcclusionForAttribution(windowHeight: number, top: number, safeBottom: number): number {
+  return Math.max(windowHeight - top - MIN_TOP_VISIBLE_MAP_FOR_ATTRIBUTION, safeBottom);
+}
+
 export type OverlayState =
   | { kind: 'none' }
   | { kind: 'measured'; height: number }
@@ -128,7 +142,7 @@ export function computeMapContentInsets(inputs: MapContentInsetInputs): {
     // for `top` too: the visible band is (windowHeight - top - bottom), and top is not
     // always 0 here, so clamping bottom alone against windowHeight can still leave (or
     // even go negative on) a degenerate band once top is factored in.
-    const maxBottomForAttribution = Math.max(inputs.windowHeight - top - MIN_TOP_VISIBLE_MAP_FOR_ATTRIBUTION, safeBottom);
+    const maxBottomForAttribution = computeMaxSheetOcclusionForAttribution(inputs.windowHeight, top, safeBottom);
     bottom = Math.min(Math.max(safeBottom, sheetExtent), maxBottomForAttribution);
   }
   return { top: inputs.top, right: inputs.right, bottom, left: 0 };
