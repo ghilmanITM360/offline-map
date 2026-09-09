@@ -219,7 +219,12 @@ export function LocationsDirectoryScreen() {
         })}
       </ScrollView>
 
-      <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+      <ScrollView
+        testID="directory-destination-list"
+        style={styles.destinationList}
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+      >
         {trimmedQuery.length > 0 ? renderSearchResults() : renderBrowse()}
       </ScrollView>
     </SafeAreaView>
@@ -369,6 +374,13 @@ const styles = StyleSheet.create({
   chipTextActive: {
     color: premium.card,
     fontWeight: '700',
+  },
+  destinationList: {
+    // Without an explicit overflow, this ScrollView's own clip boundary is unreliable
+    // at large accessibility font scales: a row straddling the top of the visible
+    // viewport can paint into the category rail's region above it (DIR-STICKY-01).
+    flex: 1,
+    overflow: 'hidden',
   },
   scrollContent: {
     paddingBottom: spacing.xxl,

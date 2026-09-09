@@ -164,6 +164,15 @@ describe('LocationsDirectoryScreen — touch targets (Android 48dp minimum)', ()
   });
 });
 
+describe('LocationsDirectoryScreen — sticky category rail containment (DIR-STICKY-01)', () => {
+  test('the destination list clips its own content instead of painting over the category rail', async () => {
+    mockNav();
+    await render(<LocationsDirectoryScreen />);
+
+    expect(screen.getByTestId('directory-destination-list')).toHaveStyle({ overflow: 'hidden' });
+  });
+});
+
 describe('LocationsDirectoryScreen — Android hardware back', () => {
   test('clears an active search/category filter before falling through to default back behavior', async () => {
     mockNav();
