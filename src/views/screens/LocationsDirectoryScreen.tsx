@@ -162,9 +162,11 @@ export function LocationsDirectoryScreen() {
       </View>
 
       <View style={styles.hero}>
-        <TentSkyline width={160} height={100} style={styles.heroIllustration} />
+        <TentSkyline width={130} height={80} style={styles.heroIllustration} />
         <View style={styles.headerText}>
-          <Text style={styles.title}>Where do you want to go?</Text>
+          <Text style={styles.title} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85}>
+            Where do you want to go?
+          </Text>
           <Text style={styles.subtitle}>Find a block, gate, rasta, or route on the ground.</Text>
         </View>
       </View>
@@ -263,11 +265,11 @@ const styles = StyleSheet.create({
     opacity: 0.55,
   },
   headerText: {
-    maxWidth: '70%',
+    maxWidth: '92%',
   },
   title: {
     ...typography.sheet.title,
-    fontSize: 24,
+    fontSize: 22,
     color: premium.textPrimary,
   },
   subtitle: {
@@ -328,7 +330,7 @@ const styles = StyleSheet.create({
   },
   chipsContent: {
     paddingHorizontal: spacing.xl,
-    gap: spacing.sm,
+    gap: spacing.xs,
     paddingBottom: spacing.sm,
   },
   chip: {
@@ -346,7 +348,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     gap: spacing.xs,
-    paddingHorizontal: spacing.lg,
+    paddingHorizontal: spacing.md,
     // See viewMapButton above — radii.pill (999) is meant to be applied as
     // Math.min(height, width) / 2, not used as a bare literal on a ~36dp chip.
     borderRadius: radii.xxl,
@@ -359,8 +361,8 @@ const styles = StyleSheet.create({
     borderColor: premium.primary,
   },
   chipText: {
-    fontSize: 14,
-    lineHeight: 20,
+    fontSize: 13,
+    lineHeight: 18,
     fontWeight: '500',
     color: premium.textPrimary,
   },
