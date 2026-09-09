@@ -238,7 +238,7 @@ function RoutePreviewSection({
   return (
     <View style={styles.container}>
       <View style={[styles.header, { borderBottomColor: theme.border }]}>
-        <TentSkyline width={110} height={70} style={styles.headerIllustration} />
+        <TentSkyline width={130} height={82} style={styles.headerIllustration} />
         <Pressable
           onPress={onClose}
           style={styles.backButton}
@@ -693,7 +693,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: premium.canvasAlt,
+    backgroundColor: premium.mint,
     marginRight: 12,
   },
   headerTextWrap: {
