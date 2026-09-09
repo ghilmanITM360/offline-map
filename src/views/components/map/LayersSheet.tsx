@@ -78,7 +78,7 @@ export function LayersSheet({
         <SheetHandle />
         <SheetHeader title="Map Layers" icon={<Layers size={18} color={theme.text} />} onClose={onClose} />
 
-        <ScrollView bounces={false}>
+        <ScrollView style={styles.scroll} bounces={false}>
           <Text style={[styles.sectionLabel, { color: theme.subtext }]}>Map Type</Text>
           <View style={[styles.segmentedControl, { backgroundColor: theme.background }]}>
             <Pressable
@@ -128,6 +128,9 @@ const styles = StyleSheet.create({
     paddingTop: 10,
     maxHeight: '70%',
     ...shadows.high,
+  },
+  scroll: {
+    overflow: 'hidden',
   },
   sectionLabel: {
     fontSize: 13,

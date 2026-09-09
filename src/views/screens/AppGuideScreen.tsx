@@ -147,7 +147,7 @@ export function AppGuideScreen() {
         <Text style={styles.headerTitle}>App Guide</Text>
       </View>
 
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
         <Text style={styles.subtitle}>How to Use App Offline • ایپ گائیڈ</Text>
 
         <View style={styles.quickCard}>
@@ -219,6 +219,10 @@ const styles = StyleSheet.create({
     color: '#202124',
     fontSize: 20,
     fontWeight: '700',
+  },
+  scroll: {
+    flex: 1,
+    overflow: 'hidden',
   },
   content: {
     paddingHorizontal: 14,

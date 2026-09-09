@@ -413,7 +413,7 @@ const styles = StyleSheet.create({
   },
   backButton: { padding: 4 },
   headerTitle: { fontSize: 20, fontWeight: 'bold', marginLeft: 16 },
-  content: { flex: 1 },
+  content: { flex: 1, overflow: 'hidden' },
   section: {
     marginTop: 12,
     paddingVertical: 8,
