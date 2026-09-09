@@ -8,7 +8,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { ChevronRight, Milestone, Route, Signpost } from 'lucide-react-native';
 
 import { V2Place } from '../../../models/types';
-import { radii, spacing, staticColors } from '../../../theme';
+import { premium, radii, spacing } from '../../../theme';
 
 const CATEGORY_LABEL: Record<V2Place['category'], string> = {
   Block: 'Block',
@@ -23,16 +23,9 @@ const CATEGORY_ICON: Partial<Record<V2Place['category'], typeof Signpost>> = {
   SpecialRoute: Milestone,
 };
 
-const CATEGORY_ACCENT: Partial<Record<V2Place['category'], string>> = {
-  Gate: staticColors.gateAccent,
-  Rasta: staticColors.info,
-  SpecialRoute: staticColors.info,
-};
-
 /** Full-width destination row — used for Gates, Rastas, Shahr-e-Pindal, and flat search results. */
 export function DestinationRow({ place, onPress }: { place: V2Place; onPress: (place: V2Place) => void }) {
   const Icon = CATEGORY_ICON[place.category] ?? Signpost;
-  const accent = CATEGORY_ACCENT[place.category] ?? staticColors.normalBlock;
   const categoryLabel = CATEGORY_LABEL[place.category] ?? place.category;
 
   return (
@@ -42,8 +35,8 @@ export function DestinationRow({ place, onPress }: { place: V2Place; onPress: (p
       accessibilityRole="button"
       accessibilityLabel={`${place.name}, ${categoryLabel}`}
     >
-      <View style={[styles.iconWrap, { backgroundColor: `${accent}1A` }]}>
-        <Icon size={20} color={accent} />
+      <View style={styles.iconWrap}>
+        <Icon size={20} color={premium.primary} />
       </View>
       <View style={styles.body}>
         <View style={styles.nameRow}>
@@ -61,12 +54,12 @@ export function DestinationRow({ place, onPress }: { place: V2Place; onPress: (p
           {place.unavailableReason ? ' · Not yet available for routing' : ''}
         </Text>
       </View>
-      <ChevronRight size={18} color={staticColors.iconFaint} />
+      <ChevronRight size={18} color={premium.textMuted} />
     </Pressable>
   );
 }
 
-const ROW_MIN_HEIGHT = 60;
+const ROW_MIN_HEIGHT = 64;
 
 const styles = StyleSheet.create({
   row: {
@@ -75,16 +68,22 @@ const styles = StyleSheet.create({
     minHeight: ROW_MIN_HEIGHT,
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.lg,
+    marginHorizontal: spacing.lg,
+    marginBottom: spacing.sm,
     gap: spacing.md,
-    backgroundColor: staticColors.white,
+    backgroundColor: premium.card,
+    borderRadius: radii.lg,
+    borderWidth: 1,
+    borderColor: premium.border,
   },
   rowPressed: {
-    backgroundColor: staticColors.neutralSurface,
+    backgroundColor: premium.canvasAlt,
   },
   iconWrap: {
     width: 40,
     height: 40,
     borderRadius: radii.lg,
+    backgroundColor: premium.mint,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -100,17 +99,17 @@ const styles = StyleSheet.create({
   name: {
     fontSize: 16,
     fontWeight: '600',
-    color: staticColors.textPrimary,
+    color: premium.textPrimary,
     flexShrink: 1,
   },
   nameSecondary: {
     fontSize: 13,
-    color: staticColors.textMuted,
+    color: premium.textMuted,
     flexShrink: 1,
   },
   subtitle: {
     fontSize: 13,
-    color: staticColors.textMuted,
+    color: premium.textMuted,
     marginTop: 2,
   },
 });

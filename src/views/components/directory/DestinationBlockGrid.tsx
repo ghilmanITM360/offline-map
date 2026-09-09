@@ -5,9 +5,12 @@
 
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { ChevronRight } from 'lucide-react-native';
 
 import { V2Place } from '../../../models/types';
-import { radii, spacing, staticColors } from '../../../theme';
+import { premium, radii, shadows, spacing } from '../../../theme';
+
+const BADGE_SIZE = 44;
 
 /** Compact numbered tile grid for Blocks — the venue's own numbering system as the
  * screen's signature element, instead of 40+ full-width decorative cards. */
@@ -22,9 +25,12 @@ export function DestinationBlockGrid({ places, onPress }: { places: V2Place[]; o
           accessibilityRole="button"
           accessibilityLabel={`${place.name}, Block`}
         >
-          <Text style={styles.number} numberOfLines={1} adjustsFontSizeToFit>
-            {place.name.replace(/^Block\s*/i, '')}
-          </Text>
+          <ChevronRight size={14} color={premium.textMuted} style={styles.chevron} />
+          <View style={styles.badge}>
+            <Text style={styles.number} numberOfLines={1} adjustsFontSizeToFit>
+              {place.name.replace(/^Block\s*/i, '')}
+            </Text>
+          </View>
           <Text style={styles.label}>Block</Text>
         </Pressable>
       ))}
@@ -32,7 +38,7 @@ export function DestinationBlockGrid({ places, onPress }: { places: V2Place[]; o
   );
 }
 
-const TILE_MIN_HEIGHT = 64;
+const TILE_MIN_HEIGHT = 96;
 
 const styles = StyleSheet.create({
   grid: {
@@ -45,23 +51,39 @@ const styles = StyleSheet.create({
     width: '30%',
     minHeight: TILE_MIN_HEIGHT,
     borderRadius: radii.lg,
-    backgroundColor: staticColors.infoBackground,
+    backgroundColor: premium.card,
+    borderWidth: 1,
+    borderColor: premium.border,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: spacing.sm,
+    paddingVertical: spacing.md,
+    ...shadows.low,
   },
   tilePressed: {
-    backgroundColor: staticColors.infoBorder,
+    backgroundColor: premium.canvasAlt,
+  },
+  chevron: {
+    position: 'absolute',
+    top: spacing.xs,
+    right: spacing.xs,
+  },
+  badge: {
+    width: BADGE_SIZE,
+    height: BADGE_SIZE,
+    borderRadius: BADGE_SIZE / 2,
+    backgroundColor: premium.mint,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   number: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '800',
-    color: staticColors.infoStrong,
+    color: premium.primary,
   },
   label: {
     fontSize: 12,
     fontWeight: '500',
-    color: staticColors.iconMuted,
-    marginTop: 2,
+    color: premium.textMuted,
+    marginTop: spacing.xs,
   },
 });

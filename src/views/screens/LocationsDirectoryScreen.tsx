@@ -8,7 +8,7 @@ import { BackHandler, Pressable, ScrollView, StyleSheet, Text, View } from 'reac
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { Map as MapIcon, Search, X } from 'lucide-react-native';
+import { Map as MapIcon, Search, X, LayoutGrid, DoorOpen, Route as RouteIcon, Tent } from 'lucide-react-native';
 
 import { RootStackParamList } from '../../navigation/RootNavigator';
 import { useAppStore } from '../../store/useAppStore';
@@ -17,7 +17,16 @@ import { DestinationCategoryId, PublicDestinationsService } from '../../services
 import { SearchBarField } from '../components/common/SearchBarField';
 import { DestinationRow } from '../components/directory/DestinationRow';
 import { DestinationBlockGrid } from '../components/directory/DestinationBlockGrid';
-import { radii, spacing, staticColors, typography } from '../../theme';
+import { IjtemaMark } from '../components/common/IjtemaMark';
+import { TentSkyline } from '../components/common/TentSkyline';
+import { premium, radii, spacing, typography } from '../../theme';
+
+const CATEGORY_ICON: Record<DestinationCategoryId, typeof LayoutGrid> = {
+  blocks: LayoutGrid,
+  gates: DoorOpen,
+  rastas: RouteIcon,
+  special_routes: Tent,
+};
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'LocationsDirectory'>;
 
@@ -133,10 +142,13 @@ export function LocationsDirectoryScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
-      <View style={styles.header}>
-        <View style={styles.headerText}>
-          <Text style={styles.title}>Where do you want to go?</Text>
-          <Text style={styles.subtitle}>Find a block, gate, rasta, or route on the ground.</Text>
+      <View style={styles.brandHeader}>
+        <View style={styles.brandIdentity}>
+          <IjtemaMark size={28} />
+          <View>
+            <Text style={styles.brandTitle}>Karachi Ijtema</Text>
+            <Text style={styles.brandSubtitle}>NAVIGATION</Text>
+          </View>
         </View>
         <Pressable
           style={styles.viewMapButton}
@@ -144,13 +156,21 @@ export function LocationsDirectoryScreen() {
           accessibilityRole="button"
           accessibilityLabel="View map"
         >
-          <MapIcon size={18} color={staticColors.info} />
+          <MapIcon size={18} color={premium.primary} />
           <Text style={styles.viewMapLabel}>Map</Text>
         </Pressable>
       </View>
 
+      <View style={styles.hero}>
+        <TentSkyline width={160} height={100} style={styles.heroIllustration} />
+        <View style={styles.headerText}>
+          <Text style={styles.title}>Where do you want to go?</Text>
+          <Text style={styles.subtitle}>Find a block, gate, rasta, or route on the ground.</Text>
+        </View>
+      </View>
+
       <View style={styles.searchWrap}>
-        <Search size={18} color={staticColors.iconMuted} style={styles.searchIcon} />
+        <Search size={18} color={premium.primary} style={styles.searchIcon} />
         <SearchBarField
           value={query}
           onChangeText={setQuery}
@@ -167,7 +187,7 @@ export function LocationsDirectoryScreen() {
             accessibilityLabel="Clear search"
             hitSlop={8}
           >
-            <X size={18} color={staticColors.iconMuted} />
+            <X size={18} color={premium.textMuted} />
           </Pressable>
         )}
       </View>
@@ -178,20 +198,23 @@ export function LocationsDirectoryScreen() {
         style={styles.chipsRow}
         contentContainerStyle={styles.chipsContent}
       >
-        {categories.map((category) => (
-          <Pressable
-            key={category.id}
-            style={[styles.chip, activeCategory === category.id && styles.chipActive]}
-            onPress={() => handleCategoryPress(category.id)}
-            accessibilityRole="button"
-            accessibilityLabel={category.label}
-            accessibilityState={{ selected: activeCategory === category.id }}
-          >
-            <Text style={[styles.chipText, activeCategory === category.id && styles.chipTextActive]}>
-              {category.label}
-            </Text>
-          </Pressable>
-        ))}
+        {categories.map((category) => {
+          const ChipIcon = CATEGORY_ICON[category.id];
+          const isActive = activeCategory === category.id;
+          return (
+            <Pressable
+              key={category.id}
+              style={[styles.chip, isActive && styles.chipActive]}
+              onPress={() => handleCategoryPress(category.id)}
+              accessibilityRole="button"
+              accessibilityLabel={category.label}
+              accessibilityState={{ selected: isActive }}
+            >
+              <ChipIcon size={16} color={isActive ? premium.card : premium.textMuted} />
+              <Text style={[styles.chipText, isActive && styles.chipTextActive]}>{category.label}</Text>
+            </Pressable>
+          );
+        })}
       </ScrollView>
 
       <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
@@ -204,26 +227,52 @@ export function LocationsDirectoryScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: staticColors.white,
+    backgroundColor: premium.canvas,
   },
-  header: {
+  brandHeader: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: spacing.xl,
     paddingTop: spacing.lg,
-    gap: spacing.md,
+  },
+  brandIdentity: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  brandTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: premium.textPrimary,
+  },
+  brandSubtitle: {
+    fontSize: 11,
+    fontWeight: '600',
+    letterSpacing: 1,
+    color: premium.textMuted,
+  },
+  hero: {
+    paddingHorizontal: spacing.xl,
+    paddingTop: spacing.lg,
+  },
+  heroIllustration: {
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    opacity: 0.55,
   },
   headerText: {
-    flex: 1,
+    maxWidth: '70%',
   },
   title: {
     ...typography.sheet.title,
     fontSize: 24,
+    color: premium.textPrimary,
   },
   subtitle: {
     ...typography.sheet.body,
-    color: staticColors.textMuted,
+    color: premium.textMuted,
     marginTop: spacing.xs,
   },
   viewMapButton: {
@@ -241,12 +290,12 @@ const styles = StyleSheet.create({
     // at the call site (see radii.ts), not used as a bare literal — radii.xxl still
     // renders a full pill at this ~36dp height without relying on the sentinel value.
     borderRadius: radii.xxl,
-    backgroundColor: staticColors.infoBackground,
+    backgroundColor: premium.mint,
   },
   viewMapLabel: {
     fontSize: 14,
     fontWeight: '600',
-    color: staticColors.info,
+    color: premium.primary,
   },
   searchWrap: {
     marginTop: spacing.lg,
@@ -261,6 +310,9 @@ const styles = StyleSheet.create({
   searchInput: {
     paddingLeft: 44,
     paddingRight: 44,
+    backgroundColor: premium.card,
+    borderColor: premium.border,
+    color: premium.textPrimary,
   },
   clearButton: {
     position: 'absolute',
@@ -290,28 +342,30 @@ const styles = StyleSheet.create({
     // 36) also meets Android's minimum touch target — still a static, non-content-driven
     // value, so the race-avoidance property above holds.
     minHeight: 48,
+    flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
+    gap: spacing.xs,
     paddingHorizontal: spacing.lg,
     // See viewMapButton above — radii.pill (999) is meant to be applied as
     // Math.min(height, width) / 2, not used as a bare literal on a ~36dp chip.
     borderRadius: radii.xxl,
-    backgroundColor: staticColors.white,
+    backgroundColor: premium.card,
     borderWidth: 1,
-    borderColor: staticColors.border,
+    borderColor: premium.border,
   },
   chipActive: {
-    backgroundColor: staticColors.info,
-    borderColor: staticColors.info,
+    backgroundColor: premium.primary,
+    borderColor: premium.primary,
   },
   chipText: {
     fontSize: 14,
     lineHeight: 20,
     fontWeight: '500',
-    color: staticColors.textPrimary,
+    color: premium.textPrimary,
   },
   chipTextActive: {
-    color: staticColors.white,
+    color: premium.card,
     fontWeight: '700',
   },
   scrollContent: {
@@ -323,15 +377,13 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 13,
     fontWeight: '700',
-    color: staticColors.iconMuted,
+    color: premium.textMuted,
     textTransform: 'uppercase',
     letterSpacing: 0.4,
     paddingHorizontal: spacing.xl,
     marginBottom: spacing.sm,
   },
-  sectionRows: {
-    backgroundColor: staticColors.white,
-  },
+  sectionRows: {},
   emptyState: {
     paddingHorizontal: spacing.xl,
     paddingTop: spacing.xxl,
@@ -340,12 +392,12 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: staticColors.textPrimary,
+    color: premium.textPrimary,
     textAlign: 'center',
   },
   emptyHint: {
     fontSize: 14,
-    color: staticColors.textMuted,
+    color: premium.textMuted,
     textAlign: 'center',
     marginTop: spacing.sm,
   },
