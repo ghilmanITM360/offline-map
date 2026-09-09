@@ -9,7 +9,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { ChevronRight } from 'lucide-react-native';
 import { useWelcomeViewModel } from '../../viewmodels/WelcomeViewModel';
-import { IjtemaMark } from '../components/common/IjtemaMark';
+import { WelcomeHeroIcon } from '../components/common/WelcomeHeroIcon';
 import { TentSkyline } from '../components/common/TentSkyline';
 import { premium, radii, spacing } from '../../theme';
 
@@ -22,14 +22,14 @@ export function WelcomeScreen() {
       <ScrollView contentContainerStyle={styles.contentContainer}>
         <View style={styles.content}>
           <View style={styles.markWrap}>
-            <IjtemaMark size={72} />
+            <WelcomeHeroIcon size={84} />
           </View>
           <Text style={styles.urduTitle}>اجتماع</Text>
           <Text style={styles.title}>Karachi Ijtema</Text>
           <Text style={styles.subtitle}>Offline Navigation</Text>
           <Text style={styles.description}>Find blocks, gates, rastas and facilities with ease.</Text>
 
-          <TentSkyline width={260} height={150} style={styles.illustration} />
+          <TentSkyline width={280} height={170} style={styles.illustration} />
 
           <Pressable
             style={({ pressed }) => [styles.cta, pressed && styles.ctaPressed]}
@@ -65,38 +65,39 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   markWrap: {
-    marginBottom: spacing.lg,
-  },
-  urduTitle: {
-    fontSize: 34,
-    fontWeight: '700',
-    color: premium.primary,
     marginBottom: spacing.sm,
   },
+  urduTitle: {
+    fontSize: 58,
+    lineHeight: 68,
+    fontWeight: '700',
+    color: premium.primary,
+    marginBottom: spacing.xs,
+  },
   title: {
-    fontSize: 26,
+    fontSize: 24,
     fontWeight: '800',
     color: premium.textPrimary,
     textAlign: 'center',
   },
   subtitle: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
     color: premium.textMuted,
     textAlign: 'center',
     marginTop: 2,
   },
   description: {
-    fontSize: 15,
-    lineHeight: 22,
+    fontSize: 14,
+    lineHeight: 20,
     color: premium.textMuted,
     textAlign: 'center',
-    marginTop: spacing.md,
+    marginTop: spacing.sm,
     maxWidth: 280,
   },
   illustration: {
-    marginTop: spacing.xl,
-    marginBottom: spacing.xl,
+    marginTop: spacing.lg,
+    marginBottom: spacing.lg,
   },
   cta: {
     minHeight: CTA_HEIGHT,
