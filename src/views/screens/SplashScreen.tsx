@@ -16,9 +16,12 @@ import { OnboardingStatusService } from '../../services/OnboardingStatusService'
 import { StartupManager } from '../../services/StartupManager';
 import { RootStackParamList } from '../../navigation/RootNavigator';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { staticColors } from '../../theme';
+import { staticColors, premium } from '../../theme';
 
-export const SPLASH_BACKGROUND_COLOR = staticColors.arrivalGreen;
+// Coordinated with the premium Welcome screen's brand teal (`premium.primary`) and
+// app.json's native splash `backgroundColor` — the same green/teal carries through
+// native splash → this loading screen → Welcome, so there's no color flash between them.
+export const SPLASH_BACKGROUND_COLOR = premium.primary;
 
 export function SplashScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();

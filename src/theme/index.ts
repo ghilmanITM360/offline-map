@@ -5,6 +5,8 @@
 
 export { staticColors, themeColors } from './colors';
 export type { StaticColorToken } from './colors';
+export { premium } from './premium';
+export type { PremiumColorToken } from './premium';
 export { typography } from './typography';
 export { spacing } from './spacing';
 export type { SpacingToken } from './spacing';
