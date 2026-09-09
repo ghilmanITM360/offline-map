@@ -63,6 +63,24 @@ assert(
   'ETA must remain stable during stationary jitter',
 );
 
+// AUD-12: once remainingDistanceM is genuinely 0, etaMinutes must be exactly 0 before any
+// smoothing — a stale previousEtaMinutes of 1 must not survive the "within 1 minute, keep the
+// old value" stability smoothing and freeze the display at "1 min" while 0m remain.
+const destinationCoord = activeRoute.coordinates[activeRoute.coordinates.length - 1];
+const arrivedProgress = calculateNavigationProgressV2({
+  route: activeRoute,
+  coordinate: { ...destinationCoord, accuracy: 8 },
+  previousProgressMeters: activeRoute.totalDistanceM,
+  previousEtaMinutes: 1,
+  walkingSpeedMs: 1.4,
+});
+assert.equal(arrivedProgress.remainingDistanceM, 0, 'Setup: remaining distance must be exactly 0 at destination');
+assert.equal(
+  arrivedProgress.etaMinutes,
+  0,
+  'AUD-12: ETA must be exactly 0 once remaining distance is 0, never a stale smoothed "1 min"',
+);
+
 assert.equal(
   shouldIgnorePoorAccuracyMovementV2({ movedDistanceM: 6, accuracyM: 65 }),
   true,

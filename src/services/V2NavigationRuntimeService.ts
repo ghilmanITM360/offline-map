@@ -144,9 +144,13 @@ export function calculateNavigationProgressV2(input: NavigationProgressV2Input):
   return {
     progressMeters,
     remainingDistanceM,
-    etaMinutes: input.previousEtaMinutes && Math.abs(input.previousEtaMinutes - etaMinutes) <= 1
-      ? input.previousEtaMinutes
-      : etaMinutes,
+    // AUD-12: a stale previousEtaMinutes of 1 must never survive the stability smoothing below
+    // once distance has genuinely hit 0 — arrival is the terminal source of truth for ETA.
+    etaMinutes: remainingDistanceM === 0
+      ? 0
+      : input.previousEtaMinutes && Math.abs(input.previousEtaMinutes - etaMinutes) <= 1
+        ? input.previousEtaMinutes
+        : etaMinutes,
     snappedCoordinate: projection.snappedCoordinate,
     distanceToRouteMeters: projection.distanceToRouteMeters,
   };
