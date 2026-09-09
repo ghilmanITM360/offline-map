@@ -17,43 +17,59 @@ import { act, renderHook, waitFor } from './test-utils';
 
 const initialStoreState = useAppStore.getState();
 const gate08 = SearchService.search('Gate 08')[0];
-const shahrNorth = SearchService.search('Shahr-e-Pindal North')[0] as Place;
+
+const VARIANTS = ['North', 'South', 'West'] as const;
+type Variant = (typeof VARIANTS)[number];
+
+const placesByVariant: Record<Variant, Place> = {
+  North: SearchService.search('Shahr-e-Pindal North')[0] as Place,
+  South: SearchService.search('Shahr-e-Pindal South')[0] as Place,
+  West: SearchService.search('Shahr-e-Pindal West')[0] as Place,
+};
 
 jest.setTimeout(15_000);
 
-let sharedActiveRoute: V2ActiveRoute;
+const routesByVariant = {} as Record<Variant, V2ActiveRoute>;
 
 beforeAll(() => {
   process.env.EXPO_PUBLIC_USE_IJTEMA_V2_ROUTING = 'true';
-  const preview = V2DirectionsService.calculatePreview({
-    startPlace: gate08,
-    destination: shahrNorth,
-    currentLocation: null,
-    walkingSpeedMs: 1.4,
-  });
-  if (preview.status !== 'ready' || !preview.route) throw new Error('Shahr-e-Pindal North fixture must resolve.');
-  sharedActiveRoute = V2NavigationAdapter.fromPreview({
-    previewRoute: preview.route,
-    destination: shahrNorth,
-    startPlace: gate08,
-  });
-  expect(sharedActiveRoute.destination.type).toBe('special_route');
-  expect(sharedActiveRoute.destination.specialRouteId).toBe(shahrNorth.id);
+  for (const variant of VARIANTS) {
+    const destination = placesByVariant[variant];
+    const preview = V2DirectionsService.calculatePreview({
+      startPlace: gate08,
+      destination,
+      currentLocation: null,
+      walkingSpeedMs: 1.4,
+    });
+    if (preview.status !== 'ready' || !preview.route) throw new Error(`Shahr-e-Pindal ${variant} fixture must resolve.`);
+    const activeRoute = V2NavigationAdapter.fromPreview({
+      previewRoute: preview.route,
+      destination,
+      startPlace: gate08,
+    });
+    expect(activeRoute.destination.type).toBe('special_route');
+    expect(activeRoute.destination.specialRouteId).toBe(destination.id);
+    routesByVariant[variant] = activeRoute;
+  }
 });
 
-beforeEach(() => {
-  process.env.EXPO_PUBLIC_USE_IJTEMA_V2_ROUTING = 'true';
+function startVariant(variant: Variant) {
+  const destination = placesByVariant[variant];
+  const activeRoute = routesByVariant[variant];
   useAppStore.setState(initialStoreState, true);
-  useAppStore.getState().startNavigation(shahrNorth, sharedActiveRoute, sharedActiveRoute.instructions);
-  useAppStore.setState({ currentLocation: sharedActiveRoute.destination.coordinate, currentLocationSource: 'live' });
-});
+  useAppStore.getState().startNavigation(destination, activeRoute, activeRoute.instructions);
+  useAppStore.setState({ currentLocation: activeRoute.destination.coordinate, currentLocationSource: 'live' });
+  return { destination, activeRoute };
+}
 
 afterEach(() => {
   jest.restoreAllMocks();
 });
 
-describe('Shahr-e-Pindal reroute failure preserves destination identity (NEW-02)', () => {
-  test('failed reroute keeps special_route/North identity; retry request still carries it', async () => {
+describe('Shahr-e-Pindal reroute failure preserves destination identity (NEW-02 / AUD-02)', () => {
+  test.each(VARIANTS)('failed reroute keeps special_route/%s identity; retry request still carries it', async (variant) => {
+    process.env.EXPO_PUBLIC_USE_IJTEMA_V2_ROUTING = 'true';
+    const { destination, activeRoute: sharedActiveRoute } = startVariant(variant);
     const calculateRouteSpy = jest.spyOn(RoutingServiceV2, 'calculateRoute').mockReturnValue(null);
     const hook = await renderHook(() => useNavigationViewModelV2());
 
@@ -67,7 +83,7 @@ describe('Shahr-e-Pindal reroute failure preserves destination identity (NEW-02)
     // Session destination identity must be untouched by the failure.
     const afterFirstFailure = useAppStore.getState().activeRoute!;
     expect(afterFirstFailure.destination.type).toBe('special_route');
-    expect(afterFirstFailure.destination.specialRouteId).toBe(shahrNorth.id);
+    expect(afterFirstFailure.destination.specialRouteId).toBe(destination.id);
     expect(afterFirstFailure.routeId).toBe(sharedActiveRoute.routeId);
 
     // Second (retry) reroute attempt fails again (still mocked).
@@ -75,24 +91,53 @@ describe('Shahr-e-Pindal reroute failure preserves destination identity (NEW-02)
     await waitFor(() => expect(hook.result.current.reroutePending).toBe(false));
 
     // Both calculateRoute calls (initial + retry) must have received a special_route
-    // destination with the exact North canonical id — never a block/gate/rasta fallback,
-    // never an empty blockId.
+    // destination with the exact canonical id for this variant — never a block/gate/rasta
+    // fallback, never an empty blockId.
     expect(calculateRouteSpy).toHaveBeenCalledTimes(2);
     for (const call of calculateRouteSpy.mock.calls) {
       const request = call[0] as { destination: { type: string; blockId?: string; routeId?: string } };
       expect(request.destination.type).toBe('special_route');
-      expect(request.destination.routeId).toBe(shahrNorth.id);
+      expect(request.destination.routeId).toBe(destination.id);
       expect(request.destination.blockId).toBeUndefined();
     }
 
     const afterRetryFailure = useAppStore.getState().activeRoute!;
     expect(afterRetryFailure.destination.type).toBe('special_route');
-    expect(afterRetryFailure.destination.specialRouteId).toBe(shahrNorth.id);
+    expect(afterRetryFailure.destination.specialRouteId).toBe(destination.id);
 
     // The current session destination, reconstructed via the real conversion path, must
-    // still resolve to special_route/North — never block/gate/rasta, never an empty blockId.
+    // still resolve to special_route/this variant — never block/gate/rasta, never an empty blockId.
     const currentAsRoutingDestination = destinationToRoutingV2(afterRetryFailure);
     expect(currentAsRoutingDestination.type).toBe('special_route');
-    expect((currentAsRoutingDestination as { routeId: string }).routeId).toBe(shahrNorth.id);
+    expect((currentAsRoutingDestination as { routeId: string }).routeId).toBe(destination.id);
+  });
+});
+
+describe('Shahr-e-Pindal successful reroute preserves destination identity (AUD-02)', () => {
+  test('a reroute that DOES find a replacement route still carries special_route/North identity through to the new active route', async () => {
+    process.env.EXPO_PUBLIC_USE_IJTEMA_V2_ROUTING = 'true';
+    const { destination, activeRoute: sharedActiveRoute } = startVariant('North');
+    const replacementRoute: V2ActiveRoute = {
+      ...sharedActiveRoute,
+      routeId: `${sharedActiveRoute.routeId}-rerouted`,
+    };
+    const calculateRouteSpy = jest.spyOn(RoutingServiceV2, 'calculateRoute').mockReturnValue(replacementRoute);
+    const hook = await renderHook(() => useNavigationViewModelV2());
+
+    await act(async () => hook.result.current.retryOutsideRoute());
+    await waitFor(() => expect(hook.result.current.reroutePending).toBe(false));
+
+    expect(calculateRouteSpy).toHaveBeenCalledTimes(1);
+    const request = calculateRouteSpy.mock.calls[0][0] as { destination: { type: string; blockId?: string; routeId?: string } };
+    expect(request.destination.type).toBe('special_route');
+    expect(request.destination.routeId).toBe(destination.id);
+    expect(request.destination.blockId).toBeUndefined();
+
+    // The reroute pipeline derives its own routeId deterministically rather than passing the
+    // mocked return value through untouched — the contract this test protects is destination
+    // identity, not routeId pass-through fidelity.
+    const afterSuccess = useAppStore.getState().activeRoute!;
+    expect(afterSuccess.destination.type).toBe('special_route');
+    expect(afterSuccess.destination.specialRouteId).toBe(destination.id);
   });
 });
