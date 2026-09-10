@@ -68,9 +68,34 @@ FIELD-BLOCKED / other PR #26 items: unchanged, not re-checked this session.
 1. Phase 0D-A is committed and pushed (`e57d0ab18c0734e57602553c2b9ed05f8b9ccbb9`) — no further action needed.
 2. Phase 0E-B (Case 4/5 cold-offline and mid-navigation network loss) is next, pending a fresh task instruction. Not started.
 
+## Phase 0E-B (Case 5 / Case 4 runtime closure) — attempted, BLOCKED
+
+Updated: 2026-09-10T17:50:00+05:00
+
+### Build provenance
+Release-like (debug-signed, non-distributable) APK: `cd android && ./gradlew assembleRelease -PallowInsecureReleaseSigning=true --console=plain`, BUILD SUCCESSFUL, from source commit `e35c395a5626a7e190db68c73b849009e41249ee` (current HEAD, unchanged). Installed as `com.aicrafted.karachiijtema` on emulator `Pixel_7_Pro_API_36` (`emulator-5554`). Metro confirmed not running throughout.
+
+### Case 5 — PARTIAL, then BLOCKED (ENVIRONMENT-BLOCKED)
+RUNTIME VERIFIED clean through: cold offline launch (airplane-mode-equivalent, no Metro, no crash), permission flow, offline Home map, offline Locations Directory (42 blocks) + search, Block 28 selection, automatic B2-fallback origin resolution, offline Route Preview (correct "15 min | 1.2 km", correct fallback disclosure text).
+
+Blocked at **Start Navigation**: the button (verified via `uiautomator` bounds, confirmed clickable, not disabled, correctly rendered) stopped responding to taps across many repeated attempts, coordinate variations, hold-duration variations, and a full app relaunch — while sibling controls on the same screen (header back button, Cancel-route confirmation dialog) remained tappable. Investigated via code reading (`LocationSheet.tsx`, `HomeScreen.tsx` `activePreviewRoute`/`isV2PreviewRoute` gating, `Button.tsx`) and a disposable isolated script re-verifying `V2DirectionsService.calculatePreview()` for this exact B2→Block28 scenario — the route object and `isV2PreviewRoute` type-guard both check out correct; no app-logic defect found. A full `adb reboot` of the emulator was then attempted to rule out session/environment drift, but **Android's own SystemUI process itself began ANR'ing post-reboot** ("System UI isn't responding"), independent of our app. Host diagnostics at that point: ~65MB free host memory (`vm_stat`), load average ~11 (`uptime`) — severe host resource exhaustion. This is the most likely root cause of the tap/touch anomalies (RNGH/BottomSheetScrollView touch arbitration starved of timely main-thread response), not an application defect. No production code was changed.
+
+An earlier sub-session (same overall task, pre-compaction) had reached Active Navigation successfully with this exact flow and fed real route-derived GPS fixes via `adb emu geo fix`, surfacing a separate, still-open, unexplained anomaly: an apparent premature "Arrive / 0 min / 0 m" state after only ~15-27% route progress. Isolated reproduction of the exact same production functions (`RerouteService.projectProgressMetersOnRoute`, `calculateNavigationProgressV2`, `evaluateArrivalFixV2`) with the same real inputs produced correct non-arrival results in every case — this discrepancy is **not yet root-caused** and was not re-reachable this session due to the environment blocker above.
+
+**Verdict: BLOCKED** (environment-level; not a reproduced app defect). Cannot mark PASS (Arrival/Done/cleanup never reached) or FAIL (no confirmed app-code defect).
+
+### Case 4 — NOT VERIFIED
+Not attempted — depends on first re-establishing Active Navigation, which Case 5's blocker prevented.
+
+### Files changed this session
+None (production code). Investigation only; all temporary scripts created at the repo root were deleted before completion (`git status --short` clean, verified above).
+
+### Tests / checks run
+None beyond the disposable isolated script noted above (not a committed test). No production code changed, so per task instructions the full suite was not rerun.
+
 ## Exact Next Action
 
-Await a fresh task instruction to begin Phase 0E-B (Case 4/5 cold-offline and mid-navigation network loss). Not started yet.
+Retry Phase 0E-B Case 5 (resume at "Start Navigation" on the B2→Block28 Route Preview screen) on a host with adequate free memory/CPU headroom — current host was at ~65MB free / load average ~11, which correlated with Android's own SystemUI ANR'ing independent of this app. If Start Navigation responds normally under healthy host conditions, proceed directly to the single-fix GPS bisection test to root-cause the still-open premature-arrival anomaly described above before declaring a Case 5 verdict. Case 4 remains entirely not started.
 
 ## Git / PR
 
