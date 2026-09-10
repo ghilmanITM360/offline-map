@@ -8,14 +8,14 @@ Path: `/Users/ghilmanislam360/GhilmanProjects/offline-map-core-fix`
 Remote: `https://github.com/ghilmanITM360/offline-map.git` (`ghilmanITM360/offline-map`)
 Worktree: `offline-map-core-fix` at the path above.
 Branch: `fix/core-functionality-finalization`
-HEAD: `974d2070738f79a41794a42929f710289f7e122e` at session start; Phase 0D-A changes below are UNCOMMITTED working-tree edits on top of it (no commit made — CLAUDE.md commit policy requires explicit request).
-Upstream: `origin/fix/core-functionality-finalization` (working tree is ahead of upstream by these uncommitted edits only).
-Dirty: yes — 5 files modified, see Changed Files below. `git status --short --branch` confirms.
+Phase 0D-A implementation commit: `e57d0ab18c0734e57602553c2b9ed05f8b9ccbb9` (`fix: gate dimension-dependent camera commands on layout readiness`), pushed to `origin/fix/core-functionality-finalization`. This identifies the commit that landed the changes below — not a claim about current repository HEAD, which will move as this branch continues.
+Upstream: `origin/fix/core-functionality-finalization` — up to date, no divergence.
+Dirty: no — working tree was clean after the Phase 0D-A push.
 PR: [#26](https://github.com/ghilmanITM360/offline-map/pull/26), OPEN/DRAFT, targeting `integration/ux-simplification-final`. Not touched this session.
 
 ## Current Objective
 
-Phase 0D-A: Map camera layout-readiness race (`Map size can't be 0`). **CODE-LEVEL AND RUNTIME VERIFIED complete** this session. Phase 0E-B (Case 4/5 cold-offline and mid-navigation network loss) is next but explicitly out of scope for this task — do not start it without a fresh instruction.
+Phase 0D-A: Map camera layout-readiness race (`Map size can't be 0`). **CODE-LEVEL AND RUNTIME VERIFIED complete, committed, and pushed** (`e57d0ab18c0734e57602553c2b9ed05f8b9ccbb9`). Phase 0E-B (Case 4/5 cold-offline and mid-navigation network loss) is the next planned task but has not started — pending a fresh task instruction.
 
 ## Root Cause (CODE-LEVEL VERIFIED)
 
@@ -60,24 +60,24 @@ Not separately re-verified this session (unaffected by this change, already know
 ## Open Defects / Blockers
 
 P1 (this task): **RESOLVED, CODE-LEVEL AND RUNTIME VERIFIED.** No reproduced `Map size can't be 0` in any exercised scenario.
-OWNER/EXTERNAL (pre-existing, unrelated, still open): Google Maps basemap intermittently unavailable in this environment ("Base map unavailable. Offline venue map still works." / GRAPH_ONLY fallback) — consistent with the previously-documented Maps API billing issue (ROTATION UNKNOWN — OWNER ACTION REQUIRED). Not touched; out of scope for Phase 0D-A.
+OWNER/EXTERNAL (pre-existing, unrelated, still open): Google Maps basemap intermittently unavailable in this environment ("Base map unavailable. Offline venue map still works." / GRAPH_ONLY fallback). This is a reported basemap-unavailable issue only — a Maps API billing cause has been suggested previously but is NOT verified as root cause (OWNER ACTION REQUIRED to investigate/confirm). Not touched; out of scope for Phase 0D-A.
 FIELD-BLOCKED / other PR #26 items: unchanged, not re-checked this session.
 
 ## Remaining
 
-1. Commit/push this Phase 0D-A fix once the owner reviews and explicitly authorizes (not done automatically per `CLAUDE.md` commit policy).
-2. Phase 0E-B (Case 4/5 cold-offline and mid-navigation network loss) is next, on request only.
+1. Phase 0D-A is committed and pushed (`e57d0ab18c0734e57602553c2b9ed05f8b9ccbb9`) — no further action needed.
+2. Phase 0E-B (Case 4/5 cold-offline and mid-navigation network loss) is next, pending a fresh task instruction. Not started.
 
 ## Exact Next Action
 
-Owner reviews the uncommitted Phase 0D-A diff (`git diff` on the 5 files above) and either authorizes a commit/push, or requests changes.
+Await a fresh task instruction to begin Phase 0E-B (Case 4/5 cold-offline and mid-navigation network loss). Not started yet.
 
 ## Git / PR
 
-Commit status: NOT committed — working tree only, 5 files modified, nothing staged.
-Push status: not pushed; upstream unchanged.
-PR status: #26 untouched (OPEN/DRAFT). Not merged, retargeted, closed, or auto-merge-enabled.
+Commit status: committed as `e57d0ab18c0734e57602553c2b9ed05f8b9ccbb9` (`fix: gate dimension-dependent camera commands on layout readiness`).
+Push status: pushed to `origin/fix/core-functionality-finalization`; working tree clean after push.
+PR status: #26 untouched (OPEN/DRAFT). Not merged, retargeted, closed, or auto-merge-enabled by this task.
 
 ## Verdict
 
-Phase 0D-A camera-readiness race: root cause identified from source (react-native-maps Android internals), minimal fix implemented in `useCameraManager.ts` only, RED→GREEN regression suite added, full test suite green, typecheck/lint clean, and RUNTIME VERIFIED clean across all requested scenarios on a real emulator build from this working tree. Awaiting owner review before commit/push.
+Phase 0D-A camera-readiness race: root cause identified from source (react-native-maps Android internals), minimal fix implemented in `useCameraManager.ts` only, RED→GREEN regression suite added, full test suite green, typecheck/lint clean, and RUNTIME VERIFIED clean across all requested scenarios on a real emulator build from this working tree. Committed and pushed as `e57d0ab18c0734e57602553c2b9ed05f8b9ccbb9`. Phase 0E-B has not started; awaiting a fresh task instruction.
