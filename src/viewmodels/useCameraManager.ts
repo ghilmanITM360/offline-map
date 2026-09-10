@@ -65,6 +65,57 @@ export function useCameraManager({ mapRef }: Params) {
     setMode(next);
   }, []);
 
+  // Dimension-dependent commands (animateToRegion/fitToCoordinates, used below by
+  // animateToUser/animateToPlace/fitVenueBounds/fitRoute) reach a native
+  // newLatLngBounds() call that throws "Map size can't be 0" if issued before the
+  // map view has both fired native onMapReady AND been measured with a non-zero
+  // layout size — the two signals are independent and either can arrive first.
+  // Local refs (not state) so a remount starts genuinely unready rather than
+  // inheriting a previous mount's readiness.
+  const nativeMapReadyRef = useRef(false);
+  const layoutSizeRef = useRef({ width: 0, height: 0 });
+  const pendingIntentRef = useRef<(() => void) | null>(null);
+
+  const isCameraReady = useCallback(
+    () => nativeMapReadyRef.current && layoutSizeRef.current.width > 0 && layoutSizeRef.current.height > 0,
+    [],
+  );
+
+  const flushPendingIntent = useCallback(() => {
+    if (!isCameraReady() || !pendingIntentRef.current) return;
+    const intent = pendingIntentRef.current;
+    pendingIntentRef.current = null;
+    intent();
+  }, [isCameraReady]);
+
+  // Callers never lose an intent issued too early — the latest one simply
+  // supersedes whatever was still pending, mirroring how a real camera only ever
+  // has one "next destination" in flight.
+  const runWhenReady = useCallback(
+    (intent: () => void) => {
+      if (isCameraReady()) {
+        intent();
+        return;
+      }
+      pendingIntentRef.current = intent;
+    },
+    [isCameraReady],
+  );
+
+  const notifyNativeMapReady = useCallback(() => {
+    if (nativeMapReadyRef.current) return;
+    nativeMapReadyRef.current = true;
+    flushPendingIntent();
+  }, [flushPendingIntent]);
+
+  const notifyMapLayout = useCallback(
+    (width: number, height: number) => {
+      layoutSizeRef.current = { width, height };
+      flushPendingIntent();
+    },
+    [flushPendingIntent],
+  );
+
   // Sheet-aware camera offset inputs — same safe-area/frame primitives useOverlayInsets.ts
   // already establishes as the single source of truth for "how much of the screen is
   // covered right now", reused here instead of a second ad hoc measurement.
@@ -73,12 +124,14 @@ export function useCameraManager({ mapRef }: Params) {
 
   const animateToUser = useCallback(
     (coord: Coordinate, duration = 1000) => {
-      mapRef.current?.animateToRegion(
-        { latitude: coord.latitude, longitude: coord.longitude, latitudeDelta: USER_ZOOM_DELTA, longitudeDelta: USER_ZOOM_DELTA },
-        duration,
-      );
+      runWhenReady(() => {
+        mapRef.current?.animateToRegion(
+          { latitude: coord.latitude, longitude: coord.longitude, latitudeDelta: USER_ZOOM_DELTA, longitudeDelta: USER_ZOOM_DELTA },
+          duration,
+        );
+      });
     },
-    [mapRef],
+    [mapRef, runWhenReady],
   );
 
   const animateToPlace = useCallback(
@@ -88,6 +141,7 @@ export function useCameraManager({ mapRef }: Params) {
       duration = PLACE_SELECTION_CAMERA_DURATION_MS,
     ) => {
       if (!place.coordinate) return;
+      const coordinate = place.coordinate;
       const windowHeight = frame.height || 1;
       const sheetHeightPx = clamp(sheetCoverageFraction, 0, 1) * windowHeight;
       // Top clearance mirrors the same OVERLAY_CONTROL_GAP used to keep floating controls
@@ -102,39 +156,45 @@ export function useCameraManager({ mapRef }: Params) {
         MARKER_SCREEN_FRACTION_MIN,
         MARKER_SCREEN_FRACTION_MAX,
       );
-      mapRef.current?.animateToRegion(
-        {
-          // Screen fraction 0.5 (dead center) needs no shift; below 0.5 (marker pushed
-          // toward the top) needs the region center shifted south of the marker
-          // (northern-hemisphere latitudes here) so the marker renders further up-screen.
-          latitude: place.coordinate.latitude + PLACE_ZOOM_DELTA * (markerScreenFraction - 0.5),
-          longitude: place.coordinate.longitude,
-          latitudeDelta: PLACE_ZOOM_DELTA,
-          longitudeDelta: PLACE_ZOOM_DELTA,
-        },
-        duration,
-      );
-      setCameraMode('EXPLORING');
+      runWhenReady(() => {
+        mapRef.current?.animateToRegion(
+          {
+            // Screen fraction 0.5 (dead center) needs no shift; below 0.5 (marker pushed
+            // toward the top) needs the region center shifted south of the marker
+            // (northern-hemisphere latitudes here) so the marker renders further up-screen.
+            latitude: coordinate.latitude + PLACE_ZOOM_DELTA * (markerScreenFraction - 0.5),
+            longitude: coordinate.longitude,
+            latitudeDelta: PLACE_ZOOM_DELTA,
+            longitudeDelta: PLACE_ZOOM_DELTA,
+          },
+          duration,
+        );
+        setCameraMode('EXPLORING');
+      });
     },
-    [frame.height, insets.top, mapRef, setCameraMode],
+    [frame.height, insets.top, mapRef, runWhenReady, setCameraMode],
   );
 
   const fitVenueBounds = useCallback(
     (boundary: Coordinate[], edgePadding: EdgePadding = DEFAULT_BOUNDS_PADDING) => {
       if (boundary.length === 0) return;
-      mapRef.current?.fitToCoordinates(boundary, { edgePadding, animated: true });
-      setCameraMode('EXPLORING');
+      runWhenReady(() => {
+        mapRef.current?.fitToCoordinates(boundary, { edgePadding, animated: true });
+        setCameraMode('EXPLORING');
+      });
     },
-    [mapRef, setCameraMode],
+    [mapRef, runWhenReady, setCameraMode],
   );
 
   const fitRoute = useCallback(
     (coordinates: Coordinate[], edgePadding: EdgePadding = DEFAULT_ROUTE_PADDING) => {
       if (coordinates.length < 2) return;
-      mapRef.current?.fitToCoordinates(coordinates, { edgePadding, animated: true });
-      setCameraMode('ROUTE_PREVIEW');
+      runWhenReady(() => {
+        mapRef.current?.fitToCoordinates(coordinates, { edgePadding, animated: true });
+        setCameraMode('ROUTE_PREVIEW');
+      });
     },
-    [mapRef, setCameraMode],
+    [mapRef, runWhenReady, setCameraMode],
   );
 
   const followUser = useCallback(
@@ -212,6 +272,8 @@ export function useCameraManager({ mapRef }: Params) {
       resetCompass,
       rotateToHeading,
       nudgeZoom,
+      notifyNativeMapReady,
+      notifyMapLayout,
     }),
     [
       mode,
@@ -226,6 +288,8 @@ export function useCameraManager({ mapRef }: Params) {
       resetCompass,
       rotateToHeading,
       nudgeZoom,
+      notifyNativeMapReady,
+      notifyMapLayout,
     ],
   );
 }

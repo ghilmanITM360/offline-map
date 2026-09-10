@@ -23,6 +23,18 @@ const ROUTE_COORDS = [
   { latitude: 24.91, longitude: 67.11 },
   { latitude: 24.92, longitude: 67.12 },
 ];
+const BOUNDARY_COORDS = [
+  { latitude: 24.895, longitude: 67.095 },
+  { latitude: 24.905, longitude: 67.115 },
+];
+
+// Dimension-dependent commands (animateToRegion/fitToCoordinates) hit a native
+// "Map size can't be 0" exception if issued before the map has both native-ready
+// and a measured non-zero layout — see useCameraManager's readiness gate.
+function markCameraReady(result: { current: ReturnType<typeof useCameraManager> }) {
+  result.current.notifyNativeMapReady();
+  result.current.notifyMapLayout(390, 844);
+}
 
 describe('useCameraManager', () => {
   test('current location button flow (followUser) calls animateToUser and enters FOLLOWING_USER', async () => {
@@ -32,6 +44,7 @@ describe('useCameraManager', () => {
     expect(result.current.mode).toBe('IDLE');
 
     await act(() => {
+      markCameraReady(result);
       result.current.followUser(USER_COORD);
     });
 
@@ -46,7 +59,10 @@ describe('useCameraManager', () => {
     const mapRef = makeFakeMapRef();
     const { result } = await renderHook(() => useCameraManager({ mapRef }));
 
-    await act(() => result.current.followUser(USER_COORD));
+    await act(() => {
+      markCameraReady(result);
+      result.current.followUser(USER_COORD);
+    });
     expect(result.current.mode).toBe('FOLLOWING_USER');
 
     await act(() => result.current.stopFollowing());
@@ -58,6 +74,7 @@ describe('useCameraManager', () => {
     const { result } = await renderHook(() => useCameraManager({ mapRef }));
 
     await act(() => {
+      markCameraReady(result);
       result.current.animateToPlace(PLACE);
     });
 
@@ -78,6 +95,7 @@ describe('useCameraManager', () => {
     const { result } = await renderHook(() => useCameraManager({ mapRef }));
 
     await act(() => {
+      markCameraReady(result);
       result.current.animateToPlace(PLACE);
     });
 
@@ -89,6 +107,7 @@ describe('useCameraManager', () => {
   test('animateToPlace shifts the camera further north the more the sheet covers (bottom edge > center > top)', async () => {
     const mapRef = makeFakeMapRef();
     const { result } = await renderHook(() => useCameraManager({ mapRef }));
+    await act(() => markCameraReady(result));
 
     // "place near bottom edge" — sheet nearly full-screen (expanded snap point).
     await act(() => result.current.animateToPlace(PLACE, 0.92));
@@ -116,6 +135,7 @@ describe('useCameraManager', () => {
     const { result } = await renderHook(() => useCameraManager({ mapRef }));
 
     await act(() => {
+      markCameraReady(result);
       result.current.fitRoute(ROUTE_COORDS);
     });
 
@@ -146,5 +166,162 @@ describe('useCameraManager', () => {
 
     await act(() => result.current.exitNavigationCamera());
     expect(result.current.mode).toBe('EXPLORING');
+  });
+});
+
+// Phase 0D-A: dimension-dependent camera commands (animateToRegion/fitToCoordinates,
+// via animateToUser/animateToPlace/fitVenueBounds/fitRoute) hit a native
+// "Map size can't be 0" exception when issued before the map view has both fired
+// native onMapReady AND been measured with a non-zero layout size. useCameraManager is
+// the single camera-policy owner, so it gates those commands on
+// nativeMapReady && layoutWidth > 0 && layoutHeight > 0, queuing the latest pending
+// intent and releasing it exactly once when readiness becomes true. animateCamera-based
+// commands (enterNavigationCamera/resetCompass/rotateToHeading/nudgeZoom) don't need
+// bounds and stay ungated — covered above.
+describe('useCameraManager camera-readiness gate (Phase 0D-A)', () => {
+  test('onMapReady before positive layout: command queues, then fires once layout goes positive', async () => {
+    const mapRef = makeFakeMapRef();
+    const { result } = await renderHook(() => useCameraManager({ mapRef }));
+
+    await act(() => {
+      result.current.notifyNativeMapReady();
+      result.current.fitVenueBounds(BOUNDARY_COORDS);
+    });
+    expect(mapRef.current.fitToCoordinates).not.toHaveBeenCalled();
+
+    await act(() => {
+      result.current.notifyMapLayout(390, 844);
+    });
+    expect(mapRef.current.fitToCoordinates).toHaveBeenCalledTimes(1);
+    expect(mapRef.current.fitToCoordinates).toHaveBeenCalledWith(
+      BOUNDARY_COORDS,
+      expect.objectContaining({ animated: true }),
+    );
+  });
+
+  test('positive layout before onMapReady: command queues, then fires once native map is ready', async () => {
+    const mapRef = makeFakeMapRef();
+    const { result } = await renderHook(() => useCameraManager({ mapRef }));
+
+    await act(() => {
+      result.current.notifyMapLayout(390, 844);
+      result.current.animateToUser(USER_COORD);
+    });
+    expect(mapRef.current.animateToRegion).not.toHaveBeenCalled();
+
+    await act(() => {
+      result.current.notifyNativeMapReady();
+    });
+    expect(mapRef.current.animateToRegion).toHaveBeenCalledTimes(1);
+  });
+
+  test('zero-size layout does not release a queued camera command', async () => {
+    const mapRef = makeFakeMapRef();
+    const { result } = await renderHook(() => useCameraManager({ mapRef }));
+
+    await act(() => {
+      result.current.notifyNativeMapReady();
+      result.current.fitRoute(ROUTE_COORDS);
+    });
+    await act(() => result.current.notifyMapLayout(0, 844));
+    expect(mapRef.current.fitToCoordinates).not.toHaveBeenCalled();
+
+    await act(() => result.current.notifyMapLayout(390, 0));
+    expect(mapRef.current.fitToCoordinates).not.toHaveBeenCalled();
+  });
+
+  test('zero to positive layout releases the pending intent exactly once', async () => {
+    const mapRef = makeFakeMapRef();
+    const { result } = await renderHook(() => useCameraManager({ mapRef }));
+
+    await act(() => {
+      result.current.notifyNativeMapReady();
+      result.current.fitRoute(ROUTE_COORDS);
+      result.current.notifyMapLayout(0, 0);
+    });
+    expect(mapRef.current.fitToCoordinates).not.toHaveBeenCalled();
+
+    await act(() => result.current.notifyMapLayout(390, 844));
+    expect(mapRef.current.fitToCoordinates).toHaveBeenCalledTimes(1);
+    expect(result.current.mode).toBe('ROUTE_PREVIEW');
+  });
+
+  test('latest pending camera intent wins if several arrive before readiness', async () => {
+    const mapRef = makeFakeMapRef();
+    const { result } = await renderHook(() => useCameraManager({ mapRef }));
+
+    await act(() => {
+      result.current.fitVenueBounds(BOUNDARY_COORDS);
+      result.current.animateToUser(USER_COORD);
+      result.current.fitRoute(ROUTE_COORDS);
+    });
+    expect(mapRef.current.fitToCoordinates).not.toHaveBeenCalled();
+    expect(mapRef.current.animateToRegion).not.toHaveBeenCalled();
+
+    await act(() => markCameraReady(result));
+
+    // Only the last queued intent (fitRoute) actually reaches native — the earlier
+    // fitVenueBounds/animateToUser intents were superseded, not queued alongside it.
+    expect(mapRef.current.fitToCoordinates).toHaveBeenCalledTimes(1);
+    expect(mapRef.current.fitToCoordinates).toHaveBeenCalledWith(
+      ROUTE_COORDS,
+      expect.objectContaining({ animated: true }),
+    );
+    expect(mapRef.current.animateToRegion).not.toHaveBeenCalled();
+    expect(result.current.mode).toBe('ROUTE_PREVIEW');
+  });
+
+  test('already-ready camera operations still execute immediately, synchronously', async () => {
+    const mapRef = makeFakeMapRef();
+    const { result } = await renderHook(() => useCameraManager({ mapRef }));
+    await act(() => markCameraReady(result));
+
+    await act(() => result.current.fitVenueBounds(BOUNDARY_COORDS));
+
+    expect(mapRef.current.fitToCoordinates).toHaveBeenCalledTimes(1);
+  });
+
+  test('readiness does not cause duplicate camera execution on repeated ready/layout notifications', async () => {
+    const mapRef = makeFakeMapRef();
+    const { result } = await renderHook(() => useCameraManager({ mapRef }));
+
+    await act(() => {
+      result.current.notifyNativeMapReady();
+      result.current.fitVenueBounds(BOUNDARY_COORDS);
+      result.current.notifyMapLayout(390, 844);
+    });
+    expect(mapRef.current.fitToCoordinates).toHaveBeenCalledTimes(1);
+
+    // Native onLayout can fire repeatedly with the same/other positive sizes, and
+    // onMapReady-style signals could in principle re-fire — neither should replay
+    // the already-executed intent.
+    await act(() => {
+      result.current.notifyMapLayout(390, 844);
+      result.current.notifyMapLayout(400, 900);
+      result.current.notifyNativeMapReady();
+    });
+    expect(mapRef.current.fitToCoordinates).toHaveBeenCalledTimes(1);
+  });
+
+  test('remount does not reuse stale readiness from a previous mount', async () => {
+    const mapRefA = makeFakeMapRef();
+    const first = await renderHook(() => useCameraManager({ mapRef: mapRefA }));
+    await act(() => markCameraReady(first.result));
+    first.unmount();
+
+    const mapRefB = makeFakeMapRef();
+    const second = await renderHook(() => useCameraManager({ mapRef: mapRefB }));
+
+    await act(() => {
+      second.result.current.fitVenueBounds(BOUNDARY_COORDS);
+    });
+
+    // The fresh hook instance starts unready again — it must not inherit readiness
+    // (or fire immediately) just because a prior mount had already become ready.
+    expect(mapRefB.current.fitToCoordinates).not.toHaveBeenCalled();
+
+    await act(() => second.result.current.notifyNativeMapReady());
+    await act(() => second.result.current.notifyMapLayout(390, 844));
+    expect(mapRefB.current.fitToCoordinates).toHaveBeenCalledTimes(1);
   });
 });

@@ -114,6 +114,8 @@ function useFakeHomeViewModel(overrides: Record<string, unknown> = {}) {
       stopFollowing: cameraStopFollowingSpy,
       enterNavigationCamera: jest.fn(),
       exitNavigationCamera: jest.fn(),
+      notifyNativeMapReady: jest.fn(),
+      notifyMapLayout: jest.fn(),
     },
     mapType: 'standard' as const,
     selectedPlace: null,

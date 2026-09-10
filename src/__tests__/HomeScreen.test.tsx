@@ -162,6 +162,8 @@ function useFakeHomeViewModel() {
       stopFollowing: cameraStopFollowingSpy.mockImplementation(() => setCameraMode('EXPLORING')),
       enterNavigationCamera: jest.fn(),
       exitNavigationCamera: jest.fn(),
+      notifyNativeMapReady: jest.fn(),
+      notifyMapLayout: jest.fn(),
     },
     mapType: 'standard' as const,
     selectedPlace,

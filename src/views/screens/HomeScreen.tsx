@@ -1248,9 +1248,14 @@ export function HomeScreen() {
             scrollEnabled={!layersSheetVisible}
             zoomEnabled={!layersSheetVisible}
             rotateEnabled={!layersSheetVisible && !settings.keepNorthFixed}
+            onLayout={(e) => {
+              const { width, height } = e.nativeEvent.layout;
+              cameraManager.notifyMapLayout(width, height);
+            }}
             onMapReady={() => {
               mapReadyRef.current = true;
               setMapReadyState(true);
+              cameraManager.notifyNativeMapReady();
               handleMapRegionChangeComplete(effectiveInitialRegion);
               mapLabelOverlayRef.current?.requestProjection();
 
