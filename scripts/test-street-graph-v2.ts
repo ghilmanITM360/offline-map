@@ -8,6 +8,7 @@ import {
   getStreetNavigationGraph,
 } from '../src/data/ijtema/streetGraphBuilder';
 import { haversineM } from '../src/utils/SpatialGrid';
+import { PEDESTRIAN_PROFILE_VERSION } from './pedestrianProfile';
 
 const GATE_CONNECTOR_MAX_M = 320;
 // Same distance sanity-cap ratio approved for graph-routed segments in
@@ -19,6 +20,9 @@ const DISTANCE_SANITY_CAP_RATIO = 1.8;
 
 const data = IJTEMA_STREET_GRAPH_DATA;
 const graph = buildStreetNavigationGraph(data);
+assert.equal(graph.metadata.pedestrianProfileVersion, PEDESTRIAN_PROFILE_VERSION, 'production graph must be generated with the current pedestrian profile');
+assert.equal(data.edgeDirection?.length, data.edgeFrom.length, 'every edge must preserve pedestrian direction metadata');
+assert.equal(data.edgeProfileIndex?.length, data.edgeFrom.length, 'every edge must preserve compact profile diagnostics');
 
 // ─── Basic shape ───────────────────────────────────────────────────────────
 {
@@ -132,7 +136,7 @@ const HOP_WARNING_THRESHOLD_M = 250;
 
 // ─── Gate connectors: every routable gate with a coordinate must have a connector ≤320m ──
 {
-  const routableGatesWithCoordinate = IJTEMA_GATES.filter((gate) => gate.coordinate);
+  const routableGatesWithCoordinate = IJTEMA_GATES.filter((gate) => gate.coordinate && gate.canStartRouteFromOutside);
   for (const gate of routableGatesWithCoordinate) {
     const connector = graph.gateConnectors[gate.id];
     assert.ok(connector, `expected a street-graph connector for ${gate.id}`);

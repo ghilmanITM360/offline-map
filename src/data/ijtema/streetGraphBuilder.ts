@@ -43,28 +43,32 @@ export const buildStreetNavigationGraph = (data: StreetGraphData): StreetNavigat
             lng: geometryFlat[pointIndex * 2 + 1],
           }))
         : undefined;
+    const directionCode = data.edgeDirection?.[i] ?? 0;
+    const direction = directionCode === 1 ? 'forward' : directionCode === 2 ? 'reverse' : 'both';
+    const profileIndex = data.edgeProfileIndex?.[i] ?? -1;
 
     return {
       id: edgeId(i),
       from: nodeId(fromIndex),
       to: nodeId(toIndex),
       distanceM: data.edgeDistanceM[i],
+      direction,
+      ...(profileIndex >= 0 && data.profiles?.[profileIndex] ? { profile: data.profiles[profileIndex] } : {}),
       ...(nameIndex >= 0 ? { name: data.names[nameIndex] } : {}),
       ...(geometry ? { geometry } : {}),
     };
   });
 
-  // Bidirectional: pedestrians walk both directions on every OSM way in this
-  // extract regardless of vehicle `oneway` tagging (no dedicated foot
-  // infrastructure exists here — see docs/OSM_DATA_VALIDATION_REPORT.md).
   const adjacency: Record<string, StreetGraphEdge[]> = {};
   const addAdjacency = (from: string, edge: StreetGraphEdge) => {
     if (!adjacency[from]) adjacency[from] = [];
     adjacency[from].push(edge);
   };
   for (const edge of edges) {
-    addAdjacency(edge.from, edge);
-    if (edge.from !== edge.to) {
+    if (edge.direction !== 'reverse') {
+      addAdjacency(edge.from, edge);
+    }
+    if (edge.from !== edge.to && edge.direction !== 'forward') {
       // Reverse direction: geometry must be reversed too, or a route walking
       // this edge `to`-to-`from` would render its polyline out of order.
       addAdjacency(edge.to, {

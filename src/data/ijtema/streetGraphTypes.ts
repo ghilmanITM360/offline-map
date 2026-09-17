@@ -21,6 +21,11 @@ export interface StreetGraphMetadata {
   simplifiedEdgeCount: number;
   excludedDisconnectedNodeCount: number;
   excludedConstructionWayCount: number;
+  pedestrianProfileVersion?: string;
+  excludedWayReasonCounts?: Record<string, number>;
+  barrierNodeCount?: number;
+  excludedBarrierEdgeCount?: number;
+  directionalEdgeCount?: number;
 }
 
 /**
@@ -49,6 +54,11 @@ export interface StreetGraphData {
    * nodes, empty for edges that were already a single OSM segment.
    */
   edgeGeometry: number[][];
+  /** 0 = both, 1 = stored from->to only, 2 = stored to->from only. */
+  edgeDirection?: number[];
+  /** Deduplicated pedestrian-profile diagnostic for each edge. */
+  edgeProfileIndex?: number[];
+  profiles?: string[];
   names: string[];
   gateConnectorGateIds: string[];
   /** Node index nearest each gate in `gateConnectorGateIds` (same order). */
@@ -71,6 +81,8 @@ export interface StreetGraphEdge {
   /** Present only for the ~1% of OSM ways in this extract that carry a name tag. */
   name?: string;
   geometry?: StreetGraphPoint[];
+  direction?: 'both' | 'forward' | 'reverse';
+  profile?: string;
 }
 
 export interface StreetGateConnector {

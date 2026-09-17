@@ -17,32 +17,42 @@ import { writeFileSync } from 'node:fs';
 import { IJTEMA_GATES } from '../src/data/ijtema/gates';
 import { haversineM } from '../src/utils/SpatialGrid';
 import type { StreetGraphData, StreetGraphPoint } from '../src/data/ijtema/streetGraphTypes';
+import {
+  evaluatePedestrianWay,
+  PEDESTRIAN_PROFILE_VERSION,
+  type PedestrianDirection,
+} from './pedestrianProfile';
 
 const VENUE_CENTER_LAT = 24.971698;
 const VENUE_CENTER_LNG = 67.006464;
 const RADIUS_M = 3000;
 const GATE_CONNECTOR_MAX_M = 320; // same convention as src/data/ijtema/graphBuilder.ts
 
-const EXCLUDED_HIGHWAY_TAGS = new Set(['construction', 'proposed', 'disused']);
-const EXCLUDED_HIGHWAY_CLASSES = ['motorway', 'motorway_link', 'trunk', 'trunk_link'];
-
 interface OverpassWay {
   type: 'way';
   id: number;
   geometry?: Array<{ lat: number; lon: number }>;
+  nodes?: number[];
+  tags?: Record<string, string>;
+}
+
+interface OverpassNode {
+  type: 'node';
+  id: number;
+  lat: number;
+  lon: number;
   tags?: Record<string, string>;
 }
 
 interface OverpassResponse {
-  elements: OverpassWay[];
+  elements: Array<OverpassWay | OverpassNode>;
 }
 
 const roundCoord = (value: number): number => Math.round(value * 1e6) / 1e6;
 const vertexKey = (lat: number, lng: number): string => `${roundCoord(lat)}:${roundCoord(lng)}`;
 
 async function fetchOverpass(): Promise<OverpassResponse> {
-  const highwayFilter = `["highway"]["highway"!~"^(${EXCLUDED_HIGHWAY_CLASSES.join('|')})$"]`;
-  const query = `[out:json][timeout:90];\n(\n  way(around:${RADIUS_M},${VENUE_CENTER_LAT},${VENUE_CENTER_LNG})${highwayFilter};\n);\nout geom;`;
+  const query = `[out:json][timeout:90];\nway(around:${RADIUS_M},${VENUE_CENTER_LAT},${VENUE_CENTER_LNG})["highway"];\n(._;>;);\nout body geom;`;
 
   const maxAttempts = 4;
   let lastError: Error | undefined;
@@ -106,18 +116,35 @@ class UnionFind {
 async function main() {
   console.log(`Fetching OSM extract: ${RADIUS_M}m around (${VENUE_CENTER_LAT}, ${VENUE_CENTER_LNG})...`);
   const raw = await fetchOverpass();
-  console.log(`Fetched ${raw.elements.length} way elements.`);
+  const allWays = raw.elements.filter((element): element is OverpassWay => element.type === 'way');
+  const allNodes = raw.elements.filter((element): element is OverpassNode => element.type === 'node');
+  console.log(`Fetched ${allWays.length} ways and ${allNodes.length} referenced nodes.`);
 
-  let excludedConstructionWayCount = 0;
-  const ways = raw.elements.filter((way) => {
+  const excludedWayReasonCounts: Record<string, number> = {};
+  const decisionByWayId = new Map<number, ReturnType<typeof evaluatePedestrianWay>>();
+  const ways = allWays.filter((way) => {
     if (!way.geometry || way.geometry.length < 2) return false;
-    const highwayTag = way.tags?.highway;
-    if (highwayTag && EXCLUDED_HIGHWAY_TAGS.has(highwayTag)) {
-      excludedConstructionWayCount += 1;
+    const decision = evaluatePedestrianWay(way.tags ?? {});
+    decisionByWayId.set(way.id, decision);
+    if (!decision.include) {
+      excludedWayReasonCounts[decision.reason] = (excludedWayReasonCounts[decision.reason] ?? 0) + 1;
+    }
+    return decision.include;
+  });
+  const excludedConstructionWayCount = excludedWayReasonCounts['inactive-highway'] ?? 0;
+  const nodeById = new Map(allNodes.map((node) => [node.id, node]));
+  const isBlockingBarrierNode = (nodeId: number | undefined): boolean => {
+    if (nodeId === undefined) return false;
+    const tags = nodeById.get(nodeId)?.tags;
+    if (!tags?.barrier) return false;
+    const foot = tags.foot?.toLowerCase();
+    if (['yes', 'designated', 'permissive'].includes(foot ?? '')) return false;
+    if (['bollard', 'cycle_barrier', 'kerb'].includes(tags.barrier.toLowerCase()) && tags.access !== 'no' && tags.access !== 'private') {
       return false;
     }
     return true;
-  });
+  };
+  const barrierNodeCount = allNodes.filter((node) => Boolean(node.tags?.barrier)).length;
 
   // Raw graph: every OSM vertex is a node, consecutive way-geometry points are edges.
   // Overpass's `around:` filter matches a *way* if any part of its geometry
@@ -129,7 +156,16 @@ async function main() {
   // failure class `dataIssues.ts`'s RASTA_06 check already guards against for
   // the venue graph).
   const rawVertices = new Map<string, StreetGraphPoint>();
-  const rawEdgeSet = new Map<string, { from: string; to: string; distanceM: number; name?: string }>();
+  interface RawEdge {
+    from: string;
+    to: string;
+    distanceM: number;
+    name?: string;
+    profile: string;
+    allowsForward: boolean;
+    allowsReverse: boolean;
+  }
+  const rawEdgeSet = new Map<string, RawEdge>();
   const rawAdjacency = new Map<string, Set<string>>();
 
   const addRawAdjacency = (a: string, b: string) => {
@@ -143,22 +179,35 @@ async function main() {
     haversineM(VENUE_CENTER_LAT, VENUE_CENTER_LNG, point.lat, point.lng) <= RADIUS_M;
 
   let clippedEdgeCount = 0;
+  let excludedBarrierEdgeCount = 0;
 
   for (const way of ways) {
     const name = way.tags?.name;
+    const decision = decisionByWayId.get(way.id)!;
+    const profile = `${decision.highway ?? 'unknown'}:${decision.reason}`;
     const points = way.geometry!;
     let previousKey: string | undefined;
-    for (const point of points) {
+    let previousNodeId: number | undefined;
+    for (let pointIndex = 0; pointIndex < points.length; pointIndex += 1) {
+      const point = points[pointIndex];
+      const nodeId = way.nodes?.[pointIndex];
       const key = vertexKey(point.lat, point.lon);
       const coord = { lat: roundCoord(point.lat), lng: roundCoord(point.lon) };
       if (!rawVertices.has(key)) rawVertices.set(key, coord);
 
       if (previousKey && previousKey !== key) {
+        if (isBlockingBarrierNode(previousNodeId) || isBlockingBarrierNode(nodeId)) {
+          excludedBarrierEdgeCount += 1;
+          previousKey = key;
+          previousNodeId = nodeId;
+          continue;
+        }
         if (!isWithinRadius(rawVertices.get(previousKey)!) || !isWithinRadius(coord)) {
           clippedEdgeCount += 1;
           // Boundary crossing: stop walking this way past the clip edge
           // rather than silently reconnecting across the gap.
           previousKey = undefined;
+          previousNodeId = undefined;
           continue;
         }
         const distanceM = haversineM(
@@ -168,12 +217,30 @@ async function main() {
           coord.lng,
         );
         const edgeKey = previousKey < key ? `${previousKey}|${key}` : `${key}|${previousKey}`;
-        if (!rawEdgeSet.has(edgeKey)) {
-          rawEdgeSet.set(edgeKey, { from: previousKey, to: key, distanceM, name });
+        const wayAllowsForward = decision.direction === 'both' || decision.direction === 'forward';
+        const wayAllowsReverse = decision.direction === 'both' || decision.direction === 'reverse';
+        const existing = rawEdgeSet.get(edgeKey);
+        if (!existing) {
+          rawEdgeSet.set(edgeKey, {
+            from: previousKey,
+            to: key,
+            distanceM,
+            name,
+            profile,
+            allowsForward: wayAllowsForward,
+            allowsReverse: wayAllowsReverse,
+          });
+        } else if (existing.from === previousKey) {
+          existing.allowsForward ||= wayAllowsForward;
+          existing.allowsReverse ||= wayAllowsReverse;
+        } else {
+          existing.allowsForward ||= wayAllowsReverse;
+          existing.allowsReverse ||= wayAllowsForward;
         }
         addRawAdjacency(previousKey, key);
       }
       previousKey = key;
+      previousNodeId = nodeId;
     }
   }
 
@@ -217,9 +284,24 @@ async function main() {
     keptAdjacency.set(key, neighbors);
   }
 
-  const isTopologyNode = (key: string): boolean => (keptAdjacency.get(key)?.size ?? 0) !== 2;
+  const rawEdgeFor = (a: string, b: string): RawEdge | undefined =>
+    rawEdgeSet.get(a < b ? `${a}|${b}` : `${b}|${a}`);
+  const isDirectionalEdge = (edge: RawEdge | undefined): boolean =>
+    Boolean(edge && (!edge.allowsForward || !edge.allowsReverse));
+  const isTopologyNode = (key: string): boolean =>
+    (keptAdjacency.get(key)?.size ?? 0) !== 2 ||
+    [...(keptAdjacency.get(key) ?? [])].some((neighbor) => isDirectionalEdge(rawEdgeFor(key, neighbor)));
 
-  const simplifiedEdges: Array<{ from: string; to: string; distanceM: number; name?: string; geometry: StreetGraphPoint[] }> = [];
+  interface SimplifiedEdge {
+    from: string;
+    to: string;
+    distanceM: number;
+    name?: string;
+    geometry: StreetGraphPoint[];
+    direction: Exclude<PedestrianDirection, 'none'>;
+    profile: string;
+  }
+  const simplifiedEdges: SimplifiedEdge[] = [];
 
   const walkChain = (startKey: string, firstStep: string) => {
     const geometry: StreetGraphPoint[] = [];
@@ -227,11 +309,21 @@ async function main() {
     let previous = startKey;
     let current = firstStep;
     let name: string | undefined;
+    let profile: string | undefined;
+    let allowsForward = true;
+    let allowsReverse = true;
 
     const edgeDistance = (a: string, b: string): number => {
-      const edgeKey = a < b ? `${a}|${b}` : `${b}|${a}`;
-      const edge = rawEdgeSet.get(edgeKey);
+      const edge = rawEdgeFor(a, b);
       if (edge?.name && !name) name = edge.name;
+      if (edge?.profile && !profile) profile = edge.profile;
+      if (edge && edge.from === a) {
+        allowsForward &&= edge.allowsForward;
+        allowsReverse &&= edge.allowsReverse;
+      } else if (edge) {
+        allowsForward &&= edge.allowsReverse;
+        allowsReverse &&= edge.allowsForward;
+      }
       return edge?.distanceM ?? haversineM(rawVertices.get(a)!.lat, rawVertices.get(a)!.lng, rawVertices.get(b)!.lat, rawVertices.get(b)!.lng);
     };
 
@@ -249,7 +341,9 @@ async function main() {
       if (current === startKey) break; // closed loop of degree-2 nodes, break here
     }
 
-    return { to: current, distanceM, geometry, name };
+    const direction: Exclude<PedestrianDirection, 'none'> =
+      allowsForward && allowsReverse ? 'both' : allowsForward ? 'forward' : 'reverse';
+    return { to: current, distanceM, geometry, name, direction, profile: profile ?? 'unknown:included' };
   };
 
   // Every topology-node-to-neighbor pair is walked exactly once here (each
@@ -262,13 +356,13 @@ async function main() {
     if (!isTopologyNode(key)) continue;
     for (const neighbor of keptAdjacency.get(key) ?? []) {
       const result = walkChain(key, neighbor);
-      simplifiedEdges.push({ from: key, to: result.to, distanceM: result.distanceM, name: result.name, geometry: result.geometry });
+      simplifiedEdges.push({ from: key, to: result.to, distanceM: result.distanceM, name: result.name, geometry: result.geometry, direction: result.direction, profile: result.profile });
     }
   }
 
   // Dedup undirected simplified edges (each topology-to-topology walk was
   // attempted from both ends above; keep one canonical direction per pair+path).
-  const dedupedEdges = new Map<string, { from: string; to: string; distanceM: number; name?: string; geometry: StreetGraphPoint[] }>();
+  const dedupedEdges = new Map<string, SimplifiedEdge>();
   for (const edge of simplifiedEdges) {
     if (edge.from === edge.to) continue; // degenerate loop, skip
     const canonicalKey =
@@ -309,13 +403,22 @@ async function main() {
     }
     return flat;
   });
+  const edgeDirection = edgeList.map((edge) => edge.direction === 'forward' ? 1 : edge.direction === 'reverse' ? 2 : 0);
+  const profiles: string[] = [];
+  const profileIndexOf = (profile: string): number => {
+    const existing = profiles.indexOf(profile);
+    if (existing >= 0) return existing;
+    profiles.push(profile);
+    return profiles.length - 1;
+  };
+  const edgeProfileIndex = edgeList.map((edge) => profileIndexOf(edge.profile));
 
   // Gate connectors: nearest topology node for each of the 17 known gates.
   const gateConnectorGateIds: string[] = [];
   const gateConnectorNodeIndex: number[] = [];
   const gateConnectorDistanceM: number[] = [];
   for (const gate of IJTEMA_GATES) {
-    if (!gate.coordinate) continue;
+    if (!gate.coordinate || !gate.canStartRouteFromOutside) continue;
     let best: { key: string; distanceM: number } | undefined;
     for (const key of topologyNodeKeys) {
       const point = rawVertices.get(key)!;
@@ -340,6 +443,9 @@ async function main() {
     edgeDistanceM,
     edgeNameIndex,
     edgeGeometry,
+    edgeDirection,
+    edgeProfileIndex,
+    profiles,
     names,
     gateConnectorGateIds,
     gateConnectorNodeIndex,
@@ -357,6 +463,11 @@ async function main() {
       simplifiedEdgeCount: edgeFrom.length,
       excludedDisconnectedNodeCount,
       excludedConstructionWayCount,
+      pedestrianProfileVersion: PEDESTRIAN_PROFILE_VERSION,
+      excludedWayReasonCounts,
+      barrierNodeCount,
+      excludedBarrierEdgeCount,
+      directionalEdgeCount: edgeDirection.filter((direction) => direction !== 0).length,
     },
   };
 
@@ -365,7 +476,7 @@ async function main() {
 }
 
 function writeStreetGraphSource(data: StreetGraphData): void {
-  const header = `/**\n * @license\n * SPDX-License-Identifier: Apache-2.0\n */\n\n/**\n * Generated by scripts/generate-street-graph.ts from a live OSM Overpass\n * extract. This file IS the source of truth once generated (same convention\n * as the rest of src/data/ijtema/*) — re-run the generator script to refresh\n * it if roads near the venue change; do not hand-edit the arrays here.\n * Columnar shape (see streetGraphTypes.ts) to keep this file compact.\n *\n * Generated: ${data.metadata.generatedAt}\n * Source: Overpass API, ${data.metadata.radiusM}m radius around (${data.metadata.centerLat}, ${data.metadata.centerLng})\n * Raw: ${data.metadata.rawNodeCount} nodes / ${data.metadata.rawEdgeCount} edges -> Simplified: ${data.metadata.simplifiedNodeCount} nodes / ${data.metadata.simplifiedEdgeCount} edges\n */\n\nimport { StreetGraphData } from './streetGraphTypes';\n\n`;
+  const header = `/**\n * @license\n * SPDX-License-Identifier: Apache-2.0\n */\n\n/**\n * Generated by scripts/generate-street-graph.ts from a live OSM Overpass\n * extract. This file IS the source of truth once generated (same convention\n * as the rest of src/data/ijtema/*) — re-run the generator script to refresh\n * it if roads near the venue change; do not hand-edit the arrays here.\n * Columnar shape (see streetGraphTypes.ts) to keep this file compact.\n *\n * Generated: ${data.metadata.generatedAt}\n * Source: Overpass API, ${data.metadata.radiusM}m radius around (${data.metadata.centerLat}, ${data.metadata.centerLng})\n * Raw: ${data.metadata.rawNodeCount} nodes / ${data.metadata.rawEdgeCount} edges -> Simplified: ${data.metadata.simplifiedNodeCount} nodes / ${data.metadata.simplifiedEdgeCount} edges\n */\n\nimport type { StreetGraphData } from './streetGraphTypes';\n\n`;
 
   const body = `export const IJTEMA_STREET_GRAPH_DATA: StreetGraphData = ${JSON.stringify(data)};\n`;
 
