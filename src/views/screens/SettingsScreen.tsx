@@ -45,6 +45,7 @@ import { useSettingsViewModel } from '../../viewmodels/SettingsViewModel';
 import { useTheme } from '../../services/useTheme';
 import { useAppStore } from '../../store/useAppStore';
 import { MapConfigService } from '../../services/MapConfigService';
+import { OfflineMapService } from '../../services/OfflineMapService';
 import { staticColors } from '../../theme';
 
 declare const __DEV__: boolean;
@@ -57,6 +58,7 @@ export function SettingsScreen() {
   const developerModeEnabled = useAppStore((s) => s.developerModeEnabled);
   const setDeveloperModeEnabled = useAppStore((s) => s.setDeveloperModeEnabled);
   const hasGoogleMapsKey = MapConfigService.isGoogleMapsKeyConfigured();
+  const offlineTileDownloadAvailable = OfflineMapService.isOfflineTileDownloadAvailable();
   const [versionTapCount, setVersionTapCount] = useState(0);
   const {
     settings,
@@ -323,25 +325,35 @@ export function SettingsScreen() {
               description="Storage used by offline tiles"
             />
           )}
-          <SettingItem
-            icon={Download}
-            label="Update Map"
-            value="Update"
-            type="text"
-            onPress={() => {
-              Alert.alert('Update Map', 'Delete existing map and download the latest version?', [
-                { text: 'Cancel', style: 'cancel' },
-                {
-                  text: 'Update',
-                  onPress: () =>
-                    handleRedownloadMap(() =>
-                      navigation.reset({ index: 0, routes: [{ name: 'DownloadMap' }] })
-                    ),
-                },
-              ]);
-            }}
-            description="Download latest offline map tiles"
-          />
+          {offlineTileDownloadAvailable ? (
+            <SettingItem
+              icon={Download}
+              label="Update Map"
+              value="Update"
+              type="text"
+              onPress={() => {
+                Alert.alert('Update Map', 'Delete existing map and download the latest version?', [
+                  { text: 'Cancel', style: 'cancel' },
+                  {
+                    text: 'Update',
+                    onPress: () =>
+                      handleRedownloadMap(() =>
+                        navigation.reset({ index: 0, routes: [{ name: 'DownloadMap' }] })
+                      ),
+                  },
+                ]);
+              }}
+              description="Download latest licensed offline map package"
+            />
+          ) : (
+            <SettingItem
+              icon={Download}
+              label="Offline Background"
+              value="Unavailable"
+              type="text"
+              description="Routing stays offline; a licensed background-map package is not configured"
+            />
+          )}
           <SettingItem
             icon={Trash2}
             label="Delete Map Data"

@@ -93,6 +93,7 @@ import { LocationSheet } from '../components/map/LocationSheet';
 import { UserLocationMarker } from '../components/map/UserLocationMarker';
 import { resolveMapMarkerOwnership } from '../components/map/MapMarkerOwnership';
 import { LocationTutorialTooltip } from '../components/map/LocationTutorialTooltip';
+import { OsmAttribution } from '../components/map/OsmAttribution';
 import { resolveTapCandidate, TapCandidate } from '../../services/TapDisambiguationService';
 import { Z } from '../styles/zLayers';
 
@@ -158,6 +159,12 @@ function isV2PreviewRoute(route: unknown): route is V2PreviewRoute {
     'destinationLabel' in route &&
     !('routeId' in route),
   );
+}
+
+function outsideRouteProvider(route: unknown): string | null {
+  if (!route || typeof route !== 'object' || !('outsideRoute' in route)) return null;
+  const outsideRoute = (route as { outsideRoute?: { provider?: unknown } }).outsideRoute;
+  return typeof outsideRoute?.provider === 'string' ? outsideRoute.provider : null;
 }
 
 export function HomeScreen() {
@@ -409,6 +416,8 @@ export function HomeScreen() {
     return isV2PreviewRoute(activeRoute) ? activeRoute : null;
   }, [activeRoute, isNavigating, routePlannerDest]);
 
+  const showOsmAttribution =
+    baseMapMode === 'LOCAL_TILES' || outsideRouteProvider(activePreviewRoute ?? activeRoute) === 'offline-osm';
   // CameraManager.fitRoute() — camera frames origin + destination + full route whenever a
   // route preview opens (or a different route is chosen), instead of leaving the camera
   // wherever it happened to be when the user picked a destination.
@@ -1554,6 +1563,11 @@ export function HomeScreen() {
             </Marker>
           )}
           </MapView>
+
+        <OsmAttribution
+          visible={showOsmAttribution}
+          top={insets.top + (showAnyNavOverlay ? 148 : 118)}
+        />
 
         {(mode === 'NAVIGATION' || mode === 'ARRIVAL') && <NavigationChromeV2 overlay={navOverlay} hasBaseMap={hasBaseMap} />}
         {(mode === 'NAVIGATION' || mode === 'ARRIVAL') && <NavigationChromeV1 overlay={navOverlayV1} hasBaseMap={hasBaseMap} />}

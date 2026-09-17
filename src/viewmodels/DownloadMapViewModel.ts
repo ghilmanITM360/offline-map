@@ -183,6 +183,14 @@ export function useDownloadMapViewModel() {
 
   const startDownload = useCallback(
     async (navigation: NativeStackNavigationProp<RootStackParamList, 'DownloadMap'>) => {
+      if (!OfflineMapService.isOfflineTileDownloadAvailable()) {
+        applyFailureState({
+          userMessage: 'Offline background-map downloads are unavailable. Offline routing still works with the venue map.',
+          statusMessage: 'No licensed offline background-map source is configured.',
+          resumable: false,
+        });
+        return;
+      }
       if (downloadInProgressRef.current) {
         pausedRef.current = false;
         safeSetDownloadState({ phase: 'downloading', errorMessage: null });
@@ -533,6 +541,7 @@ export function useDownloadMapViewModel() {
 
   return {
     downloadState,
+    offlineTileDownloadAvailable: OfflineMapService.isOfflineTileDownloadAvailable(),
     startDownload,
     pauseDownload,
     resumeDownload,

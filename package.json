@@ -28,6 +28,7 @@
     "test:outside-street-gate-selection-cost-v2": "node --import tsx scripts/test-outside-street-gate-selection-cost-v2.ts",
     "test:core-provider-routing-contract-v2": "node --import tsx scripts/test-core-provider-routing-contract-v2.ts",
     "test:offline-download": "node --import tsx scripts/test-offline-download.ts",
+    "test:osm-attribution": "node --import tsx scripts/test-osm-attribution.ts",
     "test:map-data": "node --import tsx scripts/test-map-data.ts",
     "test:facility-routing": "node --import tsx scripts/test-facility-routing.ts",
     "test:map-data-v2": "node --import tsx scripts/test-map-data-v2.ts",

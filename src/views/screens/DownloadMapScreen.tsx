@@ -49,6 +49,7 @@ export function DownloadMapScreen() {
     continueWithVenueMapOnly,
     continueWithOnlineMode,
     repairDownload,
+    offlineTileDownloadAvailable,
   } = useDownloadMapViewModel();
 
   const [showContinueFallback, setShowContinueFallback] = useState(false);
@@ -134,7 +135,7 @@ export function DownloadMapScreen() {
         <View style={styles.header}>
           <Text style={styles.title}>Offline Maps</Text>
           <Text style={styles.urduTitle}>آف لائن نقشہ</Text>
-          <Text style={styles.subtitle}>Download the map once and use navigation even without internet.</Text>
+          <Text style={styles.subtitle}>Routing and the venue map work offline. Online Google imagery needs internet.</Text>
         </View>
 
         <View style={styles.card}>
@@ -151,9 +152,16 @@ export function DownloadMapScreen() {
 
           {isIdle && (
             <View style={styles.benefitList}>
-              <Text style={styles.benefitItem}>✓ Works in crowded areas</Text>
-              <Text style={styles.benefitItem}>✓ Faster map loading</Text>
-              <Text style={styles.benefitItem}>✓ No mobile data required</Text>
+              <Text style={styles.benefitItem}>✓ Venue and outside routing are bundled</Text>
+              <Text style={styles.benefitItem}>✓ Navigation works without a route API</Text>
+              <Text style={styles.benefitItem}>✓ Graph-only map works offline</Text>
+            </View>
+          )}
+
+          {!offlineTileDownloadAvailable && isIdle && (
+            <View style={styles.warningBox}>
+              <AlertTriangle size={18} color="#B45309" />
+              <Text style={styles.warningText}>Offline background-map download is unavailable until a licensed tile package is configured.</Text>
             </View>
           )}
 
@@ -191,7 +199,7 @@ export function DownloadMapScreen() {
           )}
 
           <View style={styles.actionRow}>
-            {(isIdle || isCorrupt) && (
+            {offlineTileDownloadAvailable && (isIdle || isCorrupt) && (
               <Pressable style={styles.primaryButton} onPress={() => startDownload(navigation)}>
                 <Download size={20} color="#FFFFFF" />
                 <Text style={styles.primaryButtonText}>Download Offline Map</Text>
@@ -240,7 +248,7 @@ export function DownloadMapScreen() {
           </View>
         </View>
 
-        {isIdle && (
+        {isIdle && offlineTileDownloadAvailable && (
           <View style={styles.infoBox}>
             <Wifi size={18} color="#666" />
             <Text style={styles.infoText}>Wi-Fi recommended. This map needs about {estimatedSizeMb} MB.</Text>
@@ -254,7 +262,7 @@ export function DownloadMapScreen() {
         )}
 
         {showVenueMapOnlyAction && (
-          <Text style={styles.fallbackHint}>You can navigate inside the Ijtema area. Outside road navigation will not be available.</Text>
+          <Text style={styles.fallbackHint}>The venue graph and bundled outside walking router remain available; only background imagery may be absent offline.</Text>
         )}
 
         {(isIdle || isError) && hasInternet && (

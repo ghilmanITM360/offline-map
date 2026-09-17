@@ -32,7 +32,7 @@ export interface MapStatus {
 }
 
 export type TileDownloadFailureStage = 'network' | 'filesystem' | 'database' | 'unknown';
-export type TileSourceMode = 'osm' | 'mock' | 'bundled' | 'package';
+export type TileSourceMode = 'disabled' | 'mock' | 'bundled' | 'package';
 export type OfflineDownloadFailureType =
   | 'no_internet'
   | 'dns_failed'
@@ -42,6 +42,7 @@ export type OfflineDownloadFailureType =
   | 'timeout'
   | 'file_write_failed'
   | 'db_write_failed'
+  | 'source_unavailable'
   | 'unknown';
 
 export interface TileDownloadResult {
@@ -258,9 +259,7 @@ export class OfflineMapService {
 
   static getTileBaseUrl(): string {
     const configured = process.env.EXPO_PUBLIC_TILE_BASE_URL?.trim();
-    if (!configured) {
-      return 'https://tile.openstreetmap.org';
-    }
+    if (!configured) return '';
     return configured.endsWith('/') ? configured.slice(0, -1) : configured;
   }
 
@@ -274,6 +273,7 @@ export class OfflineMapService {
 
   static getTileUrl(z: number, x: number, y: number): string {
     const mode = this.getTileSourceMode();
+    if (mode === 'disabled') return '';
     if (mode === 'bundled') {
       return this.getBundledTileUrl(z, x, y);
     }
@@ -290,7 +290,15 @@ export class OfflineMapService {
     }
     if (configured === 'bundled') return 'bundled';
     if (configured === 'package') return 'package';
-    return 'osm';
+    return 'disabled';
+  }
+
+  /**
+   * No production tile downloader is enabled until a licensed package/source is
+   * implemented and verified. Existing validated local tiles remain renderable.
+   */
+  static isOfflineTileDownloadAvailable(): boolean {
+    return __DEV__ && this.getTileSourceMode() === 'mock';
   }
 
   private static normalizeFailureTypeFromStatus(statusCode: number | null): OfflineDownloadFailureType | null {
@@ -337,6 +345,8 @@ export class OfflineMapService {
         return 'Not enough storage to save the map. Please free up space and try again.';
       case 'db_write_failed':
         return "We couldn't save the map. Please try again.";
+      case 'source_unavailable':
+        return 'Offline background-map downloads are unavailable. Offline routing still works with the venue map.';
       default:
         return 'Unable to download the map. Please check your internet connection and try again.';
     }
@@ -369,6 +379,18 @@ export class OfflineMapService {
   static async runNetworkDiagnostics(firstTile: { z: number; x: number; y: number }): Promise<OfflineDownloadDiagnostics> {
     const firstTileUrl = this.getTileUrl(firstTile.z, firstTile.x, firstTile.y);
     const tileBaseUrl = this.getTileBaseUrl();
+    if (!this.isOfflineTileDownloadAvailable()) {
+      return {
+        ok: false,
+        failureType: 'source_unavailable',
+        userMessage: this.userMessageForFailureType('source_unavailable'),
+        firstTileUrl,
+        tileBaseUrl,
+        statusCode: null,
+        stage: 'tile_server',
+        technicalMessage: 'No licensed production offline tile source is configured.',
+      };
+    }
     const connectivity = await ConnectivityService.getSnapshot();
     debugOfflineMap('diagnostics: connectivity', connectivity);
 
@@ -458,6 +480,20 @@ export class OfflineMapService {
     const retryDelayMs = options.retryDelayMs ?? TILE_DOWNLOAD_RETRY_DELAY_MS_DEFAULT;
     const attemptsLimit = Math.max(1, retries + 1);
 
+    if (!this.isOfflineTileDownloadAvailable()) {
+      return {
+        ok: false,
+        uri: null,
+        url,
+        attempts: 0,
+        statusCode: null,
+        errorMessage: 'No licensed production offline tile source is configured.',
+        failureStage: null,
+        usedSource,
+        failureType: 'source_unavailable',
+      };
+    }
+
     if (!getTileDir().exists) {
       getTileDir().create({ idempotent: true, intermediates: true });
     }
@@ -541,31 +577,13 @@ export class OfflineMapService {
           lastFailureType = 'file_write_failed';
         }
 
-        if (usedSource === 'osm') {
-          const probe = await this.probeTileEndpoint(url);
-          lastStatusCode = probe.statusCode;
-          if (!lastFailureType) {
-            lastFailureType = this.classifyFetchFailure(probe.errorMessage ?? errorMessage, probe.statusCode);
-          }
-          if (probe.errorMessage) {
-            lastErrorMessage = `${errorMessage}; probe=${probe.errorMessage}`;
-          }
-          debugOfflineMap('tile download failed', {
-            tile: `${z}/${x}/${y}`,
-            url,
-            attempt,
-            statusCode: probe.statusCode,
-            probeError: probe.errorMessage,
-            errorMessage,
-          });
-        } else {
-          debugOfflineMap('mock tile write failed', {
-            tile: `${z}/${x}/${y}`,
-            path: file.uri,
-            attempt,
-            errorMessage,
-          });
-        }
+        debugOfflineMap('offline tile write failed', {
+          tile: `${z}/${x}/${y}`,
+          path: file.uri,
+          attempt,
+          usedSource,
+          errorMessage,
+        });
 
         if (attempt < attemptsLimit) {
           await wait(retryDelayMs);

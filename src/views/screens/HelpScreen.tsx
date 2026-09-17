@@ -76,11 +76,11 @@ export function HelpScreen() {
           <HelpItem
             icon={HelpCircle}
             title="How to use offline maps?"
-            description="Learn how to download and use maps without internet."
+            description="Learn what remains available without internet."
             onPress={() =>
               showFAQ(
                 'Offline Maps',
-                '1. Go to Settings → Download Map.\n2. Tap "Download" and wait for completion.\n3. Once downloaded the map works with Airplane Mode on.\n\nNote: Tiles are saved on your device. You do not need internet for navigation after download.',
+                'The venue graph, outside walking router, route preview, progress, instructions, rerouting, and arrival logic are bundled and work without a route API.\n\nWhen offline, an existing licensed local background package is used if present; otherwise the app shows its graph-only venue map. Google background imagery requires internet.',
               )
             }
           />
@@ -102,7 +102,7 @@ export function HelpScreen() {
             onPress={() =>
               showFAQ(
                 'Turn-by-Turn Navigation',
-                'The app uses your GPS position to guide you along pre-mapped rastas (paths) inside the Ijtema ground.\n\n• Spoken instructions are announced automatically.\n• If you leave the path, the route recalculates after 3 seconds.\n• Tap the speaker icon to mute / unmute voice.\n• Tap Exit to stop navigation at any time.',
+                'The app uses your GPS position to guide you along pre-mapped rastas (paths) inside the Ijtema ground.\n\n• Spoken instructions are announced automatically.\n• Rerouting requires repeated reliable off-route GPS evidence and observes a cooldown.\n• Tap the speaker icon to mute / unmute voice.\n• Tap Exit to stop navigation at any time.',
               )
             }
           />
