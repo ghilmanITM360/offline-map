@@ -17,7 +17,7 @@ function request(origin = { latitude: 24.9762, longitude: 67.011 }): OutsideWalk
 }
 
 describe('production outside route source', () => {
-  test('uses Claude per-gate OSM resolver when Google proxy is unconfigured', async () => {
+  test('uses bundled per-gate OSM resolver as production primary', async () => {
     const result = await createProductionOutsideRouteSource({ googleProxyBaseUrl: undefined }).routeToGates(request());
 
     expect(result.status).toBe('success');
@@ -30,10 +30,24 @@ describe('production outside route source', () => {
       gateId: 'GATE_12',
       provider: 'offline-osm',
       roadFollowing: true,
-      fallbackHistory: [{ provider: 'google', code: 'proxy-unconfigured', retryable: true }],
+      fallbackHistory: [],
     });
     expect(outcome.routes[0].coordinates.length).toBeGreaterThan(2);
     expect(outcome.routes[0].steps.length).toBeGreaterThan(0);
+  });
+
+  test('configured proxy URL cannot create traffic while diagnostic opt-in is off', async () => {
+    const fetchSpy = jest.spyOn(global, 'fetch').mockRejectedValue(new Error('must not be called'));
+
+    const result = await createProductionOutsideRouteSource({
+      googleProxyBaseUrl: 'https://routing.example.test',
+      enableGoogleDiagnosticProxy: false,
+    }).routeToGates(request());
+
+    expect(result.status).toBe('success');
+    if (result.status === 'success') expect(result.candidateSet.provider).toBe('offline-osm');
+    expect(fetchSpy).not.toHaveBeenCalled();
+    fetchSpy.mockRestore();
   });
 
   test('falls through to direct guide outside bundled graph coverage', async () => {

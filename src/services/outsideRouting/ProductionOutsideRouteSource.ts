@@ -11,10 +11,12 @@ import { DirectDirectionGuideProvider } from './DirectDirectionGuideProvider';
 import { GoogleProxyWalkingRouteProvider } from './GoogleProxyWalkingRouteProvider';
 import { HybridOutsideRouteOrchestrator } from './HybridOutsideRouteOrchestrator';
 import { OfflineOsmWalkingRouteProvider } from './OfflineOsmWalkingRouteProvider';
+import { resolveOutsideRouteMobileConfig } from './OutsideRouteConfigService';
 
 export interface ProductionOutsideRouteSourceOptions {
   googleProxyBaseUrl?: string;
   googleTimeoutMs?: number;
+  enableGoogleDiagnosticProxy?: boolean;
 }
 
 function maneuver(type: string): OutsideWalkingManeuver {
@@ -54,9 +56,13 @@ function normalizedSteps(
 export function createProductionOutsideRouteSource(
   options: ProductionOutsideRouteSourceOptions = {},
 ): OutsideRouteCandidateSource {
+  const mobileConfig = resolveOutsideRouteMobileConfig({
+    EXPO_PUBLIC_IJTEMA_ROUTING_PROXY_BASE_URL: process.env.EXPO_PUBLIC_IJTEMA_ROUTING_PROXY_BASE_URL,
+    EXPO_PUBLIC_ENABLE_GOOGLE_ROUTING_DIAGNOSTIC: process.env.EXPO_PUBLIC_ENABLE_GOOGLE_ROUTING_DIAGNOSTIC,
+  });
   const google = new GoogleProxyWalkingRouteProvider({
-    baseUrl: options.googleProxyBaseUrl,
-    timeoutMs: options.googleTimeoutMs,
+    baseUrl: options.googleProxyBaseUrl ?? mobileConfig.googleProxyBaseUrl,
+    timeoutMs: options.googleTimeoutMs ?? mobileConfig.googleProxyTimeoutMs,
   });
   const osm = new OfflineOsmWalkingRouteProvider({
     resolveGateRoute: (request, gate) => {
@@ -85,5 +91,7 @@ export function createProductionOutsideRouteSource(
     google,
     osm,
     direct: new DirectDirectionGuideProvider(),
+    enableGoogleDiagnosticProxy:
+      options.enableGoogleDiagnosticProxy ?? mobileConfig.enableGoogleDiagnosticProxy,
   });
 }

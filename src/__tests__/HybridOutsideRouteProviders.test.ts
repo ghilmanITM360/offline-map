@@ -82,13 +82,30 @@ function completeAttempt(provider: Exclude<OutsideRouteProviderId, 'direct-guide
 }
 
 describe('hybrid outside route providers', () => {
-  test('Google success stops fallback providers', async () => {
+  test('production policy starts with OSM and never calls a configured Google provider', async () => {
+    const google = new FakeProvider('google', completeAttempt('google'));
+    const osm = new FakeProvider('offline-osm', completeAttempt('offline-osm'));
+    const result = await new HybridOutsideRouteOrchestrator({ google, osm, direct: new DirectDirectionGuideProvider() })
+      .routeToGates(request);
+
+    expect(result.status).toBe('success');
+    if (result.status === 'success') expect(result.candidateSet.provider).toBe('offline-osm');
+    expect(google.calls).toBe(0);
+    expect(osm.calls).toBe(1);
+  });
+
+  test('explicit diagnostic mode may exercise Google before fallback providers', async () => {
     const google = new FakeProvider('google', completeAttempt('google'));
     const osm = new FakeProvider('offline-osm', completeAttempt('offline-osm'));
     const direct = new DirectDirectionGuideProvider();
     const directSpy = jest.spyOn(direct, 'routeToGates');
 
-    const result = await new HybridOutsideRouteOrchestrator({ google, osm, direct }).routeToGates(request);
+    const result = await new HybridOutsideRouteOrchestrator({
+      google,
+      osm,
+      direct,
+      enableGoogleDiagnosticProxy: true,
+    }).routeToGates(request);
 
     expect(result.status).toBe('success');
     expect(google.calls).toBe(1);
@@ -96,7 +113,7 @@ describe('hybrid outside route providers', () => {
     expect(directSpy).not.toHaveBeenCalled();
   });
 
-  test('Google failure falls back once to OSM and preserves failure reason', async () => {
+  test('diagnostic Google failure falls back once to OSM and preserves failure reason', async () => {
     const google = new FakeProvider('google', {
       status: 'failure',
       failure: { provider: 'google', code: 'timed-out', retryable: true },
@@ -107,6 +124,7 @@ describe('hybrid outside route providers', () => {
       google,
       osm,
       direct: new DirectDirectionGuideProvider(),
+      enableGoogleDiagnosticProxy: true,
     }).routeToGates(request);
 
     expect(google.calls).toBe(1);
@@ -169,6 +187,7 @@ describe('hybrid outside route providers', () => {
       google,
       osm,
       direct: new DirectDirectionGuideProvider(),
+      enableGoogleDiagnosticProxy: true,
     }).routeToGates(request);
 
     expect(result.status).toBe('success');
@@ -223,6 +242,7 @@ describe('hybrid outside route providers', () => {
       google,
       osm,
       direct: new DirectDirectionGuideProvider(),
+      enableGoogleDiagnosticProxy: true,
     }).routeToGates(request);
     expect(result).toEqual({
       status: 'failure',
@@ -245,6 +265,7 @@ describe('hybrid outside route providers', () => {
       google,
       osm,
       direct: new DirectDirectionGuideProvider(),
+      enableGoogleDiagnosticProxy: true,
     });
 
     expect(orchestrator).not.toHaveProperty('id');

@@ -16,6 +16,7 @@ export class GoogleProxyWalkingRouteProvider implements OutsideWalkingRouteProvi
   constructor(options: GoogleRoutesProxyClientOptions = {}) {
     const mobileConfig = resolveOutsideRouteMobileConfig({
       EXPO_PUBLIC_IJTEMA_ROUTING_PROXY_BASE_URL: process.env.EXPO_PUBLIC_IJTEMA_ROUTING_PROXY_BASE_URL,
+      EXPO_PUBLIC_ENABLE_GOOGLE_ROUTING_DIAGNOSTIC: process.env.EXPO_PUBLIC_ENABLE_GOOGLE_ROUTING_DIAGNOSTIC,
     });
     this.client = new GoogleRoutesProxyClient({
       ...options,

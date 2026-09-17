@@ -126,7 +126,7 @@ describe('DirectionsViewModel hybrid outside routing', () => {
     const gpsRoute = hook.result.current.route;
     expect(gpsRoute?.outsideRoute).toMatchObject({
       provider: 'offline-osm',
-      fallbackHistory: [{ provider: 'google', code: 'proxy-unconfigured', retryable: true }],
+      fallbackHistory: [],
     });
     const gpsCandidateId = gpsRoute?.selectedOutsideCandidateId;
     const gpsGateId = gpsRoute?.startResolution?.gate?.id;
@@ -142,9 +142,7 @@ describe('DirectionsViewModel hybrid outside routing', () => {
     expect(hook.result.current.startSource).toBe('manual_place');
     expect(manualRoute?.outsideRoute?.provider).toBe('offline-osm');
     expect(manualRoute?.startResolution?.gate?.id).toBe(gpsGateId);
-    expect(manualRoute?.outsideRoute?.fallbackHistory).toEqual([
-      { provider: 'google', code: 'proxy-unconfigured', retryable: true },
-    ]);
+    expect(manualRoute?.outsideRoute?.fallbackHistory).toEqual([]);
     // Regression: manual_place used to be hard-excluded from isOutsideStart regardless of its
     // actual coordinate, so the UI would claim "inside" while routing silently ran the
     // outside/gate flow above. Same outside coordinate as GPS must produce the same flag.
@@ -227,7 +225,6 @@ describe('DirectionsViewModel hybrid outside routing', () => {
       roadFollowing: false,
       distanceKind: 'direct-distance',
       fallbackHistory: [
-        { provider: 'google', code: 'proxy-unconfigured', retryable: true },
         { provider: 'offline-osm', code: 'outside-coverage', retryable: false },
       ],
     });

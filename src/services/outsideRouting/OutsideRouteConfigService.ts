@@ -3,6 +3,7 @@ export const DEFAULT_GOOGLE_PROXY_TIMEOUT_MS = 4_000;
 export interface OutsideRouteMobileConfig {
   googleProxyBaseUrl: string | undefined;
   googleProxyTimeoutMs: number;
+  enableGoogleDiagnosticProxy: boolean;
 }
 
 export function resolveOutsideRouteMobileConfig(
@@ -12,5 +13,6 @@ export function resolveOutsideRouteMobileConfig(
   return {
     googleProxyBaseUrl: configuredUrl || undefined,
     googleProxyTimeoutMs: DEFAULT_GOOGLE_PROXY_TIMEOUT_MS,
+    enableGoogleDiagnosticProxy: environment.EXPO_PUBLIC_ENABLE_GOOGLE_ROUTING_DIAGNOSTIC?.trim() === 'true',
   };
 }

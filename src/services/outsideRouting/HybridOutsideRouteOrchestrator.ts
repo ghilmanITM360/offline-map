@@ -13,6 +13,7 @@ export interface HybridOutsideRouteOrchestratorProviders {
   google: OutsideWalkingRouteProvider;
   osm: OutsideWalkingRouteProvider;
   direct: OutsideWalkingRouteProvider;
+  enableGoogleDiagnosticProxy?: boolean;
 }
 
 function withFallbackHistory(
@@ -41,9 +42,11 @@ export class HybridOutsideRouteOrchestrator implements OutsideRouteCandidateSour
 
   constructor(providers: HybridOutsideRouteOrchestratorProviders) {
     if (providers.google.id !== 'google' || providers.osm.id !== 'offline-osm' || providers.direct.id !== 'direct-guide') {
-      throw new Error('Hybrid provider order must be Google, offline OSM, then direct guide.');
+      throw new Error('Outside providers must be Google diagnostic, offline OSM, and direct guide.');
     }
-    this.providers = [providers.google, providers.osm, providers.direct];
+    this.providers = providers.enableGoogleDiagnosticProxy
+      ? [providers.google, providers.osm, providers.direct]
+      : [providers.osm, providers.direct];
   }
 
   async routeToGates(request: OutsideWalkingRouteRequest): Promise<OutsideProviderAttempt> {
