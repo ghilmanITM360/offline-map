@@ -87,9 +87,13 @@ export class SpatialGrid {
       }
 
       // Once a candidate is found, any point outside the next ring is at
-      // least `radius * cellSizeM` away (conservative — the ring boundary is
-      // at minimum that far in grid units) so stop once best beats that bound.
-      if (best && best.distanceM <= radius * cellSizeM) break;
+      // least `radius * cellSizeM` away in the lat direction, but a degree of
+      // longitude is shorter than a degree of latitude away from the equator
+      // (by cos(lat)), so the same degree-sized cell is narrower in meters
+      // east-west. Scale the bound down by cos(lat) so it stays conservative
+      // in both directions instead of only holding near the equator.
+      const lngCorrectedCellSizeM = cellSizeM * Math.cos(toRad(lat));
+      if (best && best.distanceM <= radius * lngCorrectedCellSizeM) break;
     }
 
     return best;
