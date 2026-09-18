@@ -34,6 +34,7 @@ import {
   shouldIgnorePoorAccuracyMovementV2,
 } from '../services/V2NavigationRuntimeService';
 import { ARRIVAL_THRESHOLD_METERS } from '../constants/navigation';
+import { STALE_FIX_CLOCK_TOLERANCE_MS } from '../constants/navigation';
 
 const REROUTE_COOLDOWN_MS = 25_000;
 const productionOutsideRouteSource = createProductionOutsideRouteSource();
@@ -129,10 +130,37 @@ export function useNavigationViewModelV2() {
 
   const progressRef = useRef(0);
   const lastAcceptedLocationRef = useRef<Coordinate | null>(route?.origin.coordinate ?? null);
+  // NAV-P0-001: native observation timestamp (Coordinate.observedAtMs) paired with
+  // lastAcceptedLocationRef, reset together everywhere that ref resets. Feeds
+  // calculateNavigationProgressV2's forward-jump plausibility cap.
+  const lastAcceptedObservedAtMsRef = useRef<number | null>(null);
+  // NAV-P0-001: instant this navigation "watcher generation" began — bumped at trip start and
+  // at every foreground resume (see the two effects below that set it). A fix whose OWN
+  // observation timestamp predates this boundary is a historical/cached fix (Android commonly
+  // delivers one as the first update after a location subscription (re)starts) and must not be
+  // consumed as this generation's live position — see isHistoricalFix in the location effect.
+  const watcherGenerationBoundaryAtMsRef = useRef<number>(Date.now());
   // Wall-clock time (Date.now()) of the last accepted GPS fix while navigating — read by the
   // GPS_LOST polling effect below. Display-state only: nothing reroute/arrival-related reads
   // this ref, so GPS_LOST detection can never itself trigger a reroute or arrival.
   const lastFixAtRef = useRef<number | null>(null);
+  // AUD-05: the location effect below lists isMuted/settings.voiceInstructions/etaMinutes/
+  // currentStepIndex in its dependency array (none of them GPS-related), so it can re-run
+  // against the exact same stale currentLocation for a reason that has nothing to do with a new
+  // fix arriving. Without this guard, that re-run unconditionally re-stamps lastFixAtRef to
+  // "now" and recomputes gpsSignalState as fresh — silently reviving a genuine GPS_LOST back to
+  // GOOD/WEAK just because the user toggled mute or some other unrelated UI state changed.
+  const lastFreshnessFixLocationRef = useRef<Coordinate | null>(null);
+  // Same-observation check for lastFreshnessFixLocationRef: prefer native GPS timestamp
+  // identity (observedAtMs, set by GPSManagerService from Expo's LocationObject.timestamp) when
+  // both sides have one — this is what actually identifies "the same physical sensor sample".
+  // Falls back to object identity when either side lacks it (e.g. tests that construct fixes
+  // without observedAtMs).
+  const isSameGpsObservation = (a: Coordinate, b: Coordinate | null): boolean => {
+    if (!b) return false;
+    if (a.observedAtMs != null && b.observedAtMs != null) return a.observedAtMs === b.observedAtMs;
+    return a === b;
+  };
   const offRouteStartRef = useRef<number | null>(null);
   const consecutiveOffRouteRef = useRef(0);
   const lastRerouteAtRef = useRef(0);
@@ -155,6 +183,11 @@ export function useNavigationViewModelV2() {
     setSnappedLocation(route.origin.coordinate);
     setCurrentStepIndex(0);
     progressRef.current = 0;
+    // NAV-P0-001: a new trip is a new watcher generation — any fix whose native timestamp
+    // predates this instant (e.g. a stale value still sitting in GPSManagerService/the store
+    // from before Start) must be rejected as historical, not fed into route progress.
+    watcherGenerationBoundaryAtMsRef.current = Date.now();
+    lastAcceptedObservedAtMsRef.current = null;
   }, [route?.routeId]);
 
   useEffect(() => () => outsideRequestCoordinatorRef.current.cancelCurrent(), []);
@@ -220,6 +253,10 @@ export function useNavigationViewModelV2() {
         setGpsSignalState('GPS_LOST');
         setIsWeakGps(false);
       }
+      // NAV-P0-001: resume is a new watcher generation — any fix (backlog from the ambient
+      // watch subscription, or the forceFix below) whose native timestamp predates this instant
+      // is historical and must be rejected, not reconciled as the resumed position.
+      watcherGenerationBoundaryAtMsRef.current = Date.now();
       void GPSManagerService.forceFix();
     });
     return () => subscription.remove();
@@ -302,6 +339,7 @@ export function useNavigationViewModelV2() {
       setRemainingDistance(activeCandidate.totalDistanceM);
       progressRef.current = 0;
       lastAcceptedLocationRef.current = coordinate;
+      lastAcceptedObservedAtMsRef.current = coordinate.observedAtMs ?? null;
       consecutiveOffRouteRef.current = 0;
       offRouteStartRef.current = null;
       lastRerouteAtRef.current = Date.now();
@@ -339,33 +377,70 @@ export function useNavigationViewModelV2() {
     if (!route || !currentLocation) return;
 
     const accuracyM = currentLocation.accuracy ?? 0;
+    // AUD-05: only a genuinely new GPS observation may advance freshness state — this effect can
+    // re-run for unrelated reasons (see lastFreshnessFixLocationRef above) against the same
+    // currentLocation, and that must be a no-op here, not a revival.
+    const isNewFix = !isSameGpsObservation(currentLocation, lastFreshnessFixLocationRef.current);
+
+    // NAV-P0-001: reject a fix whose OWN observation timestamp clearly predates this watcher
+    // generation's boundary (trip start / foreground resume — see watcherGenerationBoundaryAtMsRef).
+    // This is the actual runtime trigger for the confirmed progress/ETA/instruction corruption
+    // defect: Android/Play Services can deliver a cached "last known location" as the very first
+    // update after a location subscription (re)starts, and that fix was previously consumed
+    // immediately as this generation's live position. A fix with no observedAtMs at all (no
+    // timestamp evidence either way) is NOT rejected — there's no proof it's historical, and
+    // unconditionally dropping every first fix was explicitly rejected as a fix strategy (a
+    // genuinely fresh first fix must be accepted immediately, not delayed to "hide" the bug).
+    const isHistoricalFix =
+      isNewFix &&
+      currentLocation.observedAtMs != null &&
+      currentLocation.observedAtMs < watcherGenerationBoundaryAtMsRef.current - STALE_FIX_CLOCK_TOLERANCE_MS;
+    if (isHistoricalFix) {
+      // Ignored entirely: must not advance progress/ETA/instructions, must not feed arrival
+      // evidence, and must not mark GPS freshness as restored (lastFreshnessFixLocationRef/
+      // lastFixAtRef are deliberately left untouched here).
+      return;
+    }
+
     // A fix arrived (regardless of how it's ultimately treated below) — record it so the
     // GPS_LOST polling effect knows the signal is alive, and immediately resolve the
     // good/weak display state for it via the same pure derivation the poll uses.
-    const fixAtMs = Date.now();
-    lastFixAtRef.current = fixAtMs;
+    // Falls back to lastFixAtRef.current (not Date.now()) purely to keep this a plain `number` —
+    // that value is never actually read unless isNewFix is true (see the `if (isNewFix)` guards
+    // below), where it's always the freshly computed Date.now() from the branch above anyway.
+    const fixAtMs = isNewFix ? Date.now() : (lastFixAtRef.current ?? Date.now());
+    if (isNewFix) {
+      lastFreshnessFixLocationRef.current = currentLocation;
+      lastFixAtRef.current = fixAtMs;
+    }
     const movedDistanceM = lastAcceptedLocationRef.current
       ? getDistance(lastAcceptedLocationRef.current, currentLocation)
       : Infinity;
     if (shouldIgnorePoorAccuracyMovementV2({ movedDistanceM, accuracyM })) {
-      setIsWeakGps(true);
-      setGpsSignalState(deriveGpsSignalStateV2({ isWeakGps: true, lastFixAtMs: fixAtMs, nowMs: fixAtMs }));
+      if (isNewFix) {
+        setIsWeakGps(true);
+        setGpsSignalState(deriveGpsSignalStateV2({ isWeakGps: true, lastFixAtMs: fixAtMs, nowMs: fixAtMs }));
+      }
       return;
     }
 
     const weakGps = RerouteService.shouldHoldRouteForWeakGps(accuracyM);
-    setIsWeakGps(weakGps);
-    setGpsSignalState(deriveGpsSignalStateV2({ isWeakGps: weakGps, lastFixAtMs: fixAtMs, nowMs: fixAtMs }));
+    if (isNewFix) {
+      setIsWeakGps(weakGps);
+      setGpsSignalState(deriveGpsSignalStateV2({ isWeakGps: weakGps, lastFixAtMs: fixAtMs, nowMs: fixAtMs }));
+    }
     const progress = calculateNavigationProgressV2({
       route,
       coordinate: currentLocation,
       previousProgressMeters: progressRef.current,
       previousEtaMinutes: etaMinutes,
       walkingSpeedMs: settings.walkingSpeed ?? 1.4,
+      previousObservedAtMs: lastAcceptedObservedAtMsRef.current,
     });
 
     progressRef.current = progress.progressMeters;
     lastAcceptedLocationRef.current = currentLocation;
+    lastAcceptedObservedAtMsRef.current = currentLocation.observedAtMs ?? null;
     setSnappedLocation(progress.snappedCoordinate);
     setRemainingDistance(progress.remainingDistanceM);
     setEtaMinutes(progress.etaMinutes);

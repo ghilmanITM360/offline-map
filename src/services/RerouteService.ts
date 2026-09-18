@@ -36,9 +36,20 @@ export class RerouteService {
     previousProgressMeters: number,
     candidateProgressMeters: number,
     maxBacktrackMeters = 15,
+    // NAV-P0-001: a single fix's forward jump, physically bounded by elapsed time since the
+    // last accepted fix (see V2NavigationRuntimeService.calculateNavigationProgressV2, which
+    // derives this from Coordinate.observedAtMs). undefined preserves the pre-fix behavior
+    // (uncapped) for callers that can't supply elapsed-time evidence.
+    maxForwardMeters?: number,
   ): number {
     if (candidateProgressMeters + maxBacktrackMeters < previousProgressMeters) {
       return previousProgressMeters;
+    }
+    if (maxForwardMeters != null) {
+      const forwardCap = previousProgressMeters + maxForwardMeters;
+      if (candidateProgressMeters > forwardCap) {
+        return forwardCap;
+      }
     }
     return candidateProgressMeters;
   }

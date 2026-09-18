@@ -18,6 +18,11 @@ export interface NavigationProgressV2Input {
   previousProgressMeters: number;
   previousEtaMinutes?: number;
   walkingSpeedMs: number;
+  /** Native observation timestamp (Coordinate.observedAtMs) of the last fix actually accepted
+   * into progress. Paired with `coordinate.observedAtMs` to bound this fix's plausible forward
+   * jump — see PLAUSIBLE_FORWARD_SPEED_FACTOR below. Undefined/null (no timestamp evidence on
+   * either side) leaves the jump uncapped, same as before NAV-P0-001. */
+  previousObservedAtMs?: number | null;
 }
 
 export interface NavigationProgressV2 {
@@ -83,11 +88,33 @@ export function deriveGpsSignalStateV2(input: {
   return input.isWeakGps ? 'GPS_WEAK' : 'GPS_GOOD';
 }
 
+// NAV-P0-001 second defensive layer: even a fresh, on-time fix can be a poor-quality outlier
+// (multipath reflection, cold-start GPS jump) that projects far ahead on projectProgressMetersOnRoute's
+// unwindowed nearest-segment search. Rather than an arbitrary fixed cap, bound a single fix's
+// forward progress by how far a person could plausibly have walked in the elapsed time since the
+// last accepted fix. 3x walking speed covers brisk walking/light jogging (not a hard physiological
+// ceiling, just enough headroom that legitimate fast movement isn't clipped) plus a small
+// jitter allowance for consecutive fixes seconds apart. A long background gap naturally widens this
+// cap proportionally to the real elapsed time, so a legitimate multi-minute walk while backgrounded
+// is never blocked — this is the smallest defensible hardening, not a map-matching rewrite.
+const PLAUSIBLE_FORWARD_SPEED_FACTOR = 3;
+const GPS_JITTER_ALLOWANCE_M = 25;
+
 export function calculateNavigationProgressV2(input: NavigationProgressV2Input): NavigationProgressV2 {
   const projection = RerouteService.projectProgressMetersOnRoute(input.coordinate, input.route);
+
+  let maxForwardMeters: number | undefined;
+  const observedAtMs = input.coordinate.observedAtMs;
+  if (observedAtMs != null && input.previousObservedAtMs != null) {
+    const elapsedSeconds = Math.max(1, (observedAtMs - input.previousObservedAtMs) / 1000);
+    maxForwardMeters = input.walkingSpeedMs * PLAUSIBLE_FORWARD_SPEED_FACTOR * elapsedSeconds + GPS_JITTER_ALLOWANCE_M;
+  }
+
   const progressMeters = RerouteService.clampMonotonicProgress(
     input.previousProgressMeters,
     projection.progressMeters,
+    undefined,
+    maxForwardMeters,
   );
   const remainingDistanceM = Math.max(0, input.route.totalDistanceM - progressMeters);
   const etaMinutes = Math.max(0, Math.ceil(remainingDistanceM / input.walkingSpeedMs / 60));
@@ -95,9 +122,13 @@ export function calculateNavigationProgressV2(input: NavigationProgressV2Input):
   return {
     progressMeters,
     remainingDistanceM,
-    etaMinutes: input.previousEtaMinutes && Math.abs(input.previousEtaMinutes - etaMinutes) <= 1
-      ? input.previousEtaMinutes
-      : etaMinutes,
+    // AUD-12: a stale previousEtaMinutes of 1 must never survive the stability smoothing below
+    // once distance has genuinely hit 0 — arrival is the terminal source of truth for ETA.
+    etaMinutes: remainingDistanceM === 0
+      ? 0
+      : input.previousEtaMinutes && Math.abs(input.previousEtaMinutes - etaMinutes) <= 1
+        ? input.previousEtaMinutes
+        : etaMinutes,
     snappedCoordinate: projection.snappedCoordinate,
     distanceToRouteMeters: projection.distanceToRouteMeters,
   };
