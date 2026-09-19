@@ -1235,7 +1235,7 @@ describe('HomeScreen — resolved base-map rendering', () => {
     expect(sheetProps.maxDynamicContentSize).toBe(mapPaddingBottom);
   });
 
-  test('Route Preview camera fit uses the same clamped bottom inset as map padding at the maximum sheet snap', async () => {
+  test('Route Preview camera fit does not duplicate map padding at the maximum sheet snap', async () => {
     const previewRoute = {
       sourceVersion: 'v2' as const,
       coordinates: [
@@ -1281,7 +1281,11 @@ describe('HomeScreen — resolved base-map rendering', () => {
 
     const mapPaddingBottom = screen.getByTestId('home-map-view').props.mapPadding.bottom;
     const [, edgeInsets] = cameraFitRouteSpy.mock.calls.at(-1) as [unknown, { top: number; bottom: number }];
-    expect(edgeInsets.bottom).toBe(mapPaddingBottom);
+    // react-native-maps adds fitToCoordinates edgePadding to MapView mapPadding on
+    // Android. Reusing the sheet inset here double-counts the occluded area and can
+    // push an endpoint out of the remaining Route Preview viewport.
+    expect(mapPaddingBottom).toBeGreaterThan(edgeInsets.bottom);
+    expect(edgeInsets.bottom).toBe(32);
     expect(edgeInsets.top).toBeGreaterThanOrEqual(90);
   });
 

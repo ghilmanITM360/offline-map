@@ -121,6 +121,7 @@ const VENUE_BOUNDARY = [
 // covers the approach streets/gates just outside the venue, not only the interior.
 const SATELLITE_DIM_LAT_PAD = (IJTEMA_MAP_BOUNDS.maxLat - IJTEMA_MAP_BOUNDS.minLat) * 0.5;
 const SATELLITE_DIM_LNG_PAD = (IJTEMA_MAP_BOUNDS.maxLng - IJTEMA_MAP_BOUNDS.minLng) * 0.5;
+const ROUTE_FIT_BOTTOM_PADDING = 32;
 const SATELLITE_DIM_BOUNDARY = [
   { latitude: IJTEMA_MAP_BOUNDS.minLat - SATELLITE_DIM_LAT_PAD, longitude: IJTEMA_MAP_BOUNDS.minLng - SATELLITE_DIM_LNG_PAD },
   { latitude: IJTEMA_MAP_BOUNDS.minLat - SATELLITE_DIM_LAT_PAD, longitude: IJTEMA_MAP_BOUNDS.maxLng + SATELLITE_DIM_LNG_PAD },
@@ -952,16 +953,17 @@ export function HomeScreen() {
     }),
     [activeNavBottomBarHeight, insets.bottom, mode, sheetIndex, snapPoints, topOverlayHeight, windowHeight],
   );
-  // Frame route previews inside the same clamped visible map region used by mapPadding.
-  // Using the raw sheet extent here could make bottom padding exceed the window at the
-  // maximum snap, leaving Google Maps no valid viewport for both route endpoints.
+  // MapView mapPadding already reserves the sheet-covered area. react-native-maps adds
+  // fitToCoordinates edgePadding on top of that base padding on Android, so repeating
+  // mapLabelEdgeInsets.bottom here double-counts the sheet and can clip a route endpoint.
+  // Keep only a small inner margin inside the already-unobscured viewport.
   useEffect(() => {
     if (!activePreviewRoute || activePreviewRoute.coordinates.length < 2) return;
     invalidateStartupCameraIntent();
     cameraManager.fitRoute(activePreviewRoute.coordinates, {
       top: Math.max(mapLabelEdgeInsets.top, 90),
       right: Math.max(mapLabelEdgeInsets.right, 64),
-      bottom: mapLabelEdgeInsets.bottom,
+      bottom: ROUTE_FIT_BOTTOM_PADDING,
       left: 64,
     });
   }, [activePreviewRoute, cameraManager, invalidateStartupCameraIntent, mapLabelEdgeInsets]);
