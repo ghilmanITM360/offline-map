@@ -27,8 +27,8 @@ assert(
   'RastaLayer must accept an onPressRasta callback (now also passing the press coordinate through for tap disambiguation).',
 );
 assert(
-  /tappable\s*\n\s*onPress=\{\(e\) => onPressRasta\(rasta\.id, e\.nativeEvent\.coordinate\)\}/.test(rastaLayer),
-  'RastaLayer must render a tappable Polyline wired to onPressRasta — the line itself must be a touch target, not just its MapLabelOverlay label.',
+  /tappable\s*\n\s*onPress=\{\(e\) => onPressRasta\(rasta\.sourceId \?\? rasta\.id, e\.nativeEvent\.coordinate\)\}/.test(rastaLayer),
+  'RastaLayer must render a tappable Polyline wired to the logical Rasta family — every branched segment is a touch target without exposing a segment-only ID.',
 );
 assert(
   homeScreen.includes('onPressRasta={(rastaId, coordinate) => {') &&

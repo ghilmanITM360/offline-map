@@ -15,7 +15,7 @@ const rastaLayer = readFileSync('src/views/components/map/RastaLayer.tsx', 'utf8
 
 // --- Reference pattern still intact (Rasta's hit corridor survives suppression) ---
 assert(
-  /tappable\s*\n\s*onPress=\{\(e\) => onPressRasta\(rasta\.id, e\.nativeEvent\.coordinate\)\}/.test(rastaLayer),
+  /tappable\s*\n\s*onPress=\{\(e\) => onPressRasta\(rasta\.sourceId \?\? rasta\.id, e\.nativeEvent\.coordinate\)\}/.test(rastaLayer),
   'Reference pattern missing: RastaLayer must still render its unconditional invisible wide hit-corridor Polyline.',
 );
 

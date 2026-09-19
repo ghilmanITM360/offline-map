@@ -43,7 +43,8 @@ assert(blockLayers.rastas.length === 0, 'blocks filter: rastas hidden');
 assert(blockLayers.gates.length === 0, 'blocks filter: gates hidden');
 assert(blockLayers.specialRoutes.length === 0, 'blocks filter: specialRoutes hidden');
 
-assert(rastaLayers.rastas.length === 11, 'rastas filter: 11 public rastas');
+assert(rastaLayers.rastas.length === 14, 'rastas filter: all 14 surveyed segments across 11 public Rastas');
+assert(new Set(rastaLayers.rastas.map((rasta) => rasta.sourceId ?? rasta.id)).size === 11, 'rastas filter: 11 public Rasta families');
 assert(rastaLayers.visibleRastaLabels.length === 11, 'rastas filter: all 11 rasta labels');
 assert(rastaLayers.blocks.length === 0, 'rastas filter: blocks hidden');
 assert(rastaLayers.gates.length === 0, 'rastas filter: gates hidden');
@@ -85,7 +86,8 @@ assert(
 
 // ---------- all filter balanced ----------
 assert(allLayers.blocks.length === 42, 'all filter: 42 blocks');
-assert(allLayers.rastas.length === 11, 'all filter: 11 public rastas');
+assert(allLayers.rastas.length === 14, 'all filter: all 14 surveyed segments');
+assert(new Set(allLayers.rastas.map((rasta) => rasta.sourceId ?? rasta.id)).size === 11, 'all filter: 11 public Rasta families');
 assert(allLayers.gates.length === 18, 'all filter: 18 gates');
 assert(allLayers.specialRoutes.length === 3, 'all filter: 3 special routes');
 

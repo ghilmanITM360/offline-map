@@ -60,8 +60,8 @@ assert(
 assert(rastaLayer.includes('strokeWidth={16}') && rastaLayer.includes('tappable'), 'RastaLayer hit target must be tuned to 16 (down from an untuned 20) to reduce adjacent-line crosstalk.');
 assert(specialRouteLayer.includes('strokeWidth={18}') && specialRouteLayer.includes('tappable'), 'SpecialRouteLayer hit target must be explicitly tuned/documented.');
 assert(
-  rastaLayer.includes('onPressRasta(rasta.id,') && specialRouteLayer.includes('onPressRoute(route.id,'),
-  'Both hit targets must still resolve to the tapped object\'s own id (plus the press coordinate, for tap disambiguation among overlapping shapes), not a shared/ambiguous handler.',
+  rastaLayer.includes('onPressRasta(rasta.sourceId ?? rasta.id,') && specialRouteLayer.includes('onPressRoute(route.id,'),
+  'Both hit targets must resolve to their logical object identity (Rasta family or special-route id) plus the press coordinate for overlap disambiguation.',
 );
 
 // --- FIX 3: highlight -> camera -> sheet transition ordering ---------------

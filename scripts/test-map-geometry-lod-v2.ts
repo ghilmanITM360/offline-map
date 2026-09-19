@@ -15,7 +15,7 @@ const lowZoom = V2MapRenderingService.getHomeLayers({ zoomLevel: LOW_ZOOM });
 assert.equal(lowZoom.visibleBlocks.length, 0, 'Low zoom must hide all block polygons when nothing is selected');
 assert.equal(lowZoom.visibleRastas.length, 0, 'Low zoom must hide all rasta polylines when nothing is selected');
 assert.equal(lowZoom.blocks.length, 42, 'Raw blocks field (consumed by nav) must stay full regardless of zoom');
-assert.equal(lowZoom.rastas.length, 11, 'Raw rastas field (consumed by nav) must stay full regardless of zoom');
+assert.equal(lowZoom.rastas.length, 14, 'Raw Rasta segments field (consumed by nav) must stay full regardless of zoom');
 
 const lowZoomSelected = V2MapRenderingService.getHomeLayers({ selectedPlaceId: 'B10', zoomLevel: LOW_ZOOM });
 assert.equal(lowZoomSelected.visibleBlocks.length, 1, 'Low zoom must still surface the selected block');
@@ -27,17 +27,17 @@ assert.equal(lowZoomRastaSelected.visibleRastas[0]?.id, 'R9', 'Low zoom selected
 
 const mediumZoom = V2MapRenderingService.getHomeLayers({ zoomLevel: MEDIUM_ZOOM });
 assert.equal(mediumZoom.visibleBlocks.length, 42, 'Medium zoom must render all block polygons');
-assert.equal(mediumZoom.visibleRastas.length, 11, 'Medium zoom must render all rasta polylines');
+assert.equal(mediumZoom.visibleRastas.length, 14, 'Medium zoom must render all surveyed Rasta segment polylines');
 
 const highZoom = V2MapRenderingService.getHomeLayers({ zoomLevel: HIGH_ZOOM });
 assert.equal(highZoom.visibleBlocks.length, 42, 'High zoom must render all block polygons');
-assert.equal(highZoom.visibleRastas.length, 11, 'High zoom must render all rasta polylines');
+assert.equal(highZoom.visibleRastas.length, 14, 'High zoom must render all surveyed Rasta segment polylines');
 
 const filteredLowZoom = V2MapRenderingService.getHomeLayers({ mapFilter: 'blocks', zoomLevel: LOW_ZOOM });
 assert.equal(filteredLowZoom.visibleBlocks.length, 42, 'Explicit Blocks filter must bypass low-zoom LOD');
 
 const rastaFilteredLowZoom = V2MapRenderingService.getHomeLayers({ mapFilter: 'rastas', zoomLevel: LOW_ZOOM });
-assert.equal(rastaFilteredLowZoom.visibleRastas.length, 11, 'Explicit Rastas filter must bypass low-zoom LOD');
+assert.equal(rastaFilteredLowZoom.visibleRastas.length, 14, 'Explicit Rastas filter must bypass low-zoom LOD for every surveyed segment');
 
 // Special routes are treated as "major routes" per the LOD spec — always rendered, no gating.
 const lowZoomSpecialRoutes = V2MapRenderingService.getHomeLayers({ zoomLevel: LOW_ZOOM });

@@ -30,7 +30,14 @@ const originPreview = V2DirectionsService.calculatePreview({
   walkingSpeedMs: 1.4,
 });
 assert.equal(originPreview.status, 'ready', 'Shahr-e-Pindal North -> Block 28 must route');
-assert(originPreview.route?.segments.some((segment) => segment.name === 'Shahr-e-Pindal North' || segment.name === 'Shahr-e-Pindal South'), 'Route from Shahr-e-Pindal must traverse friendly special-route segments');
+assert.equal(originPreview.route?.startLabel, 'Shahr-e-Pindal North', 'Route start must keep the friendly special-route label');
+assert(originPreview.route?.nodes[0]?.startsWith('SPNP-'), 'Route from Shahr-e-Pindal North must resolve to a point on that route');
+const firstSegment = originPreview.route?.segments[0];
+assert(
+  firstSegment?.name === 'Shahr-e-Pindal North' ||
+    (firstSegment?.fromId.startsWith('SPNP-') && firstSegment.name === 'Rasta intersection' && firstSegment.distance <= 15),
+  'A route may leave from a surveyed Shahr-e-Pindal intersection without first traversing a same-family segment',
+);
 assert(originPreview.route?.destinationEntryNodeId?.startsWith('B28_C'), 'Shahr-e-Pindal route must still resolve block entry nodes');
 
 console.log('Shahr-e-Pindal routing v2 checks passed.');

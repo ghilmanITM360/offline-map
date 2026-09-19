@@ -71,7 +71,13 @@ assert(routeMs < 350, `25 local v2 route calculations should finish under 350ms,
 
 const normalLayers = V2MapRenderingService.getHomeLayers({ developerMode: false, graphOnlyFallback: true });
 assert.equal(normalLayers.blocks.length, 42, 'Normal mode must render B1-B42 block layers');
-assert.equal(normalLayers.rastas.length, 11, 'Normal mode must render Rasta 01-11 layers');
+assert.equal(
+  new Set(normalLayers.rastas.map((rasta) => rasta.sourceId ?? rasta.id)).size,
+  11,
+  'Normal mode must render all Rasta 01-11 families even when a family has multiple branched segments',
+);
+assert(normalLayers.rastas.length >= 11, 'Branched Rastas may render multiple real segments; none may be collapsed away.');
+assert(normalLayers.rastas.every((rasta) => rasta.polyline.length >= 2), 'Every rendered Rasta segment must contain usable geometry.');
 assert.equal(normalLayers.specialRoutes.length, 3, 'Normal mode must render Shahr-e-Pindal visual routes');
 assert.equal(normalLayers.developerLabels.length, 0, 'Developer labels must be disabled in normal mode');
 

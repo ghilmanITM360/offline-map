@@ -14,7 +14,7 @@ const layers = V2MapRenderingService.getHomeLayers({ graphOnlyFallback: true });
 assert.equal(layers.useV2Map, true, 'Offline graph-only mode must use v2 map by default');
 assert.equal(layers.graphOnlyFallbackSupported, true, 'V2 map layers must support graph-only fallback');
 assert.equal(layers.blocks.length, 42, 'Offline graph-only mode must render B1-B42');
-assert.equal(layers.rastas.length, 11, 'Offline graph-only mode must render Rasta 01-11');
+assert.equal(layers.rastas.length, 14, 'Offline graph-only mode must render all 14 segments across logical Rasta 01-11');
 assert.equal(layers.specialRoutes.length, 3, 'Offline graph-only mode must render Shahr-e-Pindal North/South/West');
 assert(layers.gates.length >= 16, 'Offline graph-only mode must render coordinate gates');
 

@@ -26,7 +26,7 @@ export interface V2PlaceAdapterOptions {
 
 export type { V2Place } from '../models/types';
 
-const disconnectedGateIds = new Set(['GATE_03', 'GATE_17', 'GATE_18', 'GATE_19']);
+const disconnectedGateIds = new Set(['GATE_18', 'GATE_19']);
 
 const toAppCoordinate = (coordinate: V2Coordinate): Coordinate => ({
   latitude: coordinate.lat,

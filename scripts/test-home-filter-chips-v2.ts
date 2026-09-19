@@ -12,9 +12,13 @@ const homeScreen = readFileSync('src/views/screens/HomeScreen.tsx', 'utf8');
 
 assert(homeScreen.includes('mapFilter: activeCategory'), 'Home must pass active category chip state into v2 map renderer.');
 
+const publicRastaFamilyCount = (layers: ReturnType<typeof V2MapRenderingService.getHomeLayers>): number =>
+  new Set(layers.rastas.map((rasta) => rasta.sourceId ?? rasta.id)).size;
+
 const allLayers = V2MapRenderingService.getHomeLayers({ mapFilter: 'all', zoomLevel: 17 } as any);
 assert.equal(allLayers.blocks.length, 42, 'All filter must include B1-B42 block polygons.');
-assert.equal(allLayers.rastas.length, 11, 'All filter must include 11 public rastas.');
+assert.equal(publicRastaFamilyCount(allLayers), 11, 'All filter must include 11 public Rasta families.');
+assert.equal(allLayers.rastas.length, 14, 'All filter must render every independently surveyed Rasta segment.');
 assert.equal(allLayers.gates.length, 18, 'All filter must include 18 active gates.');
 assert.equal(allLayers.visibleGateMarkers.length, 18, 'All filter at high zoom must show active gate markers.');
 assert.equal(allLayers.specialRoutes.length, 3, 'All filter must include 3 Shahr-e-Pindal routes.');
@@ -27,7 +31,8 @@ assert.equal(blockLayers.visibleGateMarkers.length, 0, 'Blocks filter must hide 
 assert.equal(blockLayers.specialRoutes.length, 0, 'Blocks filter must hide Shahr-e-Pindal routes.');
 
 const rastaLayers = V2MapRenderingService.getHomeLayers({ mapFilter: 'rastas', zoomLevel: 17 } as any);
-assert.equal(rastaLayers.rastas.length, 11, 'Rastas filter must show exactly 11 public rastas.');
+assert.equal(publicRastaFamilyCount(rastaLayers), 11, 'Rastas filter must show exactly 11 public Rasta families.');
+assert.equal(rastaLayers.rastas.length, 14, 'Rastas filter must render all branched R7/R8 segments without joining gaps.');
 assert.equal(rastaLayers.visibleRastaLabels.length, 11, 'Rastas filter must show all public rasta labels at high zoom.');
 assert.equal(rastaLayers.blocks.length, 0, 'Rastas filter must hide block polygons.');
 assert.equal(rastaLayers.visibleGateMarkers.length, 0, 'Rastas filter must hide gate markers.');
