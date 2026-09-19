@@ -355,10 +355,64 @@ export function HomeScreen() {
   const selectedPlaceIdRef = useRef<string | undefined>(undefined);
   selectedPlaceIdRef.current = selectedPlace?.id;
 
+  const activePreviewRoute = useMemo(() => {
+    if (isNavigating) return null;
+    if (!routePlannerDest || !destinationFromPlace(routePlannerDest)) return null;
+    return isV2PreviewRoute(activeRoute) ? activeRoute : null;
+  }, [activeRoute, isNavigating, routePlannerDest]);
+
+  type SheetDismissalReason = 'state-reset' | 'start-navigation' | 'replacement';
+  const computeSheetIdentity = (routeDestination: Place | null, place: Place | null): string | null =>
+    routeDestination ? `route:${routeDestination.id}` : place ? `place:${place.id}` : null;
+  const sheetRouteDestination = directionsDestination ?? (activePreviewRoute ? routePlannerDest : null);
+  const sheetIdentity = computeSheetIdentity(sheetRouteDestination, selectedPlace);
+  const currentSheetIdentityRef = useRef<string | null>(sheetIdentity);
+  currentSheetIdentityRef.current = sheetIdentity;
+  const closingSheetIdentityRef = useRef<string | null>(null);
+  const sheetDismissHandledRef = useRef(false);
+
+  // Single ownership record for an in-flight identity-changing/close transition —
+  // knows where the sheet is coming FROM, where it's headed TO (null = closing), and
+  // why. `pendingNativeSheetEchoRef` is the actual swallow gate: it goes true the
+  // instant we imperatively touch the native sheet (present/snapToIndex/close) and
+  // only clears on the native confirmation that the round-trip finished — either the
+  // sheet visibly re-presenting (onChange to an open index) for a replace, or its own
+  // onDismiss firing for a close. Because it is keyed off "is a native round-trip
+  // outstanding" rather than "does this echo's identity match", a later transition
+  // (e.g. Change Destination) armed before an earlier one's echo arrives keeps
+  // inheriting the same protection instead of the guard silently going stale.
+  const activeSheetTransitionRef = useRef<{
+    fromIdentity: string | null;
+    toIdentity: string | null;
+    reason: SheetDismissalReason;
+  } | null>(null);
+  const pendingNativeSheetEchoRef = useRef(false);
+
+  const armSheetTransition = useCallback((toIdentity: string | null, reason: SheetDismissalReason) => {
+    cancelPendingSheetPresentation();
+    activeSheetTransitionRef.current = { fromIdentity: currentSheetIdentityRef.current, toIdentity, reason };
+  }, [cancelPendingSheetPresentation]);
+
+  const presentSheetForIdentity = useCallback((snapIndex: number) => {
+    pendingNativeSheetEchoRef.current = true;
+    bottomSheetRef.current?.present();
+    bottomSheetRef.current?.snapToIndex(snapIndex);
+  }, [bottomSheetRef]);
+
+  const closeSheetNative = useCallback(() => {
+    pendingNativeSheetEchoRef.current = true;
+    bottomSheetRef.current?.close();
+  }, [bottomSheetRef]);
+
   const handlePlaceSelectWithCameraIntent = useCallback((place: Place) => {
     invalidateStartupCameraIntent();
+    armSheetTransition(computeSheetIdentity(null, place), 'replacement');
+    // handlePlaceSelect always ends in an imperative present()/snapToIndex — either
+    // synchronously (no coordinate) or after its camera-pan setTimeout — so the
+    // native echo window opens here, before we know which path it will take.
+    pendingNativeSheetEchoRef.current = true;
     handlePlaceSelect(place);
-  }, [handlePlaceSelect, invalidateStartupCameraIntent]);
+  }, [armSheetTransition, handlePlaceSelect, invalidateStartupCameraIntent]);
 
   const collectTapCandidate = useCallback((candidate: TapCandidate<Place>) => {
     invalidateStartupCameraIntent();
@@ -409,12 +463,6 @@ export function HomeScreen() {
   // inline distance check for v1) — feeds MapMode.ARRIVAL directly instead of a separate,
   // never-set local flag, so "destination reached" actually flips NAVIGATION -> ARRIVAL.
   const arrived = navOverlay.arrived || navOverlayV1.arrived;
-
-  const activePreviewRoute = useMemo(() => {
-    if (isNavigating) return null;
-    if (!routePlannerDest || !destinationFromPlace(routePlannerDest)) return null;
-    return isV2PreviewRoute(activeRoute) ? activeRoute : null;
-  }, [activeRoute, isNavigating, routePlannerDest]);
 
   const showOsmAttribution =
     baseMapMode === 'LOCAL_TILES' || outsideRouteProvider(activePreviewRoute ?? activeRoute) === 'offline-osm';
@@ -535,24 +583,6 @@ export function HomeScreen() {
   );
   const markerOwnership = resolveMapMarkerOwnership(mode, hasNavigationUserLocation);
 
-  type SheetDismissalReason = 'state-reset' | 'start-navigation' | 'replacement';
-  const sheetRouteDestination = directionsDestination ?? (activePreviewRoute ? routePlannerDest : null);
-  const sheetIdentity = sheetRouteDestination
-    ? `route:${sheetRouteDestination.id}`
-    : selectedPlace
-      ? `place:${selectedPlace.id}`
-      : null;
-  const currentSheetIdentityRef = useRef<string | null>(sheetIdentity);
-  currentSheetIdentityRef.current = sheetIdentity;
-  const closingSheetIdentityRef = useRef<string | null>(null);
-  const programmaticSheetDismissRef = useRef<{ identity: string | null; reason: SheetDismissalReason } | null>(null);
-  const sheetDismissHandledRef = useRef(false);
-
-  const prepareProgrammaticSheetDismiss = useCallback((reason: SheetDismissalReason) => {
-    programmaticSheetDismissRef.current = { identity: currentSheetIdentityRef.current, reason };
-    cancelPendingSheetPresentation();
-  }, [cancelPendingSheetPresentation]);
-
   const resetDismissedSheetState = useCallback((clearPlanner: boolean) => {
     cancelPendingSheetPresentation();
     if (clearPlanner) clearRoutePlanner();
@@ -586,37 +616,49 @@ export function HomeScreen() {
     invalidateStartupCameraIntent();
     const currentIdentity = currentSheetIdentityRef.current;
     if (currentIdentity) {
-      prepareProgrammaticSheetDismiss('replacement');
+      armSheetTransition(null, 'replacement');
       resetDismissedSheetState(currentIdentity.startsWith('route:'));
-      bottomSheetRef.current?.close();
+      closeSheetNative();
     }
     setIsSearchFocused(true);
-  }, [bottomSheetRef, invalidateStartupCameraIntent, prepareProgrammaticSheetDismiss, resetDismissedSheetState]);
+  }, [armSheetTransition, closeSheetNative, invalidateStartupCameraIntent, resetDismissedSheetState]);
 
   const selectCategory = useCallback((category: string) => {
     const currentIdentity = currentSheetIdentityRef.current;
     if (currentIdentity) {
-      prepareProgrammaticSheetDismiss('state-reset');
+      armSheetTransition(null, 'state-reset');
       resetDismissedSheetState(currentIdentity.startsWith('route:'));
-      bottomSheetRef.current?.close();
+      closeSheetNative();
     }
     handleCategoryPress(category);
-  }, [bottomSheetRef, handleCategoryPress, prepareProgrammaticSheetDismiss, resetDismissedSheetState]);
+  }, [armSheetTransition, closeSheetNative, handleCategoryPress, resetDismissedSheetState]);
 
   const handleSheetDismiss = useCallback(() => {
     cancelPendingSheetPresentation();
     if (sheetDismissHandledRef.current) return;
 
     const dismissedIdentity = closingSheetIdentityRef.current ?? currentSheetIdentityRef.current;
-    const programmaticDismiss = programmaticSheetDismissRef.current;
+    const transition = activeSheetTransitionRef.current;
     closingSheetIdentityRef.current = null;
-    programmaticSheetDismissRef.current = null;
     sheetDismissHandledRef.current = true;
     setSheetIndex(-1);
     handleSheetIndexChange(-1);
 
+    if (pendingNativeSheetEchoRef.current) {
+      // This dismiss was produced by our own present()/close() call — a same-sheet
+      // identity replacement still in flight, or an explicit close whose caller
+      // already applied its own state change — not a genuine user gesture. A
+      // close-type transition (toIdentity null) is fully resolved by its own
+      // dismiss; a replace-type transition stays armed until the replacement sheet
+      // is observed open (see onChange below), so a still-outstanding echo from an
+      // earlier, now-superseded transition (e.g. Change Destination firing before
+      // Open Directions' echo lands) keeps being swallowed instead of tearing down
+      // the newer identity.
+      if (transition?.toIdentity === null) pendingNativeSheetEchoRef.current = false;
+      return;
+    }
+
     if (!dismissedIdentity) return;
-    if (programmaticDismiss?.identity === dismissedIdentity) return;
     // Portal dismissal can finish after a rapid re-selection. Only the identity that
     // actually began closing may be reset; a newer selection owns the shared sheet now.
     if (currentSheetIdentityRef.current !== dismissedIdentity) return;
@@ -1003,16 +1045,19 @@ export function HomeScreen() {
     if (!activePreviewRoute || directionsDestination) return;
     sheetDismissHandledRef.current = false;
     closingSheetIdentityRef.current = null;
-    bottomSheetRef.current?.present();
-    bottomSheetRef.current?.snapToIndex(1);
-  }, [activePreviewRoute, directionsDestination, bottomSheetRef]);
+    armSheetTransition(computeSheetIdentity(routePlannerDest, null), 'replacement');
+    presentSheetForIdentity(1);
+  }, [activePreviewRoute, directionsDestination, armSheetTransition, presentSheetForIdentity, routePlannerDest]);
 
   useEffect(() => {
     if (!showAnyNavOverlay) return;
-    if (!programmaticSheetDismissRef.current) prepareProgrammaticSheetDismiss('start-navigation');
+    // Navigation starting is the one unconditional close: whatever transition was
+    // previously armed (e.g. Start Navigation's own arm) is superseded here — the
+    // sheet is closing for good, not settling into a new identity.
+    armSheetTransition(null, 'start-navigation');
     setDirectionsDestination(null);
-    bottomSheetRef.current?.close();
-  }, [showAnyNavOverlay, bottomSheetRef, prepareProgrammaticSheetDismiss]);
+    closeSheetNative();
+  }, [showAnyNavOverlay, armSheetTransition, closeSheetNative]);
 
   const recenterResetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const handleRecenterPress = useCallback(async () => {
@@ -1044,21 +1089,20 @@ export function HomeScreen() {
 
   const handleOpenDirections = (place: Place) => {
     invalidateStartupCameraIntent();
-    // Switching the sheet from "place" to "route" identity re-presents/re-snaps an
-    // already-open BottomSheetModal, which can fire a transient onDismiss for the old
-    // identity. Arm the programmatic-dismiss guard first (same pattern as openSearch/
-    // selectCategory) so handleSheetDismiss recognizes that dismiss as expected instead
-    // of tearing down the directions state it just set.
-    prepareProgrammaticSheetDismiss('replacement');
     const destination =
       place.sourceVersion === 'v2'
         ? place
         : place.category === 'Block' && entryPoints[selectedEntryIdx]
         ? RoutePointService.enrichPlaceWithRoutingNode(place, entryPoints[selectedEntryIdx].nodeId)
         : place;
+    // Switching the sheet from "place" to "route" identity re-presents/re-snaps an
+    // already-open BottomSheetModal, which can fire a transient onDismiss for the old
+    // identity. Arm the transition first (same pattern as openSearch/selectCategory)
+    // so handleSheetDismiss recognizes that dismiss as expected instead of tearing
+    // down the directions state it just set.
+    armSheetTransition(computeSheetIdentity(destination, null), 'replacement');
     setDirectionsDestination(destination);
-    bottomSheetRef.current?.present();
-    bottomSheetRef.current?.snapToIndex(1);
+    presentSheetForIdentity(1);
   };
 
   const handleCloseDirections = useCallback(() => {
@@ -1074,17 +1118,23 @@ export function HomeScreen() {
   // by the existing activePreviewRoute -> cameraManager.fitRoute() effect above once the
   // new route lands; nothing here calls the camera directly.
   const handleChangeDestination = useCallback((place: Place) => {
+    // No imperative sheet call happens here — the sheet stays mounted and its content
+    // just swaps reactively. Arming still matters: it records the new toIdentity for
+    // bookkeeping and, more importantly, does NOT clear pendingNativeSheetEchoRef, so
+    // an earlier still-in-flight transition (e.g. the Open Directions call that first
+    // produced this route) keeps protecting this newer identity from its late echo.
+    armSheetTransition(computeSheetIdentity(place, null), 'replacement');
     setDirectionsDestination(place);
-  }, []);
+  }, [armSheetTransition]);
 
   // Full reset to EXPLORE — replaces the two ad hoc `setSelectedPlace(null) +
   // bottomSheetRef.close()` call sites that existed independently before and didn't
   // account for detailsExpanded/arrived/directionsDestination.
   const closeSheet = useCallback(() => {
-    prepareProgrammaticSheetDismiss('state-reset');
+    armSheetTransition(null, 'state-reset');
     resetDismissedSheetState(false);
-    bottomSheetRef.current?.close();
-  }, [bottomSheetRef, prepareProgrammaticSheetDismiss, resetDismissedSheetState]);
+    closeSheetNative();
+  }, [armSheetTransition, closeSheetNative, resetDismissedSheetState]);
 
   const handleStartPreviewNavigation = useCallback(() => {
     if (!activePreviewRoute || !previewDestination) return;
@@ -1103,9 +1153,11 @@ export function HomeScreen() {
       startPlace: routePlannerOrigin,
       currentLocation: routePlannerOrigin ? null : currentLocation,
     });
-    prepareProgrammaticSheetDismiss('start-navigation');
+    // The showAnyNavOverlay effect below arms the close-transition itself once
+    // isNavigating flips true — it's the single source of truth for that arm so it
+    // can unconditionally supersede whatever was previously in flight.
     startNavigation(previewDestination, resolvedRoute, resolvedRoute.instructions);
-  }, [activePreviewRoute, currentLocation, invalidateStartupCameraIntent, prepareProgrammaticSheetDismiss, previewDestination, routePlannerOrigin, startNavigation]);
+  }, [activePreviewRoute, currentLocation, invalidateStartupCameraIntent, previewDestination, routePlannerOrigin, startNavigation]);
 
   const handleClearPreviewRoute = useCallback(() => {
     Alert.alert('Cancel route?', 'You will need to choose your destination again.', [
@@ -1942,6 +1994,11 @@ export function HomeScreen() {
             } else {
               sheetDismissHandledRef.current = false;
               closingSheetIdentityRef.current = null;
+              // The sheet has genuinely landed open again — any transition that was
+              // protecting against a stale close echo has now settled for real, so a
+              // later dismiss is a real user gesture, not an artifact of our own
+              // present()/snapToIndex call.
+              pendingNativeSheetEchoRef.current = false;
             }
             // Fully expanding the sheet over a selected place is "show me more" —
             // PLACE_SELECTED (preview) -> DETAILS. Only meaningful outside the directions
