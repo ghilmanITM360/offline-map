@@ -97,7 +97,8 @@ assert.equal(computeMapContentInsets({ ...mapContentBase, mode: 'PLACE_SELECTED'
 // bottom is capped at windowHeight - top - MIN_TOP_VISIBLE_MAP_FOR_ATTRIBUTION (496 here).
 // This script wasn't updated alongside MapContentInsets.test.ts's equivalent fix.
 assert.equal(computeMapContentInsets({ ...mapContentBase, mode: 'DETAILS', sheetIndex: 2 }).bottom, 496);
-assert.equal(computeMapContentInsets({ ...mapContentBase, mode: 'ROUTE_PREVIEW', sheetIndex: 1 }).bottom, 400);
+// Route Preview reserves its larger 280px useful-map floor: 800 - 144 - 280 = 376.
+assert.equal(computeMapContentInsets({ ...mapContentBase, mode: 'ROUTE_PREVIEW', sheetIndex: 1 }).bottom, 376);
 assert.equal(computeMapContentInsets({ ...mapContentBase, mode: 'NAVIGATION', navBarHeight: 196 }).bottom, 196);
 assert.equal(computeMapContentInsets({ ...mapContentBase, mode: 'ARRIVAL' }).bottom, windowHeight);
 
