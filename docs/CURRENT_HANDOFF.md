@@ -1,14 +1,51 @@
 # Current Handoff
 
-_Last updated: 2026-09-19 (REL-001 remediation)_
+_Last updated: 2026-09-19 (REL-001 merged; REL-003 in progress)_
 
-## Latest session — REL-001 fixed, verdict BLOCKED → verdict lifted for core navigation
+## Latest session — REL-001 CLOSED (merged), REL-003 fix open (PR #30, runtime partial)
 
-`fix/rel001-bottom-sheet-transition-race` (commit `15f7c88`, branched from release
-HEAD `e16f267`) fixes REL-001. **Not yet merged into
-`integration/ijtema-clean-baseline`** — awaiting explicit go-ahead to push/merge
-(destructive-adjacent shared-branch action, out of scope for an unattended fix
-session per this repo's own git safety rules).
+**REL-001: CLOSED.** `fix/rel001-bottom-sheet-transition-race` (commits `15f7c88` +
+`aa6106d`) merged into `integration/ijtema-clean-baseline` via
+[PR #29](https://github.com/ghilmanITM360/offline-map/pull/29), merge commit
+`2975745`. Release HEAD is now `2975745`. Post-merge smoke on the merged branch:
+HomeScreen 54/54 (incl. P0-1..P0-4), typecheck/lint/`git diff --check` clean,
+16/18 gate matrix unchanged. Release verdict no longer BLOCKED on REL-001.
+
+**REL-003 (Google attribution): fix ready, PR open, not merged.**
+`fix/rel003-google-attribution` (branched from `2975745`) ports the reviewed
+3-branch attribution lineage (`36c7065`, `61fbe36`, `d0f81da`, `89ed17d` — the
+set present together on `fix/core-functionality-finalization`,
+`fix/gps-progress-freshness-p0`, `integration/aud-fix-consolidation`) onto
+current release: wires `mapPadding` to the real MapView, clamps it
+(`computeMaxSheetOcclusionForAttribution`/`MIN_TOP_VISIBLE_MAP_FOR_ATTRIBUTION`)
+so a tall/dynamic sheet can't push the Google logo off-screen, fixes
+`resolveOverlayExtent`'s out-of-bounds-`sheetIndex` fallback, and bounds
+`BottomSheetModal.topInset`/`maxDynamicContentSize` to the same ceiling. Two
+adaptations were needed porting onto this release (source branches assumed an
+unported `navTopHeight`/`chrome.chips` feature that doesn't exist here — see
+commits `99478a6`, `1aeb363`). [PR #30](https://github.com/ghilmanITM360/offline-map/pull/30)
+open against `integration/ijtema-clean-baseline`, **not merged**.
+
+SOURCE VERIFIED and TEST VERIFIED (94/94 attribution tests, 478/478 full Jest,
+typecheck/lint/`git diff --check` clean, 16/18 gate matrix unchanged).
+RUNTIME VISUAL VERIFIED is **partial**: on-device with a fresh bundled APK and
+real Google basemap, confirmed the idle-map state renders the Google logo
+correctly. Could not capture the LocationSheet/Route-Preview states before
+Google Play Services' Maps module became unable to reliably initialize in this
+session's emulator (repeated ANRs / "Map failed to load", traced to
+`MapsCoreDynamite` recompiling from scratch on every launch under host load —
+the same class of host instability documented in the REL-001 runtime session,
+not caused by this fix; the OSM/local-tile fallback, unaffected by this change,
+kept loading instead). **Do not merge PR #30 until a stable environment confirms
+the sheet-open states visually** — this repo's own instruction is to classify
+REL-003 CLOSED only after source + test + runtime visual verification, and the
+runtime leg here is incomplete.
+
+### Prior state (superseded)
+
+`fix/rel001-bottom-sheet-transition-race` was previously unmerged pending
+explicit push/merge approval; that approval was given this session and the
+merge is now complete (see above).
 
 **ROOT CAUSE (confirmed by code trace, not just by matching stash naming):**
 `HomeScreen.tsx`'s `handleSheetDismiss` computed
@@ -66,11 +103,10 @@ inventory, network/security/permissions review, Google Maps config review —
 see the prior session's `docs/audit/2026-09-final-production-readiness-audit.md`
 for that, still valid except for its REL-001 section.
 
-**Remaining before this branch can be considered mergeable and the release
-verdict fully updated:** owner/user approval to push the fix branch and merge
-it into `integration/ijtema-clean-baseline`. REL-002 (Privacy/Terms
-placeholders) and REL-003 (unmerged `mapPadding` attribution fix) are
-unrelated pre-existing P1s, not touched this session, and remain open.
+**Remaining:** REL-003 needs a stable-environment runtime visual pass (see
+above) before PR #30 merges. REL-002 (Privacy/Terms `TODO_` placeholders) and
+REL-004 (iOS Maps-key disposition) are unrelated pre-existing P1s, not touched
+this session, and remain open.
 
 ## Prior session — production-readiness audit, verdict BLOCKED
 
