@@ -148,6 +148,7 @@ const clearSearchSpy = jest.fn();
 const cancelPendingSheetPresentationSpy = jest.fn();
 const cameraFollowUserSpy = jest.fn();
 const cameraStopFollowingSpy = jest.fn();
+const cameraFitRouteSpy = jest.fn();
 const handleRecenterSpy = jest.fn();
 
 function useFakeHomeViewModel(initialSearchResults: Place[] = []) {
@@ -208,7 +209,7 @@ function useFakeHomeViewModel(initialSearchResults: Place[] = []) {
       animateToUser: jest.fn(),
       animateToPlace: jest.fn(),
       fitVenueBounds: jest.fn(),
-      fitRoute: jest.fn(),
+      fitRoute: cameraFitRouteSpy,
       followUser: cameraFollowUserSpy,
       stopFollowing: cameraStopFollowingSpy.mockImplementation(() => setCameraMode('EXPLORING')),
       enterNavigationCamera: jest.fn(),
@@ -1230,6 +1231,53 @@ describe('HomeScreen — resolved base-map rendering', () => {
     // assumed it might — same shared formula (computeMaxSheetOcclusionForAttribution)
     // on both sides.
     expect(sheetProps.maxDynamicContentSize).toBe(mapPaddingBottom);
+  });
+
+  test('Route Preview camera fit uses the same clamped bottom inset as map padding at the maximum sheet snap', async () => {
+    const previewRoute = {
+      sourceVersion: 'v2' as const,
+      coordinates: [
+        { latitude: 24.963, longitude: 67.006 },
+        gateResult.coordinate,
+      ],
+      startResolution: {
+        mode: 'inside' as const,
+        coordinate: { latitude: 24.963, longitude: 67.006 },
+      },
+      startLabel: 'Current location',
+      destinationLabel: gateResult.name,
+    };
+    mockedUseDirectionsViewModel.mockReturnValue({
+      route: previewRoute,
+      startSource: 'live_gps',
+      rememberedLocationAgeLabel: '',
+      rememberedLocationAvailable: false,
+      rememberedLocationInsideVenue: false,
+      currentRouteOriginInsideVenue: true,
+      loadState: 'ready',
+      errorMessage: null,
+      manualStart: null,
+      chooseManualStart: jest.fn(),
+      setIsEditingManualStart: jest.fn(),
+      setManualStartPlace: jest.fn(),
+      chooseCurrentLocation: jest.fn(async () => true),
+      chooseRememberedLocation: jest.fn(() => true),
+      calculateRoute: jest.fn(async () => {}),
+      showManualStartSearch: false,
+    });
+    useAppStore.setState({ routePlannerDest: gateResult, activeRoute: previewRoute as any });
+    await render(<HomeScreen />);
+
+    const sheetProps = __getLastBottomSheetModalProps() as unknown as {
+      onChange: (index: number) => void;
+    };
+    await act(async () => {
+      sheetProps.onChange(2);
+    });
+
+    const mapPaddingBottom = screen.getByTestId('home-map-view').props.mapPadding.bottom;
+    const [, edgeInsets] = cameraFitRouteSpy.mock.calls.at(-1) as [unknown, { bottom: number }];
+    expect(edgeInsets.bottom).toBe(mapPaddingBottom);
   });
 
   test('online Google map renders without LocalTile conflict', async () => {

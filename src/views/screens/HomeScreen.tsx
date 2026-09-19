@@ -45,7 +45,6 @@ import {
   computeNavControlsInset,
   MIN_TOP_VISIBLE_MAP_FOR_ATTRIBUTION,
   resolveNavBarHeight,
-  resolveOverlayExtent,
   OverlayState,
 } from '../../viewmodels/useOverlayInsets';
 import { useTheme } from '../../services/useTheme';
@@ -468,21 +467,6 @@ export function HomeScreen() {
 
   const showOsmAttribution =
     baseMapMode === 'LOCAL_TILES' || outsideRouteProvider(activePreviewRoute ?? activeRoute) === 'offline-osm';
-  // CameraManager.fitRoute() — camera frames origin + destination + full route whenever a
-  // route preview opens (or a different route is chosen), instead of leaving the camera
-  // wherever it happened to be when the user picked a destination.
-  useEffect(() => {
-    if (!activePreviewRoute || activePreviewRoute.coordinates.length < 2) return;
-    invalidateStartupCameraIntent();
-    const sheetExtent = resolveOverlayExtent({ kind: 'sheet', windowHeight, snapPoints, sheetIndex });
-    cameraManager.fitRoute(activePreviewRoute.coordinates, {
-      top: 90,
-      right: 64,
-      bottom: sheetExtent + Math.max(insets.bottom, 16) + 32,
-      left: 64,
-    });
-  }, [activePreviewRoute, cameraManager, insets.bottom, invalidateStartupCameraIntent, windowHeight, snapPoints, sheetIndex]);
-
   // Single source of truth for "what is the map surface showing right now" — every
   // render/behavior gate below reads `mode`, never the raw isSearchFocused/arrived/etc
   // inputs directly, so nothing can drift out of sync with the priority chain in
@@ -967,6 +951,19 @@ export function HomeScreen() {
     }),
     [activeNavBottomBarHeight, insets.bottom, mode, sheetIndex, snapPoints, topOverlayHeight, windowHeight],
   );
+  // Frame route previews inside the same clamped visible map region used by mapPadding.
+  // Using the raw sheet extent here could make bottom padding exceed the window at the
+  // maximum snap, leaving Google Maps no valid viewport for both route endpoints.
+  useEffect(() => {
+    if (!activePreviewRoute || activePreviewRoute.coordinates.length < 2) return;
+    invalidateStartupCameraIntent();
+    cameraManager.fitRoute(activePreviewRoute.coordinates, {
+      top: mapLabelEdgeInsets.top,
+      right: Math.max(mapLabelEdgeInsets.right, 64),
+      bottom: mapLabelEdgeInsets.bottom,
+      left: 64,
+    });
+  }, [activePreviewRoute, cameraManager, invalidateStartupCameraIntent, mapLabelEdgeInsets]);
   // @gorhom/bottom-sheet computes EVERY snap point — the declared 15/50/92% ones, not
   // just content-driven dynamic sizing — as a percentage of its own containerHeight.
   // On this app's real window heights, the plain 92% snap alone already leaves less than
