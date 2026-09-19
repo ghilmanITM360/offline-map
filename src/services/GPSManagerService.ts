@@ -134,6 +134,10 @@ class GPSManager {
       // "facing true north" reading and must stay distinguishable from "unknown".
       heading: location.coords.heading == null || location.coords.heading < 0 ? undefined : location.coords.heading,
       accuracy: location.coords.accuracy ?? 0, // fixed: normalize null/undefined accuracy values coming from Expo Location
+      // NAV-P0-001/AUD-05: native fix timestamp, preserved end to end so navigation can tell a
+      // fresh sensor observation from callback-arrival time (a stale/cached fix delivered on
+      // listener (re)start, or a duplicate delivery racing forceFix against the ambient watch).
+      observedAtMs: location.timestamp,
     };
 
     // Update global store via the injected callback (no direct store import)

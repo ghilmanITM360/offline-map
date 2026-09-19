@@ -61,3 +61,46 @@ describe('NavigationMapLayersV2 marker ownership', () => {
     expect(screen.queryByTestId('navigation-user-location-marker')).not.toBeOnTheScreen();
   });
 });
+
+describe('AUD-10: hybrid inside-leg walked/remaining progress', () => {
+  // Outside leg = coordinates[0..2] (indices 0,1,2 — 3 points), sharing its last point (the
+  // gate, index 2) with the inside leg = coordinates[2..5] (4 points): [gate, inside1, inside2,
+  // destination].
+  const hybridRoute: V2ActiveRoute = {
+    ...route,
+    coordinates: [
+      { latitude: 24.90, longitude: 67.10 }, // outside
+      { latitude: 24.901, longitude: 67.101 }, // outside
+      { latitude: 24.902, longitude: 67.102 }, // gate (shared boundary)
+      { latitude: 24.903, longitude: 67.103 }, // inside1
+      { latitude: 24.904, longitude: 67.104 }, // inside2
+      { latitude: 24.905, longitude: 67.105 }, // destination
+    ],
+    outsideLegCoordinateCount: 2,
+  };
+
+  test('shows no walked progress before the user has moved past the gate', async () => {
+    await render(
+      <NavigationMapLayersV2
+        overlay={overlay({ route: hybridRoute, snappedLocation: { latitude: 24.902, longitude: 67.102 } })}
+      />,
+    );
+
+    expect(screen.queryByTestId('navigation-walked-polyline')).not.toBeOnTheScreen();
+  });
+
+  // The historical AUD-10 bug: internal walked/remaining progress was gated on whether the
+  // route *ever had* an outside leg (a static, route-level flag), not on where the user
+  // actually is now — so once a hybrid route started outside, walked progress stayed frozen
+  // at "none" for the rest of the trip even long after the user passed the gate and walked
+  // deep into the venue.
+  test('shows walked progress once the user has passed the gate and is deep into the inside leg', async () => {
+    await render(
+      <NavigationMapLayersV2
+        overlay={overlay({ route: hybridRoute, snappedLocation: { latitude: 24.904, longitude: 67.104 } })}
+      />,
+    );
+
+    expect(screen.getByTestId('navigation-walked-polyline')).toBeOnTheScreen();
+  });
+});

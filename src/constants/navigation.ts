@@ -25,3 +25,14 @@ export const NAVIGATION_WATCH_TIME_INTERVAL_MS = 1000;
 // v2 has no equivalent node-ID scheme, so this constant has no v2 counterpart and must not be
 // imported from any v2-only module (would fail test:v1-v2-isolation).
 export const OUTSIDE_VENUE_BOUNDARY_NODE_IDS_V1 = /^(T1|T2|S6|S12|S13|S14|S15|S16|S17)$/;
+
+// NAV-P0-001: how far a fix's OWN observation timestamp (Coordinate.observedAtMs, set by
+// GPSManagerService from Expo's LocationObject.timestamp) may sit before a navigation
+// "watcher generation" boundary (trip start, or a foreground resume) and still count as
+// belonging to that generation. Android/Play Services commonly delivers a cached "last known
+// location" as the very first update after (re)subscribing to location updates — that fix's
+// timestamp predates the boundary by seconds to minutes and must be rejected for navigation
+// progress. 2s is generous enough to absorb ordinary provider/processing relay lag right at
+// the boundary instant (not an arbitrary large grace window that would let real stale fixes
+// back in).
+export const STALE_FIX_CLOCK_TOLERANCE_MS = 2000;

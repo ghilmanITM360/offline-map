@@ -28,11 +28,17 @@ export function NavigationMapLayersV2({ overlay }: { overlay: NavigationOverlayV
     () => V2MapRenderingService.splitOutsideInsideCoordinates(route?.coordinates ?? [], route?.outsideLegCoordinateCount),
     [route?.coordinates, route?.outsideLegCoordinateCount],
   );
-  // Progress split only applies once the user is on the inside leg — outside-leg
-  // progress isn't rendered (that leg is dashed/short and already de-emphasized).
+  // AUD-10: this used to gate on `outsideLegCoordinates.length > 0` — whether the ROUTE ever
+  // had an outside leg at all, a static property that stays true for the entire lifetime of a
+  // hybrid route. That froze walked/remaining progress at "none" forever, even long after the
+  // user passed the gate and walked deep into the venue. splitByProgress already finds the
+  // nearest INSIDE-leg vertex to snappedLocation on its own: while genuinely still outside, the
+  // shared gate coordinate (index 0 of insideLegCoordinates) is the nearest inside vertex to any
+  // point on the outside leg, so it naturally reports no walked progress without needing this
+  // route-level flag — and once truly on the inside leg, it correctly reflects real progress.
   const { walked: walkedInsideCoordinates, remaining: remainingInsideCoordinates } = useMemo(
-    () => V2MapRenderingService.splitByProgress(insideLegCoordinates, outsideLegCoordinates.length > 0 ? null : snappedLocation),
-    [insideLegCoordinates, outsideLegCoordinates.length, snappedLocation],
+    () => V2MapRenderingService.splitByProgress(insideLegCoordinates, snappedLocation),
+    [insideLegCoordinates, snappedLocation],
   );
   if (!route) return null;
 
@@ -67,9 +73,9 @@ export function NavigationMapLayersV2({ overlay }: { overlay: NavigationOverlayV
       ) : (
         <>
           {walkedInsideCoordinates.length > 1 && (
-            <Polyline coordinates={walkedInsideCoordinates} strokeColor={staticColors.routeWalked} strokeWidth={7} zIndex={21} />
+            <Polyline testID="navigation-walked-polyline" coordinates={walkedInsideCoordinates} strokeColor={staticColors.routeWalked} strokeWidth={7} zIndex={21} />
           )}
-          <Polyline coordinates={remainingInsideCoordinates} strokeColor={staticColors.routeInside} strokeWidth={7} zIndex={22} />
+          <Polyline testID="navigation-remaining-polyline" coordinates={remainingInsideCoordinates} strokeColor={staticColors.routeInside} strokeWidth={7} zIndex={22} />
         </>
       )}
 
