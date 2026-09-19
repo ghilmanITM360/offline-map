@@ -142,7 +142,7 @@ export function computeMapContentInsets(inputs: MapContentInsetInputs): {
     // for `top` too: the visible band is (windowHeight - top - bottom), and top is not
     // always 0 here, so clamping bottom alone against windowHeight can still leave (or
     // even go negative on) a degenerate band once top is factored in.
-    const maxBottomForAttribution = computeMaxSheetOcclusionForAttribution(inputs.windowHeight, top, safeBottom);
+    const maxBottomForAttribution = computeMaxSheetOcclusionForAttribution(inputs.windowHeight, inputs.top, safeBottom);
     bottom = Math.min(Math.max(safeBottom, sheetExtent), maxBottomForAttribution);
   }
   return { top: inputs.top, right: inputs.right, bottom, left: 0 };
