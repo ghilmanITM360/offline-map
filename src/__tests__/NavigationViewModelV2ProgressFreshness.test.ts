@@ -167,6 +167,20 @@ describe('NavigationViewModelV2 progress freshness (NAV-P0-001)', () => {
     expect(hook.result.current.remainingDistance).toBeLessThan(initialRemaining);
   });
 
+  test('LOC-09: an approximate fix at the destination cannot create false progress or arrival', async () => {
+    const hook = await renderHook(() => useNavigationViewModelV2());
+    const initialRemaining = hook.result.current.remainingDistance;
+
+    await pushFix(hook, destinationPlace.coordinate, {
+      accuracy: 500,
+      observedAtMs: Date.now(),
+    });
+
+    expect(hook.result.current.gpsSignalState).toBe('GPS_WEAK');
+    expect(hook.result.current.arrived).toBe(false);
+    expect(hook.result.current.remainingDistance).toBe(initialRemaining);
+  });
+
   test('invariant: arrived=false must never coincide with a corrupted near-zero remaining distance from a historical fix', async () => {
     const hook = await renderHook(() => useNavigationViewModelV2());
     const initialRemaining = hook.result.current.remainingDistance;

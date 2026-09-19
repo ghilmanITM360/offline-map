@@ -10,6 +10,10 @@ import { RoutingService } from '../services/RoutingService';
 import { InstructionService, Instruction } from '../services/InstructionService';
 import { Place, RouteAlternative, RoutePreview } from '../models/types';
 import { LocationAccessService } from '../services/LocationAccessService';
+import {
+  evaluateNavigationLocationCapability,
+  type NavigationStartSource,
+} from '../services/LocationNavigationCapability';
 import { MapFeatureFlagsService } from '../services/MapFeatureFlagsService';
 import {
   V2DirectionsService,
@@ -29,7 +33,7 @@ const DIRECTIONS_RECALCULATE_ORIGIN_MOVEMENT_M = 20;
 const productionOutsideRouteSource = createProductionOutsideRouteSource();
 
 type RouteLoadState = 'idle' | 'loading' | 'ready' | 'error' | 'needs_origin';
-export type StartSource = 'live_gps' | 'device_last_known' | 'remembered_location' | 'manual_place';
+export type StartSource = NavigationStartSource;
 
 function resolveInitialStartSource(
   hasLocation: boolean,
@@ -82,6 +86,10 @@ export function useDirectionsViewModel(destination: Place | null) {
   const v2NavigationStartCheck = isV2Destination
     ? V2NavigationAdapter.canStartActiveNavigation({ route: route as any, destination })
     : { canStart: Boolean(route), message: '' };
+  const navigationLocationCapability = evaluateNavigationLocationCapability({
+    startSource,
+    coordinate: startSource === 'live_gps' ? routeOriginLocation : null,
+  });
 
   useEffect(() => {
     if (!routeOriginLocation && startSource === 'live_gps') {
@@ -567,8 +575,12 @@ export function useDirectionsViewModel(destination: Place | null) {
     handleStartNavigation,
     showRememberedStartAction: rememberedLocationAvailable,
     showManualStartSearch: isEditingManualStart || startSource === 'manual_place',
-    canStartNavigation: isV2Destination ? v2NavigationStartCheck.canStart : Boolean(route),
-    startNavigationDisabledReason: v2NavigationStartCheck.message,
+    canStartNavigation: isV2Destination
+      ? v2NavigationStartCheck.canStart && navigationLocationCapability.canStart
+      : Boolean(route) && navigationLocationCapability.canStart,
+    startNavigationDisabledReason: v2NavigationStartCheck.canStart
+      ? navigationLocationCapability.message
+      : v2NavigationStartCheck.message,
     isV2PreviewOnly: isV2Destination && !MapFeatureFlagsService.useIjtemaV2Navigation(),
   };
 }

@@ -8,6 +8,9 @@ import * as Location from 'expo-location';
 import { Coordinate, LocationSource } from '../models/types';
 import { OnboardingStatusService } from './OnboardingStatusService';
 
+const DEVICE_LAST_KNOWN_MAX_AGE_MS = 30_000;
+const DEVICE_LAST_KNOWN_REQUIRED_ACCURACY_M = 50;
+
 export interface LocationPermissionState {
   granted: boolean;
   canAskAgain: boolean;
@@ -102,13 +105,17 @@ export class LocationAccessService {
             longitude: current.coords.longitude,
             heading: current.coords.heading == null || current.coords.heading < 0 ? undefined : current.coords.heading,
             accuracy: current.coords.accuracy ?? 0,
+            ...(current.timestamp == null ? {} : { observedAtMs: current.timestamp }),
           },
           source: 'live',
           permissionState,
           message: null,
         };
       } catch {
-        const lastKnown = await Location.getLastKnownPositionAsync();
+        const lastKnown = await Location.getLastKnownPositionAsync({
+          maxAge: DEVICE_LAST_KNOWN_MAX_AGE_MS,
+          requiredAccuracy: DEVICE_LAST_KNOWN_REQUIRED_ACCURACY_M,
+        });
         if (lastKnown) {
           return {
             ok: true,
@@ -117,6 +124,7 @@ export class LocationAccessService {
               longitude: lastKnown.coords.longitude,
               heading: lastKnown.coords.heading == null || lastKnown.coords.heading < 0 ? undefined : lastKnown.coords.heading,
               accuracy: lastKnown.coords.accuracy ?? 0,
+              ...(lastKnown.timestamp == null ? {} : { observedAtMs: lastKnown.timestamp }),
             },
             source: 'device_last_known',
             permissionState,

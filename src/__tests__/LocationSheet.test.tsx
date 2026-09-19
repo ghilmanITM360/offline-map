@@ -85,6 +85,8 @@ function baseViewModel(overrides: Record<string, unknown> = {}) {
     routeRefreshing: false,
     handleStartNavigation: jest.fn(),
     showManualStartSearch: false,
+    canStartNavigation: true,
+    startNavigationDisabledReason: '',
     ...overrides,
   };
 }
@@ -371,6 +373,40 @@ describe('LocationSheet (routePreview) — change destination', () => {
 });
 
 describe('LocationSheet (routePreview) — route ready CTA', () => {
+  test('LOC-09/10: keeps route preview available but blocks live navigation without a fresh precise fix', async () => {
+    const onStartNavigation = jest.fn();
+    mockedUseDirectionsViewModel.mockReturnValue(
+      baseViewModel({
+        loadState: 'ready',
+        route: {
+          nodes: ['A', 'B'],
+          coordinates: [],
+          totalDistance: 250,
+          estimatedTimeMin: 4,
+        },
+        canStartNavigation: false,
+        startNavigationDisabledReason: 'Precise location is required for live navigation. Route preview remains available.',
+      }),
+    );
+    const user = userEvent.setup();
+    await render(
+      <LocationSheet
+        mode="routePreview"
+        destination={v2Destination}
+        onClose={onCloseSpy}
+        onStartNavigation={onStartNavigation}
+      />,
+    );
+
+    expect(screen.getByText('Route ready')).toBeOnTheScreen();
+    expect(screen.getByText('Precise location is required for live navigation. Route preview remains available.')).toBeOnTheScreen();
+    const startButton = screen.getByRole('button', { name: 'Start Navigation' });
+    expect(startButton).toBeDisabled();
+    await user.press(startButton);
+    expect(onStartNavigation).not.toHaveBeenCalled();
+    expect(onCloseSpy).not.toHaveBeenCalled();
+  });
+
   test('surfaces direct-guide warning and retries road routing from ready state', async () => {
     const retryOutsideRoute = jest.fn(async () => {});
     const selectManualGate = jest.fn();
