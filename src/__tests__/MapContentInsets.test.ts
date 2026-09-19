@@ -1,4 +1,8 @@
-import { computeMapContentInsets, MIN_TOP_VISIBLE_MAP_FOR_ATTRIBUTION } from '../viewmodels/useOverlayInsets';
+import {
+  computeMapContentInsets,
+  MIN_TOP_VISIBLE_MAP_FOR_ATTRIBUTION,
+  MIN_TOP_VISIBLE_MAP_FOR_ROUTE_PREVIEW,
+} from '../viewmodels/useOverlayInsets';
 
 const common = {
   top: 144,
@@ -30,7 +34,12 @@ describe('computeMapContentInsets', () => {
   });
 
   test('route preview uses shared sheet snap extent', () => {
-    expect(computeMapContentInsets({ ...common, mode: 'ROUTE_PREVIEW', sheetIndex: 1 }).bottom).toBe(400);
+    expect(computeMapContentInsets({ ...common, mode: 'ROUTE_PREVIEW', sheetIndex: 1 }).bottom).toBe(376);
+  });
+
+  test('maximum route preview preserves enough map for route endpoints and markers', () => {
+    const expectedBottom = common.windowHeight - common.top - MIN_TOP_VISIBLE_MAP_FOR_ROUTE_PREVIEW;
+    expect(computeMapContentInsets({ ...common, mode: 'ROUTE_PREVIEW', sheetIndex: 2 }).bottom).toBe(expectedBottom);
   });
 
   test('active navigation uses measured trip-bar height', () => {

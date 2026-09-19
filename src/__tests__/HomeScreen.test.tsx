@@ -13,7 +13,9 @@ import { useDirectionsViewModel } from '../viewmodels/DirectionsViewModel';
 import { useAppStore } from '../store/useAppStore';
 import { MapConfigService } from '../services/MapConfigService';
 import * as NavigationOverlayV1Module from '../viewmodels/useNavigationOverlayV1';
-import { MIN_TOP_VISIBLE_MAP_FOR_ATTRIBUTION } from '../viewmodels/useOverlayInsets';
+import {
+  MIN_TOP_VISIBLE_MAP_FOR_ROUTE_PREVIEW,
+} from '../viewmodels/useOverlayInsets';
 import type { Place } from '../models/types';
 
 // requestAnimationFrame stays real (not faked): MapLabelOverlay's projection pipeline
@@ -1215,8 +1217,8 @@ describe('HomeScreen — resolved base-map rendering', () => {
       maxDynamicContentSize: number;
     };
     // Route Preview hides the search bar/chip row, so the sheet's own top reservation is
-    // exactly the logo floor — no additional top overlay to add on top of it here.
-    expect(sheetProps.topInset).toBe(MIN_TOP_VISIBLE_MAP_FOR_ATTRIBUTION);
+    // the larger route-preview floor — no additional top overlay to add here.
+    expect(sheetProps.topInset).toBe(MIN_TOP_VISIBLE_MAP_FOR_ROUTE_PREVIEW);
 
     // Index 3 == snapPoints.length: the "content grew past our tallest declared snap"
     // signal a real over-height dynamic detent reports — still exercised as a second,
@@ -1270,7 +1272,9 @@ describe('HomeScreen — resolved base-map rendering', () => {
 
     const sheetProps = __getLastBottomSheetModalProps() as unknown as {
       onChange: (index: number) => void;
+      topInset: number;
     };
+    expect(sheetProps.topInset).toBe(MIN_TOP_VISIBLE_MAP_FOR_ROUTE_PREVIEW);
     await act(async () => {
       sheetProps.onChange(2);
     });

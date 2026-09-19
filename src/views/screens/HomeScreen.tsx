@@ -44,6 +44,7 @@ import {
   computeMaxSheetOcclusionForAttribution,
   computeNavControlsInset,
   MIN_TOP_VISIBLE_MAP_FOR_ATTRIBUTION,
+  MIN_TOP_VISIBLE_MAP_FOR_ROUTE_PREVIEW,
   resolveNavBarHeight,
   OverlayState,
 } from '../../viewmodels/useOverlayInsets';
@@ -975,16 +976,24 @@ export function HomeScreen() {
   // `topInset` is gorhom's own mechanism for this — it shrinks the containerHeight every
   // snap point (declared and dynamic) is computed against, so 92% of a container that's
   // already missing the top's reserved band can never reach into it (ATTR-001 follow-up).
+  const minimumVisibleMapHeight = mode === 'ROUTE_PREVIEW'
+    ? MIN_TOP_VISIBLE_MAP_FOR_ROUTE_PREVIEW
+    : MIN_TOP_VISIBLE_MAP_FOR_ATTRIBUTION;
   const sheetTopInset = useMemo(
-    () => (topOverlayHeight > 0 ? topOverlayHeight + 8 : 0) + MIN_TOP_VISIBLE_MAP_FOR_ATTRIBUTION,
-    [topOverlayHeight],
+    () => (topOverlayHeight > 0 ? topOverlayHeight + 8 : 0) + minimumVisibleMapHeight,
+    [minimumVisibleMapHeight, topOverlayHeight],
   );
   // Backstop for the one case topInset alone doesn't bound: dynamic sizing computing a
   // detent from content so tall it would still exceed the shrunk container. Same shared
   // formula the mapPadding clamp above uses, so the two ceilings can't drift apart.
   const sheetMaxDynamicContentSize = useMemo(
-    () => computeMaxSheetOcclusionForAttribution(windowHeight, topOverlayHeight > 0 ? topOverlayHeight + 8 : 0, insets.bottom),
-    [insets.bottom, topOverlayHeight, windowHeight],
+    () => computeMaxSheetOcclusionForAttribution(
+      windowHeight,
+      topOverlayHeight > 0 ? topOverlayHeight + 8 : 0,
+      insets.bottom,
+      minimumVisibleMapHeight,
+    ),
+    [insets.bottom, minimumVisibleMapHeight, topOverlayHeight, windowHeight],
   );
 
   useEffect(() => {

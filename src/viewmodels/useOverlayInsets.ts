@@ -34,6 +34,9 @@ export const NAV_BAR_FALLBACK_HEIGHT = 140;
 // SDK reserves its own internal margin beyond the padding boundary), so this sits
 // well above both empirical floors (ATTR-001 follow-up).
 export const MIN_TOP_VISIBLE_MAP_FOR_ATTRIBUTION = 160;
+// Route Preview must show both route endpoints/markers, not merely attribution.
+// Keep a larger usable map band when its sheet reaches the maximum practical snap.
+export const MIN_TOP_VISIBLE_MAP_FOR_ROUTE_PREVIEW = 280;
 
 /** Maximum height (px, measured up from the screen's bottom edge) anything bottom-anchored
  * may occupy while still leaving MIN_TOP_VISIBLE_MAP_FOR_ATTRIBUTION of clear map above it.
@@ -45,8 +48,13 @@ export const MIN_TOP_VISIBLE_MAP_FOR_ATTRIBUTION = 160;
  * (on by default, v5) sizes the sheet to fit its content with no ceiling unless
  * maxDynamicContentSize is set, so a tall enough card stack could render past the mapPadding
  * clamp's assumed extent even though the padding math itself was already correct. */
-export function computeMaxSheetOcclusionForAttribution(windowHeight: number, top: number, safeBottom: number): number {
-  return Math.max(windowHeight - top - MIN_TOP_VISIBLE_MAP_FOR_ATTRIBUTION, safeBottom);
+export function computeMaxSheetOcclusionForAttribution(
+  windowHeight: number,
+  top: number,
+  safeBottom: number,
+  minimumVisibleMapHeight: number = MIN_TOP_VISIBLE_MAP_FOR_ATTRIBUTION,
+): number {
+  return Math.max(windowHeight - top - minimumVisibleMapHeight, safeBottom);
 }
 
 export type OverlayState =
@@ -150,7 +158,15 @@ export function computeMapContentInsets(inputs: MapContentInsetInputs): {
     // for `top` too: the visible band is (windowHeight - top - bottom), and top is not
     // always 0 here, so clamping bottom alone against windowHeight can still leave (or
     // even go negative on) a degenerate band once top is factored in.
-    const maxBottomForAttribution = computeMaxSheetOcclusionForAttribution(inputs.windowHeight, inputs.top, safeBottom);
+    const minimumVisibleMapHeight = inputs.mode === 'ROUTE_PREVIEW'
+      ? MIN_TOP_VISIBLE_MAP_FOR_ROUTE_PREVIEW
+      : MIN_TOP_VISIBLE_MAP_FOR_ATTRIBUTION;
+    const maxBottomForAttribution = computeMaxSheetOcclusionForAttribution(
+      inputs.windowHeight,
+      inputs.top,
+      safeBottom,
+      minimumVisibleMapHeight,
+    );
     bottom = Math.min(Math.max(safeBottom, sheetExtent), maxBottomForAttribution);
   }
   return { top: inputs.top, right: inputs.right, bottom, left: 0 };

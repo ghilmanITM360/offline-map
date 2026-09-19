@@ -11,6 +11,7 @@ import {
   computeNavRecenterInset,
   MIN_BOTTOM_FLOOR,
   MIN_TOP_VISIBLE_MAP_FOR_ATTRIBUTION,
+  MIN_TOP_VISIBLE_MAP_FOR_ROUTE_PREVIEW,
   NAV_BAR_FALLBACK_HEIGHT,
   OVERLAY_CONTROL_GAP,
   RECENTER_BUTTON_SIZE,
@@ -190,7 +191,12 @@ describe('computeMaxSheetOcclusionForAttribution — shared ceiling for mapPaddi
       navBarHeight: 0,
       navTopHeight: 0,
     });
-    expect(insets.bottom).toBe(computeMaxSheetOcclusionForAttribution(windowHeight, top, bottomSafeArea));
+    expect(insets.bottom).toBe(computeMaxSheetOcclusionForAttribution(
+      windowHeight,
+      top,
+      bottomSafeArea,
+      MIN_TOP_VISIBLE_MAP_FOR_ROUTE_PREVIEW,
+    ));
   });
 });
 
