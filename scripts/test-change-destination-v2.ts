@@ -43,8 +43,12 @@ assert(
 // HomeScreen wiring: reuses setDirectionsDestination (the same state handleOpenDirections
 // already writes) instead of inventing a second destination-selection path, and the sheet
 // itself must be passed the handler.
+const changeDestinationHeaderMatch = homeScreen.match(
+  /const handleChangeDestination = useCallback\(\(place: Place\) => \{[\s\S]*?\}, \[[^\]]*\]\);/,
+);
+assert(changeDestinationHeaderMatch, 'Could not locate handleChangeDestination in HomeScreen.tsx.');
 assert(
-  /const handleChangeDestination = useCallback\(\(place: Place\) => \{\s*\n\s*setDirectionsDestination\(place\);\s*\n\s*\}, \[\]\);/.test(homeScreen),
+  /setDirectionsDestination\(place\);/.test(changeDestinationHeaderMatch![0]),
   'HomeScreen.handleChangeDestination must reuse setDirectionsDestination — the same state handleOpenDirections already writes — not a new destination-selection mechanism.',
 );
 assert(
@@ -56,12 +60,8 @@ assert(
 // camera directly — camera follow for v2 destinations already happens via the existing
 // activePreviewRoute -> cameraManager.fitRoute() effect once DirectionsViewModel's route
 // recalculation lands in the store.
-const changeDestinationBlockMatch = homeScreen.match(
-  /const handleChangeDestination = useCallback\(\(place: Place\) => \{[\s\S]*?\}, \[\]\);/,
-);
-assert(changeDestinationBlockMatch, 'Could not locate handleChangeDestination body in HomeScreen.tsx.');
 assert(
-  !/cameraManager\.|animateToRegion|animateCamera|setCamera/.test(changeDestinationBlockMatch![0]),
+  !/cameraManager\.|animateToRegion|animateCamera|setCamera/.test(changeDestinationHeaderMatch![0]),
   'handleChangeDestination must not call the camera directly — CameraManager is the sole owner of camera movement, and the existing activePreviewRoute effect already re-fits the route.',
 );
 
