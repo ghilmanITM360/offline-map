@@ -1276,8 +1276,9 @@ describe('HomeScreen — resolved base-map rendering', () => {
     });
 
     const mapPaddingBottom = screen.getByTestId('home-map-view').props.mapPadding.bottom;
-    const [, edgeInsets] = cameraFitRouteSpy.mock.calls.at(-1) as [unknown, { bottom: number }];
+    const [, edgeInsets] = cameraFitRouteSpy.mock.calls.at(-1) as [unknown, { top: number; bottom: number }];
     expect(edgeInsets.bottom).toBe(mapPaddingBottom);
+    expect(edgeInsets.top).toBeGreaterThanOrEqual(90);
   });
 
   test('online Google map renders without LocalTile conflict', async () => {

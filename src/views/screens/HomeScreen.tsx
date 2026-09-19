@@ -958,7 +958,7 @@ export function HomeScreen() {
     if (!activePreviewRoute || activePreviewRoute.coordinates.length < 2) return;
     invalidateStartupCameraIntent();
     cameraManager.fitRoute(activePreviewRoute.coordinates, {
-      top: mapLabelEdgeInsets.top,
+      top: Math.max(mapLabelEdgeInsets.top, 90),
       right: Math.max(mapLabelEdgeInsets.right, 64),
       bottom: mapLabelEdgeInsets.bottom,
       left: 64,
