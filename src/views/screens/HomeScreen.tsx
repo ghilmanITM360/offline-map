@@ -8,14 +8,12 @@ import {
   View,
   Text,
   StyleSheet,
-  TextInput,
   Pressable,
   ScrollView,
   Platform,
   StatusBar,
   KeyboardAvoidingView,
   Alert,
-  Keyboard,
   BackHandler,
   Animated,
   ActivityIndicator,
@@ -27,11 +25,8 @@ import {
   Menu,
   Navigation,
   MapPin,
-  ChevronRight,
   WifiOff,
   X,
-  Clock,
-  ArrowLeft,
   LayoutGrid,
 } from 'lucide-react-native';
 import { BottomSheetModal, BottomSheetScrollView } from '@gorhom/bottom-sheet';
@@ -54,7 +49,7 @@ import { SHEET_CORNER_RADIUS } from '../components/common/SheetHeader';
 import { markerColors, markerSizes, shadows, staticColors } from '../../theme';
 import { getDistance } from 'geolib';
 import { GRAPH_VALIDATION, IJTEMA_DATA, LANDMARK_PLACES, MAP_BOUNDS } from '../../constants/data';
-import { Coordinate, Place, RoutePreview, SearchResult } from '../../models/types';
+import { Coordinate, Place, RoutePreview } from '../../models/types';
 import { PlaceDetailService } from '../../services/PlaceDetailService';
 import { FavoriteService } from '../../services/FavoriteService';
 import { useAppStore } from '../../store/useAppStore';
@@ -130,19 +125,6 @@ const SATELLITE_DIM_BOUNDARY = [
   { latitude: IJTEMA_MAP_BOUNDS.maxLat + SATELLITE_DIM_LAT_PAD, longitude: IJTEMA_MAP_BOUNDS.minLng - SATELLITE_DIM_LNG_PAD },
 ];
 
-function isPlace(item: Place | SearchResult): item is Place {
-  return 'name' in item;
-}
-
-function getDisplayName(item: Place | SearchResult): string {
-  return isPlace(item) ? item.name : item.title;
-}
-
-function getSecondaryDisplayName(item: Place | SearchResult): string | undefined {
-  if (!isPlace(item)) return undefined;
-  return MapLocalizationService.getSecondaryLabel({ en: item.name, ur: item.urduName });
-}
-
 type V2PreviewRoute = Extract<RoutePreview, { sourceVersion: 'v2' }> & {
   startLabel: string;
   destinationLabel: string;
@@ -211,8 +193,6 @@ export function HomeScreen() {
   const startNavigation = useAppStore((s) => s.startNavigation);
   const [selectedEntryIdx, setSelectedEntryIdx] = useState(0);
   const [directionsDestination, setDirectionsDestination] = useState<Place | null>(null);
-  const [isSearchFocused, setIsSearchFocused] = useState(false);
-  const searchInputRef = useRef<TextInput>(null);
   const mapLabelOverlayRef = useRef<MapLabelOverlayHandle>(null);
   // Startup camera ownership (see onMapReady below) fires once per mount only. Returning
   // launches resolve fresh GPS asynchronously, so the request/intent refs keep late results
@@ -244,16 +224,9 @@ export function HomeScreen() {
   // distinguish — see onChange below and useOverlayInsets.computeMapControlsInset.
   const [sheetIndex, setSheetIndex] = useState(-1);
   const { height: windowHeight } = useWindowDimensions();
-  const searchFocusAnim = useRef(new Animated.Value(0)).current;
   const warningAnim = useRef(new Animated.Value(0)).current;
   const userPulseAnim = useRef(new Animated.Value(0)).current;
   const chipsAnim = useRef(new Animated.Value(1)).current;
-
-  const dismissSearchOverlay = useCallback(() => {
-    setIsSearchFocused(false);
-    searchInputRef.current?.blur();
-    Keyboard.dismiss();
-  }, []);
 
   // MapMode actions — the only sanctioned way to move the map surface between modes.
   // selectPlace/showRoutePreview/startNavigation already exist as handlePlaceSelect/
@@ -270,23 +243,15 @@ export function HomeScreen() {
     bottomSheetRef,
     cameraManager,
     mapType,
-    searchQuery,
-    searchResults,
     selectedPlace,
-    recentSearches,
     snapPoints,
     initialRegion,
     isOffline,
     offlineData,
-    activeCategory,
-    categoryChips,
-    searchPlaceholder,
-    suggestedPlaces,
     mapZoomLevel,
     venueStatus,
     compassMode,
     setIsMapReady,
-    handleSearch,
     handlePlaceSelect,
     cancelPendingSheetPresentation,
     handleSheetIndexChange,
@@ -296,7 +261,6 @@ export function HomeScreen() {
     handleZoomOut,
     handleMapRegionChangeComplete,
     clearSearch,
-    handleCategoryPress,
     setSelectedPlace,
     updateSettings,
     settings,
@@ -429,10 +393,9 @@ export function HomeScreen() {
       tapFlushScheduledRef.current = false;
       const winner = resolveTapCandidate(candidates, selectedPlaceIdRef.current);
       if (!winner) return;
-      dismissSearchOverlay();
       handlePlaceSelectWithCameraIntent(winner.payload);
     });
-  }, [dismissSearchOverlay, handlePlaceSelectWithCameraIntent, invalidateStartupCameraIntent]);
+  }, [handlePlaceSelectWithCameraIntent, invalidateStartupCameraIntent]);
 
   const navOverlay = useNavigationOverlayV2({
     mapRef,
@@ -471,14 +434,11 @@ export function HomeScreen() {
   const showOsmAttribution =
     baseMapMode === 'LOCAL_TILES' || outsideRouteProvider(activePreviewRoute ?? activeRoute) === 'offline-osm';
   // Single source of truth for "what is the map surface showing right now" — every
-  // render/behavior gate below reads `mode`, never the raw isSearchFocused/arrived/etc
-  // inputs directly, so nothing can drift out of sync with the priority chain in
-  // deriveMapMode (e.g. isSearchFocused=true no longer implies "search is showing" if
-  // arrived or showNavOverlay also happen to be true — mode already resolves that).
+  // render/behavior gate below reads `mode`, never the raw arrived/etc inputs directly,
+  // so nothing can drift out of sync with the priority chain in deriveMapMode.
   const mode = useMapMode({
     arrived,
     showNavOverlay: showAnyNavOverlay,
-    isSearchFocused,
     detailsExpanded,
     directionsDestination,
     activePreviewRoute,
@@ -607,32 +567,6 @@ export function HomeScreen() {
     resetDismissedSheetState(true);
   }, [clearSearch, isNavigating, resetDismissedSheetState]);
 
-  const closeSearch = useCallback(() => {
-    clearSearch();
-    dismissSearchOverlay();
-  }, [clearSearch, dismissSearchOverlay]);
-
-  const openSearch = useCallback(() => {
-    invalidateStartupCameraIntent();
-    const currentIdentity = currentSheetIdentityRef.current;
-    if (currentIdentity) {
-      armSheetTransition(null, 'replacement');
-      resetDismissedSheetState(currentIdentity.startsWith('route:'));
-      closeSheetNative();
-    }
-    setIsSearchFocused(true);
-  }, [armSheetTransition, closeSheetNative, invalidateStartupCameraIntent, resetDismissedSheetState]);
-
-  const selectCategory = useCallback((category: string) => {
-    const currentIdentity = currentSheetIdentityRef.current;
-    if (currentIdentity) {
-      armSheetTransition(null, 'state-reset');
-      resetDismissedSheetState(currentIdentity.startsWith('route:'));
-      closeSheetNative();
-    }
-    handleCategoryPress(category);
-  }, [armSheetTransition, closeSheetNative, handleCategoryPress, resetDismissedSheetState]);
-
   const handleSheetDismiss = useCallback(() => {
     cancelPendingSheetPresentation();
     if (sheetDismissHandledRef.current) return;
@@ -693,10 +627,6 @@ export function HomeScreen() {
     }
     return RoutePointService.getDestinationCoordinate(selectedPlace);
   }, [selectedPlace, entryPoints, selectedEntryIdx]);
-  const overlayPlaces = useMemo(
-    () => searchResults.filter((item) => (item as any).coordinate && (item as any).id !== selectedPlace?.id),
-    [searchResults, selectedPlace],
-  );
 
   const { outside: previewOutsideLegCoordinates, inside: previewInsideLegCoordinates } = useMemo(
     () => V2MapRenderingService.splitOutsideInsideCoordinates(
@@ -734,7 +664,7 @@ export function HomeScreen() {
       developerMode: __DEV__ && developerModeEnabled,
       graphOnlyFallback: graphOnlyFallbackUsed,
       zoomLevel: mapZoomLevel,
-      mapFilter: activeCategory,
+      mapFilter: null,
       showGatesLayer,
       showRastasLayer,
       showSpecialRoutesLayer,
@@ -743,7 +673,6 @@ export function HomeScreen() {
       suppressCompetingMarkers: mode === 'PLACE_SELECTED',
     }),
     [
-      activeCategory,
       developerModeEnabled,
       graphOnlyFallbackUsed,
       mapZoomLevel,
@@ -814,7 +743,6 @@ export function HomeScreen() {
         onPress: () => {
           const place = V2PlaceAdapter.getPlaceById(gate.id);
           if (!place) return;
-          dismissSearchOverlay();
           handlePlaceSelectWithCameraIntent(place);
         },
       });
@@ -834,7 +762,6 @@ export function HomeScreen() {
         onPress: () => {
           const place = V2PlaceAdapter.getPlaceById(block.id);
           if (!place) return;
-          dismissSearchOverlay();
           handlePlaceSelectWithCameraIntent(place);
         },
       });
@@ -854,7 +781,6 @@ export function HomeScreen() {
         onPress: () => {
           const place = V2PlaceAdapter.getPlaceById(rasta.id);
           if (!place) return;
-          dismissSearchOverlay();
           handlePlaceSelectWithCameraIntent(place);
         },
       });
@@ -874,14 +800,13 @@ export function HomeScreen() {
         onPress: () => {
           const place = V2PlaceAdapter.getPlaceById(route.id);
           if (!place) return;
-          dismissSearchOverlay();
           handlePlaceSelectWithCameraIntent(place);
         },
       });
     }
 
     return items;
-  }, [showNavOverlay, navOverlay.mapLayers.gates, navOverlayV1.active, useV2Map, v2MapLayers, mapZoomLevel, dismissSearchOverlay, handlePlaceSelectWithCameraIntent]);
+  }, [showNavOverlay, navOverlay.mapLayers.gates, navOverlayV1.active, useV2Map, v2MapLayers, mapZoomLevel, handlePlaceSelectWithCameraIntent]);
 
   const effectiveInitialRegion = useV2Map
     ? {
@@ -902,7 +827,7 @@ export function HomeScreen() {
     : null;
 
   const isFav = selectedPlace ? favorites.some((f) => f.placeId === selectedPlace.id) : false;
-  const showOutsideBanner = !!currentLocation && !venueStatus.insideVenue && !outsideBannerDismissed && !activePreviewRoute && mode !== 'SEARCH' && searchQuery.length === 0 && !activeCategory;
+  const showOutsideBanner = !!currentLocation && !venueStatus.insideVenue && !outsideBannerDismissed && !activePreviewRoute;
   const nearestEntryGate = useMemo(() => {
     if (!currentLocation || venueStatus.insideVenue) return null;
     // Destination-aware whenever a place is already selected, so this banner can
@@ -1003,14 +928,6 @@ export function HomeScreen() {
     ),
     [insets.bottom, minimumVisibleMapHeight, topOverlayHeight, windowHeight],
   );
-
-  useEffect(() => {
-    Animated.timing(searchFocusAnim, {
-      toValue: mode === 'SEARCH' ? 1 : 0,
-      duration: 160,
-      useNativeDriver: false,
-    }).start();
-  }, [mode, searchFocusAnim]);
 
   useEffect(() => {
     Animated.timing(warningAnim, {
@@ -1146,8 +1063,7 @@ export function HomeScreen() {
         : place;
     // Switching the sheet from "place" to "route" identity re-presents/re-snaps an
     // already-open BottomSheetModal, which can fire a transient onDismiss for the old
-    // identity. Arm the transition first (same pattern as openSearch/selectCategory)
-    // so handleSheetDismiss recognizes that dismiss as expected instead of tearing
+    // identity. Arm the transition first so handleSheetDismiss recognizes that dismiss as expected instead of tearing
     // down the directions state it just set.
     armSheetTransition(computeSheetIdentity(destination, null), 'replacement');
     setDirectionsDestination(destination);
@@ -1225,10 +1141,6 @@ export function HomeScreen() {
   // no new close behavior introduced, just extending it to hardware back.
   useEffect(() => {
     const handler = BackHandler.addEventListener('hardwareBackPress', () => {
-      if (mode === 'SEARCH') {
-        closeSearch();
-        return true;
-      }
       if (mode === 'DETAILS') {
         closeDetails();
         return true;
@@ -1245,51 +1157,7 @@ export function HomeScreen() {
       return false;
     });
     return () => handler.remove();
-  }, [mode, closeSearch, closeDetails, directionsDestination, handleCloseDirections, handleClearPreviewRoute, closeSheet]);
-
-  const handleSearchResultSelect = (place: Place) => {
-    invalidateStartupCameraIntent();
-    clearSearch();
-    dismissSearchOverlay();
-    handlePlaceSelectWithCameraIntent(place);
-  };
-
-  // Phase 5 — shared row renderer for the full-screen search overlay's Recent /
-  // Suggestions / Results sections (only the leading icon differs between them).
-  const renderResultRow = (item: Place | SearchResult, variant: 'recent' | 'suggestion' | 'result') => (
-    <Pressable
-      key={(item as any).id}
-      testID={`search-result-${(item as any).id}`}
-      style={styles.searchResultItem}
-      onPress={() => handleSearchResultSelect(item as any)}
-      accessibilityRole="button"
-      accessibilityLabel={`${getDisplayName(item)}, ${(item as any).category}`}
-    >
-      <View style={styles.searchResultIcon}>
-        {variant === 'recent' ? (
-          <Clock size={18} color={staticColors.iconSubtle} />
-        ) : (
-          <MapPin size={18} color={staticColors.iconSubtle} />
-        )}
-      </View>
-      <View style={styles.searchResultText}>
-        <View style={styles.searchResultNameRow}>
-          <Text style={styles.searchResultName} numberOfLines={1} ellipsizeMode="tail">
-            {getDisplayName(item)}
-          </Text>
-          {getSecondaryDisplayName(item) && (
-            <Text style={styles.searchResultNameUrdu} numberOfLines={1} ellipsizeMode="tail">
-              {getSecondaryDisplayName(item)}
-            </Text>
-          )}
-        </View>
-        <Text style={styles.searchResultCategory} numberOfLines={1} ellipsizeMode="tail">
-          {(item as any).category}
-        </Text>
-      </View>
-      <ChevronRight size={18} color={staticColors.iconFaint} />
-    </Pressable>
-  );
+  }, [mode, closeDetails, directionsDestination, handleCloseDirections, handleClearPreviewRoute, closeSheet]);
 
   const openLayerOptions = () => setLayersSheetVisible(true);
 
@@ -1325,28 +1193,6 @@ export function HomeScreen() {
             All Locations
           </Text>
         </Pressable>
-        {categoryChips.map((cat) => (
-          <Pressable
-            key={cat.id}
-            style={[styles.chip, activeCategory === cat.id && styles.activeChip]}
-            onPress={() => {
-              logHomeControl('category_chip', `filter_${cat.id}`);
-              selectCategory(cat.id);
-            }}
-            hitSlop={6}
-            accessibilityRole="button"
-            accessibilityLabel={cat.label}
-            accessibilityState={{ selected: activeCategory === cat.id }}
-          >
-            <Text
-              style={[styles.chipText, activeCategory === cat.id && styles.activeChipText]}
-              numberOfLines={1}
-              ellipsizeMode="tail"
-            >
-              {cat.label}
-            </Text>
-          </Pressable>
-        ))}
       </ScrollView>
     );
   };
@@ -1397,7 +1243,6 @@ export function HomeScreen() {
                   graphOverlayReady: true,
                   selectedMarkerReady: !!selectedPlaceMarkerCoordinate,
                   userMarkerReady: !!currentLocation,
-                  searchOverlayCount: overlayPlaces.length,
                   graphOnlyFallbackUsed,
                 });
               }
@@ -1428,10 +1273,6 @@ export function HomeScreen() {
               setIsMapDragging(true);
             }}
             onPress={() => {
-              if (mode === 'SEARCH') {
-                closeSearch();
-                return;
-              }
               if (selectedPlace) {
                 closeSheet();
               }
@@ -1566,7 +1407,6 @@ export function HomeScreen() {
                 strokeWidth={isSelected ? 3 : 1.5}
                 tappable
                 onPress={() => {
-                  dismissSearchOverlay();
                   handlePlaceSelectWithCameraIntent({
                     id: block.id,
                     name: block.name,
@@ -1625,28 +1465,6 @@ export function HomeScreen() {
             />
           )}
 
-          {mode !== 'NAVIGATION' && mode !== 'ARRIVAL' && overlayPlaces.map((item) => {
-            const overlayItem = item as Place | SearchResult;
-            const coordinate = overlayItem.coordinate;
-            const label = getDisplayName(overlayItem);
-            return (
-              <Marker
-                key={`search_overlay_${overlayItem.id}`}
-                testID={`search-map-marker-${overlayItem.id}`}
-                coordinate={coordinate}
-                anchor={{ x: 0.5, y: 1 }}
-                tracksViewChanges={false}
-                onPress={() => {
-                  if (isPlace(overlayItem)) handleSearchResultSelect(overlayItem);
-                }}
-              >
-                <View style={styles.searchOverlayMarker}>
-                  <MapPin size={markerSizes.facility} color={staticColors.white} fill={markerColors.route} />
-                  <Text style={styles.searchOverlayText} numberOfLines={1}>{label}</Text>
-                </View>
-              </Marker>
-            );
-          })}
 
           {/* Selected place pin — hidden during route preview to avoid duplicate destination marker */}
           {markerOwnership.showBrowseSelection && selectedPlace && selectedPlaceMarkerCoordinate && !activePreviewRoute && (
@@ -1712,164 +1530,27 @@ export function HomeScreen() {
 
         {mode !== 'NAVIGATION' && !directionsDestination && (
         <SafeAreaView
-          style={[styles.topOverlay, mode === 'SEARCH' && styles.topOverlaySearch]}
+          style={styles.topOverlay}
           pointerEvents="box-none"
           onLayout={(e) => setTopOverlayHeight(e.nativeEvent.layout.height)}
         >
-          <Animated.View
-            style={[
-              styles.searchBarContainer,
-              {
-                backgroundColor: theme.searchBar,
-                borderColor: searchFocusAnim.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: ['rgba(218,220,224,0)', staticColors.info],
-                }),
-                transform: [{ scale: searchFocusAnim.interpolate({ inputRange: [0, 1], outputRange: [1, 1.01] }) }],
-              },
-            ]}
-          >
+          <View style={[styles.searchBarContainer, { backgroundColor: theme.searchBar }]}>
             <Pressable
               onPress={() => {
-                if (mode === 'SEARCH') {
-                  logHomeControl('search_back', 'dismiss_search');
-                  closeSearch();
-                  return;
-                }
-                dismissSearchOverlay();
                 logHomeControl('menu', 'open_drawer');
                 nav.dispatch(DrawerActions.openDrawer());
               }}
               style={styles.iconButton}
               accessibilityRole="button"
-              accessibilityLabel={mode === 'SEARCH' ? 'Back' : 'Open menu'}
+              accessibilityLabel="Open menu"
             >
-              {mode === 'SEARCH' ? <ArrowLeft size={24} color={theme.subtext} /> : <Menu size={24} color={theme.subtext} />}
+              <Menu size={24} color={theme.subtext} />
             </Pressable>
-            <TextInput
-              ref={searchInputRef}
-              style={[styles.searchInput, { color: theme.text }]}
-              placeholder={searchPlaceholder}
-              placeholderTextColor={theme.placeholder}
-              value={searchQuery}
-              onChangeText={handleSearch}
-              onFocus={openSearch}
-              returnKeyType="search"
-              onSubmitEditing={Keyboard.dismiss}
-              multiline={false}
-              numberOfLines={1}
-              accessibilityLabel="Search destination: gate, rasta, block"
-            />
-            {searchQuery.length > 0 ? (
-              <Pressable
-                onPress={() => {
-                  logHomeControl('search_clear', 'clear_query');
-                  clearSearch();
-                }}
-                style={styles.iconButton}
-                accessibilityRole="button"
-                accessibilityLabel="Clear search"
-              >
-                <X size={20} color={staticColors.iconMuted} />
-              </Pressable>
-            ) : (
-              <View style={styles.iconButtonSpacer} />
-            )}
+          </View>
+
+          <Animated.View style={{ opacity: chipsAnim }} pointerEvents={isMapDragging ? 'none' : 'box-none'}>
+            {renderChips()}
           </Animated.View>
-
-          {/* Phase 5 — full-screen search overlay. Map stays mounted underneath
-              (never unmounted/removed); this content view just covers it with
-              a solid background until dismissed via back button or a result
-              selection, matching the Google Maps search flow. */}
-          {mode === 'SEARCH' && (
-            <Animated.View
-              style={[
-                styles.searchOverlayContent,
-                { backgroundColor: theme.card, opacity: searchFocusAnim },
-                { transform: [{ translateY: searchFocusAnim.interpolate({ inputRange: [0, 1], outputRange: [12, 0] }) }] },
-              ]}
-            >
-              <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.searchOverlayScrollContent}>
-                {searchQuery.length > 0 ? (
-                  searchResults.length > 0 ? (
-                    searchResults.map((item) => renderResultRow(item, 'result'))
-                  ) : (
-                    <Text style={[styles.searchEmptyText, { color: theme.subtext }]}>{`No results for "${searchQuery}"`}</Text>
-                  )
-                ) : (
-                  <>
-                    {recentSearches.length > 0 && (
-                      <>
-                        <Text style={[styles.sectionTitle, { color: theme.subtext }]}>Recent</Text>
-                        {recentSearches.map((item) => renderResultRow(item, 'recent'))}
-                      </>
-                    )}
-
-                    {suggestedPlaces.length > 0 && (
-                      <>
-                        <Text style={[styles.sectionTitle, { color: theme.subtext }]}>Suggestions</Text>
-                        {suggestedPlaces
-                          .filter((place) => !recentSearches.some((recent) => (recent as any).id === place.id))
-                          .map((item) => renderResultRow(item, 'suggestion'))}
-                      </>
-                    )}
-
-                    <Text style={[styles.sectionTitle, { color: theme.subtext }]}>Categories</Text>
-                    <View style={styles.categoryGrid}>
-                      {categoryChips.filter((cat) => cat.id !== 'all').map((cat) => (
-                        <Pressable
-                          key={cat.id}
-                          style={[
-                            styles.categoryTile,
-                            { backgroundColor: theme.chip, borderColor: theme.border },
-                            activeCategory === cat.id && { backgroundColor: theme.chipActive, borderColor: theme.chipActive },
-                          ]}
-                          onPress={() => {
-                            logHomeControl('category_tile', `filter_${cat.id}`);
-                            handleCategoryPress(cat.id);
-                          }}
-                          accessibilityRole="button"
-                          accessibilityLabel={cat.label}
-                          accessibilityState={{ selected: activeCategory === cat.id }}
-                        >
-                          <Text
-                            style={[
-                              styles.categoryTileText,
-                              { color: theme.chipText },
-                              activeCategory === cat.id && { color: theme.chipActiveText, fontWeight: '700' },
-                            ]}
-                            numberOfLines={1}
-                            ellipsizeMode="tail"
-                          >
-                            {cat.label}
-                          </Text>
-                        </Pressable>
-                      ))}
-                    </View>
-
-                    {activeCategory && (
-                      <>
-                        <Text style={[styles.sectionTitle, { color: theme.subtext }]}>
-                          {categoryChips.find((cat) => cat.id === activeCategory)?.label ?? 'Results'}
-                        </Text>
-                        {searchResults.length > 0 ? (
-                          searchResults.map((item) => renderResultRow(item, 'result'))
-                        ) : (
-                          <Text style={[styles.searchEmptyText, { color: theme.subtext }]}>No places in this category.</Text>
-                        )}
-                      </>
-                    )}
-                  </>
-                )}
-              </ScrollView>
-            </Animated.View>
-          )}
-
-          {mode !== 'SEARCH' && (
-            <Animated.View style={{ opacity: chipsAnim }} pointerEvents={isMapDragging ? 'none' : 'box-none'}>
-              {renderChips()}
-            </Animated.View>
-          )}
         </SafeAreaView>
         )}
 
@@ -1957,7 +1638,7 @@ export function HomeScreen() {
           </View>
         )}
 
-        {mode !== 'NAVIGATION' && mode !== 'SEARCH' && (
+        {mode !== 'NAVIGATION' && (
           <>
             <View style={[styles.controlStack, { bottom: controlStackBottom }]}>
               <MapControls
@@ -2173,24 +1854,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
   },
-  searchOverlayMarker: {
-    maxWidth: 120,
-    alignItems: 'center',
-    paddingHorizontal: 7,
-    paddingVertical: 4,
-    borderRadius: 8,
-    backgroundColor: '#1A73E8',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.9)',
-    flexDirection: 'row',
-    gap: 4,
-  },
-  searchOverlayText: {
-    maxWidth: 82,
-    color: '#FFFFFF',
-    fontSize: 10,
-    fontWeight: '700',
-  },
   topOverlay: {
     position: 'absolute',
     top: 0,
@@ -2198,13 +1861,6 @@ const styles = StyleSheet.create({
     right: 0,
     paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
     zIndex: Z.mapControls,
-  },
-  // Phase 5 — stretches the overlay to fill the screen so its full-screen
-  // search content (searchOverlayContent, flex: 1) has a bounded height to
-  // fill; topOverlay itself has no `bottom` outside SEARCH mode since it's
-  // normally sized to its (small) search-bar-only content.
-  topOverlaySearch: {
-    bottom: 0,
   },
   searchBarContainer: {
     flexDirection: 'row',
@@ -2221,71 +1877,6 @@ const styles = StyleSheet.create({
     ...shadows.medium,
   },
   iconButton: { padding: 14 },
-  iconButtonSpacer: { width: 48, height: 48 },
-  searchInput: {
-    flex: 1,
-    fontSize: 16,
-    color: staticColors.textPrimary,
-    paddingHorizontal: 4,
-    height: 52,
-    // Prevent multiline overflow that causes "..." artifacts below placeholder
-    textAlignVertical: 'center',
-  },
-  // Phase 5 — full-screen search overlay content (fills topOverlaySearch below
-  // the search bar, replacing the old small anchored dropdown).
-  searchOverlayContent: {
-    flex: 1,
-    marginTop: 4,
-  },
-  searchOverlayScrollContent: {
-    paddingBottom: 24,
-  },
-  searchEmptyText: {
-    fontSize: 14,
-    paddingHorizontal: 16,
-    paddingVertical: 24,
-    textAlign: 'center',
-  },
-  categoryGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    paddingHorizontal: 12,
-    paddingTop: 8,
-    gap: 8,
-  },
-  categoryTile: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 20,
-    borderWidth: 1,
-    minWidth: 76,
-    alignItems: 'center',
-  },
-  categoryTileText: {
-    fontSize: 13,
-    fontWeight: '500',
-  },
-  sectionTitle: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#70757A',
-    textTransform: 'uppercase',
-    paddingHorizontal: 16,
-    paddingTop: 12,
-  },
-  searchResultItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F1F3F4',
-  },
-  searchResultIcon: { width: 40, alignItems: 'center' },
-  searchResultText: { flex: 1, marginLeft: 4, minWidth: 0 },
-  searchResultNameRow: { flexDirection: 'row', alignItems: 'baseline' },
-  searchResultName: { fontSize: 15, color: '#202124', fontWeight: '500', flexShrink: 1 },
-  searchResultNameUrdu: { fontSize: 13, color: '#70757A', marginLeft: 6, flexShrink: 1 },
-  searchResultCategory: { fontSize: 13, color: '#70757A', marginTop: 1 },
   chipsContainer: { marginTop: 10 },
   chipsContent: { paddingLeft: 12, paddingRight: 88, paddingBottom: 8 },
   chip: {
@@ -2300,7 +1891,6 @@ const styles = StyleSheet.create({
     minWidth: 64,
     alignItems: 'center',
   },
-  activeChip: { backgroundColor: '#1A73E8', borderColor: '#1A73E8' },
   allLocationsChip: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -2310,7 +1900,6 @@ const styles = StyleSheet.create({
   },
   allLocationsChipText: { color: staticColors.infoStrong, fontWeight: '700' },
   chipText: { fontSize: 13, color: '#3C4043', fontWeight: '500' },
-  activeChipText: { color: '#FFFFFF', fontWeight: '700' },
   navControls: { position: 'absolute', right: 16, zIndex: Z.mapControls },
   // Single bottom-anchored Layers/Compass/Zoom/Recenter stack (see MapControls) —
   // replaces the old separately-anchored rightControls (top) + bottomControls

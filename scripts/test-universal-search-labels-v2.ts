@@ -32,8 +32,9 @@ for (const place of bilingualPlaces.slice(0, 5)) {
   assert(secondary === place.urduName, `getSecondaryLabel must surface ${place.id}'s real Urdu name`);
 }
 
-const home = readFileSync('src/views/screens/HomeScreen.tsx', 'utf8');
-assert(home.includes('getSecondaryDisplayName'), 'Home search results must render a bilingual secondary label');
-assert(home.includes('MapLocalizationService.getSecondaryLabel({ en: item.name, ur: item.urduName })'), 'Search result secondary label must go through MapLocalizationService, the same service on-map labels use');
+// Search/browse now lives in LocationsDirectoryScreen (Home's own search UI was removed) —
+// its DestinationRow renders the bilingual secondary line directly off Place.urduName.
+const destinationRow = readFileSync('src/views/components/directory/DestinationRow.tsx', 'utf8');
+assert(destinationRow.includes('place.urduName'), 'Directory destination rows must render a bilingual secondary label');
 
 console.log('Universal search labels v2 checks passed.');

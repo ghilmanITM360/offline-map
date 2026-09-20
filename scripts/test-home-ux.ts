@@ -31,7 +31,9 @@ assert(
   home.includes('Background map not downloaded. Ijtema routes still work.'),
   'Home screen should explain that missing background tiles do not block Ijtema routing',
 );
-assert(home.includes('categoryChips'), 'Home categories should be data-driven, not hardcoded two chips');
+// Category browsing moved to LocationsDirectoryScreen (PublicDestinationsService.getCategories(),
+// itself data-driven, not hardcoded) — Home keeps a single chip that opens it.
+assert(home.includes("nav.navigate('LocationsDirectory')"), 'Home chip should open the data-driven Locations Directory, not hardcoded category chips');
 assert(locationSheet.includes('Member Masjid Gates'), 'Block detail sheet should show Member Masjid gates');
 const userLocationMarker = readFileSync('src/views/components/map/UserLocationMarker.tsx', 'utf8');
 assert(home.includes('<UserLocationMarker'), 'Home should render the shared UserLocationMarker component');

@@ -8,7 +8,6 @@ import { deriveMapMode, MapModeInputs } from '../viewmodels/useMapMode';
 const base: MapModeInputs = {
   arrived: false,
   showNavOverlay: false,
-  isSearchFocused: false,
   detailsExpanded: false,
   directionsDestination: null,
   activePreviewRoute: null,
@@ -41,30 +40,15 @@ describe('deriveMapMode', () => {
     ).toBe('ROUTE_PREVIEW');
   });
 
-  it('SEARCH outranks PLACE_SELECTED/ROUTE_PREVIEW', () => {
-    expect(
-      deriveMapMode({
-        ...base,
-        isSearchFocused: true,
-        selectedPlace: { id: 'p1' },
-        activePreviewRoute: { id: 'r1' },
-      }),
-    ).toBe('SEARCH');
-  });
-
-  it('DETAILS outranks PLACE_SELECTED/ROUTE_PREVIEW but not SEARCH', () => {
+  it('DETAILS outranks PLACE_SELECTED/ROUTE_PREVIEW', () => {
     expect(deriveMapMode({ ...base, detailsExpanded: true, selectedPlace: { id: 'p1' } })).toBe('DETAILS');
-    expect(
-      deriveMapMode({ ...base, detailsExpanded: true, isSearchFocused: true, selectedPlace: { id: 'p1' } }),
-    ).toBe('SEARCH');
   });
 
-  it('NAVIGATION outranks SEARCH and everything below it', () => {
+  it('NAVIGATION outranks everything below it', () => {
     expect(
       deriveMapMode({
         ...base,
         showNavOverlay: true,
-        isSearchFocused: true,
         activePreviewRoute: { id: 'r1' },
       }),
     ).toBe('NAVIGATION');
