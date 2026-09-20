@@ -70,7 +70,7 @@ export function AboutScreen() {
           <View style={styles.featureList}>
             <View style={styles.featureItem}>
               <View style={styles.dot} />
-              <Text style={styles.featureText}>100% Offline Maps & Navigation</Text>
+              <Text style={styles.featureText}>Core Ijtima navigation works offline</Text>
             </View>
             <View style={styles.featureItem}>
               <View style={styles.dot} />
