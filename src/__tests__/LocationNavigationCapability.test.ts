@@ -20,6 +20,27 @@ describe('evaluateNavigationLocationCapability', () => {
     })).toEqual({ canStart: false, message });
   });
 
+  it('LOC-07: keeps coarse permission preview-only even with a small reported accuracy', () => {
+    expect(evaluateNavigationLocationCapability({
+      startSource: 'live_gps',
+      precision: 'coarse',
+      coordinate: { latitude: 24.96, longitude: 67.01, accuracy: 5, observedAtMs: nowMs },
+      nowMs,
+    })).toEqual({
+      canStart: false,
+      message: 'Precise location is required for reliable walking navigation inside Ijtima.',
+    });
+  });
+
+  it('LOC-06: fine permission with a fresh accurate fix can start live navigation', () => {
+    expect(evaluateNavigationLocationCapability({
+      startSource: 'live_gps',
+      precision: 'fine',
+      coordinate: { latitude: 24.96, longitude: 67.01, accuracy: 8, observedAtMs: nowMs },
+      nowMs,
+    })).toEqual({ canStart: true, message: '' });
+  });
+
   it('LOC-09: keeps an approximate or weak fix preview-only', () => {
     expect(evaluateNavigationLocationCapability({
       startSource: 'live_gps',

@@ -11,11 +11,34 @@ import { OnboardingStatusService } from './OnboardingStatusService';
 const DEVICE_LAST_KNOWN_MAX_AGE_MS = 30_000;
 const DEVICE_LAST_KNOWN_REQUIRED_ACCURACY_M = 50;
 
+export type LocationPermissionPrecision = 'fine' | 'coarse' | 'none';
+export type LocationServicesState = 'enabled' | 'disabled' | 'unknown';
+
 export interface LocationPermissionState {
   granted: boolean;
   canAskAgain: boolean;
   status: Location.PermissionStatus;
+  /** Android permission precision (fine/coarse/none). Independent of fix accuracy in meters. */
+  precision: LocationPermissionPrecision;
+  /** True only when servicesState === 'enabled'; kept for callers that only need a yes/no gate. */
   servicesEnabled: boolean;
+  /** 'unknown' when the platform query itself failed — never collapsed into 'enabled'. */
+  servicesState: LocationServicesState;
+}
+
+function derivePrecision(permission: Location.LocationPermissionResponse): LocationPermissionPrecision {
+  if (permission.status !== 'granted') return 'none';
+  const androidAccuracy = (permission as { android?: { accuracy?: LocationPermissionPrecision } }).android?.accuracy;
+  return androidAccuracy ?? 'fine';
+}
+
+async function queryServicesState(): Promise<LocationServicesState> {
+  try {
+    const enabled = await Location.hasServicesEnabledAsync();
+    return enabled ? 'enabled' : 'disabled';
+  } catch {
+    return 'unknown';
+  }
 }
 
 export interface LocationResolveResult {
@@ -29,12 +52,7 @@ export interface LocationResolveResult {
 export class LocationAccessService {
   static async getPermissionState(): Promise<LocationPermissionState> {
     const permission = await Location.getForegroundPermissionsAsync();
-    let servicesEnabled = true;
-    try {
-      servicesEnabled = await Location.hasServicesEnabledAsync();
-    } catch {
-      servicesEnabled = true;
-    }
+    const servicesState = await queryServicesState();
     const granted = permission.status === 'granted';
     // A mere status check that finds permission already granted still supersedes a stale skip
     // (e.g. Settings' re-request flow re-checks after the OS prompt closes).
@@ -43,7 +61,9 @@ export class LocationAccessService {
       granted,
       canAskAgain: permission.canAskAgain,
       status: permission.status,
-      servicesEnabled,
+      precision: derivePrecision(permission),
+      servicesEnabled: servicesState === 'enabled',
+      servicesState,
     };
   }
 
@@ -54,18 +74,15 @@ export class LocationAccessService {
         permission = await Location.requestForegroundPermissionsAsync();
       }
 
-      let servicesEnabled = true;
-      try {
-        servicesEnabled = await Location.hasServicesEnabledAsync();
-      } catch {
-        servicesEnabled = true;
-      }
+      const servicesState = await queryServicesState();
 
       const permissionState: LocationPermissionState = {
         granted: permission.status === 'granted',
         canAskAgain: permission.canAskAgain,
         status: permission.status,
-        servicesEnabled,
+        precision: derivePrecision(permission),
+        servicesEnabled: servicesState === 'enabled',
+        servicesState,
       };
       // Covers both surfaces that route through here (Home/Recenter, Directions
       // current-location) with a single call — whether this pass just prompted for and
@@ -84,7 +101,10 @@ export class LocationAccessService {
         };
       }
 
-      if (!permissionState.servicesEnabled) {
+      // Only 'disabled' is a confirmed off-state worth short-circuiting on. 'unknown' means the
+      // platform query itself failed — fall through and let getCurrentPositionAsync prove it one
+      // way or the other rather than falsely claiming services are off.
+      if (permissionState.servicesState === 'disabled') {
         return {
           ok: false,
           coordinate: null,
@@ -144,7 +164,9 @@ export class LocationAccessService {
         granted: false,
         canAskAgain: true,
         status: Location.PermissionStatus.DENIED,
-        servicesEnabled: true,
+        precision: 'none',
+        servicesEnabled: false,
+        servicesState: 'unknown',
       };
       return {
         ok: false,

@@ -16,6 +16,7 @@ export function useSettingsViewModel() {
     settings,
     updateSettings,
     setHasLocationPermission,
+    setLocationPermissionPrecision,
   } = useAppStore();
   const [locationPermissionState, setLocationPermissionState] = useState<LocationPermissionState | null>(null);
 
@@ -55,13 +56,14 @@ export function useSettingsViewModel() {
     const state = await LocationAccessService.getPermissionState();
     setLocationPermissionState(state);
     setHasLocationPermission(state.granted);
+    setLocationPermissionPrecision(state.precision);
     return state;
-  }, [setHasLocationPermission]);
+  }, [setHasLocationPermission, setLocationPermissionPrecision]);
 
   const handleReRequestPermission = async () => {
     try {
       const state = await refreshLocationPermissionState();
-      if (state.granted && !state.servicesEnabled) {
+      if (state.granted && state.servicesState === 'disabled') {
         const opened = await LocationAccessService.openLocationSettings();
         if (!opened) {
           Alert.alert('Location services are off', 'Open device location settings and turn location on.');

@@ -163,7 +163,8 @@ export function SettingsScreen() {
   const locationPermissionLabel = (() => {
     if (!locationPermissionState) return 'Checking';
     if (!locationPermissionState.granted) return 'Not allowed';
-    if (!locationPermissionState.servicesEnabled) return 'Location Off';
+    if (locationPermissionState.servicesState === 'disabled') return 'Location Off';
+    if (locationPermissionState.servicesState === 'unknown') return 'Checking location';
     return 'Allowed';
   })();
 
@@ -174,8 +175,11 @@ export function SettingsScreen() {
         ? 'Tap Manage to request location permission'
         : 'Not allowed. Tap Manage to change permission in Android settings';
     }
-    if (!locationPermissionState.servicesEnabled) {
+    if (locationPermissionState.servicesState === 'disabled') {
       return 'Permission allowed, but device location is off. Tap Manage to open location settings';
+    }
+    if (locationPermissionState.servicesState === 'unknown') {
+      return 'Permission allowed. Location status could not be checked — tap Manage to try again';
     }
     return 'Tap Manage to change permission in Android settings';
   })();

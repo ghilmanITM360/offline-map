@@ -10,6 +10,13 @@ export type NavigationStartSource = 'live_gps' | 'device_last_known' | 'remember
 interface NavigationLocationCapabilityInput {
   startSource: NavigationStartSource;
   coordinate: Coordinate | null;
+  /**
+   * Android permission precision ('fine'/'coarse'/'none'). Optional so existing callers that
+   * don't yet track it keep working; omitted precision skips this gate (accuracy-based checks
+   * below still apply). Coarse permission is gated on its own — Android deliberately fuzzes
+   * coarse fixes, so a small reported accuracy number cannot be trusted to mean fine precision.
+   */
+  precision?: 'fine' | 'coarse' | 'none';
   nowMs?: number;
 }
 
@@ -35,6 +42,13 @@ export function evaluateNavigationLocationCapability(
     return {
       canStart: false,
       message: 'Last known location cannot drive live navigation. Route preview remains available.',
+    };
+  }
+
+  if (input.precision === 'coarse') {
+    return {
+      canStart: false,
+      message: 'Precise location is required for reliable walking navigation inside Ijtima.',
     };
   }
 

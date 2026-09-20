@@ -52,6 +52,8 @@ export function useDirectionsViewModel(destination: Place | null) {
   const lastKnownLocationUpdatedAt = useAppStore((s) => s.lastKnownLocationUpdatedAt);
   const setCurrentLocation = useAppStore((s) => s.setCurrentLocation);
   const setHasLocationPermission = useAppStore((s) => s.setHasLocationPermission);
+  const locationPermissionPrecision = useAppStore((s) => s.locationPermissionPrecision);
+  const setLocationPermissionPrecision = useAppStore((s) => s.setLocationPermissionPrecision);
   const settings = useAppStore((s) => s.settings);
   const {
     setRouteAlternatives,
@@ -89,6 +91,7 @@ export function useDirectionsViewModel(destination: Place | null) {
   const navigationLocationCapability = evaluateNavigationLocationCapability({
     startSource,
     coordinate: startSource === 'live_gps' ? routeOriginLocation : null,
+    precision: startSource === 'live_gps' ? locationPermissionPrecision : undefined,
   });
 
   useEffect(() => {
@@ -450,6 +453,7 @@ export function useDirectionsViewModel(destination: Place | null) {
     try {
       const resolved = await LocationAccessService.resolveCurrentLocation(true);
       setHasLocationPermission(resolved.permissionState.granted);
+      setLocationPermissionPrecision(resolved.permissionState.precision);
 
       if (!resolved.ok || !resolved.coordinate) {
         let blockedMessage: string | null = null;
