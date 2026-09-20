@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { Alert } from 'react-native';
+import { Alert, Linking } from 'react-native';
 import * as Location from 'expo-location';
 import { usePermissionViewModel } from '../viewmodels/PermissionViewModel';
 import { OfflineMapService } from '../services/OfflineMapService';
@@ -55,6 +55,54 @@ beforeEach(() => {
   (OfflineMapStatusService.validateAtStartup as jest.Mock).mockResolvedValue({ status: 'downloaded' });
   (ConnectivityService.isConnected as jest.Mock).mockResolvedValue(true);
   jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+});
+
+describe('usePermissionViewModel — requestPermission denial handling', () => {
+  it('LOC-02: denied with canAskAgain=true shows a retry rationale, not a Settings redirect', async () => {
+    (Location.requestForegroundPermissionsAsync as jest.Mock).mockResolvedValue({ status: 'denied' });
+    (Location.getForegroundPermissionsAsync as jest.Mock).mockResolvedValue({ status: 'denied', canAskAgain: true });
+    jest.spyOn(Linking, 'openSettings').mockImplementation(() => Promise.resolve());
+
+    const { result } = await renderHook(() => usePermissionViewModel());
+    await act(async () => {
+      await result.current.requestPermission(mockNavigation);
+    });
+
+    expect(Alert.alert).toHaveBeenCalledWith(
+      "Location isn't on yet",
+      expect.any(String),
+      expect.any(Array),
+    );
+    expect(Linking.openSettings).not.toHaveBeenCalled();
+  });
+
+  it('LOC-03: permanent denial (canAskAgain=false) offers Settings once, with no repeated prompt', async () => {
+    (Location.requestForegroundPermissionsAsync as jest.Mock).mockResolvedValue({ status: 'denied' });
+    (Location.getForegroundPermissionsAsync as jest.Mock).mockResolvedValue({ status: 'denied', canAskAgain: false });
+    jest.spyOn(Linking, 'openSettings').mockImplementation(() => Promise.resolve());
+
+    const { result } = await renderHook(() => usePermissionViewModel());
+    await act(async () => {
+      await result.current.requestPermission(mockNavigation);
+    });
+
+    expect(Alert.alert).toHaveBeenCalledTimes(1);
+    expect(Alert.alert).toHaveBeenCalledWith(
+      'Location permission required',
+      'Enable location access in Settings to use navigation.',
+      expect.any(Array),
+    );
+
+    pressAlertButton('Open Settings');
+    expect(Linking.openSettings).toHaveBeenCalledTimes(1);
+
+    // A second manual retry tap is a fresh user action, not an automatic loop — still just one
+    // alert per tap, never more.
+    await act(async () => {
+      await result.current.requestPermission(mockNavigation);
+    });
+    expect(Alert.alert).toHaveBeenCalledTimes(2);
+  });
 });
 
 describe('usePermissionViewModel — Continue Without Location persistence', () => {
