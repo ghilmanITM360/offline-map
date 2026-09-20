@@ -1,4 +1,8 @@
-import { computeMapContentInsets } from '../viewmodels/useOverlayInsets';
+import {
+  computeMapContentInsets,
+  MIN_TOP_VISIBLE_MAP_FOR_ATTRIBUTION,
+  MIN_TOP_VISIBLE_MAP_FOR_ROUTE_PREVIEW,
+} from '../viewmodels/useOverlayInsets';
 
 const common = {
   top: 144,
@@ -18,13 +22,24 @@ describe('computeMapContentInsets', () => {
   test.each([
     [0, 120],
     [1, 400],
-    [2, 736],
   ])('sheet snap index %s reserves its resolved visible height', (sheetIndex, bottom) => {
     expect(computeMapContentInsets({ ...common, mode: 'PLACE_SELECTED', sheetIndex }).bottom).toBe(bottom);
   });
 
+  test('sheet snap index 2 (92%, 736 raw) is clamped so the Google logo keeps its required headroom above the fixture\'s top=144 (ATTR-001 follow-up)', () => {
+    // Not 736 (92% of 800): the SDK omits the logo entirely once its headroom gets
+    // too small, so bottom is capped at windowHeight - top - MIN_TOP_VISIBLE_MAP_FOR_ATTRIBUTION.
+    const expectedBottom = common.windowHeight - common.top - MIN_TOP_VISIBLE_MAP_FOR_ATTRIBUTION;
+    expect(computeMapContentInsets({ ...common, mode: 'PLACE_SELECTED', sheetIndex: 2 }).bottom).toBe(expectedBottom);
+  });
+
   test('route preview uses shared sheet snap extent', () => {
-    expect(computeMapContentInsets({ ...common, mode: 'ROUTE_PREVIEW', sheetIndex: 1 }).bottom).toBe(400);
+    expect(computeMapContentInsets({ ...common, mode: 'ROUTE_PREVIEW', sheetIndex: 1 }).bottom).toBe(376);
+  });
+
+  test('maximum route preview preserves enough map for route endpoints and markers', () => {
+    const expectedBottom = common.windowHeight - common.top - MIN_TOP_VISIBLE_MAP_FOR_ROUTE_PREVIEW;
+    expect(computeMapContentInsets({ ...common, mode: 'ROUTE_PREVIEW', sheetIndex: 2 }).bottom).toBe(expectedBottom);
   });
 
   test('active navigation uses measured trip-bar height', () => {

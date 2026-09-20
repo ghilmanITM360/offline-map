@@ -41,9 +41,11 @@ import { useHomeViewModel } from '../../viewmodels/HomeViewModel';
 import {
   computeMapControlsInset,
   computeMapContentInsets,
+  computeMaxSheetOcclusionForAttribution,
   computeNavControlsInset,
+  MIN_TOP_VISIBLE_MAP_FOR_ATTRIBUTION,
+  MIN_TOP_VISIBLE_MAP_FOR_ROUTE_PREVIEW,
   resolveNavBarHeight,
-  resolveOverlayExtent,
   OverlayState,
 } from '../../viewmodels/useOverlayInsets';
 import { useTheme } from '../../services/useTheme';
@@ -119,6 +121,7 @@ const VENUE_BOUNDARY = [
 // covers the approach streets/gates just outside the venue, not only the interior.
 const SATELLITE_DIM_LAT_PAD = (IJTEMA_MAP_BOUNDS.maxLat - IJTEMA_MAP_BOUNDS.minLat) * 0.5;
 const SATELLITE_DIM_LNG_PAD = (IJTEMA_MAP_BOUNDS.maxLng - IJTEMA_MAP_BOUNDS.minLng) * 0.5;
+const ROUTE_FIT_BOTTOM_PADDING = 32;
 const SATELLITE_DIM_BOUNDARY = [
   { latitude: IJTEMA_MAP_BOUNDS.minLat - SATELLITE_DIM_LAT_PAD, longitude: IJTEMA_MAP_BOUNDS.minLng - SATELLITE_DIM_LNG_PAD },
   { latitude: IJTEMA_MAP_BOUNDS.minLat - SATELLITE_DIM_LAT_PAD, longitude: IJTEMA_MAP_BOUNDS.maxLng + SATELLITE_DIM_LNG_PAD },
@@ -466,21 +469,6 @@ export function HomeScreen() {
 
   const showOsmAttribution =
     baseMapMode === 'LOCAL_TILES' || outsideRouteProvider(activePreviewRoute ?? activeRoute) === 'offline-osm';
-  // CameraManager.fitRoute() — camera frames origin + destination + full route whenever a
-  // route preview opens (or a different route is chosen), instead of leaving the camera
-  // wherever it happened to be when the user picked a destination.
-  useEffect(() => {
-    if (!activePreviewRoute || activePreviewRoute.coordinates.length < 2) return;
-    invalidateStartupCameraIntent();
-    const sheetExtent = resolveOverlayExtent({ kind: 'sheet', windowHeight, snapPoints, sheetIndex });
-    cameraManager.fitRoute(activePreviewRoute.coordinates, {
-      top: 90,
-      right: 64,
-      bottom: sheetExtent + Math.max(insets.bottom, 16) + 32,
-      left: 64,
-    });
-  }, [activePreviewRoute, cameraManager, insets.bottom, invalidateStartupCameraIntent, windowHeight, snapPoints, sheetIndex]);
-
   // Single source of truth for "what is the map surface showing right now" — every
   // render/behavior gate below reads `mode`, never the raw isSearchFocused/arrived/etc
   // inputs directly, so nothing can drift out of sync with the priority chain in
@@ -497,6 +485,17 @@ export function HomeScreen() {
   });
   const modeRef = useRef<typeof mode>('EXPLORE');
   modeRef.current = mode;
+
+  // The search bar/chip row (and its onLayout) only mounts when
+  // `mode !== 'NAVIGATION' && !directionsDestination` (see its render below) — so
+  // topOverlayHeight would otherwise keep its last measurement indefinitely once the
+  // row unmounts, misreporting real headroom to every other mode's mapLabelEdgeInsets
+  // (ATTR-001 follow-up: this stale top, combined with a near-full-height LocationSheet,
+  // could push the Google logo's reserved band behind where the sheet actually,
+  // visually, covers the screen).
+  useEffect(() => {
+    if (mode === 'NAVIGATION' || directionsDestination) setTopOverlayHeight(0);
+  }, [mode, directionsDestination]);
 
   const startupCameraStillOwnsIntent = useCallback((requestGeneration: number, cameraIntentGeneration: number) => (
     mountedRef.current &&
@@ -954,6 +953,55 @@ export function HomeScreen() {
     }),
     [activeNavBottomBarHeight, insets.bottom, mode, sheetIndex, snapPoints, topOverlayHeight, windowHeight],
   );
+  // MapView mapPadding already reserves the sheet-covered area. react-native-maps adds
+  // fitToCoordinates edgePadding on top of that base padding on Android, so repeating
+  // mapLabelEdgeInsets.bottom here double-counts the sheet and can clip a route endpoint.
+  // Keep only a small inner margin inside the already-unobscured viewport. Schedule the
+  // camera command for the next rendered frame so Android applies the new mapPadding prop
+  // before fitToCoordinates reads react-native-maps' native base-padding fields.
+  useEffect(() => {
+    if (!activePreviewRoute || activePreviewRoute.coordinates.length < 2) return;
+    const frame = requestAnimationFrame(() => {
+      invalidateStartupCameraIntent();
+      cameraManager.fitRoute(activePreviewRoute.coordinates, {
+        top: Math.max(mapLabelEdgeInsets.top, 90),
+        right: Math.max(mapLabelEdgeInsets.right, 64),
+        bottom: ROUTE_FIT_BOTTOM_PADDING,
+        left: 64,
+      });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [activePreviewRoute, cameraManager, invalidateStartupCameraIntent, mapLabelEdgeInsets]);
+  // @gorhom/bottom-sheet computes EVERY snap point — the declared 15/50/92% ones, not
+  // just content-driven dynamic sizing — as a percentage of its own containerHeight.
+  // On this app's real window heights, the plain 92% snap alone already leaves less than
+  // MIN_TOP_VISIBLE_MAP_FOR_ATTRIBUTION above the sheet (measured on-device: ~71dp) — no
+  // dynamic sizing or over-drag needed to reproduce Route Preview's clip, a simple manual
+  // drag to 92% does it. mapLabelEdgeInsets' clamp alone can't fix this: it only changes
+  // what we tell the Google Maps SDK is obstructed, not how tall the sheet actually
+  // renders, so the SDK can still place the logo somewhere the real (taller) sheet covers.
+  // `topInset` is gorhom's own mechanism for this — it shrinks the containerHeight every
+  // snap point (declared and dynamic) is computed against, so 92% of a container that's
+  // already missing the top's reserved band can never reach into it (ATTR-001 follow-up).
+  const minimumVisibleMapHeight = mode === 'ROUTE_PREVIEW'
+    ? MIN_TOP_VISIBLE_MAP_FOR_ROUTE_PREVIEW
+    : MIN_TOP_VISIBLE_MAP_FOR_ATTRIBUTION;
+  const sheetTopInset = useMemo(
+    () => (topOverlayHeight > 0 ? topOverlayHeight + 8 : 0) + minimumVisibleMapHeight,
+    [minimumVisibleMapHeight, topOverlayHeight],
+  );
+  // Backstop for the one case topInset alone doesn't bound: dynamic sizing computing a
+  // detent from content so tall it would still exceed the shrunk container. Same shared
+  // formula the mapPadding clamp above uses, so the two ceilings can't drift apart.
+  const sheetMaxDynamicContentSize = useMemo(
+    () => computeMaxSheetOcclusionForAttribution(
+      windowHeight,
+      topOverlayHeight > 0 ? topOverlayHeight + 8 : 0,
+      insets.bottom,
+      minimumVisibleMapHeight,
+    ),
+    [insets.bottom, minimumVisibleMapHeight, topOverlayHeight, windowHeight],
+  );
 
   useEffect(() => {
     Animated.timing(searchFocusAnim, {
@@ -1299,6 +1347,11 @@ export function HomeScreen() {
             ref={mapRef}
             style={styles.map}
             provider={Platform.OS === 'android' && baseMapMode === 'GOOGLE_BASEMAP' ? PROVIDER_GOOGLE : undefined}
+            // Google attribution/legal text renders relative to the padded map region —
+            // reuse mapLabelEdgeInsets (the same sheet/nav-chrome-derived obstruction
+            // already trusted for label placement) so the logo is never covered by
+            // app-owned bottom/top chrome (ATTR-001).
+            mapPadding={mapLabelEdgeInsets}
             initialRegion={effectiveInitialRegion}
             mapType={baseMapMode === 'GOOGLE_BASEMAP' ? mapType : 'none'}
             showsUserLocation={false}
@@ -1973,6 +2026,12 @@ export function HomeScreen() {
           // value, so it must match the snap index every present() caller opens to (1).
           index={1}
           snapPoints={snapPoints}
+          // Dynamic sizing inserts and sorts an extra detent, changing onChange indexes.
+          // Route Preview uses those indexes to keep mapPadding and camera framing aligned,
+          // so retain the declared 15/50/92% index contract while that mode is active.
+          enableDynamicSizing={mode !== 'ROUTE_PREVIEW'}
+          topInset={sheetTopInset}
+          maxDynamicContentSize={sheetMaxDynamicContentSize}
           enablePanDownToClose
           keyboardBehavior="interactive"
           keyboardBlurBehavior="restore"

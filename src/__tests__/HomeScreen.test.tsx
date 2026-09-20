@@ -13,6 +13,9 @@ import { useDirectionsViewModel } from '../viewmodels/DirectionsViewModel';
 import { useAppStore } from '../store/useAppStore';
 import { MapConfigService } from '../services/MapConfigService';
 import * as NavigationOverlayV1Module from '../viewmodels/useNavigationOverlayV1';
+import {
+  MIN_TOP_VISIBLE_MAP_FOR_ROUTE_PREVIEW,
+} from '../viewmodels/useOverlayInsets';
 import type { Place } from '../models/types';
 
 // requestAnimationFrame stays real (not faked): MapLabelOverlay's projection pipeline
@@ -147,6 +150,7 @@ const clearSearchSpy = jest.fn();
 const cancelPendingSheetPresentationSpy = jest.fn();
 const cameraFollowUserSpy = jest.fn();
 const cameraStopFollowingSpy = jest.fn();
+const cameraFitRouteSpy = jest.fn();
 const handleRecenterSpy = jest.fn();
 
 function useFakeHomeViewModel(initialSearchResults: Place[] = []) {
@@ -207,7 +211,7 @@ function useFakeHomeViewModel(initialSearchResults: Place[] = []) {
       animateToUser: jest.fn(),
       animateToPlace: jest.fn(),
       fitVenueBounds: jest.fn(),
-      fitRoute: jest.fn(),
+      fitRoute: cameraFitRouteSpy,
       followUser: cameraFollowUserSpy,
       stopFollowing: cameraStopFollowingSpy.mockImplementation(() => setCameraMode('EXPLORING')),
       enterNavigationCamera: jest.fn(),
@@ -1153,6 +1157,156 @@ describe('HomeScreen — resolved base-map rendering', () => {
 
     expect(screen.getAllByTestId('local-base-map-tiles')).toHaveLength(1);
     expect(screen.getByTestId('home-map-view').props.mapType).toBe('none');
+  });
+
+  test('map padding bottom inset is just the safe area with no sheet open', async () => {
+    await render(<HomeScreen />);
+    expect(screen.getByTestId('home-map-view').props.mapPadding.bottom).toBe(34);
+  });
+
+  test('map padding grows past the safe area to clear the sheet once a place is selected, so Google attribution stays visible (ATTR-001)', async () => {
+    const user = userEvent.setup();
+    await render(<HomeScreen />);
+    await user.press(screen.getByTestId('facility_marker_LM_MASJID_MAIN'));
+    await screen.findByText('Main Masjid');
+
+    expect(screen.getByTestId('home-map-view').props.mapPadding.bottom).toBeGreaterThan(0);
+  });
+
+  // ATTR-001 follow-up: on-device, dragging Route Preview to its plain, always-declared
+  // 92% snap point ALONE reproduced the Google logo clip — no dynamic sizing or
+  // over-drag needed. @gorhom/bottom-sheet computes every snap point (declared
+  // percentages included, not just content-driven dynamic sizing) as a percentage of its
+  // own containerHeight, so mapLabelEdgeInsets' clamp couldn't fix this alone: it only
+  // changes what we tell the Google Maps SDK is obstructed, not how tall the sheet
+  // actually renders, so the SDK could still place the logo somewhere the real (taller)
+  // sheet covered. `topInset` is gorhom's own mechanism for bounding this — it shrinks
+  // the containerHeight every snap point is computed against, so 92% of a shrunk
+  // container can never reach into the reserved band. `maxDynamicContentSize` remains a
+  // backstop for the one thing topInset alone doesn't cover: content so tall its
+  // dynamic-sizing detent would still exceed the shrunk container.
+  test('Route Preview always leaves room for the Google logo, even at the plain 92% snap (ATTR-001 follow-up)', async () => {
+    mockedUseDirectionsViewModel.mockReturnValue({
+      route: null,
+      startSource: 'live_gps',
+      rememberedLocationAgeLabel: '',
+      rememberedLocationAvailable: false,
+      rememberedLocationInsideVenue: false,
+      currentRouteOriginInsideVenue: true,
+      loadState: 'idle',
+      errorMessage: null,
+      manualStart: null,
+      chooseManualStart: jest.fn(),
+      setIsEditingManualStart: jest.fn(),
+      setManualStartPlace: jest.fn(),
+      chooseCurrentLocation: jest.fn(async () => true),
+      chooseRememberedLocation: jest.fn(() => true),
+      calculateRoute: jest.fn(async () => {}),
+      showManualStartSearch: false,
+    });
+    const user = userEvent.setup();
+    await render(<HomeScreen />);
+
+    await user.press(screen.getByTestId('facility_marker_LM_MASJID_MAIN'));
+    await user.press(await screen.findByText('Directions'));
+    expect(await screen.findByText('Get Directions')).toBeOnTheScreen();
+
+    const sheetProps = __getLastBottomSheetModalProps() as unknown as {
+      onChange: (index: number) => void;
+      topInset: number;
+      maxDynamicContentSize: number;
+      enableDynamicSizing: boolean;
+    };
+    // Route Preview hides the search bar/chip row, so the sheet's own top reservation is
+    // the larger route-preview floor — no additional top overlay to add here.
+    expect(sheetProps.topInset).toBe(MIN_TOP_VISIBLE_MAP_FOR_ROUTE_PREVIEW);
+    expect(sheetProps.enableDynamicSizing).toBe(false);
+
+    // Route Preview disables dynamic detent insertion, so index 2 remains the declared
+    // 92% maximum and cannot be shifted by content-height changes.
+    await act(async () => {
+      sheetProps.onChange(2);
+    });
+
+    const mapPaddingBottom = screen.getByTestId('home-map-view').props.mapPadding.bottom;
+    expect(sheetProps.maxDynamicContentSize).toBeGreaterThan(0);
+    // The dynamic-content ceiling can never actually render taller than mapPadding
+    // assumed it might — same shared formula (computeMaxSheetOcclusionForAttribution)
+    // on both sides.
+    expect(sheetProps.maxDynamicContentSize).toBe(mapPaddingBottom);
+  });
+
+  test('Route Preview camera fit does not duplicate map padding at the maximum sheet snap', async () => {
+    const previewRoute = {
+      sourceVersion: 'v2' as const,
+      coordinates: [
+        { latitude: 24.963, longitude: 67.006 },
+        gateResult.coordinate,
+      ],
+      startResolution: {
+        mode: 'inside' as const,
+        coordinate: { latitude: 24.963, longitude: 67.006 },
+      },
+      startLabel: 'Current location',
+      destinationLabel: gateResult.name,
+    };
+    mockedUseDirectionsViewModel.mockReturnValue({
+      route: previewRoute,
+      startSource: 'live_gps',
+      rememberedLocationAgeLabel: '',
+      rememberedLocationAvailable: false,
+      rememberedLocationInsideVenue: false,
+      currentRouteOriginInsideVenue: true,
+      loadState: 'ready',
+      errorMessage: null,
+      manualStart: null,
+      chooseManualStart: jest.fn(),
+      setIsEditingManualStart: jest.fn(),
+      setManualStartPlace: jest.fn(),
+      chooseCurrentLocation: jest.fn(async () => true),
+      chooseRememberedLocation: jest.fn(() => true),
+      calculateRoute: jest.fn(async () => {}),
+      showManualStartSearch: false,
+    });
+    useAppStore.setState({ routePlannerDest: gateResult, activeRoute: previewRoute as any });
+    await render(<HomeScreen />);
+
+    const sheetProps = __getLastBottomSheetModalProps() as unknown as {
+      onChange: (index: number) => void;
+      topInset: number;
+    };
+    expect(sheetProps.topInset).toBe(MIN_TOP_VISIBLE_MAP_FOR_ROUTE_PREVIEW);
+
+    const scheduledFrames: FrameRequestCallback[] = [];
+    const requestAnimationFrameSpy = jest
+      .spyOn(global, 'requestAnimationFrame')
+      .mockImplementation((callback) => {
+        scheduledFrames.push(callback);
+        return scheduledFrames.length;
+      });
+    cameraFitRouteSpy.mockClear();
+    await act(async () => {
+      sheetProps.onChange(2);
+    });
+
+    // Runtime regression: fitting in the same React commit as mapPadding changes lets
+    // Android execute fitToCoordinates against the previous native base padding. After
+    // maximum -> normal, one endpoint then stays behind the sheet. Defer the camera
+    // command until the next rendered frame, after the native padding prop is applied.
+    expect(cameraFitRouteSpy).not.toHaveBeenCalled();
+    await act(async () => {
+      scheduledFrames.splice(0).forEach((callback) => callback(performance.now()));
+    });
+
+    const mapPaddingBottom = screen.getByTestId('home-map-view').props.mapPadding.bottom;
+    const [, edgeInsets] = cameraFitRouteSpy.mock.calls.at(-1) as [unknown, { top: number; bottom: number }];
+    // react-native-maps adds fitToCoordinates edgePadding to MapView mapPadding on
+    // Android. Reusing the sheet inset here double-counts the occluded area and can
+    // push an endpoint out of the remaining Route Preview viewport.
+    expect(mapPaddingBottom).toBeGreaterThan(edgeInsets.bottom);
+    expect(edgeInsets.bottom).toBe(32);
+    expect(edgeInsets.top).toBeGreaterThanOrEqual(90);
+    requestAnimationFrameSpy.mockRestore();
   });
 
   test('online Google map renders without LocalTile conflict', async () => {

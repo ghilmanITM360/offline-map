@@ -27,6 +27,35 @@ export const RECENTER_BUTTON_SIZE = 56;
 // Approximate navigation trip-info bar height, used only for the single frame before
 // its real onLayout height is measured (see resolveNavBarHeight).
 export const NAV_BAR_FALLBACK_HEIGHT = 140;
+// Google's attribution logo needs real headroom to render at all — Maps Android SDK
+// silently omits the logo (not just clips it) once mapPadding.bottom leaves it too
+// little unobscured space, observed at ~71dp remaining (DETAILS' 92% snap on a real
+// device). 96dp still clipped the logo's top sliver against the sheet on-device (the
+// SDK reserves its own internal margin beyond the padding boundary), so this sits
+// well above both empirical floors (ATTR-001 follow-up).
+export const MIN_TOP_VISIBLE_MAP_FOR_ATTRIBUTION = 160;
+// Route Preview must show both route endpoints/markers, not merely attribution.
+// Keep a larger usable map band when its sheet reaches the maximum practical snap.
+export const MIN_TOP_VISIBLE_MAP_FOR_ROUTE_PREVIEW = 280;
+
+/** Maximum height (px, measured up from the screen's bottom edge) anything bottom-anchored
+ * may occupy while still leaving MIN_TOP_VISIBLE_MAP_FOR_ATTRIBUTION of clear map above it.
+ * Shared by two call sites that must never disagree: the mapPadding clamp below (what we
+ * tell the Google Maps SDK is obstructed) and the BottomSheetModal's own maxDynamicContentSize
+ * (what we actually let the sheet grow to, HomeScreen.tsx) — if they drifted apart, the SDK
+ * could draw the logo in a spot the real sheet still covers. That's exactly how Route Preview
+ * clipped the logo before dynamic sizing was capped: @gorhom/bottom-sheet's enableDynamicSizing
+ * (on by default, v5) sizes the sheet to fit its content with no ceiling unless
+ * maxDynamicContentSize is set, so a tall enough card stack could render past the mapPadding
+ * clamp's assumed extent even though the padding math itself was already correct. */
+export function computeMaxSheetOcclusionForAttribution(
+  windowHeight: number,
+  top: number,
+  safeBottom: number,
+  minimumVisibleMapHeight: number = MIN_TOP_VISIBLE_MAP_FOR_ATTRIBUTION,
+): number {
+  return Math.max(windowHeight - top - minimumVisibleMapHeight, safeBottom);
+}
 
 export type OverlayState =
   | { kind: 'none' }
@@ -42,6 +71,12 @@ export function resolveOverlayExtent(overlay: OverlayState): number {
       return Math.max(overlay.height, 0);
     case 'sheet': {
       if (overlay.sheetIndex < 0) return 0;
+      // @gorhom/bottom-sheet reports `snapPoints.length` (one past our last defined
+      // snap) when dynamic sizing expands the sheet to fit content taller than our
+      // tallest snap point — that's MORE covered than our last snap, not "no overlay",
+      // so treat any index at/beyond the array as fully covering the map. Silently
+      // falling back to 0 here previously left the sheet's real extent unaccounted for.
+      if (overlay.sheetIndex >= overlay.snapPoints.length) return overlay.windowHeight;
       const raw = overlay.snapPoints[overlay.sheetIndex];
       const pct = raw ? parseFloat(raw) : 0;
       return ((Number.isFinite(pct) ? pct : 0) / 100) * overlay.windowHeight;
@@ -112,15 +147,27 @@ export function computeMapContentInsets(inputs: MapContentInsetInputs): {
     inputs.mode === 'DETAILS' ||
     inputs.mode === 'ROUTE_PREVIEW'
   ) {
-    bottom = Math.max(
+    const sheetExtent = resolveOverlayExtent({
+      kind: 'sheet',
+      windowHeight: inputs.windowHeight,
+      snapPoints: inputs.snapPoints,
+      sheetIndex: inputs.sheetIndex,
+    });
+    // Clamp so a tall sheet (e.g. DETAILS' 92% snap) never squeezes out the Google
+    // logo's headroom entirely — see MIN_TOP_VISIBLE_MAP_FOR_ATTRIBUTION. Must account
+    // for `top` too: the visible band is (windowHeight - top - bottom), and top is not
+    // always 0 here, so clamping bottom alone against windowHeight can still leave (or
+    // even go negative on) a degenerate band once top is factored in.
+    const minimumVisibleMapHeight = inputs.mode === 'ROUTE_PREVIEW'
+      ? MIN_TOP_VISIBLE_MAP_FOR_ROUTE_PREVIEW
+      : MIN_TOP_VISIBLE_MAP_FOR_ATTRIBUTION;
+    const maxBottomForAttribution = computeMaxSheetOcclusionForAttribution(
+      inputs.windowHeight,
+      inputs.top,
       safeBottom,
-      resolveOverlayExtent({
-        kind: 'sheet',
-        windowHeight: inputs.windowHeight,
-        snapPoints: inputs.snapPoints,
-        sheetIndex: inputs.sheetIndex,
-      }),
+      minimumVisibleMapHeight,
     );
+    bottom = Math.min(Math.max(safeBottom, sheetExtent), maxBottomForAttribution);
   }
   return { top: inputs.top, right: inputs.right, bottom, left: 0 };
 }
