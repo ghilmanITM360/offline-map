@@ -956,16 +956,21 @@ export function HomeScreen() {
   // MapView mapPadding already reserves the sheet-covered area. react-native-maps adds
   // fitToCoordinates edgePadding on top of that base padding on Android, so repeating
   // mapLabelEdgeInsets.bottom here double-counts the sheet and can clip a route endpoint.
-  // Keep only a small inner margin inside the already-unobscured viewport.
+  // Keep only a small inner margin inside the already-unobscured viewport. Schedule the
+  // camera command for the next rendered frame so Android applies the new mapPadding prop
+  // before fitToCoordinates reads react-native-maps' native base-padding fields.
   useEffect(() => {
     if (!activePreviewRoute || activePreviewRoute.coordinates.length < 2) return;
-    invalidateStartupCameraIntent();
-    cameraManager.fitRoute(activePreviewRoute.coordinates, {
-      top: Math.max(mapLabelEdgeInsets.top, 90),
-      right: Math.max(mapLabelEdgeInsets.right, 64),
-      bottom: ROUTE_FIT_BOTTOM_PADDING,
-      left: 64,
+    const frame = requestAnimationFrame(() => {
+      invalidateStartupCameraIntent();
+      cameraManager.fitRoute(activePreviewRoute.coordinates, {
+        top: Math.max(mapLabelEdgeInsets.top, 90),
+        right: Math.max(mapLabelEdgeInsets.right, 64),
+        bottom: ROUTE_FIT_BOTTOM_PADDING,
+        left: 64,
+      });
     });
+    return () => cancelAnimationFrame(frame);
   }, [activePreviewRoute, cameraManager, invalidateStartupCameraIntent, mapLabelEdgeInsets]);
   // @gorhom/bottom-sheet computes EVERY snap point — the declared 15/50/92% ones, not
   // just content-driven dynamic sizing — as a percentage of its own containerHeight.

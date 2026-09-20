@@ -1275,8 +1275,26 @@ describe('HomeScreen — resolved base-map rendering', () => {
       topInset: number;
     };
     expect(sheetProps.topInset).toBe(MIN_TOP_VISIBLE_MAP_FOR_ROUTE_PREVIEW);
+
+    const scheduledFrames: FrameRequestCallback[] = [];
+    const requestAnimationFrameSpy = jest
+      .spyOn(global, 'requestAnimationFrame')
+      .mockImplementation((callback) => {
+        scheduledFrames.push(callback);
+        return scheduledFrames.length;
+      });
+    cameraFitRouteSpy.mockClear();
     await act(async () => {
       sheetProps.onChange(2);
+    });
+
+    // Runtime regression: fitting in the same React commit as mapPadding changes lets
+    // Android execute fitToCoordinates against the previous native base padding. After
+    // maximum -> normal, one endpoint then stays behind the sheet. Defer the camera
+    // command until the next rendered frame, after the native padding prop is applied.
+    expect(cameraFitRouteSpy).not.toHaveBeenCalled();
+    await act(async () => {
+      scheduledFrames.splice(0).forEach((callback) => callback(performance.now()));
     });
 
     const mapPaddingBottom = screen.getByTestId('home-map-view').props.mapPadding.bottom;
@@ -1287,6 +1305,7 @@ describe('HomeScreen — resolved base-map rendering', () => {
     expect(mapPaddingBottom).toBeGreaterThan(edgeInsets.bottom);
     expect(edgeInsets.bottom).toBe(32);
     expect(edgeInsets.top).toBeGreaterThanOrEqual(90);
+    requestAnimationFrameSpy.mockRestore();
   });
 
   test('online Google map renders without LocalTile conflict', async () => {
