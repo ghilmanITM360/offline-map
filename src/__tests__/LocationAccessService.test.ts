@@ -108,3 +108,62 @@ describe('LocationAccessService.resolveCurrentLocation — Home/Recenter + Direc
     expect(await OnboardingStatusService.hasSkippedLocationPermission()).toBe(true);
   });
 });
+
+describe('LocationAccessService.resolveCurrentLocation — capability-safe fallback', () => {
+  it('LOC-01: granted permission with device services off never requests or invents a location', async () => {
+    (Location.getForegroundPermissionsAsync as jest.Mock).mockResolvedValue({ status: 'granted', canAskAgain: true });
+    (Location.hasServicesEnabledAsync as jest.Mock).mockResolvedValue(false);
+
+    const resolved = await LocationAccessService.resolveCurrentLocation(false);
+
+    expect(resolved).toMatchObject({
+      ok: false,
+      coordinate: null,
+      source: null,
+      message: 'Device location is turned off. Enable location services and try again.',
+    });
+    expect(Location.getCurrentPositionAsync).not.toHaveBeenCalled();
+    expect(Location.getLastKnownPositionAsync).not.toHaveBeenCalled();
+  });
+
+  it('LOC-05: rejects a device last-known fix that does not meet freshness and accuracy limits', async () => {
+    (Location.getForegroundPermissionsAsync as jest.Mock).mockResolvedValue({ status: 'granted', canAskAgain: true });
+    (Location.getCurrentPositionAsync as jest.Mock).mockRejectedValue(new Error('no live fix'));
+    (Location.getLastKnownPositionAsync as jest.Mock).mockResolvedValue(null);
+
+    const resolved = await LocationAccessService.resolveCurrentLocation(false);
+
+    expect(Location.getLastKnownPositionAsync).toHaveBeenCalledWith({
+      maxAge: 30_000,
+      requiredAccuracy: 50,
+    });
+    expect(resolved).toMatchObject({
+      ok: false,
+      coordinate: null,
+      source: null,
+      message: 'Current location is unavailable. Choose start manually.',
+    });
+  });
+
+  it('preserves native observation time when a bounded device last-known fix is accepted', async () => {
+    (Location.getForegroundPermissionsAsync as jest.Mock).mockResolvedValue({ status: 'granted', canAskAgain: true });
+    (Location.getCurrentPositionAsync as jest.Mock).mockRejectedValue(new Error('no live fix'));
+    (Location.getLastKnownPositionAsync as jest.Mock).mockResolvedValue({
+      coords: { latitude: 24.96, longitude: 67.01, heading: null, accuracy: 12 },
+      timestamp: 1_790_000_000_000,
+    });
+
+    const resolved = await LocationAccessService.resolveCurrentLocation(false);
+
+    expect(resolved).toMatchObject({
+      ok: true,
+      source: 'device_last_known',
+      coordinate: {
+        latitude: 24.96,
+        longitude: 67.01,
+        accuracy: 12,
+        observedAtMs: 1_790_000_000_000,
+      },
+    });
+  });
+});

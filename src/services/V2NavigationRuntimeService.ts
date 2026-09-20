@@ -47,7 +47,7 @@ export interface RerouteEvidenceV2 {
 }
 
 export function shouldIgnorePoorAccuracyMovementV2(input: { movedDistanceM: number; accuracyM?: number }): boolean {
-  return (input.accuracyM ?? 0) > 50 && input.movedDistanceM < 10;
+  return (input.accuracyM ?? 0) > 50;
 }
 
 // Google-Maps-style GPS state for live v2 navigation. GPS_GOOD/GPS_WEAK reflect the accuracy

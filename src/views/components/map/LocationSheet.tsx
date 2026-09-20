@@ -255,6 +255,8 @@ function RoutePreviewSection({
     routeRefreshing,
     handleStartNavigation,
     showManualStartSearch,
+    canStartNavigation,
+    startNavigationDisabledReason,
   } = useDirectionsViewModel(destination);
 
   // Google Maps default: route starts from current GPS location, no picker shown up
@@ -625,6 +627,7 @@ function RoutePreviewSection({
               <Button
                 variant="primary"
                 label={outsideRoute?.provider === 'direct-guide' ? 'Start Direct Guide' : 'Start Navigation'}
+                disabled={!canStartNavigation}
                 onPress={() => {
                   if (destinationFromPlace(destination)) {
                     // Built from the resolved preview route already sitting in the store
@@ -640,6 +643,9 @@ function RoutePreviewSection({
                   onClose();
                 }}
               />
+              {!canStartNavigation && startNavigationDisabledReason ? (
+                <Text style={styles.statusText}>{startNavigationDisabledReason}</Text>
+              ) : null}
 
               {onCancelRoute && (
                 <Pressable
