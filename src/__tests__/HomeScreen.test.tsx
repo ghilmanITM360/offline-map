@@ -1215,16 +1215,17 @@ describe('HomeScreen — resolved base-map rendering', () => {
       onChange: (index: number) => void;
       topInset: number;
       maxDynamicContentSize: number;
+      enableDynamicSizing: boolean;
     };
     // Route Preview hides the search bar/chip row, so the sheet's own top reservation is
     // the larger route-preview floor — no additional top overlay to add here.
     expect(sheetProps.topInset).toBe(MIN_TOP_VISIBLE_MAP_FOR_ROUTE_PREVIEW);
+    expect(sheetProps.enableDynamicSizing).toBe(false);
 
-    // Index 3 == snapPoints.length: the "content grew past our tallest declared snap"
-    // signal a real over-height dynamic detent reports — still exercised as a second,
-    // independent guard on top of topInset.
+    // Route Preview disables dynamic detent insertion, so index 2 remains the declared
+    // 92% maximum and cannot be shifted by content-height changes.
     await act(async () => {
-      sheetProps.onChange(3);
+      sheetProps.onChange(2);
     });
 
     const mapPaddingBottom = screen.getByTestId('home-map-view').props.mapPadding.bottom;

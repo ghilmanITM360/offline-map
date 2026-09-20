@@ -2026,6 +2026,10 @@ export function HomeScreen() {
           // value, so it must match the snap index every present() caller opens to (1).
           index={1}
           snapPoints={snapPoints}
+          // Dynamic sizing inserts and sorts an extra detent, changing onChange indexes.
+          // Route Preview uses those indexes to keep mapPadding and camera framing aligned,
+          // so retain the declared 15/50/92% index contract while that mode is active.
+          enableDynamicSizing={mode !== 'ROUTE_PREVIEW'}
           topInset={sheetTopInset}
           maxDynamicContentSize={sheetMaxDynamicContentSize}
           enablePanDownToClose
