@@ -179,7 +179,7 @@ assert.equal(IJTEMA_GATES.filter((gate) => gate.status !== 'missing_coordinate')
 assert.equal(IJTEMA_GATES.filter((gate) => gate.status === 'missing_coordinate').length, 0, 'No active gate should stay missing-coordinate');
 assert.equal(IJTEMA_GATES.filter((gate) => gate.routingStatus === 'routable').length, 18, 'All active gates must be eligible for graph-connector validation');
 assert.equal(IJTEMA_GATES.filter((gate) => gate.routingStatus === 'missing_coordinate').length, 0, 'No active gate should remain missing-coordinate');
-assert.equal(IJTEMA_GATES.filter((gate) => gate.canStartRouteFromOutside).length, 17, 'Only field-connectivity-eligible active gates may support outside-start resolution');
+assert.equal(IJTEMA_GATES.filter((gate) => gate.canStartRouteFromOutside).length, 16, 'Only field-connectivity-eligible active gates may support outside-start resolution');
 assert.equal(IJTEMA_GATES.find((gate) => gate.number === 19)?.connectorStatus, 'ground_truth_required', 'Gate19 must remain deferred pending physical connectivity evidence');
 assert.equal(IJTEMA_GATES.find((gate) => gate.number === 19)?.canStartRouteFromOutside, false, 'Gate19 must not silently become an outside-start gate');
 activeGateNumbers.forEach((number) => assert(IJTEMA_GATES.some((gate) => gate.number === number && gate.status !== 'missing_coordinate'), `Gate ${number} must be active`));

@@ -51,8 +51,15 @@ const toAppCoordinate = (coordinate: V2Coordinate): AppCoordinate => ({
   longitude: coordinate.lng,
 });
 
+// Coordinate-completeness only — a gate can satisfy this and still be unusable as an
+// outside start (e.g. GATE_18/19, which have coordinates but no verified connector). Kept
+// separate from isGateRoutable so callers can report *why* a gate is unusable accurately
+// instead of always blaming a "missing coordinate" that may not be the real reason.
+const hasGateCoordinate = (gate: Gate | undefined): gate is Gate & { coordinate: V2Coordinate } =>
+  Boolean(gate && gate.coordinate && gate.routingStatus === 'routable');
+
 const isGateRoutable = (gate: Gate | undefined): gate is Gate & { coordinate: V2Coordinate } =>
-  Boolean(gate && gate.coordinate && gate.routingStatus === 'routable' && gate.canStartRouteFromOutside);
+  hasGateCoordinate(gate) && Boolean(gate.canStartRouteFromOutside);
 
 const hasGateGraphConnection = (gate: Gate | undefined): boolean =>
   isGateRoutable(gate) && Boolean(IJTEMA_NAVIGATION_GRAPH_V2.nodes[gate.id] && IJTEMA_NAVIGATION_GRAPH_V2.adjacency[gate.id]?.length > 0);
@@ -161,7 +168,7 @@ export class EntryGateRoutingService {
 
     if (options.manualGateId) {
       const gate = IJTEMA_GATES.find((item) => item.id === options.manualGateId);
-      if (!isGateRoutable(gate)) {
+      if (!hasGateCoordinate(gate)) {
         return {
           mode,
           startType: 'unresolved',
@@ -172,7 +179,7 @@ export class EntryGateRoutingService {
         };
       }
 
-      if (!hasGateGraphConnection(gate)) {
+      if (!isGateRoutable(gate) || !hasGateGraphConnection(gate)) {
         return {
           mode,
           startType: 'unresolved',

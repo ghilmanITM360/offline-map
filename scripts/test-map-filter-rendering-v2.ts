@@ -9,7 +9,10 @@ const homeScreen = readFileSync('src/views/screens/HomeScreen.tsx', 'utf8');
 const renderService = readFileSync('src/services/V2MapRenderingService.ts', 'utf8');
 
 assert(renderService.includes('mapFilter'), 'V2 map renderer must accept mapFilter option.');
-assert(homeScreen.includes('mapFilter: activeCategory'), 'Home activeCategory must reach V2 map renderer.');
+// Home no longer drives category filtering (LocationsDirectoryScreen owns category
+// browsing) — it always passes mapFilter: null, but the renderer's own filtering logic
+// (exercised directly below) stays a supported, tested capability for any future caller.
+assert(homeScreen.includes('mapFilter: null'), 'Home must not drive mapFilter from a removed category-chip selection.');
 
 const layerCounts = (filter: string | null) => {
   const layers = V2MapRenderingService.getHomeLayers({ mapFilter: filter, zoomLevel: 17 } as any);

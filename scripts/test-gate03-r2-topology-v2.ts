@@ -83,11 +83,17 @@ for (let seq = 1; seq < 5; seq += 1) {
   assert(edgeExists(from, to), `${from} -> ${to} pre-existing Rasta02 segment must remain connected`);
 }
 
-// Other gates must be unaffected by this change.
+// Other gates must be unaffected by this change. GATE_18's connectorStatus was later
+// (deliberately) changed from the auto-evaluated default to 'ground_truth_required' — see
+// gates.ts and docs/CURRENT_HANDOFF.md "Gate reconciliation" — because it has no valid graph
+// connector within 320m of any internal path; declaring that known-blocked status, instead of
+// leaving it looking auto-evaluated, is what the Gate 17-vs-18 directory count fix corrected.
+// This assertion pins the CURRENT value; what must stay true regardless is that the gate
+// remains disconnected in the graph, asserted separately right below.
 assert.equal(
   IJTEMA_GATES.find((gate) => gate.id === 'GATE_18')?.connectorStatus,
-  'verified_by_geometry',
-  'GATE_18 must remain untouched (still auto-evaluated, still expected to fail the distance check)',
+  'ground_truth_required',
+  'GATE_18 must remain untouched by this Gate03/R2 change (still expected to fail the distance check)',
 );
 const gate18Report = IJTEMA_NAVIGATION_GRAPH_V2_REPORT.gateConnectors.find((report) => report.gateId === 'GATE_18');
 assert.equal(gate18Report?.connected, false, 'GATE_18 must remain blocked');

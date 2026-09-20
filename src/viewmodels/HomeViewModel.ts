@@ -9,7 +9,6 @@ import MapView, { Region } from 'react-native-maps';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
 import { useAppStore } from '../store/useAppStore';
 import { Place } from '../models/types';
-import { SearchService } from '../services/SearchService';
 import { GPSManagerService } from '../services/GPSManagerService';
 import { RoutingService } from '../services/RoutingService';
 import { LocationAccessService } from '../services/LocationAccessService';
@@ -57,7 +56,6 @@ export function useHomeViewModel() {
   // Google Maps selection transition: highlight -> camera pan -> sheet spring, in that
   // order (see handlePlaceSelect) — the sheet's present()/snapToIndex is deliberately
   // staggered behind the camera pan via this timer instead of firing in the same tick.
-  // Mirrors the debounce-timer-ref pattern already used for search below.
   const sheetPresentTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const cancelPendingSheetPresentation = useCallback(() => {
     if (!sheetPresentTimerRef.current) return;
@@ -71,12 +69,9 @@ export function useHomeViewModel() {
   const lastKnownLocationUpdatedAt = useAppStore((s) => s.lastKnownLocationUpdatedAt);
   const hasLocationPermission = useAppStore((s) => s.hasLocationPermission);
   const settings = useAppStore((s) => s.settings);
-  const recentSearches = useAppStore((s) => s.recentSearches);
   const offlineData = useAppStore((s) => s.offlineData);
   const hasInternet = useAppStore((s) => s.hasInternet);
   const selectedPlace = useAppStore((s) => s.selectedPlace);
-  const searchQuery = useAppStore((s) => s.searchQuery);
-  const searchResults = useAppStore((s) => s.searchResults);
   // Deliberately the raw store primitive, not MapMode — camera-follow/compass gating below
   // must stay off for the whole isNavigating-bracketed session, even during an emergency
   // EXPO_PUBLIC_USE_IJTEMA_V2_NAVIGATION rollback where MapMode's NAVIGATION chrome is
@@ -98,7 +93,6 @@ export function useHomeViewModel() {
 
   const isOffline = !hasInternet;
   const [isMapReady, setIsMapReady] = useState(false);
-  const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [mapZoomLevel, setMapZoomLevel] = useState(DEFAULT_HOME_MAP_ZOOM);
   // Keep venue status in lockstep with the store's committed location. A returning launch
   // commits fresh GPS before releasing the watcher, so an effect or watcher-only update
@@ -112,32 +106,12 @@ export function useHomeViewModel() {
   // compass on every GPS tick, via cameraManager.rotateToHeading, until toggled off.
   const [compassMode, setCompassMode] = useState<CompassMode>('NORTH_UP');
 
-  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const devLogControl = (pressed: string, action: string, details?: Record<string, unknown>) => {
     if (!__DEV__) return;
     console.log('[HomeControl]', { pressed, action, ...(details ?? {}) });
   };
 
   const snapPoints = useMemo(() => ['15%', '50%', '92%'], []);
-  const categoryChips = useMemo(() => {
-    return SearchService.getAvailableCategoryChips().map((chip) => {
-      if (chip.id === 'all') return chip;
-      const count = SearchService.searchByCategory(chip.id).length;
-      return count > 0 ? { ...chip, label: `${chip.label} (${count})` } : chip;
-    });
-  }, []);
-  const searchPlaceholder = useMemo(() => {
-    const labels = categoryChips.map((chip) => chip.label).filter((label) => label !== 'All');
-    if (labels.length >= 4) return 'Search blocks, rastas, gates';
-    return labels.length > 0 ? `Search ${labels.join(', ').toLowerCase()}` : 'Search places';
-  }, [categoryChips]);
-  // Phase 5 — full-screen search overlay "Suggestions" section: a handful of
-  // blocks (the app's primary destination type) shown before the user types
-  // anything, same data source as the Blocks category chip, no new service.
-  const suggestedPlaces = useMemo(
-    () => SearchService.searchByCategory('blocks').filter((place) => !!place.coordinate).slice(0, 6),
-    [],
-  );
 
   const initialRegion: Region = {
     latitude: IJTEMA_MAP_REGION.latitude,
@@ -173,26 +147,6 @@ export function useHomeViewModel() {
       GPSManagerService.removeListener(handleGPS);
     };
   }, [handleGPS, shouldTrackLiveLocation]);
-
-  // Phase 8 — debounced search (200ms)
-  const handleSearch = useCallback(
-    (text: string) => {
-      setSearchQuery(text);
-      if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
-      searchTimerRef.current = setTimeout(() => {
-        if (text.length > 1) {
-          const results = SearchService.search(
-            text,
-            currentLocation ?? undefined,
-          );
-          setSearchResults(results as any);
-        } else {
-          setSearchResults([]);
-        }
-      }, 200);
-    },
-    [currentLocation, setSearchQuery, setSearchResults],
-  );
 
   // Google Maps re-selection behavior: switching from one selected object to another
   // (Block 1 -> Block 2, Gate 1 -> Gate 2, etc.) while the sheet is already open keeps
@@ -381,31 +335,20 @@ export function useHomeViewModel() {
     updateSettings({ mapMode: settings.mapMode === 'standard' ? 'satellite' : 'standard' });
   };
 
+  // Defensive reset of leftover search-store state (searchQuery/searchResults have no
+  // UI surface on Home anymore — LocationsDirectoryScreen owns discovery — but the
+  // store fields remain, so anything still holding a stale query/results gets cleared).
   const clearSearch = () => {
     setSearchQuery('');
     setSearchResults([]);
-    setActiveCategory(null);
-    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
   };
 
-  const handleCategoryPress = (category: string) => {
-    if (activeCategory === category) {
-      setActiveCategory(null);
-      setSearchResults([]);
-    } else {
-      setActiveCategory(category);
-      const results = SearchService.searchByCategory(category);
-      setSearchResults(results as any);
-    }
-  };
-
-  // Unmount safety: cancel pending debounce/stagger timers so a navigate-away mid-timer
-  // (e.g. tap Block, then immediately leave Home before the 260ms sheet-open or 200ms
-  // search debounce fires) can't run its callback against a torn-down screen.
+  // Unmount safety: cancel a pending stagger timer so a navigate-away mid-timer (e.g.
+  // tap Block, then immediately leave Home before the 260ms sheet-open fires) can't
+  // run its callback against a torn-down screen.
   useEffect(() => {
     return () => {
       cancelPendingSheetPresentation();
-      if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
     };
   }, [cancelPendingSheetPresentation]);
 
@@ -415,26 +358,18 @@ export function useHomeViewModel() {
     cameraManager,
     currentLocation,
     mapType: settings.mapMode,
-    searchQuery,
-    searchResults,
     selectedPlace,
-    recentSearches,
     isMapReady,
     snapPoints,
     initialRegion,
     offlineData,
     isOffline,
-    activeCategory,
-    categoryChips,
-    searchPlaceholder,
-    suggestedPlaces,
     settings,
     mapZoomLevel,
     updateSettings,
     venueStatus,
     compassMode,
     setIsMapReady,
-    handleSearch,
     handlePlaceSelect,
     cancelPendingSheetPresentation,
     handleSheetIndexChange,
@@ -445,7 +380,6 @@ export function useHomeViewModel() {
     handleMapRegionChangeComplete,
     toggleMapType,
     clearSearch,
-    handleCategoryPress,
     setSelectedPlace,
   };
 }

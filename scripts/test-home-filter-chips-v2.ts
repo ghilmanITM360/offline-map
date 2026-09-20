@@ -10,7 +10,10 @@ const RAW_SPECIAL_LABEL_PATTERN = /\b(?:SPNP-\d+|SPSP-\d+|SPWP-\d+)\b/;
 
 const homeScreen = readFileSync('src/views/screens/HomeScreen.tsx', 'utf8');
 
-assert(homeScreen.includes('mapFilter: activeCategory'), 'Home must pass active category chip state into v2 map renderer.');
+// Home's own category-chip filtering was removed (LocationsDirectoryScreen owns category
+// browsing now) — Home always passes mapFilter: null. The renderer's filtering logic below
+// stays a real, tested capability of V2MapRenderingService regardless of who calls it.
+assert(homeScreen.includes('mapFilter: null'), 'Home must not drive mapFilter from a removed category-chip selection.');
 
 const publicRastaFamilyCount = (layers: ReturnType<typeof V2MapRenderingService.getHomeLayers>): number =>
   new Set(layers.rastas.map((rasta) => rasta.sourceId ?? rasta.id)).size;

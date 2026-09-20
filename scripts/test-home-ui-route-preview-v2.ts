@@ -8,10 +8,8 @@ const homeVm = readFileSync('src/viewmodels/HomeViewModel.ts', 'utf8');
 assert(!homeVm.includes('masjids...'), 'Search placeholder must not show ellipsis dots under text.');
 assert(!homeVm.includes('places...'), 'Fallback search placeholder must not show ellipsis dots under text.');
 assert(
-  // Reads mode === 'SEARCH', not the raw isSearchFocused flag — see scripts/test-map-mode.ts
-  // for why every render/behavior gate must go through mode instead of the raw input.
-  home.includes("!activePreviewRoute && mode !== 'SEARCH'") && home.includes('showOutsideBanner'),
-  'Outside banner must hide during route preview and search.',
+  home.includes('const showOutsideBanner =') && home.includes('!activePreviewRoute;'),
+  'Outside banner must hide during route preview.',
 );
 assert(
   home.includes('strokeColor={staticColors.routeCasing}') &&

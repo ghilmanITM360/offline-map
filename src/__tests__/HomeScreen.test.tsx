@@ -60,12 +60,6 @@ const { __getLastBottomSheetModalProps } = jest.requireMock('@gorhom/bottom-shee
   __getLastBottomSheetModalProps: () => { onChange: (index: number) => void; onDismiss: () => void };
 };
 
-const CATEGORY_CHIPS = [
-  { id: 'all', label: 'All' },
-  { id: 'blocks', label: 'Blocks' },
-  { id: 'gates', label: 'Gates' },
-];
-
 const gateResult: Place = {
   id: 'GATE_05',
   name: 'Gate 5',
@@ -109,41 +103,6 @@ const v1Route = {
   segments: [],
 };
 
-const v2ArrivalRoute = {
-  id: 'route-v2-arrival-marker-policy',
-  routeId: 'route-v2-arrival-marker-policy',
-  sourceVersion: 'v2' as const,
-  nodes: ['A', 'B'],
-  coordinates: [
-    { latitude: 24.9, longitude: 67.1 },
-    gateResult.coordinate,
-  ],
-  totalDistance: 300,
-  totalDistanceM: 300,
-  estimatedTimeMin: 5,
-  etaMinutes: 5,
-  segments: [],
-  origin: {
-    coordinate: { latitude: 24.9, longitude: 67.1 },
-    label: 'Current location',
-    type: 'inside_snap' as const,
-  },
-  destination: {
-    coordinate: gateResult.coordinate,
-    label: gateResult.name,
-    type: 'gate' as const,
-    gateId: gateResult.id,
-  },
-  instructions: [],
-  metadata: {
-    startedOutside: false,
-    usesOfficialGateEntry: false,
-    graphVersion: 'test',
-  },
-};
-
-const handleCategoryPressSpy = jest.fn();
-const handleSearchSpy = jest.fn();
 const handlePlaceSelectSpy = jest.fn();
 const setSelectedPlaceSpy = jest.fn();
 const clearSearchSpy = jest.fn();
@@ -153,10 +112,7 @@ const cameraStopFollowingSpy = jest.fn();
 const cameraFitRouteSpy = jest.fn();
 const handleRecenterSpy = jest.fn();
 
-function useFakeHomeViewModel(initialSearchResults: Place[] = []) {
-  const [activeCategory, setActiveCategory] = React.useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = React.useState('');
-  const [searchResults, setSearchResults] = React.useState<Place[]>(initialSearchResults);
+function useFakeHomeViewModel() {
   const [selectedPlace, setSelectedPlaceState] = React.useState<Place | null>(null);
   const [cameraMode, setCameraMode] = React.useState<'IDLE' | 'EXPLORING' | 'FOLLOWING_USER'>('IDLE');
   // Real useRef (matches production useHomeViewModel's own bottomSheetRef) — a fresh
@@ -173,22 +129,9 @@ function useFakeHomeViewModel(initialSearchResults: Place[] = []) {
     return true;
   };
 
-  const handleCategoryPress = (category: string) => {
-    handleCategoryPressSpy(category);
-    setActiveCategory((prev) => (prev === category ? null : category));
-  };
-
-  const handleSearch = (text: string) => {
-    handleSearchSpy(text);
-    setSearchQuery(text);
-    setSearchResults(text.length > 1 ? [gateResult] : []);
-  };
-
   const handlePlaceSelect = (place: Place) => {
     handlePlaceSelectSpy(place);
     setSelectedPlaceState(place);
-    setSearchQuery('');
-    setSearchResults([]);
   };
 
   const setSelectedPlace = (place: Place | null) => {
@@ -198,9 +141,6 @@ function useFakeHomeViewModel(initialSearchResults: Place[] = []) {
 
   const clearSearch = () => {
     clearSearchSpy();
-    setSearchQuery('');
-    setSearchResults([]);
-    setActiveCategory(null);
   };
 
   return {
@@ -218,23 +158,15 @@ function useFakeHomeViewModel(initialSearchResults: Place[] = []) {
       exitNavigationCamera: jest.fn(),
     },
     mapType: 'standard' as const,
-    searchQuery,
-    searchResults,
     selectedPlace,
-    suggestedPlaces: [],
-    recentSearches: [],
     snapPoints: ['15%', '50%', '92%'],
     initialRegion: { latitude: 24.9, longitude: 67.1, latitudeDelta: 0.01, longitudeDelta: 0.01 },
     isOffline: false,
     offlineData: { isDownloaded: false },
-    activeCategory,
-    categoryChips: CATEGORY_CHIPS,
-    searchPlaceholder: 'Search blocks, rastas, gates',
     mapZoomLevel: 15.5,
     venueStatus: { insideVenue: false, insideBlock: null },
     compassMode: 'NORTH_UP' as const,
     setIsMapReady: jest.fn(),
-    handleSearch,
     handlePlaceSelect,
     handleSheetIndexChange: jest.fn(),
     handleRecenter,
@@ -244,7 +176,6 @@ function useFakeHomeViewModel(initialSearchResults: Place[] = []) {
     handleMapRegionChangeComplete: jest.fn(),
     clearSearch,
     cancelPendingSheetPresentation: cancelPendingSheetPresentationSpy,
-    handleCategoryPress,
     setSelectedPlace,
     updateSettings: jest.fn(),
     settings: {
@@ -282,8 +213,7 @@ beforeEach(() => {
 // Stage 4 audit — the map surface is the root, so the Android hardware back button must
 // step back through MapMode one level at a time (never fall through to the drawer/stack
 // while a sheet mode is open). Fires the real 'hardwareBackPress' device event (what
-// BackHandler.addEventListener actually subscribes to on Android), not the on-screen Back
-// icon — the SEARCH-mode on-screen button was already covered above; this is the gap.
+// BackHandler.addEventListener actually subscribes to on Android).
 describe('HomeScreen — hardware back button (mode-aware, Google Maps parity)', () => {
   async function pressHardwareBack() {
     await act(async () => {
@@ -291,35 +221,19 @@ describe('HomeScreen — hardware back button (mode-aware, Google Maps parity)',
     });
   }
 
-  test('hardware back press closes SEARCH mode', async () => {
-    const user = userEvent.setup();
-    await render(<HomeScreen />);
-
-    const input = screen.getByPlaceholderText('Search blocks, rastas, gates');
-    await user.type(input, '');
-    expect(await screen.findByLabelText('Back')).toBeOnTheScreen();
-
-    await pressHardwareBack();
-
-    expect(screen.queryByLabelText('Back')).not.toBeOnTheScreen();
-    expect(screen.getByLabelText('Open menu')).toBeOnTheScreen();
-  });
-
   test('hardware back press in PLACE_SELECTED mode closes the sheet back to EXPLORE', async () => {
     const user = userEvent.setup();
     await render(<HomeScreen />);
 
-    const input = screen.getByPlaceholderText('Search blocks, rastas, gates');
-    await user.type(input, 'Gate 5');
-    await user.press(await screen.findByTestId('search-result-GATE_05'));
-    expect(await screen.findByText('Gate 5')).toBeOnTheScreen();
+    await user.press(screen.getByTestId('facility_marker_LM_GATE_MAIN_NORTH'));
+    expect(await screen.findByText('Main North Gate')).toBeOnTheScreen();
 
     await pressHardwareBack();
 
     expect(setSelectedPlaceSpy).toHaveBeenCalledWith(null);
-    // "Gate 5" itself is a poor absence check — GateLayer/MapLabelOverlay render it as an
-    // on-map label regardless of selection. "Official entry / exit gate" only renders inside
-    // the sheet's PlaceSection, so its absence is the real signal the sheet actually closed.
+    // "Main North Gate" itself is a poor absence check — GateLayer/MapLabelOverlay render it
+    // as an on-map label regardless of selection. "Official entry / exit gate" only renders
+    // inside the sheet's PlaceSection, so its absence is the real signal the sheet closed.
     expect(screen.queryByText('Official entry / exit gate')).not.toBeOnTheScreen();
   });
 
@@ -348,18 +262,16 @@ describe('HomeScreen — hardware back button (mode-aware, Google Maps parity)',
     const user = userEvent.setup();
     await render(<HomeScreen />);
 
-    const input = screen.getByPlaceholderText('Search blocks, rastas, gates');
-    await user.type(input, 'Gate 5');
-    await user.press(await screen.findByTestId('search-result-GATE_05'));
+    await user.press(screen.getByTestId('facility_marker_LM_GATE_MAIN_NORTH'));
     await user.press(await screen.findByText('Directions'));
     expect(await screen.findByText('Get Directions')).toBeOnTheScreen();
 
     await pressHardwareBack();
 
-    // One step back — to Gate 5's place preview, not all the way to EXPLORE — mirrors
+    // One step back — to the place preview, not all the way to EXPLORE — mirrors
     // exactly what the sheet's own visible "Get Directions" back chevron does.
     expect(screen.queryByText('Get Directions')).not.toBeOnTheScreen();
-    expect(await screen.findByText('Gate 5')).toBeOnTheScreen();
+    expect(await screen.findByText('Main North Gate')).toBeOnTheScreen();
     expect(setSelectedPlaceSpy).not.toHaveBeenCalledWith(null);
   });
 });
@@ -371,17 +283,15 @@ describe('HomeScreen — selection switching (Google Maps parity, no flicker)', 
     const user = userEvent.setup();
     await render(<HomeScreen />);
 
-    const input = screen.getByPlaceholderText('Search blocks, rastas, gates');
-    await user.type(input, 'Gate 5');
-    await user.press(await screen.findByTestId('search-result-GATE_05'));
-    expect(await screen.findByText('Gate 5')).toBeOnTheScreen();
+    await user.press(screen.getByTestId('facility_marker_LM_GATE_MAIN_NORTH'));
+    expect(await screen.findByText('Main North Gate')).toBeOnTheScreen();
 
     await user.press(screen.getByTestId('facility_marker_LM_MASJID_MAIN'));
 
     expect(await screen.findByText('Main Masjid')).toBeOnTheScreen();
-    // "Gate 5" itself is a poor absence check — GateLayer/MapLabelOverlay render it as an
-    // on-map label regardless of selection. "Official entry / exit gate" only renders inside
-    // the sheet's PlaceSection, so its absence confirms the sheet content actually switched.
+    // "Main North Gate" itself is a poor absence check — GateLayer/MapLabelOverlay render it
+    // as an on-map label regardless of selection. "Official entry / exit gate" only renders
+    // inside the sheet's PlaceSection, so its absence confirms the sheet content switched.
     expect(screen.queryByText('Official entry / exit gate')).not.toBeOnTheScreen();
     // closeSheet() is the only HomeScreen path that clears selectedPlace to null — asserting
     // it never fired proves the sheet updated in place rather than closing between taps.
@@ -389,327 +299,13 @@ describe('HomeScreen — selection switching (Google Maps parity, no flicker)', 
   });
 });
 
-describe('HomeScreen — filter chips', () => {
-  test('pressing a filter chip invokes handleCategoryPress with the chip id', async () => {
-    const user = userEvent.setup();
-    await render(<HomeScreen />);
-
-    await user.press(screen.getByText('Gates'));
-
-    expect(handleCategoryPressSpy).toHaveBeenCalledWith('gates');
-  });
-
-  test('pressing a filter chip visually marks it active', async () => {
-    const user = userEvent.setup();
-    await render(<HomeScreen />);
-
-    const gatesChip = screen.getByText('Gates');
-    await user.press(gatesChip);
-
-    // The active chip gets bold white text (styles.activeChipText) — real, user-visible output.
-    await waitFor(() => {
-      expect(gatesChip).toHaveStyle({ color: '#FFFFFF', fontWeight: '700' });
-    });
-  });
-
-  test('map layers respond to filter selection: selecting "blocks" hides rasta labels', async () => {
-    const user = userEvent.setup();
-    await render(<HomeScreen />);
-
-    // At the default zoom with no filter, "Rasta 01" is one of the visible rasta labels.
-    expect(await screen.findByText('Rasta 01')).toBeOnTheScreen();
-
-    await user.press(screen.getByText('Blocks'));
-
-    // V2MapRenderingService.getHomeLayers zeroes out the rastas layer entirely when the
-    // active filter is "blocks" — this is a real production data path, not a style tweak.
-    await waitFor(() => {
-      expect(screen.queryByText('Rasta 01')).not.toBeOnTheScreen();
-    });
-  });
-
-  test('map layers respond to filter selection: selecting "gates" shows non-major gate markers', async () => {
-    const user = userEvent.setup();
-    await render(<HomeScreen />);
-
-    // Gate 2 is not one of the "major" gates surfaced at the default zoom/"all" filter (only
-    // major gates + every-other-gate are shown via pickByZoom), so it should be absent...
-    expect(screen.queryByText('G02')).not.toBeOnTheScreen();
-
-    await user.press(screen.getByText('Gates'));
-
-    // ...and appear once the "gates" filter forces every gate marker to render — a real
-    // production data path (V2MapRenderingService.getHomeLayers), not a style tweak.
-    expect(await screen.findByText('G02')).toBeOnTheScreen();
-  });
-});
-
-describe('HomeScreen — search', () => {
-  test('entering search (focusing the bar) opens the full-screen MapMode.SEARCH overlay', async () => {
-    await render(<HomeScreen />);
-
-    const user = userEvent.setup();
-    const input = screen.getByPlaceholderText('Search blocks, rastas, gates');
-    // The top filter-chip row and the SEARCH overlay's own Categories grid both render a
-    // "Gates" label — assert they never coexist before asserting on either one.
-    expect(screen.getByLabelText('Open menu')).toBeOnTheScreen();
-    expect(screen.queryByLabelText('Back')).not.toBeOnTheScreen();
-
-    // type('') focuses the input the same way userEvent.type does before typing any
-    // characters — TextInput has no onPress handler, so userEvent.press wouldn't focus it.
-    await user.type(input, '');
-
-    // MapMode.SEARCH: back button replaces the menu icon, and the full-screen
-    // Recent/Suggestions/Categories content renders in place of the map. No voice
-    // search affordance — speech recognition isn't implemented.
-    expect(await screen.findByLabelText('Back')).toBeOnTheScreen();
-    expect(screen.queryByLabelText('Open menu')).not.toBeOnTheScreen();
-    expect(screen.queryByLabelText('Voice search')).not.toBeOnTheScreen();
-    expect(screen.getByText('Categories')).toBeOnTheScreen();
-    expect(screen.getByText('Gates')).toBeOnTheScreen();
-  });
-
-  test('exiting search (pressing Back) returns to MapMode.EXPLORE', async () => {
-    const user = userEvent.setup();
-    await render(<HomeScreen />);
-
-    const input = screen.getByPlaceholderText('Search blocks, rastas, gates');
-    await user.type(input, '');
-    const backButton = await screen.findByLabelText('Back');
-
-    await user.press(backButton);
-
-    // Overlay content and Back/Voice icons are gone; the menu icon and filter-chip row
-    // (same "Gates" label, now from the chip row instead of the category grid) are back.
-    expect(screen.queryByLabelText('Back')).not.toBeOnTheScreen();
-    expect(screen.queryByText('Categories')).not.toBeOnTheScreen();
-    expect(screen.getByLabelText('Open menu')).toBeOnTheScreen();
-    expect(screen.getByText('Gates')).toBeOnTheScreen();
-  });
-
-  test('search X clears transient query/results but keeps Search open', async () => {
-    const user = userEvent.setup();
-    await render(<HomeScreen />);
-    const input = screen.getByPlaceholderText('Search blocks, rastas, gates');
-    await user.type(input, 'Gate 5');
-
-    await user.press(screen.getByLabelText('Clear search'));
-
-    expect(clearSearchSpy).toHaveBeenCalledTimes(1);
-    expect(screen.getByLabelText('Back')).toBeOnTheScreen();
-    expect(screen.queryByTestId('search-result-GATE_05')).not.toBeOnTheScreen();
-  });
-
-  test('search Back clears query/results, result markers, and keyboard state', async () => {
-    const keyboardDismissSpy = jest.spyOn(require('react-native').Keyboard, 'dismiss');
-    const user = userEvent.setup();
-    await render(<HomeScreen />);
-    const input = screen.getByPlaceholderText('Search blocks, rastas, gates');
-    await user.type(input, 'Gate 5');
-    expect(await screen.findByTestId('search-map-marker-GATE_05')).toBeOnTheScreen();
-
-    await user.press(screen.getByLabelText('Back'));
-
-    expect(clearSearchSpy).toHaveBeenCalledTimes(1);
-    expect(keyboardDismissSpy).toHaveBeenCalled();
-    expect(input.props.value).toBe('');
-    expect(screen.queryByTestId('search-map-marker-GATE_05')).not.toBeOnTheScreen();
-  });
-
-  test('typing in the search bar renders results', async () => {
-    const user = userEvent.setup();
-    await render(<HomeScreen />);
-
-    const input = screen.getByPlaceholderText('Search blocks, rastas, gates');
-    await user.type(input, 'Gate 5');
-
-    expect(handleSearchSpy).toHaveBeenCalled();
-    expect(await screen.findByTestId('search-result-GATE_05')).toBeOnTheScreen();
-  });
-
-  test('selecting a search result dismisses the overlay, selects the place, and opens LocationSheet', async () => {
-    const user = userEvent.setup();
-    await render(<HomeScreen />);
-
-    const input = screen.getByPlaceholderText('Search blocks, rastas, gates');
-    await user.type(input, 'Gate 5');
-
-    const result = await screen.findByTestId('search-result-GATE_05');
-    await user.press(result);
-
-    expect(handlePlaceSelectSpy).toHaveBeenCalledWith(gateResult);
-
-    // SEARCH overlay dismissed (MapMode.PLACE_SELECTED now, not SEARCH)...
-    expect(screen.queryByLabelText('Back')).not.toBeOnTheScreen();
-    expect(screen.getByLabelText('Open menu')).toBeOnTheScreen();
-    // ...and LocationSheet opened for the selected place — real content, not just a spy call.
-    expect(await screen.findByText('Gate 5')).toBeOnTheScreen();
-    expect(screen.getByText('Gate')).toBeOnTheScreen();
-    expect(screen.getByText('Directions')).toBeOnTheScreen();
-    expect(screen.getByText('Share')).toBeOnTheScreen();
-    expect(input.props.value).toBe('');
-    expect(screen.queryByTestId('search-map-marker-GATE_05')).not.toBeOnTheScreen();
-  });
-
-  test('selecting a map search-result marker dismisses Search before opening LocationSheet', async () => {
-    const user = userEvent.setup();
-    await render(<HomeScreen />);
-    const input = screen.getByPlaceholderText('Search blocks, rastas, gates');
-    await user.type(input, 'Gate 5');
-
-    await user.press(await screen.findByTestId('search-map-marker-GATE_05'));
-
-    expect(screen.queryByLabelText('Back')).not.toBeOnTheScreen();
-    expect(input.props.value).toBe('');
-    expect(screen.queryByTestId('search-map-marker-GATE_05')).not.toBeOnTheScreen();
-    expect(await screen.findByText('Directions')).toBeOnTheScreen();
-  });
-
-  test('opening Search over a place sheet clears the old selection before cancel returns to Explore', async () => {
-    const user = userEvent.setup();
-    await render(<HomeScreen />);
-    const input = screen.getByPlaceholderText('Search blocks, rastas, gates');
-    await user.type(input, 'Gate 5');
-    await user.press(await screen.findByTestId('search-result-GATE_05'));
-    expect(screen.getByTestId('selected-place-marker')).toBeOnTheScreen();
-
-    await user.type(input, '');
-    await user.press(await screen.findByLabelText('Back'));
-
-    expect(setSelectedPlaceSpy).toHaveBeenCalledWith(null);
-    expect(screen.queryByTestId('selected-place-marker')).not.toBeOnTheScreen();
-    expect(screen.queryByText('Official entry / exit gate')).not.toBeOnTheScreen();
-  });
-
-  test('rapid open/cancel cycles never resurrect transient results', async () => {
-    const user = userEvent.setup();
-    await render(<HomeScreen />);
-    const input = screen.getByPlaceholderText('Search blocks, rastas, gates');
-    await user.type(input, 'Gate 5');
-    await user.press(screen.getByLabelText('Back'));
-    await user.type(input, '');
-    await user.press(screen.getByLabelText('Back'));
-
-    expect(screen.queryByLabelText('Back')).not.toBeOnTheScreen();
-    expect(screen.queryByTestId('search-map-marker-GATE_05')).not.toBeOnTheScreen();
-    expect(input.props.value).toBe('');
-  });
-
-  test('reopening Search keeps recent history while transient results stay cleared', async () => {
-    mockedUseHomeViewModel.mockImplementation(() => ({ ...useFakeHomeViewModel(), recentSearches: [gateResult] }));
-    const user = userEvent.setup();
-    await render(<HomeScreen />);
-    const input = screen.getByPlaceholderText('Search blocks, rastas, gates');
-    await user.type(input, 'Gate 5');
-    await user.press(screen.getByLabelText('Back'));
-    await user.type(input, '');
-
-    expect(await screen.findByText('Recent')).toBeOnTheScreen();
-    expect(screen.getByTestId('search-result-GATE_05')).toBeOnTheScreen();
-    expect(input.props.value).toBe('');
-  });
-
-  test('dismissing and reopening Search does not retain a stale category selection or empty state', async () => {
-    const user = userEvent.setup();
-    await render(<HomeScreen />);
-    const input = screen.getByPlaceholderText('Search blocks, rastas, gates');
-
-    await user.type(input, '');
-    await user.press(screen.getByRole('button', { name: 'Gates' }));
-    expect(screen.getByRole('button', { name: 'Gates' }).props.accessibilityState).toMatchObject({ selected: true });
-    await user.press(screen.getByLabelText('Back'));
-    await user.type(input, '');
-
-    expect(screen.getByRole('button', { name: 'Gates' }).props.accessibilityState).toMatchObject({ selected: false });
-    expect(screen.queryByText('No places in this category.')).not.toBeOnTheScreen();
-  });
-});
-
-describe('HomeScreen — search-result marker mode policy', () => {
-  function useHomeWithInitialResults() {
-    return useFakeHomeViewModel([gateResult]);
-  }
-
-  function startV1Navigation(currentLocation: { latitude: number; longitude: number }) {
-    useAppStore.getState().setCurrentLocation(currentLocation, 'gps');
-    useAppStore.getState().startNavigation(v1Destination, v1Route as any, []);
-  }
-
-  function startArrivedV2Navigation() {
-    useAppStore.getState().setCurrentLocation({ ...gateResult.coordinate, accuracy: 5 }, 'gps');
-    useAppStore.getState().startNavigation(gateResult, v2ArrivalRoute, []);
-  }
-
-  test('Explore with current results renders their map pins', async () => {
-    mockedUseHomeViewModel.mockImplementation(useHomeWithInitialResults);
-    await render(<HomeScreen />);
-
-    expect(screen.getByTestId('search-map-marker-GATE_05')).toBeOnTheScreen();
-  });
-
-  test('route preview keeps result pins cleared by destination selection', async () => {
-    mockedUseHomeViewModel.mockImplementation(useHomeWithInitialResults);
-    mockedUseDirectionsViewModel.mockReturnValue({
-      route: null,
-      startSource: 'live_gps',
-      rememberedLocationAgeLabel: '',
-      rememberedLocationAvailable: false,
-      rememberedLocationInsideVenue: false,
-      currentRouteOriginInsideVenue: true,
-      loadState: 'idle',
-      errorMessage: null,
-      manualStart: null,
-      chooseManualStart: jest.fn(),
-      setIsEditingManualStart: jest.fn(),
-      setManualStartPlace: jest.fn(),
-      chooseCurrentLocation: jest.fn(async () => true),
-      chooseRememberedLocation: jest.fn(() => true),
-      calculateRoute: jest.fn(async () => {}),
-      showManualStartSearch: false,
-      canStartNavigation: true,
-      startNavigationDisabledReason: '',
-    });
-    const user = userEvent.setup();
-    await render(<HomeScreen />);
-    await user.press(screen.getByTestId('facility_marker_LM_MASJID_MAIN'));
-    await user.press(await screen.findByText('Directions'));
-
-    expect(await screen.findByText('Get Directions')).toBeOnTheScreen();
-    expect(screen.queryByTestId('search-map-marker-GATE_05')).not.toBeOnTheScreen();
-  });
-
-  test('navigation hides result pins', async () => {
-    mockedUseHomeViewModel.mockImplementation(useHomeWithInitialResults);
-    startV1Navigation(v1Route.coordinates[0]);
-    await render(<HomeScreen />);
-
-    expect(await screen.findByTestId('nav-exit-button')).toBeOnTheScreen();
-    expect(screen.queryByTestId('search-map-marker-GATE_05')).not.toBeOnTheScreen();
-  });
-
-  test('Arrival hides result pins and Done clears them before returning to Explore', async () => {
-    mockedUseHomeViewModel.mockImplementation(useHomeWithInitialResults);
-    startArrivedV2Navigation();
-    const user = userEvent.setup();
-    await render(<HomeScreen />);
-
-    const done = await screen.findByTestId('nav-arrived-done-button');
-    expect(screen.queryByTestId('search-map-marker-GATE_05')).not.toBeOnTheScreen();
-    await user.press(done);
-
-    await waitFor(() => expect(clearSearchSpy).toHaveBeenCalled());
-    expect(screen.queryByTestId('search-map-marker-GATE_05')).not.toBeOnTheScreen();
-    await user.type(screen.getByPlaceholderText('Search blocks, rastas, gates'), '');
-    expect(screen.queryByTestId('search-map-marker-GATE_05')).not.toBeOnTheScreen();
-  });
-});
-
 describe('HomeScreen — canonical bottom-sheet dismissal', () => {
+  // Selects a real map object through the same universal handlePlaceSelectWithCameraIntent
+  // pipeline a search result used to (Home's own search UI is gone — LocationsDirectoryScreen
+  // owns discovery now), via a facility marker (always tappable, no map-projection needed).
   async function selectGate() {
     const user = userEvent.setup();
-    const input = screen.getByPlaceholderText('Search blocks, rastas, gates');
-    await user.type(input, 'Gate 5');
-    await user.press(await screen.findByTestId('search-result-GATE_05'));
+    await user.press(screen.getByTestId('facility_marker_LM_GATE_MAIN_NORTH'));
     return user;
   }
 
@@ -761,19 +357,6 @@ describe('HomeScreen — canonical bottom-sheet dismissal', () => {
 
     expect(screen.queryByLabelText('Back')).not.toBeOnTheScreen();
     expect(setSelectedPlaceSpy).toHaveBeenCalledWith(null);
-  });
-
-  test('category selection from DETAILS uses canonical reset and returns to Explore', async () => {
-    await render(<HomeScreen />);
-    const user = await selectGate();
-    await user.press(screen.getByText('Details'));
-    expect(screen.getByLabelText('Back')).toBeOnTheScreen();
-
-    await user.press(screen.getByLabelText('Gates'));
-
-    expect(setSelectedPlaceSpy).toHaveBeenCalledWith(null);
-    expect(screen.queryByLabelText('Back')).not.toBeOnTheScreen();
-    expect(screen.queryByTestId('selected-place-marker')).not.toBeOnTheScreen();
   });
 
   test('pan-down route-preview dismissal clears planner and returns to Explore', async () => {
@@ -1026,9 +609,7 @@ describe('HomeScreen — navigation completion cleanup', () => {
   test('ending navigation clears selected-place state before Explore can revive its marker', async () => {
     const user = userEvent.setup();
     await render(<HomeScreen />);
-    const input = screen.getByPlaceholderText('Search blocks, rastas, gates');
-    await user.type(input, 'Gate 5');
-    await user.press(await screen.findByTestId('search-result-GATE_05'));
+    await user.press(screen.getByTestId('facility_marker_LM_GATE_MAIN_NORTH'));
     expect(screen.getByTestId('selected-place-marker')).toBeOnTheScreen();
 
     await act(async () => useAppStore.setState({ isNavigating: true }));
@@ -1043,9 +624,7 @@ describe('HomeScreen — navigation completion cleanup', () => {
     const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
     useAppStore.getState().setCurrentLocation({ ...v1Route.coordinates[0], accuracy: 12 }, 'gps');
     await render(<HomeScreen />);
-    const input = screen.getByPlaceholderText('Search blocks, rastas, gates');
-    await user.type(input, 'Gate 5');
-    await user.press(await screen.findByTestId('search-result-GATE_05'));
+    await user.press(screen.getByTestId('facility_marker_LM_GATE_MAIN_NORTH'));
 
     await act(async () => {
       useAppStore.getState().startNavigation(v1Destination, v1Route as any, []);
