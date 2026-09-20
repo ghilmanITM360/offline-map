@@ -32,6 +32,7 @@ import {
   X,
   Clock,
   ArrowLeft,
+  LayoutGrid,
 } from 'lucide-react-native';
 import { BottomSheetModal, BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import { useNavigation, DrawerActions, CompositeNavigationProp } from '@react-navigation/native';
@@ -1308,6 +1309,22 @@ export function HomeScreen() {
         style={styles.chipsContainer}
         contentContainerStyle={styles.chipsContent}
       >
+        <Pressable
+          key="all-locations"
+          style={[styles.chip, styles.allLocationsChip]}
+          onPress={() => {
+            logHomeControl('all_locations_chip', 'open_directory');
+            nav.navigate('LocationsDirectory');
+          }}
+          hitSlop={6}
+          accessibilityRole="button"
+          accessibilityLabel="Browse all locations"
+        >
+          <LayoutGrid size={14} color={staticColors.info} />
+          <Text style={[styles.chipText, styles.allLocationsChipText]} numberOfLines={1} ellipsizeMode="tail">
+            All Locations
+          </Text>
+        </Pressable>
         {categoryChips.map((cat) => (
           <Pressable
             key={cat.id}
@@ -2284,6 +2301,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   activeChip: { backgroundColor: '#1A73E8', borderColor: '#1A73E8' },
+  allLocationsChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: staticColors.infoBackground,
+    borderColor: staticColors.infoBorder,
+  },
+  allLocationsChipText: { color: staticColors.infoStrong, fontWeight: '700' },
   chipText: { fontSize: 13, color: '#3C4043', fontWeight: '500' },
   activeChipText: { color: '#FFFFFF', fontWeight: '700' },
   navControls: { position: 'absolute', right: 16, zIndex: Z.mapControls },
