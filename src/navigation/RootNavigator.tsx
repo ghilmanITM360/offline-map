@@ -14,7 +14,6 @@ import { PermissionScreen } from '../views/screens/PermissionScreen';
 import { DownloadMapScreen } from '../views/screens/DownloadMapScreen';
 import { LocationsDirectoryScreen } from '../views/screens/LocationsDirectoryScreen';
 import { SettingsScreen } from '../views/screens/SettingsScreen';
-import { ErrorScreen } from '../views/screens/ErrorScreen';
 import { HelpScreen } from '../views/screens/HelpScreen';
 import { AboutScreen } from '../views/screens/AboutScreen';
 import { AppGuideScreen } from '../views/screens/AppGuideScreen';
@@ -38,7 +37,6 @@ export type RootStackParamList = {
   LocationsDirectory: undefined;
   Main: NavigatorScreenParams<DrawerParamList> | undefined;
   AppGuide: undefined;
-  Error: { title?: string; message?: string; type?: 'general' | 'connectivity' } | undefined;
 }; // fixed: type stack routes
 
 const Stack = createNativeStackNavigator<RootStackParamList>(); // fixed: use typed stack navigator
@@ -88,7 +86,6 @@ export function RootNavigator() {
       <Stack.Screen name="LocationsDirectory" component={LocationsDirectoryScreen} />
       <Stack.Screen name="Main" component={MainDrawer} />
       <Stack.Screen name="AppGuide" component={AppGuideScreen} />
-      <Stack.Screen name="Error" component={ErrorScreen} />
     </Stack.Navigator>
   );
 }
