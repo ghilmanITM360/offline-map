@@ -85,6 +85,10 @@ interface AppState {
   // --- Permissions / connectivity ---
   hasLocationPermission: boolean;
   setHasLocationPermission: (val: boolean) => void;
+  // Android permission precision ('fine'/'coarse'/'none'); iOS or pre-check defaults to 'none'.
+  // Independent of fix accuracy in meters — a fine-permission fix can still be a weak (>50m) fix.
+  locationPermissionPrecision: 'fine' | 'coarse' | 'none';
+  setLocationPermissionPrecision: (val: 'fine' | 'coarse' | 'none') => void;
   hasInternet: boolean;
   setHasInternet: (val: boolean) => void;
 
@@ -341,6 +345,8 @@ export const useAppStore = create<AppState>()(
       // --- Permissions / connectivity ---
       hasLocationPermission: false,
       setHasLocationPermission: (val) => set({ hasLocationPermission: val }),
+      locationPermissionPrecision: 'none',
+      setLocationPermissionPrecision: (val) => set({ locationPermissionPrecision: val }),
       hasInternet: true,
       setHasInternet: (val) => set({ hasInternet: val }),
 

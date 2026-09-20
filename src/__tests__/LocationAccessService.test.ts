@@ -25,6 +25,50 @@ beforeEach(async () => {
 });
 
 // Settings routes its permission status checks through getPermissionState().
+describe('LocationAccessService.getPermissionState — permission precision', () => {
+  it('reports fine precision from the Android permission response', async () => {
+    (Location.getForegroundPermissionsAsync as jest.Mock).mockResolvedValue({
+      status: 'granted',
+      canAskAgain: true,
+      android: { accuracy: 'fine' },
+    });
+
+    const state = await LocationAccessService.getPermissionState();
+
+    expect(state.precision).toBe('fine');
+  });
+
+  it('reports coarse precision as-is even when not accompanied by a bad accuracy reading', async () => {
+    (Location.getForegroundPermissionsAsync as jest.Mock).mockResolvedValue({
+      status: 'granted',
+      canAskAgain: true,
+      android: { accuracy: 'coarse' },
+    });
+
+    const state = await LocationAccessService.getPermissionState();
+
+    expect(state.precision).toBe('coarse');
+  });
+
+  it('reports none precision when permission is not granted', async () => {
+    (Location.getForegroundPermissionsAsync as jest.Mock).mockResolvedValue({ status: 'denied', canAskAgain: true });
+
+    const state = await LocationAccessService.getPermissionState();
+
+    expect(state.precision).toBe('none');
+  });
+
+  it('treats a failed services query as unknown, not enabled', async () => {
+    (Location.getForegroundPermissionsAsync as jest.Mock).mockResolvedValue({ status: 'granted', canAskAgain: true });
+    (Location.hasServicesEnabledAsync as jest.Mock).mockRejectedValue(new Error('provider check unsupported'));
+
+    const state = await LocationAccessService.getPermissionState();
+
+    expect(state.servicesState).toBe('unknown');
+    expect(state.servicesEnabled).toBe(false);
+  });
+});
+
 describe('LocationAccessService.getPermissionState — Settings permission-skip clearing', () => {
   it('clears a stale skip when a status check finds permission already granted', async () => {
     await OnboardingStatusService.setSkippedLocationPermission(true);
@@ -143,6 +187,22 @@ describe('LocationAccessService.resolveCurrentLocation — capability-safe fallb
       source: null,
       message: 'Current location is unavailable. Choose start manually.',
     });
+  });
+
+  it('treats a failed services query as unknown, not enabled, and still attempts a live fix', async () => {
+    (Location.getForegroundPermissionsAsync as jest.Mock).mockResolvedValue({ status: 'granted', canAskAgain: true });
+    (Location.hasServicesEnabledAsync as jest.Mock).mockRejectedValue(new Error('provider check unsupported'));
+    (Location.getCurrentPositionAsync as jest.Mock).mockResolvedValue({
+      coords: { latitude: 24.96, longitude: 67.01, heading: null, accuracy: 8 },
+      timestamp: 1_790_000_000_000,
+    });
+
+    const resolved = await LocationAccessService.resolveCurrentLocation(false);
+
+    expect(resolved.permissionState.servicesState).toBe('unknown');
+    expect(resolved.permissionState.servicesEnabled).toBe(false);
+    expect(resolved.ok).toBe(true);
+    expect(resolved.source).toBe('live');
   });
 
   it('preserves native observation time when a bounded device last-known fix is accepted', async () => {

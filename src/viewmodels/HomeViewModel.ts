@@ -88,6 +88,7 @@ export function useHomeViewModel() {
   const setCurrentLocation = useAppStore((s) => s.setCurrentLocation);
   const setSnappedLocation = useAppStore((s) => s.setSnappedLocation);
   const setHasLocationPermission = useAppStore((s) => s.setHasLocationPermission);
+  const setLocationPermissionPrecision = useAppStore((s) => s.setLocationPermissionPrecision);
   const addRecentSearch = useAppStore((s) => s.addRecentSearch);
   const setSelectedPlace = useAppStore((s) => s.setSelectedPlace);
   const setSearchQuery = useAppStore((s) => s.setSearchQuery);
@@ -244,6 +245,7 @@ export function useHomeViewModel() {
     try {
       const resolved = await LocationAccessService.resolveCurrentLocation(true);
       setHasLocationPermission(resolved.permissionState.granted);
+      setLocationPermissionPrecision(resolved.permissionState.precision);
 
       if (resolved.ok && resolved.coordinate) {
         setCurrentLocation(resolved.coordinate, resolved.source ?? 'live');
@@ -330,7 +332,7 @@ export function useHomeViewModel() {
       Alert.alert('Location error', 'Could not read location right now. Please try again.');
       return false;
     }
-  }, [cameraManager, lastKnownLocation, lastKnownLocationUpdatedAt, setCurrentLocation, setHasLocationPermission, setSnappedLocation]);
+  }, [cameraManager, lastKnownLocation, lastKnownLocationUpdatedAt, setCurrentLocation, setHasLocationPermission, setLocationPermissionPrecision, setSnappedLocation]);
 
   // Compass button: NORTH_UP <-> FOLLOW_HEADING toggle (Google Maps compass model).
   // NORTH_UP -> tap -> lock bearing to north-up (unchanged Phase 11 behavior).
