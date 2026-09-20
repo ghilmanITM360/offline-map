@@ -1,0 +1,147 @@
+name: Engineering Issue
+description: Bug, feature, security, performance, release, GIS, field, or cleanup work
+labels: []
+body:
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: One or two sentences. What is wrong or needed.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: type
+    attributes:
+      label: Type
+      options:
+        - Bug
+        - Feature
+        - Engineering
+        - Security
+        - Performance
+        - Release
+        - GIS
+        - Field
+        - Owner Action
+        - Cleanup
+        - Documentation
+        - DX
+    validations:
+      required: true
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      options: [P0, P1, P2, P3]
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Navigation
+        - Location
+        - Map
+        - Directory
+        - Routing
+        - GIS
+        - Android
+        - Security
+        - Release
+        - Repository
+        - Documentation
+        - Assets
+        - DX
+    validations:
+      required: true
+
+  - type: textarea
+    id: current-behavior
+    attributes:
+      label: Current behavior
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected-behavior
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+
+  - type: textarea
+    id: scenario
+    attributes:
+      label: Scenario / Reproduction
+      description: Concrete steps or conditions, not a general description.
+    validations:
+      required: false
+
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      placeholder: emulator / physical device / model / Android version / branch+commit
+    validations:
+      required: false
+
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence
+      description: Logs, screenshots, test output, commit SHAs. Real evidence only, not invented summaries.
+    validations:
+      required: false
+
+  - type: textarea
+    id: user-impact
+    attributes:
+      label: User impact
+    validations:
+      required: false
+
+  - type: dropdown
+    id: root-cause-status
+    attributes:
+      label: Root-cause status
+      options:
+        - Unknown
+        - Suspected
+        - Confirmed
+        - Fixed, needs verification
+    validations:
+      required: false
+
+  - type: textarea
+    id: acceptance-criteria
+    attributes:
+      label: Acceptance criteria
+      description: What must be true for this to close.
+    validations:
+      required: true
+
+  - type: textarea
+    id: validation-required
+    attributes:
+      label: Validation required
+      description: e.g. unit tests, emulator run, physical device run, field test.
+    validations:
+      required: false
+
+  - type: textarea
+    id: blockers
+    attributes:
+      label: Blockers / dependencies
+    validations:
+      required: false
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: Notes
+    validations:
+      required: false
