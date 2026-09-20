@@ -341,6 +341,8 @@ describe('HomeScreen — hardware back button (mode-aware, Google Maps parity)',
       chooseRememberedLocation: jest.fn(() => true),
       calculateRoute: jest.fn(async () => {}),
       showManualStartSearch: false,
+      canStartNavigation: true,
+      startNavigationDisabledReason: '',
     });
 
     const user = userEvent.setup();
@@ -664,6 +666,8 @@ describe('HomeScreen — search-result marker mode policy', () => {
       chooseRememberedLocation: jest.fn(() => true),
       calculateRoute: jest.fn(async () => {}),
       showManualStartSearch: false,
+      canStartNavigation: true,
+      startNavigationDisabledReason: '',
     });
     const user = userEvent.setup();
     await render(<HomeScreen />);
@@ -790,6 +794,8 @@ describe('HomeScreen — canonical bottom-sheet dismissal', () => {
       chooseRememberedLocation: jest.fn(() => true),
       calculateRoute: jest.fn(async () => {}),
       showManualStartSearch: false,
+      canStartNavigation: true,
+      startNavigationDisabledReason: '',
     });
     await render(<HomeScreen />);
     const user = await selectGate();
@@ -844,6 +850,8 @@ describe('HomeScreen — canonical bottom-sheet dismissal', () => {
       chooseRememberedLocation: jest.fn(() => true),
       calculateRoute: jest.fn(async () => {}),
       showManualStartSearch: false,
+      canStartNavigation: true,
+      startNavigationDisabledReason: '',
     });
     useAppStore.setState({ routePlannerDest: destination, activeRoute: previewRoute as any, currentLocation: { latitude: 24.9, longitude: 67.1 } });
     await render(<HomeScreen />);
@@ -915,6 +923,8 @@ describe('HomeScreen — canonical bottom-sheet dismissal', () => {
     chooseRememberedLocation: jest.fn(() => true),
     calculateRoute: jest.fn(async () => {}),
     showManualStartSearch: false,
+    canStartNavigation: true,
+    startNavigationDisabledReason: '',
   });
 
   test('P0-1: late dismiss echo from Open Directions arriving after the place->route identity switch does not clear the route', async () => {
@@ -1203,6 +1213,8 @@ describe('HomeScreen — resolved base-map rendering', () => {
       chooseRememberedLocation: jest.fn(() => true),
       calculateRoute: jest.fn(async () => {}),
       showManualStartSearch: false,
+      canStartNavigation: true,
+      startNavigationDisabledReason: '',
     });
     const user = userEvent.setup();
     await render(<HomeScreen />);
@@ -1267,6 +1279,8 @@ describe('HomeScreen — resolved base-map rendering', () => {
       chooseRememberedLocation: jest.fn(() => true),
       calculateRoute: jest.fn(async () => {}),
       showManualStartSearch: false,
+      canStartNavigation: true,
+      startNavigationDisabledReason: '',
     });
     useAppStore.setState({ routePlannerDest: gateResult, activeRoute: previewRoute as any });
     await render(<HomeScreen />);
@@ -1446,6 +1460,8 @@ describe('HomeScreen — facility markers (Google Maps POI parity)', () => {
       chooseRememberedLocation: jest.fn(() => true),
       calculateRoute: jest.fn(async () => {}),
       showManualStartSearch: false,
+      canStartNavigation: true,
+      startNavigationDisabledReason: '',
     });
 
     const user = userEvent.setup();
@@ -1510,6 +1526,8 @@ describe('HomeScreen — route preview "Start Navigation" (real handler wiring)'
       chooseRememberedLocation: jest.fn(() => true),
       calculateRoute: jest.fn(async () => {}),
       showManualStartSearch: false,
+      canStartNavigation: true,
+      startNavigationDisabledReason: '',
     });
     useAppStore.setState({
       routePlannerDest: destination,
@@ -1603,6 +1621,8 @@ describe('HomeScreen — route preview "Start Navigation" (real handler wiring)'
       calculateRoute: jest.fn(async () => {}),
       handleStartNavigation: jest.fn(),
       showManualStartSearch: false,
+      canStartNavigation: true,
+      startNavigationDisabledReason: '',
     });
 
     await render(<HomeScreen />);
@@ -1651,6 +1671,8 @@ describe('HomeScreen — route preview is a single surface (P0-2 consolidation)'
       chooseRememberedLocation: jest.fn(() => true),
       calculateRoute: jest.fn(async () => {}),
       showManualStartSearch: false,
+      canStartNavigation: true,
+      startNavigationDisabledReason: '',
     });
 
     // Mirrors what DirectionsViewModel.calculateRoute() writes to the shared store the instant a
@@ -1741,6 +1763,8 @@ describe('HomeScreen — route preview is a single surface (P0-2 consolidation)'
       calculateRoute: jest.fn(async () => {}),
       handleStartNavigation: jest.fn(),
       showManualStartSearch: false,
+      canStartNavigation: true,
+      startNavigationDisabledReason: '',
     });
 
     useAppStore.setState({ currentLocation: { latitude: 24.9, longitude: 67.1 } });
