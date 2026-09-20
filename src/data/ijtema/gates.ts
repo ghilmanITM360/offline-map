@@ -83,7 +83,13 @@ export const IJTEMA_GATES: Gate[] = [
   gate(15, c(24.968126, 67.008578)),
   gate(16, c(24.970886, 67.010603)),
   gate(17, c(24.972517, 67.01325)),
-  gate(18, c(24.975395, 67.014922)),
+  gate(
+    18,
+    c(24.975395, 67.014922),
+    undefined,
+    ['GATE_18 has no valid graph connector within 320m of any internal path; blocked pending physical field survey data — see docs/CURRENT_HANDOFF.md "Gate reconciliation".'],
+    'ground_truth_required',
+  ),
   gate(
     19,
     c(24.975367, 67.012898),
