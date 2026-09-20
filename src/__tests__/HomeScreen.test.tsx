@@ -650,6 +650,41 @@ describe('HomeScreen — navigation completion cleanup', () => {
     expect(screen.queryByTestId('selected-place-marker')).not.toBeOnTheScreen();
     alertSpy.mockRestore();
   });
+
+  test('Arrival Done hands the user to the Locations Directory instead of a passive map', async () => {
+    const navigateSpy = jest.fn();
+    useNavigation.mockReturnValue({ navigate: navigateSpy, dispatch: jest.fn(), goBack: jest.fn() });
+    const overlaySpy = jest.spyOn(NavigationOverlayV1Module, 'useNavigationOverlayV1').mockReturnValue({
+      active: true,
+      route: v1Route,
+      destination: v1Destination,
+      instructions: [],
+      currentStepIndex: 0,
+      isMuted: false,
+      setIsMuted: jest.fn(),
+      remainingDistance: 0,
+      arrived: true,
+      reroutePending: false,
+      isWeakGps: false,
+      rerouteStatusMessage: null,
+      snappedLocation: v1Destination.coordinate,
+      mapLayers: { venueBoundary: [], blocks: [], edges: [] },
+      userPulseAnim: new Animated.Value(0),
+      settings: useAppStore.getState().settings,
+      graphOnlyFallbackUsed: false,
+      requestNavigationExit: jest.fn(),
+      completeArrivalNavigation: jest.fn(),
+      setIsAutoFollowing: jest.fn(),
+      bottomBarHeight: 0,
+      setBottomBarHeight: jest.fn(),
+    } as unknown as ReturnType<typeof NavigationOverlayV1Module.useNavigationOverlayV1>);
+
+    await render(<HomeScreen />);
+    await userEvent.setup().press(await screen.findByTestId('nav-arrived-done-button'));
+
+    expect(navigateSpy).toHaveBeenCalledWith('LocationsDirectory');
+    overlaySpy.mockRestore();
+  });
 });
 
 describe('HomeScreen — canonical navigation pan ownership', () => {

@@ -430,6 +430,24 @@ export function HomeScreen() {
   // inline distance check for v1) — feeds MapMode.ARRIVAL directly instead of a separate,
   // never-set local flag, so "destination reached" actually flips NAVIGATION -> ARRIVAL.
   const arrived = navOverlay.arrived || navOverlayV1.arrived;
+  // Arrival's Done button hands the user back to the Locations Directory (their next
+  // destination) instead of a passive, unexplained map — mid-trip Exit is unaffected, it
+  // still just stops navigation. stopNavigation()'s own state reset (isNavigating -> false)
+  // already clears selection/planner/search via the wasNavigatingRef effect below.
+  const navOverlayForChrome = useMemo(() => ({
+    ...navOverlay,
+    completeArrivalNavigation: () => {
+      navOverlay.completeArrivalNavigation();
+      nav.navigate('LocationsDirectory');
+    },
+  }), [navOverlay, nav]);
+  const navOverlayV1ForChrome = useMemo(() => ({
+    ...navOverlayV1,
+    completeArrivalNavigation: () => {
+      navOverlayV1.completeArrivalNavigation();
+      nav.navigate('LocationsDirectory');
+    },
+  }), [navOverlayV1, nav]);
 
   const showOsmAttribution =
     baseMapMode === 'LOCAL_TILES' || outsideRouteProvider(activePreviewRoute ?? activeRoute) === 'offline-osm';
@@ -1509,8 +1527,8 @@ export function HomeScreen() {
           top={insets.top + (showAnyNavOverlay ? 148 : 118)}
         />
 
-        {(mode === 'NAVIGATION' || mode === 'ARRIVAL') && <NavigationChromeV2 overlay={navOverlay} hasBaseMap={hasBaseMap} />}
-        {(mode === 'NAVIGATION' || mode === 'ARRIVAL') && <NavigationChromeV1 overlay={navOverlayV1} hasBaseMap={hasBaseMap} />}
+        {(mode === 'NAVIGATION' || mode === 'ARRIVAL') && <NavigationChromeV2 overlay={navOverlayForChrome} hasBaseMap={hasBaseMap} />}
+        {(mode === 'NAVIGATION' || mode === 'ARRIVAL') && <NavigationChromeV1 overlay={navOverlayV1ForChrome} hasBaseMap={hasBaseMap} />}
         <MapLabelOverlay
           ref={mapLabelOverlayRef}
           mapRef={mapRef}
