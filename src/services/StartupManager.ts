@@ -8,7 +8,7 @@ import { RootStackParamList } from '../navigation/RootNavigator';
 
 export type SetupPhase = 'first_install' | 'incomplete_setup' | 'ready';
 
-export type StartupRoute = Extract<keyof RootStackParamList, 'Welcome' | 'Permission' | 'DownloadMap' | 'Main'>;
+export type StartupRoute = Extract<keyof RootStackParamList, 'Welcome' | 'Permission' | 'DownloadMap' | 'LocationsDirectory'>;
 
 export interface StartupChecks {
   hasSeenWelcome: boolean;
@@ -46,7 +46,7 @@ export class StartupManager {
     }
 
     if (checks.offlineMapStatus === 'downloaded') {
-      return { phase: 'ready', route: 'Main' };
+      return { phase: 'ready', route: 'LocationsDirectory' };
     }
 
     if (checks.offlineMapStatus === 'corrupt' || checks.offlineMapStatus === 'needs_update') {
@@ -54,17 +54,17 @@ export class StartupManager {
     }
 
     if (checks.graphOnlyModeEnabled && checks.offlineMapStatus === 'not_downloaded') {
-      return { phase: 'ready', route: 'Main' };
+      return { phase: 'ready', route: 'LocationsDirectory' };
     }
 
     if (checks.skippedOnlineModeEnabled && checks.offlineMapStatus === 'not_downloaded') {
       // User already chose "Use Online Mode" once — don't re-prompt every launch.
-      return { phase: 'ready', route: 'Main' };
+      return { phase: 'ready', route: 'LocationsDirectory' };
     }
 
     if (!checks.isConnected && checks.offlineMapStatus === 'not_downloaded') {
-      // No internet AND no map — go to Main in graph-only mode.
-      return { phase: 'ready', route: 'Main' };
+      // No internet AND no map — go to the directory in graph-only mode.
+      return { phase: 'ready', route: 'LocationsDirectory' };
     }
 
     // Have internet, no map yet, never chosen a mode before — go to download.

@@ -137,7 +137,7 @@ describe('SplashScreen — persisted-store hydration gate', () => {
     expect(mockReplaceSpy).toHaveBeenCalledWith('Welcome');
   });
 
-  it('returning user: navigates to Main only after hydration completes, exactly once', async () => {
+  it('returning user: navigates to the Locations Directory only after hydration completes, exactly once', async () => {
     const controllable = controllableStorage();
     useAppStore.persist.setOptions({ storage: controllable.storage });
     const rehydratePromise = useAppStore.persist.rehydrate();
@@ -155,7 +155,7 @@ describe('SplashScreen — persisted-store hydration gate', () => {
     await flush();
 
     expect(mockReplaceSpy).toHaveBeenCalledTimes(1);
-    expect(mockReplaceSpy).toHaveBeenCalledWith('Main');
+    expect(mockReplaceSpy).toHaveBeenCalledWith('LocationsDirectory');
   });
 
   it('does not evaluate hasSeenMapOverview from a pre-hydration default — waits for the real persisted value', async () => {
@@ -247,10 +247,10 @@ describe('SplashScreen — permission-skip cleanup is isolated from route resolu
     await renderAndResolveHydration();
 
     expect(mockReplaceSpy).toHaveBeenCalledTimes(1);
-    expect(mockReplaceSpy).toHaveBeenCalledWith('Main');
+    expect(mockReplaceSpy).toHaveBeenCalledWith('LocationsDirectory');
   });
 
-  it('a rejected cleanup call does not fall through to the generic startup-failure route — a downloaded map still resolves to Main', async () => {
+  it('a rejected cleanup call does not fall through to the generic startup-failure route — a downloaded map still resolves to the Locations Directory', async () => {
     const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
     (OnboardingStatusService.clearSkippedLocationPermissionOnGrant as jest.Mock).mockRejectedValue(new Error('disk full'));
     (OfflineMapStatusService.validateAtStartup as jest.Mock).mockResolvedValue({ status: 'downloaded', manifest: null });
@@ -258,7 +258,7 @@ describe('SplashScreen — permission-skip cleanup is isolated from route resolu
     await renderAndResolveHydration();
 
     expect(mockReplaceSpy).toHaveBeenCalledTimes(1);
-    expect(mockReplaceSpy).toHaveBeenCalledWith('Main');
+    expect(mockReplaceSpy).toHaveBeenCalledWith('LocationsDirectory');
     // Proves the real startup-failure catch branch never ran — that branch always sets this
     // specific message and forces the map status back to not_downloaded.
     expect(useAppStore.getState().offlineMapStatusMessage).not.toEqual(expect.stringContaining('Startup checks failed'));
@@ -325,7 +325,7 @@ describe('SplashScreen — hydration degradation is route-safe', () => {
     await flush();
 
     expect(mockReplaceSpy).toHaveBeenCalledTimes(1);
-    expect(mockReplaceSpy).toHaveBeenCalledWith('Main');
+    expect(mockReplaceSpy).toHaveBeenCalledWith('LocationsDirectory');
     // The failure log is distinguishable from a timeout log by message text — not merged into
     // one generic "something went wrong with hydration" line.
     expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('Hydration failed'), expect.any(Error));
@@ -355,7 +355,7 @@ describe('SplashScreen — hydration degradation is route-safe', () => {
     });
 
     expect(mockReplaceSpy).toHaveBeenCalledTimes(1);
-    expect(mockReplaceSpy).toHaveBeenCalledWith('Main');
+    expect(mockReplaceSpy).toHaveBeenCalledWith('LocationsDirectory');
     expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('Hydration timed out'));
     expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('[SplashScreen]'));
     expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('outcome="timeout"'));
@@ -543,7 +543,7 @@ describe('SplashScreen — unrelated dependency failures cannot bypass StartupMa
     errorSpy.mockRestore();
   });
 
-  it('a map-status read failure combined with offline still lands on graph-only Main, never a hardcoded fallback', async () => {
+  it('a map-status read failure combined with offline still lands on the graph-only Locations Directory, never a hardcoded fallback', async () => {
     const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
     (OfflineMapStatusService.validateAtStartup as jest.Mock).mockRejectedValue(new Error('AsyncStorage read failed'));
     (ConnectivityService.isConnected as jest.Mock).mockResolvedValue(false);
@@ -551,7 +551,7 @@ describe('SplashScreen — unrelated dependency failures cannot bypass StartupMa
     await renderAndSettleHydration();
 
     expect(mockReplaceSpy).toHaveBeenCalledTimes(1);
-    expect(mockReplaceSpy).toHaveBeenCalledWith('Main');
+    expect(mockReplaceSpy).toHaveBeenCalledWith('LocationsDirectory');
     // Proves this reached Main via StartupManager's graph-only/offline branch, not the
     // deleted catch-all — that branch always set this exact message.
     expect(useAppStore.getState().offlineMapStatusMessage).not.toEqual(expect.stringContaining('Startup checks failed'));
@@ -566,7 +566,7 @@ describe('SplashScreen — unrelated dependency failures cannot bypass StartupMa
     await renderAndSettleHydration();
 
     expect(mockReplaceSpy).toHaveBeenCalledTimes(1);
-    expect(mockReplaceSpy).toHaveBeenCalledWith('Main'); // no internet + no map -> graph-only Main, same as a real disconnected read
+    expect(mockReplaceSpy).toHaveBeenCalledWith('LocationsDirectory'); // no internet + no map -> graph-only directory, same as a real disconnected read
     expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('Failed to read connectivity status'), expect.any(Error));
     errorSpy.mockRestore();
   });
@@ -595,7 +595,7 @@ describe('SplashScreen — unrelated dependency failures cannot bypass StartupMa
     errorSpy.mockRestore();
   });
 
-  it('graph-only mode still resolves to Main when an unrelated permission-skip read fails', async () => {
+  it('graph-only mode still resolves to the Locations Directory when an unrelated permission-skip read fails', async () => {
     const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
     (OfflineMapStatusService.validateAtStartup as jest.Mock).mockResolvedValue({ status: 'not_downloaded', manifest: null });
     (OfflineMapStatusService.isGraphOnlyModeEnabled as jest.Mock).mockResolvedValue(true);
@@ -604,7 +604,7 @@ describe('SplashScreen — unrelated dependency failures cannot bypass StartupMa
     await renderAndSettleHydration();
 
     expect(mockReplaceSpy).toHaveBeenCalledTimes(1);
-    expect(mockReplaceSpy).toHaveBeenCalledWith('Main');
+    expect(mockReplaceSpy).toHaveBeenCalledWith('LocationsDirectory');
     errorSpy.mockRestore();
   });
 
