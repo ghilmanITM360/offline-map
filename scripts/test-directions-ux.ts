@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 
 const screen = readFileSync('src/views/components/map/LocationSheet.tsx', 'utf8');
 const vm = readFileSync('src/viewmodels/DirectionsViewModel.ts', 'utf8');
+const navigationCapability = readFileSync('src/services/LocationNavigationCapability.ts', 'utf8');
 
 assert(screen.includes('Get Directions'), 'Directions screen must use layman-friendly heading');
 assert(screen.includes('Going to'), 'Directions screen must show destination card clearly');
@@ -25,9 +26,12 @@ assert(vm.includes('ROUTE_TIMEOUT_MS'), 'Directions route calculation should inc
 assert(vm.includes('forceOutside'), 'Directions should pass outside start mode into v2 preview service');
 assert(vm.includes('Start and destination are the same'), 'Directions should handle same start/destination case');
 assert(vm.includes('setLoadState(\'needs_origin\')'), 'Directions should avoid routing without a valid origin');
+// StartSource is now a re-export of the single-owner NavigationStartSource type (see
+// LocationNavigationCapability.ts) rather than its own inline union.
+assert(vm.includes('export type StartSource = NavigationStartSource;'), 'Directions StartSource must stay aliased to the single-owner NavigationStartSource type');
 assert(
-  vm.includes("type StartSource = 'live_gps' | 'device_last_known' | 'remembered_location' | 'manual_place'"),
-  'Directions should model live, device-cached, remembered, and manual start provenance explicitly',
+  navigationCapability.includes("export type NavigationStartSource = 'live_gps' | 'device_last_known' | 'remembered_location' | 'manual_place';"),
+  'NavigationStartSource should model live, device-cached, remembered, and manual start provenance explicitly',
 );
 assert(
   vm.includes('startSourceSupportingCopy') && vm.includes('isCurrentLocationStartActive'),
