@@ -44,8 +44,8 @@ export function AboutScreen() {
       <ScrollView style={styles.content}>
         <View style={styles.logoSection}>
           <View style={styles.logoContainer}>
-            <Image 
-              source={{ uri: 'https://picsum.photos/seed/ijtema/200/200' }} 
+            <Image
+              source={require('../../../assets/icon.png')}
               style={styles.logo}
             />
           </View>
