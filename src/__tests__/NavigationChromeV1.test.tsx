@@ -4,6 +4,7 @@
  */
 
 import React from 'react';
+import { AccessibilityInfo } from 'react-native';
 import { render, screen, userEvent, within } from './test-utils';
 
 import { NavigationChromeV1 } from '../views/components/navigation/NavigationChromeV1';
@@ -162,6 +163,25 @@ describe('NavigationChromeV1 — Exit/recenter/mute touch targets', () => {
 
       expect(completeArrivalNavigation).toHaveBeenCalledTimes(1);
       expect(handleExit).not.toHaveBeenCalled();
+    });
+
+    test('#64: Android back press on the arrival modal completes navigation like Done, instead of trapping the user behind stale nav chrome', async () => {
+      const completeArrivalNavigation = jest.fn();
+      await render(<NavigationChromeV1 overlay={baseOverlay({ arrived: true, completeArrivalNavigation })} hasBaseMap />);
+
+      screen.getByTestId('nav-arrival-modal').props.onRequestClose();
+
+      expect(completeArrivalNavigation).toHaveBeenCalledTimes(1);
+    });
+
+    test('#64: announces arrival once for screen-reader users, naming the destination', async () => {
+      const announce = jest.spyOn(AccessibilityInfo, 'announceForAccessibility');
+      announce.mockClear();
+
+      await render(<NavigationChromeV1 overlay={baseOverlay({ arrived: true })} hasBaseMap />);
+
+      expect(announce).toHaveBeenCalledTimes(1);
+      expect(announce).toHaveBeenCalledWith(expect.stringContaining('Gate 8'));
     });
   });
 });
