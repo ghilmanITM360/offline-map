@@ -182,4 +182,76 @@ describe('NavigationViewModelV2 hybrid rerouting', () => {
     await waitFor(() => expect(useAppStore.getState().reroutePending).toBe(false));
     previewSpy.mockRestore();
   });
+
+  // #60: consecutive-fix distance is capped near zero by GPSManagerService's own navigation-mode
+  // distanceInterval (~2m), so gating reroute evidence on fix-to-fix displacement makes the 12m
+  // movement bar unreachable at realistic pedestrian cadence even while genuinely off-route.
+  test('sustained short-step off-route walking accumulates evidence and reroutes once', async () => {
+    const previewSpy = jest
+      .spyOn(V2DirectionsService, 'calculateHybridPreview')
+      .mockResolvedValue({ status: 'unavailable', route: null, instructions: [], message: 'No replacement.' });
+    await renderHook(() => useNavigationViewModelV2());
+
+    const metersPerDegLat = 111320;
+    const baseLat = 24.985;
+    const longitude = 67.02;
+    const stepMeters = 2;
+    const steps = 18; // 18 * 2m = 36m, well past the 12m bar, each single-fix hop far under it
+
+    for (let i = 0; i < steps; i++) {
+      const point = { latitude: baseLat + (i * stepMeters) / metersPerDegLat, longitude, accuracy: 5 };
+      await act(async () => useAppStore.setState({ currentLocation: point, currentLocationSource: 'live' }));
+    }
+
+    expect(previewSpy).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(useAppStore.getState().reroutePending).toBe(false));
+    previewSpy.mockRestore();
+  });
+
+  // #60: off-route evidence (consecutive-fix count + accumulated anchor distance) is
+  // session-scoped bookkeeping and must not survive into a newly started trip — otherwise a
+  // near-threshold streak from the trip just finished could fire a reroute on the very first
+  // fix of the next one.
+  test('starting a new trip does not inherit off-route evidence from the previous one', async () => {
+    const previewSpy = jest
+      .spyOn(V2DirectionsService, 'calculateHybridPreview')
+      .mockResolvedValue({ status: 'unavailable', route: null, instructions: [], message: 'No replacement.' });
+    await renderHook(() => useNavigationViewModelV2());
+
+    // Two short-step (~2m) off-route fixes on trip A — builds up count/anchor bookkeeping
+    // without itself crossing the 12m movement bar, so trip A never reroutes on its own.
+    const metersPerDegLat = 111320;
+    const tripAPoints = [
+      { latitude: 24.985, longitude: 67.02, accuracy: 5 },
+      { latitude: 24.985 + 2 / metersPerDegLat, longitude: 67.02, accuracy: 5 },
+    ];
+    for (const point of tripAPoints) {
+      await act(async () => useAppStore.setState({ currentLocation: point, currentLocationSource: 'live' }));
+    }
+
+    // End trip A and start a new trip on the SAME route/destination — same off-route geometry
+    // as trip A (so the fix below is unambiguously off-route again), but a fresh session.
+    // Deliberately do NOT feed an on-route fix in between: that would itself reset the
+    // count/anchor via the existing "back on route" branch and mask the bug under test. This
+    // models a trip whose very first live fix is already off-route.
+    await act(async () => useAppStore.getState().stopNavigation());
+    await act(async () =>
+      useAppStore.getState().startNavigation(destination, sharedActiveRoute, sharedActiveRoute.instructions),
+    );
+
+    // One large off-route jump as the new trip's first fix — far enough from trip A's last
+    // point (~556m) that a per-fix (not just cumulative) distance check would also clear 12m.
+    // If trip A's count survived, this is the 3rd consecutive off-route fix, and distance
+    // against a stale (or wrongly-live) anchor from trip A would clear 12m too — both
+    // shouldTriggerReroute conditions would be met.
+    await act(async () =>
+      useAppStore.setState({
+        currentLocation: { latitude: 24.99, longitude: 67.02, accuracy: 5 },
+        currentLocationSource: 'live',
+      }),
+    );
+
+    expect(previewSpy).not.toHaveBeenCalled();
+    previewSpy.mockRestore();
+  });
 });

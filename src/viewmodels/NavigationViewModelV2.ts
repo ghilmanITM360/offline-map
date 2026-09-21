@@ -104,6 +104,7 @@ export function useNavigationViewModelV2() {
   const setRouteInstructions = useAppStore((s) => s.setRouteInstructions);
   const setReroutePending = useAppStore((s) => s.setReroutePending);
   const reroutePending = useAppStore((s) => s.reroutePending);
+  const navigationSessionId = useAppStore((s) => s.navigationSessionId);
 
   // activeRoute is 'v2'-shaped for both directions previews and live navigation — isNavigating
   // (true only between startNavigation()/stopNavigation()) gates this hook's GPS/reroute/speech
@@ -162,6 +163,13 @@ export function useNavigationViewModelV2() {
     return a === b;
   };
   const offRouteStartRef = useRef<number | null>(null);
+  // Coordinate captured the moment off-route evidence starts accumulating (first fix of the
+  // current off-route streak). Reroute evidence is distance walked away from THIS point, not
+  // distance between consecutive fixes — consecutive-fix distance is capped near zero by
+  // GPSManagerService's own navigation-mode distanceInterval (2m), so gating reroute on it made
+  // the count/duration criteria below unreachable for realistic pedestrian GPS cadence. Reset
+  // together with offRouteStartRef/consecutiveOffRouteRef everywhere those reset.
+  const offRouteAnchorRef = useRef<Coordinate | null>(null);
   const consecutiveOffRouteRef = useRef(0);
   const lastRerouteAtRef = useRef(0);
   const lastSpokenInstructionIdRef = useRef<string | null>(null);
@@ -188,7 +196,17 @@ export function useNavigationViewModelV2() {
     // from before Start) must be rejected as historical, not fed into route progress.
     watcherGenerationBoundaryAtMsRef.current = Date.now();
     lastAcceptedObservedAtMsRef.current = null;
-  }, [route?.routeId]);
+    lastAcceptedLocationRef.current = route.origin.coordinate;
+    // #60: off-route evidence is scoped to a single trip's off-route episodes — a new trip must
+    // start clean, not carry over a near-threshold streak from the one that just ended.
+    consecutiveOffRouteRef.current = 0;
+    offRouteStartRef.current = null;
+    offRouteAnchorRef.current = null;
+    // #60: keyed on navigationSessionId (bumped by startNavigation on every trip, even a
+    // restart onto the identical route/destination — see useAppStore.startNavigation), not
+    // route?.routeId, which is stable for that same-route-restart case and would silently skip
+    // this reset.
+  }, [navigationSessionId]);
 
   useEffect(() => () => outsideRequestCoordinatorRef.current.cancelCurrent(), []);
 
@@ -342,6 +360,7 @@ export function useNavigationViewModelV2() {
       lastAcceptedObservedAtMsRef.current = coordinate.observedAtMs ?? null;
       consecutiveOffRouteRef.current = 0;
       offRouteStartRef.current = null;
+      offRouteAnchorRef.current = null;
       lastRerouteAtRef.current = Date.now();
       setReroutePending(false);
       outsideHandle?.finish();
@@ -465,21 +484,36 @@ export function useNavigationViewModelV2() {
     if (!isOffRoute || weakGps) {
       consecutiveOffRouteRef.current = 0;
       offRouteStartRef.current = null;
+      offRouteAnchorRef.current = null;
       return;
     }
 
-    consecutiveOffRouteRef.current += 1;
-    offRouteStartRef.current = offRouteStartRef.current ?? Date.now();
-    const evidence = evaluateRerouteEvidenceV2({
-      gpsAccuracyM: accuracyM,
-      consecutiveOffRouteCount: consecutiveOffRouteRef.current,
-      offRouteDurationMs: Date.now() - offRouteStartRef.current,
-      cooldownRemainingMs: Math.max(0, REROUTE_COOLDOWN_MS - (Date.now() - lastRerouteAtRef.current)),
-      movedDistanceSinceLastAcceptedM: movedDistanceM,
-    });
+    // #60: this effect can re-run against the exact same currentLocation for reasons unrelated
+    // to a new GPS fix (see the AUD-05 isNewFix note above — e.g. this same effect's own
+    // setCurrentStepIndex/setEtaMinutes calls are themselves in its dependency array). Without
+    // gating on isNewFix, each such re-run would double/triple-count one physical fix as
+    // several "consecutive off-route fixes", inflating evidence out of proportion to real
+    // GPS cadence — a false-positive risk equivalent to jitter.
+    if (isNewFix) {
+      consecutiveOffRouteRef.current += 1;
+      offRouteStartRef.current = offRouteStartRef.current ?? Date.now();
+      // Evidence is cumulative displacement from the start of this off-route episode, not
+      // fix-to-fix displacement — see offRouteAnchorRef above.
+      const movedDistanceSinceOffRouteAnchorM = offRouteAnchorRef.current
+        ? getDistance(offRouteAnchorRef.current, currentLocation)
+        : 0;
+      offRouteAnchorRef.current = offRouteAnchorRef.current ?? currentLocation;
+      const evidence = evaluateRerouteEvidenceV2({
+        gpsAccuracyM: accuracyM,
+        consecutiveOffRouteCount: consecutiveOffRouteRef.current,
+        offRouteDurationMs: Date.now() - offRouteStartRef.current,
+        cooldownRemainingMs: Math.max(0, REROUTE_COOLDOWN_MS - (Date.now() - lastRerouteAtRef.current)),
+        movedDistanceSinceLastAcceptedM: movedDistanceSinceOffRouteAnchorM,
+      });
 
-    if (evidence.shouldReroute) {
-      void attemptReroute(currentLocation);
+      if (evidence.shouldReroute) {
+        void attemptReroute(currentLocation);
+      }
     }
   }, [attemptReroute, currentLocation, currentStepIndex, etaMinutes, instructions, isMuted, route, settings.voiceInstructions, settings.walkingSpeed]);
 
