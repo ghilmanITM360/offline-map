@@ -134,6 +134,32 @@ export function calculateNavigationProgressV2(input: NavigationProgressV2Input):
   };
 }
 
+// #61: single authority for both "which instruction is the active guidance step" and "its live
+// countdown distance" — deciding them independently (old instructionIndexForProgress vs.
+// currentStep.distanceM) let the displayed maneuver text and its distance disagree right at a
+// step boundary. Each instruction's own routeIndex is the boundary where THAT instruction
+// completes, so the active step is the first instruction (scanning forward from currentStepIndex,
+// never backward) whose own boundary is still ahead of progress; its distance is the remaining
+// distance to that same boundary. Once every remaining boundary is behind progress (arrival), this
+// lands on the final instruction with distance 0 rather than an inconsistent state.
+export function calculateLiveManeuverDistanceV2(input: {
+  route: V2ActiveRoute;
+  currentStepIndex: number;
+  progressMeters: number;
+}): { stepIndex: number; maneuverDistanceM: number } {
+  const { route, currentStepIndex, progressMeters } = input;
+  const startIndex = Math.max(0, currentStepIndex);
+  for (let i = startIndex; i < route.instructions.length; i += 1) {
+    const instruction = route.instructions[i];
+    const coord = route.coordinates[instruction.routeIndex] ?? instruction.coordinate;
+    const boundaryMeters = RerouteService.projectProgressMetersOnRoute(coord, route).progressMeters;
+    if (boundaryMeters > progressMeters) {
+      return { stepIndex: i, maneuverDistanceM: boundaryMeters - progressMeters };
+    }
+  }
+  return { stepIndex: Math.max(0, route.instructions.length - 1), maneuverDistanceM: 0 };
+}
+
 export function evaluateRerouteEvidenceV2(input: RerouteEvidenceV2Input): RerouteEvidenceV2 {
   const thresholdM = RerouteService.getDynamicOffRouteThresholdMeters(input.gpsAccuracyM ?? 0);
   return {

@@ -49,6 +49,7 @@ function baseOverlay(overrides: Partial<NavigationOverlayV2> = {}): NavigationOv
     isMuted: false,
     setIsMuted: jest.fn(),
     remainingDistance: 300,
+    maneuverDistance: 300,
     etaMinutes: 5,
     arrived: false,
     reroutePending: false,
@@ -64,6 +65,16 @@ function baseOverlay(overrides: Partial<NavigationOverlayV2> = {}): NavigationOv
     ...overrides,
   } as unknown as NavigationOverlayV2;
 }
+
+describe('NavigationChromeV2 — live maneuver distance', () => {
+  test('#61: instruction card shows overlay.maneuverDistance, not the frozen route-instruction distanceM', async () => {
+    // route.instructions[0].distanceM is 300 (see fixture above); a live-countdown value that
+    // has decreased partway into the step must render as the countdown, not the static original.
+    await render(<NavigationChromeV2 overlay={baseOverlay({ maneuverDistance: 140 })} hasBaseMap />);
+    expect(screen.getByText('140 m')).toBeTruthy();
+    expect(screen.queryByText('300 m')).toBeNull();
+  });
+});
 
 describe('NavigationChromeV2 — direct outside guide', () => {
   test('owns maneuver and subordinate status surfaces in one ordered top stack', async () => {
