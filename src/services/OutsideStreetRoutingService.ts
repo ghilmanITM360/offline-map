@@ -162,9 +162,19 @@ export const selectStreetGraphOutsidePath = (
   // turn-by-turn instructions are generated from this coarser sequence, not
   // from every rendering-fidelity geometry point (which would produce one
   // instruction per smoothing point on a curve).
-  const topologyCoordinates: Coordinate[] = [{ lat: nearestUser.node.lat, lng: nearestUser.node.lng }];
-  const topologyEdgeDistancesM: number[] = [];
-  const topologyEdgeNames: Array<string | undefined> = [];
+  //
+  // Issue #69: the first topology point used to be the snapped street node itself, so
+  // `nearestUser.distanceM` (the raw-GPS-to-street-node snap leg, already folded into
+  // `totalDistanceM` below) never appeared as a hop — turn-by-turn instructions silently
+  // dropped that leg's distance. Prepending the raw user coordinate as a real hop (when the
+  // gap is more than dedup noise) fixes this at the source for every instruction-generation
+  // caller without touching StreetInstructionService's per-hop logic.
+  const topologyCoordinates: Coordinate[] =
+    nearestUser.distanceM > dedupToleranceM
+      ? [{ lat: userCoordinate.lat, lng: userCoordinate.lng }, { lat: nearestUser.node.lat, lng: nearestUser.node.lng }]
+      : [{ lat: nearestUser.node.lat, lng: nearestUser.node.lng }];
+  const topologyEdgeDistancesM: number[] = nearestUser.distanceM > dedupToleranceM ? [nearestUser.distanceM] : [];
+  const topologyEdgeNames: Array<string | undefined> = nearestUser.distanceM > dedupToleranceM ? [undefined] : [];
 
   pushCoord(nearestUser.node.lat, nearestUser.node.lng);
   for (const edge of edgesUsed) {
