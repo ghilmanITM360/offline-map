@@ -73,6 +73,7 @@ function destinationMetadata(
     rastaId: type === 'rasta' ? destination.id : undefined,
     facilityId: type === 'facility' ? routingDestination.facilityId : undefined,
     entryNodeId: type === 'block' || type === 'facility' ? finalNodeId : undefined,
+    specialRouteId: type === 'special_route' ? destination.id : undefined,
   };
 }
 

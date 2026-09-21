@@ -61,7 +61,10 @@ assert(
 // scripts/test-map-stage3-finalization-v2.ts for the current camera assertions)
 
 assert(
-  /latitude: place\.coordinate\.latitude \+ PLACE_ZOOM_DELTA \* \(markerScreenFraction - 0\.5\)/.test(cameraManager),
+  // Phase 0D-A: the camera-readiness gate hoists `place.coordinate` into a local `coordinate`
+  // const (captured once, before the queued/deferred runWhenReady callback runs) — same
+  // marker-shift math, just no longer re-reading `place.coordinate` from inside the closure.
+  /latitude: coordinate\.latitude \+ PLACE_ZOOM_DELTA \* \(markerScreenFraction - 0\.5\)/.test(cameraManager),
   'animateToPlace must shift the region center based on the computed marker screen fraction so the marker renders above the LocationSheet, not centered behind it.',
 );
 assert(
