@@ -25,6 +25,7 @@ import { createProductionOutsideRouteSource } from '../services/outsideRouting/P
 import { getRoutableOfficialGates } from '../data/ijtema/entryPolicy';
 import {
   buildV2RerouteRequest,
+  calculateLiveManeuverDistanceV2,
   calculateNavigationProgressV2,
   deriveGpsSignalStateV2,
   evaluateRerouteEvidenceV2,
@@ -47,18 +48,6 @@ interface RerouteOptions {
   manualGateId?: string;
   explicit?: boolean;
   allowDirectGuide?: boolean;
-}
-
-function instructionIndexForProgress(route: V2ActiveRoute, progressMeters: number): number {
-  let bestIndex = 0;
-  route.instructions.forEach((instruction, index) => {
-    const coord = route.coordinates[instruction.routeIndex] ?? instruction.coordinate;
-    const projected = RerouteService.projectProgressMetersOnRoute(coord, route);
-    if (projected.progressMeters <= progressMeters + 15) {
-      bestIndex = index;
-    }
-  });
-  return bestIndex;
 }
 
 function isArrived(route: V2ActiveRoute, coordinate: Coordinate | null): boolean {
@@ -121,6 +110,7 @@ export function useNavigationViewModelV2() {
   const destination = route ? placeFromV2Destination(route, destinationFromStore) : destinationFromStore;
   const [snappedLocation, setSnappedLocation] = useState<Coordinate | null>(route?.origin.coordinate ?? null);
   const [remainingDistance, setRemainingDistance] = useState(route?.totalDistanceM ?? 0);
+  const [maneuverDistance, setManeuverDistance] = useState(route?.instructions[0]?.distanceM ?? 0);
   const [etaMinutes, setEtaMinutes] = useState(route?.etaMinutes ?? 0);
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [arrived, setArrived] = useState(false);
@@ -189,7 +179,9 @@ export function useNavigationViewModelV2() {
     setRemainingDistance(route.totalDistanceM);
     setEtaMinutes(route.etaMinutes);
     setSnappedLocation(route.origin.coordinate);
-    setCurrentStepIndex(0);
+    const initialGuidance = calculateLiveManeuverDistanceV2({ route, currentStepIndex: 0, progressMeters: 0 });
+    setCurrentStepIndex(initialGuidance.stepIndex);
+    setManeuverDistance(initialGuidance.maneuverDistanceM);
     progressRef.current = 0;
     // NAV-P0-001: a new trip is a new watcher generation — any fix whose native timestamp
     // predates this instant (e.g. a stale value still sitting in GPSManagerService/the store
@@ -465,10 +457,12 @@ export function useNavigationViewModelV2() {
     setEtaMinutes(progress.etaMinutes);
     setArrived(isArrived(route, currentLocation));
 
-    const nextIndex = Math.max(currentStepIndex, instructionIndexForProgress(route, progress.progressMeters));
+    const guidance = calculateLiveManeuverDistanceV2({ route, currentStepIndex, progressMeters: progress.progressMeters });
+    const nextIndex = guidance.stepIndex;
     if (nextIndex !== currentStepIndex) {
       setCurrentStepIndex(nextIndex);
     }
+    setManeuverDistance(guidance.maneuverDistanceM);
 
     const currentInstruction = instructions[nextIndex];
     if (settings.voiceInstructions && !isMuted && currentInstruction && currentInstruction.id !== lastSpokenInstructionIdRef.current) {
@@ -532,6 +526,7 @@ export function useNavigationViewModelV2() {
     isMuted,
     setIsMuted,
     remainingDistance,
+    maneuverDistance,
     etaMinutes,
     arrived,
     reroutePending,

@@ -43,6 +43,7 @@ export function NavigationChromeV2({ overlay, hasBaseMap }: { overlay: Navigatio
     isMuted,
     setIsMuted,
     remainingDistance,
+    maneuverDistance,
     etaMinutes,
     arrived,
     reroutePending,
@@ -132,7 +133,7 @@ export function NavigationChromeV2({ overlay, hasBaseMap }: { overlay: Navigatio
               <View style={styles.instructionTextContainer}>
                 <Text style={styles.maneuverLabel}>{InstructionService.maneuverLabel(currentStep.type)}</Text>
                 <Text style={styles.instructionDistance}>
-                  {currentStep.distanceM > 0 ? InstructionService.formatDistance(currentStep.distanceM, settings.distanceUnit) : ''}
+                  {maneuverDistance > 0 ? InstructionService.formatDistance(maneuverDistance, settings.distanceUnit) : ''}
                 </Text>
                 <Text style={styles.roadNameText} numberOfLines={1} ellipsizeMode="tail">
                   {currentStep.roadName ?? InstructionService.ROAD_NAME_FALLBACK}
