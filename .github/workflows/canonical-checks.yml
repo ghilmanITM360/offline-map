@@ -1,0 +1,58 @@
+name: Canonical checks
+
+# Issue #59: reproducible automated checks for every PR targeting the canonical
+# release branch. Source-level checks only — see "Out of scope" in the issue.
+# This does NOT run on an emulator/device and must never be read as runtime,
+# device, or field verification.
+#
+# For maintainers:
+# - A red job here means one of typecheck/lint/Jest/script-suite/git-diff-check
+#   actually failed on this exact diff — treat it as a real blocker, not noise.
+# - A skipped job means the job before it in the same run failed (steps run in
+#   order and stop on first failure) — check the failed step above it, not the
+#   skipped one.
+# - This workflow has no required-check enforcement configured here; whether a
+#   red run blocks merge depends on this repo's branch protection settings
+#   (owner-configured, not controlled by this file).
+
+on:
+  pull_request:
+    branches:
+      - integration/ijtema-clean-baseline
+  push:
+    branches:
+      - integration/ijtema-clean-baseline
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.14.0'
+          cache: 'npm'
+
+      - name: Install dependencies (reproducible, from lockfile)
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Jest component tests
+        run: npm run test:components
+
+      - name: Routing / high-value script suite
+        run: npm test
+
+      - name: Whitespace / conflict-marker check
+        run: |
+          BASE_REF="${{ github.event.pull_request.base.ref || 'integration/ijtema-clean-baseline' }}"
+          git fetch origin "$BASE_REF" --depth=1
+          git diff --check "origin/$BASE_REF...HEAD"
