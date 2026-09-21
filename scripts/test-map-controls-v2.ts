@@ -63,4 +63,25 @@ assert(
   'HomeScreen must resolve a single routePreviewSheetDestination (directionsDestination ?? previewDestination) feeding one LocationSheet routePreview render',
 );
 
+// #65: the user-location pulse (Animated.loop on userPulseAnim) is purely decorative motion —
+// it must be skippable under the OS reduce-motion setting, and must re-evaluate live if that
+// setting flips while the app is open (its own async-resolution behavior is unit-tested in
+// useReducedMotion.test.ts).
+assert(
+  home.includes("from '../../viewmodels/useReducedMotion'"),
+  'HomeScreen must import the shared useReducedMotion hook',
+);
+assert(
+  home.includes('const reducedMotion = useReducedMotion();'),
+  'HomeScreen must read the OS reduce-motion setting',
+);
+assert(
+  /if \(reducedMotion\) return;\s*\n\s*const pulse = Animated\.loop\(/.test(home),
+  'The user-location pulse loop must be skipped when reducedMotion is on',
+);
+assert(
+  home.includes('}, [userPulseAnim, reducedMotion]);'),
+  'The pulse effect must re-run when the OS reduce-motion setting changes, so it stops if the setting flips on mid-session',
+);
+
 console.log('Map controls v2 checks passed.');

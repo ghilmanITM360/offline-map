@@ -29,13 +29,23 @@ interface LayersSheetProps {
 
 function OverlayRow({ label, value, onChange }: { label: string; value: boolean; onChange: (val: boolean) => void }) {
   return (
-    <Pressable style={styles.row} onPress={() => onChange(!value)}>
+    <Pressable
+      style={styles.row}
+      onPress={() => onChange(!value)}
+      accessibilityRole="switch"
+      accessibilityLabel={label}
+      accessibilityState={{ checked: value }}
+    >
       <Text style={styles.rowLabel}>{label}</Text>
       <Switch
         value={value}
         onValueChange={onChange}
         trackColor={{ false: staticColors.border, true: staticColors.info }}
         thumbColor={staticColors.white}
+        // The row Pressable already carries the switch's accessible role/label/state —
+        // without this, Android TalkBack focuses the inner Switch as a second, redundant
+        // stop and announces "switch, on/off" a second time right after the row itself.
+        importantForAccessibility="no-hide-descendants"
       />
     </Pressable>
   );
@@ -74,6 +84,9 @@ export function LayersSheet({
             <Pressable
               style={[styles.segment, mapType === 'standard' && styles.segmentActive]}
               onPress={() => onMapTypeChange('standard')}
+              accessibilityRole="button"
+              accessibilityLabel="Standard map type"
+              accessibilityState={{ selected: mapType === 'standard' }}
             >
               <MapIcon size={16} color={mapType === 'standard' ? staticColors.info : staticColors.iconMuted} />
               <Text style={[styles.segmentText, mapType === 'standard' && styles.segmentTextActive]}>Standard</Text>
@@ -81,6 +94,9 @@ export function LayersSheet({
             <Pressable
               style={[styles.segment, mapType === 'satellite' && styles.segmentActive]}
               onPress={() => onMapTypeChange('satellite')}
+              accessibilityRole="button"
+              accessibilityLabel="Satellite map type"
+              accessibilityState={{ selected: mapType === 'satellite' }}
             >
               <Satellite size={16} color={mapType === 'satellite' ? staticColors.info : staticColors.iconMuted} />
               <Text style={[styles.segmentText, mapType === 'satellite' && styles.segmentTextActive]}>Satellite</Text>

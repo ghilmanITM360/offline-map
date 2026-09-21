@@ -9,6 +9,7 @@ import { render, screen, userEvent } from './test-utils';
 import { LocationSheet } from '../views/components/map/LocationSheet';
 import { useDirectionsViewModel } from '../viewmodels/DirectionsViewModel';
 import { SearchService } from '../services/SearchService';
+import { LIGHT_THEME } from '../theme';
 import type { Place } from '../models/types';
 
 jest.useFakeTimers();
@@ -599,5 +600,50 @@ describe('LocationSheet (routePreview) — route ready CTA', () => {
 
     expect(calculateRoute).toHaveBeenCalledTimes(1);
     resolveCalculateRoute();
+  });
+});
+
+describe('LocationSheet (preview) — Save/Share/Details accessibility', () => {
+  function basePlaceSectionProps(overrides: Record<string, unknown> = {}) {
+    return {
+      mode: 'preview' as const,
+      place: candidatePlace,
+      theme: LIGHT_THEME,
+      entryPoints: [],
+      blockGates: [],
+      selectedEntryIdx: 0,
+      onSelectEntryIdx: jest.fn(),
+      walkingTimeMin: 5,
+      isFav: false,
+      onToggleFavorite: jest.fn(),
+      onSelectGate: jest.fn(),
+      onOpenDirections: jest.fn(),
+      onClose: jest.fn(),
+      onShowDetails: jest.fn(),
+      onCloseDetails: jest.fn(),
+      developerModeEnabled: false,
+      ...overrides,
+    };
+  }
+
+  test('#65: Save announces role, label, and unsaved state', async () => {
+    await render(<LocationSheet {...basePlaceSectionProps({ isFav: false })} />);
+
+    const save = screen.getByRole('button', { name: 'Save location' });
+    expect(save.props.accessibilityState).toMatchObject({ selected: false });
+  });
+
+  test('#65: Save announces saved state and the toggled-off label once favorited', async () => {
+    await render(<LocationSheet {...basePlaceSectionProps({ isFav: true })} />);
+
+    const save = screen.getByRole('button', { name: 'Remove from saved' });
+    expect(save.props.accessibilityState).toMatchObject({ selected: true });
+  });
+
+  test('#65: Share and Details announce role and label', async () => {
+    await render(<LocationSheet {...basePlaceSectionProps()} />);
+
+    expect(screen.getByRole('button', { name: 'Share location' })).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: 'Show details' })).toBeOnTheScreen();
   });
 });
