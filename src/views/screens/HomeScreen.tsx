@@ -59,6 +59,14 @@ import { DrawerParamList, RootStackParamList } from '../../navigation/RootNaviga
 import { RoutingService } from '../../services/RoutingService';
 import { MapConfigService } from '../../services/MapConfigService';
 import { resolveBaseMapMode } from '../../services/BaseMapModeResolver';
+import {
+  applyMapLoaded,
+  applyWatchdogTimeout,
+  beginMapLoadAttempt,
+  createInactiveWatchdogState,
+  MAP_LOAD_WATCHDOG_TIMEOUT_MS,
+  MapLoadWatchdogState,
+} from '../../services/MapLoadWatchdog';
 import { MapFeatureFlagsService } from '../../services/MapFeatureFlagsService';
 import { MapStartupController } from '../../services/MapStartupController';
 import { LocationAccessService } from '../../services/LocationAccessService';
@@ -205,6 +213,10 @@ export function HomeScreen() {
   const startupMapReadyReleasedRef = useRef(false);
   const mapReadyRef = useRef(false);
   const mountedRef = useRef(true);
+  // #28: current load-attempt id for MapLoadWatchdog — bumped each time a fresh Google load
+  // attempt is armed, so a stale timeout from a superseded attempt is ignored instead of
+  // firing OFFLINE_FALLBACK on top of newer state (see the watchdog effect below).
+  const mapLoadGenerationRef = useRef(0);
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const mapRuntimeStatus = MapConfigService.getRuntimeStatus();
@@ -213,8 +225,14 @@ export function HomeScreen() {
   const [outsideBannerDismissed, setOutsideBannerDismissed] = useState(false);
   const [layersSheetVisible, setLayersSheetVisible] = useState(false);
   const [mapReady, setMapReadyState] = useState(false);
-  const [googleBaseMapLoaded, setGoogleBaseMapLoaded] = useState(false);
-  const [mapLoadFailed, setMapLoadFailed] = useState(false);
+  // #28: single source of truth for Google-basemap load health — see MapLoadWatchdog.ts.
+  // googleBaseMapLoaded/mapLoadFailed below are derived, kept as named booleans because the
+  // rest of this component (and resolveBaseMapMode) reads them as such.
+  const [mapLoadWatchdog, setMapLoadWatchdog] = useState<MapLoadWatchdogState>(() =>
+    createInactiveWatchdogState(mapLoadGenerationRef.current),
+  );
+  const googleBaseMapLoaded = mapLoadWatchdog.state === 'GOOGLE_READY' || mapLoadWatchdog.state === 'GOOGLE_RECOVERED';
+  const mapLoadFailed = mapLoadWatchdog.state === 'OFFLINE_FALLBACK';
   const [topOverlayHeight, setTopOverlayHeight] = useState(0);
   const [isMapDragging, setIsMapDragging] = useState(false);
   const [recenterState, setRecenterState] = useState<'idle' | 'loading' | 'success' | 'failure'>('idle');
@@ -993,17 +1011,18 @@ export function HomeScreen() {
 
   useEffect(() => {
     if (!hasGoogleMapsKey || isOffline) {
-      setGoogleBaseMapLoaded(false);
-      setMapLoadFailed(false);
+      // Functional updater + state-check preserves referential equality (React bails out of
+      // the re-render) when already INACTIVE, matching the old plain-boolean early return.
+      setMapLoadWatchdog((prev) => (prev.state === 'INACTIVE' ? prev : createInactiveWatchdogState(mapLoadGenerationRef.current)));
       return;
     }
-    if (googleBaseMapLoaded) {
-      setMapLoadFailed(false);
-      return;
-    }
+    if (googleBaseMapLoaded) return;
+    const generation = mapLoadGenerationRef.current + 1;
+    mapLoadGenerationRef.current = generation;
+    setMapLoadWatchdog(beginMapLoadAttempt(generation));
     const timeout = setTimeout(() => {
-      setMapLoadFailed(true);
-    }, 7000);
+      setMapLoadWatchdog((prev) => applyWatchdogTimeout(prev, generation));
+    }, MAP_LOAD_WATCHDOG_TIMEOUT_MS);
     return () => clearTimeout(timeout);
   }, [googleBaseMapLoaded, hasGoogleMapsKey, isOffline]);
 
@@ -1014,8 +1033,7 @@ export function HomeScreen() {
     if (!wasOffline || isOffline || !hasGoogleMapsKey) return;
     // A connectivity recovery is the one explicit retry boundary. The previous
     // watchdog latch stays stable otherwise, preventing Google/local switching loops.
-    setGoogleBaseMapLoaded(false);
-    setMapLoadFailed(false);
+    setMapLoadWatchdog((prev) => (prev.state === 'INACTIVE' ? prev : createInactiveWatchdogState(mapLoadGenerationRef.current)));
   }, [hasGoogleMapsKey, isOffline]);
 
   useEffect(() => {
@@ -1275,10 +1293,11 @@ export function HomeScreen() {
             }}
             onMapLoaded={() => {
               setMapReadyState(true);
-              if (baseMapMode === 'GOOGLE_BASEMAP') {
-                setGoogleBaseMapLoaded(true);
-                setMapLoadFailed(false);
-              }
+              // #28: no longer gated on baseMapMode — a late success (state OFFLINE_FALLBACK)
+              // now recovers to GOOGLE_RECOVERED instead of being discarded. applyMapLoaded
+              // is itself a no-op while INACTIVE (offline / no key), so this can't pull the
+              // UI back into Google mode when the user has genuinely switched away from it.
+              setMapLoadWatchdog((prev) => applyMapLoaded(prev, mapLoadGenerationRef.current));
               mapLabelOverlayRef.current?.requestProjection();
             }}
             onRegionChange={() => {

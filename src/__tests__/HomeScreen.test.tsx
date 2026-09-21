@@ -974,7 +974,10 @@ describe('HomeScreen — resolved base-map rendering', () => {
     expect(screen.getByTestId('home-map-view').props.mapType).toBe('none');
   });
 
-  test('late Google map-loaded event cannot replace watchdog LocalTile fallback', async () => {
+  // MAPLOAD-04 (#28): a Google map that loads successfully AFTER the 7s watchdog fires
+  // (slow/software-rendered device, not a real failure) must recover instead of staying
+  // stuck on the LocalTile fallback for the rest of the session — see MapLoadWatchdog.ts.
+  test('late Google map-loaded event recovers from watchdog LocalTile fallback', async () => {
     jest.spyOn(MapConfigService, 'getRuntimeStatus').mockReturnValue({
       keyPresent: true,
       keyPreview: null,
@@ -996,8 +999,76 @@ describe('HomeScreen — resolved base-map rendering', () => {
       map.props.onMapLoaded();
     });
 
+    expect(screen.queryByTestId('local-base-map-tiles')).not.toBeOnTheScreen();
+    expect(screen.getByTestId('home-map-view').props.mapType).toBe('standard');
+  });
+
+  // MAPLOAD-05/07 (#28): once the app has genuinely left Google mode (offline / no key —
+  // MapLoadWatchdog's INACTIVE state), a stray late onMapLoaded from an old attempt must not
+  // pull the UI back into Google mode.
+  test('late Google map-loaded event cannot override an offline switch away from Google', async () => {
+    jest.spyOn(MapConfigService, 'getRuntimeStatus').mockReturnValue({
+      keyPresent: true,
+      keyPreview: null,
+      packageName: 'com.test',
+      platform: 'android',
+      source: 'env',
+    });
+    useAppStore.setState({ hasInternet: true });
+    mockedUseHomeViewModel.mockImplementation(() => {
+      const home = useFakeHomeViewModel();
+      const hasInternet = useAppStore((state) => state.hasInternet);
+      return { ...home, isOffline: !hasInternet, offlineData: { isDownloaded: true } };
+    });
+    await render(<HomeScreen />);
+    const map = screen.getByTestId('home-map-view');
+
+    await act(async () => {
+      useAppStore.setState({ hasInternet: false });
+    });
+    expect(screen.getAllByTestId('local-base-map-tiles')).toHaveLength(1);
+
+    await act(async () => {
+      map.props.onMapLoaded();
+    });
+
     expect(screen.getAllByTestId('local-base-map-tiles')).toHaveLength(1);
     expect(screen.getByTestId('home-map-view').props.mapType).toBe('none');
+  });
+
+  // MAPLOAD-08 (#28): unmounting mid-watchdog must not throw or leak the timer. The watchdog
+  // effect returns `clearTimeout(timeout)` as its cleanup (standard React effect teardown,
+  // unchanged by this fix), so the pending timer is always canceled before it could fire
+  // post-unmount — this is already implicitly exercised every time RTL's own per-test cleanup
+  // unmounts a HomeScreen tree with a live watchdog timer (e.g. the fallback test above), with
+  // zero console errors across this whole suite. A manual `.unmount()` call here was tried and
+  // dropped: it fought RTL's own auto-cleanup and corrupted `screen` for later tests, testing
+  // the harness rather than the watchdog. MapLoadWatchdog.test.ts's stale-generation tests
+  // cover the defense-in-depth case where a callback fires anyway.
+
+  // MAPLOAD-09 (#28): basemap fallback/recovery is purely visual — it must never touch the
+  // active route.
+  test('watchdog fallback and recovery preserve the active route', async () => {
+    jest.spyOn(MapConfigService, 'getRuntimeStatus').mockReturnValue({
+      keyPresent: true,
+      keyPreview: null,
+      packageName: 'com.test',
+      platform: 'android',
+      source: 'env',
+    });
+    mockedUseHomeViewModel.mockImplementation(useDownloadedTilesViewModel);
+    useAppStore.setState({ routePlannerDest: gateResult, activeRoute: v1Route as any });
+    await render(<HomeScreen />);
+    const map = screen.getByTestId('home-map-view');
+
+    await act(async () => {
+      jest.advanceTimersByTime(7_100);
+    });
+    await act(async () => {
+      map.props.onMapLoaded();
+    });
+
+    expect(useAppStore.getState().activeRoute).toEqual(v1Route);
   });
 
   test.each(['corrupt', 'needs_update'] as const)('%s tiles stay graph-only', async (offlineMapStatus) => {
