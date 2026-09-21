@@ -52,7 +52,6 @@ export function NavigationChromeV2({ overlay, hasBaseMap }: { overlay: Navigatio
     rerouteStatusMessage,
     snappedLocation,
     settings,
-    graphOnlyFallbackUsed,
     manualGateId,
     availableOutsideGates,
     retryOutsideRoute,
@@ -166,29 +165,26 @@ export function NavigationChromeV2({ overlay, hasBaseMap }: { overlay: Navigatio
           ) : null}
         </View>
 
+        {/* Single top safety/status slot — navigation safety (GPS lost/weak) outranks
+            rerouting status, which outranks basemap degradation. Never stack more than one. */}
         <View testID="navigation-subordinate-surfaces" style={styles.topStatusStack}>
-          {gpsSignalState === 'GPS_LOST' && (
+          {gpsSignalState === 'GPS_LOST' ? (
             <View style={styles.weakGpsBanner}>
               <Text style={styles.weakGpsText}>Searching for GPS signal. Your position may be out of date.</Text>
             </View>
-          )}
-          {isWeakGps && (
+          ) : isWeakGps ? (
             <View style={styles.weakGpsBanner}>
               <Text style={styles.weakGpsText}>Weak GPS signal detected. Route updates may be slower.</Text>
             </View>
-          )}
-          {rerouteStatusMessage && !reroutePending && (
+          ) : rerouteStatusMessage && !reroutePending ? (
             <View style={styles.rerouteHintBanner}>
               <Text style={styles.rerouteHintText}>{rerouteStatusMessage}</Text>
             </View>
-          )}
-          {!hasBaseMap && (
+          ) : !hasBaseMap ? (
             <View style={styles.mapUnavailableBanner}>
-              <Text style={styles.mapUnavailableText}>
-                {graphOnlyFallbackUsed ? 'Graph-only v2 map is active. Base map tiles are unavailable.' : 'Base map tiles are unavailable.'}
-              </Text>
+              <Text style={styles.mapUnavailableText}>Base map unavailable. Offline route guidance continues.</Text>
             </View>
-          )}
+          ) : null}
           {route.metadata.startedOutside && route.metadata.entryGateId && (
             <View style={styles.v2EntryGateBanner}>
               <Text style={styles.v2EntryGateText}>Route starts from {route.origin.label}.</Text>

@@ -1577,14 +1577,10 @@ export function HomeScreen() {
 
         {mode !== 'NAVIGATION' && (isOffline || showMapWarningBanner || showOutsideBanner) && (
           <View style={[styles.bannerStack, { top: bannerStackTop }]}>
-            {isOffline && (
-              <View style={[styles.offlineIndicator, styles.bannerStackItem]}>
-                <WifiOff size={14} color="#FFFFFF" />
-                <Text style={styles.offlineText}>Offline</Text>
-              </View>
-            )}
-
-            {showMapWarningBanner && (
+            {/* Basemap/provider degradation outranks passive offline status — the two never
+                stack (showMapWarningBanner's own copy already covers the offline case).
+                Route/gate context (showOutsideBanner) stays a separate, non-competing slot. */}
+            {showMapWarningBanner ? (
               <View style={[styles.mapWarningBanner, styles.bannerStackItem]}>
                 <Text style={styles.mapWarningText}>
                   {hasGoogleMapsKey && mapLoadFailed
@@ -1594,7 +1590,12 @@ export function HomeScreen() {
                       : MapConfigService.getMissingGoogleMapsMessage()}
                 </Text>
               </View>
-            )}
+            ) : isOffline ? (
+              <View style={[styles.offlineIndicator, styles.bannerStackItem]}>
+                <WifiOff size={14} color="#FFFFFF" />
+                <Text style={styles.offlineText}>Offline</Text>
+              </View>
+            ) : null}
 
             {showOutsideBanner && (
               <Animated.View

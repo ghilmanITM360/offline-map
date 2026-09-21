@@ -75,12 +75,14 @@ assert(
   'Navigation v2 auto-follow effect must keep camera recenter on the snapped location.',
 );
 assert(
-  navigationChromeSource.includes('{isWeakGps && (') &&
+  // #66: isWeakGps/rerouteStatusMessage moved from independent `&&` blocks into one
+  // priority ternary (see test-gps-signal-loss-v2.ts) — same content, no longer stackable.
+  navigationChromeSource.includes(') : isWeakGps ? (') &&
     navigationChromeSource.includes('Weak GPS signal detected. Route updates may be slower.'),
   'Navigation v2 weak GPS banner must stay visible from view model state.',
 );
 assert(
-  navigationChromeSource.includes('{rerouteStatusMessage && !reroutePending && (') &&
+  navigationChromeSource.includes(') : rerouteStatusMessage && !reroutePending ? (') &&
     navigationChromeSource.includes('<Text style={styles.rerouteHintText}>{rerouteStatusMessage}</Text>'),
   'Navigation v2 reroute status message must stay rendered when reroute settles.',
 );

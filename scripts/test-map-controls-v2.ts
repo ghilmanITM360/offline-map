@@ -84,4 +84,21 @@ assert(
   'The pulse effect must re-run when the OS reduce-motion setting changes, so it stops if the setting flips on mid-session',
 );
 
+// #66: basemap/provider degradation (showMapWarningBanner) and passive offline status
+// (isOffline) must never stack as two separate banners — they must share one status slot,
+// with basemap/provider degradation taking priority (its own copy already covers the offline
+// case). Route/gate context (showOutsideBanner) stays a separate, non-competing slot.
+assert(
+  !/\{isOffline && \(\s*<View style=\{\[styles\.offlineIndicator/.test(home),
+  'isOffline must not render its own independent banner block — it must be folded into the single-status ternary with showMapWarningBanner',
+);
+assert(
+  home.includes('{showMapWarningBanner ? ('),
+  'showMapWarningBanner must drive a ternary (single status slot), not an independent && block',
+);
+assert(
+  home.includes(') : isOffline ? ('),
+  'isOffline must be the ternary fallback after showMapWarningBanner, so the two statuses never stack',
+);
+
 console.log('Map controls v2 checks passed.');

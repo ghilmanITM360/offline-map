@@ -111,7 +111,52 @@ describe('NavigationChromeV2 — direct outside guide', () => {
     expect(stackContent.getByTestId('navigation-maneuver-surface')).toBeOnTheScreen();
     expect(stackContent.getByTestId('navigation-subordinate-surfaces')).toBeOnTheScreen();
     expect(stackContent.getByText('Offline walking route')).toBeOnTheScreen();
-    expect(stackContent.getByText(/Base map tiles are unavailable/)).toBeOnTheScreen();
+    expect(stackContent.getByText('Base map unavailable. Offline route guidance continues.')).toBeOnTheScreen();
+  });
+
+  test('#66: shows only the highest-priority status when GPS lost, reroute, and basemap loss all apply', async () => {
+    await render(
+      <NavigationChromeV2
+        overlay={baseOverlay({ gpsSignalState: 'GPS_LOST', isWeakGps: true, rerouteStatusMessage: 'Recalculating your route' })}
+        hasBaseMap={false}
+      />,
+    );
+
+    const stack = screen.getByTestId('navigation-top-stack');
+    const stackContent = within(stack);
+    expect(stackContent.getByText('Searching for GPS signal. Your position may be out of date.')).toBeOnTheScreen();
+    expect(stackContent.queryByText('Weak GPS signal detected. Route updates may be slower.')).not.toBeOnTheScreen();
+    expect(stackContent.queryByText('Recalculating your route')).not.toBeOnTheScreen();
+    expect(stackContent.queryByText('Base map unavailable. Offline route guidance continues.')).not.toBeOnTheScreen();
+  });
+
+  test('#66: weak GPS outranks reroute status and basemap loss when GPS is not fully lost', async () => {
+    await render(
+      <NavigationChromeV2
+        overlay={baseOverlay({ isWeakGps: true, rerouteStatusMessage: 'Recalculating your route' })}
+        hasBaseMap={false}
+      />,
+    );
+
+    const stack = screen.getByTestId('navigation-top-stack');
+    const stackContent = within(stack);
+    expect(stackContent.getByText('Weak GPS signal detected. Route updates may be slower.')).toBeOnTheScreen();
+    expect(stackContent.queryByText('Recalculating your route')).not.toBeOnTheScreen();
+    expect(stackContent.queryByText('Base map unavailable. Offline route guidance continues.')).not.toBeOnTheScreen();
+  });
+
+  test('#66: reroute status outranks basemap loss', async () => {
+    await render(
+      <NavigationChromeV2
+        overlay={baseOverlay({ rerouteStatusMessage: 'Recalculating your route' })}
+        hasBaseMap={false}
+      />,
+    );
+
+    const stack = screen.getByTestId('navigation-top-stack');
+    const stackContent = within(stack);
+    expect(stackContent.getByText('Recalculating your route')).toBeOnTheScreen();
+    expect(stackContent.queryByText('Base map unavailable. Offline route guidance continues.')).not.toBeOnTheScreen();
   });
 
   test('shows accurate road provider identity while outside leg is active', async () => {
