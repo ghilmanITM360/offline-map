@@ -198,6 +198,13 @@ export function destinationToRoutingV2(route: V2ActiveRoute): RoutingDestination
   if (route.destination.type === 'rasta') {
     return { type: 'rasta', rastaId: route.destination.rastaId ?? route.destination.entryNodeId?.split('-')[0] ?? '' };
   }
+  // NEW-02/AUD-02: without this branch, a special_route destination (e.g. Shahr-e-Pindal)
+  // silently fell through to the block case below with an empty blockId — a reroute request
+  // built from the session's own current destination would reinterpret it as a different,
+  // nonexistent destination instead of failing loudly or routing correctly.
+  if (route.destination.type === 'special_route') {
+    return { type: 'special_route', routeId: route.destination.specialRouteId ?? '' };
+  }
   return { type: 'block', blockId: route.destination.blockId ?? '' };
 }
 
