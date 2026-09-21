@@ -82,6 +82,7 @@ import { LayersSheet } from '../components/map/LayersSheet';
 import { useNavigationOverlayV2 } from '../../viewmodels/useNavigationOverlayV2';
 import { useNavigationOverlayV1 } from '../../viewmodels/useNavigationOverlayV1';
 import { useMapMode } from '../../viewmodels/useMapMode';
+import { useReducedMotion } from '../../viewmodels/useReducedMotion';
 import { NavigationMapLayersV2 } from '../components/navigation/NavigationMapLayersV2';
 import { OutsideRoutePolyline } from '../components/navigation/OutsideRoutePolyline';
 import { NavigationChromeV2 } from '../components/navigation/NavigationChromeV2';
@@ -966,7 +967,9 @@ export function HomeScreen() {
     }).start();
   }, [isMapDragging, chipsAnim]);
 
+  const reducedMotion = useReducedMotion();
   useEffect(() => {
+    if (reducedMotion) return;
     const pulse = Animated.loop(
       Animated.sequence([
         Animated.timing(userPulseAnim, { toValue: 1, duration: 1100, useNativeDriver: true }),
@@ -975,7 +978,7 @@ export function HomeScreen() {
     );
     pulse.start();
     return () => pulse.stop();
-  }, [userPulseAnim]);
+  }, [userPulseAnim, reducedMotion]);
 
   // First-time "you are here" education — fires once, the first time the camera
   // actually enters FOLLOWING_USER (cold-launch auto-follow or a recenter tap both

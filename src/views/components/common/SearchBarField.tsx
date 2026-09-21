@@ -25,6 +25,7 @@ export const SearchBarField = forwardRef<TextInput, TextInputProps>(function Sea
       style={[styles.input, style]}
       placeholderTextColor={staticColors.textMuted}
       returnKeyType="search"
+      maxFontSizeMultiplier={1.8}
       {...props}
     />
   );
