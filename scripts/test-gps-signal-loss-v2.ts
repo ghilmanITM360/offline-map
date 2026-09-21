@@ -175,10 +175,13 @@ assert(
   gpsLostBannerSnippet.includes('styles.weakGpsBanner') && gpsLostBannerSnippet.includes('styles.weakGpsText'),
   'The GPS_LOST banner must reuse the existing weak-GPS banner styles rather than introducing a new UI surface',
 );
+// #66: GPS_LOST and weak-GPS must never stack as two banners — they share one priority
+// slot (GPS_LOST first), so the weak-GPS branch is now part of that ternary, not an
+// independent `&&` block. Its text/styles are otherwise unchanged (asserted above).
 assert(
-  navigationChromeSource.includes('{isWeakGps && (') &&
+  navigationChromeSource.includes(') : isWeakGps ? (') &&
     navigationChromeSource.includes('Weak GPS signal detected. Route updates may be slower.'),
-  'The pre-existing weak-GPS banner must remain untouched alongside the new GPS_LOST banner',
+  'The pre-existing weak-GPS banner content must remain, as the next branch of the GPS_LOST priority ternary',
 );
 
 console.log('GPS signal-loss wiring checks passed.');

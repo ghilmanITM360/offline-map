@@ -46,7 +46,6 @@ export function NavigationChromeV1({ overlay, hasBaseMap }: { overlay: Navigatio
     rerouteStatusMessage,
     snappedLocation,
     settings,
-    graphOnlyFallbackUsed,
     requestNavigationExit,
     completeArrivalNavigation,
     setIsAutoFollowing,
@@ -126,24 +125,22 @@ export function NavigationChromeV1({ overlay, hasBaseMap }: { overlay: Navigatio
             </Pressable>
           </View>
         ) : null}
+        {/* Single top safety/status slot — weak-GPS status outranks rerouting status, which
+            outranks basemap degradation. Never stack more than one. */}
         <View style={styles.topStatusStack}>
-          {isWeakGps && (
+          {isWeakGps ? (
             <View style={styles.weakGpsBanner}>
               <Text style={styles.weakGpsText}>Weak GPS signal detected. Route updates may be slower.</Text>
             </View>
-          )}
-          {rerouteStatusMessage && !reroutePending && (
+          ) : rerouteStatusMessage && !reroutePending ? (
             <View style={styles.rerouteHintBanner}>
               <Text style={styles.rerouteHintText}>{rerouteStatusMessage}</Text>
             </View>
-          )}
-          {(!hasBaseMap || graphOnlyFallbackUsed) && (
+          ) : !hasBaseMap ? (
             <View style={styles.mapUnavailableBanner}>
-              <Text style={styles.mapUnavailableText}>
-                {graphOnlyFallbackUsed ? 'Graph-only map is active. Base map tiles are unavailable.' : 'Base map tiles are unavailable.'}
-              </Text>
+              <Text style={styles.mapUnavailableText}>Base map unavailable. Offline route guidance continues.</Text>
             </View>
-          )}
+          ) : null}
         </View>
       </AnimatedSafeAreaView>
 
