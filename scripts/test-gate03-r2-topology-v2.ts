@@ -85,7 +85,7 @@ for (let seq = 1; seq < 5; seq += 1) {
 
 // Other gates must be unaffected by this change. GATE_18's connectorStatus was later
 // (deliberately) changed from the auto-evaluated default to 'ground_truth_required' — see
-// gates.ts and docs/CURRENT_HANDOFF.md "Gate reconciliation" — because it has no valid graph
+// gates.ts and docs/KNOWN_LIMITATIONS_AND_OWNER_ACTIONS.md "Gate reconciliation" — because it has no valid graph
 // connector within 320m of any internal path; declaring that known-blocked status, instead of
 // leaving it looking auto-evaluated, is what the Gate 17-vs-18 directory count fix corrected.
 // This assertion pins the CURRENT value; what must stay true regardless is that the gate

@@ -28,7 +28,7 @@ assert(
 // entry point again — previously the primary button unconditionally did
 // onClose() for every destination, and handleStartNavigation didn't exist at
 // all, so a v1 place could never start navigation anywhere in the app. See
-// docs/ROUTING_NAVIGATION_FIX_REPORT.md Phase 4. It no longer pushes a
+// docs/OFFLINE_NAVIGATION_AND_ROUTING.md Phase 4. It no longer pushes a
 // NavigationScreen either way (v1 or v2) — starting navigation always just
 // reveals the map, and the in-place NavigationOverlayV1/V2 takes over from there.
 assert(

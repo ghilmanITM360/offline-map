@@ -6,7 +6,7 @@
 import { strict as assert } from 'node:assert';
 import { readFileSync } from 'node:fs';
 
-// docs/SECURITY_AUDIT.md finding C2: app.config.js feeds the real (leaked) Google Maps
+// docs/RELEASE_SECURITY_PRIVACY.md ("Android Google Maps key" section): app.config.js feeds the real (leaked) Google Maps
 // API key into Expo's built-in withGoogleMapsApiKey plugin, which bakes it literally into
 // AndroidManifest.xml on every `expo prebuild`. The committed manifest's ${googleMapsApiKey}
 // placeholder (resolved safely at Gradle build time from .env, never committed) only holds

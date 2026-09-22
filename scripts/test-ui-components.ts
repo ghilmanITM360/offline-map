@@ -14,7 +14,7 @@ const settings = readFileSync('src/views/screens/SettingsScreen.tsx', 'utf8');
 const guide = readFileSync('src/views/screens/AppGuideScreen.tsx', 'utf8');
 const drawer = readFileSync('src/views/components/CustomDrawer.tsx', 'utf8');
 const permission = readFileSync('src/views/screens/PermissionScreen.tsx', 'utf8');
-// v2 live navigation chrome now renders in-place on Home (see docs/MAP_EXPERIENCE_AUDIT.md) —
+// v2 live navigation chrome now renders in-place on Home (see docs/ARCHITECTURE.md) —
 // include it so the raw-ID leak check below still covers it.
 const navigationChromeV2 = readFileSync('src/views/components/navigation/NavigationChromeV2.tsx', 'utf8');
 

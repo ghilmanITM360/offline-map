@@ -737,7 +737,7 @@ export function HomeScreen() {
   const previewVisibleRastas = routePreviewDeclutterActive ? [] : v2MapLayers.visibleRastas;
   const previewVisibleSpecialRoutes = routePreviewDeclutterActive ? [] : v2MapLayers.specialRoutes;
 
-  // Feeds the single shared MapLabelOverlay (see docs/TARGETED_FIX_SPRINT_REPORT.md
+  // Feeds the single shared MapLabelOverlay (see docs/ARCHITECTURE.md
   // Phase 5 for why label text moved out of Marker children). LOD text logic mirrors
   // what GateLayer computed inline before the refactor.
   const mapLabelItems = useMemo<MapLabelItem[]>(() => {

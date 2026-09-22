@@ -43,7 +43,7 @@ const activeRoute = V2NavigationAdapter.fromPreview({
 // activeRoute.coordinates. Every instruction must resolve to a coordinate
 // close to its own `coordinate` field, and the sequence must never regress
 // backward (each instruction happens later on the route than the last).
-// See docs/ROUTING_NAVIGATION_FIX_REPORT.md Phase 2.
+// See docs/OFFLINE_NAVIGATION_AND_ROUTING.md Phase 2.
 let previousRouteIndex = -1;
 activeRoute.instructions.forEach((instruction, index) => {
   assert.ok(

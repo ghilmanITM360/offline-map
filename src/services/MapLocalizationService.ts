@@ -8,7 +8,7 @@ import { LocalizedLabel } from '../data/ijtema/types';
 export type MapLanguage = 'en' | 'ur';
 
 // Thin wrapper over the already-bilingual LocalizedLabel data (blocks.ts/gates.ts/
-// rastas.ts/specialRoutes.ts/centralPoints.ts) — see docs/MAP_EXPERIENCE_AUDIT.md
+// rastas.ts/specialRoutes.ts/centralPoints.ts) — see docs/ARCHITECTURE.md
 // section 3: no data migration needed, only a rendering-layer consumer.
 export class MapLocalizationService {
   static getLocalizedName(name: LocalizedLabel, language: MapLanguage = 'en'): string {

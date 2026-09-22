@@ -12,7 +12,7 @@ import { haversineM } from '../utils/SpatialGrid';
 /**
  * Applies only to the graph-routed street-graph segment of an outside leg,
  * never blended with the beeline-fallback distance — matches Decision 2 in
- * docs/OFFLINE_OUTSIDE_ROUTING_FINAL_SPEC.md. Enforcement here is
+ * docs/OFFLINE_NAVIGATION_AND_ROUTING.md. Enforcement here is
  * warn-log+flag (return `sanityCapExceeded`, don't reject), the FINAL_SPEC's
  * documented production behavior; scripts/test-outside-street-routing-v2.ts
  * hard-fails on it instead, as the "hard-fail in CI" half of that model.
@@ -211,7 +211,7 @@ export const selectStreetGraphOutsidePath = (
  * True when `coordinate` falls inside the bundled street-graph's extraction
  * radius (its metadata records the exact center/radius the OSM extract used)
  * — the boundary between "route on the street graph" and "beeline fallback"
- * per Decision 1 in docs/OFFLINE_OUTSIDE_ROUTING_FINAL_SPEC.md.
+ * per Decision 1 in docs/OFFLINE_NAVIGATION_AND_ROUTING.md.
  */
 export const isWithinStreetGraphRadius = (coordinate: Coordinate): boolean => {
   const { metadata } = getStreetNavigationGraph();

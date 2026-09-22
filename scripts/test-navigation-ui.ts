@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { staticColors } from '../src/theme';
 
 // Both v1 and v2 live navigation now run in-place on HomeScreen's persistent MapView —
-// neither is a separately pushed NavigationScreen anymore (see docs/MAP_EXPERIENCE_AUDIT.md).
+// neither is a separately pushed NavigationScreen anymore (see docs/ARCHITECTURE.md).
 // v1's runtime lives in NavigationViewModel (state/effects) + useNavigationOverlayV1 (camera) +
 // NavigationMapLayersV1/NavigationChromeV1 (rendering). v2's equivalent is
 // useNavigationOverlayV2/NavigationMapLayersV2/NavigationChromeV2. Since both hooks now run
@@ -31,7 +31,7 @@ assert(navMapLayers.includes('mapLayers.rastas') && navMapLayers.includes('Rasta
 assert(navMapLayers.includes('mapLayers.specialRoutes') && navMapLayers.includes('SpecialRouteLayer'), 'v2 navigation must render special route lines');
 // Nav-mode gate labels moved out of NavigationMapLayersV2 (no more Marker-snapshot
 // GateLayer there) into HomeScreen's shared MapLabelOverlay, built from
-// navOverlay.mapLayers.gates — see docs/TARGETED_FIX_SPRINT_REPORT.md Phase 5.
+// navOverlay.mapLayers.gates — see docs/ARCHITECTURE.md Phase 5.
 assert(!navMapLayers.includes('GateLayer'), 'v2 nav map layers must not render its own GateLayer (gate labels moved to the shared MapLabelOverlay)');
 assert(homeScreen.includes('navOverlay.mapLayers.gates.map('), 'v2 navigation must render gate context via HomeScreen\'s shared mapLabelItems/MapLabelOverlay');
 assert(navOverlay.includes('graphOnlyFallbackUsed'), 'v2 navigation must expose graph-only fallback status');
@@ -42,7 +42,7 @@ assert(navOverlay.includes('graphOnlyFallbackUsed'), 'v2 navigation must expose 
 // other consumer, it's just not read by the chrome's own status banner anymore.
 assert(navChrome.includes('Base map unavailable. Offline route guidance continues.'), 'v2 navigation must show a clear, user-facing basemap-unavailable message');
 
-// Phase 8 (docs/ROUTING_NAVIGATION_FIX_REPORT.md): route.coordinates was moved
+// Phase 8 (docs/OFFLINE_NAVIGATION_AND_ROUTING.md): route.coordinates was moved
 // into a useMemo above the `!route` early return (Rules of Hooks), so the
 // reference is now optional-chained (`route?.coordinates`).
 assert(

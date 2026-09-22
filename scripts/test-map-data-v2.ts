@@ -28,7 +28,7 @@ const BROAD_KARACHI_BOUNDS = {
 const internalPointIdPattern = /\b(?:R\d+-\d+|SPNP(?:-\d+)?|SPSP(?:-\d+)?|SPWP(?:-\d+)?|P\d+)\b/;
 const activeGateNumbers = [1, 2, 3, 4, 5, 7, 8, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22];
 const nonexistentGateNumbers = [6, 9, 10, 11];
-const outsideRoutingDoc = readFileSync(join(process.cwd(), 'docs/OUTSIDE_IJTEMA_ROUTING_RULE.md'), 'utf8');
+const outsideRoutingDoc = readFileSync(join(process.cwd(), 'docs/OFFLINE_NAVIGATION_AND_ROUTING.md'), 'utf8');
 
 const hasGraphConnection = (gate: Gate): boolean => (IJTEMA_NAVIGATION_GRAPH_V2.adjacency[gate.id] ?? []).length > 0;
 
@@ -232,15 +232,15 @@ assert.equal(IJTEMA_OFFICIAL_ENTRY_POLICY.outsideUser.mustNotSnapDirectlyToInter
 assert.equal(IJTEMA_OFFICIAL_ENTRY_POLICY.outsideUser.internalRouteStartsFromSelectedGate, true, 'Outside-user internal route must begin at selected/nearest gate');
 assert.equal(IJTEMA_OFFICIAL_ENTRY_POLICY.insideUser.maySnapToInternalGraph, true, 'Inside-user rule must allow internal graph snapping');
 assert(
-  outsideRoutingDoc.includes('Outside user -> nearest official gate -> internal graph -> destination block/rasta/gate'),
+  outsideRoutingDoc.includes('Outside users must enter through an official gate'),
   'Outside-user routing rule must be documented with the official gate flow',
 );
 assert(
-  outsideRoutingDoc.includes('Inside user -> nearest internal rasta/graph node -> destination'),
+  outsideRoutingDoc.includes('Inside users may snap directly to the internal graph'),
   'Inside-user routing rule must be documented with the internal graph flow',
 );
 assert(
-  outsideRoutingDoc.includes('Never suggest missing-coordinate gates as routable entry choices'),
+  outsideRoutingDoc.includes('A gate with no confirmed coordinate must never be offered as a routable entry choice'),
   'Outside-user routing documentation must prohibit missing-coordinate gate suggestions',
 );
 

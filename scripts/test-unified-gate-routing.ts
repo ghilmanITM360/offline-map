@@ -22,7 +22,7 @@ process.env.EXPO_PUBLIC_USE_IJTEMA_OUTSIDE_STREET_GRAPH = 'false';
 // destination. For a point at GATE_08 with a destination near the
 // GATE_14/15/16 cluster, these disagreed: banner said GATE_08, routing said
 // GATE_16 — reproduced live and documented in
-// docs/TARGETED_FIX_SPRINT_REPORT.md as the "Gate 08 vs Gate 15/14
+// docs/ARCHITECTURE.md as the "Gate 08 vs Gate 15/14
 // dual-implementation mismatch".
 const gate08Coordinate = IJTEMA_GATES.find((gate) => gate.id === 'GATE_08')!.coordinate!;
 const pointAtGate08 = { latitude: gate08Coordinate.lat, longitude: gate08Coordinate.lng };

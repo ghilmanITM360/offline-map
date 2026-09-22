@@ -146,7 +146,7 @@ function getLabelStyles(item: MapLabelItem): { container: ViewStyle[]; text: any
 
 /**
  * Replaces react-native-maps Marker-snapshot label rendering with a plain overlay
- * positioned via MapView.pointForCoordinate — see docs/TARGETED_FIX_SPRINT_REPORT.md
+ * positioned via MapView.pointForCoordinate — see docs/ARCHITECTURE.md
  * (Phase 5) for why: Android's native custom-marker-view snapshot capture hard-clips
  * dynamically-sized label text under this app's New Architecture runtime, and no
  * JS/style-level fix exists. pointForCoordinate goes through a different native path

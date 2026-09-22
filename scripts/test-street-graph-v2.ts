@@ -12,7 +12,7 @@ import { PEDESTRIAN_PROFILE_VERSION } from './pedestrianProfile';
 
 const GATE_CONNECTOR_MAX_M = 320;
 // Same distance sanity-cap ratio approved for graph-routed segments in
-// docs/OFFLINE_OUTSIDE_ROUTING_FINAL_SPEC.md — an edge's travel distance vs.
+// docs/OFFLINE_NAVIGATION_AND_ROUTING.md — an edge's travel distance vs.
 // the straight-line distance between its endpoints should never exceed this,
 // or it signals corrupted/out-of-order geometry (the RASTA_06-class bug
 // dataIssues.ts already guards against for the venue graph).

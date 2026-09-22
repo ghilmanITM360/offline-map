@@ -58,7 +58,7 @@ export class SnapToRoadService {
    * @deprecated Unused — no call sites in src/ (verified via repo-wide grep, 2026-07).
    * Use SnapToRoadService.snapVisualToRoad() directly instead. Kept only to avoid
    * a breaking API-signature change; safe to delete in a follow-up cleanup PR.
-   * See docs/LEGACY_NAVIGATION.md.
+   * See docs/KNOWN_LIMITATIONS_AND_OWNER_ACTIONS.md.
    */
   static snapToRoad(coord: Coordinate): Coordinate {
     return this.snapVisualToRoad(coord, 20);

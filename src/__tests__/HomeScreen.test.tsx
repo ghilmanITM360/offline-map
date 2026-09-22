@@ -1319,7 +1319,7 @@ describe('HomeScreen — route preview "Start Navigation" (real handler wiring)'
 
     expect(useAppStore.getState().isNavigating).toBe(true);
     // v2 navigation now transforms Home's own persistent map in place instead of pushing a
-    // separate Navigation screen — see docs/MAP_EXPERIENCE_AUDIT.md.
+    // separate Navigation screen — see docs/ARCHITECTURE.md.
     expect(navigateSpy).not.toHaveBeenCalledWith('Navigation');
   });
 });
