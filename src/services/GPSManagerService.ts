@@ -108,6 +108,11 @@ class GPSManager {
 
     const { status } = await Location.getForegroundPermissionsAsync();
     if (status !== 'granted') return;
+    // Services-off check (LOC-01/#45): watchPositionAsync's underlying FusedLocationProviderClient
+    // request triggers a native Play Services "enable location" resolution dialog when services are
+    // off. Each dismissal counts as an app resume, which re-runs reconcileSubscription() and calls
+    // start() again — an unbounded dialog-reappears-on-dismiss loop. Bail out before the native call.
+    if (!(await Location.hasServicesEnabledAsync())) return;
     // Fire-and-forget: clearSkippedLocationPermissionOnGrant never throws (errors are logged
     // and swallowed internally) and starting the actual GPS watch below must not wait on it.
     void OnboardingStatusService.clearSkippedLocationPermissionOnGrant(true);
