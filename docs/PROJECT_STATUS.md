@@ -4,7 +4,7 @@ Current snapshot only. This file is replaced on each update, not appended to —
 
 **Last updated:** 2026-09-22
 **Canonical branch:** `integration/ijtema-clean-baseline`
-**Current HEAD:** `1c0d1a2` (docs consolidation, #53) — this cycle's asset cleanup (#52) will advance it further once merged
+**Current HEAD:** `1a5cfd8` (asset cleanup, #52)
 
 ## Readiness
 
@@ -34,11 +34,8 @@ Not yet run this cycle: Android release build sanity check, physical-device and 
 **P2:**
 - #43, #44 — Gate 18/19 graph connectors (blocked on field survey, owner-required)
 - #47 — Privacy / Terms / Support links (owner action)
-- #55 — Performance/reliability review (not started this cycle)
+- #55 — Performance/reliability review (SOURCE-level pass done, clean, no P0/P1 found; EMULATOR-tier pass still needed for 5 items — search latency, route generation, map rendering, GPS loss/recovery, network loss)
 - #57 — Final field-test APK + evidence pack (last phase, depends on everything else)
-
-**P3 (repository hygiene):**
-- #52 — Asset/image cleanup (docs/qa-evidence deletion PR open this cycle)
 
 **Tracker:**
 - #63 — Production Readiness audit tracker (keep current as issues close)
@@ -51,6 +48,7 @@ Not yet run this cycle: Android release build sanity check, physical-device and 
 - #62 — Dependency security triage (independently re-verified: 18 advisories, all build-tool-only/non-shipped, accepted as documented release exception, review date 2026-12-31)
 - #56 — AGENTS.md/CLAUDE.md standardization (PR #86, merged)
 - #53 — Markdown consolidation, 54 → 11 live docs (PR #87, merged)
+- #52 — Asset cleanup, 12 stale qa-evidence screenshots deleted, 8.1MB (PR #88, merged)
 - #51 — Stash/worktree reconciliation (neither artifact present in this repo environment)
 - #54 — Security review reconciliation
 - #50, #25 — Stale PR/repo-cleanup reconciliation
@@ -76,8 +74,8 @@ Not yet run this cycle: Android release build sanity check, physical-device and 
 
 ## In progress
 
-#52 — deleting the 12 stale `docs/qa-evidence/*.png` screenshots (8.1MB, unblocked now that #53 retired the 2 docs referencing them); everything else in that inventory (native icons/splash/markers) stays, it's runtime/config-referenced.
+#55 — EMULATOR-tier verification pass (5 items flagged above); requires a dedicated emulator session, not yet run.
 
 ## Next
 
-Merge #52's asset-cleanup PR → #55 performance review → final validation pass → #57 field-test APK build.
+#55 emulator-tier pass → final validation pass → #57 field-test APK build.
