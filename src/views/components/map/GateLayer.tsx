@@ -27,7 +27,7 @@ interface GateLayerProps {
 }
 
 /** Renders gate touch-target dots. Label text (Gate NN / GNN / NN) is rendered by
- * MapLabelOverlay instead of as Marker children — see docs/TARGETED_FIX_SPRINT_REPORT.md
+ * MapLabelOverlay instead of as Marker children — see docs/ARCHITECTURE.md
  * (Phase 5) for why: react-native-maps' native Android marker-snapshot capture hard-clips
  * dynamically-sized label text under this app's New Architecture runtime, with no
  * JS/style-level fix. A dot is fixed-size and unaffected, so it stays a Marker (native

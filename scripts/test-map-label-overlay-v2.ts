@@ -6,7 +6,7 @@
 import { strict as assert } from 'node:assert';
 import { readFileSync } from 'node:fs';
 
-// Verifies the Marker-snapshot label rendering removal (docs/TARGETED_FIX_SPRINT_REPORT.md
+// Verifies the Marker-snapshot label rendering removal (docs/ARCHITECTURE.md
 // Phase 5) stuck: no layer component renders label text inside a Marker anymore, and
 // HomeScreen renders exactly one shared MapLabelOverlay instead.
 

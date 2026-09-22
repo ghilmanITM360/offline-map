@@ -14,7 +14,7 @@ const blockLayer = readFileSync('src/views/components/map/BlockLayer.tsx', 'utf8
 const mapLayerStyles = readFileSync('src/views/components/map/mapLayerStyles.ts', 'utf8');
 // Block label rendering (including the Urdu secondary line's selected-state color) moved
 // out of BlockLayer.tsx into MapLabelOverlay.tsx's getLabelStyles, fed by HomeScreen's
-// mapLabelItems — see docs/TARGETED_FIX_SPRINT_REPORT.md Phase 5.
+// mapLabelItems — see docs/ARCHITECTURE.md Phase 5.
 const mapLabelOverlay = readFileSync('src/views/components/map/MapLabelOverlay.tsx', 'utf8');
 const home = readFileSync('src/views/screens/HomeScreen.tsx', 'utf8');
 

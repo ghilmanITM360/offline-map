@@ -77,7 +77,7 @@ const angleDiffDeg = (bearing1: number, bearing2: number): number => {
  * from every rendering-fidelity geometry point. Falls back gracefully to a
  * single "walk to gate" instruction for a 2-point beeline (no real turns to
  * describe). Road names are appended only when known (~1% of OSM ways in
- * this extract have one) — see docs/OSM_DATA_VALIDATION_REPORT.md — never
+ * this extract have one) — see docs/DATA_GIS_AND_FIELD_REQUIREMENTS.md — never
  * required for the instruction to make sense.
  */
 export function generateStreetInstructions(

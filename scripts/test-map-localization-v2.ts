@@ -8,7 +8,7 @@ process.env.EXPO_PUBLIC_USE_IJTEMA_V2_MAP = 'true';
 
 // Phase 3+4 (map-experience redesign, task #31): the data layer was already bilingual
 // end-to-end (LocalizedLabel) — the gap was the map-label rendering layer flattening
-// everything to English only. See docs/MAP_EXPERIENCE_AUDIT.md section 3.
+// everything to English only. See docs/ARCHITECTURE.md section 3.
 
 assert(
   MapLocalizationService.getLocalizedName({ en: 'Block 1', ur: 'بلاک 1' }, 'en') === 'Block 1',
@@ -56,7 +56,7 @@ assert(
 
 // Label text (including the Urdu secondary line) no longer renders inside the layer
 // components — it moved into HomeScreen's mapLabelItems, which feeds the single
-// shared MapLabelOverlay (see docs/TARGETED_FIX_SPRINT_REPORT.md Phase 5).
+// shared MapLabelOverlay (see docs/ARCHITECTURE.md Phase 5).
 const homeScreenSource = readFileSync('src/views/screens/HomeScreen.tsx', 'utf8');
 
 const secondaryLabelCallSites = [

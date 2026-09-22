@@ -11,7 +11,7 @@ import { EntryGateRoutingService } from '../src/services/EntryGateRoutingService
 // used the coarse check even though they were explicitly gated to v2
 // destinations, disagreeing with the routing decision itself
 // (EntryGateRoutingService, used for the actual gate-entry routing). See
-// docs/ROUTING_NAVIGATION_FIX_REPORT.md Phase 5.
+// docs/OFFLINE_NAVIGATION_AND_ROUTING.md Phase 5.
 const boundaryCoordinate = { latitude: MAP_BOUNDS.minLat + 0.0005, longitude: MAP_BOUNDS.maxLng - 0.0005 };
 assert.equal(RoutingService.isInsideVenue(boundaryCoordinate), true, 'fixture must be inside the coarse rectangle');
 assert.equal(

@@ -285,7 +285,7 @@ export class V2MapRenderingService {
   /**
    * Splits a route's coordinates into the outside-venue leg and the inside
    * leg for two-color rendering (dashed/amber outside vs solid blue inside),
-   * per the UX flow in docs/OFFLINE_OUTSIDE_ROUTING_FINAL_SPEC.md — applies
+   * per the UX flow in docs/OFFLINE_NAVIGATION_AND_ROUTING.md — applies
    * to both street-graph and beeline outside legs, `outsideLegCoordinateCount`
    * is 1 for a plain beeline. The gate coordinate is shared between both
    * slices so the two polylines connect with no visual gap.

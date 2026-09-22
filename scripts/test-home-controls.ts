@@ -5,7 +5,7 @@ const home = readFileSync('src/views/screens/HomeScreen.tsx', 'utf8');
 const homeVm = readFileSync('src/viewmodels/HomeViewModel.ts', 'utf8');
 const rendering = readFileSync('src/services/V2MapRenderingService.ts', 'utf8');
 // The block/rasta/special-route/gate Polygon/Marker/Polyline JSX moved out of HomeScreen.tsx
-// into shared layer components (src/views/components/map/*) — see docs/MAP_EXPERIENCE_AUDIT.md.
+// into shared layer components (src/views/components/map/*) — see docs/ARCHITECTURE.md.
 const blockLayer = readFileSync('src/views/components/map/BlockLayer.tsx', 'utf8');
 const rastaLayer = readFileSync('src/views/components/map/RastaLayer.tsx', 'utf8');
 const specialRouteLayer = readFileSync('src/views/components/map/SpecialRouteLayer.tsx', 'utf8');
@@ -34,7 +34,7 @@ assert(home.includes('BackHandler.addEventListener'), 'Android back should step 
 assert(home.includes('showsHorizontalScrollIndicator={false}'), 'Home chip row must use horizontal scrolling instead of clipping');
 // The Layers/Compass/Zoom/Recenter cluster is one bottom-anchored stack (controlStackBottom)
 // instead of a top-anchored group that had to account for banner stacking height — see
-// docs/TARGETED_FIX_SPRINT_REPORT.md Phase 5 / test-map-controls-v2.ts for the full rationale.
+// docs/ARCHITECTURE.md Phase 5 / test-map-controls-v2.ts for the full rationale.
 assert(home.includes('controlStackBottom'), 'Floating controls must derive their position from the single bottom-anchored control-stack offset');
 assert(home.includes('onLayout={(e) => setTopOverlayHeight'), 'Top overlay (search+chip row) height must be measured, not a hardcoded guess');
 // P0-2: route preview lives inside the BottomSheetModal (LocationSheet routePreview mode) —

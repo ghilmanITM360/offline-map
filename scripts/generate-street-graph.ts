@@ -10,7 +10,7 @@
  * Re-run this script (`node --import tsx scripts/generate-street-graph.ts`)
  * if the roads near the venue change and the extract needs a fresh pull.
  *
- * See docs/OSM_DATA_VALIDATION_REPORT.md for the validated methodology this
+ * See docs/DATA_GIS_AND_FIELD_REQUIREMENTS.md for the validated methodology this
  * mirrors (same query, same center point, same 3km radius).
  */
 import { writeFileSync } from 'node:fs';

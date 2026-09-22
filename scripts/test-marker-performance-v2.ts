@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 
 const home = readFileSync('src/views/screens/HomeScreen.tsx', 'utf8');
 // The block/gate/rasta/special-route Marker/Polygon/Polyline JSX moved out of HomeScreen.tsx
-// into shared layer components (src/views/components/map/*) — see docs/MAP_EXPERIENCE_AUDIT.md.
+// into shared layer components (src/views/components/map/*) — see docs/ARCHITECTURE.md.
 // Label text itself no longer renders as a Marker at all (see MapLabelOverlay.tsx and
 // scripts/test-map-label-overlay-v2.ts) — only small fixed-size dot markers remain here.
 const gateLayer = readFileSync('src/views/components/map/GateLayer.tsx', 'utf8');

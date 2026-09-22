@@ -2,7 +2,7 @@ import { strict as assert } from 'node:assert';
 import { readFileSync } from 'node:fs';
 
 // The block/gate/rasta Polygon/Marker/Polyline JSX moved out of HomeScreen.tsx into shared
-// layer components (src/views/components/map/*) — see docs/MAP_EXPERIENCE_AUDIT.md. Each
+// layer components (src/views/components/map/*) — see docs/ARCHITECTURE.md. Each
 // component renders a 'nav' variant (simple, fixed z-order) and a 'home' variant (interactive,
 // selection/focus-aware z-order) — the checks below target the home variant specifically.
 const blockLayer = readFileSync('src/views/components/map/BlockLayer.tsx', 'utf8');

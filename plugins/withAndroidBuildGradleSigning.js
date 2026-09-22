@@ -24,7 +24,7 @@ const { withAppBuildGradle } = require('@expo/config-plugins');
  *      bundleRelease without a configured production keystore, unless explicitly overridden
  *      with -PallowInsecureReleaseSigning=true / ALLOW_INSECURE_RELEASE_SIGNING=true.
  *
- * See docs/RELEASE_SIGNING.md and docs/SECURITY_AUDIT.md (C3) for why this exists.
+ * See docs/RELEASE_SECURITY_PRIVACY.md for why this exists.
  *
  * Implementation notes:
  *   - Uses `withAppBuildGradle`, the config-plugins mod that hands back build.gradle's raw
@@ -100,7 +100,7 @@ if (!karachiIjtemaGoogleMapsApiKey) {
  *   2. ANDROID_RELEASE_STORE_FILE / ANDROID_RELEASE_STORE_PASSWORD /
  *      ANDROID_RELEASE_KEY_ALIAS / ANDROID_RELEASE_KEY_PASSWORD environment variables
  *
- * See docs/SECURITY_AUDIT.md (C3) for the \`keytool\` command used to generate the keystore
+ * See docs/RELEASE_SECURITY_PRIVACY.md for the \`keytool\` command used to generate the keystore
  * itself and where to place it. Until a developer configures one of the above, \`release\`
  * build types fall back to the debug signingConfig so \`./gradlew assembleRelease\` keeps
  * working out of the box for local/dev builds.
@@ -126,7 +126,7 @@ def karachiIjtemaHasReleaseSigningConfig = (karachiIjtemaReleaseStoreFilePath &&
 
 if (!karachiIjtemaHasReleaseSigningConfig) {
     println "WARNING: No production keystore configured (android/keystore.properties or ANDROID_RELEASE_* env vars)." +
-        " Release builds will be signed with the debug keystore until this is set up — see docs/SECURITY_AUDIT.md (C3)."
+        " Release builds will be signed with the debug keystore until this is set up — see docs/RELEASE_SECURITY_PRIVACY.md."
 }
 
 /**
@@ -143,7 +143,7 @@ if (!karachiIjtemaHasReleaseSigningConfig) {
  *   ./gradlew assembleRelease -PallowInsecureReleaseSigning=true
  *   ALLOW_INSECURE_RELEASE_SIGNING=true ./gradlew assembleRelease
  *
- * See docs/RELEASE_SIGNING.md.
+ * See docs/RELEASE_SECURITY_PRIVACY.md.
  */
 def karachiIjtemaReleaseArtifactTaskNamePattern = ~/^(assemble|bundle)[A-Za-z0-9]*Release$/
 
@@ -170,7 +170,7 @@ gradle.taskGraph.whenReady { taskGraph ->
                 "Refusing to run release-artifact task(s) [$karachiIjtemaMatchedTaskPaths]: no production keystore is configured" +
                 " (android/keystore.properties or ANDROID_RELEASE_* env vars are missing/incomplete)." +
                 " Building now would silently sign the release artifact with the public debug keystore.\\n" +
-                "Fix: configure a real release keystore — see docs/RELEASE_SIGNING.md.\\n" +
+                "Fix: configure a real release keystore — see docs/RELEASE_SECURITY_PRIVACY.md.\\n" +
                 "Intentional debug-signed release-shaped build for local testing only: re-run with" +
                 " -PallowInsecureReleaseSigning=true (or ALLOW_INSECURE_RELEASE_SIGNING=true)."
             )

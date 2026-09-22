@@ -14,7 +14,7 @@ function getReturnObject(source: string): string {
 // v2 live navigation now runs in-place on HomeScreen's persistent MapView — the buttons/banners
 // that used to live in NavigationScreenV2 now live in NavigationChromeV2 (chrome/UI) and
 // useNavigationOverlayV2 (stateful wiring), backed by the same NavigationViewModelV2. See
-// docs/MAP_EXPERIENCE_AUDIT.md.
+// docs/ARCHITECTURE.md.
 const navigationChromeSource = readFileSync('src/views/components/navigation/NavigationChromeV2.tsx', 'utf8');
 const navigationOverlaySource = readFileSync('src/viewmodels/useNavigationOverlayV2.ts', 'utf8');
 const navigationExitSource = readFileSync('src/viewmodels/useNavigationExitConfirmation.ts', 'utf8');

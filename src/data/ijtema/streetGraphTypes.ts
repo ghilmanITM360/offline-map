@@ -30,7 +30,7 @@ export interface StreetGraphMetadata {
 
 /**
  * On-disk / committed shape. Columnar (parallel-array, no repeated object
- * keys) to keep the generated file compact — see docs/OSM_DATA_VALIDATION_REPORT.md
+ * keys) to keep the generated file compact — see docs/DATA_GIS_AND_FIELD_REQUIREMENTS.md
  * for why size matters here (~14k raw nodes bundled for a mobile app).
  * Node ids are array indices (0..nodeLat.length-1). Names are deduplicated
  * into a shared `names` table since only ~1% of edges carry one.

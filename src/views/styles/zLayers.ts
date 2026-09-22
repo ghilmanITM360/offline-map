@@ -11,7 +11,7 @@
 // BottomSheetModal's portal-rendered content. Anything that must reliably cover
 // the map (bottom sheets, full-screen pages, dialogs) uses BottomSheetModal or
 // RN's <Modal>, which render through a separate native layer instead of relying
-// on zIndex. See docs/MAP_DATA_ARCHITECTURE.md for the full layer-order rationale.
+// on zIndex. See docs/ARCHITECTURE.md for the full layer-order rationale.
 export const Z = {
   // Map polygons/route lines/labels (react-native-maps internal zIndex prop on
   // Marker/Polygon/Polyline/LocalTile) — ordered separately, see BlockLayer.tsx /

@@ -1,7 +1,7 @@
 import { strict as assert } from 'node:assert';
 import { readFileSync } from 'node:fs';
 
-// Phase 11 (task #38): "no overlay-contrast system exists today" (docs/MAP_EXPERIENCE_AUDIT.md
+// Phase 11 (task #38): "no overlay-contrast system exists today" (docs/ARCHITECTURE.md
 // §6/§7) — block/gate/rasta/route overlays used the same fixed colors regardless of basemap,
 // tuned for the flat standard map, with no adjustment for satellite imagery's higher visual
 // noise. Rather than re-tuning every layer's per-state color for a second basemap (unverifiable

@@ -115,7 +115,7 @@ export interface PlaceCommon {
    * Presentational-only warning shown when this place is selected (e.g. a gate
    * whose source coordinate is flagged `needs_verification`). Must never be used
    * to gate routing/navigation logic — that stays on `routingStatus` /
-   * `isRoutable` / `canStartRouteFromOutside`. See docs/OUTSIDE_IJTEMA_ROUTING_RULE.md.
+   * `isRoutable` / `canStartRouteFromOutside`. See docs/OFFLINE_NAVIGATION_AND_ROUTING.md.
    */
   verificationWarning?: string;
   developerLabel?: string;

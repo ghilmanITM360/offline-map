@@ -686,7 +686,7 @@ const findBestOutsidePath = (
 // Beeline fallback: always available offline, no dependency on the bundled
 // street graph. Used beyond the street graph's radius, when the flag is off,
 // or as a safety net if street-graph routing fails for any reason — see
-// Decision 1 in docs/OFFLINE_OUTSIDE_ROUTING_FINAL_SPEC.md.
+// Decision 1 in docs/OFFLINE_NAVIGATION_AND_ROUTING.md.
 const selectOutsidePathViaBeeline = (
   start: Extract<RoutingStartV2, { type: 'outside_coordinate' }>,
   destinationNodeIds: string[],

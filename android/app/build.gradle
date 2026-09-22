@@ -52,7 +52,7 @@ if (!googleMapsApiKey) {
  *   2. ANDROID_RELEASE_STORE_FILE / ANDROID_RELEASE_STORE_PASSWORD /
  *      ANDROID_RELEASE_KEY_ALIAS / ANDROID_RELEASE_KEY_PASSWORD environment variables
  *
- * See docs/SECURITY_AUDIT.md (C3) for the `keytool` command used to generate the keystore
+ * See docs/RELEASE_SECURITY_PRIVACY.md for the `keytool` command used to generate the keystore
  * itself and where to place it. Until a developer configures one of the above, `release`
  * build types fall back to the debug signingConfig so `./gradlew assembleRelease` keeps
  * working out of the box for local/dev builds.
@@ -78,7 +78,7 @@ def hasReleaseSigningConfig = (releaseStoreFilePath && releaseStorePassword && r
 
 if (!hasReleaseSigningConfig) {
     println "WARNING: No production keystore configured (android/keystore.properties or ANDROID_RELEASE_* env vars)." +
-        " Release builds will be signed with the debug keystore until this is set up — see docs/SECURITY_AUDIT.md (C3)."
+        " Release builds will be signed with the debug keystore until this is set up — see docs/RELEASE_SECURITY_PRIVACY.md."
 }
 
 /**
@@ -95,7 +95,7 @@ if (!hasReleaseSigningConfig) {
  *   ./gradlew assembleRelease -PallowInsecureReleaseSigning=true
  *   ALLOW_INSECURE_RELEASE_SIGNING=true ./gradlew assembleRelease
  *
- * See docs/RELEASE_SIGNING.md.
+ * See docs/RELEASE_SECURITY_PRIVACY.md.
  */
 def releaseArtifactTaskNamePattern = ~/^(assemble|bundle)[A-Za-z0-9]*Release$/
 
@@ -122,7 +122,7 @@ gradle.taskGraph.whenReady { taskGraph ->
                 "Refusing to run release-artifact task(s) [$matchedTaskPaths]: no production keystore is configured" +
                 " (android/keystore.properties or ANDROID_RELEASE_* env vars are missing/incomplete)." +
                 " Building now would silently sign the release artifact with the public debug keystore.\n" +
-                "Fix: configure a real release keystore — see docs/RELEASE_SIGNING.md.\n" +
+                "Fix: configure a real release keystore — see docs/RELEASE_SECURITY_PRIVACY.md.\n" +
                 "Intentional debug-signed release-shaped build for local testing only: re-run with" +
                 " -PallowInsecureReleaseSigning=true (or ALLOW_INSECURE_RELEASE_SIGNING=true)."
             )
@@ -246,7 +246,7 @@ android {
         }
         release {
             // Uses a real production keystore once one is configured (see
-            // android/keystore.properties.example and docs/SECURITY_AUDIT.md C3).
+            // android/keystore.properties.example and docs/RELEASE_SECURITY_PRIVACY.md).
             // Falls back to the debug signingConfig only when no release credentials
             // are present, so local/CI builds without a production keystore still work.
             signingConfig hasReleaseSigningConfig ? signingConfigs.release : signingConfigs.debug

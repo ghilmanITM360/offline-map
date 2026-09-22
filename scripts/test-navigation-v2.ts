@@ -20,7 +20,7 @@ const navigationViewModelV2Source = readFileSync('src/viewmodels/NavigationViewM
 const featureFlagSource = readFileSync('src/services/MapFeatureFlagsService.ts', 'utf8');
 
 // v2 live navigation now runs in-place on HomeScreen's persistent MapView (useNavigationOverlayV2),
-// not on a separately pushed NavigationScreen — see docs/MAP_EXPERIENCE_AUDIT.md. v1's equivalent
+// not on a separately pushed NavigationScreen — see docs/ARCHITECTURE.md. v1's equivalent
 // (NavigationViewModel + useNavigationOverlayV1) itself guards against ever adopting a
 // v2-shaped active route, since both hooks now run unconditionally with no outer screen to gate on.
 assert(featureFlagSource.includes('useIjtemaV2Navigation'), 'MapFeatureFlagsService must expose EXPO_PUBLIC_USE_IJTEMA_V2_NAVIGATION');
