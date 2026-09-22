@@ -4,7 +4,7 @@ Current snapshot only. This file is replaced on each update, not appended to —
 
 **Last updated:** 2026-09-22
 **Canonical branch:** `integration/ijtema-clean-baseline`
-**Current HEAD:** `5c8f6d5`
+**Current HEAD:** `1c0d1a2` (docs consolidation, #53) — this cycle's asset cleanup (#52) will advance it further once merged
 
 ## Readiness
 
@@ -18,10 +18,10 @@ Current snapshot only. This file is replaced on each update, not appended to —
 - `npm run typecheck` — clean
 - `npm run lint` — clean
 - `npx jest` — 51 suites / 550 tests passed
-- High-value script suite (gate touch-target, facility touch-target, tap disambiguation, background-resume, legacy/permissions, Android backup policy) — all passed
+- High-value script suite — all passed
 - `git diff --check` — clean
 
-Not yet run this cycle: Android release build sanity check (only needed if native/config/assets change), physical-device and field verification (see blockers below).
+Not yet run this cycle: Android release build sanity check, physical-device and field verification (see blockers below).
 
 ## Open issues by priority
 
@@ -34,13 +34,11 @@ Not yet run this cycle: Android release build sanity check (only needed if nativ
 **P2:**
 - #43, #44 — Gate 18/19 graph connectors (blocked on field survey, owner-required)
 - #47 — Privacy / Terms / Support links (owner action)
-- #55 — Performance/reliability review (in progress)
+- #55 — Performance/reliability review (not started this cycle)
 - #57 — Final field-test APK + evidence pack (last phase, depends on everything else)
 
-**P3 (repository hygiene, in progress this cycle):**
-- #52 — Asset/image cleanup (audited; deletion blocked on #53 removing the 2 docs that reference `docs/qa-evidence/*`)
-- #53 — Markdown consolidation (in progress)
-- #56 — AGENTS.md/CLAUDE.md standardization (done this cycle)
+**P3 (repository hygiene):**
+- #52 — Asset/image cleanup (docs/qa-evidence deletion PR open this cycle)
 
 **Tracker:**
 - #63 — Production Readiness audit tracker (keep current as issues close)
@@ -51,6 +49,8 @@ Not yet run this cycle: Android release build sanity check (only needed if nativ
 - #81 — Storage permissions removal (PR #84, merged)
 - #80 — R8 minify/resource shrinking (PR #83, merged)
 - #62 — Dependency security triage (independently re-verified: 18 advisories, all build-tool-only/non-shipped, accepted as documented release exception, review date 2026-12-31)
+- #56 — AGENTS.md/CLAUDE.md standardization (PR #86, merged)
+- #53 — Markdown consolidation, 54 → 11 live docs (PR #87, merged)
 - #51 — Stash/worktree reconciliation (neither artifact present in this repo environment)
 - #54 — Security review reconciliation
 - #50, #25 — Stale PR/repo-cleanup reconciliation
@@ -60,6 +60,7 @@ Not yet run this cycle: Android release build sanity check (only needed if nativ
 - Branches: 26 → 2 (`integration/ijtema-clean-baseline`, `main`) — 17 remote + 4 orphaned-local branches deleted, all confirmed merged/superseded/closed with zero unique portable work.
 - Worktrees: 3 stale local checkouts removed (clean, no unique work); 3 stub prune entries cleared.
 - Stashes: none exist.
+- Docs: 54 live Markdown files → 11 canonical docs (README, AGENTS, CLAUDE, PROJECT_STATUS, and 7 topic docs under `docs/`), ~80% reduction.
 
 ## Owner blockers (cannot be closed by an agent)
 
@@ -75,8 +76,8 @@ Not yet run this cycle: Android release build sanity check (only needed if nativ
 
 ## In progress
 
-#52 (assets) and #53 (Markdown consolidation) — sequenced together since #52's only deletable content is referenced by 2 docs #53 is retiring.
+#52 — deleting the 12 stale `docs/qa-evidence/*.png` screenshots (8.1MB, unblocked now that #53 retired the 2 docs referencing them); everything else in that inventory (native icons/splash/markers) stays, it's runtime/config-referenced.
 
 ## Next
 
-Finish #53 → unblock and finish #52 → #55 performance review → final validation pass → #57 field-test APK build.
+Merge #52's asset-cleanup PR → #55 performance review → final validation pass → #57 field-test APK build.
