@@ -185,7 +185,6 @@ export function useDirectionsViewModel(destination: Place | null) {
   const isCurrentLocationStartActive = startSource === 'live_gps';
 
   const calculateRoute = useCallback(async () => {
-    console.log(`ROUTE89:L calculateRoute entered startSource=${startSource} t=${Date.now()}`);
     if (!destination) {
       setLoadState('error');
       setErrorMessage('Destination missing. Please go back and select a destination.');
@@ -298,9 +297,7 @@ export function useDirectionsViewModel(destination: Place | null) {
       setRouteInstructions(preview.instructions);
       setRoutePlannerDest(destination);
       setRoutePlannerOrigin(startSource === 'manual_place' ? manualStart : null);
-      console.log(`ROUTE89:M route calc returned (v2) t=${Date.now()}`);
       setLoadState('ready');
-      console.log(`ROUTE89:N Route Preview state committed (v2) t=${Date.now()}`);
       setRouteRefreshing(false);
       requestHandle?.finish();
       return;
@@ -418,9 +415,7 @@ export function useDirectionsViewModel(destination: Place | null) {
       setRouteInstructions(generated);
       setRoutePlannerDest(destination);
       setRoutePlannerOrigin(startSource === 'manual_place' ? manualStart : null);
-      console.log(`ROUTE89:M route calc returned (legacy) t=${Date.now()}`);
       setLoadState('ready');
-      console.log(`ROUTE89:N Route Preview state committed (legacy) t=${Date.now()}`);
     } catch (error) {
       if ((error as Error).message === 'timeout') {
         setLoadState('error');
@@ -455,10 +450,8 @@ export function useDirectionsViewModel(destination: Place | null) {
   };
 
   const chooseCurrentLocation = async (): Promise<boolean> => {
-    console.log(`ROUTE89:A chooseCurrentLocation entered t=${Date.now()}`);
     try {
       const resolved = await LocationAccessService.resolveCurrentLocation(true);
-      console.log(`ROUTE89:K capability ok=${resolved.ok} source=${resolved.source ?? 'none'} t=${Date.now()}`);
       setHasLocationPermission(resolved.permissionState.granted);
       setLocationPermissionPrecision(resolved.permissionState.precision);
 
