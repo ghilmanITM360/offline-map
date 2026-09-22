@@ -4,7 +4,7 @@
  */
 
 import React from 'react';
-import { render, screen, userEvent } from './test-utils';
+import { render, screen, userEvent, act } from './test-utils';
 
 import { LocationSheet } from '../views/components/map/LocationSheet';
 import { useDirectionsViewModel } from '../viewmodels/DirectionsViewModel';
@@ -129,6 +129,47 @@ describe('LocationSheet (routePreview) — start option selection', () => {
     await user.press(screen.getByText('Use my current location'));
 
     expect(chooseCurrentLocation).toHaveBeenCalledTimes(1);
+  });
+
+  test('89-04: shows a loading affordance while resolving current location, not a silent no-op', async () => {
+    let resolveChoose: (ok: boolean) => void = () => {};
+    const chooseCurrentLocation = jest.fn(
+      () => new Promise<boolean>((resolve) => { resolveChoose = resolve; }),
+    );
+    mockedUseDirectionsViewModel.mockReturnValue(baseViewModel({ chooseCurrentLocation }));
+    const user = userEvent.setup();
+    await render(<LocationSheet mode="routePreview" destination={destination} onClose={onCloseSpy} />);
+
+    await user.press(screen.getByText('Change Start'));
+    await user.press(screen.getByText('Use my current location'));
+
+    expect(screen.getByText('Finding your location…')).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: /Use my current location/ }).props.accessibilityState).toMatchObject({
+      busy: true,
+      disabled: true,
+    });
+
+    await act(async () => {
+      resolveChoose(false);
+      await Promise.resolve();
+    });
+
+    expect(screen.queryByText('Finding your location…')).not.toBeOnTheScreen();
+  });
+
+  test('89-05: surfaces the location-resolution failure message instead of silently resetting', async () => {
+    const chooseCurrentLocation = jest.fn(async () => false);
+    mockedUseDirectionsViewModel.mockReturnValue(baseViewModel({
+      chooseCurrentLocation,
+      loadState: 'needs_origin',
+      errorMessage: 'Current location is unavailable. Choose start manually.',
+    }));
+    await render(<LocationSheet mode="routePreview" destination={destination} onClose={onCloseSpy} />);
+
+    const user = userEvent.setup();
+    await user.press(screen.getByText('Change Start'));
+
+    expect(screen.getByText('Current location is unavailable. Choose start manually.')).toBeOnTheScreen();
   });
 
   test('pressing "Use last known location" invokes chooseRememberedLocation', async () => {
