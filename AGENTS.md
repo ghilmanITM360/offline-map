@@ -1,5 +1,35 @@
 # Karachi Ijtema Offline Navigation Project Guide
 
+Shared engineering contract for any AI agent (Codex, Claude, or otherwise) working in this repo. Current project status, test totals, and issue state live in `docs/PROJECT_STATUS.md`, not here — this file is the durable contract, not a snapshot.
+
+## Project purpose
+
+Offline-first pedestrian navigation for attendees walking to and inside the Karachi Ijtema venue. Internal routing must work with no network. Outside-venue routing prefers live providers but must degrade to a bundled offline fallback, never a dead end.
+
+## Canonical branch
+
+`integration/ijtema-clean-baseline` is canonical. `main` trails it. Always verify `git status --short --branch` and current HEAD before starting work — do not assume `main` is current.
+
+## Start-of-task check
+
+Before non-trivial work: confirm canonical HEAD, read the linked issue in full, check for a relevant skill, and check `git worktree list` / `git status` so you don't build on someone else's uncommitted state.
+
+## Skills-first, plan-first, issue-first
+
+- If a skill exists for the task, use it — don't hand-roll a process a skill already owns.
+- Non-trivial changes get a short plan before code. Trivial fixes don't need ceremony.
+- Work traces to an issue. If no issue exists for real work, open one before or alongside the change rather than doing untracked work.
+
+## One concern per PR
+
+A PR does one thing. Don't bundle an unrelated cleanup, dependency bump, or drive-by refactor into a feature/fix PR — split it.
+
+## No guessing
+
+- **No fabricated GIS**: gate coordinates, venue graph edges, routing distances, and connector geometry come from surveyed/confirmed sources or existing code — never invented to fill a gap. If a coordinate or edge is unverified, say so; don't approximate silently.
+- **No fabricated legal content**: privacy policy, terms, licensing, and attribution text are not to be authored speculatively — those are owner-provided facts (see `docs/RELEASE_SECURITY_PRIVACY.md` and `docs/KNOWN_LIMITATIONS_AND_OWNER_ACTIONS.md`).
+- **No fake signing/cloud state**: never claim a keystore, Play App Signing enrollment, CI secret, or deployed-proxy state exists or was verified without actually checking it in that exact environment.
+
 ## Product architecture
 
 - React Native/Expo app uses one map-first `HomeScreen` and one shared `MapView`. Directions, route preview, active navigation, and arrival are map overlays/modes, not separate screens.
@@ -37,8 +67,18 @@
 - Mobile may contain only proxy base URL configuration. Never place Google Routes web-service credentials, proxy signing secrets, or privileged bearer tokens in mobile code or `EXPO_PUBLIC_*` variables.
 - Google Maps SDK keys are separate client-visible rendering credentials. Restrict them by platform/application; never reuse them for Google Routes.
 - Never commit `.env`, signing credentials, keystores, local properties, tokens, or secret-bearing logs.
-- Automated tests verify source and JavaScript behavior only. Do not claim Android, iOS, physical-device, deployed-proxy, or real Google Routes verification without running that exact environment.
 - Ignore old APK/build outputs. After integration, build a fresh release APK from the intended final commit and record its commit, build command, timestamp, and checksum before device testing.
+
+### Evidence levels — never claim a higher one than you actually ran
+
+| Level | What it proves | What it does NOT prove |
+|---|---|---|
+| **SOURCE/RUNTIME VERIFIED** | Jest/typecheck/lint passed against source and JS logic | Real Android/iOS behavior, sensors, native modules |
+| **EMULATOR VERIFIED** | Behavior observed in an emulator/simulator build | Real GPS, real network conditions, physical hardware quirks |
+| **PHYSICAL DEVICE REQUIRED** | Not yet run — needs a real device | — |
+| **FIELD REQUIRED** | Not yet run — needs the actual venue/walking test | — |
+
+Label every verification claim with its actual level. Do not describe SOURCE-level checks as if they were EMULATOR, DEVICE, or FIELD verified.
 
 ## Branch and worktree rules
 
@@ -69,3 +109,15 @@ npm run test:reroute-v2
 ```
 
 Report exact commands, pass/fail counts, warnings, unverified runtime boundaries, final HEAD, and final Git status.
+
+## Checkpoint discipline
+
+On a long or multi-phase task, don't run to exhaustion. Near your session's usage/context limit: stop starting new large operations (bulk deletes, migrations, builds, emulator campaigns), finish the atomic step in progress, commit/push validated work, update the linked issue/PR, and hand off with: canonical HEAD, what's done, what's remaining, and the exact next action. No giant session-history dump — the issue tracker and git history are the record.
+
+## Token efficiency
+
+Prefer targeted reads (specific files/line ranges) over dumping whole directories. Delegate large read-heavy investigations (multi-file audits, branch forensics) to a subagent that returns a distilled report rather than pulling raw output into the main context. Don't re-read a file you just wrote/edited — trust the tool.
+
+## Definition of done
+
+A change is done when: it's scoped to one concern, tests at the appropriate evidence level pass, the linked issue/PR is updated with real status (not aspirational status), no fabricated GIS/legal/signing claims were introduced, and the working tree is clean or the remaining diff is explained.
