@@ -162,3 +162,23 @@ describe('GPSManagerService — granted-permission paths clear a stale skip', ()
     errorSpy.mockRestore();
   });
 });
+
+describe('GPSManagerService — does not watch when location services are off', () => {
+  it('8. start() does not call watchPositionAsync when hasServicesEnabledAsync resolves false', async () => {
+    (Location.getForegroundPermissionsAsync as jest.Mock).mockResolvedValue({ status: 'granted' });
+    (Location.hasServicesEnabledAsync as jest.Mock).mockResolvedValue(false);
+
+    await GPSManagerService.start('follow');
+
+    expect(Location.watchPositionAsync).not.toHaveBeenCalled();
+  });
+
+  it('9. start() still calls watchPositionAsync when services are enabled (no regression)', async () => {
+    (Location.getForegroundPermissionsAsync as jest.Mock).mockResolvedValue({ status: 'granted' });
+    (Location.hasServicesEnabledAsync as jest.Mock).mockResolvedValue(true);
+
+    await GPSManagerService.start('follow');
+
+    expect(Location.watchPositionAsync).toHaveBeenCalledTimes(1);
+  });
+});
