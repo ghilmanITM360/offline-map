@@ -16,8 +16,6 @@ contribute — it cannot remove an autolinked module's own permission.
 | `ACCESS_NETWORK_STATE` | explicit, `app.json` | `ConnectivityService` online/offline detection |
 | `ACCESS_FINE_LOCATION` | autolinked — `expo-location` module manifest, triggered by the `expo-location` plugin config in `app.json` | GPS position for map/nav (`GPSManagerService`, `LocationAccessService`) |
 | `ACCESS_COARSE_LOCATION` | autolinked — same as above | fallback location accuracy |
-| `READ_EXTERNAL_STORAGE` | autolinked — `expo-file-system` module manifest | reading downloaded offline map data (`OfflineMapService`) |
-| `WRITE_EXTERNAL_STORAGE` | autolinked — `expo-file-system` module manifest | writing downloaded offline map data (`DownloadMapViewModel`) |
 
 ## Removed
 
@@ -27,15 +25,26 @@ contribute — it cannot remove an autolinked module's own permission.
   from `src/` and `package.json`). Likely a stale leftover from a prior/removed
   dependency or a manual edit. If a future dependency needs it again, it will
   reappear via autolinking or must be re-added explicitly to `app.json`.
+- **`READ_EXTERNAL_STORAGE` / `WRITE_EXTERNAL_STORAGE`** — removed 2026-09
+  (#81). `expo-file-system`'s own module manifest
+  (`node_modules/expo-file-system/android/src/main/AndroidManifest.xml`)
+  unconditionally declares both, but the app only touches app-internal
+  storage via the modern `Directory`/`File`/`Paths` API (`Paths.document`,
+  see `OfflineMapService`/`DownloadMapViewModel`), which needs neither
+  permission on any supported Android version, and `WRITE_EXTERNAL_STORAGE`
+  is already a no-op for apps targeting API 30+. Since autolinking merges the
+  library's manifest regardless of app.json, they're stripped explicitly with
+  `tools:node="remove"` in `android/app/src/main/AndroidManifest.xml` rather
+  than just deleted, otherwise the manifest merger would re-add them.
 
 ## Notes
 
-- Do not remove the storage or location permissions — both trace to modules
-  the app actively depends on (`expo-file-system`, `expo-location`). If a
-  future audit wants to scope storage access down (e.g. scoped storage / no
-  legacy external storage), that requires migrating `OfflineMapService` off
-  `expo-file-system`'s legacy external-storage APIs first, not just editing
-  the manifest.
+- Do not remove the location permissions — they trace to a module the app
+  actively depends on (`expo-location`) for GPS-based navigation.
+- If `expo-file-system` is upgraded and starts requiring one of these
+  permissions for the APIs actually in use (unlikely, but verify), the
+  `tools:node="remove"` override in `AndroidManifest.xml` would need to be
+  revisited.
 - Re-verify this table any time `npx expo prebuild --clean` is run, a native
   dependency is added/removed, or `expo-location`/`expo-file-system` is
   upgraded — the merged permission set can shift silently since `android/` is

@@ -31,8 +31,17 @@ const manifest = readFileSync(manifestPath, 'utf8');
 assert(!manifest.includes('android.permission.VIBRATE'), 'VIBRATE must stay removed from the checked-in manifest — it had zero traceable source and zero code usage (Vibration/Haptics absent from src/).');
 // Permissions with confirmed live usage must not be collaterally removed by the same cleanup.
 assert(manifest.includes('android.permission.ACCESS_FINE_LOCATION'), 'ACCESS_FINE_LOCATION must remain — required by GPSManagerService/LocationAccessService.');
-assert(manifest.includes('android.permission.READ_EXTERNAL_STORAGE'), 'READ_EXTERNAL_STORAGE must remain — required by OfflineMapService (expo-file-system).');
-assert(manifest.includes('android.permission.WRITE_EXTERNAL_STORAGE'), 'WRITE_EXTERNAL_STORAGE must remain — required by DownloadMapViewModel (expo-file-system).');
+// expo-file-system's own manifest unconditionally declares these; the app only uses its
+// app-internal Paths.document API, which needs neither, so they're stripped from the merged
+// manifest via tools:node="remove" (see #81) rather than reappearing through autolinking.
+assert(
+  /<uses-permission android:name="android\.permission\.READ_EXTERNAL_STORAGE" tools:node="remove"\/>/.test(manifest),
+  'READ_EXTERNAL_STORAGE must be explicitly removed via tools:node="remove" — deleting the line alone lets expo-file-system\'s own manifest re-add it via autolinking.',
+);
+assert(
+  /<uses-permission android:name="android\.permission\.WRITE_EXTERNAL_STORAGE" tools:node="remove"\/>/.test(manifest),
+  'WRITE_EXTERNAL_STORAGE must be explicitly removed via tools:node="remove" — deleting the line alone lets expo-file-system\'s own manifest re-add it via autolinking.',
+);
 
 assert(existsSync('docs/ANDROID_PERMISSIONS.md'), 'docs/ANDROID_PERMISSIONS.md must exist, tracking each permission\'s source and justification.');
 const permissionsDoc = readFileSync('docs/ANDROID_PERMISSIONS.md', 'utf8');
