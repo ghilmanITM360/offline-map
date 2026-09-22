@@ -68,13 +68,16 @@ export class LocationAccessService {
   }
 
   static async resolveCurrentLocation(allowPrompt = true): Promise<LocationResolveResult> {
+    console.log(`ROUTE89:B resolveCurrentLocation entered t=${Date.now()}`);
     try {
       let permission = await Location.getForegroundPermissionsAsync();
       if (permission.status !== 'granted' && allowPrompt) {
         permission = await Location.requestForegroundPermissionsAsync();
       }
+      console.log(`ROUTE89:C permission resolved status=${permission.status} t=${Date.now()}`);
 
       const servicesState = await queryServicesState();
+      console.log(`ROUTE89:D servicesState=${servicesState} t=${Date.now()}`);
 
       const permissionState: LocationPermissionState = {
         granted: permission.status === 'granted',
@@ -115,9 +118,11 @@ export class LocationAccessService {
       }
 
       try {
+        console.log(`ROUTE89:H getCurrentPositionAsync started t=${Date.now()}`);
         const current = await Location.getCurrentPositionAsync({
           accuracy: Location.Accuracy.Balanced,
         });
+        console.log(`ROUTE89:I getCurrentPositionAsync resolved accuracy=${current.coords.accuracy} age=${Date.now() - current.timestamp} t=${Date.now()}`);
         return {
           ok: true,
           coordinate: {
@@ -131,11 +136,14 @@ export class LocationAccessService {
           permissionState,
           message: null,
         };
-      } catch {
+      } catch (err) {
+        console.log(`ROUTE89:J getCurrentPositionAsync rejected err=${(err as Error)?.message ?? 'unknown'} t=${Date.now()}`);
+        console.log(`ROUTE89:F lastKnown lookup started t=${Date.now()}`);
         const lastKnown = await Location.getLastKnownPositionAsync({
           maxAge: DEVICE_LAST_KNOWN_MAX_AGE_MS,
           requiredAccuracy: DEVICE_LAST_KNOWN_REQUIRED_ACCURACY_M,
         });
+        console.log(`ROUTE89:G lastKnown lookup finished found=${Boolean(lastKnown)} t=${Date.now()}`);
         if (lastKnown) {
           return {
             ok: true,
