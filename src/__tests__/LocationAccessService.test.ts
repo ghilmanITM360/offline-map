@@ -288,4 +288,76 @@ describe('LocationAccessService.resolveCurrentLocation — #89 bounded current-p
     expect(resolved.source).toBe('device_last_known');
     expect(resolved.source).not.toBe('live');
   });
+
+  // Promise.race does not cancel its loser: a timed-out getCurrentPositionAsync call keeps
+  // running in the background after resolveCurrentLocation() has already returned. These prove
+  // that orphaned promise can never surface in a later/retry call's result — each call only
+  // consumes its own race, so a stale loser settling late has no subscriber left to reach.
+  it('RETRY-89-01: after a timeout, a fresh retry call produces its own independent result', async () => {
+    (Location.getForegroundPermissionsAsync as jest.Mock).mockResolvedValue({ status: 'granted', canAskAgain: true });
+    (Location.getCurrentPositionAsync as jest.Mock).mockReturnValueOnce(new Promise(() => {}));
+    (Location.getLastKnownPositionAsync as jest.Mock).mockResolvedValue(null);
+
+    const firstCall = LocationAccessService.resolveCurrentLocation(false);
+    await jest.advanceTimersByTimeAsync(20_000);
+    expect(await firstCall).toMatchObject({ ok: false, source: null });
+
+    (Location.getCurrentPositionAsync as jest.Mock).mockResolvedValueOnce({
+      coords: { latitude: 24.96, longitude: 67.01, heading: null, accuracy: 8 },
+      timestamp: 1_790_000_000_000,
+    });
+    const retryResult = await LocationAccessService.resolveCurrentLocation(false);
+
+    expect(retryResult).toMatchObject({ ok: true, source: 'live' });
+  });
+
+  it('RETRY-89-02: first attempt times out, second succeeds — only the second produces a coordinate', async () => {
+    (Location.getForegroundPermissionsAsync as jest.Mock).mockResolvedValue({ status: 'granted', canAskAgain: true });
+    (Location.getLastKnownPositionAsync as jest.Mock).mockResolvedValue(null);
+    (Location.getCurrentPositionAsync as jest.Mock)
+      .mockReturnValueOnce(new Promise(() => {}))
+      .mockResolvedValueOnce({
+        coords: { latitude: 24.97, longitude: 67.02, heading: null, accuracy: 6 },
+        timestamp: 1_790_000_001_000,
+      });
+
+    const firstCall = LocationAccessService.resolveCurrentLocation(false);
+    await jest.advanceTimersByTimeAsync(20_000);
+    const firstResult = await firstCall;
+    const secondResult = await LocationAccessService.resolveCurrentLocation(false);
+
+    expect(firstResult.coordinate).toBeNull();
+    expect(secondResult.coordinate).toMatchObject({ latitude: 24.97, longitude: 67.02 });
+  });
+
+  it('RETRY-89-03: a timed-out first attempt resolving late (after a second attempt already finished) has zero effect', async () => {
+    (Location.getForegroundPermissionsAsync as jest.Mock).mockResolvedValue({ status: 'granted', canAskAgain: true });
+    (Location.getLastKnownPositionAsync as jest.Mock).mockResolvedValue(null);
+    let resolveStaleFirstAttempt: (value: { coords: Record<string, unknown> }) => void;
+    (Location.getCurrentPositionAsync as jest.Mock)
+      .mockReturnValueOnce(
+        new Promise((resolve) => {
+          resolveStaleFirstAttempt = resolve;
+        }),
+      )
+      .mockResolvedValueOnce({
+        coords: { latitude: 24.98, longitude: 67.03, heading: null, accuracy: 5 },
+        timestamp: 1_790_000_002_000,
+      });
+
+    const firstCall = LocationAccessService.resolveCurrentLocation(false);
+    await jest.advanceTimersByTimeAsync(20_000); // first attempt times out; its native promise is still unresolved
+    await firstCall;
+
+    const secondResult = await LocationAccessService.resolveCurrentLocation(false);
+    expect(secondResult.coordinate).toMatchObject({ latitude: 24.98, longitude: 67.03 });
+
+    // Stale first attempt now settles, long after both calls above have already returned.
+    resolveStaleFirstAttempt!({ coords: { latitude: 1, longitude: 1, heading: null, accuracy: 1 } });
+    await jest.advanceTimersByTimeAsync(0);
+
+    // Nothing was ever subscribed to the stale promise outside its own (already-settled) race,
+    // so the second call's already-returned result is untouched.
+    expect(secondResult.coordinate).toMatchObject({ latitude: 24.98, longitude: 67.03 });
+  });
 });
