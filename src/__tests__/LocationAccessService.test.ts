@@ -227,3 +227,65 @@ describe('LocationAccessService.resolveCurrentLocation — capability-safe fallb
     });
   });
 });
+
+// #89: getCurrentPositionAsync exposes no application-level timeout. A native Promise that
+// never settles (confirmed possible per Expo SDK 54 docs — no timeout option exists) must not
+// leave resolveCurrentLocation waiting indefinitely.
+describe('LocationAccessService.resolveCurrentLocation — #89 bounded current-position timeout', () => {
+  beforeEach(() => {
+    jest.useFakeTimers();
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  it('89-01: a current-position fix that never settles is bounded by a timeout, not left indefinitely pending', async () => {
+    (Location.getForegroundPermissionsAsync as jest.Mock).mockResolvedValue({ status: 'granted', canAskAgain: true });
+    (Location.getCurrentPositionAsync as jest.Mock).mockReturnValue(new Promise(() => {}));
+    (Location.getLastKnownPositionAsync as jest.Mock).mockResolvedValue(null);
+
+    const resolvePromise = LocationAccessService.resolveCurrentLocation(false);
+    await jest.advanceTimersByTimeAsync(20_000);
+    const resolved = await resolvePromise;
+
+    expect(resolved).toMatchObject({
+      ok: false,
+      coordinate: null,
+      source: null,
+      message: 'Current location is unavailable. Choose start manually.',
+    });
+    expect(Location.getLastKnownPositionAsync).toHaveBeenCalled();
+  });
+
+  it('89-02: a fast-resolving current-position fix is used directly, unaffected by the timeout race', async () => {
+    (Location.getForegroundPermissionsAsync as jest.Mock).mockResolvedValue({ status: 'granted', canAskAgain: true });
+    (Location.getCurrentPositionAsync as jest.Mock).mockResolvedValue({
+      coords: { latitude: 24.96, longitude: 67.01, heading: null, accuracy: 8 },
+      timestamp: 1_790_000_000_000,
+    });
+
+    const resolved = await LocationAccessService.resolveCurrentLocation(false);
+
+    expect(resolved.ok).toBe(true);
+    expect(resolved.source).toBe('live');
+    expect(Location.getLastKnownPositionAsync).not.toHaveBeenCalled();
+  });
+
+  it('89-03: on timeout, a qualifying last-known fix is offered but never silently presented as a live fix', async () => {
+    (Location.getForegroundPermissionsAsync as jest.Mock).mockResolvedValue({ status: 'granted', canAskAgain: true });
+    (Location.getCurrentPositionAsync as jest.Mock).mockReturnValue(new Promise(() => {}));
+    (Location.getLastKnownPositionAsync as jest.Mock).mockResolvedValue({
+      coords: { latitude: 24.96, longitude: 67.01, heading: null, accuracy: 12 },
+      timestamp: 1_790_000_000_000,
+    });
+
+    const resolvePromise = LocationAccessService.resolveCurrentLocation(false);
+    await jest.advanceTimersByTimeAsync(20_000);
+    const resolved = await resolvePromise;
+
+    expect(resolved.ok).toBe(true);
+    expect(resolved.source).toBe('device_last_known');
+    expect(resolved.source).not.toBe('live');
+  });
+});

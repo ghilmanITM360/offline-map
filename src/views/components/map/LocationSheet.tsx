@@ -166,6 +166,7 @@ function StartOption({
   subtitle,
   active,
   disabled,
+  loading,
   onPress,
 }: {
   icon: React.ReactNode;
@@ -173,6 +174,7 @@ function StartOption({
   subtitle: string;
   active?: boolean;
   disabled?: boolean;
+  loading?: boolean;
   onPress: () => void;
 }) {
   return (
@@ -186,9 +188,11 @@ function StartOption({
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={`${title}. ${subtitle}`}
-      accessibilityState={{ selected: !!active, disabled: !!disabled }}
+      accessibilityState={{ selected: !!active, disabled: !!disabled, busy: !!loading }}
     >
-      <View style={[styles.startOptionIcon, active && styles.startOptionIconActive]}>{icon}</View>
+      <View style={[styles.startOptionIcon, active && styles.startOptionIconActive]}>
+        {loading ? <RefreshCw size={18} color={active ? staticColors.white : staticColors.info} /> : icon}
+      </View>
       <View style={styles.startOptionBody}>
         <Text style={[styles.startOptionTitle, active && styles.startOptionTitleActive, disabled && styles.startOptionTitleDisabled]}>
           {title}
@@ -222,6 +226,9 @@ function RoutePreviewSection({
   const [showDestinationOptions, setShowDestinationOptions] = useState(false);
   const [destSearch, setDestSearch] = useState('');
   const [showGateOptions, setShowGateOptions] = useState(false);
+  // #89: resolveCurrentLocation has no visual affordance while in flight (up to
+  // CURRENT_POSITION_TIMEOUT_MS) without this — the tap looked like it did nothing.
+  const [resolvingCurrentLocation, setResolvingCurrentLocation] = useState(false);
   // Guards Retry against a same-tick double-tap: loadState only reflects the in-flight
   // request after DirectionsViewModel's state update commits and this component
   // re-renders, so a second tap landing before that commit would otherwise still see
@@ -438,15 +445,25 @@ function RoutePreviewSection({
 
                 <StartOption
                   active={isCurrentLocationStartActive}
+                  loading={resolvingCurrentLocation}
+                  disabled={resolvingCurrentLocation}
                   icon={<LocateFixed size={18} color={isCurrentLocationStartActive ? staticColors.white : staticColors.info} />}
                   title="Use my current location"
-                  subtitle="Find best eligible official gate automatically"
+                  subtitle={resolvingCurrentLocation ? 'Finding your location…' : 'Find best eligible official gate automatically'}
                   onPress={() => {
-                    void chooseCurrentLocation().then((ok) => {
-                      if (ok) setShowStartOptions(false);
-                    });
+                    setResolvingCurrentLocation(true);
+                    void chooseCurrentLocation()
+                      .then((ok) => {
+                        if (ok) setShowStartOptions(false);
+                      })
+                      .finally(() => setResolvingCurrentLocation(false));
                   }}
                 />
+                {!resolvingCurrentLocation && errorMessage && (
+                  <Card variant="warning">
+                    <Text style={styles.statusText}>{errorMessage}</Text>
+                  </Card>
+                )}
 
                 <StartOption
                   active={startSource === 'remembered_location'}

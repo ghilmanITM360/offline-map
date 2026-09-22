@@ -10,6 +10,10 @@ import { OnboardingStatusService } from './OnboardingStatusService';
 
 const DEVICE_LAST_KNOWN_MAX_AGE_MS = 30_000;
 const DEVICE_LAST_KNOWN_REQUIRED_ACCURACY_M = 50;
+// expo-location's getCurrentPositionAsync exposes no app-level timeout (#89): observed native
+// settlement time ranges from ~30s (emulator) to 58s+ (field device). Bound it so a fresh-fix
+// attempt can never leave the caller waiting indefinitely.
+const CURRENT_POSITION_TIMEOUT_MS = 15_000;
 
 export type LocationPermissionPrecision = 'fine' | 'coarse' | 'none';
 export type LocationServicesState = 'enabled' | 'disabled' | 'unknown';
@@ -115,9 +119,12 @@ export class LocationAccessService {
       }
 
       try {
-        const current = await Location.getCurrentPositionAsync({
-          accuracy: Location.Accuracy.Balanced,
-        });
+        const current = await Promise.race([
+          Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }),
+          new Promise<never>((_, reject) => {
+            setTimeout(() => reject(new Error('timeout')), CURRENT_POSITION_TIMEOUT_MS);
+          }),
+        ]);
         return {
           ok: true,
           coordinate: {
