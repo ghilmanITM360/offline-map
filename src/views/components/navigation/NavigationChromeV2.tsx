@@ -13,6 +13,7 @@ import { IJTEMA_GATES } from '../../../data/ijtema';
 import { staticColors } from '../../../theme';
 import { NAV_TRANSITION_TIMINGS } from '../../../constants/navigationTransitions';
 import { NavigationOverlayV2 } from '../../../viewmodels/useNavigationOverlayV2';
+import { useReducedMotion } from '../../../viewmodels/useReducedMotion';
 import { computeNavRecenterInset, resolveNavBarHeight } from '../../../viewmodels/useOverlayInsets';
 import { NAV_TOUCH_TARGET_HIT_SLOP, navOverlayStyles as styles } from './navOverlayStyles';
 import { OutsideRouteStatusCard } from './OutsideRouteStatusCard';
@@ -65,14 +66,19 @@ export function NavigationChromeV2({ overlay, hasBaseMap }: { overlay: Navigatio
   const [showGateOptions, setShowGateOptions] = useState(false);
 
   const mountAnim = useRef(new Animated.Value(0)).current;
+  const reducedMotion = useReducedMotion();
   useEffect(() => {
     // Held back a beat so the chrome doesn't pop in on the same frame as the route-preview
     // sheet collapsing / CameraManager's enterNavigationCamera move — see NAV_TRANSITION_TIMINGS.
     const revealTimer = setTimeout(() => {
-      Animated.timing(mountAnim, { toValue: 1, duration: NAV_TRANSITION_TIMINGS.chromeFadeMs, useNativeDriver: true }).start();
+      if (reducedMotion) {
+        mountAnim.setValue(1);
+      } else {
+        Animated.timing(mountAnim, { toValue: 1, duration: NAV_TRANSITION_TIMINGS.chromeFadeMs, useNativeDriver: true }).start();
+      }
     }, NAV_TRANSITION_TIMINGS.chromeRevealDelayMs);
     return () => clearTimeout(revealTimer);
-  }, [mountAnim]);
+  }, [mountAnim, reducedMotion]);
 
   // #64: one-time TalkBack announcement on arrival — the visible "You've Arrived!" card is
   // otherwise silent to screen-reader users, who get no signal the trip ended.

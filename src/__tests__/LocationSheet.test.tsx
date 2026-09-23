@@ -4,6 +4,7 @@
  */
 
 import React from 'react';
+import { Animated } from 'react-native';
 import { render, screen, userEvent, act } from './test-utils';
 
 import { LocationSheet } from '../views/components/map/LocationSheet';
@@ -13,6 +14,12 @@ import { LIGHT_THEME } from '../theme';
 import type { Place } from '../models/types';
 
 jest.useFakeTimers();
+
+// #100: FadeContent (RoutePreviewSection's shared state-card cross-fade) is the surface
+// under audit here — mock the hook boundary directly, same pattern as the DirectionsViewModel
+// mock above.
+jest.mock('../viewmodels/useReducedMotion', () => ({ useReducedMotion: jest.fn(() => false) }));
+const mockedUseReducedMotion = jest.requireMock('../viewmodels/useReducedMotion').useReducedMotion as jest.Mock;
 
 // The viewmodel owns routing/GPS/service orchestration (already covered by scripts/test-*.ts
 // GIS/routing suites per CLAUDE.md). Here we only care that LocationSheet's routePreview mode
@@ -98,6 +105,7 @@ beforeEach(() => {
   jest.clearAllMocks();
   onCloseSpy = jest.fn();
   mockedSearchServiceSearch.mockReturnValue([]);
+  mockedUseReducedMotion.mockReturnValue(false);
 });
 
 describe('LocationSheet (routePreview) — start option selection', () => {
@@ -686,5 +694,46 @@ describe('LocationSheet (preview) — Save/Share/Details accessibility', () => {
 
     expect(screen.getByRole('button', { name: 'Share location' })).toBeOnTheScreen();
     expect(screen.getByRole('button', { name: 'Show details' })).toBeOnTheScreen();
+  });
+});
+
+describe('LocationSheet (routePreview) — reduced motion (#100)', () => {
+  test('RM-01: with Reduce Motion disabled, RoutePreviewSection state cards still cross-fade via Animated.timing', async () => {
+    mockedUseReducedMotion.mockReturnValue(false);
+    mockedUseDirectionsViewModel.mockReturnValue(baseViewModel());
+    const timingSpy = jest.spyOn(Animated, 'timing');
+
+    await render(<LocationSheet mode="routePreview" destination={destination} onClose={onCloseSpy} />);
+
+    expect(timingSpy).toHaveBeenCalled();
+  });
+
+  test('RM-02: with Reduce Motion enabled, RoutePreviewSection state-card cross-fade is skipped', async () => {
+    mockedUseReducedMotion.mockReturnValue(true);
+    mockedUseDirectionsViewModel.mockReturnValue(baseViewModel());
+    const timingSpy = jest.spyOn(Animated, 'timing');
+
+    await render(<LocationSheet mode="routePreview" destination={destination} onClose={onCloseSpy} />);
+
+    expect(timingSpy).not.toHaveBeenCalled();
+  });
+
+  test('RM-04: content still renders immediately and correctly with Reduce Motion enabled', async () => {
+    mockedUseReducedMotion.mockReturnValue(true);
+    mockedUseDirectionsViewModel.mockReturnValue(baseViewModel());
+
+    await render(<LocationSheet mode="routePreview" destination={destination} onClose={onCloseSpy} />);
+
+    expect(screen.getByText('Block 1')).toBeOnTheScreen();
+    expect(screen.getByText('My current location')).toBeOnTheScreen();
+  });
+
+  test('RM-06: no stuck opacity — content stays visible across a state change with Reduce Motion enabled', async () => {
+    mockedUseReducedMotion.mockReturnValue(true);
+    mockedUseDirectionsViewModel.mockReturnValue(baseViewModel({ loadState: 'error', errorMessage: 'No route found' }));
+
+    await render(<LocationSheet mode="routePreview" destination={destination} onClose={onCloseSpy} />);
+
+    expect(screen.getByText('No route found')).toBeOnTheScreen();
   });
 });
