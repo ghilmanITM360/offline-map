@@ -110,7 +110,7 @@ export function DownloadMapScreen() {
   const confirmVenueMapOnly = () => {
     Alert.alert(
       'Use venue map only?',
-      'You can navigate inside the Ijtema area. Outside road navigation will not be available. You can download the full map anytime from Settings.',
+      'You can navigate inside the Ijtema area and to/from it on nearby roads without a background map. You can download the full background map anytime from Settings.',
       [
         { text: 'Cancel', style: 'cancel' },
         { text: 'Continue', onPress: () => continueWithVenueMapOnly(navigation) },
