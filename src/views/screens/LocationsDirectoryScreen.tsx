@@ -14,6 +14,7 @@ import { RootStackParamList } from '../../navigation/RootNavigator';
 import { useAppStore } from '../../store/useAppStore';
 import { V2Place } from '../../models/types';
 import { DestinationCategoryId, PublicDestinationsService } from '../../services/PublicDestinationsService';
+import { V2PlaceAdapter } from '../../services/V2PlaceAdapter';
 import { SearchBarField } from '../components/common/SearchBarField';
 import { DestinationRow } from '../components/directory/DestinationRow';
 import { DestinationBlockGrid } from '../components/directory/DestinationBlockGrid';
@@ -35,6 +36,7 @@ export function LocationsDirectoryScreen() {
   const navigation = useNavigation<Nav>();
   const currentLocation = useAppStore((s) => s.currentLocation);
   const setPendingDirectorySelection = useAppStore((s) => s.setPendingDirectorySelection);
+  const recentSearches = useAppStore((s) => s.recentSearches);
 
   // Deliberately ephemeral component state — search text, category filter, and scroll
   // position are not persisted (see brief: ephemeral directory UI).
@@ -51,6 +53,17 @@ export function LocationsDirectoryScreen() {
       ? results.filter((place) => PublicDestinationsService.categoryIdForPlace(place) === activeCategory)
       : results;
   }, [trimmedQuery, activeCategory, currentLocation]);
+
+  // #99: recentSearches stores full Place snapshots at selection time, so re-resolve each
+  // by id through V2PlaceAdapter (the same lookup favorites already re-validates through)
+  // to pick up current routability/name and drop anything no longer resolvable — never
+  // trust the stale snapshot itself.
+  const recentPlaces = useMemo(() => {
+    return recentSearches
+      .map((place) => V2PlaceAdapter.getPlaceById(place.id))
+      .filter((place): place is V2Place => Boolean(place))
+      .slice(0, 5);
+  }, [recentSearches]);
 
   const goToMap = useCallback(() => {
     // Pushed from Home (reopened): back to the map, MapView never remounts. Reached at
@@ -195,7 +208,23 @@ export function LocationsDirectoryScreen() {
       </ScrollView>
 
       <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
-        {trimmedQuery.length > 0 ? renderSearchResults() : renderBrowse()}
+        {trimmedQuery.length > 0 ? (
+          renderSearchResults()
+        ) : (
+          <>
+            {!activeCategory && recentPlaces.length > 0 && (
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Recent</Text>
+                <View style={styles.sectionRows}>
+                  {recentPlaces.map((place) => (
+                    <DestinationRow key={place.id} place={place} onPress={handleSelect} />
+                  ))}
+                </View>
+              </View>
+            )}
+            {renderBrowse()}
+          </>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
