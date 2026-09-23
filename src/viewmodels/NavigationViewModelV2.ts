@@ -514,6 +514,10 @@ export function useNavigationViewModelV2() {
   const handleExit = useCallback(() => {
     VoiceService.stopSpeaking();
     stopNavigation();
+    // #111: the navigationSessionId-keyed effect above only clears `arrived` at the START of
+    // the NEXT trip, leaving it stale `true` (and deriveMapMode forcing ARRIVAL mode over
+    // Directory) for the whole gap between this Done/Exit and that next Start Navigation.
+    setArrived(false);
   }, [stopNavigation]);
 
   return {
