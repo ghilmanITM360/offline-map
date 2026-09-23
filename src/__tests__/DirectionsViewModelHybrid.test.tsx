@@ -42,6 +42,43 @@ beforeEach(() => {
 });
 
 describe('DirectionsViewModel hybrid outside routing', () => {
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  // Issue #109: a stationary live-GPS user whose fixes stay within
+  // DIRECTIONS_RECALCULATE_ORIGIN_MOVEMENT_M (20m) of each other never re-commits
+  // routeOriginLocation, so its frozen observedAtMs ages past MAX_LIVE_FIX_AGE_MS
+  // (30s) and Start Navigation locks out with "stale" even though fresh fixes keep
+  // arriving on schedule.
+  test('repeated live-GPS fixes at a fixed position keep Start Navigation available past the staleness window', async () => {
+    useAppStore.setState({
+      currentLocation: { ...origin, accuracy: 10, observedAtMs: Date.now() },
+      currentLocationSource: 'live',
+    });
+
+    const hook = await renderHook(() => useDirectionsViewModel(destination));
+    await waitFor(() => expect(hook.result.current.loadState).toBe('ready'), { timeout: 5_000 });
+    expect(hook.result.current.canStartNavigation).toBe(true);
+
+    jest.useFakeTimers();
+    // Same position every 5s, like a stationary user with a live GPS watch — mirrors
+    // the harness's TestLocationInjector pre-nav refresh cadence.
+    for (let tick = 0; tick < 8; tick += 1) {
+      await act(async () => {
+        jest.advanceTimersByTime(5_000);
+        useAppStore.setState({
+          currentLocation: { ...origin, accuracy: 10, observedAtMs: Date.now() },
+          currentLocationSource: 'live',
+        });
+      });
+    }
+
+    // 8 * 5s = 40s elapsed, past MAX_LIVE_FIX_AGE_MS (30s), with fresh fixes the whole time.
+    expect(hook.result.current.canStartNavigation).toBe(true);
+    expect(hook.result.current.startNavigationDisabledReason).toBe('');
+  });
+
   test.each([
     ['live', 'live_gps'],
     ['device_last_known', 'device_last_known'],
