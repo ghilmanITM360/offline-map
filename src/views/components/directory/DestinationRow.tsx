@@ -34,20 +34,27 @@ export function DestinationRow({ place, onPress }: { place: V2Place; onPress: (p
   const Icon = CATEGORY_ICON[place.category] ?? Signpost;
   const accent = CATEGORY_ACCENT[place.category] ?? staticColors.normalBlock;
   const categoryLabel = CATEGORY_LABEL[place.category] ?? place.category;
+  // #96: unavailable rows stay tappable-to-view (map/sheet navigation is correct
+  // today) — only the routing dead-end needs to be signaled earlier, so this never
+  // touches onPress or blocks the Pressable.
+  const isUnavailable = place.isRoutable === false;
 
   return (
     <Pressable
       style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
       onPress={() => onPress(place)}
       accessibilityRole="button"
-      accessibilityLabel={`${place.name}, ${categoryLabel}`}
+      accessibilityLabel={
+        isUnavailable ? `${place.name}, ${categoryLabel}, navigation unavailable` : `${place.name}, ${categoryLabel}`
+      }
+      accessibilityState={{ disabled: isUnavailable }}
     >
-      <View style={[styles.iconWrap, { backgroundColor: `${accent}1A` }]}>
-        <Icon size={20} color={accent} />
+      <View style={[styles.iconWrap, { backgroundColor: isUnavailable ? staticColors.neutralSurface : `${accent}1A` }]}>
+        <Icon size={20} color={isUnavailable ? staticColors.iconMuted : accent} />
       </View>
       <View style={styles.body}>
         <View style={styles.nameRow}>
-          <Text style={styles.name} numberOfLines={1} ellipsizeMode="tail">
+          <Text style={[styles.name, isUnavailable && styles.nameMuted]} numberOfLines={1} ellipsizeMode="tail">
             {place.name}
           </Text>
           {place.urduName ? (
@@ -102,6 +109,9 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: staticColors.textPrimary,
     flexShrink: 1,
+  },
+  nameMuted: {
+    color: staticColors.textSecondaryStrong,
   },
   nameSecondary: {
     fontSize: 13,
