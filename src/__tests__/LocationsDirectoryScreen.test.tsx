@@ -164,6 +164,76 @@ describe('LocationsDirectoryScreen — touch targets (Android 48dp minimum)', ()
   });
 });
 
+describe('LocationsDirectoryScreen — recent destinations (#99)', () => {
+  test('RECENT-01: no recent selections means no Recent section', async () => {
+    mockNav();
+    await render(<LocationsDirectoryScreen />);
+
+    expect(screen.queryByText('Recent')).not.toBeOnTheScreen();
+  });
+
+  test('RECENT-02/03: recent selections render newest-first under a Recent section', async () => {
+    mockNav();
+    useAppStore.setState({ recentSearches: [firstGate, firstBlock] });
+    await render(<LocationsDirectoryScreen />);
+
+    expect(await screen.findByText('Recent')).toBeOnTheScreen();
+    // Both places also appear again in their normal category sections further down the
+    // screen, so the Recent section's own two rows must be the first two matches in
+    // document order — and firstGate (pushed most recently) must lead firstBlock.
+    const matches = screen.getAllByLabelText(
+      new RegExp(`^(${firstGate.name}, Gate|${firstBlock.name}, Block)$`),
+    );
+    expect(matches[0]).toHaveAccessibleName(`${firstGate.name}, Gate`);
+    expect(matches[1]).toHaveAccessibleName(`${firstBlock.name}, Block`);
+  });
+
+  test('RECENT-05/06: tapping a recent destination uses the normal selection hand-off', async () => {
+    const navigation = mockNav({ canGoBack: true });
+    useAppStore.setState({ recentSearches: [firstBlock] });
+    await render(<LocationsDirectoryScreen />);
+
+    await act(async () => {
+      fireEvent.press(screen.getAllByLabelText(`${firstBlock.name}, Block`)[0]);
+    });
+
+    expect(useAppStore.getState().pendingDirectorySelection).toEqual(firstBlock);
+    expect(navigation.goBack).toHaveBeenCalledTimes(1);
+  });
+
+  test('RECENT-07: a recent destination that is currently non-routable stays visible and disabled per #96', async () => {
+    mockNav();
+    useAppStore.setState({ recentSearches: [firstGate, firstBlock] });
+    const blockedGate = PublicDestinationsService.search('Gate 18')[0];
+    useAppStore.setState({ recentSearches: [blockedGate] });
+    await render(<LocationsDirectoryScreen />);
+
+    const row = await screen.findByLabelText(`${blockedGate.name}, Gate, navigation unavailable`);
+    expect(row.props.accessibilityState?.disabled).toBe(true);
+  });
+
+  test('RECENT-08: a stale recent id no longer resolvable in current data is omitted safely', async () => {
+    mockNav();
+    useAppStore.setState({ recentSearches: [{ ...firstBlock, id: 'stale-nonexistent-id' }] });
+    await render(<LocationsDirectoryScreen />);
+
+    expect(screen.queryByText('Recent')).not.toBeOnTheScreen();
+  });
+
+  test('RECENT-11: search still filters normally with recent selections present', async () => {
+    mockNav();
+    useAppStore.setState({ recentSearches: [firstGate] });
+    await render(<LocationsDirectoryScreen />);
+
+    await act(async () => {
+      fireEvent.changeText(screen.getByPlaceholderText('Search blocks, gates, rastas...'), '24');
+    });
+
+    expect(await screen.findByLabelText('Block 24, Block')).toBeOnTheScreen();
+    expect(screen.queryByText('Recent')).not.toBeOnTheScreen();
+  });
+});
+
 describe('LocationsDirectoryScreen — Android hardware back', () => {
   test('clears an active search/category filter before falling through to default back behavior', async () => {
     mockNav();
