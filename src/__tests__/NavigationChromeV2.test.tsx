@@ -4,15 +4,22 @@
  */
 
 import React from 'react';
-import { AccessibilityInfo } from 'react-native';
-import { render, screen, userEvent, within } from './test-utils';
+import { AccessibilityInfo, Animated } from 'react-native';
+import { act, render, screen, userEvent, within } from './test-utils';
 
 import { NavigationChromeV2 } from '../views/components/navigation/NavigationChromeV2';
 import { NAV_TOUCH_TARGET_HIT_SLOP } from '../views/components/navigation/navOverlayStyles';
+import { NAV_TRANSITION_TIMINGS } from '../constants/navigationTransitions';
 import type { NavigationOverlayV2 } from '../viewmodels/useNavigationOverlayV2';
 import type { V2ActiveRoute } from '../models/types';
 
 jest.useFakeTimers();
+
+// #100: chrome's own mount-fade is the DECORATIVE entrance transition under audit — mock
+// the hook boundary directly rather than AccessibilityInfo's async isReduceMotionEnabled,
+// matching how other hook-boundary tests in this file mock their dependencies.
+jest.mock('../viewmodels/useReducedMotion', () => ({ useReducedMotion: jest.fn(() => false) }));
+const mockedUseReducedMotion = jest.requireMock('../viewmodels/useReducedMotion').useReducedMotion as jest.Mock;
 
 const route: V2ActiveRoute = {
   id: 'route-1',
@@ -375,5 +382,52 @@ describe('NavigationChromeV2 — arrival sheet', () => {
 
     expect(announce).toHaveBeenCalledTimes(1);
     expect(announce).toHaveBeenCalledWith(expect.stringContaining('Gate 8'));
+  });
+});
+
+describe('NavigationChromeV2 — reduced motion (#100)', () => {
+  afterEach(() => {
+    mockedUseReducedMotion.mockReturnValue(false);
+    // Animated.timing is jest.spyOn'd fresh per test below — restore it so call counts
+    // and any accumulated fake-timer callbacks don't leak into the next test.
+    jest.restoreAllMocks();
+  });
+
+  test('RM-01: with Reduce Motion disabled, the chrome mount fade still animates via Animated.timing', async () => {
+    mockedUseReducedMotion.mockReturnValue(false);
+    const timingSpy = jest.spyOn(Animated, 'timing');
+    await render(<NavigationChromeV2 overlay={baseOverlay()} hasBaseMap />);
+
+    await act(async () => { jest.advanceTimersByTime(NAV_TRANSITION_TIMINGS.chromeRevealDelayMs); });
+
+    expect(timingSpy).toHaveBeenCalled();
+  });
+
+  test('RM-03: with Reduce Motion enabled, the chrome mount fade is skipped (renders end-state immediately)', async () => {
+    mockedUseReducedMotion.mockReturnValue(true);
+    const timingSpy = jest.spyOn(Animated, 'timing');
+    await render(<NavigationChromeV2 overlay={baseOverlay()} hasBaseMap />);
+
+    await act(async () => { jest.advanceTimersByTime(NAV_TRANSITION_TIMINGS.chromeRevealDelayMs); });
+
+    expect(timingSpy).not.toHaveBeenCalled();
+  });
+
+  test('RM-04/RM-07: arrival state still renders correctly and understandably with Reduce Motion enabled', async () => {
+    mockedUseReducedMotion.mockReturnValue(true);
+    await render(<NavigationChromeV2 overlay={baseOverlay({ arrived: true })} hasBaseMap />);
+
+    await act(async () => { jest.advanceTimersByTime(NAV_TRANSITION_TIMINGS.chromeRevealDelayMs); });
+
+    expect(screen.getByText("You've Arrived!")).toBeOnTheScreen();
+  });
+
+  test('RM-08: a critical status (recalculating) still renders correctly with Reduce Motion enabled', async () => {
+    mockedUseReducedMotion.mockReturnValue(true);
+    await render(<NavigationChromeV2 overlay={baseOverlay({ reroutePending: true })} hasBaseMap />);
+
+    await act(async () => { jest.advanceTimersByTime(NAV_TRANSITION_TIMINGS.chromeRevealDelayMs); });
+
+    expect(screen.getByText('Recalculating...')).toBeOnTheScreen();
   });
 });

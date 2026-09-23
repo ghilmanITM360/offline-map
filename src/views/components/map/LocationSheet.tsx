@@ -31,6 +31,7 @@ import {
 } from 'lucide-react-native';
 
 import { useDirectionsViewModel } from '../../../viewmodels/DirectionsViewModel';
+import { useReducedMotion } from '../../../viewmodels/useReducedMotion';
 import { InstructionService } from '../../../services/InstructionService';
 import { SearchService } from '../../../services/SearchService';
 import { destinationFromPlace } from '../../../services/V2DirectionsService';
@@ -149,14 +150,19 @@ export function LocationSheet(props: LocationSheetProps) {
  * can't interfere with BottomSheetModal's own reanimated gesture/layout handling. */
 function FadeContent({ transitionKey, children }: { transitionKey: string; children: React.ReactNode }) {
   const opacity = useRef(new Animated.Value(0)).current;
+  const reducedMotion = useReducedMotion();
   useEffect(() => {
+    if (reducedMotion) {
+      opacity.setValue(1);
+      return;
+    }
     opacity.setValue(0);
     Animated.timing(opacity, {
       toValue: 1,
       duration: NAV_TRANSITION_TIMINGS.sheetContentFadeMs,
       useNativeDriver: true,
     }).start();
-  }, [transitionKey, opacity]);
+  }, [transitionKey, opacity, reducedMotion]);
   return <Animated.View style={{ opacity }}>{children}</Animated.View>;
 }
 
