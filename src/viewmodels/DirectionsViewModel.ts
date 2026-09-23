@@ -110,9 +110,17 @@ export function useDirectionsViewModel(destination: Place | null) {
     if (startSource !== 'live_gps' || !currentLocation) return;
     setRouteOriginLocation((previous) => {
       if (!previous) return currentLocation;
-      return getDistance(previous, currentLocation) >= DIRECTIONS_RECALCULATE_ORIGIN_MOVEMENT_M
-        ? currentLocation
-        : previous;
+      if (getDistance(previous, currentLocation) >= DIRECTIONS_RECALCULATE_ORIGIN_MOVEMENT_M) return currentLocation;
+      // Issue #109: below the recompute threshold we deliberately keep the committed
+      // lat/lng (route stability), but freshness (observedAtMs/accuracy) is a purely
+      // time-based question independent of that distance gate — a stationary user's
+      // live GPS keeps delivering fresh fixes and must keep the staleness check current.
+      return {
+        ...previous,
+        accuracy: currentLocation.accuracy,
+        observedAtMs: currentLocation.observedAtMs,
+        heading: currentLocation.heading,
+      };
     });
   }, [currentLocation, startSource]);
 
