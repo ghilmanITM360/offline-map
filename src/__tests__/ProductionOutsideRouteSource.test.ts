@@ -70,4 +70,34 @@ describe('production outside route source', () => {
       fallbackReason: 'outside-coverage',
     });
   });
+
+  // Issue #107: origin is inside street-graph coverage but its nearest
+  // street-graph node is >100m away (MAX_ROUTE_ENDPOINT_OFFSET_M). The OSM
+  // resolver returns a valid route for this origin/gate pair standalone;
+  // orchestration must not silently reject it and fall back to direct-guide.
+  test('surfaces valid OSM route when nearest street node is farther than the raw-origin snap tolerance', async () => {
+    const farSnapOrigin = { latitude: 24.964727, longitude: 66.999026 };
+    const gate08 = {
+      gateId: 'GATE_08',
+      gateCoordinate: farSnapOrigin,
+      routeTargetCoordinate: farSnapOrigin,
+    };
+
+    for (let attempt = 0; attempt < 10; attempt += 1) {
+      const result = await createProductionOutsideRouteSource({ googleProxyBaseUrl: undefined }).routeToGates({
+        token: { requestId: `snap-distance-${attempt}`, requestVersion: 1 },
+        origin: farSnapOrigin,
+        gates: [gate08],
+        signal: new AbortController().signal,
+      });
+
+      expect(result.status).toBe('success');
+      if (result.status !== 'success') continue;
+      expect(result.candidateSet.provider).toBe('offline-osm');
+      const outcome = result.candidateSet.outcomes[0];
+      expect(outcome.status).toBe('routed');
+      if (outcome.status !== 'routed') continue;
+      expect(outcome.routes[0].roadFollowing).toBe(true);
+    }
+  });
 });

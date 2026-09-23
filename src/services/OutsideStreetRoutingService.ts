@@ -176,6 +176,12 @@ export const selectStreetGraphOutsidePath = (
   const topologyEdgeDistancesM: number[] = nearestUser.distanceM > dedupToleranceM ? [nearestUser.distanceM] : [];
   const topologyEdgeNames: Array<string | undefined> = nearestUser.distanceM > dedupToleranceM ? [undefined] : [];
 
+  // Issue #107: this rendering-fidelity `coordinates` array had the same gap #69 fixed
+  // in `topologyCoordinates` above — it always started at the snapped node, never the raw
+  // origin. OutsideRouteValidation checks route.coordinates[0] against the request origin
+  // (MAX_ROUTE_ENDPOINT_OFFSET_M = 100m); once the snap leg alone exceeds that, a valid OSM
+  // route was rejected as "origin mismatch" and orchestration fell back to direct-guide.
+  if (nearestUser.distanceM > dedupToleranceM) pushCoord(userCoordinate.lat, userCoordinate.lng);
   pushCoord(nearestUser.node.lat, nearestUser.node.lng);
   for (const edge of edgesUsed) {
     for (const point of edge.geometry ?? []) pushCoord(point.lat, point.lng);
