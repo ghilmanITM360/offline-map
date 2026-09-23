@@ -648,6 +648,14 @@ const pathCoordinates = (
   const outsideLegCoordinateCount = Math.max(0, coordinates.length - 1);
 
   path.nodes.slice(1).forEach((nodeId) => appendCoordinate(coordinates, toAppCoordinate(IJTEMA_NAVIGATION_GRAPH_V2.nodes[nodeId])));
+
+  // #103: a same-node degenerate path (start and destination resolve to the
+  // identical graph node, e.g. two Rasta/SpecialRoute labels sharing a
+  // junction) has no second node to append, leaving a 1-point array that
+  // Polyline consumers can't render. Duplicate the single point so callers
+  // always get a valid (possibly zero-length) line.
+  if (coordinates.length === 1) coordinates.push({ ...coordinates[0] });
+
   return { coordinates, outsideLegCoordinateCount };
 };
 
