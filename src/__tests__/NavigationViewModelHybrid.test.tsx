@@ -254,4 +254,46 @@ describe('NavigationViewModelV2 hybrid rerouting', () => {
     expect(previewSpy).not.toHaveBeenCalled();
     previewSpy.mockRestore();
   });
+
+  // #113: reroute cooldown timestamp (lastRerouteAtRef) is scoped to the whole component
+  // instance and, unlike its sibling off-route-evidence refs, is not reset in the
+  // [navigationSessionId] effect — so a reroute fired near the end of one trip can silently
+  // suppress a genuinely-needed reroute at the very start of the next trip, for however much
+  // of the REROUTE_COOLDOWN_MS window remains.
+  test('reroute cooldown does not bleed into a newly started trip', async () => {
+    const previewSpy = jest
+      .spyOn(V2DirectionsService, 'calculateHybridPreview')
+      .mockResolvedValue({ status: 'unavailable', route: null, instructions: [], message: 'No replacement.' });
+    await renderHook(() => useNavigationViewModelV2());
+
+    const metersPerDegLat = 111320;
+    const longitude = 67.02;
+    const stepMeters = 2;
+    const steps = 18; // 18 * 2m = 36m, past the 12m evidence bar -> reroutes once
+
+    // Trip A: sustained off-route walking triggers a real reroute, setting lastRerouteAtRef.
+    for (let i = 0; i < steps; i++) {
+      const point = { latitude: 24.985 + (i * stepMeters) / metersPerDegLat, longitude, accuracy: 5 };
+      await act(async () => useAppStore.setState({ currentLocation: point, currentLocationSource: 'live' }));
+    }
+    expect(previewSpy).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(useAppStore.getState().reroutePending).toBe(false));
+
+    // End trip A, start trip B immediately (well within REROUTE_COOLDOWN_MS = 25_000ms) on the
+    // same route/destination.
+    await act(async () => useAppStore.getState().stopNavigation());
+    await act(async () =>
+      useAppStore.getState().startNavigation(destination, sharedActiveRoute, sharedActiveRoute.instructions),
+    );
+
+    // Trip B: an unrelated sustained off-route walk, far enough from trip A's off-route
+    // corridor to be unambiguously a fresh episode, that should reroute on its own merits.
+    for (let i = 0; i < steps; i++) {
+      const point = { latitude: 24.992 + (i * stepMeters) / metersPerDegLat, longitude, accuracy: 5 };
+      await act(async () => useAppStore.setState({ currentLocation: point, currentLocationSource: 'live' }));
+    }
+
+    expect(previewSpy).toHaveBeenCalledTimes(2);
+    previewSpy.mockRestore();
+  });
 });

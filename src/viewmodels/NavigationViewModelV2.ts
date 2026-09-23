@@ -194,6 +194,10 @@ export function useNavigationViewModelV2() {
     consecutiveOffRouteRef.current = 0;
     offRouteStartRef.current = null;
     offRouteAnchorRef.current = null;
+    // #113: the reroute cooldown timestamp is the same kind of per-trip evidence as the three
+    // refs above — a reroute fired near the end of one trip must not suppress a genuinely-needed
+    // reroute at the start of the next.
+    lastRerouteAtRef.current = 0;
     // #60: keyed on navigationSessionId (bumped by startNavigation on every trip, even a
     // restart onto the identical route/destination — see useAppStore.startNavigation), not
     // route?.routeId, which is stable for that same-route-restart case and would silently skip
