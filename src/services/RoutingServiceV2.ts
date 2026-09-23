@@ -3,8 +3,10 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import { getRhumbLineBearing } from 'geolib';
 import {
   Block,
+  Coordinate as V2Coordinate,
   Gate,
   GraphEdge,
   GraphNode,
@@ -306,6 +308,46 @@ const instructionUrduForEdge = (edge: GraphEdge): string => {
   return `${edge.name.ur ?? edge.name.en} پر چلتے رہیں`;
 };
 
+/**
+ * Single cutoff, matching the venue's historical classifier (src/services/InstructionService.ts,
+ * v1) rather than the outside street graph's finer-grained thresholds (StreetInstructionService)
+ * — the internal graph is a mostly-orthogonal rasta grid, and NavigationInstruction.type only
+ * models straight/left/right/arrival, so finer buckets would have nowhere to go.
+ */
+const JUNCTION_TURN_THRESHOLD_DEG = 30;
+
+const rhumbBearingDeg = (from: V2Coordinate, to: V2Coordinate): number =>
+  getRhumbLineBearing(
+    { latitude: from.lat, longitude: from.lng },
+    { latitude: to.lat, longitude: to.lng },
+  );
+
+const normalizeAngleDeg = (deg: number): number => {
+  let diff = deg;
+  if (diff > 180) diff -= 360;
+  if (diff < -180) diff += 360;
+  return diff;
+};
+
+/**
+ * Turn at `junction` between the incoming edge (from `previous`) and outgoing edge (to
+ * `next`). Falls back to 'straight' when either segment is at/below the coordinate-dedup
+ * tolerance — too short to yield a reliable bearing — instead of inventing a direction
+ * from an ambiguous fix. Exported for direct unit testing against known coordinates.
+ */
+export const classifyJunctionTurn = (previous: V2Coordinate, junction: V2Coordinate, next: V2Coordinate): 'straight' | 'left' | 'right' => {
+  if (
+    distanceMeters(previous, junction) <= COORDINATE_DEDUP_TOLERANCE_M ||
+    distanceMeters(junction, next) <= COORDINATE_DEDUP_TOLERANCE_M
+  ) {
+    return 'straight';
+  }
+
+  const diff = normalizeAngleDeg(rhumbBearingDeg(junction, next) - rhumbBearingDeg(previous, junction));
+  if (Math.abs(diff) < JUNCTION_TURN_THRESHOLD_DEG) return 'straight';
+  return diff > 0 ? 'right' : 'left';
+};
+
 const generateInstructions = (path: ShortestPathResult, destinationLabel: string): NavigationInstruction[] => {
   const instructions: NavigationInstruction[] = [];
   const firstNode = IJTEMA_NAVIGATION_GRAPH_V2.nodes[path.nodes[0]];
@@ -321,12 +363,18 @@ const generateInstructions = (path: ShortestPathResult, destinationLabel: string
 
   path.edges.forEach((edge, index) => {
     const toNode = IJTEMA_NAVIGATION_GRAPH_V2.nodes[edge.to];
+    const junctionNode = IJTEMA_NAVIGATION_GRAPH_V2.nodes[path.nodes[index]];
+    const previousNode = index > 0 ? IJTEMA_NAVIGATION_GRAPH_V2.nodes[path.nodes[index - 1]] : undefined;
+    const maneuverType =
+      previousNode && junctionNode && toNode
+        ? classifyJunctionTurn(previousNode.coordinate, junctionNode.coordinate, toNode.coordinate)
+        : 'straight';
     instructions.push({
       id: `v2-step-${index + 1}`,
       text: `${instructionTextForEdge(edge)} for ${Math.round(edge.distanceM)} meters.`,
       urduText: `${instructionUrduForEdge(edge)} (${Math.round(edge.distanceM)} میٹر)۔`,
       distance: edge.distanceM,
-      type: 'straight',
+      type: maneuverType,
       coordinate: toNode ? toAppCoordinate(toNode) : { latitude: 0, longitude: 0 },
       roadName: edge.name.en,
     });
