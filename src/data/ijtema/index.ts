@@ -14,3 +14,4 @@ export * from './mapBounds';
 export * from './dataIssues';
 export * from './entryPolicy';
 export * from './navigationGraph';
+export * from './v2Validation';
