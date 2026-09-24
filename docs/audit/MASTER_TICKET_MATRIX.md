@@ -228,3 +228,47 @@ rollup):
 | Tent future model (Epic G) | No real data requires it yet |
 
 **NOT-COVERED total: 0.** Every requirement above resolves to an existing issue, a new issue, a parent checklist item, done-with-evidence status, a field-data blocker, an owner decision, or an explicitly-justified deferral.
+
+---
+
+## Epic O — Forensic Audit Findings (this pass, 2026-09-24)
+
+Source: 8-agent forensic council + adversarial challenge (39 finding IDs + 4 named historical incidents), reconciled against live GitHub state on `2026-09-24`. Canonical HEAD verified at reconciliation time: `1599c324b7b5cfc1a0a92b4b1158382d4a7a2b81`.
+
+| Audit Finding ID | Severity | GitHub Issue | Coverage Status | Parent | Blocked by | Current APK milestone? | Owner/field/runtime requirement | Notes |
+|---|---|---|---|---|---|---|---|---|
+| INCIDENT-CROWDFLOW | P0 (audit) → OWNER-DECISION (adjudicated, pre-existing accepted risk) | #136 | COVERED-BY-EXISTING-ISSUE | — | — | No (field-test relevant, #46) | Owner decision + field evidence (#46) | Already recorded in `KNOWN_LIMITATIONS_AND_OWNER_ACTIONS.md` before this audit; re-flagging as fresh P0 was a severity-tier error, not a new discovery |
+| SEC-SECRETS-001 | P1 | #49 | COVERED-BY-EXISTING-ISSUE (body split A/current vs B/future) | — | — | Public-release relevant | Owner: Cloud Console verification | Git-history exposure confirmed via `git log -p`; Console restriction/rotation state unverifiable from repo |
+| LOC-LIFECYCLE-003 | P1 (judge-elevated from P2) | #139 (NEW) | COVERED-BY-NEW-ISSUE | — | — | Yes — blocks #135 | Physical-device: `adb shell am kill` + `am force-stop`, tested/reported separately | SOURCE-PROVEN persistence gap only; not yet device-reproduced |
+| OFFLINE-TILES-001 | P1 (audit) → P2 (adjudicated) | #140 (NEW) | COVERED-BY-NEW-ISSUE | #122 | — | Copy-check only | Owner/product decision | Consolidated with STORAGE-001, NAV-UX-001 (same defect, 3 audit IDs) |
+| STORAGE-001 | P1 (audit) → P2 (adjudicated) | #140 (NEW) | COVERED-BY-NEW-ISSUE | #122 | — | Copy-check only | Owner/product decision | Same as OFFLINE-TILES-001 |
+| NAV-UX-001 | P1 (audit) → P2 (adjudicated) | #140 (NEW) | COVERED-BY-NEW-ISSUE | #122 | — | Copy-check only | Owner/product decision | Same as OFFLINE-TILES-001 |
+| ARCH-001 | P2 | #142 (NEW) | COVERED-BY-NEW-ISSUE | — | — | No | None | Confirmed real, isolated to one call site, deliberate design split not accidental |
+| REROUTE-003 | P2 | #143 (NEW) | COVERED-BY-NEW-ISSUE | — | — | Recommended, not hard blocker | Regression test (forced-exception) | PLAUSIBLE_RISK, not proven reachable |
+| OFFLINE-TILES-002 | P2 | #141 (NEW) | COVERED-BY-NEW-ISSUE | — | Blocked by #140 | No | None | Inert while #140's product decision pending |
+| LOC-LIFECYCLE-002 | P2 | #144 (NEW) | COVERED-BY-NEW-ISSUE | #126 | — | No | Product/UX decision | "Compass" mislabeling confirmed real |
+| STORAGE-002 | P2 | #141 (NEW) | COVERED-BY-NEW-ISSUE | — | Blocked by #140 | No | None | Consolidated storage-durability ticket |
+| STORAGE-003 | P2 | #141 (NEW) | COVERED-BY-NEW-ISSUE | — | Blocked by #140 | No | None | Consolidated storage-durability ticket |
+| PRIVACY-STORAGE-001 | P2 | #145 (NEW) | COVERED-BY-NEW-ISSUE | — | — | Recommended before store release | Owner: retention-policy decision | Distinct from #47 (legal URLs, not app behavior) |
+| DOWNLOAD-WORKER-DOUBLE-OWNER-005 | P2 | #141 (NEW) | COVERED-BY-NEW-ISSUE | — | Blocked by #140 | No | None | Currently inert, feature production-disabled |
+| NAV-UX-002 | P2 | #146 (NEW) | COVERED-BY-NEW-ISSUE | #126 | — | No | None | #96 covered row *styling*, not browse-vs-search visibility divergence |
+| STATE-002 | P3 | #120 (folded checklist item) | COVERED-BY-PARENT-CHECKLIST | — | — | No | None | Latent authoring trap, no live consumer |
+| ERR-006 | P3 | #120 (folded checklist item) | COVERED-BY-PARENT-CHECKLIST | — | — | No | None | Audit gap (13/50 catch sites unverified), not a confirmed defect |
+| OFFLINE-CONNECTIVITY-001 | P3 | #123 (folded acceptance criteria) | COVERED-BY-PARENT-CHECKLIST | — | — | No | None | Dormant — Google proxy excluded by default today |
+| OFFLINE-ROUTING-COORDS-001 | P2/P3 | #147 (NEW) | COVERED-BY-NEW-ISSUE | — | — | Recommended before field test | Synthetic-fixture regression test | PLAUSIBLE_RISK, not reproduced |
+| LOC-LIFECYCLE-001 | P3 | #148 (NEW) | COVERED-BY-NEW-ISSUE | — | — | Low priority | Product-intent confirmation (foreground-only) | Dead config, Play-review risk only on future native regen |
+| STORAGE-004 | P3 | #141 (NEW) | COVERED-BY-NEW-ISSUE | — | Blocked by #140 | No | None | Non-atomic write/delete, harmless-orphan-data-only per own audit finding |
+| STORAGE-005 | P3 | — (no ticket) | INFORMATIONAL / SAFE-BY-CONSTRUCTION | — | — | No | None | "9-tile manifest lag" DERIVED and real, but `Math.min()` guard makes it safe by construction — not a defect, no action needed |
+| STORAGE-006 | P3 | #120 (folded checklist item) | COVERED-BY-PARENT-CHECKLIST | — | — | No | None | `migrate()` ignores version arg; no incident yet |
+| SEC-TRUSTBOUNDARY-001 | P3 | #123 + #47 (folded/cross-referenced) | COVERED-BY-PARENT-CHECKLIST | — | — | No | None | No credential leak today; becomes real disclosure item only once proxy deploys live |
+| GRAPHBUILD-COMPLEXITY-002 | P3 | #119 | COVERED-BY-EXISTING-ISSUE (exact match) | — | — | No | Benchmark execution | "sub-100ms" claim is an ESTIMATE pending #119's actual measurement |
+| SEARCH-LINEAR-SCAN-004 | P3 | #119 | COVERED-BY-EXISTING-ISSUE (exact match) | — | — | No | Benchmark execution | Sizes/measurements already match audit requirement exactly |
+| NAV-UX-003 | P3 | #128 (folded checklist item) | COVERED-BY-PARENT-CHECKLIST | #126 | — | Yes (#128 is current-milestone epic) | None | "Open Settings" text not wired to an action |
+| NAV-UX-004 | P3 | #128 (folded checklist item) | COVERED-BY-PARENT-CHECKLIST | #126 | — | Yes | None | Download Map screen: 0/9 controls have accessibility labels |
+| NAV-UX-005 | P3 | #128 (folded checklist item) | COVERED-BY-PARENT-CHECKLIST | #126 | — | Yes | Field-test observation (#46) recommended | STRONGLY_INDICATED, absence of evidence not evidence of failure |
+| Jest open-handle warning | — | #120 (folded checklist item) | COVERED-BY-PARENT-CHECKLIST | — | — | No | `--detectOpenHandles` investigation | Reproduced independently this session; low priority |
+| NEW — V1 mirrors unfixed #111/#113 | — (not in original audit; surfaced by this pass's own root-cause adjudication) | #149 (NEW) | COVERED-BY-NEW-ISSUE | — | — | Yes — recommended before #46 field test | None | Confirmed live: any legacy (non-v2) destination still routes through unfixed V1 `NavigationViewModel` |
+
+**Positive/informational findings (no ticket, source-confirmed healthy):** no retry-storm mechanism; Android backup correctly excludes location-bearing storage; Google proxy client holds no privileged credential; street graph uses `SpatialGrid` spatial index (unlike venue graph, judged fine at current ~289-node scale); GPS polling correctly duty-cycled and stopped on backgrounding; outside-routing beeline fallback behaves as designed beyond the 3km graph radius; `expo-updates` installed but fully unconfigured (no OTA attack surface today); iOS Maps key confirmed still a placeholder, not a live leaked secret (#137 already tracks the placeholder-config follow-up).
+
+**Epic O NOT-COVERED total: 0.** Every finding ID above resolves to an existing issue, a new issue, a parent-checklist fold-in, an owner-action item, a field-data blocker, or a documented informational/safe-by-construction disposition.
