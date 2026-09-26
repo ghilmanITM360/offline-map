@@ -303,16 +303,87 @@ Directory, Settings/Help/About/App Guide, error/offline/GPS banners) — see
 `UX_REQUIREMENT_MATRIX.md`'s UX-007 row for the closing status. No emulator was available
 this session; all of #153/#154/#155/#156's findings remain runtime-unconfirmed.
 
+## Session update: runtime verification of #153/#154/#155/#156 (2026-09-26)
+
+Booted the `Ijtema_API_36_Play` AVD (present locally, not previously used this audit) via
+`adb`/`emulator` CLI — no Android runtime had been available in prior sessions, and that
+was documented as a hard blocker. It is not a blocker as of this session.
+
+**#153 (launch flow) — Finding 1 RUNTIME VERIFIED.** Cleared app data (`pm clear`) to force
+a genuine fresh install, walked Welcome → Permission (real OS dialog, granted "While using
+the app") → observed the app land on `Main` (bare Explore Map), not `LocationsDirectory`.
+Force-stopped and relaunched: second cold launch landed directly on `LocationsDirectory`,
+exactly as Finding 1 predicted. Root cause pinned precisely: `PermissionViewModel.ts:51-56`
+(`navigateNext`) makes its own independent `!isConnected → 'Main'` routing decision,
+bypassing `StartupManager.resolve`'s own `!isConnected && not_downloaded →
+'LocationsDirectory'` branch (`StartupManager.ts:65-67`) for the same condition — two
+uncoordinated decision trees for the same "offline, first session" state. Posted as a
+comment on #153; issue stays open pending the owner decision its acceptance criteria
+already ask for.
+
+**#154 (Locations Directory) — heading-semantics finding RUNTIME VERIFIED.** `uiautomator
+dump` of the live Directory screen confirms "RECENT" and "BLOCKS (42)" render as plain
+`android.widget.TextView` with no heading trait, matching the source finding exactly.
+
+**#155 (Settings/Help/About/App Guide) — RUNTIME VERIFIED, with a refinement.**
+`uiautomator dump` of the Settings screen confirms zero explicit `accessibilityRole`/
+`Label`/`State` in source, but also reveals React Native's Android accessibility bridge
+auto-synthesizes a spoken content-desc from a clickable row's nested `Text` children even
+without any explicit prop — so TalkBack is not literally silent on these rows today, as a
+plain reading of "zero accessibility props" might imply. The real, confirmed-at-runtime gap
+is narrower and sharper: toggle rows report `checkable="false"` at the row level, so
+on/off state is never announced, and no role (switch/button) is conveyed either. Posted as
+a comment on #155 recommending the fix target role+state explicitly. Not re-tested on iOS,
+where RN's fallback behavior for unlabeled nested Text differs.
+
+**#156 (error/offline/GPS status messages) — Findings 3, 4 RUNTIME VERIFIED; Finding 5
+newly found this session; Finding 1 still not reproduced; Finding 2 still not reproduced.**
+"Graph-only map works offline" and DownloadMapScreen's English-only chrome both reproduced
+verbatim on-device. A second, previously-undocumented dev/ops-facing string was found while
+capturing the idle/blocked Download Map screen: `DownloadMapScreen.tsx:164`'s "Offline
+background-map download is unavailable until a licensed tile package is configured." —
+same wrong-audience-string problem as Finding 1, added to #156 as Finding 5. Finding 1
+itself (`GOOGLE_MAPS_LOAD_FAILED_MESSAGE`) could not be reproduced — this emulator has no
+real network path at all (confirmed via `adb shell ping` → "Network is unreachable"), so
+`HomeScreen.tsx` renders its plain, jargon-free `isOffline` banner instead of the Maps-SDK-
+failure banner Finding 1 is about; reproducing Finding 1 needs real connectivity plus an
+actual Maps SDK failure. `logcat` on this emulator independently shows a Google Play
+Services `GoogleApiManager` `DEVELOPER_ERROR`/`SecurityException` — consistent with an
+API-key/SHA-1 restriction specific to this dev/debug build, which also explains why the
+basemap still fails to render in browse mode (reconfirming the historical Sept 5 finding);
+a production-signed build would be needed to separate "environment limitation" from "real
+regression." Finding 2 (GPS/reroute live-region) needs Active Navigation plus mock
+GPS-state changes plus TalkBack running — TalkBack (`com.google.android.marvin.talkback`)
+was confirmed installed on this AVD for whenever that pass happens, but the pass itself was
+not attempted this session (reaching Active Navigation needs a destination search + route
+start, out of scope for this atomic task). Updated #156's body directly (not just a
+comment) to add Finding 5 and the "Runtime verification" section; posted comments on
+#153/#154/#155.
+
+Updated `UX_REQUIREMENT_MATRIX.md` (UX-001/002/003/007 rows and the stale "no emulator
+available" note in Work Planning) and `UI_UX_COVERAGE_MATRIX.md` (Splash, Welcome,
+Permissions, Download Map, Locations Directory, Explore Map, Offline/graph fallback,
+Settings, Active Navigation, Rerouting, GPS loss/recovery rows) to reflect RUNTIME VERIFIED
+status where evidence now supports it. Screenshots and `uiautomator` XML dumps from this
+pass are session-local (scratchpad), not committed to the repo.
+
 ## Remaining audit work / next atomic task
 
 Ranked candidates, per this task's Phase 12:
 1. Re-capture the 6 historical screens with a working basemap (unblocks visual judgments
-   across the entire existing capture set).
+   across the entire existing capture set) — still blocked on the same `DEVELOPER_ERROR`/
+   API-key-restriction issue reconfirmed this session; needs either a production-signed
+   build or a properly-restricted dev API key, not just an emulator.
 2. Capture the true LocationSheet Details view via the correct tap target (never actually
    captured despite being logged as captured).
-3. ~~Audit Locations Directory and first-run onboarding~~ — done this session, source-level
-   (see above); runtime confirmation still needed.
-4. Continue through Route Preview, Active Navigation, Arrival, GPS warning, and Offline
-   fallback — highest-risk, zero visual evidence, currently RUNTIME BLOCKED — NOT VERIFIED.
+3. ~~Audit Locations Directory and first-run onboarding~~ — done, source-level and now
+   partially runtime-confirmed (see above).
+4. Active Navigation / Route Preview / Arrival / GPS warning / Offline fallback runtime
+   pass — reach these via a destination search + route start, then use `adb emu geo`/mock
+   location to simulate GPS loss and recovery with TalkBack running, to close out #156
+   Finding 2 (the single highest-risk unresolved item: silent status banners during active
+   navigation for screen-reader users). This is the most direct next step from this
+   session's work and the one #153/#154/#155/#156's evidence trail points to next.
 
-Not started this session, per this task's explicit "do not start the next task" instruction.
+Not started this session, per this task's established pattern of stopping after each
+explicit, bounded ask.
