@@ -185,6 +185,62 @@ Both filed after re-verifying no existing issue covered this ground (grepped pas
 `UX_REQUIREMENT_MATRIX.md`. All findings are **SOURCE INSPECTED only** — none confirmed
 at runtime (no Android emulator/device tooling this session).
 
+### Low-literacy usability pass (expert walkthrough — not real-user testing)
+
+This is a source-level expert review, not a representative-attendee usability study. No
+participants were involved; do not treat this as UX-010's field validation.
+
+- **Splash/Welcome/Permission**: primary action per screen is a single button
+  ("Continue", "Allow Location"/"Continue Without Location") — clear. Permission denial
+  copy ("We need this to show your position on the map and guide you to your
+  destination") avoids jargon. Gap: the consequence of skipping is only in a transient
+  Alert (#153 Finding 5) — a low-literacy or hurried user who dismisses it quickly has no
+  persistent reminder.
+- **DownloadMap**: "Use Venue Map Only" / "Use Online Mode" wording assumes the reader
+  understands what an offline map vs. online mode means — not verified against a
+  non-technical reader's mental model; flagged, not fixed.
+- **Locations Directory**: category chips (Blocks/Gates/Rastas/Shahr-e-Pindal) and the
+  search box are the two primary paths; both are single, obvious actions. Numeric search
+  ("24" → Block 24) is a strong low-literacy-friendly affordance — no reading of category
+  names required. Gap: English-only chrome (#154 Finding 2) means a reader who can't read
+  English gets no readable instructions, chip labels, or empty-state guidance, even though
+  the actual destination names they're searching for are bilingual.
+- **GPS/internet unavailable**: not evaluated this pass for the Directory or launch flow
+  specifically — Directory has no offline/error state because its data is static and
+  unaffected by connectivity (see #154); the GPS/permission-denial path is covered under
+  Permission above.
+- **Mistake recovery**: back-navigation and hardware-back on Directory both work without
+  data loss (query/filter simply clears); Permission and DownloadMap both allow
+  re-choosing without a forced restart.
+
+**Flag to owner**: none of the above constitutes real low-literacy-user validation —
+UX-010 explicitly requires representative-user or structured field testing, which this
+session cannot provide.
+
+### Runtime test cases prepared (not executed — no Android tooling this session)
+
+No emulator was available. These are prepared, reproducible test cases for whenever one
+is: keep source-level conclusions (above) and runtime conclusions (below) separate — do
+not treat this list as evidence of anything having been run.
+
+| Case | Steps | Expected result | Screenshot needed |
+|---|---|---|---|
+| Fresh installation | Clear app data, launch | Splash → Welcome → Permission → (DownloadMap or Main) | Each screen in sequence |
+| Returning-user launch | Complete setup once, force-quit, relaunch | Splash → LocationsDirectory directly | Splash → Directory transition |
+| Permission granted | Tap "Allow Location" | Proceeds to next screen (Main or DownloadMap depending on map state) | Permission screen + post-grant screen |
+| Permission denied (soft) | Deny, `canAskAgain: true` | "Location isn't on yet" Alert shown, flow still proceeds on skip | Alert + resulting screen |
+| Permission denied (permanent) | Deny twice / deny "don't ask again" | "Location permission required" Alert with "Open Settings" | Alert |
+| Offline launch | Airplane mode, fresh install | Onboarding proceeds; DownloadMap shows no "Use Online Mode" option (requires `hasInternet`) | DownloadMap screen |
+| Interrupted setup | Force-quit mid-Welcome or mid-Permission, relaunch | Resumes at the correct screen per persisted flags, or repeats Welcome if storage read failed (#153 Finding 3) | Screen on relaunch |
+| Directory loading | Open Directory | No loading spinner (by design — data is synchronous/static); sections render immediately | Directory on open |
+| Empty search | Search a nonsense string | `No matches for "..."` + hint text | Empty-state screen |
+| Urdu/English search | Search a destination by its Urdu name/alias | Result matches via substring (no fuzzy match on Urdu) | Search results |
+| Unavailable destination | Tap a non-routable gate/block | Row shows muted styling + "· Not yet available for routing"; still opens preview/detail | Destination row + resulting sheet |
+
+Permission-revocation and storage-failure re-trigger scenarios from #153 (Findings 2, 3)
+should also be added to this list once a controllable test harness for OS-level
+permission state exists.
+
 Also corrected a P1-count error this session: an earlier pass of this document, the
 #152 PR body, and the #126/#128 issue comments all said "4 already fixed" — the actual,
 re-verified count is 3 (P1-2, P1-4, P1-6). Fixed in all four places.
