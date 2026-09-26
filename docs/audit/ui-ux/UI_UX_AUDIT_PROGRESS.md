@@ -367,6 +367,46 @@ Settings, Active Navigation, Rerouting, GPS loss/recovery rows) to reflect RUNTI
 status where evidence now supports it. Screenshots and `uiautomator` XML dumps from this
 pass are session-local (scratchpad), not committed to the repo.
 
+## Session update: Active Navigation + GPS live-region pass for #156 Finding 2 (2026-09-26, follow-up)
+
+Re-booted `Ijtema_API_36_Play`. Reached Active Navigation for real this time: opened Block
+13's LocationSheet from the Directory, tapped Directions, fed a mock GPS fix (`adb emu geo
+fix`) so a route could resolve, tapped Start Navigation. Landed on `NavigationChromeV2`
+showing the map-unavailable banner ("Base map unavailable. Offline route guidance
+continues.") as expected.
+
+Forced a genuine GPS_LOST transition by cutting the app's location fixes and waiting past
+`GPS_LOST_TIMEOUT_MS` (8s, `NAVIGATION_WATCH_TIME_INTERVAL_MS * 8` = 1000ms * 8). First
+attempt used the device-wide `cmd location set-location-enabled false` toggle — this works
+(confirmed: route progress froze, banner changed) but triggers a cascade of Android/GMS
+system dialogs ("No location access", "Turn on Location Accuracy") that TalkBack's
+single-tap-to-focus behavior made hard to dismiss, forcing TalkBack off mid-sequence to
+clear them — an ordering mistake that meant TalkBack was off at the exact moment GPS_LOST
+fired. The banner itself was still captured correctly: "Searching for GPS signal. Your
+position may be out of date.", confirmed via `uiautomator dump` to render as a bare
+`android.widget.TextView` with `content-desc=""` and `clickable="false"` — no accessibility
+affordance at the node level, directly confirming the finding. The banner-priority chain
+(#66) was also reconfirmed live: GPS_LOST correctly pre-empted the map-unavailable banner
+that had been showing, never stacked.
+
+Retried with TalkBack left on, this time cutting GPS via `pm revoke` on the location
+permissions instead of the system toggle (to avoid the dialog cascade). This force-killed
+the app outright — `logcat` showed `ActivityTaskManager: Force removing ActivityRecord ...
+app died, no saved state` — because revoking a held runtime permission from a foreground app
+is an Android OS-level kill, not something the app can prevent or an app defect. This ended
+the session before a TalkBack-on transition could be observed.
+
+**Net result: #156 Finding 2 is PARTIALLY RUNTIME CONFIRMED.** The banner's existence, exact
+text, and lack of any node-level accessibility affordance are now confirmed on-device,
+matching the source finding precisely. Whether TalkBack is genuinely silent through the
+transition — the actual screen-reader-user-facing symptom — is still unconfirmed; the
+source-level fact that stands behind it (no `announceForAccessibility`/
+`accessibilityLiveRegion` anywhere on this banner's code path, unlike the arrival banner
+which has one) was already established in a prior session and remains the evidence for the
+underlying defect. Updated #156's body (Finding 2, the runtime-verification section, and the
+banner-priority note) directly. Updated `UX_REQUIREMENT_MATRIX.md` (UX-007 row, Batch E,
+`NavigationChromeV1/V2` component-inventory row).
+
 ## Remaining audit work / next atomic task
 
 Ranked candidates, per this task's Phase 12:
@@ -378,12 +418,19 @@ Ranked candidates, per this task's Phase 12:
    captured despite being logged as captured).
 3. ~~Audit Locations Directory and first-run onboarding~~ — done, source-level and now
    partially runtime-confirmed (see above).
-4. Active Navigation / Route Preview / Arrival / GPS warning / Offline fallback runtime
-   pass — reach these via a destination search + route start, then use `adb emu geo`/mock
-   location to simulate GPS loss and recovery with TalkBack running, to close out #156
-   Finding 2 (the single highest-risk unresolved item: silent status banners during active
-   navigation for screen-reader users). This is the most direct next step from this
-   session's work and the one #153/#154/#155/#156's evidence trail points to next.
+4. Confirm live TalkBack audible silence during GPS_LOST — the one piece of #156 Finding 2
+   still open. Needs a GPS-cutoff method that doesn't disturb TalkBack or the foreground
+   process: neither the device-wide `cmd location set-location-enabled false` toggle (spawns
+   an Android/GMS dialog cascade that TalkBack's single-tap-to-focus makes hard to clear) nor
+   `pm revoke` on the location permission (Android force-kills the foreground app on runtime
+   permission revocation) worked cleanly this session. Try the emulator's own extended
+   controls / console (pause the virtual GPS feed directly, e.g. simply stop sending `adb emu
+   geo fix` updates on an emulator build where the virtual GPS doesn't keep re-transmitting
+   the last fix) so TalkBack stays undisturbed through the transition; capture speech output
+   via a screen recording with audio, since headless `logcat` only reliably shows TalkBack's
+   `AudioManager` focus requests/releases, not the spoken text itself. Also still open:
+   Route Preview, Rerouting, and Arrival states, and #156 Finding 1 (needs real connectivity
+   plus an actual Maps SDK failure).
 
 Not started this session, per this task's established pattern of stopping after each
 explicit, bounded ask.
