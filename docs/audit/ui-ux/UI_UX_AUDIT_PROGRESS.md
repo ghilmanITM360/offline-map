@@ -604,6 +604,29 @@ First Welcome-specific audit pass, same branch (`docs/ui-ux-audit-reconciliation
 
 **#126/#128 status:** unchanged, **not marked DONE**.
 
+## Session update: Screen 03 (Permission) deep audit + consolidated issue (2026-09-26, sixth follow-up)
+
+Third sequential screen-specific audit pass, same branch (`docs/ui-ux-audit-reconciliation`). New `PERMISSION_SCREEN_DEEP_AUDIT.md` written and committed. No pre-existing Permission-specific report or issue existed prior to this session (confirmed via `ls` and `gh issue list --search permission`/`--search location`).
+
+Opened with an owner-confirmed naming decision to document first: official app name is English "Ijtema Map" / Urdu "اجتماع میپ" — cross-referenced against #158 (no naming content) and #159 (WEL-001 catalogued two other variants, not this one).
+
+**Screen 03 status:**
+- Source audit: **COMPLETE** (full element inventory — 12 elements including the native-dialog and 4 conditional-Alert states, none invented; full execution-path trace through `PermissionViewModel`/`StartupManager`/`OnboardingStatusService`/`GPSManagerService`, explicitly distinguishing permission status from device Location-Services status from actual GPS fix availability per this task's Phase 3 requirement; full double-confirmation-dialog Phase-8 review — recommendation KEEP, evidence-based; measured WCAG 2.2 contrast on every text/background pair)
+- Available runtime audit: **COMPLETE for non-destructive/reversible states** on the shared `emulator-5554` (Codex-foreground-app check performed before touching anything; no `pm clear`/reinstall). Session opened on a pristine, never-interacted Permission screen left over from the prior Welcome-audit session's own testing. Live-tested: fresh render, skip-tap → confirmation dialog, cancel → state verified unchanged (screenshot + AsyncStorage-file check), grant-tap → loading state → native Android 16 permission dialog → grant → transition to DownloadMap, relaunch after grant → correctly re-skips both Welcome and Permission, and one reversible `pm revoke` (not a data clear) + relaunch to reproduce a real Settings-level revocation. 8 screenshots captured (14–21).
+- Accessibility: **SOURCE-LEVEL REVIEWED, NOT TALKBACK-VERIFIED** — same two open-item pattern as Welcome (missing `accessibilityRole="button"`, decorative icon not explicitly hidden), plus one Permission-specific item (skip link's touch target source-estimated below 48dp).
+- Outstanding verification: live TalkBack pass, forced large-font-scale, native "Don't allow"/"Only this time" branches, Location-Services-disabled toggle, no-internet-at-request-time, physical-device pass, real first-time-user validation.
+- Implementation: **NOT STARTED** — audit-only pass, no application code changed.
+
+**Findings:** no functional defects — every runtime-testable behavior (skip, cancel, grant, relaunch, external revocation) completed its transition correctly. Nine new findings recorded: native OS permission dialog (and app launcher/recents label) shows a fifth/sixth app-name variant, "Karachi Ijtema Offline Nav," sourced from `app.json:3` — the most OS-prominent naming surface found in this audit lineage so far, seen before the app is even opened (PERM-001); no in-app distinction between Precise/Approximate grant (PERM-002); permanent-denial Alert overstates the requirement given skip is always available (PERM-003); loading-state button background fails WCAG 1.4.11 non-text contrast for its white spinner, confirmed via live screenshot — genuinely hard to see (PERM-005); a rejected permission-request promise is silently logged with no user-facing Alert (PERM-006); Permission is the one screen in an otherwise-bilingual onboarding sequence with no Urdu text (PERM-007); skip link's touch target source-estimated under 48dp (PERM-008); missing `accessibilityRole`/icon accessibility-hiding (PERM-009).
+
+**Existing issues checked and corroborated, not duplicated:** #153 Finding 2 (revoked permission indistinguishable from a first ask) was **live-reproduced this session** — the post-revocation screenshot is pixel-identical to the fresh-install screenshot — strengthening it from source-only to source+runtime evidence. #153 Finding 5 (skip consequence trapped in a transient Alert) corroborated via this audit's own Phase-8 dialog review. #128's NAV-UX-003 ("Open Settings" not wired) **appears already fixed** — `Linking.openSettings()` is correctly wired in current source — flagged for owner reconciliation rather than silently assumed. WEL-006 (title text duplicated with Welcome) corroborated from the Permission side.
+
+**Consolidated issue:** to be filed after this doc is committed — parent #126, cross-referenced #128, #153, #159. Searched #126/#128/#153/#158/#159 first plus keyword searches for "permission"/"location"/"Mimbar" — no pre-existing Permission-specific ticket found (closest adjacent tickets: #148 dead background-permission config, #156 DownloadMap/GPS error messages, #116 unrelated field-survey ticket — none overlap this screen's own findings).
+
+**Mimbar concept (Phase 9):** zero matches anywhere in `src/` (re-confirmed, consistent with the existing tracker note above and #153's own claim) — not implemented, not stubbed. No permission-flow contradiction found with the owner's proposed future fallback; recorded as not-yet-built, cross-referenced rather than duplicated.
+
+**#126/#128 status:** unchanged, **not marked DONE**.
+
 ## Remaining audit work / next atomic task
 
 Ranked candidates, per this task's Phase 12:
