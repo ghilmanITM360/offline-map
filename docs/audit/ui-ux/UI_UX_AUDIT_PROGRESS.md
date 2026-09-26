@@ -49,9 +49,9 @@ or that the report's number is stale/irrelevant.
 
 | Finding | Status | Ticket disposition |
 |---|---|---|
-| P1-1 Outside-venue banner contrast (`#F29900`) | STILL PRESENT | MISSING ISSUE — no existing issue covers this; a new ticket is warranted (independently actionable, distinct acceptance criteria: replace with `#946500`) |
+| P1-1 Outside-venue banner contrast (`#F29900`) | STILL PRESENT | Filed as #150 (parent #126) |
 | P1-2 LayersSheet accessibility | ALREADY FIXED | EXACTLY COVERED, resolved — #65 (closed) |
-| P1-3 GateLayer/FacilityLayer bare marker a11y | STILL PRESENT | MISSING ISSUE — no existing issue covers this |
+| P1-3 GateLayer/FacilityLayer bare marker a11y | STILL PRESENT | Filed as #151 (parent #126) |
 | P1-4 LocationSheet action-row a11y | ALREADY FIXED | EXACTLY COVERED, resolved — #65 (closed) |
 | P1-5 SearchBarField font-scale clipping | PARTIALLY FIXED | EXACTLY COVERED for the fix itself — #65 (closed); the remaining "confirm at 1.8x visually" gap has no open issue — RUNTIME VERIFICATION REQUIRED, foldable into #128's existing checklist rather than a new ticket |
 | P1-6 GPS banner stacking | ALREADY FIXED | EXACTLY COVERED, resolved — #66 (closed) |
@@ -62,12 +62,19 @@ or that the report's number is stale/irrelevant.
 | True LocationSheet Details view never captured | n/a (evidence gap, not a defect) | tracked here and in the coverage matrix; not a ticket, a testing gap |
 | "1-in-21 Directions" / Start Navigation reachability | UNVERIFIABLE as stated | closest match is closed #109; if a distinct defect is reconfirmed via the recommended bounded test, it needs its own new issue — not yet warranted without reconfirmation |
 
-No new GitHub issues were created this session, per this task's explicit constraint.
-Two findings (P1-1, P1-3) are independently actionable with distinct acceptance criteria
-and no existing coverage — these are the strongest new-ticket candidates, drafted below
-for owner review, not filed.
+Two findings (P1-1, P1-3) were independently actionable with distinct acceptance criteria
+and no existing coverage. Per this session's explicit instruction to file them once
+verified and uncovered, both were created:
 
-### Draft ticket 1 — Outside-venue banner contrast
+- [#150](https://github.com/ghilmanITM360/offline-map/issues/150) — Outside-Ijtema banner
+  contrast (P1-1)
+- [#151](https://github.com/ghilmanITM360/offline-map/issues/151) — GateLayer/FacilityLayer
+  marker accessibility (P1-3)
+
+Both parent #126; both reference #128 as related. The draft content below is preserved as
+the original evidence trail; the filed issues carry the same content.
+
+### Draft ticket 1 — Outside-venue banner contrast (filed as #150)
 
 - Title: Outside-Ijtema banner uses WCAG-AA-failing `#F29900`/white text
 - Evidence: `src/views/screens/HomeScreen.tsx:1979` (`outsideVenueBanner.backgroundColor`),
@@ -82,7 +89,7 @@ for owner review, not filed.
   the sizes used; component test asserts the color
 - Parent: #126; related: #128 (readability checklist item)
 
-### Draft ticket 2 — GateLayer/FacilityLayer suppressed markers lack accessible names
+### Draft ticket 2 — GateLayer/FacilityLayer suppressed markers lack accessible names (filed as #151)
 
 - Title: Suppressed/unselected gate and facility map markers have no accessibility label
 - Evidence: `src/views/components/map/GateLayer.tsx` (Marker for suppressed/unselected
@@ -138,11 +145,16 @@ session — its status is preserved as-is per this task's explicit instruction.
 ## Git/PR state at time of this work
 
 - Branch: `docs/ui-ux-audit-reconciliation`, created off `integration/ijtema-clean-baseline`
-  at `1599c32` (matched `origin/integration/ijtema-clean-baseline` exactly at creation time)
+  at `1599c32` (matched `origin/integration/ijtema-clean-baseline` exactly at creation time),
+  now pushed to `origin/docs/ui-ux-audit-reconciliation` and a documentation PR opened
+  targeting `integration/ijtema-clean-baseline`, linked to #126 and #128
 - PR #121 (`fix/v2-data-structural-validation`): OPEN, MERGEABLE, not touched
 - PR #138 (`docs/ticket-reconciliation-matrix`): OPEN, MERGEABLE, not touched, not
-  overwritten
-- Neither PR was merged. No application source was modified. No fixes were implemented.
+  overwritten — this audit PR is a separate, narrower doc set and does not duplicate it
+- Neither #121 nor #138 was merged. No application source was modified. No fixes were
+  implemented.
+- New: #150, #151 filed this session (see above). See `UX_REQUIREMENT_MATRIX.md` for the
+  full UX-001–UX-015 requirement-to-issue mapping.
 
 ## Remaining audit work / next atomic task
 
