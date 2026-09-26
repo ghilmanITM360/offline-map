@@ -105,9 +105,16 @@ the original evidence trail; the filed issues carry the same content.
 ## #126 status
 
 Parent epic. Progress this session: recovered and reconciled a prior, previously-untracked
-audit; confirmed 4 of its 6 P1 findings already fixed (via #65, #66); confirmed 2 remain
-open with draft tickets above; no acceptance criteria for #126 itself are met or claimed
-met. Not DONE.
+audit; confirmed 3 of its 6 P1 findings already fixed (via #65, #66); 1 partially fixed;
+confirmed 2 remain open, now filed as #150/#151; no acceptance criteria for #126 itself
+are met or claimed met. Not DONE.
+
+**Count correction (this pass):** an earlier version of this document, the #152 PR body,
+and the #126/#128 issue comments all stated "4 already fixed." Re-verified line-by-line
+against `HISTORICAL_FINDINGS_RECONCILIATION.md`: exactly 3 findings are classified ALREADY
+FIXED (P1-2, P1-4, P1-6). The 6-item total (3 fixed / 1 partial / 2 present) was always
+correct in the reconciliation doc itself — the miscount was only in these summary
+restatements, now corrected in all four places.
 
 ## #128 status
 
@@ -156,6 +163,32 @@ session — its status is preserved as-is per this task's explicit instruction.
 - New: #150, #151 filed this session (see above). See `UX_REQUIREMENT_MATRIX.md` for the
   full UX-001–UX-015 requirement-to-issue mapping.
 
+## Session update: first-install flow + Locations Directory forensic audit
+
+This session performed the full source-level audit item 3 below was flagging as
+uncovered. Findings filed as two new issues:
+
+- [#153](https://github.com/ghilmanITM360/offline-map/issues/153) — First-install/
+  returning-user launch flow: 5 findings (divergent post-setup destination for
+  first-time vs. returning users; permission-revocation re-trigger indistinguishable
+  from first-ask; storage-failure silently repeats onboarding; two uncoordinated
+  redirect timers on DownloadMapScreen; permission-skip consequence shown only in a
+  transient Alert). Covers UX-001, UX-002.
+- [#154](https://github.com/ghilmanITM360/offline-map/issues/154) — Locations Directory:
+  4 findings (section headings lack heading-level accessibility; English-only chrome
+  around already-bilingual destination names; computed unavailable-reason text
+  discarded before reaching the user; test-coverage gaps for Urdu search and heading
+  a11y). Covers UX-003, and folds in the Directory-specific slice of UX-007 (copy audit).
+
+Both filed after re-verifying no existing issue covered this ground (grepped past
+"Mimbar" concern — zero matches in `src/`, no mislabeling risk found). Full evidence in
+`UX_REQUIREMENT_MATRIX.md`. All findings are **SOURCE INSPECTED only** — none confirmed
+at runtime (no Android emulator/device tooling this session).
+
+Also corrected a P1-count error this session: an earlier pass of this document, the
+#152 PR body, and the #126/#128 issue comments all said "4 already fixed" — the actual,
+re-verified count is 3 (P1-2, P1-4, P1-6). Fixed in all four places.
+
 ## Remaining audit work / next atomic task
 
 Ranked candidates, per this task's Phase 12:
@@ -163,8 +196,8 @@ Ranked candidates, per this task's Phase 12:
    across the entire existing capture set).
 2. Capture the true LocationSheet Details view via the correct tap target (never actually
    captured despite being logged as captured).
-3. Audit Locations Directory and first-run onboarding (Splash/Welcome/Permissions/Download
-   Map) — zero coverage from either audit.
+3. ~~Audit Locations Directory and first-run onboarding~~ — done this session, source-level
+   (see above); runtime confirmation still needed.
 4. Continue through Route Preview, Active Navigation, Arrival, GPS warning, and Offline
    fallback — highest-risk, zero visual evidence, currently RUNTIME BLOCKED — NOT VERIFIED.
 
