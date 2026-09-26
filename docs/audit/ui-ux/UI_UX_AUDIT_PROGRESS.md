@@ -511,6 +511,63 @@ unlikely to have been touched by the stale build's location-injection scaffoldin
 *probably* still accurate, but per this session's build-provenance correction it is not
 treated as confirmed. Worth a 30-second recheck once live navigation is reachable.
 
+## Session update: complete component inventory for `src/views/components/` (2026-09-26, third follow-up)
+
+New task framing this session: acting as the source/usability audit owner (a separate
+Codex agent, if/when run, owns independent Android runtime verification — coordinate
+exclusive emulator use rather than operating simultaneously; the emulator was not touched
+in this update).
+
+Read all 32 files under `src/views/components/` (28 real components + 4 non-component
+utility/style files) in full and recorded a complete per-component inventory — purpose,
+screens using it, user-facing text, actions, states, accessibility props, existing tests,
+and issue cross-references — in the new `COMPLETE_COMPONENT_INVENTORY.md`. This was a
+genuine gap: no prior session had produced a component-level (as opposed to screen-level)
+inventory.
+
+Cross-references were spot-checked against the actual bodies of #144 and #151 (both
+confirmed accurate as scoped — #151 is explicitly `GateLayer`/`FacilityLayer` only, #144
+is a product-decision issue about the compass implementation, not a labeling bug) rather
+than assumed from pattern-matching alone.
+
+**New findings, filed:**
+- **[#157](https://github.com/ghilmanITM360/offline-map/issues/157)** (new issue) — the
+  same "no accessible name on interactive map object" defect class as #151, in components
+  #151 explicitly doesn't cover: `BlockLayer`, `RastaLayer`, `SpecialRouteLayer`,
+  `UserLocationMarker`, `NavigationMapLayersV1`/`V2` markers, and `MapLabelOverlay`'s
+  non-interactive label branch (real, visible bilingual place-name text with zero
+  accessibility exposure). `RastaLayer`/`SpecialRouteLayer`'s tap targets are an invisible
+  wide hit-corridor by design (the visible stroke is too thin to tap reliably) — worse than
+  a missing label, since a screen-reader user has no way to discover the control exists at
+  all, not just no name for it once found.
+- Comment on **#128** — three smaller findings: `SheetHeader`'s icon-only close button has
+  no `accessibilityRole`/`accessibilityLabel` (unlike nearly every other control in this
+  codebase); `LocationTutorialTooltip` fades in/out silently with no live-region
+  announcement (same class as #156, different component); `DestinationRow` sets
+  `accessibilityState={{disabled: true}}` on field-blocked rows while `onPress` stays fully
+  functional (intentional per #96) — a known-debated pattern since some screen readers may
+  not announce a `disabled: true` row as activatable at all, silently defeating the "stays
+  tappable so the user can see why" intent.
+
+**Confirmed still-accurate, not re-filed:** `NavigationChromeV1`/`V2`'s GPS/status banner
+text is the exact #156 pattern (already tracked, RUNTIME VERIFIED in an earlier session for
+the GPS_LOST case); `OutsideRouteStatusCard` is the one component here that *does* set
+`accessibilityLiveRegion` — a useful in-codebase reference point for what #156's fix should
+look like elsewhere.
+
+**Test-coverage gap noted (not filed as its own issue, recorded for the eventual fix
+batch):** `LocationSheet.tsx` has 3 materially different modes (`routePreview`, `preview`,
+`details`); `LocationSheet.test.tsx` only covers `routePreview`.
+
+Updated `UX_REQUIREMENT_MATRIX.md` (UX-006 row — now SOURCE AUDIT COMPLETE for
+`src/views/components/`, runtime confirmation of the new findings still open).
+
+**Not done this session:** text/action inventory as a dedicated artifact (large overlap
+with #154/#155/#156's already-extensive copy audits — recorded as a judgment call to avoid
+a redundant document rather than an oversight), simplification register, first-time-attendee
+scenario walkthroughs, low-literacy walkthrough, screen-level (as opposed to
+component-level) re-audit. These remain open per the standing task brief.
+
 ## Remaining audit work / next atomic task
 
 Ranked candidates, per this task's Phase 12:
