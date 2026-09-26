@@ -568,6 +568,23 @@ a redundant document rather than an oversight), simplification register, first-t
 scenario walkthroughs, low-literacy walkthrough, screen-level (as opposed to
 component-level) re-audit. These remain open per the standing task brief.
 
+## Session update: Screen 01 (Splash) final reconciliation + consolidated issue #158 (2026-09-26, fourth follow-up)
+
+Second Splash-specific audit pass, same branch (`docs/ui-ux-audit-reconciliation`), reconciling `SPLASH_SCREEN_DEEP_AUDIT.md` (written the prior session, committed this session at `b20be87` — it had never actually been committed before, only written locally) and closing the remaining Phase-2 checklist items (Android Back, process kill/relaunch, dark mode — all closed at source level; see the report's new §16).
+
+**Screen 01 status:**
+- Source audit: **COMPLETE** (full startup dependency trace, all 10 `Promise.all` members — corrected count, was misreported as 9 — traced to their actual rejection surface; full native Android splash resource inspection; 25-item Phase-2 checklist fully closed to a classification)
+- Available runtime audit: **PARTIAL** (one live cold-launch cycle on `emulator-5554`, logcat timing, 3 usable screenshots directly confirming both the blank-frame and the invisible-native-logo observations; frame-accurate sub-second transition ordering still not confirmed — two `screenrecord` attempts both produced corrupted output)
+- Accessibility: **SOURCE-LEVEL COMPLETE, RUNTIME PENDING** (no live TalkBack session run)
+- Outstanding verification: frame-accurate native→blank→JS ordering, live TalkBack, large-font-scale, physical-device timing (emulator's 9.3s cold-start figure is explicitly not claimed as device-representative)
+- Implementation: **NOT STARTED** — audit-only pass, no application code changed
+
+**Consolidated issue filed:** [#158](https://github.com/ghilmanITM360/offline-map/issues/158) — parent #126, cross-referenced #128 and #153 (confirmed no scope overlap with #153's launch-flow findings). Two CONFIRMED DEFECT checklist items (subtitle contrast, invisible native logo), one IMPROVEMENT CANDIDATE (time-gated loading affordance, owner-gated), two PENDING INVESTIGATION items kept visible rather than speculatively implemented (native/RN theme-handoff timing, TalkBack announcement need), and an explicit exclusions section (historical startup-freeze finding, Urdu-title contrast, process-kill/relaunch, dark-mode) so none of those get reimplemented. Searched #126/#128/#153 first — no pre-existing Splash-specific ticket found, so this is a new issue, not a duplicate.
+
+**Evidence:** 3 screenshots moved from session scratchpad to `docs/audit/ui-ux/screenshots/01a-01c*.png` (local only — `git add` refused them under this repo's own `.gitignore:23` "Local QA evidence" rule, same rule that already applies to the pre-existing untracked screenshots in that directory from prior sessions). Flagged as an owner decision in the issue (§10) and the report (§16.5) if committed evidence is wanted going forward.
+
+**#126/#128 status:** unchanged, **not marked DONE** — this pass closes out the Splash sub-scope specifically (now tracked under #158) but neither parent issue's full acceptance criteria are met.
+
 ## Remaining audit work / next atomic task
 
 Ranked candidates, per this task's Phase 12:
