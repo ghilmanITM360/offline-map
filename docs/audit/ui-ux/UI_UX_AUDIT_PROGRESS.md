@@ -600,6 +600,8 @@ First Welcome-specific audit pass, same branch (`docs/ui-ux-audit-reconciliation
 
 **Existing issues checked:** #153 Finding 3 (storage-read failure silently re-shows Welcome) already covers Welcome's one source-level defect path — referenced, not duplicated. #128's Splash/Welcome/Permission single-primary-action checklist row re-confirmed true. No existing issue covers WEL-001/002/003/004/005/006/007.
 
+**Consolidated issue filed:** [#159](https://github.com/ghilmanITM360/offline-map/issues/159) — parent #126, cross-referenced #128, #153, #158. Three confirmed-problem checklist items (WEL-001, WEL-006, WEL-007), one improvement candidate (WEL-002, owner-gated), three pending-investigation items kept visible pending a live TalkBack pass (WEL-003, WEL-004, WEL-005) rather than speculatively implemented, and an explicit exclusions section (contrast, dark mode, RTL, offline launch, Back-exits-app, #153 Finding 1) so none of those get reimplemented. Searched #126/#128/#153/#158 first — no pre-existing Welcome-specific ticket found.
+
 **#126/#128 status:** unchanged, **not marked DONE**.
 
 ## Remaining audit work / next atomic task
