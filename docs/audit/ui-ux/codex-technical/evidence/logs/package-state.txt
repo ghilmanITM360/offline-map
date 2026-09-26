@@ -1,0 +1,220 @@
+Activity Resolver Table:
+  Non-Data Actions:
+      android.intent.action.MAIN:
+        36ac868 com.aicrafted.karachiijtema/.MainActivity filter 5f73481
+          Action: "android.intent.action.MAIN"
+          Category: "android.intent.category.LAUNCHER"
+
+Receiver Resolver Table:
+  Non-Data Actions:
+      android.intent.action.BATTERY_OKAY:
+        c580314 com.aicrafted.karachiijtema/androidx.work.impl.background.systemalarm.ConstraintProxy$BatteryNotLowProxy filter 7e197bd
+          Action: "android.intent.action.BATTERY_OKAY"
+          Action: "android.intent.action.BATTERY_LOW"
+      android.intent.action.ACTION_POWER_DISCONNECTED:
+        906d926 com.aicrafted.karachiijtema/androidx.work.impl.background.systemalarm.ConstraintProxy$BatteryChargingProxy filter 7783967
+          Action: "android.intent.action.ACTION_POWER_DISCONNECTED"
+          Action: "android.intent.action.ACTION_POWER_CONNECTED"
+      androidx.profileinstaller.action.SAVE_PROFILE:
+        4151b98 com.aicrafted.karachiijtema/androidx.profileinstaller.ProfileInstallReceiver filter 36c4a57
+          Action: "androidx.profileinstaller.action.SAVE_PROFILE"
+      android.intent.action.DEVICE_STORAGE_LOW:
+        7761b2 com.aicrafted.karachiijtema/androidx.work.impl.background.systemalarm.ConstraintProxy$StorageNotLowProxy filter 4450503
+          Action: "android.intent.action.DEVICE_STORAGE_LOW"
+          Action: "android.intent.action.DEVICE_STORAGE_OK"
+      android.net.conn.CONNECTIVITY_CHANGE:
+        c3c3c80 com.aicrafted.karachiijtema/androidx.work.impl.background.systemalarm.ConstraintProxy$NetworkStateProxy filter b14f2b9
+          Action: "android.net.conn.CONNECTIVITY_CHANGE"
+      android.intent.action.DEVICE_STORAGE_OK:
+        7761b2 com.aicrafted.karachiijtema/androidx.work.impl.background.systemalarm.ConstraintProxy$StorageNotLowProxy filter 4450503
+          Action: "android.intent.action.DEVICE_STORAGE_LOW"
+          Action: "android.intent.action.DEVICE_STORAGE_OK"
+      androidx.profileinstaller.action.INSTALL_PROFILE:
+        4151b98 com.aicrafted.karachiijtema/androidx.profileinstaller.ProfileInstallReceiver filter af53ff1
+          Action: "androidx.profileinstaller.action.INSTALL_PROFILE"
+      android.intent.action.BATTERY_LOW:
+        c580314 com.aicrafted.karachiijtema/androidx.work.impl.background.systemalarm.ConstraintProxy$BatteryNotLowProxy filter 7e197bd
+          Action: "android.intent.action.BATTERY_OKAY"
+          Action: "android.intent.action.BATTERY_LOW"
+      android.intent.action.TIMEZONE_CHANGED:
+        df5e6fe com.aicrafted.karachiijtema/androidx.work.impl.background.systemalarm.RescheduleReceiver filter 488ee5f
+          Action: "android.intent.action.TIMEZONE_CHANGED"
+          Action: "android.intent.action.TIME_SET"
+          Action: "android.intent.action.BOOT_COMPLETED"
+      android.intent.action.TIME_SET:
+        df5e6fe com.aicrafted.karachiijtema/androidx.work.impl.background.systemalarm.RescheduleReceiver filter 488ee5f
+          Action: "android.intent.action.TIMEZONE_CHANGED"
+          Action: "android.intent.action.TIME_SET"
+          Action: "android.intent.action.BOOT_COMPLETED"
+      androidx.profileinstaller.action.SKIP_FILE:
+        4151b98 com.aicrafted.karachiijtema/androidx.profileinstaller.ProfileInstallReceiver filter 94dd7d6
+          Action: "androidx.profileinstaller.action.SKIP_FILE"
+      androidx.profileinstaller.action.BENCHMARK_OPERATION:
+        4151b98 com.aicrafted.karachiijtema/androidx.profileinstaller.ProfileInstallReceiver filter a0c5944
+          Action: "androidx.profileinstaller.action.BENCHMARK_OPERATION"
+      android.intent.action.BOOT_COMPLETED:
+        df5e6fe com.aicrafted.karachiijtema/androidx.work.impl.background.systemalarm.RescheduleReceiver filter 488ee5f
+          Action: "android.intent.action.TIMEZONE_CHANGED"
+          Action: "android.intent.action.TIME_SET"
+          Action: "android.intent.action.BOOT_COMPLETED"
+      android.intent.action.ACTION_POWER_CONNECTED:
+        906d926 com.aicrafted.karachiijtema/androidx.work.impl.background.systemalarm.ConstraintProxy$BatteryChargingProxy filter 7783967
+          Action: "android.intent.action.ACTION_POWER_DISCONNECTED"
+          Action: "android.intent.action.ACTION_POWER_CONNECTED"
+      androidx.work.diagnostics.REQUEST_DIAGNOSTICS:
+        f45750a com.aicrafted.karachiijtema/androidx.work.impl.diagnostics.DiagnosticsReceiver filter 9f8117b
+          Action: "androidx.work.diagnostics.REQUEST_DIAGNOSTICS"
+      androidx.work.impl.background.systemalarm.UpdateProxies:
+        368a0ac com.aicrafted.karachiijtema/androidx.work.impl.background.systemalarm.ConstraintProxyUpdateReceiver filter 5890175
+          Action: "androidx.work.impl.background.systemalarm.UpdateProxies"
+
+Domain verification status:
+
+Permissions:
+  Permission [com.aicrafted.karachiijtema.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION] (bc48d14):
+    sourcePackage=com.aicrafted.karachiijtema
+    uid=10228 gids=[] type=0 prot=signature
+    perm=PermissionInfo{870fc11 com.aicrafted.karachiijtema.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION}
+    flags=0x0
+
+Registered ContentProviders:
+  com.aicrafted.karachiijtema/expo.modules.filesystem.FileSystemFileProvider:
+    Provider{b0eb176 com.aicrafted.karachiijtema/expo.modules.filesystem.FileSystemFileProvider}
+  com.aicrafted.karachiijtema/androidx.startup.InitializationProvider:
+    Provider{697b377 com.aicrafted.karachiijtema/androidx.startup.InitializationProvider}
+
+ContentProvider Authorities:
+  [com.aicrafted.karachiijtema.FileSystemFileProvider]:
+    Provider{b0eb176 com.aicrafted.karachiijtema/expo.modules.filesystem.FileSystemFileProvider}
+      applicationInfo=ApplicationInfo{72459bd com.aicrafted.karachiijtema}
+  [com.aicrafted.karachiijtema.androidx-startup]:
+    Provider{697b377 com.aicrafted.karachiijtema/androidx.startup.InitializationProvider}
+      applicationInfo=ApplicationInfo{2fffbb2 com.aicrafted.karachiijtema}
+
+Key Set Manager:
+  [com.aicrafted.karachiijtema]
+      Signing KeySets: 76
+
+Packages:
+  Package [com.aicrafted.karachiijtema] (35a9703):
+    appId=10228
+    pkg=Package{f4a1013 com.aicrafted.karachiijtema}
+    codePath=/data/app/~~Xk-UOAHeA0BFBsIa_64WKw==/com.aicrafted.karachiijtema-TSebDAeR4pDTTVbps2NpxA==
+    resourcePath=/data/app/~~Xk-UOAHeA0BFBsIa_64WKw==/com.aicrafted.karachiijtema-TSebDAeR4pDTTVbps2NpxA==
+    legacyNativeLibraryDir=/data/app/~~Xk-UOAHeA0BFBsIa_64WKw==/com.aicrafted.karachiijtema-TSebDAeR4pDTTVbps2NpxA==/lib
+    extractNativeLibs=false
+    primaryCpuAbi=arm64-v8a
+    secondaryCpuAbi=null
+    cpuAbiOverride=null
+    versionCode=1 minSdk=24 targetSdk=36
+    minExtensionVersions=[]
+    versionName=1.0.0
+    hiddenApiEnforcementPolicy=2
+    usesNonSdkApi=false
+    splits=[base]
+    apkSigningVersion=2
+    flags=[ HAS_CODE ALLOW_CLEAR_USER_DATA ALLOW_BACKUP ]
+    privateFlags=[ PRIVATE_FLAG_ACTIVITIES_RESIZE_MODE_RESIZEABLE_VIA_SDK_VERSION ALLOW_AUDIO_PLAYBACK_CAPTURE PARTIALLY_DIRECT_BOOT_AWARE PRIVATE_FLAG_ALLOW_NATIVE_HEAP_POINTER_TAGGING ]
+    forceQueryable=false
+    pageSizeCompat=0
+    queriesPackages=[com.google.android.apps.maps]
+    queriesIntents=[Intent { act=android.intent.action.VIEW cat=[android.intent.category.BROWSABLE] dat=https:/... }, Intent { act=android.intent.action.OPEN_DOCUMENT_TREE }, Intent { act=android.intent.action.TTS_SERVICE }]
+    scannedAsStoppedSystemApp=false
+    supportsScreens=[small, medium, large, xlarge, resizeable, anyDensity]
+    usesOptionalLibraries:
+      org.apache.http.legacy
+    usesLibraryFiles:
+      /system/framework/org.apache.http.legacy.jar
+    timeStamp=2026-09-26 17:13:42
+    lastUpdateTime=2026-09-26 17:13:46
+    installerPackageName=null
+    installerPackageUid=-1
+    initiatingPackageName=com.android.shell
+    originatingPackageName=null
+    packageSource=1
+    appMetadataFilePath=null
+    appMetadataSource=0
+    signatures=PackageSignatures{1dc0ed4 version:2, signatures:[51ed3f60], past signatures:[]}
+    installPermissionsFixed=false
+    pkgFlags=[ HAS_CODE ALLOW_CLEAR_USER_DATA ALLOW_BACKUP ]
+    privatePkgFlags=[ PRIVATE_FLAG_ACTIVITIES_RESIZE_MODE_RESIZEABLE_VIA_SDK_VERSION ALLOW_AUDIO_PLAYBACK_CAPTURE PARTIALLY_DIRECT_BOOT_AWARE PRIVATE_FLAG_ALLOW_NATIVE_HEAP_POINTER_TAGGING ]
+    apexModuleName=null
+    declared permissions:
+      com.aicrafted.karachiijtema.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION: prot=signature
+    requested permissions:
+      android.permission.ACCESS_FINE_LOCATION
+      com.aicrafted.karachiijtema.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION
+      android.permission.FOREGROUND_SERVICE
+      android.permission.RECEIVE_BOOT_COMPLETED
+      android.permission.INTERNET
+      android.permission.ACCESS_COARSE_LOCATION
+      android.permission.ACCESS_NETWORK_STATE
+      android.permission.ACCESS_WIFI_STATE
+      android.permission.WAKE_LOCK
+    install permissions:
+      com.aicrafted.karachiijtema.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION: granted=true
+      android.permission.FOREGROUND_SERVICE: granted=true
+      android.permission.RECEIVE_BOOT_COMPLETED: granted=true
+      android.permission.INTERNET: granted=true
+      android.permission.ACCESS_NETWORK_STATE: granted=true
+      android.permission.ACCESS_WIFI_STATE: granted=true
+      android.permission.WAKE_LOCK: granted=true
+    User 0: ceDataInode=573922 deDataInode=393822 installed=true hidden=false suspended=false distractionFlags=0 stopped=false notLaunched=false enabled=0 instant=false virtual=false quarantined=false
+      installReason=0
+      dataDir=/data/user/0/com.aicrafted.karachiijtema
+      firstInstallTime=2026-09-23 18:16:35
+      uninstallReason=0
+      overlay paths:
+        /product/overlay/EmulationPixel8/EmulationPixel8Overlay.apk
+        /product/overlay/NavigationBarModeGestural/NavigationBarModeGesturalOverlay.apk
+        /data/resource-cache/com.android.systemui-neutral-IwLY.frro
+        /data/resource-cache/com.android.systemui-accent-ayXB.frro
+        /data/resource-cache/com.android.systemui-dynamic-wbAL.frro
+      legacy overlay paths:
+        /product/overlay/EmulationPixel8/EmulationPixel8Overlay.apk
+        /product/overlay/NavigationBarModeGestural/NavigationBarModeGesturalOverlay.apk
+      gids=[3003]
+      runtime permissions:
+        android.permission.ACCESS_FINE_LOCATION: granted=true, flags=[ USER_SET|USER_SENSITIVE_WHEN_GRANTED|USER_SENSITIVE_WHEN_DENIED|524288]
+        android.permission.ACCESS_COARSE_LOCATION: granted=true, flags=[ USER_SET|USER_SENSITIVE_WHEN_GRANTED|USER_SENSITIVE_WHEN_DENIED]
+      enabledComponents:
+        androidx.work.impl.background.systemjob.SystemJobService
+
+Queries:
+  system apps queryable: false
+  queries via forceQueryable:
+  queries via package name:
+    com.aicrafted.karachiijtema:
+      com.google.android.apps.maps
+  queries via component:
+    com.google.android.as.oss:
+      com.aicrafted.karachiijtema
+    com.google.android.as:
+      com.aicrafted.karachiijtema
+    com.google.android.settings.intelligence:
+      com.aicrafted.karachiijtema
+    com.google.android.apps.accessibility.voiceaccess:
+      com.aicrafted.karachiijtema
+    com.aicrafted.karachiijtema:
+      com.google.android.documentsui
+      com.android.chrome
+      com.google.android.apps.docs
+  queryable via interaction:
+    User 0:
+      [com.android.server.telecom,com.android.dynsystem,com.android.DeviceAsWebcam,com.android.localtransport,com.android.location.fused,com.android.emulator.multidisplay,com.android.providers.settings,com.android.inputdevices,com.android.settings,com.android.keychain,android]:
+        com.aicrafted.karachiijtema
+      com.google.android.gms:
+        com.aicrafted.karachiijtema
+      com.google.android.inputmethod.latin:
+        com.aicrafted.karachiijtema
+  queryable via uses-library:
+
+Dexopt state:
+  [com.aicrafted.karachiijtema]
+    path: /data/app/~~Xk-UOAHeA0BFBsIa_64WKw==/com.aicrafted.karachiijtema-TSebDAeR4pDTTVbps2NpxA==/base.apk
+      arm64: [status=verify] [reason=install] [primary-abi]
+        [location is /data/app/~~Xk-UOAHeA0BFBsIa_64WKw==/com.aicrafted.karachiijtema-TSebDAeR4pDTTVbps2NpxA==/oat/arm64/base.odex]
+
+Compiler stats:
+  [com.aicrafted.karachiijtema]
+     base.apk - 3346
