@@ -585,6 +585,23 @@ Second Splash-specific audit pass, same branch (`docs/ui-ux-audit-reconciliation
 
 **#126/#128 status:** unchanged, **not marked DONE** — this pass closes out the Splash sub-scope specifically (now tracked under #158) but neither parent issue's full acceptance criteria are met.
 
+## Session update: Screen 02 (Welcome) deep audit + consolidated issue (2026-09-26, fifth follow-up)
+
+First Welcome-specific audit pass, same branch (`docs/ui-ux-audit-reconciliation`). New `WELCOME_SCREEN_DEEP_AUDIT.md` written and committed. No pre-existing Welcome-specific report or issue existed prior to this session (confirmed via `find` and `gh issue list --search welcome`).
+
+**Screen 02 status:**
+- Source audit: **COMPLETE** (full element inventory — 7 elements, all static, none invented; full execution-path trace through `StartupManager`/`WelcomeViewModel`/`OnboardingStatusService`; full onboarding-necessity analysis against Splash and Permission for content overlap; measured, not eyeballed, WCAG 2.2 contrast on every text/background pair — all 5 pairs PASS, no contrast defect found on this screen)
+- Available runtime audit: **COMPLETE for non-destructive states** on the shared `emulator-5554` (app was already running from an earlier, non-session build — no `pm clear`/reinstall performed to respect Codex's shared use of that emulator): fresh render, hardware Back (exits app, no confirmation, no crash), relaunch while incomplete (Welcome correctly re-shown), rapid double-tap Continue (single clean transition, no duplicate nav), relaunch after completion (Welcome correctly skipped, confirming returning-user behavior). 4 screenshots captured.
+- Accessibility: **SOURCE-LEVEL REVIEWED, NOT TALKBACK-VERIFIED** — two open items (`Pressable` missing explicit `accessibilityRole="button"`; decorative icon not explicitly hidden from the accessibility tree), neither live-tested this session
+- Outstanding verification: live TalkBack pass, forced large-font-scale layout, physical-device pass, real first-time-user validation (this session's trunk test is expert-prediction only)
+- Implementation: **NOT STARTED** — audit-only pass, no application code changed
+
+**Findings:** no functional defects — every runtime-testable behavior (render, Back, relaunch, rapid-tap, persistence) passed. Seven findings recorded, all usability/consistency/accessibility-verification/test-coverage in nature: app name differs across Splash/Welcome/AppGuide (WEL-001), icon+branding partially repeats Splash within ~1-2s (WEL-002), missing `accessibilityRole="button"` (WEL-003), decorative icon not explicitly hidden from a11y tree (WEL-004), no debounce guard on Continue — not reproduced as a defect (WEL-005), "Find your location" benefit text duplicated verbatim as Permission's own heading (WEL-006), zero automated test coverage for `WelcomeScreen`/`WelcomeViewModel` (WEL-007, confirmed gap — `SplashScreen.test.tsx` exists as a counter-example precedent, nothing equivalent exists for Welcome).
+
+**Existing issues checked:** #153 Finding 3 (storage-read failure silently re-shows Welcome) already covers Welcome's one source-level defect path — referenced, not duplicated. #128's Splash/Welcome/Permission single-primary-action checklist row re-confirmed true. No existing issue covers WEL-001/002/003/004/005/006/007.
+
+**#126/#128 status:** unchanged, **not marked DONE**.
+
 ## Remaining audit work / next atomic task
 
 Ranked candidates, per this task's Phase 12:
