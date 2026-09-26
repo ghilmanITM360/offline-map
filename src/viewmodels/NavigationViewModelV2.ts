@@ -202,6 +202,7 @@ export function useNavigationViewModelV2() {
     // restart onto the identical route/destination — see useAppStore.startNavigation), not
     // route?.routeId, which is stable for that same-route-restart case and would silently skip
     // this reset.
+    setManualGateId(route?.origin.manuallySelectedGate ? route.origin.gateId ?? null : null);
   }, [navigationSessionId]);
 
   useEffect(() => () => outsideRequestCoordinatorRef.current.cancelCurrent(), []);
@@ -510,10 +511,10 @@ export function useNavigationViewModelV2() {
       });
 
       if (evidence.shouldReroute) {
-        void attemptReroute(currentLocation);
+        void attemptReroute(currentLocation, { manualGateId: manualGateId ?? undefined });
       }
     }
-  }, [attemptReroute, currentLocation, currentStepIndex, etaMinutes, instructions, isMuted, route, settings.voiceInstructions, settings.walkingSpeed]);
+  }, [attemptReroute, currentLocation, currentStepIndex, etaMinutes, instructions, isMuted, manualGateId, route, settings.voiceInstructions, settings.walkingSpeed]);
 
   const handleExit = useCallback(() => {
     VoiceService.stopSpeaking();
