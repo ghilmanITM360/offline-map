@@ -30,10 +30,10 @@ that column is NOT TESTED throughout.
 | GPS loss/recovery | SOURCE VERIFIED | none | NOT TESTED | NOT TESTED | code-only (P1-6 fixed) | `NavigationChromeV2.test.tsx` | NOT TESTED | NOT TESTED | NOT TESTED | none | RUNTIME BLOCKED — NOT VERIFIED |
 | Offline / graph fallback | SOURCE VERIFIED | none | NOT TESTED | NOT TESTED | code-only (P2-6) | some | NOT TESTED | NOT TESTED | NOT TESTED | none | RUNTIME BLOCKED — NOT VERIFIED |
 | Arrival | SOURCE VERIFIED (#111/#112 fix present) | none | NOT TESTED | AUTOMATED TEST VERIFIED for arrival-latch defect class (closed) | NOT TESTED | some | NOT TESTED | NOT TESTED | NOT TESTED | none | RUNTIME BLOCKED — NOT VERIFIED |
-| Settings | NOT TESTED | none | NOT TESTED | NOT TESTED | NOT TESTED | unknown | NOT TESTED | NOT TESTED | NOT TESTED | none | UNTESTED |
-| Help | NOT TESTED | none | NOT TESTED | NOT TESTED | NOT TESTED | unknown | NOT TESTED | NOT TESTED | NOT TESTED | none | UNTESTED |
-| About | NOT TESTED | none | NOT TESTED | NOT TESTED | NOT TESTED | unknown | NOT TESTED | NOT TESTED | NOT TESTED | none | UNTESTED |
-| App Guide | NOT TESTED | none | NOT TESTED | NOT TESTED | NOT TESTED | unknown | NOT TESTED | NOT TESTED | NOT TESTED | none | UNTESTED |
+| Settings | SOURCE VERIFIED (this session — full screen read) | none | NOT TESTED | SOURCE VERIFIED (all toggles/rows traced) | SOURCE VERIFIED — zero accessibilityRole/Label/State on any `SettingItem` row (#155) | none found | NOT TESTED | NOT TESTED | NOT TESTED | #155 (new) | PARTIALLY AUDITED |
+| Help | SOURCE VERIFIED (this session — full screen read) | none | NOT TESTED | SOURCE VERIFIED (FAQ/emergency/feedback/website rows traced) | SOURCE VERIFIED — zero accessibility props on `HelpItem` rows (#155) | none found | NOT TESTED | NOT TESTED | NOT TESTED | #155 (new), #47 (placeholder link, not duplicated) | PARTIALLY AUDITED |
+| About | SOURCE VERIFIED (this session — full screen read) | none | NOT TESTED | SOURCE VERIFIED | SOURCE VERIFIED — zero accessibility props on `linkItem` rows (#155) | none found | NOT TESTED | NOT TESTED | NOT TESTED | #155 (new), #47 (placeholder link, not duplicated) | PARTIALLY AUDITED |
+| App Guide | SOURCE VERIFIED (this session — full screen read) | none | NOT TESTED | SOURCE VERIFIED (read-only content, no interactive rows) | not applicable (no interactive elements) | none found | NOT TESTED | NOT TESTED | NOT TESTED | #155 (new — English-only section bodies despite bilingual titles) | PARTIALLY AUDITED |
 | Drawer / secondary nav | NOT TESTED | none (existence unconfirmed) | NOT TESTED | NOT TESTED | NOT TESTED | unknown | NOT TESTED | NOT TESTED | NOT TESTED | none | UNTESTED |
 
 "AUDITED" above means audited for the dimensions the original two reports actually

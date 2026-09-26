@@ -245,6 +245,32 @@ Also corrected a P1-count error this session: an earlier pass of this document, 
 #152 PR body, and the #126/#128 issue comments all said "4 already fixed" — the actual,
 re-verified count is 3 (P1-2, P1-4, P1-6). Fixed in all four places.
 
+## Session update: UX-007 copy audit extended to Settings/Help/About/App Guide
+
+Continuation of the copy audit named as this session's next atomic task above. Read
+`SettingsScreen.tsx`, `HelpScreen.tsx`, `AboutScreen.tsx`, `AppGuideScreen.tsx` in full.
+Filed as #155 (new), 4 findings:
+
+1. Zero accessibility props (`accessibilityRole`/`Label`/`State`) on any interactive row
+   across all three screens with interactive rows (`SettingItem`, `HelpItem`, `linkItem`)
+   — confirmed via grep, zero matches in all four files. Same defect class as the P1-2/P1-4
+   findings already fixed elsewhere (#65), never extended to these screens.
+2. `AboutScreen.tsx:81` claims "Urdu & English Language Support" as a key feature, but
+   Settings/Help/About are 100% English and App Guide's Urdu is limited to section titles
+   (body text is English-only) — same English-only-chrome pattern already tracked for the
+   Locations Directory in #154, now confirmed on four more screens.
+3. HelpScreen's "Send Feedback" row implies an in-app feedback channel; the actual behavior
+   is an Alert redirecting to the registration desk in person — label/behavior mismatch.
+4. `SettingsScreen.tsx:248`'s North-up description ("disable heading-up rotation") uses
+   map-orientation jargon not explained in plain terms.
+
+Checked and ruled out: the TODO placeholder URLs (Privacy Policy, Terms of Service,
+Official Website) are already tracked as an owner-action item in #47 — not duplicated.
+No automated tests exist for any of the four screens (confirmed via file search).
+
+UX-007 remaining gap after this pass: error/offline/GPS status message strings outside
+the launch flow and Directory (`NavigationChromeV2` banners, DownloadMap error states).
+
 ## Remaining audit work / next atomic task
 
 Ranked candidates, per this task's Phase 12:
