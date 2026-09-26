@@ -407,30 +407,137 @@ underlying defect. Updated #156's body (Finding 2, the runtime-verification sect
 banner-priority note) directly. Updated `UX_REQUIREMENT_MATRIX.md` (UX-007 row, Batch E,
 `NavigationChromeV1/V2` component-inventory row).
 
+## Session update: Batch E continued — Route Preview / manual-start / location-unavailable states, and a build-provenance correction (2026-09-26, second follow-up)
+
+Continuation of Batch E (Active Navigation / Reroute / Arrival) on branch
+`docs/ui-ux-audit-reconciliation` @ `35db7c8`, emulator `Ijtema_API_36_Play`.
+
+**Build-provenance correction (important).** The APK already installed on the emulator at
+session start (SHA-256 `410a31a9…a0c300`, installed 2026-09-23) was used for an initial pass
+through Active Navigation and a simulated off-route sequence. Its `logcat` output revealed a
+`TestLocationInjector`/`scenarioRunner` test harness (named scenario steps: `baseline`,
+`case-a-jitter`, `case-b-brief-deviation`, `case-c-sustained-deviation`,
+`post-reroute-confirm`) driving location updates — including a full `OFF_ROUTE_EPISODE_STARTED`
+→ `REROUTE_THRESHOLD_REACHED` → `REROUTE_REQUESTED` → `REROUTE_SUCCEEDED` sequence, and a
+correctly-cooldown-gated second attempt. `grep`ing the entire current working tree (not just
+`src/`) for `TestLocationInjector`/`scenarioRunner` found **zero matches** outside a single
+comment in `src/__tests__/DirectionsViewModelHybrid.test.tsx` referencing "the harness" — the
+harness itself is not present in current source. That APK's JS bundle does not reflect the
+current checkout; its provenance is unknown (likely left over from an unrelated earlier
+session on this same emulator). **All reroute/off-route evidence gathered against that APK
+this session is downgraded to INSUFFICIENT EVIDENCE — build provenance unverified — and must
+not be cited as proof of current-source reroute behavior.** The reroute *source code*
+(`RerouteService.shouldTriggerReroute`, `getDynamicOffRouteThresholdMeters`) was read
+independently and is unaffected by this: dynamic 30–80 m off-route threshold scaled by GPS
+accuracy, requires ≥3 consecutive off-route fixes or ≥9 s sustained duration, 25 s reroute
+cooldown, ≥12 m movement gate — a sound design, just not independently runtime-reproduced on
+a build of confirmed provenance this session.
+
+**Correction taken:** rebuilt the app from the actual current checkout —
+`cd android && ./gradlew assembleDebug` (SHA-256 `e0a9f80e…c12b5`, confirmed clean: no
+`TestLocationInjector` in logcat) — then, after the debug build's dev-client could not reach
+Metro (the AVD's WiFi radio never associates — `adb shell dumpsys wifi` shows
+`Supplicant state: DISCONNECTED` with no configured network; this is the same underlying
+"no real network path" limitation noted in #156's runtime-verification section, now confirmed
+to block the loopback-independent `10.0.2.2` route too, not just external connectivity) —
+built a debug-signed release-shaped APK instead via
+`./gradlew assembleRelease -PallowInsecureReleaseSigning=true` (the project's own documented
+escape hatch for local-only testing; SHA-256
+`0fffa523955a4213b797a4f124211a0b1be9eb77020839708be3457d4a356b1e`). This embeds the JS bundle
+in the APK, sidestepping the Metro/WiFi dependency entirely. All findings below are against
+this SHA, confirmed to contain no test-injector code.
+
+**Confirmed on the verified-clean build:**
+- `DownloadMapScreen` reproduces #156 Findings 3/4/5 verbatim (unchanged, as expected for a
+  docs-only branch).
+- The basemap **rendered correctly** in `LocationSheet` Preview and `Get Directions` this
+  time (real Google tiles, street detail, landmark labels) — differing from the
+  `DEVELOPER_ERROR`/`GoogleApiManager` failure this session's earlier #156 pass and the
+  historical Sept 5 audit both recorded. Not fully explained (still intermittent/
+  environment-dependent, not conclusively a fix); logged as new counter-evidence rather than
+  asserted as resolved.
+- Returning-user Directory landing correctly persists "Recent" entries (`Gate 13`, `Block 13`)
+  across a full app restart.
+- **Route Preview / Get Directions, three states newly confirmed:**
+  1. *Normal in-venue manual-start* (origin = Gate 08 via "Choose start manually"): "ROUTE
+     READY, 994 m, Enter through Gate 08", an "Offline walking route" badge, and a correct
+     venue-graph polyline through named Rastas — clear, accurate. **KEEP.**
+  2. *Outside-venue road-routing failure* (origin far outside the venue polygon): a
+     well-written bilingual (English + Urdu) warning — "Direct guide — not a road route: Road
+     navigation is currently unavailable. This guide points directly toward the selected gate
+     and may not follow walkable roads." — with `Retry road route` / `Choose another gate` /
+     `Start Direct Guide` actions. `Start Direct Guide` is correctly **disabled** with the
+     copy "Current location is stale. Wait for a fresh fix before starting live navigation."
+     while the origin fix is stale. **KEEP — good safety pattern.**
+  3. *Current-location-unavailable*: "Current location is unavailable. Choose start
+     manually." alongside a `Use last known location` fallback that honestly labels its
+     staleness ("We'll enter through best eligible official gate (from N minutes ago)").
+     Directly exercises Journey D (Location Unavailable) from this task's brief. **KEEP.**
+- Manual-start correctly **disables** live `Start Navigation` with explanatory copy: "Choose a
+  current precise location before starting live navigation. Route preview remains available."
+  — a deliberate, well-communicated safety guard, newly confirmed. **KEEP.**
+- `Cancel Route` shows a confirm dialog ("You will need to choose your destination again.")
+  before discarding — prevents accidental loss — but is **English-only**, the same
+  already-tracked #154/#155 bilingual-chrome gap; not re-filed.
+- New minor observation: the map-unavailable banner on `LocationSheet` Preview ("Downloaded
+  background map unavailable. Ijtema routes st…") is **visually clipped** by the zoom/compass
+  control column overlapping it from the right. Small, cosmetic, not previously documented.
+  Flagged via a comment on #128 (control-overlap/readability class) rather than a new issue.
+
+**Environment blocker (confirmed, reproducible, not an app defect):** live GPS fix resolution
+(`expo-location`'s `watchPositionAsync`) never resolved in this AVD session on the clean
+build — "Finding your location…" spun indefinitely and fell through to "Current location is
+unavailable" even under a sustained feed (40 `adb emu geo fix` calls over ~24 s, plus several
+earlier attempts). This is despite `adb emu geo fix` succeeding at the console/QEMU level
+every time (`OK`), and despite the exact same tool having appeared to work for the stale
+build's `TestLocationInjector`-driven scenario (which, per the correction above, was not
+actually consuming real GPS fixes at all — explaining the discrepancy). Root cause not
+conclusively isolated; leading candidate is an unresolved Play Services "Location Accuracy"
+consent on this fresh app install (a dialog cascade from exactly this subsystem blocked a
+different test earlier this session and in a prior session). This blocked reaching live
+Active Navigation, Rerouting, and Arrival with a source-verified build this session. **Not
+reproduced as an app defect** — `adb shell dumpsys location`/`dumpsys wifi` point at
+AVD/Play-Services state, not app code.
+
+**Not independently re-verified this session (carried forward from prior sessions, still
+valid, not repeated per this task's "don't redo still-valid work" instruction):** GPS_LOST
+banner visibility, #66 banner-priority chain, #156 Finding 2's node-level accessibility
+evidence.
+
+**Lower-confidence, build-unverified observation (not filed):** the earlier stale-build
+Active Navigation screenshot showed the secondary instruction line clipped mid-word ("Then:
+Continue on Rasta 08 for 92 met…"). Since `NavigationChromeV2`'s instruction-card layout is
+unlikely to have been touched by the stale build's location-injection scaffolding, this is
+*probably* still accurate, but per this session's build-provenance correction it is not
+treated as confirmed. Worth a 30-second recheck once live navigation is reachable.
+
 ## Remaining audit work / next atomic task
 
 Ranked candidates, per this task's Phase 12:
-1. Re-capture the 6 historical screens with a working basemap (unblocks visual judgments
-   across the entire existing capture set) — still blocked on the same `DEVELOPER_ERROR`/
-   API-key-restriction issue reconfirmed this session; needs either a production-signed
-   build or a properly-restricted dev API key, not just an emulator.
-2. Capture the true LocationSheet Details view via the correct tap target (never actually
+1. Diagnose and resolve the live-GPS-fix environment blocker above — try
+   `adb shell dumpsys location` for provider/consent state, or get the debug build talking to
+   Metro via the RN dev menu's manual "debug server host" override to `localhost:8081`
+   (bypassing the WiFi-association failure, since `adb reverse` works over the ADB transport
+   independent of the AVD's own network stack) — then re-attempt live Active Navigation,
+   Rerouting, and Arrival on a build of confirmed current-source provenance.
+2. Re-verify the reroute source logic (`RerouteService.shouldTriggerReroute`) at runtime once
+   live GPS is reachable — this session only confirmed it by reading source; the previous
+   runtime reroute evidence is invalidated (see build-provenance correction above).
+3. Recheck the Active Navigation instruction-card text-truncation observation above
+   ("…92 met…") on a confirmed-clean build.
+4. Re-capture the 6 historical screens with a working basemap — this session saw the basemap
+   render correctly on the release-shaped build without any config change, so the
+   `DEVELOPER_ERROR`/API-key-restriction blocker may be intermittent rather than persistent;
+   worth a fresh attempt before assuming a production-signed build is required.
+5. Capture the true LocationSheet Details view via the correct tap target (never actually
    captured despite being logged as captured).
-3. ~~Audit Locations Directory and first-run onboarding~~ — done, source-level and now
-   partially runtime-confirmed (see above).
-4. Confirm live TalkBack audible silence during GPS_LOST — the one piece of #156 Finding 2
+6. Confirm live TalkBack audible silence during GPS_LOST — the one piece of #156 Finding 2
    still open. Needs a GPS-cutoff method that doesn't disturb TalkBack or the foreground
    process: neither the device-wide `cmd location set-location-enabled false` toggle (spawns
    an Android/GMS dialog cascade that TalkBack's single-tap-to-focus makes hard to clear) nor
    `pm revoke` on the location permission (Android force-kills the foreground app on runtime
-   permission revocation) worked cleanly this session. Try the emulator's own extended
-   controls / console (pause the virtual GPS feed directly, e.g. simply stop sending `adb emu
-   geo fix` updates on an emulator build where the virtual GPS doesn't keep re-transmitting
-   the last fix) so TalkBack stays undisturbed through the transition; capture speech output
-   via a screen recording with audio, since headless `logcat` only reliably shows TalkBack's
-   `AudioManager` focus requests/releases, not the spoken text itself. Also still open:
-   Route Preview, Rerouting, and Arrival states, and #156 Finding 1 (needs real connectivity
-   plus an actual Maps SDK failure).
+   permission revocation) worked cleanly in the session that first tried this. Also still
+   open: #156 Finding 1 (needs real connectivity plus an actual Maps SDK failure).
 
 Not started this session, per this task's established pattern of stopping after each
 explicit, bounded ask.
