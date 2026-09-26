@@ -271,6 +271,38 @@ No automated tests exist for any of the four screens (confirmed via file search)
 UX-007 remaining gap after this pass: error/offline/GPS status message strings outside
 the launch flow and Directory (`NavigationChromeV2` banners, DownloadMap error states).
 
+## Session update: UX-007 copy audit extended to error/offline/GPS status messages, #156 filed
+
+Read `NavigationChromeV1.tsx`/`NavigationChromeV2.tsx` (status-banner sections),
+`HomeScreen.tsx`'s map-warning banner section, `MapConfigResolver.ts`, and
+`DownloadMapScreen.tsx` in full. Filed #156 with 4 findings:
+
+1. `MapConfigResolver.ts:46-49`'s `GOOGLE_MAPS_LOAD_FAILED_MESSAGE` ("Check Google Cloud
+   restrictions and Maps SDK for Android") and `GOOGLE_MAPS_KEY_NOT_CONFIGURED_MESSAGE` are
+   developer-facing diagnostic strings rendered verbatim to end users via `HomeScreen.tsx`'s
+   `mapWarningBanner` — worse than prior jargon findings since it's addressed to a developer,
+   not an attendee.
+2. GPS_LOST/weak-GPS/reroute/map-unavailable banners in both NavigationChrome variants have
+   no `accessibilityLiveRegion` or `announceForAccessibility` call, unlike the arrival
+   announcement added for #64 — a screen-reader user gets no signal of GPS loss or a reroute
+   during active navigation. Confirmed no test covers this (`NavigationChromeV2.test.tsx`
+   only asserts banner text, not announcements).
+3. `DownloadMapScreen.tsx:157`'s "Graph-only map works offline" uses internal
+   routing-data-model jargon.
+4. `DownloadMapScreen.tsx` is English-only chrome apart from its title — same pattern as
+   #154/#155, now confirmed on this screen too.
+
+One near-duplicate was caught before filing: this audit independently found
+`DownloadMapScreen.tsx` has zero accessibility props on any control, then discovered that
+exact gap was already tracked as **NAV-UX-004** under #128 (9 controls, this pass counted
+8 — count discrepancy noted, not re-filed). #156 documents this as "checked, already
+covered" rather than duplicating it.
+
+UX-007 is now source-audited across all four identified screen groups (launch flow,
+Directory, Settings/Help/About/App Guide, error/offline/GPS banners) — see
+`UX_REQUIREMENT_MATRIX.md`'s UX-007 row for the closing status. No emulator was available
+this session; all of #153/#154/#155/#156's findings remain runtime-unconfirmed.
+
 ## Remaining audit work / next atomic task
 
 Ranked candidates, per this task's Phase 12:
