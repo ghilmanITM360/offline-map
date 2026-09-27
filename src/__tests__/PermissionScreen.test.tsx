@@ -42,4 +42,14 @@ describe('PermissionScreen (#153 Finding 2, PERM-005)', () => {
 
     expect(screen.getByText(/live navigation won't work/)).toBeOnTheScreen();
   });
+
+  // Neither Pressable had accessibilityRole/Label — "Allow Location" also had no text
+  // fallback at all while loading (just a bare ActivityIndicator), so a TalkBack user
+  // got no accessible name for either action, worst-case none at all mid-request.
+  test('both actions expose an accessible button role and name', async () => {
+    await render(<PermissionScreen />);
+
+    expect(screen.getByRole('button', { name: 'Allow Location' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Continue Without Location' })).toBeTruthy();
+  });
 });

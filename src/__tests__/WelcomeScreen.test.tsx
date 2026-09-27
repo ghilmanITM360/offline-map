@@ -45,6 +45,14 @@ describe('WelcomeScreen (#159 WEL-007)', () => {
     expect(mockNavigation.replace).toHaveBeenCalledWith('Permission');
   });
 
+  // The primary CTA of the first onboarding screen had no accessibilityRole/Label — a
+  // TalkBack user could not identify it as an actionable button by name.
+  test('Continue exposes an accessible button role and name', async () => {
+    await render(<WelcomeScreen />);
+
+    expect(screen.getByRole('button', { name: 'Continue' })).toBeTruthy();
+  });
+
   test('#153 Finding 3: shows a brief notice when Splash could not confirm previous setup', async () => {
     mockRouteParams = { onboardingStatusReadFailed: true };
     await render(<WelcomeScreen />);

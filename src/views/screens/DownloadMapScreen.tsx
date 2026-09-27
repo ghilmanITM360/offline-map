@@ -186,14 +186,24 @@ export function DownloadMapScreen() {
 
           <View style={styles.actionRow}>
             {offlineTileDownloadAvailable && (isIdle || isCorrupt) && (
-              <Pressable style={styles.primaryButton} onPress={() => startDownload(navigation)}>
+              <Pressable
+                style={styles.primaryButton}
+                onPress={() => startDownload(navigation)}
+                accessibilityRole="button"
+                accessibilityLabel="Download Offline Map"
+              >
                 <Download size={20} color="#FFFFFF" />
                 <Text style={styles.primaryButtonText}>Download Offline Map</Text>
               </Pressable>
             )}
 
             {isDownloading && (
-              <Pressable style={styles.secondaryButton} onPress={pauseDownload}>
+              <Pressable
+                style={styles.secondaryButton}
+                onPress={pauseDownload}
+                accessibilityRole="button"
+                accessibilityLabel="Pause"
+              >
                 <Pause size={18} color="#2E7D32" />
                 <Text style={styles.secondaryButtonText}>Pause</Text>
               </Pressable>
@@ -201,32 +211,57 @@ export function DownloadMapScreen() {
 
             {isPaused && (
               <>
-                <Pressable style={styles.primaryButton} onPress={() => resumeDownload(navigation)}>
+                <Pressable
+                  style={styles.primaryButton}
+                  onPress={() => resumeDownload(navigation)}
+                  accessibilityRole="button"
+                  accessibilityLabel="Resume"
+                >
                   <Play size={18} color="#FFFFFF" />
                   <Text style={styles.primaryButtonText}>Resume</Text>
                 </Pressable>
-                <Pressable style={styles.cancelButton} onPress={confirmCancel}>
+                <Pressable
+                  style={styles.cancelButton}
+                  onPress={confirmCancel}
+                  accessibilityRole="button"
+                  accessibilityLabel="Cancel"
+                >
                   <Text style={styles.cancelButtonText}>Cancel</Text>
                 </Pressable>
               </>
             )}
 
             {isError && (
-              <Pressable style={styles.primaryButton} onPress={() => retryDownload(navigation)}>
+              <Pressable
+                style={styles.primaryButton}
+                onPress={() => retryDownload(navigation)}
+                accessibilityRole="button"
+                accessibilityLabel="Try Again"
+              >
                 <RotateCcw size={18} color="#FFFFFF" />
                 <Text style={styles.primaryButtonText}>Try Again</Text>
               </Pressable>
             )}
 
             {isCorrupt && (
-              <Pressable style={styles.secondaryButton} onPress={repairDownload}>
+              <Pressable
+                style={styles.secondaryButton}
+                onPress={repairDownload}
+                accessibilityRole="button"
+                accessibilityLabel="Repair Download"
+              >
                 <Wrench size={18} color="#2E7D32" />
                 <Text style={styles.secondaryButtonText}>Repair Download</Text>
               </Pressable>
             )}
 
             {showContinueFallback && (
-              <Pressable style={styles.continueButton} onPress={() => continueToMain(navigation)}>
+              <Pressable
+                style={styles.continueButton}
+                onPress={() => continueToMain(navigation)}
+                accessibilityRole="button"
+                accessibilityLabel="Continue to Map"
+              >
                 <ArrowRight size={18} color="#FFFFFF" />
                 <Text style={styles.primaryButtonText}>Continue to Map</Text>
               </Pressable>
@@ -242,7 +277,12 @@ export function DownloadMapScreen() {
         )}
 
         {showVenueMapOnlyAction && (
-          <Pressable style={styles.skipButton} onPress={confirmVenueMapOnly}>
+          <Pressable
+            style={styles.skipButton}
+            onPress={confirmVenueMapOnly}
+            accessibilityRole="button"
+            accessibilityLabel="Use Venue Map Only"
+          >
             <Text style={styles.skipText}>Use Venue Map Only</Text>
           </Pressable>
         )}
@@ -252,7 +292,12 @@ export function DownloadMapScreen() {
         )}
 
         {(isIdle || isError) && hasInternet && (
-          <Pressable style={styles.skipButton} onPress={confirmOnlineMode}>
+          <Pressable
+            style={styles.skipButton}
+            onPress={confirmOnlineMode}
+            accessibilityRole="button"
+            accessibilityLabel="Use Online Mode"
+          >
             <Text style={styles.skipText}>Use Online Mode</Text>
           </Pressable>
         )}

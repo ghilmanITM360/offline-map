@@ -57,6 +57,8 @@ export function PermissionScreen() {
             style={[styles.button, loading && styles.buttonDisabled]}
             onPress={() => requestPermission(navigation)}
             disabled={loading}
+            accessibilityRole="button"
+            accessibilityLabel="Allow Location"
           >
             {loading ? (
               <ActivityIndicator color="#FFF" />
@@ -69,6 +71,8 @@ export function PermissionScreen() {
             style={styles.skipButton}
             onPress={() => skipPermission(navigation)}
             disabled={loading}
+            accessibilityRole="button"
+            accessibilityLabel="Continue Without Location"
           >
             <Text style={styles.skipText}>Continue Without Location</Text>
           </Pressable>

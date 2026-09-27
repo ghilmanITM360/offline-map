@@ -48,7 +48,12 @@ export function WelcomeScreen() {
             ))}
           </View>
 
-          <Pressable style={styles.button} onPress={() => continueFromWelcome(navigation)}>
+          <Pressable
+            style={styles.button}
+            onPress={() => continueFromWelcome(navigation)}
+            accessibilityRole="button"
+            accessibilityLabel="Continue"
+          >
             <Text style={styles.buttonText}>Continue</Text>
           </Pressable>
         </View>
