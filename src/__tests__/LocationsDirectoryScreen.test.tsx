@@ -52,6 +52,13 @@ describe('LocationsDirectoryScreen — browsing', () => {
     expect(screen.getByText(/^Shahr-e-Pindal \(\d+\)$/)).toBeOnTheScreen();
   });
 
+  test('#154: section titles carry heading-level accessibility semantics', async () => {
+    mockNav();
+    await render(<LocationsDirectoryScreen />);
+
+    expect(await screen.findByRole('header', { name: /^Blocks \(\d+\)$/ })).toBeOnTheScreen();
+  });
+
   test('a category chip narrows browsing to just that category', async () => {
     mockNav();
     await render(<LocationsDirectoryScreen />);
@@ -67,6 +74,17 @@ describe('LocationsDirectoryScreen — browsing', () => {
 });
 
 describe('LocationsDirectoryScreen — search', () => {
+  test('#154: an Urdu-script query matches a destination by its Urdu name', async () => {
+    mockNav();
+    await render(<LocationsDirectoryScreen />);
+
+    await act(async () => {
+      fireEvent.changeText(screen.getByPlaceholderText(/Search/i), firstGate.urduName as string);
+    });
+
+    expect(screen.getByText(firstGate.name)).toBeOnTheScreen();
+  });
+
   test('typing a query filters to matching destinations only', async () => {
     mockNav();
     await render(<LocationsDirectoryScreen />);

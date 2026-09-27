@@ -109,7 +109,7 @@ export function LocationsDirectoryScreen() {
       const places = PublicDestinationsService.getByCategory(category.id);
       return (
         <View key={category.id} style={styles.section}>
-          <Text style={styles.sectionTitle}>
+          <Text style={styles.sectionTitle} accessibilityRole="header">
             {category.label} ({places.length})
           </Text>
           {category.id === 'blocks' ? (
@@ -214,7 +214,7 @@ export function LocationsDirectoryScreen() {
           <>
             {!activeCategory && recentPlaces.length > 0 && (
               <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Recent</Text>
+                <Text style={styles.sectionTitle} accessibilityRole="header">Recent</Text>
                 <View style={styles.sectionRows}>
                   {recentPlaces.map((place) => (
                     <DestinationRow key={place.id} place={place} onPress={handleSelect} />
