@@ -36,6 +36,6 @@ assert(screen.includes('offlineTileDownloadAvailable && (isIdle || isCorrupt)'))
 assert(screen.includes("Offline background-map download isn't available yet on this app."));
 assert(settings.includes('Routing stays offline; a licensed background-map package is not configured'));
 assert(screen.includes('Use Venue Map Only'));
-assert(screen.includes('bundled outside walking router remain available'));
+assert(screen.includes('navigate inside and around the venue without internet'));
 
 console.log('Offline tile policy checks passed.');
