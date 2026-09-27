@@ -30,8 +30,19 @@ const CATEGORY_ACCENT: Partial<Record<V2Place['category'], string>> = {
   SpecialRoute: staticColors.info,
 };
 
-/** Full-width destination row — used for Gates, Rastas, Shahr-e-Pindal, and flat search results. */
-export function DestinationRow({ place, onPress }: { place: V2Place; onPress: (place: V2Place) => void }) {
+/** Full-width destination row — used for Gates, Rastas, Shahr-e-Pindal, and flat search results.
+ * `showCategory` hides the redundant "Gate"/"Rasta" subtitle when the row already sits under a
+ * section header naming that same category (browse view) — search results and Recent still mix
+ * categories, so they keep it. */
+export function DestinationRow({
+  place,
+  onPress,
+  showCategory = true,
+}: {
+  place: V2Place;
+  onPress: (place: V2Place) => void;
+  showCategory?: boolean;
+}) {
   const Icon = CATEGORY_ICON[place.category] ?? Signpost;
   const accent = CATEGORY_ACCENT[place.category] ?? staticColors.normalBlock;
   const categoryLabel = CATEGORY_LABEL[place.category] ?? place.category;
@@ -69,18 +80,24 @@ export function DestinationRow({ place, onPress }: { place: V2Place; onPress: (p
               {place.urduName}
             </Text>
           ) : null}
-          <Text style={styles.subtitle} numberOfLines={1} ellipsizeMode="tail">
-            {categoryLabel}
-            {place.unavailableReason ? ' · Not yet available for routing' : ''}
-          </Text>
+          {showCategory ? (
+            <Text style={styles.subtitle} numberOfLines={1} ellipsizeMode="tail">
+              {categoryLabel}
+              {place.unavailableReason ? ' · Not yet available for routing' : ''}
+            </Text>
+          ) : isUnavailable ? (
+            <View style={styles.unavailableBadge}>
+              <Text style={styles.unavailableBadgeText}>Not available yet</Text>
+            </View>
+          ) : null}
         </View>
-        <ChevronRight size={18} color={staticColors.iconFaint} />
+        <ChevronRight size={18} color={staticColors.iconMuted} />
       </Pressable>
     </Animated.View>
   );
 }
 
-const ROW_MIN_HEIGHT = 60;
+const ROW_MIN_HEIGHT = 76;
 
 const styles = StyleSheet.create({
   row: {
@@ -117,13 +134,28 @@ const styles = StyleSheet.create({
     color: staticColors.textSecondaryStrong,
   },
   nameSecondary: {
+    // Darker than subtitle (below) — clear two-step bilingual hierarchy: English name
+    // strongest, Urdu name next, category/status label lightest.
     fontSize: 15,
-    color: staticColors.iconMuted,
+    color: staticColors.textSecondaryStrong,
     marginTop: 1,
   },
   subtitle: {
     fontSize: 13,
     color: staticColors.textMuted,
     marginTop: 2,
+  },
+  unavailableBadge: {
+    alignSelf: 'flex-start',
+    marginTop: 4,
+    paddingHorizontal: spacing.xs,
+    paddingVertical: 2,
+    borderRadius: radii.sm,
+    backgroundColor: `${staticColors.textMuted}1A`,
+  },
+  unavailableBadgeText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: staticColors.textSecondaryStrong,
   },
 });

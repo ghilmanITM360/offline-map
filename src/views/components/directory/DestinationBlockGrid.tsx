@@ -58,18 +58,21 @@ const styles = StyleSheet.create({
   tile: {
     minHeight: TILE_MIN_HEIGHT,
     borderRadius: radii.lg,
-    backgroundColor: staticColors.infoBackground,
+    // Blocks' own accent (green) — matches the Blocks category chip so color consistently
+    // maps to category everywhere (green=Blocks, red=Gates, blue=Rastas/Shahr-e-Pindal),
+    // instead of blue standing in for both "info chrome" and the Blocks tile.
+    backgroundColor: `${staticColors.normalBlock}1A`,
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: spacing.sm,
   },
   tilePressed: {
-    backgroundColor: staticColors.infoBorder,
+    backgroundColor: `${staticColors.normalBlock}33`,
   },
   number: {
     fontSize: 20,
     fontWeight: '800',
-    color: staticColors.infoStrong,
+    color: staticColors.normalBlock,
   },
   label: {
     fontSize: 12,

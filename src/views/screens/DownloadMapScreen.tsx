@@ -171,10 +171,22 @@ export function DownloadMapScreen() {
             </View>
 
             {isIdle && (
+              // Icon-led rows, not a bare "✓ " glyph prefix — matches PermissionScreen's
+              // own feature list, so the same "list of benefits" idea reads the same way
+              // on both onboarding screens instead of two different visual treatments.
               <View style={styles.benefitList}>
-                <Text style={styles.benefitItem}>✓ Find your way around the venue</Text>
-                <Text style={styles.benefitItem}>✓ Walking directions to blocks and gates</Text>
-                <Text style={styles.benefitItem}>✓ Works without an internet connection</Text>
+                <View style={styles.benefitItem}>
+                  <CheckCircle size={18} color={staticColors.success} />
+                  <Text style={styles.benefitText}>Find your way around the venue</Text>
+                </View>
+                <View style={styles.benefitItem}>
+                  <CheckCircle size={18} color={staticColors.success} />
+                  <Text style={styles.benefitText}>Walking directions to blocks and gates</Text>
+                </View>
+                <View style={styles.benefitItem}>
+                  <CheckCircle size={18} color={staticColors.success} />
+                  <Text style={styles.benefitText}>Works without an internet connection</Text>
+                </View>
               </View>
             )}
 
@@ -396,12 +408,18 @@ const styles = StyleSheet.create({
   },
   benefitList: {
     marginBottom: spacing.xl - spacing.xs,
-    gap: spacing.xs,
+    gap: spacing.sm,
   },
   benefitItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  benefitText: {
+    flex: 1,
     fontSize: 15,
     color: staticColors.textSecondaryStrong,
-    lineHeight: 24,
+    lineHeight: 22,
   },
   progressContainer: {
     marginBottom: spacing.sm,

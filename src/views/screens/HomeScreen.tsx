@@ -28,6 +28,7 @@ import {
   WifiOff,
   X,
   LayoutGrid,
+  Search,
 } from 'lucide-react-native';
 import { BottomSheetModal, BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import { useNavigation, DrawerActions, CompositeNavigationProp } from '@react-navigation/native';
@@ -1602,6 +1603,11 @@ export function HomeScreen() {
           pointerEvents="box-none"
           onLayout={(e) => setTopOverlayHeight(e.nativeEvent.layout.height)}
         >
+          {/* This bar was styled like a search bar (Google Maps-style pill, shadow,
+              52dp height) but only ever held the menu button — the actual "search for
+              a destination" action lived a scroll-row down, in a small chip. Filling the
+              bar with what it already visually promises makes search the obvious primary
+              action on the map, not a secondary chip beside a hamburger icon. */}
           <View style={[styles.searchBarContainer, { backgroundColor: theme.searchBar }]}>
             <Pressable
               onPress={() => {
@@ -1613,6 +1619,20 @@ export function HomeScreen() {
               accessibilityLabel="Open menu"
             >
               <Menu size={24} color={theme.subtext} />
+            </Pressable>
+            <Pressable
+              style={styles.searchBarAction}
+              onPress={() => {
+                logHomeControl('search_bar', 'open_directory');
+                nav.navigate('LocationsDirectory');
+              }}
+              accessibilityRole="button"
+              accessibilityLabel="Search destinations"
+            >
+              <Search size={18} color={theme.subtext} />
+              <Text style={[styles.searchBarPlaceholder, { color: theme.subtext }]} numberOfLines={1}>
+                Search destinations
+              </Text>
             </Pressable>
           </View>
 
@@ -1951,6 +1971,15 @@ const styles = StyleSheet.create({
     ...shadows.medium,
   },
   iconButton: { padding: 14 },
+  searchBarAction: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    height: '100%',
+    paddingRight: 14,
+  },
+  searchBarPlaceholder: { fontSize: 15, flexShrink: 1 },
   chipsContainer: { marginTop: 10 },
   chipsContent: { paddingLeft: 12, paddingRight: 88, paddingBottom: 8 },
   chip: {
