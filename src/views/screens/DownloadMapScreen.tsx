@@ -3,8 +3,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
+  Animated,
   View,
   Text,
   StyleSheet,
@@ -30,6 +31,8 @@ import { useDownloadMapViewModel } from '../../viewmodels/DownloadMapViewModel';
 import { useAppStore } from '../../store/useAppStore';
 import { RootStackParamList } from '../../navigation/RootNavigator';
 import { OfflineMapStatusService } from '../../services/OfflineMapStatusService';
+import { useReducedMotion } from '../../viewmodels/useReducedMotion';
+import { staticColors, spacing, radii, shadows } from '../../theme';
 
 type DownloadMapScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'DownloadMap'>;
 
@@ -68,6 +71,31 @@ export function DownloadMapScreen() {
     : isCorrupt
       ? (offlineMapStatusMessage ?? 'Map data looks incomplete. Repair and re-download is required.')
       : null;
+
+  const reducedMotion = useReducedMotion();
+  const entrance = useRef(new Animated.Value(reducedMotion ? 1 : 0)).current;
+  const progressAnim = useRef(new Animated.Value(pct)).current;
+
+  useEffect(() => {
+    if (reducedMotion) {
+      entrance.setValue(1);
+      return;
+    }
+    const anim = Animated.timing(entrance, { toValue: 1, duration: 320, useNativeDriver: true });
+    anim.start();
+    return () => anim.stop();
+  }, [reducedMotion, entrance]);
+
+  useEffect(() => {
+    if (reducedMotion) {
+      progressAnim.setValue(pct);
+      return;
+    }
+    // useNativeDriver: false — width isn't animatable on the native driver.
+    const anim = Animated.timing(progressAnim, { toValue: pct, duration: 260, useNativeDriver: false });
+    anim.start();
+    return () => anim.stop();
+  }, [pct, reducedMotion, progressAnim]);
 
   useEffect(() => {
     const readExpected = async () => {
@@ -118,189 +146,204 @@ export function DownloadMapScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.content}>
-        <View style={styles.header}>
-          <Text style={styles.title}>Offline Maps</Text>
-          <Text style={styles.urduTitle}>آف لائن نقشہ</Text>
-          <Text style={styles.subtitle}>Routing and the venue map work offline. Online Google imagery needs internet.</Text>
-        </View>
-
-        <View style={styles.card}>
-          <View style={styles.cardHeader}>
-            {isComplete ? (
-              <CheckCircle size={28} color="#2E7D32" />
-            ) : isCorrupt ? (
-              <AlertTriangle size={28} color="#D97706" />
-            ) : (
-              <Download size={28} color="#2E7D32" />
-            )}
-            <Text style={styles.cardTitle}>Karachi Ijtema Ground</Text>
+        <Animated.View
+          style={{
+            opacity: entrance,
+            transform: [{ translateY: entrance.interpolate({ inputRange: [0, 1], outputRange: [12, 0] }) }],
+          }}
+        >
+          <View style={styles.header}>
+            <Text style={styles.title}>Offline Maps</Text>
+            <Text style={styles.urduTitle}>آف لائن نقشہ</Text>
+            <Text style={styles.subtitle}>Works without internet once downloaded. The satellite background needs internet.</Text>
           </View>
 
-          {isIdle && (
-            <View style={styles.benefitList}>
-              <Text style={styles.benefitItem}>✓ Venue and outside routing are bundled</Text>
-              <Text style={styles.benefitItem}>✓ Navigation works without a route API</Text>
-              <Text style={styles.benefitItem}>✓ Venue map works offline, without background imagery</Text>
+          <View style={styles.card}>
+            <View style={styles.cardHeader}>
+              {isComplete ? (
+                <CheckCircle size={28} color={staticColors.success} />
+              ) : isCorrupt ? (
+                <AlertTriangle size={28} color={staticColors.warning} />
+              ) : (
+                <Download size={28} color={staticColors.success} />
+              )}
+              <Text style={styles.cardTitle}>Karachi Ijtema Ground</Text>
             </View>
-          )}
 
-          {!offlineTileDownloadAvailable && isIdle && (
-            <View style={styles.warningBox}>
-              <AlertTriangle size={18} color="#B45309" />
-              <Text style={styles.warningText}>Offline background-map download isn't available yet on this app.</Text>
-            </View>
-          )}
-
-          {(isDownloading || isPaused || isError || isComplete) && (
-            <View style={styles.progressContainer}>
-              <View style={styles.progressBarBg}>
-                <View style={[styles.progressBarFill, { width: `${pct}%` }]} />
+            {isIdle && (
+              <View style={styles.benefitList}>
+                <Text style={styles.benefitItem}>✓ Find your way around the venue</Text>
+                <Text style={styles.benefitItem}>✓ Walking directions to blocks and gates</Text>
+                <Text style={styles.benefitItem}>✓ Works without an internet connection</Text>
               </View>
-              <Text style={styles.progressText}>{pct}%</Text>
-            </View>
-          )}
+            )}
 
-          {isDownloading && (
-            <Text style={styles.statusText}>
-              {phase === 'connecting' ? 'Getting ready to download…' : 'Downloading map…'}
-            </Text>
-          )}
+            {!offlineTileDownloadAvailable && isIdle && (
+              <View style={styles.warningBox}>
+                <AlertTriangle size={18} color={staticColors.warningText} />
+                <Text style={styles.warningText}>Offline background-map download isn't available yet on this app.</Text>
+              </View>
+            )}
 
-          {isPaused && <Text style={styles.statusText}>Download paused. Tap Resume to continue.</Text>}
-
-          {isComplete && <Text style={[styles.statusText, styles.successText]}>Map saved! Redirecting…</Text>}
-
-          {isCorrupt && (
-            <View style={styles.warningBox}>
-              <Wrench size={18} color="#B45309" />
-              <Text style={styles.warningText}>Map data looks incomplete. Repair and re-download is required.</Text>
-            </View>
-          )}
-
-          {blockingMessage && (
-            <View style={styles.errorBox}>
-              <AlertTriangle size={20} color="#D32F2F" />
-              <Text style={styles.errorText}>{blockingMessage}</Text>
-            </View>
-          )}
-
-          <View style={styles.actionRow}>
-            {offlineTileDownloadAvailable && (isIdle || isCorrupt) && (
-              <Pressable
-                style={styles.primaryButton}
-                onPress={() => startDownload(navigation)}
-                accessibilityRole="button"
-                accessibilityLabel="Download Offline Map"
-              >
-                <Download size={20} color="#FFFFFF" />
-                <Text style={styles.primaryButtonText}>Download Offline Map</Text>
-              </Pressable>
+            {(isDownloading || isPaused || isError || isComplete) && (
+              <View style={styles.progressContainer}>
+                <View style={styles.progressBarBg}>
+                  <Animated.View
+                    style={[
+                      styles.progressBarFill,
+                      { width: progressAnim.interpolate({ inputRange: [0, 100], outputRange: ['0%', '100%'] }) },
+                    ]}
+                  />
+                </View>
+                <Text style={styles.progressText}>{pct}%</Text>
+              </View>
             )}
 
             {isDownloading && (
-              <Pressable
-                style={styles.secondaryButton}
-                onPress={pauseDownload}
-                accessibilityRole="button"
-                accessibilityLabel="Pause"
-              >
-                <Pause size={18} color="#2E7D32" />
-                <Text style={styles.secondaryButtonText}>Pause</Text>
-              </Pressable>
+              <Text style={styles.statusText}>
+                {phase === 'connecting' ? 'Getting ready to download…' : 'Downloading map…'}
+              </Text>
             )}
 
-            {isPaused && (
-              <>
-                <Pressable
-                  style={styles.primaryButton}
-                  onPress={() => resumeDownload(navigation)}
-                  accessibilityRole="button"
-                  accessibilityLabel="Resume"
-                >
-                  <Play size={18} color="#FFFFFF" />
-                  <Text style={styles.primaryButtonText}>Resume</Text>
-                </Pressable>
-                <Pressable
-                  style={styles.cancelButton}
-                  onPress={confirmCancel}
-                  accessibilityRole="button"
-                  accessibilityLabel="Cancel"
-                >
-                  <Text style={styles.cancelButtonText}>Cancel</Text>
-                </Pressable>
-              </>
-            )}
+            {isPaused && <Text style={styles.statusText}>Download paused. Tap Resume to continue.</Text>}
 
-            {isError && (
-              <Pressable
-                style={styles.primaryButton}
-                onPress={() => retryDownload(navigation)}
-                accessibilityRole="button"
-                accessibilityLabel="Try Again"
-              >
-                <RotateCcw size={18} color="#FFFFFF" />
-                <Text style={styles.primaryButtonText}>Try Again</Text>
-              </Pressable>
-            )}
+            {isComplete && <Text style={[styles.statusText, styles.successText]}>Map saved! Redirecting…</Text>}
 
             {isCorrupt && (
-              <Pressable
-                style={styles.secondaryButton}
-                onPress={repairDownload}
-                accessibilityRole="button"
-                accessibilityLabel="Repair Download"
-              >
-                <Wrench size={18} color="#2E7D32" />
-                <Text style={styles.secondaryButtonText}>Repair Download</Text>
-              </Pressable>
+              <View style={styles.warningBox}>
+                <Wrench size={18} color={staticColors.warningText} />
+                <Text style={styles.warningText}>Map data looks incomplete. Repair and re-download is required.</Text>
+              </View>
             )}
 
-            {showContinueFallback && (
-              <Pressable
-                style={styles.continueButton}
-                onPress={() => continueToMain(navigation)}
-                accessibilityRole="button"
-                accessibilityLabel="Continue to Map"
-              >
-                <ArrowRight size={18} color="#FFFFFF" />
-                <Text style={styles.primaryButtonText}>Continue to Map</Text>
-              </Pressable>
+            {blockingMessage && (
+              <View style={styles.errorBox}>
+                <AlertTriangle size={20} color={staticColors.danger} />
+                <Text style={styles.errorText}>{blockingMessage}</Text>
+              </View>
             )}
+
+            <View style={styles.actionRow}>
+              {offlineTileDownloadAvailable && (isIdle || isCorrupt) && (
+                <Pressable
+                  style={styles.primaryButton}
+                  onPress={() => startDownload(navigation)}
+                  accessibilityRole="button"
+                  accessibilityLabel="Download Offline Map"
+                >
+                  <Download size={20} color={staticColors.white} />
+                  <Text style={styles.primaryButtonText}>Download Offline Map</Text>
+                </Pressable>
+              )}
+
+              {isDownloading && (
+                <Pressable
+                  style={styles.secondaryButton}
+                  onPress={pauseDownload}
+                  accessibilityRole="button"
+                  accessibilityLabel="Pause"
+                >
+                  <Pause size={18} color={staticColors.success} />
+                  <Text style={styles.secondaryButtonText}>Pause</Text>
+                </Pressable>
+              )}
+
+              {isPaused && (
+                <>
+                  <Pressable
+                    style={styles.primaryButton}
+                    onPress={() => resumeDownload(navigation)}
+                    accessibilityRole="button"
+                    accessibilityLabel="Resume"
+                  >
+                    <Play size={18} color={staticColors.white} />
+                    <Text style={styles.primaryButtonText}>Resume</Text>
+                  </Pressable>
+                  <Pressable
+                    style={styles.cancelButton}
+                    onPress={confirmCancel}
+                    accessibilityRole="button"
+                    accessibilityLabel="Cancel"
+                  >
+                    <Text style={styles.cancelButtonText}>Cancel</Text>
+                  </Pressable>
+                </>
+              )}
+
+              {isError && (
+                <Pressable
+                  style={styles.primaryButton}
+                  onPress={() => retryDownload(navigation)}
+                  accessibilityRole="button"
+                  accessibilityLabel="Try Again"
+                >
+                  <RotateCcw size={18} color={staticColors.white} />
+                  <Text style={styles.primaryButtonText}>Try Again</Text>
+                </Pressable>
+              )}
+
+              {isCorrupt && (
+                <Pressable
+                  style={styles.secondaryButton}
+                  onPress={repairDownload}
+                  accessibilityRole="button"
+                  accessibilityLabel="Repair Download"
+                >
+                  <Wrench size={18} color={staticColors.success} />
+                  <Text style={styles.secondaryButtonText}>Repair Download</Text>
+                </Pressable>
+              )}
+
+              {showContinueFallback && (
+                <Pressable
+                  style={styles.continueButton}
+                  onPress={() => continueToMain(navigation)}
+                  accessibilityRole="button"
+                  accessibilityLabel="Continue to Map"
+                >
+                  <ArrowRight size={18} color={staticColors.white} />
+                  <Text style={styles.primaryButtonText}>Continue to Map</Text>
+                </Pressable>
+              )}
+            </View>
           </View>
-        </View>
 
-        {isIdle && offlineTileDownloadAvailable && (
-          <View style={styles.infoBox}>
-            <Wifi size={18} color="#666" />
-            <Text style={styles.infoText}>Wi-Fi recommended. This map needs about {estimatedSizeMb} MB.</Text>
-          </View>
-        )}
+          {isIdle && offlineTileDownloadAvailable && (
+            <View style={styles.infoBox}>
+              <Wifi size={18} color={staticColors.iconMuted} />
+              <Text style={styles.infoText}>Wi-Fi recommended. This map needs about {estimatedSizeMb} MB.</Text>
+            </View>
+          )}
 
-        {showVenueMapOnlyAction && (
-          <Pressable
-            style={styles.skipButton}
-            onPress={confirmVenueMapOnly}
-            accessibilityRole="button"
-            accessibilityLabel="Use Venue Map Only"
-          >
-            <Text style={styles.skipText}>Use Venue Map Only</Text>
-          </Pressable>
-        )}
+          {showVenueMapOnlyAction && (
+            <Pressable
+              style={styles.skipButton}
+              onPress={confirmVenueMapOnly}
+              accessibilityRole="button"
+              accessibilityLabel="Use Venue Map Only"
+            >
+              <Text style={styles.skipText}>Use Venue Map Only</Text>
+            </Pressable>
+          )}
 
-        {showVenueMapOnlyAction && (
-          <Text style={styles.fallbackHint}>The venue graph and bundled outside walking router remain available; only background imagery may be absent offline.</Text>
-        )}
+          {showVenueMapOnlyAction && (
+            <Text style={styles.fallbackHint}>
+              You can still navigate inside and around the venue without internet. Only the satellite background
+              image may be missing.
+            </Text>
+          )}
 
-        {(isIdle || isError) && hasInternet && (
-          <Pressable
-            style={styles.skipButton}
-            onPress={confirmOnlineMode}
-            accessibilityRole="button"
-            accessibilityLabel="Use Online Mode"
-          >
-            <Text style={styles.skipText}>Use Online Mode</Text>
-          </Pressable>
-        )}
+          {(isIdle || isError) && hasInternet && (
+            <Pressable
+              style={styles.skipButton}
+              onPress={confirmOnlineMode}
+              accessibilityRole="button"
+              accessibilityLabel="Use Online Mode"
+            >
+              <Text style={styles.skipText}>Use Online Mode</Text>
+            </Pressable>
+          )}
+        </Animated.View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -309,208 +352,205 @@ export function DownloadMapScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F5F5',
+    backgroundColor: staticColors.neutralSurface,
   },
   content: {
-    padding: 24,
+    padding: spacing.xl,
     flexGrow: 1,
     justifyContent: 'center',
   },
   header: {
-    marginBottom: 32,
+    marginBottom: spacing.xxl,
   },
   title: {
     fontSize: 30,
     fontWeight: 'bold',
-    color: '#202124',
+    color: staticColors.textPrimary,
   },
   urduTitle: {
     fontSize: 20,
-    color: '#2E7D32',
+    color: staticColors.success,
     marginTop: 2,
   },
   subtitle: {
     fontSize: 15,
-    color: '#666',
-    marginTop: 6,
+    color: staticColors.iconMuted,
+    marginTop: spacing.xs + 2,
   },
   card: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    padding: 24,
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
+    backgroundColor: staticColors.white,
+    borderRadius: radii.xxl,
+    padding: spacing.xl,
+    ...shadows.medium,
   },
   cardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: spacing.md,
   },
   cardTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#202124',
-    marginLeft: 12,
+    color: staticColors.textPrimary,
+    marginLeft: spacing.md,
   },
   benefitList: {
-    marginBottom: 20,
+    marginBottom: spacing.xl - spacing.xs,
+    gap: spacing.xs,
   },
   benefitItem: {
     fontSize: 15,
-    color: '#444',
-    lineHeight: 26,
+    color: staticColors.textSecondaryStrong,
+    lineHeight: 24,
   },
   progressContainer: {
-    marginBottom: 8,
+    marginBottom: spacing.sm,
   },
   progressBarBg: {
     height: 12,
-    backgroundColor: '#E8F5E9',
-    borderRadius: 6,
+    backgroundColor: staticColors.lightGreenSubtext,
+    borderRadius: radii.sm / 2,
     overflow: 'hidden',
   },
   progressBarFill: {
     height: '100%',
-    backgroundColor: '#2E7D32',
-    borderRadius: 6,
+    backgroundColor: staticColors.success,
+    borderRadius: radii.sm / 2,
   },
   progressText: {
     fontSize: 15,
     fontWeight: 'bold',
-    color: '#2E7D32',
+    color: staticColors.success,
     textAlign: 'center',
-    marginTop: 8,
+    marginTop: spacing.sm,
   },
   statusText: {
     fontSize: 13,
-    color: '#555',
+    color: staticColors.iconMuted,
     textAlign: 'center',
-    marginTop: 4,
-    marginBottom: 16,
+    marginTop: spacing.xs,
+    marginBottom: spacing.lg,
   },
   successText: {
-    color: '#2E7D32',
+    color: staticColors.success,
     fontWeight: '600',
   },
   warningBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FEF3C7',
-    padding: 12,
-    borderRadius: 10,
-    marginBottom: 12,
-    gap: 10,
+    backgroundColor: staticColors.warningBackgroundAlt,
+    padding: spacing.md,
+    borderRadius: radii.md - 2,
+    marginBottom: spacing.md,
+    gap: spacing.sm + 2,
   },
   warningText: {
     flex: 1,
     fontSize: 13,
-    color: '#92400E',
+    color: staticColors.warningText,
   },
   errorBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFEBEE',
-    padding: 12,
-    borderRadius: 10,
-    marginBottom: 16,
+    backgroundColor: staticColors.dangerBackground,
+    padding: spacing.md,
+    borderRadius: radii.md - 2,
+    marginBottom: spacing.lg,
   },
   errorText: {
-    marginLeft: 8,
-    color: '#D32F2F',
+    marginLeft: spacing.sm,
+    color: staticColors.dangerText,
     flex: 1,
     fontSize: 14,
   },
   actionRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 10,
-    marginTop: 8,
+    gap: spacing.sm + 2,
+    marginTop: spacing.xs,
   },
   primaryButton: {
-    backgroundColor: '#2E7D32',
-    borderRadius: 12,
-    paddingVertical: 13,
-    paddingHorizontal: 16,
+    backgroundColor: staticColors.success,
+    borderRadius: radii.md,
+    paddingVertical: spacing.md + 1,
+    paddingHorizontal: spacing.lg,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
+    gap: spacing.sm,
   },
   primaryButtonText: {
-    color: '#FFFFFF',
+    color: staticColors.white,
     fontSize: 15,
     fontWeight: '700',
   },
   secondaryButton: {
-    backgroundColor: '#E8F5E9',
-    borderRadius: 12,
-    paddingVertical: 12,
-    paddingHorizontal: 14,
+    backgroundColor: staticColors.lightGreenSubtext,
+    borderRadius: radii.md,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.md + 2,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: spacing.sm,
   },
   secondaryButtonText: {
-    color: '#2E7D32',
+    color: staticColors.success,
     fontSize: 14,
     fontWeight: '700',
   },
   cancelButton: {
-    backgroundColor: '#FCE8E6',
-    borderRadius: 12,
-    paddingVertical: 12,
-    paddingHorizontal: 14,
+    backgroundColor: staticColors.dangerBackground,
+    borderRadius: radii.md,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.md + 2,
     justifyContent: 'center',
   },
   cancelButtonText: {
-    color: '#C5221F',
+    color: staticColors.dangerText,
     fontSize: 14,
     fontWeight: '700',
   },
   continueButton: {
-    backgroundColor: '#1A73E8',
-    borderRadius: 12,
-    paddingVertical: 13,
-    paddingHorizontal: 16,
+    backgroundColor: staticColors.info,
+    borderRadius: radii.md,
+    paddingVertical: spacing.md + 1,
+    paddingHorizontal: spacing.lg,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
+    gap: spacing.sm,
   },
   infoBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 24,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 12,
-    gap: 10,
+    marginTop: spacing.xl,
+    backgroundColor: staticColors.white,
+    borderRadius: radii.md,
+    padding: spacing.md,
+    gap: spacing.sm + 2,
   },
   infoText: {
-    color: '#666',
+    color: staticColors.iconMuted,
     fontSize: 13,
     flex: 1,
   },
   skipButton: {
-    marginTop: 20,
+    marginTop: spacing.xl - spacing.xs,
     alignItems: 'center',
     justifyContent: 'center',
     minHeight: 48,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
   },
   skipText: {
-    color: '#1A73E8',
+    color: staticColors.info,
     fontSize: 14,
     fontWeight: '600',
   },
   fallbackHint: {
-    marginTop: 8,
+    marginTop: spacing.sm,
     textAlign: 'center',
-    color: '#616161',
+    color: staticColors.textCaption,
     fontSize: 12,
   },
 });

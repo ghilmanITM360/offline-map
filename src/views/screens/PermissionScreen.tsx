@@ -3,13 +3,14 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React from 'react';
-import { View, Text, StyleSheet, Pressable, ActivityIndicator, ScrollView } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { Animated, View, Text, StyleSheet, Pressable, ActivityIndicator, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { MapPin, ShieldCheck } from 'lucide-react-native';
+import { MapPin, ShieldCheck, Info } from 'lucide-react-native';
 import { usePermissionViewModel } from '../../viewmodels/PermissionViewModel';
-import { staticColors } from '../../theme';
+import { useReducedMotion } from '../../viewmodels/useReducedMotion';
+import { staticColors, spacing, radii, shadows } from '../../theme';
 
 export function PermissionScreen() {
   const navigation = useNavigation<any>();
@@ -21,12 +22,40 @@ export function PermissionScreen() {
   const isReturningAfterRevocation = Boolean(route.params?.revoked);
   const { loading, requestPermission, skipPermission } = usePermissionViewModel();
 
+  const reducedMotion = useReducedMotion();
+  const entrance = useRef(new Animated.Value(reducedMotion ? 1 : 0)).current;
+  const buttonScale = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    if (reducedMotion) {
+      entrance.setValue(1);
+      return;
+    }
+    const anim = Animated.timing(entrance, { toValue: 1, duration: 320, useNativeDriver: true });
+    anim.start();
+    return () => anim.stop();
+  }, [reducedMotion, entrance]);
+
+  const pressIn = () => {
+    if (reducedMotion) return;
+    Animated.spring(buttonScale, { toValue: 0.97, useNativeDriver: true, friction: 6, tension: 200 }).start();
+  };
+  const pressOut = () => {
+    if (reducedMotion) return;
+    Animated.spring(buttonScale, { toValue: 1, useNativeDriver: true, friction: 4, tension: 140 }).start();
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.contentContainer}>
-        <View style={styles.content}>
+        <Animated.View
+          style={[
+            styles.content,
+            { opacity: entrance, transform: [{ translateY: entrance.interpolate({ inputRange: [0, 1], outputRange: [16, 0] }) }] },
+          ]}
+        >
           <View style={styles.iconContainer}>
-            <MapPin size={72} color="#2E7D32" />
+            <MapPin size={72} color={staticColors.success} />
           </View>
           <Text style={styles.title}>Find your location</Text>
           <Text style={styles.description}>
@@ -34,38 +63,46 @@ export function PermissionScreen() {
               ? 'Allow location access so we can show where you are and guide you to your destination. If you already allowed this before, it may have been turned off.'
               : 'Allow location access so we can show where you are and guide you to your destination.'}
           </Text>
-          <Text style={styles.consequenceNote}>
-            Without it, you can still explore the map, but live navigation won't work.
-          </Text>
 
-          <View style={styles.featureList}>
+          <View style={styles.featureCard}>
             <View style={styles.featureItem}>
-              <ShieldCheck size={24} color="#2E7D32" />
+              <ShieldCheck size={22} color={staticColors.success} />
               <Text style={styles.featureText}>Current location on map</Text>
             </View>
             <View style={styles.featureItem}>
-              <ShieldCheck size={24} color="#2E7D32" />
+              <ShieldCheck size={22} color={staticColors.success} />
               <Text style={styles.featureText}>Walking navigation</Text>
             </View>
             <View style={styles.featureItem}>
-              <ShieldCheck size={24} color="#2E7D32" />
+              <ShieldCheck size={22} color={staticColors.success} />
               <Text style={styles.featureText}>Turn-by-turn guidance</Text>
             </View>
           </View>
 
-          <Pressable
-            style={[styles.button, loading && styles.buttonDisabled]}
-            onPress={() => requestPermission(navigation)}
-            disabled={loading}
-            accessibilityRole="button"
-            accessibilityLabel="Allow Location"
-          >
-            {loading ? (
-              <ActivityIndicator color="#FFF" />
-            ) : (
-              <Text style={styles.buttonText}>Allow Location</Text>
-            )}
-          </Pressable>
+          <View style={styles.consequenceNote}>
+            <Info size={16} color={staticColors.iconMuted} />
+            <Text style={styles.consequenceText}>
+              Without it, you can still explore the map, but live navigation won't work.
+            </Text>
+          </View>
+
+          <Animated.View style={{ width: '100%', transform: [{ scale: buttonScale }] }}>
+            <Pressable
+              style={[styles.button, loading && styles.buttonDisabled]}
+              onPress={() => requestPermission(navigation)}
+              onPressIn={pressIn}
+              onPressOut={pressOut}
+              disabled={loading}
+              accessibilityRole="button"
+              accessibilityLabel="Allow Location"
+            >
+              {loading ? (
+                <ActivityIndicator color={staticColors.white} />
+              ) : (
+                <Text style={styles.buttonText}>Allow Location</Text>
+              )}
+            </Pressable>
+          </Animated.View>
 
           <Pressable
             style={styles.skipButton}
@@ -76,7 +113,7 @@ export function PermissionScreen() {
           >
             <Text style={styles.skipText}>Continue Without Location</Text>
           </Pressable>
-        </View>
+        </Animated.View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -85,82 +122,95 @@ export function PermissionScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: staticColors.white,
   },
   contentContainer: {
     flexGrow: 1,
     justifyContent: 'center',
-    paddingVertical: 24,
+    paddingVertical: spacing.xl,
   },
   content: {
-    padding: 30,
+    padding: spacing.xxl - spacing.xs,
     alignItems: 'center',
   },
   iconContainer: {
     width: 132,
     height: 132,
     borderRadius: 66,
-    backgroundColor: '#E8F5E9',
+    backgroundColor: staticColors.lightGreenSubtext,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 28,
+    marginBottom: spacing.xl + spacing.xs,
   },
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 15,
+    color: staticColors.textPrimary,
+    marginBottom: spacing.md + spacing.xs,
+    textAlign: 'center',
   },
   description: {
     fontSize: 16,
-    color: '#666',
+    color: staticColors.iconMuted,
     textAlign: 'center',
     lineHeight: 24,
-    marginBottom: 8,
+    marginBottom: spacing.xl,
   },
-  consequenceNote: {
-    fontSize: 13,
-    color: '#888',
-    textAlign: 'center',
-    lineHeight: 18,
-    marginBottom: 28,
-  },
-  featureList: {
+  featureCard: {
     width: '100%',
-    marginBottom: 34,
+    backgroundColor: staticColors.infoBackground,
+    borderWidth: 1,
+    borderColor: staticColors.infoBorder,
+    borderRadius: radii.xl,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    marginBottom: spacing.lg,
+    gap: spacing.md,
   },
   featureItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 15,
-    paddingHorizontal: 20,
   },
   featureText: {
     fontSize: 16,
-    color: '#444',
-    marginLeft: 15,
+    color: staticColors.textPrimary,
+    marginLeft: spacing.md,
+  },
+  consequenceNote: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.sm,
+    marginBottom: spacing.xl + spacing.xs,
+    paddingHorizontal: spacing.sm,
+  },
+  consequenceText: {
+    flex: 1,
+    fontSize: 13,
+    color: staticColors.iconMuted,
+    lineHeight: 18,
   },
   button: {
-    backgroundColor: '#2E7D32',
+    backgroundColor: staticColors.success,
     width: '100%',
-    paddingVertical: 16,
-    borderRadius: 12,
+    paddingVertical: spacing.lg,
+    borderRadius: radii.md,
     alignItems: 'center',
-    elevation: 3,
+    ...shadows.low,
   },
   buttonDisabled: {
     backgroundColor: staticColors.focusedBlock,
   },
   buttonText: {
-    color: '#FFFFFF',
+    color: staticColors.white,
     fontSize: 18,
     fontWeight: '600',
   },
   skipButton: {
-    marginTop: 20,
+    marginTop: spacing.xl - spacing.xs,
+    padding: spacing.sm,
   },
   skipText: {
-    color: '#666',
+    color: staticColors.iconMuted,
     fontSize: 16,
   },
 });
