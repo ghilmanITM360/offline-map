@@ -67,11 +67,12 @@ Confirmed by reading `HomeScreen.tsx` directly (not assumed):
     `DEEP_UI_UX_AUDIT.md`.
 - `LocationSheet` (`mode: 'preview' | 'details' | 'routePreview'`) — single shared sheet
   for place preview, place details, and the old "Directions screen" content
-  (`RoutePreviewSection`). PARTIALLY AUDITED — #146 pass (unavailableReason banner,
-  isRoutable refusal is Codex-owned/untouched) plus this session's Batch B pass on the
-  manual gate picker specifically (one confirmed defect fixed — gate selection state now
-  exposed via `accessibilityState`; see `DEEP_UI_UX_AUDIT.md` Batch B). The start/
-  destination inline-search flows within the same component are still NOT AUDITED.
+  (`RoutePreviewSection`). **AUDITED** — full A–O pass this session on `RoutePreviewSection`
+  and the route-ready card as a whole (start/destination selection and search, manual/
+  automatic gate selection, route calculation, error/retry, Start Navigation), in addition
+  to the prior #146 and manual-gate-picker (`d7a05c6`) passes. Two confirmed defects fixed
+  (unavailable-candidate parity in inline search, route-result screen-reader
+  announcement) — see `DEEP_UI_UX_AUDIT.md` Batch B (continued).
 - `LayersSheet` — map layer toggle (satellite/graph-only etc.). **AUDITED this session** —
   read in full; already correct (OverlayRow a11y suppression, segmented-control
   `accessibilityState`, 56dp rows). KEEP, no defect. One latent question flagged, not

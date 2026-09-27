@@ -139,17 +139,49 @@ Routing-specific suites (`test:all-gates-v2` etc.) are part of the same `npm tes
 above and passed — nothing routing/GPS/gate-selection-algorithm related was touched this
 session; every change was Views-layer accessibility/motion presentation.
 
+## This session (continued) — RoutePreviewSection full audit, two fixes landed
+
+Completed the full A–O pass on `RoutePreviewSection` and the route-ready card as a whole
+(previously only the gate-picker sub-section had a deep pass). Two confirmed defects
+found and fixed:
+
+1. Inline start/destination search results didn't apply the muted/disabled/reason
+   treatment `DestinationRow` established for `isRoutable===false` places (#146) — a
+   third UI surface with the same gate-visibility inconsistency #146 fixed for Directory
+   browse/search. Fixed at both call sites, reusing the existing pattern.
+2. `calculateRoute()` auto-fires on mount/on every start-destination change with no user
+   action; nothing announced the resulting ready/error state to screen readers. Added a
+   one-shot `AccessibilityInfo.announceForAccessibility`, same pattern as the arrival
+   announcement (#64) and `LocationTutorialTooltip`.
+
+Everything else in the route-ready card (information hierarchy, gate options, Start
+Navigation dispatch, empty/error states, keyboard handling, rapid-retry guard) was
+confirmed already sound — KEEP, no defect. Commit `fa4560a`.
+
+### Validation for this commit
+
+```
+npm run typecheck   → clean (typecheck:app + typecheck:scripts)
+npm run lint        → clean (eslint .)
+npm test            → 0 failed (all jest unit suites + all scripts/test-*.ts checks)
+npm run test:components -- --runInBand → 75/75 suites, 662/662 tests passing
+                                          (+4 new: 2 unavailable-candidate parity,
+                                          2 route-result announcement)
+git diff --check    → clean
+```
+
+Nothing routing/GPS/gate-selection-algorithm related was touched — every change was
+Views-layer accessibility presentation, same as the rest of this branch.
+
 ## What's next
 
-Still not audited: the start/destination inline-search flows inside `RoutePreviewSection`
-(only the gate-picker sub-section got a pass this session), `LocationSheet`'s route-ready
-card visual hierarchy as a whole, `AppGuideScreen`, and the base-map-layer components
+Still not audited: `AppGuideScreen`, and the base-map-layer components
 (`BlockLayer`/`GateLayer`/`RastaLayer`/etc.) beyond their existing accessible-name fixes.
 Then the remaining application-wide A–O pass (Splash, Welcome, Permission, Download Map,
 Locations Directory, Settings, Help, About) — several already PARTIALLY AUDITED from
 prior sessions. Device-testing checklist accumulated across sessions (touch-target
 overlap at small screens/large fonts, TalkBack focus-on-arrival, rapid-arrival-then-new-
-preview timing, TalkBack announcement behavior for the two new one-shot announcements
-added this session) should be run whenever an emulator/device becomes available — see
+preview timing, TalkBack announcement behavior for the one-shot announcements added
+across sessions) should be run whenever an emulator/device becomes available — see
 `DEEP_UI_UX_AUDIT.md` for the exact procedures. See `CLAUDE_CODEX_HANDOFF.md` for
 NAV-004, the one open Codex question, unchanged this session.

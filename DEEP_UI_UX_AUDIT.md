@@ -550,6 +550,76 @@ Only one candidate crossed from research into implementation this session, match
 mission's own instruction to select a small number of genuinely useful candidates rather
 than integrate broadly.
 
+## Batch B (continued) — RoutePreviewSection full A–O pass, LocationSheet route-ready card
+
+Full read of `RoutePreviewSection` (`LocationSheet.tsx:212-720`, all interaction paths:
+start selection/search, destination selection/search, manual/automatic gate selection,
+route calculation, route-ready presentation, Start Navigation, error/retry) and the
+route-ready card's complete information hierarchy (destination, start, distance/ETA,
+entry-gate summary, `OutsideRouteStatusCard`, manual gate options, primary CTA,
+disabled-reason text, Cancel Route).
+
+- **CONFIRMED DEFECT, FIXED** — inline start-search and destination-search results
+  (`startCandidates`/`destCandidates`, fed by `SearchService.search(...)`, which passes
+  `includeUnavailableGates: true`) rendered every candidate through a hand-rolled
+  `Pressable`/`Text` pair identical for available and unavailable places — no muted
+  styling, no `accessibilityState`, no reason text. This is the exact `isRoutable===false`
+  gate case FINDING #146 fixed for Directory browse/search, resurfacing in a third UI
+  surface #146 didn't touch: a user could pick a verified-but-ground-truth-blocked gate as
+  their start point or new destination with zero warning until the subsequent route
+  calculation failed. Fixed by applying the same accessibilityLabel-suffix/
+  accessibilityState/muted-text/reason-subtitle treatment `DestinationRow` already
+  established, at both call sites (no new component — same "reuse, don't reinvent"
+  precedent as #146). Commit `fa4560a`. Regression tests: two new cases in
+  `LocationSheet.test.tsx` (one per search flow), asserting the accessible label reads
+  "navigation unavailable" and the reason text renders.
+- **CONFIRMED DEFECT, FIXED** — `calculateRoute()` fires automatically on mount and on
+  every start/destination change (`DirectionsViewModel.ts:438-440`), so `loadState`
+  transitions through `loading -> ready`/`error` with no user action in between. Nothing
+  announced this to screen readers — a TalkBack user got no spoken signal a route had
+  resolved or failed, only the visual Card swap (via `FadeContent`, which carries no
+  live-region wiring). Directly on point for the mission's own Batch B question ("does the
+  user understand the selected starting point and destination" / "investigate loading...
+  states"). Fixed with a one-shot `AccessibilityInfo.announceForAccessibility` keyed on
+  `loadState`, matching the established pattern (NavigationChromeV2's arrival
+  announcement #64, `LocationTutorialTooltip`'s location announcement). Commit `fa4560a`.
+  Regression tests: two new cases (ready, error) asserting `announceForAccessibility` is
+  called with the right text.
+- **Everything else in the route-ready card — KEEP, no defect found**: information
+  hierarchy (destination → start → distance/ETA hero row → entry summary →
+  `OutsideRouteStatusCard` → gate options → primary CTA → disabled-reason text → Cancel
+  Route) reads top-to-bottom in the order a user needs it, matches the mission's own
+  ordering ask. `routeHeroRow`'s `outsideRoute?.durationSeconds !== null` condition
+  correctly shows ETA for internal routes (`outsideRoute` undefined) and for outside
+  routes with a real duration estimate, and correctly hides it only when `durationSeconds`
+  is explicitly `null` (the direct-guide fallback, which has no real duration to show) —
+  read carefully to confirm this wasn't an accidental `undefined`/`null` mixup, it isn't.
+  Manual gate picker's `accessibilityState` fix (prior session, `d7a05c6`) already covers
+  "can the user recognize their current gate selection." Changing the destination
+  mid-preview (`onChangeDestination`) swaps in place without closing the sheet, matching
+  "change a selected location" from the mission's interaction list — no confirmation
+  dialog, which is correct here since it's non-destructive (route just recalculates).
+  Empty/no-match search states (`No start points found.` / `No destinations found.`)
+  already existed and read clearly. Keyboard interactions
+  (`keyboardShouldPersistTaps="handled"`, `keyboardDismissMode="on-drag"`,
+  `Keyboard.dismiss()` on submit/selection) are wired consistently across both search
+  flows. Rapid-repeated-tap safety on Retry already had a same-tick double-tap guard
+  (`retryInFlightRef`, pre-existing). No case for REDESIGN or RESTRUCTURE — the two
+  defects found were accessibility-wiring gaps, not structural ones, consistent with
+  every other KEEP call on this branch.
+- **Not independently fixable / out of scope**: whether the direct-guide's displayed
+  `totalDistance` is a meaningful walking-distance figure (vs. an as-the-crow-flies
+  estimate) for the fallback case is Codex-owned route-computation territory, not a
+  presentation defect — `OutsideRouteStatusCard`'s existing "not a road route" warning
+  (confirmed accurate, prior session) already covers the accuracy caveat at the point
+  where it matters.
+- **Runtime verification state**: **RUNTIME UNVERIFIED** for both fixes — no Android
+  emulator/device available this session. `AccessibilityInfo.announceForAccessibility`
+  wiring and the `accessibilityState`/label additions are verified at the source and
+  automated-test level (`includeHiddenElements`/`getByLabelText` assertions actually
+  query what TalkBack's accessibility tree would expose), not by an actual TalkBack
+  session. Added to the device-testing checklist.
+
 ## Remaining REQUIRES PRODUCT DECISION items carried from prior sessions
 
 Not re-litigated here since no new evidence changes them: PERM-001/002/003/007/008,
