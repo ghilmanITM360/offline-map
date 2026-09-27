@@ -37,7 +37,11 @@ Confirmed by reading `HomeScreen.tsx` directly (not assumed):
   `FacilityLayer`, `VenueBoundary`, `SatelliteDimOverlay`, `UserLocationMarker`,
   `MapLabelOverlay`, `OsmAttribution` — NOT AUDITED as a full component pass beyond
   #157's accessible-name fixes and the prior sprint's touch-target/selectability work.
-- `MapControls` / `MapControlsRecenter` — floating map buttons. NOT AUDITED.
+- `MapControls` / `MapControlsRecenter` — floating map buttons. **AUDITED this session**
+  (Batch A, fast-track UI/UX mission) — real 48/56dp physical touch targets (KEEP), one
+  confirmed redundant-TalkBack-stop defect fixed (helper badge), one justified motion
+  addition implemented (recenter success spring, Reduce Motion aware). See
+  `DEEP_UI_UX_AUDIT.md` Batch A.
 - Navigation mode overlays: `NavigationMapLayersV2`/`V1`, `NavigationChromeV2`/`V1`,
   gated on `mode === 'NAVIGATION' || mode === 'ARRIVAL'`. **FULLY AUDITED for A–E across
   both V1 and V2** (B instruction wording, C map presentation, and a full arrival-
@@ -63,12 +67,20 @@ Confirmed by reading `HomeScreen.tsx` directly (not assumed):
     `DEEP_UI_UX_AUDIT.md`.
 - `LocationSheet` (`mode: 'preview' | 'details' | 'routePreview'`) — single shared sheet
   for place preview, place details, and the old "Directions screen" content
-  (`RoutePreviewSection`). PARTIALLY AUDITED this session (read in full for #146 —
-  confirmed it already renders `unavailableReason` as a warning banner and never blocks
-  `onPress`/Directions on `isRoutable`; real routing-eligibility refusal happens deeper,
-  in `RoutingServiceV2`, which is Codex-owned and untouched).
-- `LayersSheet` — map layer toggle (satellite/graph-only etc.). NOT AUDITED.
-- `LocationTutorialTooltip` — first-use tooltip. NOT AUDITED.
+  (`RoutePreviewSection`). PARTIALLY AUDITED — #146 pass (unavailableReason banner,
+  isRoutable refusal is Codex-owned/untouched) plus this session's Batch B pass on the
+  manual gate picker specifically (one confirmed defect fixed — gate selection state now
+  exposed via `accessibilityState`; see `DEEP_UI_UX_AUDIT.md` Batch B). The start/
+  destination inline-search flows within the same component are still NOT AUDITED.
+- `LayersSheet` — map layer toggle (satellite/graph-only etc.). **AUDITED this session** —
+  read in full; already correct (OverlayRow a11y suppression, segmented-control
+  `accessibilityState`, 56dp rows). KEEP, no defect. One latent question flagged, not
+  fixed: `mapType: 'hybrid'` has no selected-state UI reflection — REQUIRES
+  INVESTIGATION whether it's ever actually passed.
+- `LocationTutorialTooltip` — first-use tooltip. **AUDITED this session** — one confirmed
+  defect fixed (silent to screen readers, now announces via
+  `AccessibilityInfo.announceForAccessibility`) and one inconsistency fixed (didn't use
+  the app's own `useReducedMotion` hook, now does). See `DEEP_UI_UX_AUDIT.md` Batch A.
 - Map warning banner (`styles.mapWarningBanner`) — GPS/connectivity status. PARTIALLY
   AUDITED — #156 gave these banners live-region semantics and end-user copy; full A–O
   pass not done.

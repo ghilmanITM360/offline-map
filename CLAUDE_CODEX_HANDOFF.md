@@ -36,6 +36,15 @@ scope, not Codex scope — listed here for completeness, not as a Codex ask.
   FINDING V1V2-REACHABILITY. Flagging here only for visibility, since the previous
   session guessed this might need a Codex answer and it didn't.
 
+## Fast-track UI/UX mission (Batch A/B) — no new Codex items
+
+Home/Map (`MapControls`, `LayersSheet`, `LocationTutorialTooltip`) and the manual gate-
+picker sub-section of Route Preview were audited and fixed this segment — all
+accessibility-wiring fixes, entirely UI-side. `OutsideRouteStatusCard` wording was
+re-checked against the mission's specific worry (implying a verified street route) and
+confirmed accurate; no Codex clarification was needed to settle it. NAV-004 (above)
+remains the one open Codex question. See `DEEP_UI_UX_AUDIT.md` Batch A/B for detail.
+
 ## New this session — factual question for Codex
 
 - **NAV-004 — should v1 (legacy) navigation get the same background-resume GPS-staleness

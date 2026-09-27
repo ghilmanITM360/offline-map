@@ -12,6 +12,13 @@ Branch: `fix/claude-ui-accessibility-sprint`. All commits below preserved, none 
 | `2dd8a8a` | fix(ux): returning-user copy, permission contrast/error handling, unified download fallback (#153, #163, #159) |
 | `9d9b700` | fix(a11y): splash subtitle contrast + real native splash logo (#158) |
 | `9b576a5` | fix(#146): directory browse shows unavailable gates same as search |
+| `9fb7fe8` | docs: establish persistent UI/UX audit register and screen inventory |
+| `195a1ee` | docs: resolve V1/V2 navigation reachability, partial active-nav audit |
+| `87c718f` | fix(nav): next-step preview no longer truncates the destination name (B-001) |
+| `7185859` | docs: complete V1/V2 active-nav + arrival audit, close NAV-003, flag NAV-004 |
+| `066d3bc` | fix(a11y): Batch A Home/Map — redundant TalkBack stop + silent location tooltip |
+| `644ee0b` | feat(ux): recenter button confirms success with a spring pop (React Bits-inspired) |
+| `d7a05c6` | fix(a11y): manual gate-choice buttons expose selection via accessibilityState (Batch B) |
 
 ## Latest validation run (after `9b576a5`)
 
@@ -87,16 +94,62 @@ full `npm test` run above (they're part of the same script chain) — all passed
 routing/GPS/ViewModel navigation logic was touched; only the two Chrome components'
 next-step text rendering changed.
 
+## This session — fast-track UI/UX mission: React Bits research + Batch A/B implementation
+
+**Skills discovered/used**: no project- or user-level skill matched React Native
+component auditing/animation work specifically; proceeded with direct source reading,
+`gh api` for the React Bits research, and this branch's own established test/validation
+conventions (superpowers' generic skill-check discipline was followed — none applied).
+
+**React Bits research** (Phase 3): read the real `github.com/DavidHDev/react-bits`
+license (`LICENSE.md` — MIT + Commons Clause, permits use-as-part-of-a-product), its
+actual `package.json` dependencies (confirms web-only stack: three.js, GSAP, Framer
+Motion, matter-js, etc. — none run in RN), and its full `Animations`/`Components`/
+`Micro`/`TextAnimations` category listing. Full compatibility matrix in
+`DEEP_UI_UX_AUDIT.md`. One candidate selected and implemented (SpringCheck →
+recenter-button success confirmation); everything else is INSPIRATION ONLY or NOT
+SUITABLE with reasons given, not assumed.
+
+**Batch A — Home/Map**: `MapControls`, `LayersSheet`, `LocationTutorialTooltip` all
+audited. Two confirmed accessibility defects fixed (redundant TalkBack stop on the
+compass helper badge; the location tooltip was silent to screen readers and didn't
+respect Reduce Motion). One justified motion addition (recenter success spring, Reduce
+Motion aware). Diagnostics banner and empty-state text investigated and confirmed
+already safe/clear — no fix needed. Commits `066d3bc`, `644ee0b`.
+
+**Batch B — Route Preview/Gate Selection**: manual gate-picker buttons fixed to expose
+selection state via `accessibilityState` (was color-only). `OutsideRouteStatusCard`
+wording investigated against the mission's specific worry (implying verified street
+routing) and confirmed accurate — closed with no code change, same evidentiary standard
+as NAV-003's closure. Commit `d7a05c6`.
+
+### Validation for this session's three commits
+
+```
+npm run typecheck   → clean (typecheck:app + typecheck:scripts)
+npm run lint        → clean (eslint .)
+npm test            → 0 failed (all jest unit suites + all scripts/test-*.ts checks)
+npm run test:components -- --runInBand → 75/75 suites, 658/658 tests passing
+                                          (+15 new: 5 LocationTutorialTooltip, 9
+                                          MapControls, 1 LocationSheet gate-selection)
+git diff --check    → clean
+```
+
+Routing-specific suites (`test:all-gates-v2` etc.) are part of the same `npm test` chain
+above and passed — nothing routing/GPS/gate-selection-algorithm related was touched this
+session; every change was Views-layer accessibility/motion presentation.
+
 ## What's next
 
-Home/Map audit (`MapControls`, `MapControlsRecenter`, `LayersSheet`,
-`LocationTutorialTooltip`, all map layer components, diagnostics/empty-state
-presentation) — not yet touched. Then route preview / destination-selection audit
-(`LocationSheet`, gate selection, `OutsideRouteStatusCard` wording accuracy). Then the
-remaining application-wide A–O pass (Splash, Welcome, Permission, Download Map,
-Locations Directory, Settings, Help, About, AppGuide) — several already PARTIALLY
-AUDITED from prior sessions. Device-testing checklist accumulated this session (touch-
-target overlap at small screens/large fonts, TalkBack focus-on-arrival, rapid-arrival-
-then-new-preview timing) should be run whenever an emulator/device becomes available —
-see `DEEP_UI_UX_AUDIT.md` for the exact procedures. See `CLAUDE_CODEX_HANDOFF.md` for
-NAV-004, the one open Codex question from this session.
+Still not audited: the start/destination inline-search flows inside `RoutePreviewSection`
+(only the gate-picker sub-section got a pass this session), `LocationSheet`'s route-ready
+card visual hierarchy as a whole, `AppGuideScreen`, and the base-map-layer components
+(`BlockLayer`/`GateLayer`/`RastaLayer`/etc.) beyond their existing accessible-name fixes.
+Then the remaining application-wide A–O pass (Splash, Welcome, Permission, Download Map,
+Locations Directory, Settings, Help, About) — several already PARTIALLY AUDITED from
+prior sessions. Device-testing checklist accumulated across sessions (touch-target
+overlap at small screens/large fonts, TalkBack focus-on-arrival, rapid-arrival-then-new-
+preview timing, TalkBack announcement behavior for the two new one-shot announcements
+added this session) should be run whenever an emulator/device becomes available — see
+`DEEP_UI_UX_AUDIT.md` for the exact procedures. See `CLAUDE_CODEX_HANDOFF.md` for
+NAV-004, the one open Codex question, unchanged this session.

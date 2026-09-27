@@ -14,8 +14,8 @@ far. Every step below is an expert/source-level assessment unless stated otherwi
 | 3. Permission ask | Permission | #153 (contrast/error handling) | PARTIALLY AUDITED |
 | 4. Map download | DownloadMap | #159/#163 (fallback copy) | PARTIALLY AUDITED |
 | 5. Find destination | LocationsDirectory + Home search | #154, #146 (this session) | PARTIALLY AUDITED |
-| 6. Choose starting point | LocationSheet (routePreview mode, "Change Start") | none yet | NOT AUDITED |
-| 7. Understand route/gate | LocationSheet route-ready card, gate options | none yet | NOT AUDITED |
+| 6. Choose starting point | LocationSheet (routePreview mode, "Change Start") | none yet | NOT AUDITED — this session's Batch B pass covered the gate picker sub-section only, not the start-search flow |
+| 7. Understand route/gate | LocationSheet route-ready card, gate options | manual gate-picker a11y fix (this session) | PARTIALLY AUDITED — manual gate selection now exposes current choice via `accessibilityState` (was color-only); `OutsideRouteStatusCard` wording investigated and confirmed accurate (no misleading "verified street route" claim); route-ready card's own visual hierarchy/layout not yet A–O assessed |
 | 8. Start navigation | LocationSheet "Start Navigation" button | none yet | NOT AUDITED |
 | 9. Follow instructions | NavigationChrome V1/V2, NavigationMapLayers V1/V2 | B-001 (next-step truncation, this session) | FULLY AUDITED for A–E, both versions (see `DEEP_UI_UX_AUDIT.md` NAV-001–004, B-001). F (accessibility) source-verified only — TalkBack runtime behavior NOT device-verified. |
 | 10. GPS/network problems | Map warning banner | #156 (live-region + copy) | PARTIALLY AUDITED — GPS_LOST/weak-GPS/reroute/basemap priority chain and live-region contract fully traced and tested this session (NAV-001/002); V1 lacks V2's background-resume staleness fix (NAV-004, Codex dependency) |

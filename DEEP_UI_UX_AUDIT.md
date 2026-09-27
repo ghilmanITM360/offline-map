@@ -427,11 +427,128 @@ permission not yet given to close these issues**.
 
 ## Screens/components with NO deep A–O pass yet
 
-Per the inventory doc: AppGuideScreen, LayersSheet, LocationTutorialTooltip, MapControls,
-the full NavigationChrome/MapLayers V1+V2 pair (active navigation + arrival — highest
-priority), the diagnostics banner, the empty-state sheet, and a full component-level pass
-on every map layer beyond the accessible-name fixes already made. These are **NOT
-AUDITED**, not silently assumed fine.
+Per the inventory doc: AppGuideScreen, the full `RoutePreviewSection` start/destination
+search flows (only the manual-gate-picker sub-section got a deep pass this session), and
+a full component-level pass on every map layer beyond the accessible-name fixes already
+made. These are **NOT AUDITED**, not silently assumed fine. (`LayersSheet`,
+`LocationTutorialTooltip`, `MapControls`, and the NavigationChrome/MapLayers V1+V2 pair
+now have a deep pass — see below and prior sessions.)
+
+## Batch A — Home/Map (this session, fast-track UI/UX mission)
+
+**MapControls** (`src/views/components/map/MapControls.tsx`):
+- All buttons are genuine 48×48dp / 56×56dp (recenter) physical size, not hitSlop-only —
+  confirmed from `mapControlStyles.ts`, no defect, KEEP.
+- **CONFIRMED DEFECT, FIXED** — the north-up/compass "helper badge" (sighted-only text
+  under the compass button) duplicated the compass button's own `accessibilityLabel` as a
+  second, redundant TalkBack stop. Same class of bug already fixed once in this branch for
+  `LayersSheet`'s `OverlayRow` (Switch/row double-announcement). Fixed with
+  `importantForAccessibility="no-hide-descendants"` on the badge's wrapping `View`.
+  Commit `066d3bc`. Regression test: `MapControls.test.tsx` (badge query uses
+  `includeHiddenElements: true`, confirming the suppression actually removes it from the
+  default a11y-query tree — i.e. behaves like real TalkBack hiding, not just a prop).
+- **JUSTIFIED ADDITION, IMPLEMENTED** — the recenter button's tap-success feedback was a
+  hard icon cut (spinner → static checkmark) with zero motion confirming the tap
+  resolved. Added a small `Animated.spring` scale-pop on entering the `'success'` state,
+  adapted from react-bits' "SpringCheck" micro-interaction (see React Bits matrix below),
+  using this codebase's own established `Animated` convention (not
+  `react-native-reanimated`, which nothing in `src` actually uses yet — see matrix).
+  Skips entirely under Reduce Motion. Scoped to browse-mode button feedback only; never
+  touches nav chrome, GPS warnings, or safety-critical presentation. Commit `644ee0b`.
+
+**LocationTutorialTooltip** (`src/views/components/map/LocationTutorialTooltip.tsx`):
+- **CONFIRMED DEFECT, FIXED** — the one-time "You're here" teaching moment was
+  `pointerEvents="none"` plain `Text` with no focus or live-region wiring. A screen-reader
+  user got no signal it ever appeared — a real gap for exactly the target audience (first-
+  time users, who benefit most from this exact teaching moment). Fixed with the same
+  one-shot `AccessibilityInfo.announceForAccessibility` pattern NavigationChromeV2 already
+  uses for its arrival announcement (#64).
+- **INCONSISTENCY, FIXED** — this was the one animated component in `src` that hadn't
+  picked up the project's own `useReducedMotion` hook (already reused by `HomeScreen`,
+  `NavigationChromeV2`, `LocationSheet`'s `FadeContent`). Wired it in; the fade is now
+  skippable like every other animation in the app. Commit `066d3bc`. Regression tests:
+  `LocationTutorialTooltip.test.tsx` (5 tests — announcement, animated/skipped fade both
+  directions, static render).
+
+**LayersSheet** (`src/views/components/map/LayersSheet.tsx`): read in full. Already
+correct — `OverlayRow`'s `importantForAccessibility="no-hide-descendants"` fix and the
+segmented control's `accessibilityState={{selected}}` are the exact patterns the two fixes
+above now match. `minHeight: 56` rows, `bounces={false}` scroll, backdrop-press-to-close —
+KEEP, no defect found. One latent inconsistency **not fixed** (no evidence it's reachable):
+`mapType` prop type includes `'hybrid'`, but no segment button ever reflects `'hybrid'` as
+selected — REQUIRES INVESTIGATION whether `'hybrid'` is ever actually passed from
+`HomeScreen`; flagged, not assumed broken.
+
+**Diagnostics banner** (`HomeScreen.tsx`, `styles.diagnosticsBanner`): confirmed CLOSED,
+not a leak risk — gated on `__DEV__ && developerModeEnabled`. `__DEV__` is a build-time
+constant Metro dead-code-eliminates from release bundles (standard RN behavior, not just a
+runtime flag), so this cannot appear in a production build. No fix needed.
+
+**Empty-state sheet** ("Tap a block or search to see details"): "block" is real venue
+terminology used consistently elsewhere in the app (Blocks are actual physical venue
+divisions), not dev jargon — matches the KEEP precedent already established for
+"Rasta"/"Gate" wording in the nav audit. No defect.
+
+## Batch B — Route Preview / Gate Selection (this session)
+
+**Manual gate picker** (`RoutePreviewSection` inside `LocationSheet.tsx`):
+- **CONFIRMED DEFECT, FIXED** — the "Automatic gate" / per-gate buttons conveyed which
+  gate was currently selected only through `variant` color (secondary vs outline) —
+  nothing for TalkBack. Directly on point for the mission's own Batch B ask ("users can
+  recognize incorrect selections"). Same fix already applied once in this branch for
+  `LayersSheet`'s Standard/Satellite toggle (#65):
+  `accessibilityState={{selected}}` added to all three buttons. Commit `d7a05c6`.
+  Regression test added to `LocationSheet.test.tsx`.
+
+**OutsideRouteStatusCard + OutsideRouteLocalizationService** — investigated the mission's
+specific worry (does the UI imply the direct-guide fallback is verified street routing?).
+**CLOSED, no defect** — `direct.notRoadRoute` ("Direct guide — not a road route") and
+`direct.warning` ("may not follow walkable roads") are explicit and unambiguous; the
+Google/offline-OSM provider labels ("Google walking route" / "Offline walking route") are
+both genuinely road-following routes, so labeling them as such is accurate, not
+overclaiming. Bilingual (Urdu RTL), live-region-announced warning already in place. No
+code change made — evidence-based closure, per the same "do not invent a defect" standard
+applied to NAV-003.
+
+## React Bits compatibility matrix (mission Phase 3)
+
+Investigated `github.com/DavidHDev/react-bits` directly (not assumed): read the actual
+`package.json` dependencies, `LICENSE.md`, and the full `src/content/{Animations,
+Components, Micro, TextAnimations}` category listing via `gh api`.
+
+**License**: MIT + Commons Clause v1.0. Permits use, copy, modification, and distribution
+**as part of an application** (including commercial use) — the one restriction is
+selling/sublicensing/redistributing the components themselves as a standalone product or
+library. Adapting a pattern's *technique* into our own native app, with attribution
+retained, is within license. Confirmed by reading the actual license text, not assumed.
+
+**Confirmed dependencies** (from the real `package.json`): `three` / `@react-three/fiber`
+(WebGL/3D), `gsap`, `motion` (Framer Motion), `matter-js` (2D physics), `lenis` (smooth-
+scroll), `face-api.js`, `react-confetti`, `react-virtualized`, `shiki`, `tailwindcss`. This
+independently confirms the mission's own stated constraint — none of these run in React
+Native; the library is fundamentally a web (Vite/DOM/Canvas/WebGL) component gallery.
+
+**Category survey** (`Animations`, `Components`, `Micro`, `TextAnimations` — full listing
+read, not sampled): the large majority are cursor-follow effects, WebGL/3D scenes,
+canvas particle systems, or scroll-linked DOM/CSS effects (`BlobCursor`, `MetaBalls`,
+`Ribbons`, `DomeGallery`, `FluidGlass`, `ParticleText`, etc.) — **NOT SUITABLE** for this
+app on both technical grounds (no native equivalent) and product grounds (mission
+explicitly excludes cursor/particle/glassmorphism effects for a crowded-outdoor
+navigation tool).
+
+| Component/pattern | Category | Screen | Native compatibility | Decision |
+|---|---|---|---|---|
+| SpringCheck | Micro | MapControls recenter button | Technique (scale-spring on success) fully expressible via RN `Animated`/Reanimated; original is DOM+Motion | **REQUIRES NATIVE ADAPTATION — IMPLEMENTED** (commit `644ee0b`, plain `Animated.spring`, reduced-motion aware) |
+| StatusMark | Micro | (considered for compass/recenter active state) | Same as above in principle | **INSPIRATION ONLY** — not implemented; existing `controlButtonActive`/`recenterButtonActive` border+background swap already communicates state clearly without new motion; no identified problem to fix |
+| WarmTooltip | Micro | (considered for LocationTutorialTooltip) | DOM-positioned tooltip w/ CSS transitions | **INSPIRATION ONLY** — the existing tooltip's structure (fixed position, fade, auto-dismiss) already covers the same need; the actual defect found there was accessibility wiring, not visual design, so no redesign was warranted |
+| CountUp / Counter | TextAnimations / Components | (considered for route distance/ETA) | Trivially portable (JS interval + `Text`) | **NOT SUITABLE** — mission explicitly excludes animating live navigation distance/ETA; static, immediately-readable numbers matter more than a counting effect for this content |
+| AnimatedList / AnimatedContent | Components / Animations | (considered for search results, LocationsDirectory) | Portable via `Animated`/`LayoutAnimation` | **INSPIRATION ONLY** — no identified comprehension problem with the current instant list render; adding entrance animation here would be motion for its own sake, against the mission's own caution |
+| BlobCursor, MetaBalls, Ribbons, GooeyNav, FluidGlass, ParticleText, DomeGallery, SplashCursor, etc. (majority of catalog) | Animations/Components/TextAnimations | — | WebGL/Three.js/canvas-particle/cursor-tracking; no native equivalent, and explicitly excluded product-wise | **NOT SUITABLE** |
+| Everything else in `Micro` (BellToggle, FlipCard, HoldButton, JellyRadio, PulseHeart, SquishSwitch, SwipeRow, etc.) | Micro | — | Individually portable in principle | **INSPIRATION ONLY (not evaluated further)** — none map to an identified, evidence-backed problem in this app this session; selecting more without a concrete usability gap would be motion added to demonstrate activity, which the mission explicitly warns against |
+
+Only one candidate crossed from research into implementation this session, matching the
+mission's own instruction to select a small number of genuinely useful candidates rather
+than integrate broadly.
 
 ## Remaining REQUIRES PRODUCT DECISION items carried from prior sessions
 
