@@ -50,7 +50,12 @@ export function HelpScreen() {
   };
 
   const HelpItem = ({ icon: Icon, title, description, onPress }: any) => (
-    <Pressable style={styles.helpItem} onPress={onPress}>
+    <Pressable
+      style={styles.helpItem}
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={description ? `${title}, ${description}` : title}
+    >
       <View style={styles.iconContainer}>
         <Icon size={24} color="#2E7D32" />
       </View>
@@ -136,11 +141,11 @@ export function HelpScreen() {
           />
           <HelpItem
             icon={MessageCircle}
-            title="Send Feedback"
-            description="Tell us about your experience or report a map error."
+            title="Contact Us"
+            description="Report a map error or share feedback at your registration desk."
             onPress={() =>
               Alert.alert(
-                'Send Feedback',
+                'Contact Us',
                 'To report a map error or send feedback, please contact the Ijtema tech team at your registration desk.',
                 [{ text: 'OK' }],
               )

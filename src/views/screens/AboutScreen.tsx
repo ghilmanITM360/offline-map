@@ -78,7 +78,7 @@ export function AboutScreen() {
             </View>
             <View style={styles.featureItem}>
               <View style={styles.dot} />
-              <Text style={styles.featureText}>Urdu & English Language Support</Text>
+              <Text style={styles.featureText}>Urdu & English place names and voice guidance</Text>
             </View>
             <View style={styles.featureItem}>
               <View style={styles.dot} />
@@ -89,12 +89,22 @@ export function AboutScreen() {
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Legal & Privacy</Text>
-          <Pressable style={styles.linkItem} onPress={() => { void openExternalUrl(PRIVACY_POLICY_URL); }}>
+          <Pressable
+            style={styles.linkItem}
+            onPress={() => { void openExternalUrl(PRIVACY_POLICY_URL); }}
+            accessibilityRole="button"
+            accessibilityLabel="Privacy Policy"
+          >
             <Shield size={20} color="#666" />
             <Text style={styles.linkText}>Privacy Policy</Text>
             <ExternalLink size={16} color="#AAA" />
           </Pressable>
-          <Pressable style={styles.linkItem} onPress={() => { void openExternalUrl(TERMS_OF_SERVICE_URL); }}>
+          <Pressable
+            style={styles.linkItem}
+            onPress={() => { void openExternalUrl(TERMS_OF_SERVICE_URL); }}
+            accessibilityRole="button"
+            accessibilityLabel="Terms of Service"
+          >
             <FileText size={20} color="#666" />
             <Text style={styles.linkText}>Terms of Service</Text>
             <ExternalLink size={16} color="#AAA" />
