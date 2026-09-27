@@ -226,8 +226,11 @@ describe('LocationsDirectoryScreen — recent destinations (#99)', () => {
     useAppStore.setState({ recentSearches: [blockedGate] });
     await render(<LocationsDirectoryScreen />);
 
-    const row = await screen.findByLabelText(`${blockedGate.name}, Gate, navigation unavailable`);
-    expect(row.props.accessibilityState?.disabled).toBe(true);
+    // #146: this gate now also renders in its own "Gates" browse section (consistent with
+    // search), in addition to Recent — so both instances must exist and both stay disabled.
+    const rows = await screen.findAllByLabelText(`${blockedGate.name}, Gate, navigation unavailable`);
+    expect(rows.length).toBeGreaterThanOrEqual(2);
+    rows.forEach((row) => expect(row.props.accessibilityState?.disabled).toBe(true));
   });
 
   test('RECENT-08: a stale recent id no longer resolvable in current data is omitted safely', async () => {

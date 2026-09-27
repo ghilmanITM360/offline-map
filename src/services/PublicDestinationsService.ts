@@ -52,12 +52,17 @@ export class PublicDestinationsService {
     return DESTINATION_CATEGORIES.filter((category) => this.getByCategory(category.id).length > 0);
   }
 
+  // #146: matches SearchService.searchV2's own includeUnavailableGates:true — a gate that
+  // has a real coordinate but still needs ground-truth connector verification (e.g.
+  // Gate 18/19) must show up the same way in browse as it already does in search, muted
+  // and marked isRoutable:false via DestinationRow/LocationSheet's existing #96 treatment,
+  // not silently vanish from one surface only.
   static getAll(): V2Place[] {
-    return naturalSort(V2PlaceAdapter.getAllPlaces());
+    return naturalSort(V2PlaceAdapter.getAllPlaces({ includeUnavailableGates: true }));
   }
 
   static getByCategory(category: DestinationCategoryId): V2Place[] {
-    return naturalSort(V2PlaceAdapter.getPlacesByCategory(category));
+    return naturalSort(V2PlaceAdapter.getPlacesByCategory(category, { includeUnavailableGates: true }));
   }
 
   /**
