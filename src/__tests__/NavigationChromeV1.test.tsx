@@ -123,6 +123,21 @@ describe('NavigationChromeV1 — Exit/recenter/mute touch targets', () => {
     expect(stackContent.queryByText('Base map unavailable. Offline route guidance continues.')).not.toBeOnTheScreen();
   });
 
+  test('#156: weak-GPS banner is a polite live region', async () => {
+    await render(<NavigationChromeV1 overlay={baseOverlay({ isWeakGps: true })} hasBaseMap={false} />);
+    expect(screen.getByText('Weak GPS signal detected. Route updates may be slower.').parent?.props.accessibilityLiveRegion).toBe('polite');
+  });
+
+  test('#156: reroute-hint banner is a polite live region', async () => {
+    await render(<NavigationChromeV1 overlay={baseOverlay({ rerouteStatusMessage: 'Recalculating your route' })} hasBaseMap={false} />);
+    expect(screen.getByText('Recalculating your route').parent?.props.accessibilityLiveRegion).toBe('polite');
+  });
+
+  test('#156: map-unavailable banner is a polite live region', async () => {
+    await render(<NavigationChromeV1 overlay={baseOverlay()} hasBaseMap={false} />);
+    expect(screen.getByText('Base map unavailable. Offline route guidance continues.').parent?.props.accessibilityLiveRegion).toBe('polite');
+  });
+
   test('pressing Exit requests confirmation instead of stopping directly', async () => {
     const handleExit = jest.fn();
     const requestNavigationExit = jest.fn();

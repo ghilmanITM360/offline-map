@@ -175,19 +175,19 @@ export function NavigationChromeV2({ overlay, hasBaseMap }: { overlay: Navigatio
             rerouting status, which outranks basemap degradation. Never stack more than one. */}
         <View testID="navigation-subordinate-surfaces" style={styles.topStatusStack}>
           {gpsSignalState === 'GPS_LOST' ? (
-            <View style={styles.weakGpsBanner}>
+            <View style={styles.weakGpsBanner} accessibilityLiveRegion="assertive">
               <Text style={styles.weakGpsText}>Searching for GPS signal. Your position may be out of date.</Text>
             </View>
           ) : isWeakGps ? (
-            <View style={styles.weakGpsBanner}>
+            <View style={styles.weakGpsBanner} accessibilityLiveRegion="polite">
               <Text style={styles.weakGpsText}>Weak GPS signal detected. Route updates may be slower.</Text>
             </View>
           ) : rerouteStatusMessage && !reroutePending ? (
-            <View style={styles.rerouteHintBanner}>
+            <View style={styles.rerouteHintBanner} accessibilityLiveRegion="polite">
               <Text style={styles.rerouteHintText}>{rerouteStatusMessage}</Text>
             </View>
           ) : !hasBaseMap ? (
-            <View style={styles.mapUnavailableBanner}>
+            <View style={styles.mapUnavailableBanner} accessibilityLiveRegion="polite">
               <Text style={styles.mapUnavailableText}>Base map unavailable. Offline route guidance continues.</Text>
             </View>
           ) : null}

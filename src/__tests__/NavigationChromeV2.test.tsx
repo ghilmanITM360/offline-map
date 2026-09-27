@@ -166,6 +166,28 @@ describe('NavigationChromeV2 — direct outside guide', () => {
     expect(stackContent.queryByText('Base map unavailable. Offline route guidance continues.')).not.toBeOnTheScreen();
   });
 
+  test('#156: GPS_LOST banner is an assertive live region so screen-reader users hear it unprompted', async () => {
+    await render(<NavigationChromeV2 overlay={baseOverlay({ gpsSignalState: 'GPS_LOST' })} hasBaseMap={false} />);
+
+    const banner = screen.getByText('Searching for GPS signal. Your position may be out of date.').parent;
+    expect(banner?.props.accessibilityLiveRegion).toBe('assertive');
+  });
+
+  test('#156: weak-GPS banner is a polite live region', async () => {
+    await render(<NavigationChromeV2 overlay={baseOverlay({ isWeakGps: true })} hasBaseMap={false} />);
+    expect(screen.getByText('Weak GPS signal detected. Route updates may be slower.').parent?.props.accessibilityLiveRegion).toBe('polite');
+  });
+
+  test('#156: reroute-hint banner is a polite live region', async () => {
+    await render(<NavigationChromeV2 overlay={baseOverlay({ rerouteStatusMessage: 'Recalculating your route' })} hasBaseMap={false} />);
+    expect(screen.getByText('Recalculating your route').parent?.props.accessibilityLiveRegion).toBe('polite');
+  });
+
+  test('#156: map-unavailable banner is a polite live region', async () => {
+    await render(<NavigationChromeV2 overlay={baseOverlay()} hasBaseMap={false} />);
+    expect(screen.getByText('Base map unavailable. Offline route guidance continues.').parent?.props.accessibilityLiveRegion).toBe('polite');
+  });
+
   test('shows accurate road provider identity while outside leg is active', async () => {
     const offlineRoute: V2ActiveRoute = {
       ...route,

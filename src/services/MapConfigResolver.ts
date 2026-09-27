@@ -44,9 +44,9 @@ export type GoogleMapsRuntimeStatus = {
 };
 
 export const GOOGLE_MAPS_KEY_NOT_CONFIGURED_MESSAGE =
-  'Google Maps key is not configured. Offline venue data still works.';
+  'Background map imagery is unavailable. Offline venue data still works.';
 export const GOOGLE_MAPS_LOAD_FAILED_MESSAGE =
-  'Map failed to load. Check Google Cloud restrictions and Maps SDK for Android.';
+  'Map imagery failed to load. Offline venue data still works.';
 
 function hasEnvKey(value: string | undefined): boolean {
   return typeof value === 'string' && value.trim().length > 0;
