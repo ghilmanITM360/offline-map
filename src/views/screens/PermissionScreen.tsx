@@ -6,12 +6,19 @@
 import React from 'react';
 import { View, Text, StyleSheet, Pressable, ActivityIndicator, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { MapPin, ShieldCheck } from 'lucide-react-native';
 import { usePermissionViewModel } from '../../viewmodels/PermissionViewModel';
+import { staticColors } from '../../theme';
 
 export function PermissionScreen() {
   const navigation = useNavigation<any>();
+  const route = useRoute<any>();
+  // Set only when SplashScreen routes a returning, already-onboarded user back here —
+  // i.e. location access was granted before and has since been revoked outside the
+  // app. WelcomeViewModel's first-time Continue -> Permission transition passes no
+  // params, so this stays falsy on a genuine first ask (#153 Finding 2).
+  const isReturningAfterRevocation = Boolean(route.params?.revoked);
   const { loading, requestPermission, skipPermission } = usePermissionViewModel();
 
   return (
@@ -23,7 +30,12 @@ export function PermissionScreen() {
           </View>
           <Text style={styles.title}>Find your location</Text>
           <Text style={styles.description}>
-            Allow location access so we can show where you are and guide you to your destination.
+            {isReturningAfterRevocation
+              ? 'Allow location access so we can show where you are and guide you to your destination. If you already allowed this before, it may have been turned off.'
+              : 'Allow location access so we can show where you are and guide you to your destination.'}
+          </Text>
+          <Text style={styles.consequenceNote}>
+            Without it, you can still explore the map, but live navigation won't work.
           </Text>
 
           <View style={styles.featureList}>
@@ -100,6 +112,13 @@ const styles = StyleSheet.create({
     color: '#666',
     textAlign: 'center',
     lineHeight: 24,
+    marginBottom: 8,
+  },
+  consequenceNote: {
+    fontSize: 13,
+    color: '#888',
+    textAlign: 'center',
+    lineHeight: 18,
     marginBottom: 28,
   },
   featureList: {
@@ -126,7 +145,7 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   buttonDisabled: {
-    backgroundColor: '#A5D6A7',
+    backgroundColor: staticColors.focusedBlock,
   },
   buttonText: {
     color: '#FFFFFF',

@@ -50,8 +50,10 @@ export function SplashScreen() {
       // take down the whole Promise.all below and force a hardcoded route. StartupManager
       // remains the only place that decides the route; these fallbacks only decide what
       // StartupManager sees when a read genuinely failed.
+      let onboardingStatusReadFailed = false;
       const hasSeenWelcomePromise = OnboardingStatusService.hasSeenWelcome().catch((error) => {
         console.error('[SplashScreen] Failed to read welcome status — assuming onboarding is not complete.', error);
+        onboardingStatusReadFailed = true;
         return false;
       });
 
@@ -171,7 +173,17 @@ export function SplashScreen() {
         skippedOnlineModeEnabled,
         isConnected,
       });
-      navigation.replace(route);
+      // hasSeenWelcome is already true whenever StartupManager routes here to
+      // 'Permission' (the first-time flow always returns 'Welcome' first) — so
+      // reaching Permission via Splash always means a previously-granted or
+      // previously-skipped permission needs re-asking, not a first ask (#153 Finding 2).
+      if (route === 'Permission') {
+        navigation.replace(route, { revoked: true });
+      } else if (route === 'Welcome' && onboardingStatusReadFailed) {
+        navigation.replace(route, { onboardingStatusReadFailed: true });
+      } else {
+        navigation.replace(route);
+      }
     };
 
     void checkStatus();

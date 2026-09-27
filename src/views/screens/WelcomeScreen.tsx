@@ -6,7 +6,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, Pressable, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { Map as MapIcon, MapPin, Navigation, WifiOff, Footprints } from 'lucide-react-native';
 import { useWelcomeViewModel } from '../../viewmodels/WelcomeViewModel';
 
@@ -19,6 +19,8 @@ const BENEFITS = [
 
 export function WelcomeScreen() {
   const navigation = useNavigation<any>();
+  const route = useRoute<any>();
+  const onboardingStatusReadFailed = Boolean(route.params?.onboardingStatusReadFailed);
   const { continueFromWelcome } = useWelcomeViewModel();
 
   return (
@@ -30,6 +32,9 @@ export function WelcomeScreen() {
           </View>
           <Text style={styles.title}>Welcome to Karachi Ijtema Navigation</Text>
           <Text style={styles.urduTitle}>کراچی اجتماع نیویگیشن میں خوش آمدید</Text>
+          {onboardingStatusReadFailed && (
+            <Text style={styles.notice}>We couldn't confirm your previous setup, so we're showing this again.</Text>
+          )}
           <Text style={styles.description}>
             Find blocks, gates, and routes easily.{'\n'}Works even without internet.
           </Text>
@@ -94,6 +99,12 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 24,
     marginBottom: 28,
+  },
+  notice: {
+    fontSize: 13,
+    color: '#946500',
+    textAlign: 'center',
+    marginBottom: 12,
   },
   featureList: {
     width: '100%',

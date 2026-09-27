@@ -31,8 +31,16 @@ export type DrawerParamList = {
 
 export type RootStackParamList = {
   Splash: undefined;
-  Welcome: undefined;
-  Permission: undefined;
+  // `onboardingStatusReadFailed` is set only when Splash couldn't read whether onboarding
+  // was already completed and conservatively fell back to showing Welcome again — see
+  // SplashScreen (#153 Finding 3) — so Welcome can say why it's reappearing instead of
+  // silently repeating with no explanation.
+  Welcome: { onboardingStatusReadFailed?: boolean } | undefined;
+  // `revoked` is set only when Splash routes a returning, already-onboarded user back
+  // here because permission was granted before and has since been revoked outside the
+  // app — see PermissionScreen (#153 Finding 2). A genuine first-ask (via Welcome's
+  // Continue) passes no params.
+  Permission: { revoked?: boolean } | undefined;
   DownloadMap: undefined;
   LocationsDirectory: undefined;
   Main: NavigatorScreenParams<DrawerParamList> | undefined;

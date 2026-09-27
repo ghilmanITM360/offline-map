@@ -33,13 +33,12 @@ import { OfflineMapStatusService } from '../../services/OfflineMapStatusService'
 
 type DownloadMapScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'DownloadMap'>;
 
-const REDIRECT_FALLBACK_MS = 2600;
-
 export function DownloadMapScreen() {
   const navigation = useNavigation<DownloadMapScreenNavigationProp>();
   const { hasInternet, offlineMapStatus, offlineMapStatusMessage } = useAppStore();
   const {
     downloadState,
+    showContinueFallback,
     startDownload,
     pauseDownload,
     resumeDownload,
@@ -52,7 +51,6 @@ export function DownloadMapScreen() {
     offlineTileDownloadAvailable,
   } = useDownloadMapViewModel();
 
-  const [showContinueFallback, setShowContinueFallback] = useState(false);
   const [expectedTiles, setExpectedTiles] = useState(OfflineMapStatusService.getExpectedTileCount());
 
   const { phase, progress, totalTiles, errorMessage } = downloadState;
@@ -70,18 +68,6 @@ export function DownloadMapScreen() {
     : isCorrupt
       ? (offlineMapStatusMessage ?? 'Map data looks incomplete. Repair and re-download is required.')
       : null;
-
-  useEffect(() => {
-    let timeout: ReturnType<typeof setTimeout> | null = null;
-    if (isComplete) {
-      timeout = setTimeout(() => setShowContinueFallback(true), REDIRECT_FALLBACK_MS);
-    } else {
-      setShowContinueFallback(false);
-    }
-    return () => {
-      if (timeout) clearTimeout(timeout);
-    };
-  }, [isComplete]);
 
   useEffect(() => {
     const readExpected = async () => {
@@ -154,14 +140,14 @@ export function DownloadMapScreen() {
             <View style={styles.benefitList}>
               <Text style={styles.benefitItem}>✓ Venue and outside routing are bundled</Text>
               <Text style={styles.benefitItem}>✓ Navigation works without a route API</Text>
-              <Text style={styles.benefitItem}>✓ Graph-only map works offline</Text>
+              <Text style={styles.benefitItem}>✓ Venue map works offline, without background imagery</Text>
             </View>
           )}
 
           {!offlineTileDownloadAvailable && isIdle && (
             <View style={styles.warningBox}>
               <AlertTriangle size={18} color="#B45309" />
-              <Text style={styles.warningText}>Offline background-map download is unavailable until a licensed tile package is configured.</Text>
+              <Text style={styles.warningText}>Offline background-map download isn't available yet on this app.</Text>
             </View>
           )}
 
