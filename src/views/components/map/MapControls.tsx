@@ -69,7 +69,10 @@ export function MapControls({ variant, compassMode, onLayers, onCompassToggle, o
         <Compass size={22} color={isHeadingFollow ? staticColors.info : staticColors.iconMuted} />
       </Pressable>
       {variant === 'browse' && (
-        <View style={styles.controlHelperBadge}>
+        // Sighted-only label repeating the compass button's own accessibilityLabel above —
+        // without this, TalkBack stops on it as a second, redundant announcement right after
+        // the button itself (same class of bug already fixed for LayersSheet's OverlayRow).
+        <View style={styles.controlHelperBadge} importantForAccessibility="no-hide-descendants">
           <Text style={styles.controlHelperText}>{isHeadingFollow ? 'Compass' : 'North-up'}</Text>
         </View>
       )}
