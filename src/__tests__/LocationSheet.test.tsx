@@ -511,6 +511,54 @@ describe('LocationSheet (routePreview) — route ready CTA', () => {
     expect(selectManualGate).toHaveBeenCalledWith('GATE_12');
   });
 
+  test('Batch B: gate-choice buttons expose which gate is selected via accessibilityState, not color alone', async () => {
+    mockedUseDirectionsViewModel.mockReturnValue(
+      baseViewModel({
+        loadState: 'ready',
+        manualGateId: 'GATE_12',
+        manualGateOptions: [
+          { gateId: 'GATE_12', label: 'Gate 12' },
+          { gateId: 'GATE_13', label: 'Gate 13' },
+        ],
+        route: {
+          sourceVersion: 'v2',
+          nodes: ['GATE_05', 'B2_C1'],
+          coordinates: [],
+          totalDistance: 250,
+          estimatedTimeMin: 4,
+          outsideRoute: {
+            schemaVersion: 1,
+            candidateId: 'preview-direct-2',
+            requestId: 'preview-2',
+            requestVersion: 1,
+            provider: 'direct-guide',
+            gateId: 'GATE_12',
+            distanceM: 120,
+            durationSeconds: null,
+            coordinates: [
+              { latitude: 24.96, longitude: 67.01 },
+              { latitude: 24.961, longitude: 67.011 },
+            ],
+            steps: [],
+            roadFollowing: false,
+            distanceKind: 'direct-distance',
+            warnings: [{ code: 'direct-guide-not-road-route' }],
+            fallbackReason: 'outside-coverage',
+            fallbackHistory: [],
+          },
+        },
+      }),
+    );
+    const user = userEvent.setup();
+    await render(<LocationSheet mode="routePreview" destination={v2Destination} onClose={onCloseSpy} />);
+
+    await user.press(screen.getByRole('button', { name: 'Choose another gate' }));
+
+    expect(screen.getByRole('button', { name: 'Use automatic gate selection' }).props.accessibilityState).toMatchObject({ selected: false });
+    expect(screen.getByRole('button', { name: 'Use Gate 12' }).props.accessibilityState).toMatchObject({ selected: true });
+    expect(screen.getByRole('button', { name: 'Use Gate 13' }).props.accessibilityState).toMatchObject({ selected: false });
+  });
+
   test('shows route metrics once a route is ready', async () => {
     mockedUseDirectionsViewModel.mockReturnValue(
       baseViewModel({

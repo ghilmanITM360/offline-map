@@ -627,6 +627,10 @@ function RoutePreviewSection({
                     variant={manualGateId ? 'outline' : 'secondary'}
                     label="Automatic gate"
                     accessibilityLabel="Use automatic gate selection"
+                    // Selection state was previously conveyed only by variant color
+                    // (secondary vs outline) — invisible to TalkBack. Same fix already
+                    // applied to LayersSheet's Standard/Satellite toggle (#65).
+                    accessibilityState={{ selected: !manualGateId }}
                     onPress={() => {
                       clearManualGateSelection();
                       setShowGateOptions(false);
@@ -638,6 +642,7 @@ function RoutePreviewSection({
                       variant={manualGateId === gate.gateId ? 'secondary' : 'outline'}
                       label={gate.label}
                       accessibilityLabel={`Use ${gate.label}`}
+                      accessibilityState={{ selected: manualGateId === gate.gateId }}
                       onPress={() => {
                         selectManualGate(gate.gateId);
                         setShowGateOptions(false);
