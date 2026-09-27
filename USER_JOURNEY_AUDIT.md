@@ -17,7 +17,7 @@ far. Every step below is an expert/source-level assessment unless stated otherwi
 | 6. Choose starting point | LocationSheet (routePreview mode, "Change Start") | none yet | NOT AUDITED |
 | 7. Understand route/gate | LocationSheet route-ready card, gate options | none yet | NOT AUDITED |
 | 8. Start navigation | LocationSheet "Start Navigation" button | none yet | NOT AUDITED |
-| 9. Follow instructions | NavigationChrome V1/V2, NavigationMapLayers V1/V2 | none yet | NOT AUDITED — highest-priority next screen |
+| 9. Follow instructions | NavigationChrome V1/V2, NavigationMapLayers V1/V2 | none yet | PARTIALLY AUDITED this session — V1/V2 reachability resolved, V2 status-slot/exit-safety/touch-targets checked (see `DEEP_UI_UX_AUDIT.md` NAV-001–003); instruction wording, map presentation, and V1's own pass still open |
 | 10. GPS/network problems | Map warning banner | #156 (live-region + copy) | PARTIALLY AUDITED |
 | 11. Reach destination / Arrival | `mode === 'ARRIVAL'` overlays | none yet | NOT AUDITED |
 
@@ -30,11 +30,12 @@ far. Every step below is an expert/source-level assessment unless stated otherwi
   sheet's existing "Route problem" + Retry card. This is a reasonable recovery path — the
   user isn't stuck, they see why, and can go back — but it has not been walked start-to-
   finish on a device in this session to confirm the copy reads clearly to a first-time user.
-- **V1/V2 duplication surfaces at the exact moment attendees most need clarity**
-  (navigation + arrival, steps 9 and 11) — two parallel component trees
-  (`NavigationChromeV1`/`V2`, `NavigationMapLayersV1`/`V2`). Before any redesign work on
-  these screens, the next session should first determine whether V1 is still reachable
-  in production or is dead code, since redesigning a dead path would be wasted effort.
+- **V1/V2 duplication at the exact moment attendees most need clarity (navigation +
+  arrival, steps 9 and 11) — RESOLVED, not wasted-effort risk.** Both `NavigationChromeV1`/
+  `V2` and `NavigationMapLayersV1`/`V2` are live: V1 for legacy Block destinations, V2 for
+  the newer Gates/facility model. Mutual exclusion is structural (`sourceVersion` guard),
+  not a runtime coincidence — see `DEEP_UI_UX_AUDIT.md` FINDING V1V2-REACHABILITY. Any
+  redesign of the active-navigation/arrival experience now needs to cover both, not just V2.
 - **Outside-venue routing chain** (`outside coordinate -> prepareOutsideRoutingPlan ->
   Google walking-route proxy -> bundled OSM fallback -> labelled direct-direction guide ->
   finalizeOutsideRoutingPlan`, per `AGENTS.md`) has UI surfaces in `OutsideRouteStatusCard`

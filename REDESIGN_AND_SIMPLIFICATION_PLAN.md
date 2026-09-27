@@ -13,24 +13,22 @@ un-audited screens.
 | DownloadMap | REFINE (in progress) | #159/#163 unified fallback copy. Same caveat. |
 | LocationsDirectory | REFINE (in progress) | #154 (headings/Urdu search) + #146 (gate visibility parity, this session) both fixed real defects with minimal, targeted changes — no structural redesign needed to solve either. |
 | Home/Map base layers | PENDING | Touch-target/selectability/accessible-name work already landed (prior sprint + #157); a full A–O pass on the base map experience itself (not its overlays) hasn't happened. |
-| Navigation (active) | PENDING — likely highest-value next target | Not yet audited at all. This is where an attendee is walking, in a crowd, needing the clearest possible instruction — and where V1/V2 duplication (see below) needs resolving before any redesign work, not after. |
-| Arrival | PENDING | Not yet audited. |
+| Navigation (active) | KEEP so far, PENDING full pass | Partial audit this session (`DEEP_UI_UX_AUDIT.md` NAV-001–003): status-slot priority, exit-confirmation, and touch targets are all sound — no redesign case found yet. B (instruction wording), C (map presentation), and the V1-side equivalent pass remain NOT AUDITED before any KEEP/REFINE call can be final. |
+| Arrival | PENDING | Structure read (bilingual copy, Done/Recenter, `accessibilityViewIsModal`) but not evaluated against the full arrival-specific checklist (GPS uncertainty, interrupted navigation, background-return) yet. |
 | Settings/Help/About | REFINE (in progress) | #155 fixed row semantics/copy. Structural layout not yet assessed. |
 | AppGuide, LayersSheet, LocationTutorialTooltip, MapControls | PENDING | Not yet audited. |
 
-## A structural question that should be answered before any REDESIGN call
+## Structural question — RESOLVED this session
 
-`NavigationChromeV1`/`V2` and `NavigationMapLayersV1`/`V2` both exist and both render
-whenever `mode === 'NAVIGATION' || mode === 'ARRIVAL'`. Before proposing any redesign of
-the active-navigation experience, the next session needs to establish (by reading
-`useNavigationOverlayV1`/`V2` and whatever decides which one actually renders content
-for a given trip) whether V1 is:
-- dead code kept for a reason not yet documented, or
-- a genuinely live fallback path (e.g. for legacy/graph-only data) that still needs its
-  own audit.
-
-Redesigning V2's chrome while V1 is silently still reachable in some code path would be
-incomplete work presented as complete. This is flagged here rather than guessed at.
+`NavigationChromeV1`/`V2` and `NavigationMapLayersV1`/`V2` both render whenever
+`mode === 'NAVIGATION' || mode === 'ARRIVAL'`, but only one ever produces content: V1 is
+a genuinely live path (legacy Block destinations), not dead code, and mutual exclusion is
+enforced structurally via `sourceVersion` (see `DEEP_UI_UX_AUDIT.md` FINDING
+V1V2-REACHABILITY for the full trace). Consequence for redesign: **any redesign of V2's
+chrome must also redesign or explicitly re-confirm V1's**, since V1 remains a live,
+independently-reachable presentation of active navigation for legacy destinations, not a
+fallback that will go away on its own. A REDESIGN proposal for one without the other would
+leave a real, still-used surface stale.
 
 ## No REDESIGN has been proposed in this document
 

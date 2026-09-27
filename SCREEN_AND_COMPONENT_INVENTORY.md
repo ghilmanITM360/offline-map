@@ -39,12 +39,24 @@ Confirmed by reading `HomeScreen.tsx` directly (not assumed):
   #157's accessible-name fixes and the prior sprint's touch-target/selectability work.
 - `MapControls` / `MapControlsRecenter` — floating map buttons. NOT AUDITED.
 - Navigation mode overlays: `NavigationMapLayersV2`/`V1`, `NavigationChromeV2`/`V1`,
-  gated on `mode === 'NAVIGATION' || mode === 'ARRIVAL'`. NOT AUDITED — this is the
-  active-navigation and arrival experience; highest priority for the next pass since
-  it's mid-journey, not before/after it.
-  - **V1/V2 duplication is itself a finding to investigate**: two parallel chrome/layer
-    component trees exist. Whether both are still genuinely reachable at runtime or one
-    is legacy-dead-weight is a question for the next audit pass, not answered here.
+  gated on `mode === 'NAVIGATION' || mode === 'ARRIVAL'`. **PARTIALLY AUDITED this
+  session** — see `DEEP_UI_UX_AUDIT.md` FINDING V1V2-REACHABILITY and FINDING NAV-001
+  through NAV-003 for what's been traced/verified. Remaining: full B/C/D/E/F pass on
+  V2's instruction wording, map presentation, and rerouting states (only D partially
+  checked); the equivalent V1 pass (legacy Block navigation) not yet done at all;
+  `MapControls`/recenter interaction during navigation not yet checked.
+  - **V1/V2 duplication — RESOLVED this session, not a dead-code question.** V1 is
+    genuinely live in the current app: legacy Block destinations start navigation via
+    `DirectionsViewModel.handleStartNavigation` (guarded `!isV2Destination`), which
+    computes a `sourceVersion: 'v1'` route through the old `RoutingService`. V2 destinations
+    (Gates/facilities, the newer `V2PlaceAdapter` model) start via
+    `HomeScreen.handleStartPreviewNavigation` → `V2NavigationAdapter.fromPreview`, always
+    tagged `sourceVersion: 'v2'`. Both write through the same store action
+    (`startNavigation`), and `NavigationViewModel.ts:101` explicitly bails on its own route
+    computation when `activeRoute.sourceVersion === 'v2'` — so at most one of `useNavigationOverlayV1`/`useNavigationOverlayV2`'s `route` is ever non-null. Full findings and the
+    one fragility identified (mode-gating relies on ~10 repeated `mode !== 'NAVIGATION'`
+    checks scattered through `HomeScreen.tsx`, not one shared guard) are in
+    `DEEP_UI_UX_AUDIT.md`.
 - `LocationSheet` (`mode: 'preview' | 'details' | 'routePreview'`) — single shared sheet
   for place preview, place details, and the old "Directions screen" content
   (`RoutePreviewSection`). PARTIALLY AUDITED this session (read in full for #146 —

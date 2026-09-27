@@ -36,11 +36,25 @@ Nothing in `RoutingServiceV2`, provider ordering, or gate eligibility was touche
 - Working tree: clean except untracked `node_modules` (expected, gitignored)
 - Nothing pushed, merged, or rebased — no such action taken or requested.
 
-## What's next (not yet started)
+## This session — navigation audit, no source changes
 
-Full A–O audit of: Home/Map base layers, active-navigation + arrival overlays (highest
-priority — least audited, highest stakes), LayersSheet, LocationTutorialTooltip,
-MapControls, AppGuideScreen, and the V1/V2 duplication question in
-`REDESIGN_AND_SIMPLIFICATION_PLAN.md`. See `CLAUDE_CODEX_HANDOFF.md` for anything in that
-list that may turn out to need Codex or owner input rather than being independently
-implementable.
+Traced the V1/V2 navigation control flow end to end (`HomeScreen.tsx`,
+`useNavigationOverlayV1/V2.ts`, `NavigationViewModel(V2).ts`, `V2NavigationAdapter.ts`,
+`DirectionsViewModel.ts`, `useMapMode.ts`) and did a partial A/D/E audit pass on
+`NavigationChromeV2.tsx`. Findings recorded in `DEEP_UI_UX_AUDIT.md` (FINDING
+V1V2-REACHABILITY, NAV-001–003). No defect was confirmed that warranted a code change
+this pass — findings were KEEP (status-slot priority, exit-confirmation, touch targets)
+or flagged-not-fixed (NAV-002 live-region assertiveness needs a device to confirm,
+NAV-003 needs one more trace before it's known to be reachable). Docs-only commit; no
+source or test file touched, so the required-validation suite was not re-run for it
+(same precedent as the prior docs-only commit `9fb7fe8`) — `typecheck`/`lint`/`test`
+results below are unchanged since `9b576a5`.
+
+## What's next
+
+Full A–O audit of: NavigationChromeV2 remaining sections (B instruction wording, C map
+presentation), NavigationChromeV1's own pass (legacy Block navigation — not yet touched
+at all), Arrival (structure read, checklist not yet run), Home/Map base layers,
+LayersSheet, LocationTutorialTooltip, MapControls, AppGuideScreen. See
+`CLAUDE_CODEX_HANDOFF.md` for anything in that list that may turn out to need Codex or
+owner input rather than being independently implementable.

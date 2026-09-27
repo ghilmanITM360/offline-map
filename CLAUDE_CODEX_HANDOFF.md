@@ -23,15 +23,21 @@ PERM-001/002/003/007/008, #153 Finding 1, #154 Findings 2/3, #155 bilingual cove
 #156 Finding 4, WEL-001–006, #127, SPLASH-UX-003/004, F005. These are UI/product
 scope, not Codex scope — listed here for completeness, not as a Codex ask.
 
+## Resolved this session — no Codex action needed
+
+- **V1/V2 navigation duplication**: answered entirely from source, no Codex question
+  needed after all. `NavigationChromeV1`/`V2` and `NavigationMapLayersV1`/`V2` both render
+  conditionally in `HomeScreen`, and both are genuinely live — V1 for legacy Block
+  destinations (`DirectionsViewModel.handleStartNavigation`, guarded `!isV2Destination`),
+  V2 for the newer Gates/facility model (`HomeScreen.handleStartPreviewNavigation` →
+  `V2NavigationAdapter.fromPreview`). Mutual exclusion is enforced by a `sourceVersion`
+  check in `NavigationViewModel.ts:101` (UI-owned legacy file), not by anything in
+  `RoutingServiceV2` or other Codex-owned code — full trace in `DEEP_UI_UX_AUDIT.md`
+  FINDING V1V2-REACHABILITY. Flagging here only for visibility, since the previous
+  session guessed this might need a Codex answer and it didn't.
+
 ## Items likely needing Codex input (not yet confirmed — flagged for the next audit pass)
 
-- **V1/V2 navigation duplication**: `NavigationChromeV1`/`V2` and
-  `NavigationMapLayersV1`/`V2` both render conditionally in `HomeScreen`. Before Claude
-  can audit or redesign the active-navigation/arrival experience, someone needs to
-  confirm whether the V1 path is still genuinely reachable (e.g. for legacy/graph-only
-  venue data) or is dead weight. If it's routing/data-driven (which version renders
-  depends on `RoutingServiceV2`/data availability), that's a question for Codex to
-  answer, not something Claude should infer from UI code alone.
 - **Outside-routing fallback chain UX**: the direct-direction guide is the last resort in
   `outside coordinate -> ... -> labelled direct-direction guide -> finalizeOutsideRoutingPlan`.
   Whether its current UI framing (`OutsideRouteStatusCard`) correctly reflects what the
