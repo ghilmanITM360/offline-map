@@ -1976,7 +1976,7 @@ const styles = StyleSheet.create({
   outsideVenueBanner: {
     marginLeft: 12,
     marginRight: 76,
-    backgroundColor: '#F29900',
+    backgroundColor: staticColors.weakGpsBackground,
     borderRadius: 20,
     paddingLeft: 14,
     paddingRight: 8,
