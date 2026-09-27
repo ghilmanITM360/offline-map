@@ -35,8 +35,14 @@ Confirmed by reading `HomeScreen.tsx` directly (not assumed):
 
 - Base map layers: `BlockLayer`, `GateLayer`, `RastaLayer`, `SpecialRouteLayer`,
   `FacilityLayer`, `VenueBoundary`, `SatelliteDimOverlay`, `UserLocationMarker`,
-  `MapLabelOverlay`, `OsmAttribution` — NOT AUDITED as a full component pass beyond
-  #157's accessible-name fixes and the prior sprint's touch-target/selectability work.
+  `MapLabelOverlay`, `OsmAttribution` — **AUDITED** this session (full component pass,
+  not just #157's accessible-name fixes). `FacilityLayer`/`UserLocationMarker`/
+  `VenueBoundary`/`SatelliteDimOverlay`/`OsmAttribution` are KEEP, no defect.
+  `GateLayer`/`BlockLayer`/`RastaLayer`/`SpecialRouteLayer` each have a confirmed
+  redundant-TalkBack-stop defect (their own tap-target accessibility duplicates
+  `MapLabelOverlay`'s) — **not fixed this session**, real complexity found in the
+  route-preview declutter system that needs resolving first; see `DEEP_UI_UX_AUDIT.md`
+  "Base map layers" for full evidence and the recommended fix approach.
 - `MapControls` / `MapControlsRecenter` — floating map buttons. **AUDITED this session**
   (Batch A, fast-track UI/UX mission) — real 48/56dp physical touch targets (KEEP), one
   confirmed redundant-TalkBack-stop defect fixed (helper badge), one justified motion

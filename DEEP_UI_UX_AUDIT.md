@@ -654,6 +654,93 @@ Everything else checked out — **KEEP, no defect**:
 - **Runtime verification state**: RUNTIME UNVERIFIED — no emulator/device this session;
   verified by source + automated test only.
 
+## Base map layers — full component pass (this session)
+
+Read every base-map-layer component in full: `BlockLayer`, `GateLayer`, `RastaLayer`,
+`SpecialRouteLayer`, `FacilityLayer`, `UserLocationMarker`, `VenueBoundary`,
+`SatelliteDimOverlay`, `OsmAttribution`, and `MapLabelOverlay` (the shared label/press
+surface these first four hand off to — see `docs/ARCHITECTURE.md` Phase 5 for why label
+text moved out of native `Marker` children).
+
+**KEEP, no defect — `VenueBoundary`, `SatelliteDimOverlay`**: purely decorative
+`Polygon`s (`tappable={false}` on the satellite scrim), no accessible surface applicable.
+
+**KEEP, no defect — `FacilityLayer`**: single `Marker` per facility with its own
+`accessibilityLabel`/`onPress`, and (confirmed via `HomeScreen.tsx`'s `mapLabelItems`,
+which only emits `'gate'|'block'|'rasta'|'route'` kinds) facilities have no
+`MapLabelOverlay` counterpart — this Marker is the only accessible surface, correctly so.
+
+**KEEP, no defect — `UserLocationMarker`**: single accessible node
+("Your location"/"Your last known location"), no `MapLabelOverlay` counterpart. The
+`rememberedLabel` child's `accessibilityLiveRegion="polite"` is inert (it's a plain,
+non-`accessible` `View` nested inside the `Marker`'s custom content, not an independently
+focusable node, and its text never changes after mount) — a harmless leftover prop, not a
+functional defect worth a drive-by removal.
+
+**KEEP, no defect — `OsmAttribution`**: correct `accessibilityRole="link"` + descriptive
+label.
+
+**CONFIRMED DEFECT, NOT FIXED THIS SESSION (real complexity, documented per the same
+standard as the V1 map-rendering finding) — `GateLayer`/`BlockLayer`/`RastaLayer`/
+`SpecialRouteLayer` each duplicate their own accessible tap-target's `accessibilityLabel`
+with a second, independent accessible node `MapLabelOverlay` renders for the same
+place**:
+- **Evidence**: `GateLayer.tsx`'s `Marker` carries `accessibilityLabel={gate.label}` +
+  `onPress`; `BlockLayer.tsx`'s home-variant `Polygon` carries
+  `accessibilityLabel={block.label}` + `onPress`; `RastaLayer.tsx`'s wide invisible
+  hit-corridor `Polyline` carries `accessibilityLabel={rasta.label}` + `onPress`;
+  `SpecialRouteLayer.tsx`'s equivalent hit-corridor `Polyline` does the same. In every
+  case, `HomeScreen.tsx`'s `mapLabelItems` (feeding the single shared
+  `MapLabelOverlay`) *also* creates an item for the same place with the same/richer text
+  (`text`+`secondaryText`) and its own `onPress`, rendered as an `accessible`
+  `Pressable`/`View` (`MapLabelOverlay.tsx:279-303`) positioned at the same projected
+  screen coordinate. Confirmed these are genuinely two separate view-hierarchy nodes
+  (a native `react-native-maps` marker/overlay layer vs. an RN `Pressable` drawn on top
+  via `pointForCoordinate`), both carrying `ViewProps`-inherited accessibility support
+  (`MapMarkerProps = ViewProps & {...}`, confirmed in
+  `node_modules/react-native-maps/lib/MapMarker.d.ts`) — not one visual widget with one
+  accessible name.
+- **User impact**: this is the exact "redundant TalkBack stop" defect class already fixed
+  three times on this branch (`MapControls` compass badge, `LayersSheet`'s
+  `OverlayRow`, and now this pattern's own gate/block/rasta/route case) — a screen-reader
+  user swiping through the map linearly hears every gate, block, rasta, and special-route
+  name announced **twice** in a row. Given the map is the app's primary surface and this
+  affects every visible object in browse mode (not one badge), this is higher-impact than
+  the prior three instances of the same bug class.
+- **Why NOT fixed this session, unlike the prior three instances**: the naive fix
+  (suppress the native tap-target's own accessibility whenever `MapLabelOverlay` also
+  covers it) is only safe if the two components are ALWAYS rendering the exact same
+  visible-object set. Traced this and found it is **not** always true:
+  `GateLayer`'s own comment/logic already carves out one real exception
+  (`gate.labelSuppressed && !gate.isSelected` gates lose their `MapLabelOverlay` item
+  entirely — `HomeScreen.tsx:764` — so the `Marker`'s own label is their *only* accessible
+  surface there, and blindly suppressing it would be a real regression, not a wash).
+  Beyond that already-known exception, `HomeScreen.tsx`'s route-preview declutter system
+  compounds this further: `previewVisibleGateMarkers`/`previewVisibleBlocks` (the sets
+  actually passed to `GateLayer`/`BlockLayer` as props, `HomeScreen.tsx:731-738`) are
+  filtered to `gate.isSelected || gate.id === previewEntryGateId` /
+  `block.isSelected` while `routePreviewDeclutterActive`, but `mapLabelItems`'s own
+  gate/block loops (`HomeScreen.tsx:763,789`) still iterate the **unfiltered**
+  `v2MapLayers.visibleGateMarkers`/`visibleBlockLabels` — i.e. the two components' visible
+  sets can diverge during route preview, and this session did not have time to fully
+  trace whether that divergence is itself an existing, intentional, or already-mitigated
+  behavior (e.g. `mapLabelItems` may have its own declutter gate not yet found) before
+  it would be safe to condition an accessibility-suppression fix on it.
+- **Recommended fix (for whoever picks this up)**: same shape as the already-solved
+  `GateLayer` `labelSuppressed` case — pass each layer component enough information to
+  know, per-item, whether `MapLabelOverlay` will actually render an accessible
+  counterpart for it *in the current render* (not just in the common case), and only then
+  set `importantForAccessibility="no-hide-descendants"` (or platform-appropriate
+  equivalent) on that item's native tap-target. Requires first fully resolving the
+  `previewVisible*` vs. `visible*Labels` divergence noted above — start there, not with
+  the accessibility change itself.
+- **Not fixed this session**: correctly deferred per this same standard, rather than
+  risk shipping a fix that silently removes a gate/block/rasta/route's only accessible
+  name in a declutter or label-suppression state that wasn't fully traced.
+- **Runtime verification state**: RUNTIME UNVERIFIED — the duplication itself is
+  confirmed by source (two independently-accessible nodes exist), not by an actual
+  TalkBack linear-swipe session; no emulator/device available this session.
+
 ## Remaining REQUIRES PRODUCT DECISION items carried from prior sessions
 
 Not re-litigated here since no new evidence changes them: PERM-001/002/003/007/008,
