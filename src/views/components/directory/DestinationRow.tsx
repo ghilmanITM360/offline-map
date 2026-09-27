@@ -53,16 +53,17 @@ export function DestinationRow({ place, onPress }: { place: V2Place; onPress: (p
         <Icon size={20} color={isUnavailable ? staticColors.iconMuted : accent} />
       </View>
       <View style={styles.body}>
-        <View style={styles.nameRow}>
-          <Text style={[styles.name, isUnavailable && styles.nameMuted]} numberOfLines={1} ellipsizeMode="tail">
-            {place.name}
+        <Text style={[styles.name, isUnavailable && styles.nameMuted]} numberOfLines={1} ellipsizeMode="tail">
+          {place.name}
+        </Text>
+        {/* Own line, not squeezed onto the name's baseline — a long English name was
+            truncating the Urdu name first, and Urdu script reads better at its own
+            size than a cramped secondary-label size. */}
+        {place.urduName ? (
+          <Text style={styles.nameSecondary} numberOfLines={1} ellipsizeMode="tail">
+            {place.urduName}
           </Text>
-          {place.urduName ? (
-            <Text style={styles.nameSecondary} numberOfLines={1} ellipsizeMode="tail">
-              {place.urduName}
-            </Text>
-          ) : null}
-        </View>
+        ) : null}
         <Text style={styles.subtitle} numberOfLines={1} ellipsizeMode="tail">
           {categoryLabel}
           {place.unavailableReason ? ' · Not yet available for routing' : ''}
@@ -84,6 +85,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     gap: spacing.md,
     backgroundColor: staticColors.white,
+    borderBottomWidth: 1,
+    borderBottomColor: staticColors.borderLight,
   },
   rowPressed: {
     backgroundColor: staticColors.neutralSurface,
@@ -99,24 +102,18 @@ const styles = StyleSheet.create({
     flex: 1,
     minWidth: 0,
   },
-  nameRow: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    gap: spacing.xs,
-  },
   name: {
     fontSize: 16,
     fontWeight: '600',
     color: staticColors.textPrimary,
-    flexShrink: 1,
   },
   nameMuted: {
     color: staticColors.textSecondaryStrong,
   },
   nameSecondary: {
-    fontSize: 13,
-    color: staticColors.textMuted,
-    flexShrink: 1,
+    fontSize: 15,
+    color: staticColors.iconMuted,
+    marginTop: 1,
   },
   subtitle: {
     fontSize: 13,

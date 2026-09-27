@@ -18,7 +18,7 @@ import { V2PlaceAdapter } from '../../services/V2PlaceAdapter';
 import { SearchBarField } from '../components/common/SearchBarField';
 import { DestinationRow } from '../components/directory/DestinationRow';
 import { DestinationBlockGrid } from '../components/directory/DestinationBlockGrid';
-import { radii, spacing, staticColors, typography } from '../../theme';
+import { radii, shadows, spacing, staticColors, typography } from '../../theme';
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'LocationsDirectory'>;
 
@@ -281,6 +281,11 @@ const styles = StyleSheet.create({
     marginTop: spacing.lg,
     marginHorizontal: spacing.xl,
     justifyContent: 'center',
+    borderRadius: radii.lg,
+    // The app's central "find your destination" action (mission priority #1) — a
+    // little elevation over the plain-bordered field makes it read as the primary
+    // action on the screen, not just another input.
+    ...shadows.low,
   },
   searchIcon: {
     position: 'absolute',
