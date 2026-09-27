@@ -9,10 +9,10 @@ far. Every step below is an expert/source-level assessment unless stated otherwi
 
 | Journey step | Screen/overlay | Prior fixes touching it | Audit state |
 |---|---|---|---|
-| 1. First launch | Splash | #158 (contrast, real logo) | PARTIALLY AUDITED |
-| 2. Understand the app | Welcome | #153 (returning-user copy) | PARTIALLY AUDITED |
-| 3. Permission ask | Permission | #153 (contrast/error handling) | PARTIALLY AUDITED |
-| 4. Map download | DownloadMap | #159/#163 (fallback copy) | PARTIALLY AUDITED |
+| 1. First launch | Splash | #158 (contrast, real logo) | AUDITED — no interactive elements, no defect |
+| 2. Understand the app | Welcome | #153 (returning-user copy), Continue button role/label fix (this session) | AUDITED |
+| 3. Permission ask | Permission | #153 (contrast/error handling), both actions' role/label fix (this session) | AUDITED |
+| 4. Map download | DownloadMap | #159/#163 (fallback copy), all 9 action buttons' role/label fix (this session) | AUDITED |
 | 5. Find destination | LocationsDirectory + Home search | #154, #146 (this session) | PARTIALLY AUDITED |
 | 6. Choose starting point | LocationSheet (routePreview mode, "Change Start") | unavailable-candidate parity fix (this session) | FULLY AUDITED — start-search inline results now match Directory's #146 muted/disabled/reason treatment for unroutable places |
 | 7. Understand route/gate | LocationSheet route-ready card, gate options | manual gate-picker a11y fix, unavailable-candidate parity, route-result announcement (this session) | FULLY AUDITED — manual gate selection exposes current choice via `accessibilityState`; `OutsideRouteStatusCard` wording confirmed accurate; route-ready card's full information hierarchy assessed and confirmed sound (KEEP); route result now announced to screen readers |

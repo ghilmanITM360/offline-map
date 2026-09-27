@@ -7,10 +7,10 @@ un-audited screens.
 
 | Screen | Treatment | Why |
 |---|---|---|
-| Splash | REFINE (in progress) | #158 already fixed the two concrete defects found (subtitle contrast, invisible logo). No further redesign justified without a new finding — visual novelty is not a reason to touch it again. |
-| Welcome | REFINE (in progress) | #153 fixed returning-user copy confusion. Structure/layout itself not yet assessed against A–O; no redesign claim beyond the fixed copy issue. |
-| Permission | REFINE (in progress) | #153 fixed contrast + error handling. Same caveat as Welcome. |
-| DownloadMap | REFINE (in progress) | #159/#163 unified fallback copy. Same caveat. |
+| Splash | **KEEP** (full pass complete) | #158 fixed the two concrete defects found (subtitle contrast, invisible logo). No interactive elements exist to have an accessibility gap. No further redesign justified without a new finding. |
+| Welcome | **KEEP** (full pass complete) | #153 fixed returning-user copy confusion; this session fixed the Continue button's missing accessibilityRole/Label. Structure/layout itself sound — no redesign case found. |
+| Permission | **KEEP** (full pass complete) | #153 fixed contrast + error handling; this session fixed both actions' missing accessibilityRole/Label (including the spinner-only "Allow Location" case). No redesign case found. |
+| DownloadMap | **KEEP** (full pass complete) | #159/#163 unified fallback copy; this session fixed all 9 action buttons' missing accessibilityRole/Label and added the screen's first test file. No redesign case found. |
 | LocationsDirectory | REFINE (in progress) | #154 (headings/Urdu search) + #146 (gate visibility parity, this session) both fixed real defects with minimal, targeted changes — no structural redesign needed to solve either. |
 | Home/Map base layers | PENDING | Touch-target/selectability/accessible-name work already landed (prior sprint + #157); a full A–O pass on the base map experience itself (not its overlays) hasn't happened. `MapControls`/`LayersSheet`/`LocationTutorialTooltip` (the floating controls and their sheets) got their own **KEEP** pass this session — see row below. |
 | LocationSheet / RoutePreviewSection | **KEEP** (full A–O pass complete this session) | Route-ready card's information hierarchy, gate selection, error/retry, and Start Navigation all sound structurally — the two defects found (unavailable-candidate parity in inline search, missing route-result screen-reader announcement) were accessibility-wiring gaps, not structural ones, and both are now fixed. No case for REDESIGN — see `DEEP_UI_UX_AUDIT.md` Batch B (continued). |

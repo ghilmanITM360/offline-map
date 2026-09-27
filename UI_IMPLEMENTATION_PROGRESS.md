@@ -173,15 +173,45 @@ git diff --check    → clean
 Nothing routing/GPS/gate-selection-algorithm related was touched — every change was
 Views-layer accessibility presentation, same as the rest of this branch.
 
+## This session (continued) — AppGuide, base map layers, onboarding funnel
+
+- `AppGuideScreen`: first full pass. One fix (back button had no role/label/hitSlop).
+  Commit `3802d57`.
+- Base map layers (`BlockLayer`/`GateLayer`/`RastaLayer`/`SpecialRouteLayer`/
+  `FacilityLayer`/`UserLocationMarker`/`VenueBoundary`/`SatelliteDimOverlay`/
+  `OsmAttribution`): full component pass. Confirmed a real redundant-TalkBack-stop
+  defect across four of them (their own tap-target duplicates `MapLabelOverlay`'s
+  accessible node) but did **not** fix it this session — the route-preview declutter
+  system means the two components' visible-object sets can diverge, and a naive fix
+  risks silently dropping a place's only accessible name in an undertraced state.
+  Documented with exact evidence and a recommended fix path. Docs-only commit `3dc547f`.
+- Onboarding funnel (Splash/Welcome/Permission/DownloadMap): full pass. Fixed missing
+  `accessibilityRole`/`accessibilityLabel` on every action button across Welcome (1),
+  Permission (2), and DownloadMap (9) — the worst instance being Permission's "Allow
+  Location", which shows only a bare spinner with zero text while loading. Added
+  `DownloadMapScreen.test.tsx` (previously had no screen-level test file). Commit
+  `2e1815c`.
+
+### Validation for this segment's three commits (route-preview fix's own validation is above)
+
+```
+npm run typecheck   → clean (typecheck:app + typecheck:scripts)
+npm run lint        → clean (eslint .)
+npm test            → 0 failed
+npm run test:components -- --runInBand → 77/77 suites, 674/674 tests passing
+git diff --check    → clean
+```
+
 ## What's next
 
-Still not audited: `AppGuideScreen`, and the base-map-layer components
-(`BlockLayer`/`GateLayer`/`RastaLayer`/etc.) beyond their existing accessible-name fixes.
-Then the remaining application-wide A–O pass (Splash, Welcome, Permission, Download Map,
-Locations Directory, Settings, Help, About) — several already PARTIALLY AUDITED from
-prior sessions. Device-testing checklist accumulated across sessions (touch-target
+Remaining PENDING items: the base-map-layer redundant-accessibility-stop fix (needs the
+`previewVisible*`/`visible*Labels` declutter-set divergence traced first — see
+`DEEP_UI_UX_AUDIT.md` "Base map layers"), Settings/Help/About's structural layout (row
+semantics/copy already fixed via #155, full A–O pass not yet done), and
+LocationsDirectory's category chips/recent-searches full A–O pass (headings/Urdu already
+fixed via #154). Device-testing checklist accumulated across sessions (touch-target
 overlap at small screens/large fonts, TalkBack focus-on-arrival, rapid-arrival-then-new-
-preview timing, TalkBack announcement behavior for the one-shot announcements added
+preview timing, TalkBack announcement behavior for every one-shot announcement added
 across sessions) should be run whenever an emulator/device becomes available — see
 `DEEP_UI_UX_AUDIT.md` for the exact procedures. See `CLAUDE_CODEX_HANDOFF.md` for
 NAV-004, the one open Codex question, unchanged this session.

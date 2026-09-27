@@ -12,10 +12,10 @@ sprint commit, but no full A–O pass yet) · **NOT AUDITED**.
 
 | Screen | Component | Reached from | Status |
 |---|---|---|---|
-| Splash | `SplashScreen.tsx` | App cold start | PARTIALLY AUDITED — #158 (contrast, real logo) |
-| Welcome | `WelcomeScreen.tsx` | Splash, first run or onboarding-read failure | PARTIALLY AUDITED — #153 (returning-user copy) |
-| Permission | `PermissionScreen.tsx` | Welcome, or Splash with `revoked:true` | PARTIALLY AUDITED — #153 (contrast/error handling) |
-| DownloadMap | `DownloadMapScreen.tsx` | Permission, Settings | PARTIALLY AUDITED — #159/#163 (unified fallback copy) |
+| Splash | `SplashScreen.tsx` | App cold start | **AUDITED** — #158 (contrast, real logo); re-checked this session, no interactive elements, no further defect |
+| Welcome | `WelcomeScreen.tsx` | Splash, first run or onboarding-read failure | **AUDITED** — #153 (returning-user copy) + this session's fix (Continue button had no accessibilityRole/Label) |
+| Permission | `PermissionScreen.tsx` | Welcome, or Splash with `revoked:true` | **AUDITED** — #153 (contrast/error handling) + this session's fix (both actions had no accessibilityRole/Label; "Allow Location" had no text at all while loading) |
+| DownloadMap | `DownloadMapScreen.tsx` | Permission, Settings | **AUDITED** — #159/#163 (unified fallback copy) + this session's fix (all 9 action buttons had no accessibilityRole/Label); first screen-level test file added |
 | LocationsDirectory | `LocationsDirectoryScreen.tsx` | Drawer/Home search entry | PARTIALLY AUDITED — #154 (headings, Urdu search), #146 (gate visibility consistency, this session) |
 | Main (Drawer) | see below | Post-onboarding default route | see Home/Settings/Help/About |
 | AppGuide | `AppGuideScreen.tsx` | Drawer / Help | **AUDITED** — one confirmed defect fixed (unlabeled back button); guide copy, marker legend, warning-banner contrast all checked out, see `DEEP_UI_UX_AUDIT.md` |

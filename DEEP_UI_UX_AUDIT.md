@@ -741,6 +741,37 @@ place**:
   confirmed by source (two independently-accessible nodes exist), not by an actual
   TalkBack linear-swipe session; no emulator/device available this session.
 
+## Onboarding funnel — Welcome, Permission, DownloadMap, Splash (this session)
+
+Full pass on all four earliest-journey screens. **CONFIRMED DEFECT, FIXED across all
+three interactive screens**: every action button was a bare `Pressable` with no
+`accessibilityRole` and no explicit `accessibilityLabel` — `WelcomeScreen`'s "Continue"
+(the only way past the first screen), `PermissionScreen`'s "Allow Location"/"Continue
+Without Location" (the worst instance: "Allow Location" renders only a bare
+`ActivityIndicator` with zero text while `loading`, so a TalkBack user got literally no
+accessible name mid-request, not just a missing role), and all nine of
+`DownloadMapScreen`'s phase-gated action buttons (Download Offline Map, Pause, Resume,
+Cancel, Try Again, Repair Download, Continue to Map, Use Venue Map Only, Use Online
+Mode). Fixed identically across all three: explicit `accessibilityRole="button"` +
+`accessibilityLabel` matching the visible text, so the name survives even in states
+(like Permission's spinner) where the visible text disappears. Commit `2e1815c`.
+Regression tests: new assertions in `WelcomeScreen.test.tsx`/`PermissionScreen.test.tsx`,
+and a new `DownloadMapScreen.test.tsx` (previously had no screen-level test file — only
+`DownloadMapViewModel` tests existed) covering every phase's button by role+name.
+
+**`SplashScreen` re-checked, KEEP**: no interactive elements at all (pure
+loading/branding screen with a fixed 1200ms fade), so no accessibility-role gap is
+possible here — confirmed by reading the full component, not assumed from the #158 fix
+being "enough."
+
+**Not investigated further this pass**: structural layout/visual-hierarchy assessment
+beyond the interactive-element and contrast dimensions already covered by prior
+sessions (#153/#158/#159/#163) and this session's role/label fixes — no new evidence
+surfaced a case for REDESIGN/RESTRUCTURE on any of the four.
+
+**Runtime verification state**: RUNTIME UNVERIFIED — no emulator/device this session;
+verified by source + automated `getByRole`/`getByLabelText`-style test assertions only.
+
 ## Remaining REQUIRES PRODUCT DECISION items carried from prior sessions
 
 Not re-litigated here since no new evidence changes them: PERM-001/002/003/007/008,
