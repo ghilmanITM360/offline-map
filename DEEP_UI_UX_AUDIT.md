@@ -620,6 +620,40 @@ disabled-reason text, Cancel Route).
   query what TalkBack's accessibility tree would expose), not by an actual TalkBack
   session. Added to the device-testing checklist.
 
+## AppGuideScreen — full pass, one fix landed
+
+Read the entire screen (all 12 guide sections, quick-reference cards, legend, footer
+warning). **CONFIRMED DEFECT, FIXED** — the header back button had no
+`accessibilityRole`, `accessibilityLabel`, or `hitSlop`, unlike every other back button
+in this codebase (`LocationSheet`'s `backButton`/`detailsBackButton`, both `hitSlop={12}`
++ role + label). A TalkBack user landing on it heard an unlabeled icon-only control.
+Fixed to match the established pattern. Commit `3802d57`. Regression tests:
+`AppGuideScreen.test.tsx` (new file — accessible role/name, `goBack` invocation).
+
+Everything else checked out — **KEEP, no defect**:
+- Guide copy (12 sections) is plain-language, matches actual app behavior (marker
+  colors, start-source options, GPS/permission recovery, troubleshooting) — cross-checked
+  against the real components it describes (`MapControls`, `RoutePreviewSection`'s three
+  `StartOption`s, `LocationTutorialTooltip`), not just read in isolation.
+- `LegendDot` (decorative `Circle` icon) is always paired with adjacent text stating the
+  same color meaning in words ("Blue: Current / active location") — not a color-only
+  signal, and the icon itself is non-interactive/non-focusable so it can't produce a
+  redundant TalkBack stop (unlike the `MapControls` badge case earlier this branch,
+  which was a second **focusable** element duplicating an existing label).
+  Bilingual (Urdu) section titles throughout.
+- Footer warning banner color pair (`#7C4A03` text on `#FFF3CD` background) is
+  numerically identical to `staticColors.warningText`, the already WCAG-AA-verified
+  (6.9:1+) pair established across `navOverlayStyles.ts`/`LocationSheet.tsx`/
+  `HomeScreen.tsx` from the #150/#151 contrast fixes — confirmed by grep, not assumed;
+  hardcoded here rather than referencing the shared token (a consistency nit, not a
+  contrast defect) — not changed, since swapping to the token is a no-op visually and
+  this mission's mandate is defect-driven fixes, not drive-by style-token migrations.
+- No case for REDESIGN — a single long scroll of 12 short cards is a reasonable
+  structure for a reference guide; adding section-jump navigation would be a product
+  enhancement, not a fix for an identified comprehension problem.
+- **Runtime verification state**: RUNTIME UNVERIFIED — no emulator/device this session;
+  verified by source + automated test only.
+
 ## Remaining REQUIRES PRODUCT DECISION items carried from prior sessions
 
 Not re-litigated here since no new evidence changes them: PERM-001/002/003/007/008,

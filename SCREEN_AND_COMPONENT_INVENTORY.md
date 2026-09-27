@@ -18,7 +18,7 @@ sprint commit, but no full A–O pass yet) · **NOT AUDITED**.
 | DownloadMap | `DownloadMapScreen.tsx` | Permission, Settings | PARTIALLY AUDITED — #159/#163 (unified fallback copy) |
 | LocationsDirectory | `LocationsDirectoryScreen.tsx` | Drawer/Home search entry | PARTIALLY AUDITED — #154 (headings, Urdu search), #146 (gate visibility consistency, this session) |
 | Main (Drawer) | see below | Post-onboarding default route | see Home/Settings/Help/About |
-| AppGuide | `AppGuideScreen.tsx` | Drawer / Help | NOT AUDITED |
+| AppGuide | `AppGuideScreen.tsx` | Drawer / Help | **AUDITED** — one confirmed defect fixed (unlabeled back button); guide copy, marker legend, warning-banner contrast all checked out, see `DEEP_UI_UX_AUDIT.md` |
 
 ## Drawer screens (inside `Main`)
 
