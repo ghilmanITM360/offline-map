@@ -760,7 +760,13 @@ export function HomeScreen() {
 
     const items: MapLabelItem[] = [];
     const gateFocused = v2MapLayers.activeMapFilter === 'gates';
-    for (const gate of v2MapLayers.visibleGateMarkers) {
+    // During route-preview declutter, GateLayer/BlockLayer render only
+    // previewVisibleGateMarkers/previewVisibleBlocks (selected destination + resolved
+    // entry gate), not the zoom-LOD visibleGateMarkers/visibleBlockLabels sets below —
+    // iterate the exact same filtered arrays here so every label item this produces has
+    // a real marker/polygon underneath it, and vice versa (no orphan label floating with
+    // nothing to anchor to, no marker silently missing its only accessible/visual label).
+    for (const gate of routePreviewDeclutterActive ? previewVisibleGateMarkers : v2MapLayers.visibleGateMarkers) {
       if (gate.labelSuppressed && !gate.isSelected) continue;
       const gateNum = gate.label.replace('Gate ', '');
       const showFull = gate.isSelected || mapZoomLevel >= HIGH_ZOOM;
@@ -786,7 +792,7 @@ export function HomeScreen() {
     }
 
     const blockFocused = v2MapLayers.activeMapFilter === 'blocks';
-    for (const block of v2MapLayers.visibleBlockLabels) {
+    for (const block of routePreviewDeclutterActive ? previewVisibleBlocks : v2MapLayers.visibleBlockLabels) {
       items.push({
         id: `block_${block.id}`,
         coordinate: block.center,
@@ -804,46 +810,63 @@ export function HomeScreen() {
       });
     }
 
-    const rastaFocused = v2MapLayers.activeMapFilter === 'rastas';
-    for (const rasta of v2MapLayers.visibleRastaLabels) {
-      items.push({
-        id: `rasta_${rasta.id}`,
-        coordinate: rasta.labelCoordinate,
-        text: rasta.label,
-        secondaryText: MapLocalizationService.getSecondaryLabel(rasta.name),
-        kind: 'rasta',
-        isSelected: rasta.isSelected,
-        focused: rastaFocused,
-        zPriority: 7,
-        onPress: () => {
-          const place = V2PlaceAdapter.getPlaceById(rasta.id);
-          if (!place) return;
-          handlePlaceSelectWithCameraIntent(place);
-        },
-      });
-    }
+    // Declutter hides rastas/special-routes entirely (previewVisibleRastas/
+    // previewVisibleSpecialRoutes are forced empty below) — their labels must not
+    // outlive their lines, so skip both loops rather than leaving text floating with
+    // no polyline underneath it.
+    if (!routePreviewDeclutterActive) {
+      const rastaFocused = v2MapLayers.activeMapFilter === 'rastas';
+      for (const rasta of v2MapLayers.visibleRastaLabels) {
+        items.push({
+          id: `rasta_${rasta.id}`,
+          coordinate: rasta.labelCoordinate,
+          text: rasta.label,
+          secondaryText: MapLocalizationService.getSecondaryLabel(rasta.name),
+          kind: 'rasta',
+          isSelected: rasta.isSelected,
+          focused: rastaFocused,
+          zPriority: 7,
+          onPress: () => {
+            const place = V2PlaceAdapter.getPlaceById(rasta.id);
+            if (!place) return;
+            handlePlaceSelectWithCameraIntent(place);
+          },
+        });
+      }
 
-    const routeFocused = v2MapLayers.activeMapFilter === 'special_routes';
-    for (const route of v2MapLayers.visibleSpecialRouteLabels) {
-      items.push({
-        id: `route_${route.id}`,
-        coordinate: route.labelCoordinate,
-        text: route.label,
-        secondaryText: MapLocalizationService.getSecondaryLabel(route.name),
-        kind: 'route',
-        isSelected: route.isSelected,
-        focused: routeFocused,
-        zPriority: 9,
-        onPress: () => {
-          const place = V2PlaceAdapter.getPlaceById(route.id);
-          if (!place) return;
-          handlePlaceSelectWithCameraIntent(place);
-        },
-      });
+      const routeFocused = v2MapLayers.activeMapFilter === 'special_routes';
+      for (const route of v2MapLayers.visibleSpecialRouteLabels) {
+        items.push({
+          id: `route_${route.id}`,
+          coordinate: route.labelCoordinate,
+          text: route.label,
+          secondaryText: MapLocalizationService.getSecondaryLabel(route.name),
+          kind: 'route',
+          isSelected: route.isSelected,
+          focused: routeFocused,
+          zPriority: 9,
+          onPress: () => {
+            const place = V2PlaceAdapter.getPlaceById(route.id);
+            if (!place) return;
+            handlePlaceSelectWithCameraIntent(place);
+          },
+        });
+      }
     }
 
     return items;
-  }, [showNavOverlay, navOverlay.mapLayers.gates, navOverlayV1.active, useV2Map, v2MapLayers, mapZoomLevel, handlePlaceSelectWithCameraIntent]);
+  }, [
+    showNavOverlay,
+    navOverlay.mapLayers.gates,
+    navOverlayV1.active,
+    useV2Map,
+    v2MapLayers,
+    mapZoomLevel,
+    handlePlaceSelectWithCameraIntent,
+    routePreviewDeclutterActive,
+    previewVisibleGateMarkers,
+    previewVisibleBlocks,
+  ]);
 
   const effectiveInitialRegion = useV2Map
     ? {
@@ -1678,7 +1701,12 @@ export function HomeScreen() {
         {mode !== 'NAVIGATION' && isOffline && !offlineData.isDownloaded && (
           <View style={styles.emptyOfflineState}>
             <Text style={styles.emptyOfflineTitle}>Background map not downloaded. Ijtema routes still work.</Text>
-            <Pressable style={styles.emptyOfflineButton} onPress={() => nav.navigate('DownloadMap')}>
+            <Pressable
+              style={styles.emptyOfflineButton}
+              onPress={() => nav.navigate('DownloadMap')}
+              accessibilityRole="button"
+              accessibilityLabel="Download background map"
+            >
               <Text style={styles.emptyOfflineButtonText}>Download background map</Text>
             </Pressable>
           </View>
