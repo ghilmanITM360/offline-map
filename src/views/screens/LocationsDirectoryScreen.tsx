@@ -4,7 +4,7 @@
  */
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { BackHandler, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Animated, BackHandler, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -15,10 +15,40 @@ import { useAppStore } from '../../store/useAppStore';
 import { V2Place } from '../../models/types';
 import { DestinationCategoryId, PublicDestinationsService } from '../../services/PublicDestinationsService';
 import { V2PlaceAdapter } from '../../services/V2PlaceAdapter';
+import { usePressScale } from '../../viewmodels/usePressScale';
 import { SearchBarField } from '../components/common/SearchBarField';
 import { DestinationRow } from '../components/directory/DestinationRow';
 import { DestinationBlockGrid } from '../components/directory/DestinationBlockGrid';
 import { radii, shadows, spacing, staticColors, typography } from '../../theme';
+
+/** Category chip as its own component — each needs its own press-scale Animated.Value,
+ * which usePressScale can't give out inside a .map() over Pressables directly. */
+function CategoryChip({
+  label,
+  active,
+  onPress,
+}: {
+  label: string;
+  active: boolean;
+  onPress: () => void;
+}) {
+  const { scale, onPressIn, onPressOut } = usePressScale(0.94);
+  return (
+    <Animated.View style={{ transform: [{ scale }] }}>
+      <Pressable
+        style={[styles.chip, active && styles.chipActive]}
+        onPress={onPress}
+        onPressIn={onPressIn}
+        onPressOut={onPressOut}
+        accessibilityRole="button"
+        accessibilityLabel={label}
+        accessibilityState={{ selected: active }}
+      >
+        <Text style={[styles.chipText, active && styles.chipTextActive]}>{label}</Text>
+      </Pressable>
+    </Animated.View>
+  );
+}
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'LocationsDirectory'>;
 
@@ -192,18 +222,12 @@ export function LocationsDirectoryScreen() {
         contentContainerStyle={styles.chipsContent}
       >
         {categories.map((category) => (
-          <Pressable
+          <CategoryChip
             key={category.id}
-            style={[styles.chip, activeCategory === category.id && styles.chipActive]}
+            label={category.label}
+            active={activeCategory === category.id}
             onPress={() => handleCategoryPress(category.id)}
-            accessibilityRole="button"
-            accessibilityLabel={category.label}
-            accessibilityState={{ selected: activeCategory === category.id }}
-          >
-            <Text style={[styles.chipText, activeCategory === category.id && styles.chipTextActive]}>
-              {category.label}
-            </Text>
-          </Pressable>
+          />
         ))}
       </ScrollView>
 

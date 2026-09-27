@@ -4,10 +4,11 @@
  */
 
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
 import { ChevronRight, Milestone, Route, Signpost } from 'lucide-react-native';
 
 import { V2Place } from '../../../models/types';
+import { usePressScale } from '../../../viewmodels/usePressScale';
 import { radii, spacing, staticColors } from '../../../theme';
 
 const CATEGORY_LABEL: Record<V2Place['category'], string> = {
@@ -38,39 +39,44 @@ export function DestinationRow({ place, onPress }: { place: V2Place; onPress: (p
   // today) — only the routing dead-end needs to be signaled earlier, so this never
   // touches onPress or blocks the Pressable.
   const isUnavailable = place.isRoutable === false;
+  const { scale, onPressIn, onPressOut } = usePressScale(0.98);
 
   return (
-    <Pressable
-      style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
-      onPress={() => onPress(place)}
-      accessibilityRole="button"
-      accessibilityLabel={
-        isUnavailable ? `${place.name}, ${categoryLabel}, navigation unavailable` : `${place.name}, ${categoryLabel}`
-      }
-      accessibilityState={{ disabled: isUnavailable }}
-    >
-      <View style={[styles.iconWrap, { backgroundColor: isUnavailable ? staticColors.neutralSurface : `${accent}1A` }]}>
-        <Icon size={20} color={isUnavailable ? staticColors.iconMuted : accent} />
-      </View>
-      <View style={styles.body}>
-        <Text style={[styles.name, isUnavailable && styles.nameMuted]} numberOfLines={1} ellipsizeMode="tail">
-          {place.name}
-        </Text>
-        {/* Own line, not squeezed onto the name's baseline — a long English name was
-            truncating the Urdu name first, and Urdu script reads better at its own
-            size than a cramped secondary-label size. */}
-        {place.urduName ? (
-          <Text style={styles.nameSecondary} numberOfLines={1} ellipsizeMode="tail">
-            {place.urduName}
+    <Animated.View style={{ transform: [{ scale }] }}>
+      <Pressable
+        style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
+        onPress={() => onPress(place)}
+        onPressIn={onPressIn}
+        onPressOut={onPressOut}
+        accessibilityRole="button"
+        accessibilityLabel={
+          isUnavailable ? `${place.name}, ${categoryLabel}, navigation unavailable` : `${place.name}, ${categoryLabel}`
+        }
+        accessibilityState={{ disabled: isUnavailable }}
+      >
+        <View style={[styles.iconWrap, { backgroundColor: isUnavailable ? staticColors.neutralSurface : `${accent}1A` }]}>
+          <Icon size={20} color={isUnavailable ? staticColors.iconMuted : accent} />
+        </View>
+        <View style={styles.body}>
+          <Text style={[styles.name, isUnavailable && styles.nameMuted]} numberOfLines={1} ellipsizeMode="tail">
+            {place.name}
           </Text>
-        ) : null}
-        <Text style={styles.subtitle} numberOfLines={1} ellipsizeMode="tail">
-          {categoryLabel}
-          {place.unavailableReason ? ' · Not yet available for routing' : ''}
-        </Text>
-      </View>
-      <ChevronRight size={18} color={staticColors.iconFaint} />
-    </Pressable>
+          {/* Own line, not squeezed onto the name's baseline — a long English name was
+              truncating the Urdu name first, and Urdu script reads better at its own
+              size than a cramped secondary-label size. */}
+          {place.urduName ? (
+            <Text style={styles.nameSecondary} numberOfLines={1} ellipsizeMode="tail">
+              {place.urduName}
+            </Text>
+          ) : null}
+          <Text style={styles.subtitle} numberOfLines={1} ellipsizeMode="tail">
+            {categoryLabel}
+            {place.unavailableReason ? ' · Not yet available for routing' : ''}
+          </Text>
+        </View>
+        <ChevronRight size={18} color={staticColors.iconFaint} />
+      </Pressable>
+    </Animated.View>
   );
 }
 

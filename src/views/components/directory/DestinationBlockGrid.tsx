@@ -4,10 +4,32 @@
  */
 
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { V2Place } from '../../../models/types';
+import { usePressScale } from '../../../viewmodels/usePressScale';
 import { radii, spacing, staticColors } from '../../../theme';
+
+function BlockTile({ place, onPress }: { place: V2Place; onPress: (place: V2Place) => void }) {
+  const { scale, onPressIn, onPressOut } = usePressScale(0.94);
+  return (
+    <Animated.View style={[styles.tileWrap, { transform: [{ scale }] }]}>
+      <Pressable
+        style={({ pressed }) => [styles.tile, pressed && styles.tilePressed]}
+        onPress={() => onPress(place)}
+        onPressIn={onPressIn}
+        onPressOut={onPressOut}
+        accessibilityRole="button"
+        accessibilityLabel={`${place.name}, Block`}
+      >
+        <Text style={styles.number} numberOfLines={1} adjustsFontSizeToFit>
+          {place.name.replace(/^Block\s*/i, '')}
+        </Text>
+        <Text style={styles.label}>Block</Text>
+      </Pressable>
+    </Animated.View>
+  );
+}
 
 /** Compact numbered tile grid for Blocks — the venue's own numbering system as the
  * screen's signature element, instead of 40+ full-width decorative cards. */
@@ -15,18 +37,7 @@ export function DestinationBlockGrid({ places, onPress }: { places: V2Place[]; o
   return (
     <View style={styles.grid}>
       {places.map((place) => (
-        <Pressable
-          key={place.id}
-          style={({ pressed }) => [styles.tile, pressed && styles.tilePressed]}
-          onPress={() => onPress(place)}
-          accessibilityRole="button"
-          accessibilityLabel={`${place.name}, Block`}
-        >
-          <Text style={styles.number} numberOfLines={1} adjustsFontSizeToFit>
-            {place.name.replace(/^Block\s*/i, '')}
-          </Text>
-          <Text style={styles.label}>Block</Text>
-        </Pressable>
+        <BlockTile key={place.id} place={place} onPress={onPress} />
       ))}
     </View>
   );
@@ -41,8 +52,10 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     paddingHorizontal: spacing.lg,
   },
-  tile: {
+  tileWrap: {
     width: '30%',
+  },
+  tile: {
     minHeight: TILE_MIN_HEIGHT,
     borderRadius: radii.lg,
     backgroundColor: staticColors.infoBackground,
