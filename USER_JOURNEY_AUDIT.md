@@ -17,9 +17,9 @@ far. Every step below is an expert/source-level assessment unless stated otherwi
 | 6. Choose starting point | LocationSheet (routePreview mode, "Change Start") | none yet | NOT AUDITED |
 | 7. Understand route/gate | LocationSheet route-ready card, gate options | none yet | NOT AUDITED |
 | 8. Start navigation | LocationSheet "Start Navigation" button | none yet | NOT AUDITED |
-| 9. Follow instructions | NavigationChrome V1/V2, NavigationMapLayers V1/V2 | none yet | PARTIALLY AUDITED this session — V1/V2 reachability resolved, V2 status-slot/exit-safety/touch-targets checked (see `DEEP_UI_UX_AUDIT.md` NAV-001–003); instruction wording, map presentation, and V1's own pass still open |
-| 10. GPS/network problems | Map warning banner | #156 (live-region + copy) | PARTIALLY AUDITED |
-| 11. Reach destination / Arrival | `mode === 'ARRIVAL'` overlays | none yet | NOT AUDITED |
+| 9. Follow instructions | NavigationChrome V1/V2, NavigationMapLayers V1/V2 | B-001 (next-step truncation, this session) | FULLY AUDITED for A–E, both versions (see `DEEP_UI_UX_AUDIT.md` NAV-001–004, B-001). F (accessibility) source-verified only — TalkBack runtime behavior NOT device-verified. |
+| 10. GPS/network problems | Map warning banner | #156 (live-region + copy) | PARTIALLY AUDITED — GPS_LOST/weak-GPS/reroute/basemap priority chain and live-region contract fully traced and tested this session (NAV-001/002); V1 lacks V2's background-resume staleness fix (NAV-004, Codex dependency) |
+| 11. Reach destination / Arrival | `mode === 'ARRIVAL'` overlays | none yet | FULLY AUDITED this session — normal arrival, repeated-arrival, rapid-cancellation, destination-change/new-journey, and blank-destination (NAV-003) edge cases all traced with code citations; background-return (NAV-004) and rapid-mode-transition timing flagged as device-testing checklist items, not assumed safe |
 
 ## Cross-cutting observations (source-level, this session)
 

@@ -36,6 +36,21 @@ scope, not Codex scope — listed here for completeness, not as a Codex ask.
   FINDING V1V2-REACHABILITY. Flagging here only for visibility, since the previous
   session guessed this might need a Codex answer and it didn't.
 
+## New this session — factual question for Codex
+
+- **NAV-004 — should v1 (legacy) navigation get the same background-resume GPS-staleness
+  fix as v2?** `NavigationViewModelV2.ts` has an `AppState.addEventListener('change', ...)`
+  handler that forces an immediate fresh GPS fix and marks `GPS_LOST` immediately on
+  foreground resume (fixing stale progress/ETA after backgrounding mid-walk — see
+  `scripts/test-navigation-background-resume.ts`). `NavigationViewModel.ts` (v1, legacy
+  Block navigation) has no equivalent — confirmed by grepping the whole `src` tree for
+  `AppState`, which returns only `NavigationViewModelV2.ts`, `GPSManagerService.ts`,
+  `useAppStore.ts`, and `SettingsScreen.tsx`. This is GPS-staleness detection and
+  forced-refix logic, Codex's territory per this handoff's own ownership split, not a UI
+  change Claude can make. Question: is v1 traffic low enough that this gap is acceptable
+  as-is, or should the same resume handler be ported to `NavigationViewModel.ts`? Full
+  detail in `DEEP_UI_UX_AUDIT.md` FINDING NAV-004.
+
 ## Items likely needing Codex input (not yet confirmed — flagged for the next audit pass)
 
 - **Outside-routing fallback chain UX**: the direct-direction guide is the last resort in

@@ -39,12 +39,16 @@ Confirmed by reading `HomeScreen.tsx` directly (not assumed):
   #157's accessible-name fixes and the prior sprint's touch-target/selectability work.
 - `MapControls` / `MapControlsRecenter` — floating map buttons. NOT AUDITED.
 - Navigation mode overlays: `NavigationMapLayersV2`/`V1`, `NavigationChromeV2`/`V1`,
-  gated on `mode === 'NAVIGATION' || mode === 'ARRIVAL'`. **PARTIALLY AUDITED this
-  session** — see `DEEP_UI_UX_AUDIT.md` FINDING V1V2-REACHABILITY and FINDING NAV-001
-  through NAV-003 for what's been traced/verified. Remaining: full B/C/D/E/F pass on
-  V2's instruction wording, map presentation, and rerouting states (only D partially
-  checked); the equivalent V1 pass (legacy Block navigation) not yet done at all;
-  `MapControls`/recenter interaction during navigation not yet checked.
+  gated on `mode === 'NAVIGATION' || mode === 'ARRIVAL'`. **FULLY AUDITED for A–E across
+  both V1 and V2** (B instruction wording, C map presentation, and a full arrival-
+  experience pass completed this session — see `DEEP_UI_UX_AUDIT.md` FINDING
+  V1V2-REACHABILITY, NAV-001 through NAV-004, B-001). F (accessibility) is covered for
+  the source-verifiable parts (live-region contract, focus-trap modal, one-shot
+  announcement); TalkBack's actual runtime behavior (does focus move onto the arrival
+  card, does an assertive GPS_LOST announcement audibly cut off mid-instruction) is
+  **NOT device-verified** — no emulator/device available this session, see the
+  device-test checklist in `DEEP_UI_UX_AUDIT.md`. `MapControls`/recenter interaction
+  outside navigation mode (Home/Map screen) still NOT AUDITED — see below.
   - **V1/V2 duplication — RESOLVED this session, not a dead-code question.** V1 is
     genuinely live in the current app: legacy Block destinations start navigation via
     `DirectionsViewModel.handleStartNavigation` (guarded `!isV2Destination`), which

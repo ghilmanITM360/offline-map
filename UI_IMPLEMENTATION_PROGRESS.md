@@ -50,11 +50,53 @@ source or test file touched, so the required-validation suite was not re-run for
 (same precedent as the prior docs-only commit `9fb7fe8`) — `typecheck`/`lint`/`test`
 results below are unchanged since `9b576a5`.
 
+## This session — full V1/V2 active-nav + arrival audit, one fix landed
+
+Completed B (instruction wording) and C (map presentation) for both `NavigationChromeV1`/
+`V2` and `NavigationMapLayersV1`/`V2`; ran the complete arrival-experience checklist for
+both versions (repeated arrival, rapid cancellation, background-return, destination
+change, blank-destination). Closed NAV-003 (structurally unreachable, evidence in
+`DEEP_UI_UX_AUDIT.md`). Found and fixed **B-001**: the "Then: ..." next-step preview
+rendered the full raw instruction sentence inside a `numberOfLines={1}` text, so the
+ellipsis routinely cut off the destination name at the end of the sentence — the one
+useful part. Replaced with the short maneuver-label + road-name form already used by the
+current-step card, in both `NavigationChromeV1.tsx` and `NavigationChromeV2.tsx`. Found
+NAV-004 (V1 missing V2's background-resume GPS-staleness fix) — Codex dependency, not
+fixed here, flagged in `CLAUDE_CODEX_HANDOFF.md`. Found a V1/V2 map-rendering
+inconsistency (V1 hand-rolls venue/block/edge rendering instead of reusing the shared
+`RastaLayer`/`SpecialRouteLayer`/`BlockLayer` components V2 uses) — documented, not fixed
+this session (real change, but a larger visual-regression-risk item deserving its own
+reviewed pass, not a drive-by edit).
+
+Commit: `87c718f` (fix(nav): next-step preview no longer truncates the destination name).
+
+### Validation for this commit
+
+```
+npm run typecheck   → clean (typecheck:app + typecheck:scripts)
+npm run lint        → clean (eslint .)
+npm test            → all suites passing (all scripts/test-*.ts structural checks, 0 failed each)
+npm run test:components -- --runInBand → 73/73 suites, 643/643 tests passing (+2 new
+                                          B-001 regression tests vs the prior 641)
+git diff --check    → clean (no whitespace errors)
+```
+
+Routing-specific suites (`test:all-gates-v2`, `test:outside-street-gate-selection-cost-v2`,
+`test:core-provider-routing-contract-v2`, `test:reroute-v2`) were already covered by the
+full `npm test` run above (they're part of the same script chain) — all passed. No
+routing/GPS/ViewModel navigation logic was touched; only the two Chrome components'
+next-step text rendering changed.
+
 ## What's next
 
-Full A–O audit of: NavigationChromeV2 remaining sections (B instruction wording, C map
-presentation), NavigationChromeV1's own pass (legacy Block navigation — not yet touched
-at all), Arrival (structure read, checklist not yet run), Home/Map base layers,
-LayersSheet, LocationTutorialTooltip, MapControls, AppGuideScreen. See
-`CLAUDE_CODEX_HANDOFF.md` for anything in that list that may turn out to need Codex or
-owner input rather than being independently implementable.
+Home/Map audit (`MapControls`, `MapControlsRecenter`, `LayersSheet`,
+`LocationTutorialTooltip`, all map layer components, diagnostics/empty-state
+presentation) — not yet touched. Then route preview / destination-selection audit
+(`LocationSheet`, gate selection, `OutsideRouteStatusCard` wording accuracy). Then the
+remaining application-wide A–O pass (Splash, Welcome, Permission, Download Map,
+Locations Directory, Settings, Help, About, AppGuide) — several already PARTIALLY
+AUDITED from prior sessions. Device-testing checklist accumulated this session (touch-
+target overlap at small screens/large fonts, TalkBack focus-on-arrival, rapid-arrival-
+then-new-preview timing) should be run whenever an emulator/device becomes available —
+see `DEEP_UI_UX_AUDIT.md` for the exact procedures. See `CLAUDE_CODEX_HANDOFF.md` for
+NAV-004, the one open Codex question from this session.
