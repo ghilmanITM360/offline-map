@@ -252,7 +252,11 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     fontSize: 15,
-    color: staticColors.entryGateBorder,
+    // SPLASH-UX-001: entryGateBorder (#A5D6A7) on arrivalGreen measured 3.12:1 —
+    // below the 4.5:1 WCAG AA floor for normal-size text. lightGreenSubtext is the
+    // same token already used for the Urdu title on this exact background and is
+    // independently verified at 4.56:1.
+    color: staticColors.lightGreenSubtext,
     marginTop: 8,
   },
 });
