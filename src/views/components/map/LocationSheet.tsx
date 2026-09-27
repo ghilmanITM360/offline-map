@@ -5,6 +5,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
+  AccessibilityInfo,
   Animated,
   View,
   Text,
@@ -329,6 +330,20 @@ function RoutePreviewSection({
     });
   };
 
+  // calculateRoute (DirectionsViewModel.ts:438-440) fires automatically on mount and on
+  // every start/destination change — a screen-reader user gets no spoken signal a route
+  // just appeared or failed unless we announce the transition ourselves. Same one-shot
+  // pattern as LocationTutorialTooltip's location announcement and NavigationChromeV2's
+  // arrival announcement (#64), keyed on loadState so it fires once per resolved
+  // calculation, not on every re-render while the state holds steady.
+  useEffect(() => {
+    if (loadState === 'ready' && route) {
+      AccessibilityInfo.announceForAccessibility(`Route ready. ${routeEntrySummary}. ${routeDistance}.`);
+    } else if (loadState === 'error' && errorMessage) {
+      AccessibilityInfo.announceForAccessibility(`Route problem. ${errorMessage}`);
+    }
+  }, [loadState]);
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -371,26 +386,39 @@ function RoutePreviewSection({
 
                 {destCandidates.length > 0 && (
                   <View style={styles.searchResults}>
-                    {destCandidates.map((candidate: Place) => (
-                      <Pressable
-                        key={candidate.id}
-                        style={styles.searchItem}
-                        onPress={() => {
-                          setDestSearch('');
-                          setShowDestinationOptions(false);
-                          Keyboard.dismiss();
-                          onChangeDestination?.(candidate);
-                        }}
-                        accessibilityRole="button"
-                        accessibilityLabel={`${candidate.name}, ${candidate.category}`}
-                      >
-                        <MapPin size={16} color={staticColors.iconMuted} />
-                        <View style={styles.searchItemBody}>
-                          <Text style={styles.searchItemName}>{candidate.name}</Text>
-                          <Text style={styles.searchItemMeta}>{candidate.category}</Text>
-                        </View>
-                      </Pressable>
-                    ))}
+                    {destCandidates.map((candidate: Place) => {
+                      const isUnavailable = candidate.isRoutable === false;
+                      return (
+                        <Pressable
+                          key={candidate.id}
+                          style={styles.searchItem}
+                          onPress={() => {
+                            setDestSearch('');
+                            setShowDestinationOptions(false);
+                            Keyboard.dismiss();
+                            onChangeDestination?.(candidate);
+                          }}
+                          accessibilityRole="button"
+                          accessibilityLabel={
+                            isUnavailable
+                              ? `${candidate.name}, ${candidate.category}, navigation unavailable`
+                              : `${candidate.name}, ${candidate.category}`
+                          }
+                          accessibilityState={{ disabled: isUnavailable }}
+                        >
+                          <MapPin size={16} color={staticColors.iconMuted} />
+                          <View style={styles.searchItemBody}>
+                            <Text style={[styles.searchItemName, isUnavailable && styles.searchItemNameMuted]}>
+                              {candidate.name}
+                            </Text>
+                            <Text style={styles.searchItemMeta}>
+                              {candidate.category}
+                              {isUnavailable ? ' · Not yet available for routing' : ''}
+                            </Text>
+                          </View>
+                        </Pressable>
+                      );
+                    })}
                   </View>
                 )}
 
@@ -508,27 +536,40 @@ function RoutePreviewSection({
 
                     {startCandidates.length > 0 && (
                       <View style={styles.searchResults}>
-                        {startCandidates.map((candidate: Place) => (
-                          <Pressable
-                            key={candidate.id}
-                            style={styles.searchItem}
-                            onPress={() => {
-                              setManualStartPlace(candidate);
-                              setStartSearch(candidate.name);
-                              setIsEditingManualStart(false);
-                              setShowStartOptions(false);
-                              Keyboard.dismiss();
-                            }}
-                            accessibilityRole="button"
-                            accessibilityLabel={`${candidate.name}, ${candidate.category}`}
-                          >
-                            <MapPin size={16} color={staticColors.iconMuted} />
-                            <View style={styles.searchItemBody}>
-                              <Text style={styles.searchItemName}>{candidate.name}</Text>
-                              <Text style={styles.searchItemMeta}>{candidate.category}</Text>
-                            </View>
-                          </Pressable>
-                        ))}
+                        {startCandidates.map((candidate: Place) => {
+                          const isUnavailable = candidate.isRoutable === false;
+                          return (
+                            <Pressable
+                              key={candidate.id}
+                              style={styles.searchItem}
+                              onPress={() => {
+                                setManualStartPlace(candidate);
+                                setStartSearch(candidate.name);
+                                setIsEditingManualStart(false);
+                                setShowStartOptions(false);
+                                Keyboard.dismiss();
+                              }}
+                              accessibilityRole="button"
+                              accessibilityLabel={
+                                isUnavailable
+                                  ? `${candidate.name}, ${candidate.category}, navigation unavailable`
+                                  : `${candidate.name}, ${candidate.category}`
+                              }
+                              accessibilityState={{ disabled: isUnavailable }}
+                            >
+                              <MapPin size={16} color={staticColors.iconMuted} />
+                              <View style={styles.searchItemBody}>
+                                <Text style={[styles.searchItemName, isUnavailable && styles.searchItemNameMuted]}>
+                                  {candidate.name}
+                                </Text>
+                                <Text style={styles.searchItemMeta}>
+                                  {candidate.category}
+                                  {isUnavailable ? ' · Not yet available for routing' : ''}
+                                </Text>
+                              </View>
+                            </Pressable>
+                          );
+                        })}
                       </View>
                     )}
 
@@ -1097,6 +1138,10 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: staticColors.textPrimary,
+  },
+  // Same AA-passing muted token DestinationRow (#96/#146) uses for unroutable places.
+  searchItemNameMuted: {
+    color: staticColors.textSecondaryStrong,
   },
   searchItemMeta: {
     fontSize: 13,

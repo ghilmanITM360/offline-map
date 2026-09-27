@@ -4,7 +4,7 @@
  */
 
 import React from 'react';
-import { Animated } from 'react-native';
+import { AccessibilityInfo, Animated } from 'react-native';
 import { render, screen, userEvent, act } from './test-utils';
 
 import { LocationSheet } from '../views/components/map/LocationSheet';
@@ -63,6 +63,21 @@ const candidatePlace: Place = {
   description: 'Official Gate 1.',
   coordinate: { latitude: 24.901, longitude: 67.101 },
   sourceVersion: 'v1',
+};
+
+// #146 established that a verified-but-ground-truth-blocked gate must read as
+// unavailable everywhere it can surface, not just in Directory browse/search. This
+// candidate mirrors that same state (isRoutable: false) inside inline start/destination
+// search, the one surface #146 didn't touch.
+const unavailableCandidatePlace: Place = {
+  id: 'GATE_18',
+  name: 'Gate 18',
+  category: 'Gate',
+  description: 'Official Gate 18.',
+  coordinate: { latitude: 24.902, longitude: 67.103 },
+  sourceVersion: 'v1',
+  isRoutable: false,
+  unavailableReason: 'Ground-truth verification pending.',
 };
 
 function baseViewModel(overrides: Record<string, unknown> = {}) {
@@ -296,6 +311,21 @@ describe('LocationSheet (routePreview) — manual start search ("Search")', () =
 
     expect(setManualStartPlace).toHaveBeenCalledWith(candidatePlace);
   });
+
+  test('an unroutable candidate in manual-start search reads as unavailable, not a plain choice', async () => {
+    mockedSearchServiceSearch.mockReturnValue([unavailableCandidatePlace]);
+    mockedUseDirectionsViewModel.mockReturnValue(
+      baseViewModel({ startSource: 'manual_place', showManualStartSearch: true }),
+    );
+    const user = userEvent.setup();
+    await render(<LocationSheet mode="routePreview" destination={destination} onClose={onCloseSpy} />);
+
+    const input = screen.getByPlaceholderText('Search start point: gate, rasta, block');
+    await user.type(input, 'Gate 18');
+
+    expect(await screen.findByLabelText('Gate 18, Gate, navigation unavailable')).toBeOnTheScreen();
+    expect(screen.getByText(/Not yet available for routing/)).toBeOnTheScreen();
+  });
 });
 
 describe('LocationSheet (routePreview) — change destination', () => {
@@ -384,6 +414,27 @@ describe('LocationSheet (routePreview) — change destination', () => {
     expect(onCloseSpy).not.toHaveBeenCalled();
   });
 
+  test('an unroutable candidate in destination search reads as unavailable, not a plain choice', async () => {
+    mockedSearchServiceSearch.mockReturnValue([unavailableCandidatePlace]);
+    mockedUseDirectionsViewModel.mockReturnValue(baseViewModel());
+    const user = userEvent.setup();
+    await render(
+      <LocationSheet
+        mode="routePreview"
+        destination={destination}
+        onClose={onCloseSpy}
+        onChangeDestination={jest.fn()}
+      />,
+    );
+
+    await user.press(screen.getByText('Change destination'));
+    const input = screen.getByPlaceholderText('Search destination: gate, rasta, block');
+    await user.type(input, 'Gate 18');
+
+    expect(await screen.findByLabelText('Gate 18, Gate, navigation unavailable')).toBeOnTheScreen();
+    expect(screen.getByText(/Not yet available for routing/)).toBeOnTheScreen();
+  });
+
   test('pressing "Cancel" during destination search returns to the destination summary without changing it', async () => {
     mockedUseDirectionsViewModel.mockReturnValue(baseViewModel());
     const onChangeDestination = jest.fn();
@@ -455,6 +506,29 @@ describe('LocationSheet (routePreview) — route ready CTA', () => {
     await user.press(startButton);
     expect(onStartNavigation).not.toHaveBeenCalled();
     expect(onCloseSpy).not.toHaveBeenCalled();
+  });
+
+  test('a route becoming ready is announced to screen readers, not just shown visually', async () => {
+    const announce = jest.spyOn(AccessibilityInfo, 'announceForAccessibility');
+    mockedUseDirectionsViewModel.mockReturnValue(
+      baseViewModel({
+        loadState: 'ready',
+        route: { nodes: ['A', 'B'], coordinates: [], totalDistance: 250, estimatedTimeMin: 4 },
+      }),
+    );
+    await render(<LocationSheet mode="routePreview" destination={v2Destination} onClose={onCloseSpy} />);
+
+    expect(announce).toHaveBeenCalledWith(expect.stringContaining('Route ready'));
+  });
+
+  test('a route calculation failure is announced to screen readers, not just shown visually', async () => {
+    const announce = jest.spyOn(AccessibilityInfo, 'announceForAccessibility');
+    mockedUseDirectionsViewModel.mockReturnValue(
+      baseViewModel({ loadState: 'error', errorMessage: 'No offline route could be found.' }),
+    );
+    await render(<LocationSheet mode="routePreview" destination={v2Destination} onClose={onCloseSpy} />);
+
+    expect(announce).toHaveBeenCalledWith('Route problem. No offline route could be found.');
   });
 
   test('surfaces direct-guide warning and retries road routing from ready state', async () => {
