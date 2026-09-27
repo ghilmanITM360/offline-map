@@ -4,9 +4,13 @@
  */
 
 import React from 'react';
+import { Animated } from 'react-native';
 import { render, screen, userEvent } from './test-utils';
 
 import { MapControls } from '../views/components/map/MapControls';
+
+jest.mock('../viewmodels/useReducedMotion', () => ({ useReducedMotion: jest.fn(() => false) }));
+const mockedUseReducedMotion = jest.requireMock('../viewmodels/useReducedMotion').useReducedMotion as jest.Mock;
 
 function baseProps(overrides: Partial<React.ComponentProps<typeof MapControls>> = {}) {
   return {
@@ -74,5 +78,37 @@ describe('MapControls — Batch A accessibility', () => {
     await render(<MapControls {...baseProps({ recenter: { state: 'active', onPress: jest.fn() } })} />);
 
     expect(screen.getByLabelText(/Following my current location/)).toBeOnTheScreen();
+  });
+
+  describe('recenter success confirmation (React-Bits-inspired, Reduce Motion aware)', () => {
+    afterEach(() => {
+      mockedUseReducedMotion.mockReturnValue(false);
+      jest.restoreAllMocks();
+    });
+
+    test('with Reduce Motion disabled, success state animates the checkmark via Animated.spring', async () => {
+      mockedUseReducedMotion.mockReturnValue(false);
+      const springSpy = jest.spyOn(Animated, 'spring');
+
+      await render(<MapControls {...baseProps({ recenter: { state: 'success', onPress: jest.fn() } })} />);
+
+      expect(springSpy).toHaveBeenCalled();
+    });
+
+    test('with Reduce Motion enabled, success state skips the animation entirely', async () => {
+      mockedUseReducedMotion.mockReturnValue(true);
+      const springSpy = jest.spyOn(Animated, 'spring');
+
+      await render(<MapControls {...baseProps({ recenter: { state: 'success', onPress: jest.fn() } })} />);
+
+      expect(springSpy).not.toHaveBeenCalled();
+    });
+
+    test('the checkmark still renders regardless of Reduce Motion', async () => {
+      mockedUseReducedMotion.mockReturnValue(true);
+      await render(<MapControls {...baseProps({ recenter: { state: 'success', onPress: jest.fn() } })} />);
+
+      expect(screen.getByLabelText('Center map on my current location')).toBeOnTheScreen();
+    });
   });
 });
