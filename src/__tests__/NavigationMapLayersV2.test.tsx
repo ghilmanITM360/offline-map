@@ -60,6 +60,14 @@ describe('NavigationMapLayersV2 marker ownership', () => {
     expect(screen.getAllByTestId('navigation-destination-marker')).toHaveLength(1);
     expect(screen.queryByTestId('navigation-user-location-marker')).not.toBeOnTheScreen();
   });
+
+  test('#157: START, destination, and user markers expose an accessible name', async () => {
+    await render(<NavigationMapLayersV2 overlay={overlay()} />);
+
+    expect(screen.getByTestId('navigation-start-marker').props.accessibilityLabel).toBeTruthy();
+    expect(screen.getByTestId('navigation-destination-marker').props.accessibilityLabel).toBeTruthy();
+    expect(screen.getByTestId('navigation-user-location-marker').props.accessibilityLabel).toBe('Your location');
+  });
 });
 
 describe('AUD-10: hybrid inside-leg walked/remaining progress', () => {

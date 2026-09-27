@@ -67,6 +67,7 @@ function SpecialRouteLayerImpl({ routes, variant, focused = false, keyPrefix, on
               strokeWidth={18}
               zIndex={20}
               tappable
+              accessibilityLabel={route.label}
               onPress={(e) => onPressRoute(route.id, e.nativeEvent.coordinate)}
             />
           )}

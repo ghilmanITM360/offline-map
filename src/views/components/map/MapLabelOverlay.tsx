@@ -291,7 +291,13 @@ export const MapLabelOverlay = React.forwardRef<MapLabelOverlayHandle, MapLabelO
             );
           }
           return (
-            <View key={item.id} style={wrapperStyle} pointerEvents="none">
+            <View
+              key={item.id}
+              style={wrapperStyle}
+              pointerEvents="none"
+              accessible
+              accessibilityLabel={item.secondaryText ? `${item.text}, ${item.secondaryText}` : item.text}
+            >
               {content}
             </View>
           );

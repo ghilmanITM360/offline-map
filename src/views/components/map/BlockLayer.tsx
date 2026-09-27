@@ -52,6 +52,7 @@ function BlockLayerImpl({ blocks, variant, focused = false, onPressBlock, keyPre
           strokeWidth={block.isSelected ? 3 : focused ? 2 : 1.2}
           zIndex={1}
           tappable
+          accessibilityLabel={block.label}
           onPress={(e) => onPressBlock?.(block.id, e.nativeEvent.coordinate)}
         />
       ))}

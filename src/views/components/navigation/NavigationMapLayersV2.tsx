@@ -79,7 +79,7 @@ export function NavigationMapLayersV2({ overlay }: { overlay: NavigationOverlayV
         </>
       )}
 
-      {markerOwnership.showNavigationStart && <Marker testID="navigation-start-marker" coordinate={startCoordinate} title={route.origin.label} anchor={{ x: 0.5, y: 0.5 }} tracksViewChanges={false}>
+      {markerOwnership.showNavigationStart && <Marker testID="navigation-start-marker" coordinate={startCoordinate} title={route.origin.label} accessibilityLabel={route.origin.label} anchor={{ x: 0.5, y: 0.5 }} tracksViewChanges={false}>
         <View style={styles.startMarkerWrap}>
           <View style={styles.startMarkerDot} />
           <View style={styles.startMarkerLabel}>
@@ -88,7 +88,7 @@ export function NavigationMapLayersV2({ overlay }: { overlay: NavigationOverlayV
         </View>
       </Marker>}
 
-      {markerOwnership.showNavigationDestination && <Marker testID="navigation-destination-marker" coordinate={destinationCoordinate} title={route.destination.label} anchor={{ x: 0.5, y: 1 }} tracksViewChanges={false}>
+      {markerOwnership.showNavigationDestination && <Marker testID="navigation-destination-marker" coordinate={destinationCoordinate} title={route.destination.label} accessibilityLabel={route.destination.label} anchor={{ x: 0.5, y: 1 }} tracksViewChanges={false}>
         <View style={styles.destinationMarker}>
           <MapPin size={markerSizes.destination} color={staticColors.gateAccent} fill={staticColors.gateAccent} />
         </View>
@@ -98,7 +98,14 @@ export function NavigationMapLayersV2({ overlay }: { overlay: NavigationOverlayV
         // tracksViewChanges={false} matches HomeScreen's identical browse-mode pulse marker
         // (the Animated.View pulse still renders correctly with it off; leaving it default/true
         // here would make this marker re-snapshot continuously during every nav session).
-        <Marker testID="navigation-user-location-marker" coordinate={snappedLocation} flat anchor={{ x: 0.5, y: 0.5 }} tracksViewChanges={false}>
+        <Marker
+          testID="navigation-user-location-marker"
+          coordinate={snappedLocation}
+          flat
+          anchor={{ x: 0.5, y: 0.5 }}
+          tracksViewChanges={false}
+          accessibilityLabel={currentLocationSource === 'remembered' ? 'Your last known location' : 'Your location'}
+        >
           <View style={styles.userMarkerWrap}>
             <Animated.View
               style={[

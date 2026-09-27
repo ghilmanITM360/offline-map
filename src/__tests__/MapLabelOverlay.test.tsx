@@ -161,6 +161,19 @@ describe('MapLabelOverlay', () => {
     await waitFor(() => expect(screen.queryByText('Selected Hidden Gate')).not.toBeOnTheScreen());
   });
 
+  it('#157: exposes an accessible name for a non-interactive label (no onPress)', async () => {
+    const pointForCoordinate = jest.fn(() => Promise.resolve({ x: 100, y: 100 }));
+    await render(
+      <MapLabelOverlay
+        mapRef={makeMapRef(pointForCoordinate)}
+        items={[gateItem({ id: 'gate_readonly', text: 'Gate 09', secondaryText: 'گیٹ 09' })]}
+      />,
+    );
+
+    const label = await screen.findByLabelText('Gate 09, گیٹ 09');
+    expect(label).toBeOnTheScreen();
+  });
+
   it('does not update state or warn after unmount while a projection is still in flight', async () => {
     // Synchronous rAF stub sidesteps real-timer/act-scope races entirely — project()'s
     // callback runs inline during render, so pointForCoordinate is already in flight (and

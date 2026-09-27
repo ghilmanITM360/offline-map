@@ -78,7 +78,7 @@ export function NavigationMapLayersV1({ overlay }: { overlay: NavigationOverlayV
       />
 
       {markerOwnership.showNavigationStart && startCoordinate && (
-        <Marker testID="navigation-start-marker" coordinate={startCoordinate} title="Start" anchor={{ x: 0.5, y: 0.5 }} tracksViewChanges={false}>
+        <Marker testID="navigation-start-marker" coordinate={startCoordinate} title="Start" accessibilityLabel="Start" anchor={{ x: 0.5, y: 0.5 }} tracksViewChanges={false}>
           <View style={styles.startMarkerWrap}>
             <View style={styles.startMarkerDot} />
             <View style={styles.startMarkerLabel}>
@@ -89,7 +89,7 @@ export function NavigationMapLayersV1({ overlay }: { overlay: NavigationOverlayV
       )}
 
       {markerOwnership.showNavigationDestination && destination && destinationCoordinate && (
-        <Marker testID="navigation-destination-marker" coordinate={destinationCoordinate} title={destination.name} anchor={{ x: 0.5, y: 1 }} tracksViewChanges={false}>
+        <Marker testID="navigation-destination-marker" coordinate={destinationCoordinate} title={destination.name} accessibilityLabel={destination.name} anchor={{ x: 0.5, y: 1 }} tracksViewChanges={false}>
           <View style={styles.destinationMarker}>
             <MapPin size={markerSizes.destination} color={staticColors.gateAccent} fill={staticColors.gateAccent} />
           </View>
@@ -97,7 +97,14 @@ export function NavigationMapLayersV1({ overlay }: { overlay: NavigationOverlayV
       )}
 
       {markerOwnership.showNavigationUser && snappedLocation && (
-        <Marker testID="navigation-user-location-marker" coordinate={snappedLocation} flat anchor={{ x: 0.5, y: 0.5 }} tracksViewChanges={false}>
+        <Marker
+          testID="navigation-user-location-marker"
+          coordinate={snappedLocation}
+          flat
+          anchor={{ x: 0.5, y: 0.5 }}
+          tracksViewChanges={false}
+          accessibilityLabel={currentLocationSource === 'remembered' ? 'Your last known location' : 'Your location'}
+        >
           <View style={styles.userMarkerWrap}>
             <Animated.View
               style={[
