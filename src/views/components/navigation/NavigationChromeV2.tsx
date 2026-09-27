@@ -152,8 +152,14 @@ export function NavigationChromeV2({ overlay, hasBaseMap }: { overlay: Navigatio
                   {currentStep.roadName ?? InstructionService.ROAD_NAME_FALLBACK}
                 </Text>
                 {nextStep && (
+                  // B-001: was the full raw instruction sentence ("Then: Continue 40 meters
+                  // on Rasta 09 to Rasta 09 & Rasta 01 Junction.") — with numberOfLines={1} the
+                  // upcoming place name (the one useful part) was exactly what got clipped by
+                  // the ellipsis. Short maneuver + road name mirrors the current-step card's
+                  // own vocabulary and always fits.
                   <Text style={styles.nextStepText} numberOfLines={1}>
-                    Then: {nextStep.text}
+                    Then: {InstructionService.maneuverLabel(nextStep.type)}
+                    {nextStep.roadName ? ` onto ${nextStep.roadName}` : ''}
                   </Text>
                 )}
               </View>

@@ -84,6 +84,31 @@ describe('NavigationChromeV2 — live maneuver distance', () => {
   });
 });
 
+describe('NavigationChromeV2 — next-step preview', () => {
+  test('B-001: shows short maneuver + road name, not the full raw sentence', async () => {
+    const twoStepRoute: V2ActiveRoute = {
+      ...route,
+      instructions: [
+        route.instructions[0],
+        {
+          id: 'i2',
+          text: 'Turn left at Rasta 11 & Rasta 04 Junction onto Rasta 09 & Rasta 01 Junction.',
+          distance: 40,
+          distanceM: 40,
+          routeIndex: 1,
+          type: 'left',
+          roadName: 'Rasta 05',
+          coordinate: { latitude: 24.903, longitude: 67.103 },
+        },
+      ],
+    };
+    await render(<NavigationChromeV2 overlay={baseOverlay({ route: twoStepRoute, instructions: twoStepRoute.instructions })} hasBaseMap />);
+
+    expect(screen.getByText('Then: Left Turn onto Rasta 05')).toBeOnTheScreen();
+    expect(screen.queryByText(/Turn left at Rasta 11/)).toBeNull();
+  });
+});
+
 describe('NavigationChromeV2 — direct outside guide', () => {
   test('owns maneuver and subordinate status surfaces in one ordered top stack', async () => {
     const outsideRoute: V2ActiveRoute = {

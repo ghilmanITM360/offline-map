@@ -108,8 +108,11 @@ export function NavigationChromeV1({ overlay, hasBaseMap }: { overlay: Navigatio
                 {currentStep.roadName ?? InstructionService.ROAD_NAME_FALLBACK}
               </Text>
               {nextStep && (
+                // B-001: was the full raw instruction sentence, clipped by numberOfLines={1}
+                // at exactly the upcoming place name — see NavigationChromeV2's identical fix.
                 <Text style={styles.nextStepText} numberOfLines={1}>
-                  Then: {nextStep.text}
+                  Then: {InstructionService.maneuverLabel(nextStep.type)}
+                  {nextStep.roadName ? ` onto ${nextStep.roadName}` : ''}
                 </Text>
               )}
             </View>

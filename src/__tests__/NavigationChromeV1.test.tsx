@@ -86,6 +86,24 @@ describe('NavigationChromeV1 — Exit/recenter/mute touch targets', () => {
     expect(screen.getByText('Gate 8')).toBeOnTheScreen();
   });
 
+  test('B-001: next-step preview shows short maneuver + road name, not the full raw sentence', async () => {
+    const twoStepInstructions = [
+      { id: 'i1', text: 'Head toward Gate 8', distance: 300, type: 'straight', coordinate: { latitude: 24.9, longitude: 67.1 } },
+      {
+        id: 'i2',
+        text: 'Turn left at Rasta 11 & Rasta 04 Junction onto Rasta 09 & Rasta 01 Junction.',
+        distance: 40,
+        type: 'left',
+        roadName: 'Rasta 05',
+        coordinate: { latitude: 24.903, longitude: 67.103 },
+      },
+    ];
+    await render(<NavigationChromeV1 overlay={baseOverlay({ instructions: twoStepInstructions })} hasBaseMap />);
+
+    expect(screen.getByText('Then: Left Turn onto Rasta 05')).toBeOnTheScreen();
+    expect(screen.queryByText(/Turn left at Rasta 11/)).toBeNull();
+  });
+
   test('keeps base-map status below the maneuver in the shared top stack', async () => {
     await render(<NavigationChromeV1 overlay={baseOverlay()} hasBaseMap={false} />);
 
