@@ -729,12 +729,19 @@ export function HomeScreen() {
   // Declutter only once an actual route exists to preview — not while directionsDestination
   // alone is set (still picking a start point), since ROUTE_PREVIEW now covers both.
   const routePreviewDeclutterActive = mode === 'ROUTE_PREVIEW' && !directionsDestination && !!activePreviewRoute;
-  const previewVisibleBlocks = routePreviewDeclutterActive
-    ? v2MapLayers.blocks.filter((block) => block.isSelected)
-    : v2MapLayers.visibleBlocks;
-  const previewVisibleGateMarkers = routePreviewDeclutterActive
-    ? v2MapLayers.gates.filter((gate) => gate.isSelected || gate.id === previewEntryGateId)
-    : v2MapLayers.visibleGateMarkers;
+  // Memoized: both feed mapLabelItems' useMemo deps — a fresh .filter() array per render
+  // would rebuild every map label on each HomeScreen render while previewing a route.
+  const previewVisibleBlocks = useMemo(
+    () => (routePreviewDeclutterActive ? v2MapLayers.blocks.filter((block) => block.isSelected) : v2MapLayers.visibleBlocks),
+    [routePreviewDeclutterActive, v2MapLayers.blocks, v2MapLayers.visibleBlocks],
+  );
+  const previewVisibleGateMarkers = useMemo(
+    () =>
+      routePreviewDeclutterActive
+        ? v2MapLayers.gates.filter((gate) => gate.isSelected || gate.id === previewEntryGateId)
+        : v2MapLayers.visibleGateMarkers,
+    [routePreviewDeclutterActive, v2MapLayers.gates, v2MapLayers.visibleGateMarkers, previewEntryGateId],
+  );
   const previewVisibleRastas = routePreviewDeclutterActive ? [] : v2MapLayers.visibleRastas;
   const previewVisibleSpecialRoutes = routePreviewDeclutterActive ? [] : v2MapLayers.specialRoutes;
 
@@ -784,6 +791,9 @@ export function HomeScreen() {
         focused: gateFocused,
         needsConnectorVerification: gate.needsConnectorVerification,
         zPriority: gate.isSelected ? 16 : gateFocused ? 14 : 12,
+        // Full name even at low zoom ("12"/"G12"): this label is the gate's only accessible
+        // node — GateLayer drops its Marker label whenever a label item exists.
+        accessibilityLabel: gate.label,
         onPress: () => {
           const place = V2PlaceAdapter.getPlaceById(gate.id);
           if (!place) return;

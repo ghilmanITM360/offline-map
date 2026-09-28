@@ -15,10 +15,11 @@ import { staticColors, spacing, radii, shadows } from '../../theme';
 export function PermissionScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
-  // Set only when SplashScreen routes a returning, already-onboarded user back here —
-  // i.e. location access was granted before and has since been revoked outside the
-  // app. WelcomeViewModel's first-time Continue -> Permission transition passes no
-  // params, so this stays falsy on a genuine first ask (#153 Finding 2).
+  // Set only when SplashScreen routes here on a later launch (Welcome seen, permission
+  // not granted, never skipped): usually access revoked outside the app, but possibly a
+  // first ask the user closed the app on — hence the hedged copy below.
+  // WelcomeViewModel's in-session Continue -> Permission transition passes no params,
+  // so this stays falsy on an uninterrupted first ask (#153 Finding 2).
   const isReturningAfterRevocation = Boolean(route.params?.revoked);
   const { loading, requestPermission, skipPermission } = usePermissionViewModel();
 

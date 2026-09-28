@@ -323,7 +323,8 @@ describe('LocationSheet (routePreview) — manual start search ("Search")', () =
     const input = screen.getByPlaceholderText('Search start point: gate, rasta, block');
     await user.type(input, 'Gate 18');
 
-    expect(await screen.findByLabelText('Gate 18, Gate, navigation unavailable')).toBeOnTheScreen();
+    const unavailableRow = await screen.findByLabelText('Gate 18, Gate, navigation unavailable');
+    expect(unavailableRow.props.accessibilityState?.disabled).not.toBe(true);
     expect(screen.getByText(/Not yet available for routing/)).toBeOnTheScreen();
   });
 });
@@ -431,7 +432,8 @@ describe('LocationSheet (routePreview) — change destination', () => {
     const input = screen.getByPlaceholderText('Search destination: gate, rasta, block');
     await user.type(input, 'Gate 18');
 
-    expect(await screen.findByLabelText('Gate 18, Gate, navigation unavailable')).toBeOnTheScreen();
+    const unavailableRow = await screen.findByLabelText('Gate 18, Gate, navigation unavailable');
+    expect(unavailableRow.props.accessibilityState?.disabled).not.toBe(true);
     expect(screen.getByText(/Not yet available for routing/)).toBeOnTheScreen();
   });
 

@@ -173,10 +173,12 @@ export function SplashScreen() {
         skippedOnlineModeEnabled,
         isConnected,
       });
-      // hasSeenWelcome is already true whenever StartupManager routes here to
-      // 'Permission' (the first-time flow always returns 'Welcome' first) — so
-      // reaching Permission via Splash always means a previously-granted or
-      // previously-skipped permission needs re-asking, not a first ask (#153 Finding 2).
+      // StartupManager only routes Splash to 'Permission' when Welcome was already seen,
+      // permission is not granted, and the user never chose "Continue Without Location"
+      // (a skip bypasses this route). That covers a permission revoked outside the app,
+      // but also a first ask interrupted by closing the app on the Permission screen —
+      // so `revoked` selects PermissionScreen's hedged "may have been turned off" copy,
+      // not a definite revocation claim (#153 Finding 2).
       if (route === 'Permission') {
         navigation.replace(route, { revoked: true });
       } else if (route === 'Welcome' && onboardingStatusReadFailed) {

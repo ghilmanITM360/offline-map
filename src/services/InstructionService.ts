@@ -183,6 +183,23 @@ export class InstructionService {
   static readonly ROAD_NAME_FALLBACK = 'Continue ahead';
 
   /**
+   * Road-name line for a step. Arrival steps carry no roadName, so they name the destination
+   * (V1 `destination.name`, V2 `route.destination.label`) instead of "Continue ahead".
+   */
+  static stepRoadLine(step: Pick<NavigationInstruction, 'type' | 'roadName'>, destinationName?: string | null): string {
+    if (step.type === 'arrival') return destinationName?.trim() || 'Your destination';
+    return step.roadName?.trim() || InstructionService.ROAD_NAME_FALLBACK;
+  }
+
+  /** Short next-step preview: "Then: Left Turn onto Rasta 05" / "Then: Arrive at Gate 8". */
+  static nextStepPreview(step: Pick<NavigationInstruction, 'type' | 'roadName'>, destinationName?: string | null): string {
+    const label = `Then: ${InstructionService.maneuverLabel(step.type)}`;
+    if (step.type === 'arrival') return `${label} at ${destinationName?.trim() || 'destination'}`;
+    const road = step.roadName?.trim();
+    return road ? `${label} onto ${road}` : label;
+  }
+
+  /**
    * Format a distance value according to the user's unit preference.
    * Returns a display string like "120 m" or "394 ft". Distances at or
    * above 1 km / 1 mile switch to that unit (1 decimal place) — plain-language

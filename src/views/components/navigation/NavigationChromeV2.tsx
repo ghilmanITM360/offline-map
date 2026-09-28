@@ -149,7 +149,7 @@ export function NavigationChromeV2({ overlay, hasBaseMap }: { overlay: Navigatio
                   {maneuverDistance > 0 ? InstructionService.formatDistance(maneuverDistance, settings.distanceUnit) : ''}
                 </Text>
                 <Text style={styles.roadNameText} numberOfLines={1} ellipsizeMode="tail">
-                  {currentStep.roadName ?? InstructionService.ROAD_NAME_FALLBACK}
+                  {InstructionService.stepRoadLine(currentStep, route.destination.label)}
                 </Text>
                 {nextStep && (
                   // B-001: was the full raw instruction sentence ("Then: Continue 40 meters
@@ -158,8 +158,7 @@ export function NavigationChromeV2({ overlay, hasBaseMap }: { overlay: Navigatio
                   // the ellipsis. Short maneuver + road name mirrors the current-step card's
                   // own vocabulary and always fits.
                   <Text style={styles.nextStepText} numberOfLines={1}>
-                    Then: {InstructionService.maneuverLabel(nextStep.type)}
-                    {nextStep.roadName ? ` onto ${nextStep.roadName}` : ''}
+                    {InstructionService.nextStepPreview(nextStep, route.destination.label)}
                   </Text>
                 )}
               </View>

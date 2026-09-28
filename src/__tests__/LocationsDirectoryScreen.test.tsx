@@ -219,7 +219,7 @@ describe('LocationsDirectoryScreen — recent destinations (#99)', () => {
     expect(navigation.goBack).toHaveBeenCalledTimes(1);
   });
 
-  test('RECENT-07: a recent destination that is currently non-routable stays visible and disabled per #96', async () => {
+  test('RECENT-07: a recent destination that is currently non-routable stays visible, labelled unavailable, and not a11y-disabled per #96', async () => {
     mockNav();
     useAppStore.setState({ recentSearches: [firstGate, firstBlock] });
     const blockedGate = PublicDestinationsService.search('Gate 18')[0];
@@ -227,10 +227,10 @@ describe('LocationsDirectoryScreen — recent destinations (#99)', () => {
     await render(<LocationsDirectoryScreen />);
 
     // #146: this gate now also renders in its own "Gates" browse section (consistent with
-    // search), in addition to Recent — so both instances must exist and both stay disabled.
+    // search), in addition to Recent — so both instances must exist; neither claims disabled (rows still open).
     const rows = await screen.findAllByLabelText(`${blockedGate.name}, Gate, navigation unavailable`);
     expect(rows.length).toBeGreaterThanOrEqual(2);
-    rows.forEach((row) => expect(row.props.accessibilityState?.disabled).toBe(true));
+    rows.forEach((row) => expect(row.props.accessibilityState?.disabled).not.toBe(true));
   });
 
   test('RECENT-08: a stale recent id no longer resolvable in current data is omitted safely', async () => {

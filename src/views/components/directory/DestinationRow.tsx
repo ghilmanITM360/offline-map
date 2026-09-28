@@ -48,7 +48,9 @@ export function DestinationRow({
   const categoryLabel = CATEGORY_LABEL[place.category] ?? place.category;
   // #96: unavailable rows stay tappable-to-view (map/sheet navigation is correct
   // today) — only the routing dead-end needs to be signaled earlier, so this never
-  // touches onPress or blocks the Pressable.
+  // touches onPress or blocks the Pressable. The unavailability is carried by the
+  // accessibilityLabel, NOT accessibilityState.disabled: TalkBack reads "disabled" as
+  // "double-tap does nothing", which would be false for a row that still opens.
   const isUnavailable = place.isRoutable === false;
   const { scale, onPressIn, onPressOut } = usePressScale(0.98);
 
@@ -63,7 +65,6 @@ export function DestinationRow({
         accessibilityLabel={
           isUnavailable ? `${place.name}, ${categoryLabel}, navigation unavailable` : `${place.name}, ${categoryLabel}`
         }
-        accessibilityState={{ disabled: isUnavailable }}
       >
         <View style={[styles.iconWrap, { backgroundColor: isUnavailable ? staticColors.neutralSurface : `${accent}1A` }]}>
           <Icon size={20} color={isUnavailable ? staticColors.iconMuted : accent} />

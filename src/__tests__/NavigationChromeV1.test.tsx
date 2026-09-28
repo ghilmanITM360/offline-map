@@ -104,6 +104,38 @@ describe('NavigationChromeV1 — Exit/recenter/mute touch targets', () => {
     expect(screen.queryByText(/Turn left at Rasta 11/)).toBeNull();
   });
 
+  describe('next-step preview for an arrival maneuver names the destination', () => {
+    const arrivalStep = { id: 'i2', text: 'Arrive at Gate 8', distance: 0, type: 'arrival', coordinate: { latitude: 24.903, longitude: 67.103 } };
+    const withArrival = [instructions[0], arrivalStep];
+
+    test('arrival shows "Arrive at <destination.name>", not a bare "Arrive"', async () => {
+      await render(<NavigationChromeV1 overlay={baseOverlay({ instructions: withArrival })} hasBaseMap />);
+      expect(screen.getByText('Then: Arrive at Gate 8')).toBeOnTheScreen();
+      expect(screen.queryByText('Then: Arrive')).toBeNull();
+    });
+
+    test('long destination name renders in full text (single line, tail-ellipsized by layout)', async () => {
+      const longName = 'Main Ijtema Ground Northern Parking Area Overflow Section Gate 12';
+      await render(
+        <NavigationChromeV1 overlay={baseOverlay({ instructions: withArrival, destination: { ...destination, name: longName } })} hasBaseMap />,
+      );
+      const text = screen.getByText(`Then: Arrive at ${longName}`);
+      expect(text.props.numberOfLines).toBe(1);
+    });
+
+    test.each([null, { ...destination, name: '   ' }])('missing destination name (%p) falls back without undefined/empty text', async (dest) => {
+      await render(<NavigationChromeV1 overlay={baseOverlay({ instructions: withArrival, destination: dest as Place | null })} hasBaseMap />);
+      expect(screen.getByText('Then: Arrive at destination')).toBeOnTheScreen();
+      expect(screen.queryByText(/undefined|at\s*$/)).toBeNull();
+    });
+
+    test('current arrival step shows the destination on the road-name line instead of "Continue ahead"', async () => {
+      await render(<NavigationChromeV1 overlay={baseOverlay({ instructions: [arrivalStep] })} hasBaseMap />);
+      expect(screen.getByText('Arrive')).toBeOnTheScreen();
+      expect(screen.queryByText('Continue ahead')).toBeNull();
+    });
+  });
+
   test('keeps base-map status below the maneuver in the shared top stack', async () => {
     await render(<NavigationChromeV1 overlay={baseOverlay()} hasBaseMap={false} />);
 

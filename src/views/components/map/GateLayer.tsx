@@ -57,7 +57,9 @@ function GateLayerImpl({ gates, focused = false, onPressGate, keyPrefix }: GateL
             anchor={{ x: 0.5, y: 0.5 }}
             zIndex={gate.isSelected ? 16 : focused ? 14 : 12}
             tracksViewChanges={false}
-            accessibilityLabel={gate.label}
+            // Only when MapLabelOverlay has no item for this gate (same condition HomeScreen's
+            // mapLabelItems skips on) — otherwise TalkBack would reach the gate twice.
+            accessibilityLabel={needsWiderHitArea ? gate.label : undefined}
             onPress={(e) => onPressGate?.(gate.id, e.nativeEvent.coordinate)}
           >
             {needsWiderHitArea ? <View style={styles.v2GateMarkerHitArea}>{dot}</View> : dot}

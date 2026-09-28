@@ -404,7 +404,6 @@ function RoutePreviewSection({
                               ? `${candidate.name}, ${candidate.category}, navigation unavailable`
                               : `${candidate.name}, ${candidate.category}`
                           }
-                          accessibilityState={{ disabled: isUnavailable }}
                         >
                           <MapPin size={16} color={staticColors.iconMuted} />
                           <View style={styles.searchItemBody}>
@@ -555,7 +554,6 @@ function RoutePreviewSection({
                                   ? `${candidate.name}, ${candidate.category}, navigation unavailable`
                                   : `${candidate.name}, ${candidate.category}`
                               }
-                              accessibilityState={{ disabled: isUnavailable }}
                             >
                               <MapPin size={16} color={staticColors.iconMuted} />
                               <View style={styles.searchItemBody}>
