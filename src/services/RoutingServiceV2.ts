@@ -146,6 +146,8 @@ interface SelectedRoutePath {
  * gate's own coordinate, this is the field that would carry the real gap —
  * inventing a nonzero value for it today, with no surveyed offset to back
  * it, would violate "do not invent graph connectivity."
+ * (Displacement of an accepted provider route's own endpoints is per route, not per
+ * gate: `finalizeOutsideRoutingPlan` measures it — see `providerEndpointJoinM`, #161.)
  *
  * `internalCostM` is the gate's best pedestrian cost (via `findBestPath`) to
  * the request's destination, precomputed here so a gate with no valid
@@ -615,6 +617,24 @@ const prependOutsideApproachInstruction = (
   ];
 };
 
+// #161: an accepted Google route may start/end up to MAX_ROUTE_ENDPOINT_OFFSET_M from the exact
+// origin/gate, and pathCoordinates() draws join segments for that gap. Google's distanceM excludes
+// them, so measure them here. offline-osm's distanceM already includes its own origin/gate
+// connectors (adding them again would double-count) and a direct guide's endpoints are exact.
+const providerEndpointJoinM = (
+  outside: NormalizedOutsideCandidate,
+  userCoordinate: AppCoordinate,
+  gateCoordinate: { lat: number; lng: number },
+): number => {
+  if (outside.provider !== 'google' || outside.coordinates.length === 0) return 0;
+  const first = outside.coordinates[0];
+  const last = outside.coordinates[outside.coordinates.length - 1];
+  return (
+    distanceMeters(appToV2Coordinate(userCoordinate), appToV2Coordinate(first)) +
+    distanceMeters(appToV2Coordinate(last), gateCoordinate)
+  );
+};
+
 const appendCoordinate = (coordinates: AppCoordinate[], coordinate: AppCoordinate): void => {
   const previous = coordinates[coordinates.length - 1];
   if (
@@ -1034,7 +1054,7 @@ export class RoutingServiceV2 {
 
     const planByCandidateId = new Map(plan.candidates.map((candidate) => [candidate.candidateId, candidate]));
 
-    let winner: { planCandidate: CoreOutsideCandidateGate; outside: NormalizedOutsideCandidate; totalCostM: number } | undefined;
+    let winner: { planCandidate: CoreOutsideCandidateGate; outside: NormalizedOutsideCandidate; joinM: number; totalCostM: number } | undefined;
     for (const outcome of outsideCandidates.outcomes) {
       if (outcome.status !== 'routed') continue;
       const planCandidate = planByCandidateId.get(outcome.gateId);
@@ -1046,8 +1066,10 @@ export class RoutingServiceV2 {
         const gate = getGate(planCandidate.gateId);
         if (!gate) continue;
 
+        const joinM = providerEndpointJoinM(outside, plan.userCoordinate, gate.coordinate!);
         const totalCostM =
           outside.distanceM +
+          joinM +
           planCandidate.connectorCostM +
           planCandidate.penaltyM +
           planCandidate.internalCostM +
@@ -1058,7 +1080,7 @@ export class RoutingServiceV2 {
           totalCostM < winner.totalCostM ||
           (totalCostM === winner.totalCostM && outside.candidateId.localeCompare(winner.outside.candidateId) < 0)
         ) {
-          winner = { planCandidate, outside, totalCostM };
+          winner = { planCandidate, outside, joinM, totalCostM };
         }
       }
     }
@@ -1083,8 +1105,8 @@ export class RoutingServiceV2 {
       startLabel: gate.name.en,
       startResolution,
       startCoordinate: plan.userCoordinate,
-      startConnectorDistanceM: Math.round(winner.outside.distanceM + winner.planCandidate.connectorCostM),
-      routeCostM: winner.outside.distanceM + winner.planCandidate.connectorCostM + winner.planCandidate.penaltyM + internalPath.costM,
+      startConnectorDistanceM: Math.round(winner.outside.distanceM + winner.joinM + winner.planCandidate.connectorCostM),
+      routeCostM: winner.outside.distanceM + winner.joinM + winner.planCandidate.connectorCostM + winner.planCandidate.penaltyM + internalPath.costM,
       outsideLegCoordinates: winner.outside.coordinates.map(appToV2Coordinate),
       outsideLegSanityCapExceeded: winner.outside.warnings.some((warning) => warning.code === 'distance-sanity-cap-exceeded'),
     };
