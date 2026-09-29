@@ -182,3 +182,42 @@ describe('GPSManagerService — does not watch when location services are off', 
     expect(Location.watchPositionAsync).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('GPSManagerService — malformed fixes (#147)', () => {
+  it.each([
+    ['NaN latitude', NaN, 67.05],
+    ['Infinity longitude', 24.86, Infinity],
+    ['latitude > 90', 91, 67.05],
+    ['longitude < -180', 24.86, -181],
+  ])('drops a %s fix before the store updater and every listener', async (_n, lat, lng) => {
+    setAppStateActive();
+    (Location.getForegroundPermissionsAsync as jest.Mock).mockResolvedValue({ status: 'granted' });
+    (Location.getCurrentPositionAsync as jest.Mock).mockResolvedValue(fakeLocation(lat, lng));
+    const storeUpdater = jest.fn();
+    const listener = jest.fn();
+    GPSManagerService.setStoreUpdater(storeUpdater);
+    GPSManagerService.addListener(listener);
+
+    expect(await GPSManagerService.forceFix()).toBeNull();
+    expect(storeUpdater).not.toHaveBeenCalled();
+    expect(listener).not.toHaveBeenCalled();
+
+    GPSManagerService.removeListener(listener);
+  });
+
+  it('still delivers a valid fix to the store updater and listeners', async () => {
+    setAppStateActive();
+    (Location.getForegroundPermissionsAsync as jest.Mock).mockResolvedValue({ status: 'granted' });
+    (Location.getCurrentPositionAsync as jest.Mock).mockResolvedValue(fakeLocation(24.86, 67.05));
+    const storeUpdater = jest.fn();
+    const listener = jest.fn();
+    GPSManagerService.setStoreUpdater(storeUpdater);
+    GPSManagerService.addListener(listener);
+
+    await GPSManagerService.forceFix();
+    expect(storeUpdater).toHaveBeenCalledTimes(1);
+    expect(listener).toHaveBeenCalledTimes(1);
+
+    GPSManagerService.removeListener(listener);
+  });
+});
