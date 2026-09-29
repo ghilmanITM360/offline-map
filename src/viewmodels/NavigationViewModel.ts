@@ -4,6 +4,7 @@
  */
 
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { AppState } from 'react-native';
 import { useAppStore } from '../store/useAppStore';
 import { RoutingService } from '../services/RoutingService';
 import { InstructionService, Instruction } from '../services/InstructionService';
@@ -15,12 +16,14 @@ import { GPSManagerService } from '../services/GPSManagerService';
 import { getDistance } from 'geolib';
 import { Coordinate, RoutePreview } from '../models/types';
 import { ARRIVAL_THRESHOLD_METERS as ARRIVAL_THRESHOLD_M } from '../constants/navigation';
+import { GPS_LOST_TIMEOUT_MS, STALE_FIX_CLOCK_TOLERANCE_MS } from '../constants/navigation';
 
 const OFF_ROUTE_PENDING_MS = 9000;
 const OFF_ROUTE_CONSECUTIVE_REQUIRED = 3;
 const REROUTE_COOLDOWN_MS = 25000;
 const MIN_MOVEMENT_FOR_REROUTE_M = 12;
 const WEAK_GPS_THRESHOLD_M = 50;
+const GPS_STALE_MESSAGE = 'Waiting for a fresh GPS position…';
 
 export function useNavigationViewModel() {
   const {
@@ -62,6 +65,10 @@ export function useNavigationViewModel() {
   const settingsRef = useRef(settings);
   const latestGpsCoordRef = useRef<Coordinate | null>(null);
   const latestGpsAccuracyRef = useRef(0);
+  // NAV-004 (V2's NAV-P0-001 equivalent): fixes whose native timestamp predates this boundary
+  // (mount, then each foreground resume) are cached/historical and must not drive navigation.
+  const watcherBoundaryAtMsRef = useRef(Date.now());
+  const lastFixAtRef = useRef<number | null>(null);
 
   useEffect(() => { routeRef.current = route; }, [route]);
   useEffect(() => { instructionsRef.current = instructions; }, [instructions]);
@@ -158,6 +165,14 @@ export function useNavigationViewModel() {
   // GPS listener — registered once with the shared GPSManagerService
   const handleGPS = useCallback(
     (coord: Coordinate) => {
+      if (
+        coord.observedAtMs != null &&
+        coord.observedAtMs < watcherBoundaryAtMsRef.current - STALE_FIX_CLOCK_TOLERANCE_MS
+      ) {
+        return;
+      }
+      lastFixAtRef.current = Date.now();
+      if (rerouteStatusMessage === GPS_STALE_MESSAGE) setRerouteStatusMessage(null);
       latestGpsCoordRef.current = coord;
 
       const stepIdx = currentStepIndexRef.current;
@@ -367,6 +382,21 @@ export function useNavigationViewModel() {
     },
     [isMuted, rerouteStatusMessage, setReroutePending]
   );
+
+  // Background resume (mirrors V2): GPSManagerService restarts the watch itself, but the first
+  // post-resume fix can take a while, so flag a stale position and force a fresh fix now.
+  useEffect(() => {
+    if (!route) return;
+    const subscription = AppState.addEventListener('change', (nextState) => {
+      if (nextState !== 'active') return;
+      if (lastFixAtRef.current == null || Date.now() - lastFixAtRef.current >= GPS_LOST_TIMEOUT_MS) {
+        setRerouteStatusMessage(GPS_STALE_MESSAGE);
+      }
+      watcherBoundaryAtMsRef.current = Date.now();
+      void GPSManagerService.forceFix();
+    });
+    return () => subscription.remove();
+  }, [route]);
 
   useEffect(() => {
     GPSManagerService.addListener(handleGPS);

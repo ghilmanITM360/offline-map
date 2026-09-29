@@ -10,7 +10,8 @@ import { RoutingDestinationV2, RoutingStartV2 } from './RoutingServiceV2';
 // Deliberately from constants/navigation, not GPSManagerService (which imports react-native
 // and would drag a native module import into this otherwise plain, node/tsx-testable file —
 // see the comment on NAVIGATION_WATCH_TIME_INTERVAL_MS for why it lives there).
-import { NAVIGATION_WATCH_TIME_INTERVAL_MS } from '../constants/navigation';
+// GPS_LOST_TIMEOUT_MS is defined there too (shared with the V1 view model) and re-exported below.
+import { GPS_LOST_TIMEOUT_MS } from '../constants/navigation';
 
 export interface NavigationProgressV2Input {
   route: V2ActiveRoute;
@@ -58,18 +59,7 @@ export function shouldIgnorePoorAccuracyMovementV2(input: { movedDistanceM: numb
 // leave the UI frozen on the last known position with no indication anything was wrong).
 export type GpsSignalStateV2 = 'GPS_GOOD' | 'GPS_WEAK' | 'GPS_LOST';
 
-/**
- * GPS_LOST fires once this many ms have passed with zero fresh fixes while navigating. Set
- * as an explicit multiple of GPSManagerService's navigation-mode watchPositionAsync
- * `timeInterval` (the minimum ms between fixes it requests while a NavigationViewModelV2
- * listener is attached) rather than an arbitrary guess: 8 missed fixes is long enough that a
- * single delayed/dropped update (a momentary hiccup, ordinary GPS jitter) doesn't
- * false-positive into a scary "no signal" banner, but short enough that a real outage
- * (crowd-density signal loss, walking under a covered area) is surfaced to the user within
- * ~8 seconds — well before a frozen "you are here" dot could be mistaken for a current
- * position by the app's elderly user base.
- */
-export const GPS_LOST_TIMEOUT_MS = NAVIGATION_WATCH_TIME_INTERVAL_MS * 8;
+export { GPS_LOST_TIMEOUT_MS };
 
 export function deriveGpsSignalStateV2(input: {
   /** Accuracy verdict for the most recent fix (RerouteService.shouldHoldRouteForWeakGps). Only
