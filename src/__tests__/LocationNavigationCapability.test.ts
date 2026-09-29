@@ -77,4 +77,42 @@ describe('evaluateNavigationLocationCapability', () => {
       nowMs,
     })).toEqual({ canStart: true, message: '' });
   });
+
+  // #139: a coordinate hydrated from storage after process death must never start live navigation.
+  it('#139: rejects an hours-old hydrated fix and a fix with no timestamp at all', () => {
+    const stale = evaluateNavigationLocationCapability({
+      startSource: 'live_gps',
+      coordinate: { latitude: 24.96, longitude: 67.01, accuracy: 8, observedAtMs: nowMs - 3_600_000 },
+      nowMs,
+    });
+    const untimed = evaluateNavigationLocationCapability({
+      startSource: 'live_gps',
+      coordinate: { latitude: 24.96, longitude: 67.01, accuracy: 8 },
+      nowMs,
+    });
+    const staleResult = {
+      canStart: false,
+      message: 'Current location is stale. Wait for a fresh fix before starting live navigation.',
+    };
+    expect(stale).toEqual(staleResult);
+    expect(untimed).toEqual(staleResult);
+  });
+
+  it('#139: the 30 s freshness boundary is inclusive', () => {
+    expect(evaluateNavigationLocationCapability({
+      startSource: 'live_gps',
+      coordinate: { latitude: 24.96, longitude: 67.01, accuracy: 8, observedAtMs: nowMs - 30_000 },
+      nowMs,
+    }).canStart).toBe(true);
+  });
+
+  // Characterization of a known gap, not a desired behavior: a timestamp in the future (skewed
+  // clock, corrupt blob) is treated as fresh. Flip this assertion when that is fixed.
+  it('#139: currently accepts a future-dated fix (known gap)', () => {
+    expect(evaluateNavigationLocationCapability({
+      startSource: 'live_gps',
+      coordinate: { latitude: 24.96, longitude: 67.01, accuracy: 8, observedAtMs: nowMs + 3_600_000 },
+      nowMs,
+    }).canStart).toBe(true);
+  });
 });
