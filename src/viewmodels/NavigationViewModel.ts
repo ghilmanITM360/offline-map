@@ -77,6 +77,9 @@ export function useNavigationViewModel() {
     consecutiveOffRouteCountRef.current = 0;
     progressMetersRef.current = 0;
     currentSegmentIndexRef.current = 0;
+    // #149/#113: the cooldown is per-trip evidence like the refs above; stopNavigation nulls the
+    // destination, so every new trip passes through here.
+    lastRerouteAtRef.current = 0;
     setRerouteStatusMessage(null);
   }, [destination]);
 
@@ -367,14 +370,20 @@ export function useNavigationViewModel() {
 
   useEffect(() => {
     GPSManagerService.addListener(handleGPS);
-    return () => {
-      GPSManagerService.removeListener(handleGPS);
-      VoiceService.stop();
-      if (rerouteTimerRef.current) {
-        clearTimeout(rerouteTimerRef.current);
-      }
-    };
+    return () => GPSManagerService.removeListener(handleGPS);
   }, [handleGPS]);
+
+  // Unmount only. This used to live in the listener cleanup above, which re-runs whenever
+  // handleGPS is recreated — including by the 'Recalculating...' status message the reroute
+  // itself sets — so the pending reroute timer was cleared before it fired, leaving
+  // rerouteTimerRef stale (blocking every later reroute) and reroutePending stuck true.
+  useEffect(() => () => {
+    VoiceService.stop();
+    if (rerouteTimerRef.current) {
+      clearTimeout(rerouteTimerRef.current);
+      rerouteTimerRef.current = null;
+    }
+  }, []);
 
   const setMuteState = (muted: boolean) => {
     if (muted) VoiceService.stop();

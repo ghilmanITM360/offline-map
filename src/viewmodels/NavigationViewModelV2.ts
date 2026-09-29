@@ -282,13 +282,13 @@ export function useNavigationViewModelV2() {
     if (!options.explicit && rerouteRequestInFlightRef.current) return;
     const requestMarker = {};
     rerouteRequestInFlightRef.current = requestMarker;
+    let outsideHandle: ReturnType<OutsideRouteRequestCoordinator['begin']> | null = null;
     try {
       const routeAtRequest = route;
       setReroutePending(true);
       setRerouteStatusMessage(null);
 
       let candidate = null;
-      let outsideHandle: ReturnType<OutsideRouteRequestCoordinator['begin']> | null = null;
       if (!EntryGateRoutingService.isInsideIjtemaArea(coordinate) && destination) {
         outsideHandle = outsideRequestCoordinatorRef.current.begin(
           `${destination.id}:${options.manualGateId ?? 'automatic'}`,
@@ -360,6 +360,14 @@ export function useNavigationViewModelV2() {
       offRouteAnchorRef.current = null;
       lastRerouteAtRef.current = Date.now();
       setReroutePending(false);
+      outsideHandle?.finish();
+    } catch {
+      // #143: any throw in the reroute path must not leave "Rerouting…" stuck; keep the current route.
+      if (rerouteRequestInFlightRef.current === requestMarker) {
+        lastRerouteAtRef.current = Date.now();
+        setRerouteStatusMessage(keepCurrentRouteAfterRerouteFailureV2(route).message);
+        setReroutePending(false);
+      }
       outsideHandle?.finish();
     } finally {
       if (rerouteRequestInFlightRef.current === requestMarker) {

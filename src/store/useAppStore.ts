@@ -25,6 +25,7 @@ import {
 } from '../models/types';
 import { MapFeatureFlagsService } from '../services/MapFeatureFlagsService';
 import { V2PlaceAdapter } from '../services/V2PlaceAdapter';
+import { isValidCoordinate } from '../utils/isValidCoordinate';
 
 export type RouteSelectionMode = 'idle' | 'selectingStart' | 'selectingDestination';
 
@@ -340,6 +341,8 @@ export const useAppStore = create<AppState>()(
       currentLocation: null,
       currentLocationSource: null,
       setCurrentLocation: (loc, source = 'live') => {
+        // #147: a NaN/Infinity/out-of-range fix must never reach progress, reroute, arrival or snapping.
+        if (loc && !isValidCoordinate(loc)) return;
         const now = new Date().toISOString();
         set({ currentLocation: loc, currentLocationSource: loc ? source : null });
         if (loc && source !== 'remembered' && source !== 'manual') {
