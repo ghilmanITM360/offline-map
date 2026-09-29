@@ -40,6 +40,17 @@ gradle.projectsEvaluated {
       from(worklets.fileTree(dir: worklets.layout.buildDirectory.dir("intermediates/cxx/${t.cmake}"), include: '*/obj/*/libworklets.so'))
       eachFile { path = "${relativePath.segments[-2]}/${name}" }
       includeEmptyDirs = false
+      // Never pick an arbitrary binary: several <hash> dirs for one ABI (stale output) is ambiguous.
+      doFirst {
+        def found = worklets.fileTree(dir: worklets.layout.buildDirectory.dir("intermediates/cxx/${t.cmake}"), include: '*/obj/*/libworklets.so').files
+        def byAbi = found.groupBy { it.parentFile.name }
+        def dupes = byAbi.findAll { abi, files -> files.size() > 1 }
+        if (found.isEmpty() || !dupes.isEmpty()) {
+          throw new GradleException(found.isEmpty()
+            ? "No libworklets.so under react-native-worklets/android/build/intermediates/cxx/${t.cmake}"
+            : "Ambiguous libworklets.so (stale CMake hash dirs) for ${dupes.keySet()}: ${dupes.values().flatten()}. Run './gradlew clean' and rebuild.")
+        }
+      }
       into worklets.layout.buildDirectory.dir("intermediates/cmake/${t.legacy}/obj")
     }
     reanimated.tasks.matching { it.name.startsWith("buildCMake${t.cmake}[") }.configureEach { dependsOn sync }
