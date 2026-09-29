@@ -1608,7 +1608,9 @@ export function HomeScreen() {
           </View>
         )}
 
-        {mode !== 'NAVIGATION' && !directionsDestination && (
+        {/* ARRIVAL outranks NAVIGATION in deriveMapMode and still shows the navigation chrome, so the
+            search bar/chips must hide for both or they draw over the maneuver banner. */}
+        {mode !== 'NAVIGATION' && mode !== 'ARRIVAL' && !directionsDestination && (
         <SafeAreaView
           style={styles.topOverlay}
           pointerEvents="box-none"

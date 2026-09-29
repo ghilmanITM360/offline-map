@@ -139,7 +139,18 @@ export function NavigationChromeV2({ overlay, hasBaseMap }: { overlay: Navigatio
               </View>
             </View>
           ) : currentStep && !arrived ? (
-            <View style={styles.instructionCard} accessibilityLabel={currentStep.text}>
+            <View
+              style={styles.instructionCard}
+              // Was currentStep.text, whose baked-in "for N meters" is the whole edge length,
+              // not the live distance to the maneuver shown on screen.
+              accessibilityLabel={[
+                InstructionService.maneuverLabel(currentStep.type),
+                maneuverDistance > 0 ? InstructionService.formatDistance(maneuverDistance, settings.distanceUnit) : '',
+                InstructionService.stepRoadLine(currentStep, route.destination.label),
+              ]
+                .filter(Boolean)
+                .join(', ')}
+            >
               <View style={styles.instructionIcon}>
                 <StepIcon type={currentStep.type} size={32} />
               </View>

@@ -321,6 +321,9 @@ function RoutePreviewSection({
   const showRouteReady = loadState === 'ready' && !!route;
   const showLoading = loadState === 'loading';
   const showError = loadState === 'error';
+  const destinationCannotBeRouted =
+    destination.isRoutable === false ||
+    (destination.routingStatus !== undefined && destination.routingStatus !== 'routable');
   const showStartHint = !showLoading && !showError && !showRouteReady;
   const retryRoute = () => {
     if (retryInFlightRef.current) return;
@@ -628,13 +631,25 @@ function RoutePreviewSection({
             <Card variant="error">
               <Text style={[styles.statusTitle, styles.statusTitleError]}>Route problem</Text>
               <Text style={styles.statusText}>{errorMessage}</Text>
-              <Button
-                variant="danger"
-                fullWidth={false}
-                icon={<RefreshCw size={18} color={staticColors.white} />}
-                label="Retry"
-                onPress={retryRoute}
-              />
+              {destinationCannotBeRouted ? (
+                // Retrying re-runs the same failed lookup: an unverified/unconnected
+                // destination stays unroutable until its data is verified. Offer a
+                // change of destination instead (no route is invented).
+                <Button
+                  variant="secondary"
+                  fullWidth={false}
+                  label="Choose another destination"
+                  onPress={onChangeDestination ? () => setShowDestinationOptions(true) : onClose}
+                />
+              ) : (
+                <Button
+                  variant="danger"
+                  fullWidth={false}
+                  icon={<RefreshCw size={18} color={staticColors.white} />}
+                  label="Retry"
+                  onPress={retryRoute}
+                />
+              )}
             </Card>
           )}
 

@@ -84,6 +84,17 @@ describe('NavigationChromeV2 — live maneuver distance', () => {
   });
 });
 
+describe('NavigationChromeV2 — instruction card accessibility label', () => {
+  test('announces the live maneuver distance, not the edge length baked into step.text', async () => {
+    const stale = { ...route.instructions[0], text: 'Continue straight for 10 meters.' };
+    await render(
+      <NavigationChromeV2 overlay={baseOverlay({ instructions: [stale], route: { ...route, instructions: [stale] }, maneuverDistance: 69 })} hasBaseMap />,
+    );
+    expect(screen.getByLabelText(/69 m/)).toBeOnTheScreen();
+    expect(screen.queryByLabelText(/10 meters/)).toBeNull();
+  });
+});
+
 describe('NavigationChromeV2 — next-step preview', () => {
   test('B-001: shows short maneuver + road name, not the full raw sentence', async () => {
     const twoStepRoute: V2ActiveRoute = {

@@ -750,6 +750,26 @@ describe('LocationSheet (routePreview) — route ready CTA', () => {
     expect(calculateRoute).toHaveBeenCalledTimes(1);
   });
 
+  test('an unroutable destination gets "Choose another destination" instead of a futile Retry', async () => {
+    const onChangeDestination = jest.fn();
+    mockedUseDirectionsViewModel.mockReturnValue(
+      baseViewModel({ loadState: 'error', errorMessage: 'This gate is not ready for navigation. Please choose another nearby gate.' }),
+    );
+    const user = userEvent.setup();
+    await render(
+      <LocationSheet
+        mode="routePreview"
+        destination={{ ...destination, routingStatus: 'needs_connector_verification' }}
+        onClose={onCloseSpy}
+        onChangeDestination={onChangeDestination}
+      />,
+    );
+
+    expect(screen.queryByText('Retry')).toBeNull();
+    await user.press(screen.getByText('Choose another destination'));
+    expect(screen.getByText('Where do you want to go?')).toBeTruthy();
+  });
+
   test('does not re-invoke calculateRoute on a second Retry tap while the first is still in flight', async () => {
     let resolveCalculateRoute: () => void = () => {};
     const calculateRoute = jest.fn(
