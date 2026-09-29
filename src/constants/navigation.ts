@@ -36,3 +36,16 @@ export const OUTSIDE_VENUE_BOUNDARY_NODE_IDS_V1 = /^(T1|T2|S6|S12|S13|S14|S15|S1
 // the boundary instant (not an arbitrary large grace window that would let real stale fixes
 // back in).
 export const STALE_FIX_CLOCK_TOLERANCE_MS = 2000;
+
+/**
+ * GPS_LOST fires once this many ms have passed with zero fresh fixes while navigating. Set
+ * as an explicit multiple of GPSManagerService's navigation-mode watchPositionAsync
+ * `timeInterval` (the minimum ms between fixes it requests while a NavigationViewModelV2
+ * listener is attached) rather than an arbitrary guess: 8 missed fixes is long enough that a
+ * single delayed/dropped update (a momentary hiccup, ordinary GPS jitter) doesn't
+ * false-positive into a scary "no signal" banner, but short enough that a real outage
+ * (crowd-density signal loss, walking under a covered area) is surfaced to the user within
+ * ~8 seconds — well before a frozen "you are here" dot could be mistaken for a current
+ * position by the app's elderly user base.
+ */
+export const GPS_LOST_TIMEOUT_MS = NAVIGATION_WATCH_TIME_INTERVAL_MS * 8;
