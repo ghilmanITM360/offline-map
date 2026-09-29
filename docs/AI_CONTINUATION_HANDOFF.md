@@ -23,8 +23,8 @@ Current milestone: **Android APK Acceptance** (#135). Play Store, production sig
 | #174 | `test/139-process-death-characterization` | `4d5d09f` | SUCCESS | #139 characterization tests + `docs/audit/ISSUE_139_PROCESS_DEATH_DESIGN.md`; **no recovery policy implemented** |
 | #175 | `docs/115-evidence-ledger-reconciliation` | `80012ca` | SUCCESS | Evidence ledger EV-028..030, matrix, status (Refs #115) |
 | #176 | `docs/device-acceptance-checklist` | `b0ebae0` | SUCCESS | `docs/DEVICE_ACCEPTANCE_CHECKLIST.md`, every row NOT RUN |
-| #178 | `wip/download-map-preserved-for-pc-migration` | `d559326` | not run | **Draft, do not merge.** Byte-exact backup of three uncommitted Download Map files; superseded by canonical |
-| (this) | `docs/new-pc-migration-handoff` | n/a | n/a | **Draft.** This file and the setup guide |
+| #178 | `wip/download-map-preserved-for-pc-migration` | `d559326` | see PR | **Draft, do not merge.** Byte-exact backup of three uncommitted Download Map files; superseded by canonical |
+| #179 | `docs/new-pc-migration-handoff` | n/a | see PR | **Draft.** This file and the setup guide |
 
 Check current heads with `gh pr list --state open`; treat the table as a starting point.
 
@@ -54,7 +54,7 @@ Check current heads with `gh pr list --state open`; treat the table as a startin
 | `28e98dc` | `npm run test:components -- --runInBand` | 83 suites / 712 tests passing (canonical baseline; typecheck, lint, `npm test`, `git diff --check` clean) |
 | `815f87d` (#172) | full validation | 84 suites / 716 tests; typecheck, lint, `npm test`, four routing scripts exit 0; 3 of the 4 new tests fail without the fix |
 | `4d5d09f` (#174) | full validation | 85 suites / 719 tests; typecheck, lint, `npm test` exit 0 |
-| `d559326` (#178) | `jest DownloadMapScreen.test.tsx` | 4 failed / 8 passed (missing imports) |
+| `d559326` (#178) | `jest DownloadMapScreen.test.tsx` (local) | 4 failed / 8 passed (missing imports) |
 | canonical-based tree | `jest DownloadMapScreen.test.tsx` | 13 passed |
 
 CI on every PR head above was green when checked; CI is JS-only and proves nothing about the Android build. #173 had no local test run (resource-only change; CI green).
