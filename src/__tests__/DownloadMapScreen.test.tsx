@@ -153,4 +153,11 @@ describe('DownloadMapScreen — confirmation copy matches real download support'
   test.each(['Use Venue Map Only', 'Use Online Mode'])('%s: keeps Settings hint when download is available', async (label) => {
     expect(await dialogBody(label, { offlineTileDownloadAvailable: true })).toMatch(/Settings/);
   });
+
+  test('header does not say "once downloaded" when download is unavailable', async () => {
+    mockedUseDownloadMapViewModel.mockReturnValue(baseViewModel({ offlineTileDownloadAvailable: false }));
+    await render(<DownloadMapScreen />);
+    expect(screen.queryByText(/once downloaded/)).toBeNull();
+    expect(screen.getByText(/work without internet\. The satellite background needs internet/)).toBeTruthy();
+  });
 });

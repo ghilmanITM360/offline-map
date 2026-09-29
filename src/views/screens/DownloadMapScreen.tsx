@@ -159,7 +159,11 @@ export function DownloadMapScreen() {
           <View style={styles.header}>
             <Text style={styles.title}>Offline Maps</Text>
             <Text style={styles.urduTitle}>آف لائن نقشہ</Text>
-            <Text style={styles.subtitle}>Works without internet once downloaded. The satellite background needs internet.</Text>
+            <Text style={styles.subtitle}>
+              {offlineTileDownloadAvailable
+                ? 'Works without internet once downloaded. The satellite background needs internet.'
+                : 'Directions inside the Ijtema work without internet. The satellite background needs internet.'}
+            </Text>
           </View>
 
           <View style={styles.card}>
