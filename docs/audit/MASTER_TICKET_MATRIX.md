@@ -36,10 +36,10 @@ rollup):
 |---|---|---|---|---|---|---|---|---|---|
 | A-1 | Canonical branch verification | #63 | — | ALREADY-DONE-WITH-EVIDENCE | — | AUDIT | — | EV-001, EV-002 | Re-verified this pass |
 | A-2 | `main`/canonical branch divergence audit | #115 | #63 | COVERED-BY-EXISTING-ISSUE | P1 | AUDIT | — | EV-004, EV-040 | 39 files, 1103/-559 lines diverged in `src/data/ijtema` area alone |
-| A-3 | `main`-only unique work reconciliation (NEW-02/03/06) | #115 | #63 | COVERED-BY-EXISTING-ISSUE | P1 | engineering | — | EV-028, EV-029, EV-030 | NEW-06 genuinely unresolved; NEW-02/03 need diff-level confirmation (NEW-03 addressed by PR #162, closes #160) |
+| A-3 | `main`-only unique work reconciliation (NEW-02/03/06) | #115 | #63 | COVERED-BY-EXISTING-ISSUE | P1 | engineering | — | EV-028, EV-029, EV-030 | NEW-02 superseded (diff-level comparison done, EV-029); NEW-03 fixed by PR #162 (closes #160, EV-028); NEW-06 fixed in source by PR #171 (#161 stays open pending deployed-proxy acceptance via #123, EV-030). Remaining: owner decision on `main` |
 | A-4 | PR reconciliation / stale PR cleanup | #50 (closed) | #63 | ALREADY-DONE-WITH-EVIDENCE | — | cleanup | — | — | — |
 | A-5 | Worktree/stash cleanup | #51 (closed) | #63 | ALREADY-DONE-WITH-EVIDENCE | — | cleanup | — | — | Two read-only audit worktrees (`audit2`, `integration-audit`) remain from prior passes — harmless, undecided, not touched |
-| A-6 | One authoritative branch (retire `main`) | #115 | #63 | COVERED-BY-EXISTING-ISSUE | — | — | NEW-06 resolution (#115) | — | Explicit: do not retire `main` until #115 resolves NEW-06 |
+| A-6 | One authoritative branch (retire `main`) | #115 | #63 | COVERED-BY-EXISTING-ISSUE | — | — | Owner decision (#115) | — | NEW-06 is resolved in source (#171); retiring or keeping `main` is an owner decision recorded on #115 — do not retire without it |
 | A-7 | PR #121 (DATA-VALIDATION-002) merge | #118 | — | COVERED-BY-EXISTING-ISSUE | P1 | bug | Owner merge action | PR #121 CI green, mergeable | Merged 2026-09-29 (`5473399`); #118 auto-closed on merge |
 
 ## Epic B — Navigation / Routing
@@ -51,7 +51,7 @@ rollup):
 | B-3 | Gate 18 field blocker | #43 | #63 | FIELD-DATA-REQUIRED | P2 | gis | Physical survey | EV-006 | Milestone: Field Test Candidate |
 | B-4 | Gate 19 field blocker | #44 | #63 | FIELD-DATA-REQUIRED | P2 | gis | Physical survey | EV-007 | Milestone: Field Test Candidate |
 | B-5 | Gate count semantics | — | — | ALREADY-DONE-WITH-EVIDENCE | — | — | — | EV-008 | 18 total / 16 routable / 2 field-blocked |
-| B-6 | NEW-06 connector-cost ambiguity | #115 | #63 | COVERED-BY-EXISTING-ISSUE | P1 | engineering | — | EV-030 | Hardcoded `connectorCostM: 0`, needs runtime proof |
+| B-6 | NEW-06 connector-cost ambiguity | #115 | #63 | COVERED-BY-EXISTING-ISSUE | P1 | engineering | — | EV-030 | `connectorCostM: 0` is correct; the real gap (Google endpoint joins) is fixed in source by #171 (SOURCE/RUNTIME VERIFIED, EV-030). Deployed-proxy acceptance tracked by #161/#123 |
 | B-7 | No early/false arrival | #95 | #63 | COVERED-BY-EXISTING-ISSUE | P2 | bug | #46 field data | — | Doc/behavior mismatch confirmed; scenario likely, not field-reproduced |
 | B-8 | Reroute / off-route accumulation | #60 (closed) | #63 | ALREADY-DONE-WITH-EVIDENCE | — | — | — | — | — |
 | B-9 | Second trip after Done (no state bleed) | #111/#112, #113/#114 (closed) | #63 | ALREADY-DONE-WITH-EVIDENCE | — | — | — | — | Arrival latch + reroute cooldown both fixed |

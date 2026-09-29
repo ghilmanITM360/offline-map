@@ -60,7 +60,7 @@ The APK file lives outside git (local build output). Rebuild it from the commit 
 - #48 — Production signing / Play App Signing (owner action, Future Deployment)
 - #49 — Google Maps production restrictions verification (owner action, Future Deployment; also has a live-risk component — historical exposed key)
 - #93 — Nearest-node snapping continuity/hysteresis (root cause confirmed, fix deferred pending #46 field data)
-- #115 — NEW-06 connector-cost ambiguity; remaining acceptance is the `EVIDENCE_LEDGER.md` EV-028–030 update
+- #115 — NEW-02/03/06 audit: all three resolved (NEW-06 fixed in source by #171, NEW-03 by #162, NEW-02 superseded; EV-028–030 updated). Remaining acceptance is the owner's retire-vs-keep decision on `main`
 - #124 — "Direct guide" despite a valid OSM route: not reproduced on the baseline (fixed by #107/#108); needs a physical-device re-run before closing
 - #135 — Final Android APK Acceptance (current-milestone gate)
 - #150, #151, #153 — a11y/UX findings **fixed in source by #164**; they stay open until the owner confirms on a device
@@ -95,5 +95,5 @@ The APK file lives outside git (local build output). Rebuild it from the commit 
 
 ## In progress / next
 
-- No fix PRs are open. Next by priority: #139 (needs the owner's product decision: restore the journey vs notify and rebuild the route), NAV-004 background-resume GPS freshness (part of #46's physical tier), #124 physical-device re-run, then #115 (docs/evidence closure).
+- No fix PRs are open. Next by priority: #139 (needs the owner's product decision: restore the journey vs notify and rebuild the route), NAV-004 background-resume GPS freshness (part of #46's physical tier), #124 physical-device re-run, then #115 (owner decision on `main`).
 - Owner decisions pending: #139 restore-or-notify, splash config sync, V1 extend/no-extend wording, `AGENTS.md` "main trails" wording, independent human review of the merged PRs (still recommended).
