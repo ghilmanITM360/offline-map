@@ -84,6 +84,86 @@ describe('NavigationChromeV2 — live maneuver distance', () => {
   });
 });
 
+describe('NavigationChromeV2 — instruction card accessibility label', () => {
+  test('announces the live maneuver distance, not the edge length baked into step.text', async () => {
+    const stale = { ...route.instructions[0], text: 'Continue straight for 10 meters.' };
+    await render(
+      <NavigationChromeV2 overlay={baseOverlay({ instructions: [stale], route: { ...route, instructions: [stale] }, maneuverDistance: 69 })} hasBaseMap />,
+    );
+    expect(screen.getByLabelText(/69 m/)).toBeOnTheScreen();
+    expect(screen.queryByLabelText(/10 meters/)).toBeNull();
+  });
+});
+
+describe('NavigationChromeV2 — next-step preview', () => {
+  test('B-001: shows short maneuver + road name, not the full raw sentence', async () => {
+    const twoStepRoute: V2ActiveRoute = {
+      ...route,
+      instructions: [
+        route.instructions[0],
+        {
+          id: 'i2',
+          text: 'Turn left at Rasta 11 & Rasta 04 Junction onto Rasta 09 & Rasta 01 Junction.',
+          distance: 40,
+          distanceM: 40,
+          routeIndex: 1,
+          type: 'left',
+          roadName: 'Rasta 05',
+          coordinate: { latitude: 24.903, longitude: 67.103 },
+        },
+      ],
+    };
+    await render(<NavigationChromeV2 overlay={baseOverlay({ route: twoStepRoute, instructions: twoStepRoute.instructions })} hasBaseMap />);
+
+    expect(screen.getByText('Then: Left Turn onto Rasta 05')).toBeOnTheScreen();
+    expect(screen.queryByText(/Turn left at Rasta 11/)).toBeNull();
+  });
+});
+
+describe('NavigationChromeV2 — next-step preview for an arrival maneuver', () => {
+  const arrivalStep = {
+    id: 'i2', text: 'Arrive at Gate 8', distance: 0, distanceM: 0, routeIndex: 1, type: 'arrival' as const,
+    coordinate: { latitude: 24.903, longitude: 67.103 },
+  };
+  const routeWith = (label: string): V2ActiveRoute => ({
+    ...route,
+    destination: { ...route.destination, label },
+    instructions: [route.instructions[0], arrivalStep],
+  });
+  const overlayFor = (r: V2ActiveRoute) => baseOverlay({ route: r, instructions: r.instructions });
+
+  test('arrival shows "Arrive at <route.destination.label>", not a bare "Arrive"', async () => {
+    await render(<NavigationChromeV2 overlay={overlayFor(routeWith('Gate 8'))} hasBaseMap />);
+    expect(screen.getByText('Then: Arrive at Gate 8')).toBeOnTheScreen();
+    expect(screen.queryByText('Then: Arrive')).toBeNull();
+  });
+
+  test('long destination label renders in full text (single line, tail-ellipsized by layout)', async () => {
+    const longName = 'Main Ijtema Ground Northern Parking Area Overflow Section Gate 12';
+    await render(<NavigationChromeV2 overlay={overlayFor(routeWith(longName))} hasBaseMap />);
+    expect(screen.getByText(`Then: Arrive at ${longName}`).props.numberOfLines).toBe(1);
+  });
+
+  test('blank destination label falls back without undefined/empty text', async () => {
+    await render(<NavigationChromeV2 overlay={overlayFor(routeWith('  '))} hasBaseMap />);
+    expect(screen.getByText('Then: Arrive at destination')).toBeOnTheScreen();
+    expect(screen.queryByText(/undefined|at\s*$/)).toBeNull();
+  });
+
+  test('ordinary next maneuver without a road name stays concise', async () => {
+    const r: V2ActiveRoute = { ...route, instructions: [route.instructions[0], { ...arrivalStep, type: 'right' as const }] };
+    await render(<NavigationChromeV2 overlay={overlayFor(r)} hasBaseMap />);
+    expect(screen.getByText('Then: Right Turn')).toBeOnTheScreen();
+  });
+
+  test('current arrival step shows the destination on the road-name line instead of "Continue ahead"', async () => {
+    const r: V2ActiveRoute = { ...route, instructions: [arrivalStep] };
+    await render(<NavigationChromeV2 overlay={overlayFor(r)} hasBaseMap />);
+    expect(screen.getAllByText('Gate 8').length).toBeGreaterThan(0);
+    expect(screen.queryByText('Continue ahead')).toBeNull();
+  });
+});
+
 describe('NavigationChromeV2 — direct outside guide', () => {
   test('owns maneuver and subordinate status surfaces in one ordered top stack', async () => {
     const outsideRoute: V2ActiveRoute = {
@@ -164,6 +244,28 @@ describe('NavigationChromeV2 — direct outside guide', () => {
     const stackContent = within(stack);
     expect(stackContent.getByText('Recalculating your route')).toBeOnTheScreen();
     expect(stackContent.queryByText('Base map unavailable. Offline route guidance continues.')).not.toBeOnTheScreen();
+  });
+
+  test('#156: GPS_LOST banner is an assertive live region so screen-reader users hear it unprompted', async () => {
+    await render(<NavigationChromeV2 overlay={baseOverlay({ gpsSignalState: 'GPS_LOST' })} hasBaseMap={false} />);
+
+    const banner = screen.getByText('Searching for GPS signal. Your position may be out of date.').parent;
+    expect(banner?.props.accessibilityLiveRegion).toBe('assertive');
+  });
+
+  test('#156: weak-GPS banner is a polite live region', async () => {
+    await render(<NavigationChromeV2 overlay={baseOverlay({ isWeakGps: true })} hasBaseMap={false} />);
+    expect(screen.getByText('Weak GPS signal detected. Route updates may be slower.').parent?.props.accessibilityLiveRegion).toBe('polite');
+  });
+
+  test('#156: reroute-hint banner is a polite live region', async () => {
+    await render(<NavigationChromeV2 overlay={baseOverlay({ rerouteStatusMessage: 'Recalculating your route' })} hasBaseMap={false} />);
+    expect(screen.getByText('Recalculating your route').parent?.props.accessibilityLiveRegion).toBe('polite');
+  });
+
+  test('#156: map-unavailable banner is a polite live region', async () => {
+    await render(<NavigationChromeV2 overlay={baseOverlay()} hasBaseMap={false} />);
+    expect(screen.getByText('Base map unavailable. Offline route guidance continues.').parent?.props.accessibilityLiveRegion).toBe('polite');
   });
 
   test('shows accurate road provider identity while outside leg is active', async () => {

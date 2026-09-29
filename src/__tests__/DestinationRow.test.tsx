@@ -31,24 +31,24 @@ describe('DestinationRow (#96)', () => {
     expect(onPress).toHaveBeenCalledWith(routableBlock);
   });
 
-  it('DEST-AVAIL-08: Gate 18 (field-blocked) row is marked disabled for accessibility', async () => {
+  it('DEST-AVAIL-08: Gate 18 (field-blocked) row announces unavailability without claiming to be disabled (it still opens)', async () => {
     const gate18 = PublicDestinationsService.search('Gate 18')[0] as V2Place | undefined;
     expect(gate18).toBeDefined();
     expect(gate18!.isRoutable).toBe(false);
     await render(<DestinationRow place={gate18!} onPress={jest.fn()} />);
 
     const row = screen.getByLabelText(`${gate18!.name}, Gate, navigation unavailable`);
-    expect(row.props.accessibilityState?.disabled).toBe(true);
+    expect(row.props.accessibilityState?.disabled).not.toBe(true);
   });
 
-  it('DEST-AVAIL-09: Gate 19 (field-blocked) row is marked disabled for accessibility', async () => {
+  it('DEST-AVAIL-09: Gate 19 (field-blocked) row announces unavailability without claiming to be disabled (it still opens)', async () => {
     const gate19 = PublicDestinationsService.search('Gate 19')[0] as V2Place | undefined;
     expect(gate19).toBeDefined();
     expect(gate19!.isRoutable).toBe(false);
     await render(<DestinationRow place={gate19!} onPress={jest.fn()} />);
 
     const row = screen.getByLabelText(`${gate19!.name}, Gate, navigation unavailable`);
-    expect(row.props.accessibilityState?.disabled).toBe(true);
+    expect(row.props.accessibilityState?.disabled).not.toBe(true);
   });
 
   it('DEST-AVAIL-03/12: pressing a non-routable row still calls onPress (view-only navigation is intentional, not blocked)', async () => {

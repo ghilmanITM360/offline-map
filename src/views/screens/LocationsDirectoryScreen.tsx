@@ -4,7 +4,7 @@
  */
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { BackHandler, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Animated, BackHandler, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -15,10 +15,52 @@ import { useAppStore } from '../../store/useAppStore';
 import { V2Place } from '../../models/types';
 import { DestinationCategoryId, PublicDestinationsService } from '../../services/PublicDestinationsService';
 import { V2PlaceAdapter } from '../../services/V2PlaceAdapter';
+import { usePressScale } from '../../viewmodels/usePressScale';
 import { SearchBarField } from '../components/common/SearchBarField';
 import { DestinationRow } from '../components/directory/DestinationRow';
 import { DestinationBlockGrid } from '../components/directory/DestinationBlockGrid';
-import { radii, spacing, staticColors, typography } from '../../theme';
+import { radii, shadows, spacing, staticColors, typography } from '../../theme';
+
+// One accent per category, reused for its chip's active state, its row icon (see
+// DestinationRow's own CATEGORY_ACCENT) and the Blocks tile — a single color system
+// instead of one blue standing in for both "info chrome" and every category.
+const CATEGORY_ACCENT: Record<DestinationCategoryId, string> = {
+  blocks: staticColors.normalBlock,
+  gates: staticColors.gateAccent,
+  rastas: staticColors.info,
+  special_routes: staticColors.info,
+};
+
+/** Category chip as its own component — each needs its own press-scale Animated.Value,
+ * which usePressScale can't give out inside a .map() over Pressables directly. */
+function CategoryChip({
+  label,
+  active,
+  accent,
+  onPress,
+}: {
+  label: string;
+  active: boolean;
+  accent: string;
+  onPress: () => void;
+}) {
+  const { scale, onPressIn, onPressOut } = usePressScale(0.94);
+  return (
+    <Animated.View style={{ transform: [{ scale }] }}>
+      <Pressable
+        style={[styles.chip, active && { backgroundColor: accent, borderColor: accent }]}
+        onPress={onPress}
+        onPressIn={onPressIn}
+        onPressOut={onPressOut}
+        accessibilityRole="button"
+        accessibilityLabel={label}
+        accessibilityState={{ selected: active }}
+      >
+        <Text style={[styles.chipText, active && styles.chipTextActive]}>{label}</Text>
+      </Pressable>
+    </Animated.View>
+  );
+}
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'LocationsDirectory'>;
 
@@ -109,7 +151,7 @@ export function LocationsDirectoryScreen() {
       const places = PublicDestinationsService.getByCategory(category.id);
       return (
         <View key={category.id} style={styles.section}>
-          <Text style={styles.sectionTitle}>
+          <Text style={styles.sectionTitle} accessibilityRole="header">
             {category.label} ({places.length})
           </Text>
           {category.id === 'blocks' ? (
@@ -117,7 +159,7 @@ export function LocationsDirectoryScreen() {
           ) : (
             <View style={styles.sectionRows}>
               {places.map((place) => (
-                <DestinationRow key={place.id} place={place} onPress={handleSelect} />
+                <DestinationRow key={place.id} place={place} onPress={handleSelect} showCategory={false} />
               ))}
             </View>
           )}
@@ -147,10 +189,12 @@ export function LocationsDirectoryScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <View style={styles.header}>
-        <View style={styles.headerText}>
-          <Text style={styles.title}>Where do you want to go?</Text>
-          <Text style={styles.subtitle}>Find a block, gate, rasta, or route on the ground.</Text>
-        </View>
+        {/* Short, single-line title (was two lines: a long question plus a subtitle that
+            just repeated what the search placeholder already says) — freed the header
+            from wrapping awkwardly beside the Map pill and cut its vertical footprint. */}
+        <Text style={styles.title} numberOfLines={1}>
+          Find your way
+        </Text>
         <Pressable
           style={styles.viewMapButton}
           onPress={goToMap}
@@ -192,18 +236,13 @@ export function LocationsDirectoryScreen() {
         contentContainerStyle={styles.chipsContent}
       >
         {categories.map((category) => (
-          <Pressable
+          <CategoryChip
             key={category.id}
-            style={[styles.chip, activeCategory === category.id && styles.chipActive]}
+            label={category.label}
+            active={activeCategory === category.id}
+            accent={CATEGORY_ACCENT[category.id]}
             onPress={() => handleCategoryPress(category.id)}
-            accessibilityRole="button"
-            accessibilityLabel={category.label}
-            accessibilityState={{ selected: activeCategory === category.id }}
-          >
-            <Text style={[styles.chipText, activeCategory === category.id && styles.chipTextActive]}>
-              {category.label}
-            </Text>
-          </Pressable>
+          />
         ))}
       </ScrollView>
 
@@ -214,7 +253,7 @@ export function LocationsDirectoryScreen() {
           <>
             {!activeCategory && recentPlaces.length > 0 && (
               <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Recent</Text>
+                <Text style={styles.sectionTitle} accessibilityRole="header">Recent</Text>
                 <View style={styles.sectionRows}>
                   {recentPlaces.map((place) => (
                     <DestinationRow key={place.id} place={place} onPress={handleSelect} />
@@ -237,23 +276,16 @@ const styles = StyleSheet.create({
   },
   header: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: spacing.xl,
-    paddingTop: spacing.lg,
+    paddingTop: spacing.md,
     gap: spacing.md,
-  },
-  headerText: {
-    flex: 1,
   },
   title: {
     ...typography.sheet.title,
-    fontSize: 24,
-  },
-  subtitle: {
-    ...typography.sheet.body,
-    color: staticColors.textMuted,
-    marginTop: spacing.xs,
+    fontSize: 22,
+    flex: 1,
   },
   viewMapButton: {
     flexDirection: 'row',
@@ -281,6 +313,11 @@ const styles = StyleSheet.create({
     marginTop: spacing.lg,
     marginHorizontal: spacing.xl,
     justifyContent: 'center',
+    borderRadius: radii.lg,
+    // The app's central "find your destination" action (mission priority #1) — a
+    // little elevation over the plain-bordered field makes it read as the primary
+    // action on the screen, not just another input.
+    ...shadows.low,
   },
   searchIcon: {
     position: 'absolute',

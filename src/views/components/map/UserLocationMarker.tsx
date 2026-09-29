@@ -60,6 +60,7 @@ export function UserLocationMarker({ coordinate, accuracy, heading, isFollowing 
         tracksViewChanges={false}
         flat={validHeading}
         rotation={validHeading ? heading : 0}
+        accessibilityLabel={isRemembered ? 'Your last known location' : 'Your location'}
       >
         <View style={styles.wrap}>
           <Animated.View
@@ -78,7 +79,7 @@ export function UserLocationMarker({ coordinate, accuracy, heading, isFollowing 
             </View>
           </View>
           {isRemembered && (
-            <View style={styles.rememberedLabel}>
+            <View style={styles.rememberedLabel} accessibilityLiveRegion="polite">
               <Text style={styles.rememberedLabelText}>last known</Text>
             </View>
           )}

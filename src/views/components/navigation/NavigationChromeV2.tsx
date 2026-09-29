@@ -139,7 +139,18 @@ export function NavigationChromeV2({ overlay, hasBaseMap }: { overlay: Navigatio
               </View>
             </View>
           ) : currentStep && !arrived ? (
-            <View style={styles.instructionCard} accessibilityLabel={currentStep.text}>
+            <View
+              style={styles.instructionCard}
+              // Was currentStep.text, whose baked-in "for N meters" is the whole edge length,
+              // not the live distance to the maneuver shown on screen.
+              accessibilityLabel={[
+                InstructionService.maneuverLabel(currentStep.type),
+                maneuverDistance > 0 ? InstructionService.formatDistance(maneuverDistance, settings.distanceUnit) : '',
+                InstructionService.stepRoadLine(currentStep, route.destination.label),
+              ]
+                .filter(Boolean)
+                .join(', ')}
+            >
               <View style={styles.instructionIcon}>
                 <StepIcon type={currentStep.type} size={32} />
               </View>
@@ -149,11 +160,16 @@ export function NavigationChromeV2({ overlay, hasBaseMap }: { overlay: Navigatio
                   {maneuverDistance > 0 ? InstructionService.formatDistance(maneuverDistance, settings.distanceUnit) : ''}
                 </Text>
                 <Text style={styles.roadNameText} numberOfLines={1} ellipsizeMode="tail">
-                  {currentStep.roadName ?? InstructionService.ROAD_NAME_FALLBACK}
+                  {InstructionService.stepRoadLine(currentStep, route.destination.label)}
                 </Text>
                 {nextStep && (
+                  // B-001: was the full raw instruction sentence ("Then: Continue 40 meters
+                  // on Rasta 09 to Rasta 09 & Rasta 01 Junction.") — with numberOfLines={1} the
+                  // upcoming place name (the one useful part) was exactly what got clipped by
+                  // the ellipsis. Short maneuver + road name mirrors the current-step card's
+                  // own vocabulary and always fits.
                   <Text style={styles.nextStepText} numberOfLines={1}>
-                    Then: {nextStep.text}
+                    {InstructionService.nextStepPreview(nextStep, route.destination.label)}
                   </Text>
                 )}
               </View>
@@ -175,19 +191,19 @@ export function NavigationChromeV2({ overlay, hasBaseMap }: { overlay: Navigatio
             rerouting status, which outranks basemap degradation. Never stack more than one. */}
         <View testID="navigation-subordinate-surfaces" style={styles.topStatusStack}>
           {gpsSignalState === 'GPS_LOST' ? (
-            <View style={styles.weakGpsBanner}>
+            <View style={styles.weakGpsBanner} accessibilityLiveRegion="assertive">
               <Text style={styles.weakGpsText}>Searching for GPS signal. Your position may be out of date.</Text>
             </View>
           ) : isWeakGps ? (
-            <View style={styles.weakGpsBanner}>
+            <View style={styles.weakGpsBanner} accessibilityLiveRegion="polite">
               <Text style={styles.weakGpsText}>Weak GPS signal detected. Route updates may be slower.</Text>
             </View>
           ) : rerouteStatusMessage && !reroutePending ? (
-            <View style={styles.rerouteHintBanner}>
+            <View style={styles.rerouteHintBanner} accessibilityLiveRegion="polite">
               <Text style={styles.rerouteHintText}>{rerouteStatusMessage}</Text>
             </View>
           ) : !hasBaseMap ? (
-            <View style={styles.mapUnavailableBanner}>
+            <View style={styles.mapUnavailableBanner} accessibilityLiveRegion="polite">
               <Text style={styles.mapUnavailableText}>Base map unavailable. Offline route guidance continues.</Text>
             </View>
           ) : null}

@@ -4,10 +4,11 @@
  */
 
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
 import { ChevronRight, Milestone, Route, Signpost } from 'lucide-react-native';
 
 import { V2Place } from '../../../models/types';
+import { usePressScale } from '../../../viewmodels/usePressScale';
 import { radii, spacing, staticColors } from '../../../theme';
 
 const CATEGORY_LABEL: Record<V2Place['category'], string> = {
@@ -29,51 +30,75 @@ const CATEGORY_ACCENT: Partial<Record<V2Place['category'], string>> = {
   SpecialRoute: staticColors.info,
 };
 
-/** Full-width destination row — used for Gates, Rastas, Shahr-e-Pindal, and flat search results. */
-export function DestinationRow({ place, onPress }: { place: V2Place; onPress: (place: V2Place) => void }) {
+/** Full-width destination row — used for Gates, Rastas, Shahr-e-Pindal, and flat search results.
+ * `showCategory` hides the redundant "Gate"/"Rasta" subtitle when the row already sits under a
+ * section header naming that same category (browse view) — search results and Recent still mix
+ * categories, so they keep it. */
+export function DestinationRow({
+  place,
+  onPress,
+  showCategory = true,
+}: {
+  place: V2Place;
+  onPress: (place: V2Place) => void;
+  showCategory?: boolean;
+}) {
   const Icon = CATEGORY_ICON[place.category] ?? Signpost;
   const accent = CATEGORY_ACCENT[place.category] ?? staticColors.normalBlock;
   const categoryLabel = CATEGORY_LABEL[place.category] ?? place.category;
   // #96: unavailable rows stay tappable-to-view (map/sheet navigation is correct
   // today) — only the routing dead-end needs to be signaled earlier, so this never
-  // touches onPress or blocks the Pressable.
+  // touches onPress or blocks the Pressable. The unavailability is carried by the
+  // accessibilityLabel, NOT accessibilityState.disabled: TalkBack reads "disabled" as
+  // "double-tap does nothing", which would be false for a row that still opens.
   const isUnavailable = place.isRoutable === false;
+  const { scale, onPressIn, onPressOut } = usePressScale(0.98);
 
   return (
-    <Pressable
-      style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
-      onPress={() => onPress(place)}
-      accessibilityRole="button"
-      accessibilityLabel={
-        isUnavailable ? `${place.name}, ${categoryLabel}, navigation unavailable` : `${place.name}, ${categoryLabel}`
-      }
-      accessibilityState={{ disabled: isUnavailable }}
-    >
-      <View style={[styles.iconWrap, { backgroundColor: isUnavailable ? staticColors.neutralSurface : `${accent}1A` }]}>
-        <Icon size={20} color={isUnavailable ? staticColors.iconMuted : accent} />
-      </View>
-      <View style={styles.body}>
-        <View style={styles.nameRow}>
+    <Animated.View style={{ transform: [{ scale }] }}>
+      <Pressable
+        style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
+        onPress={() => onPress(place)}
+        onPressIn={onPressIn}
+        onPressOut={onPressOut}
+        accessibilityRole="button"
+        accessibilityLabel={
+          isUnavailable ? `${place.name}, ${categoryLabel}, navigation unavailable` : `${place.name}, ${categoryLabel}`
+        }
+      >
+        <View style={[styles.iconWrap, { backgroundColor: isUnavailable ? staticColors.neutralSurface : `${accent}1A` }]}>
+          <Icon size={20} color={isUnavailable ? staticColors.iconMuted : accent} />
+        </View>
+        <View style={styles.body}>
           <Text style={[styles.name, isUnavailable && styles.nameMuted]} numberOfLines={1} ellipsizeMode="tail">
             {place.name}
           </Text>
+          {/* Own line, not squeezed onto the name's baseline — a long English name was
+              truncating the Urdu name first, and Urdu script reads better at its own
+              size than a cramped secondary-label size. */}
           {place.urduName ? (
             <Text style={styles.nameSecondary} numberOfLines={1} ellipsizeMode="tail">
               {place.urduName}
             </Text>
           ) : null}
+          {showCategory ? (
+            <Text style={styles.subtitle} numberOfLines={1} ellipsizeMode="tail">
+              {categoryLabel}
+              {place.unavailableReason ? ' · Not yet available for routing' : ''}
+            </Text>
+          ) : isUnavailable ? (
+            <View style={styles.unavailableBadge}>
+              <Text style={styles.unavailableBadgeText}>Not available yet</Text>
+            </View>
+          ) : null}
         </View>
-        <Text style={styles.subtitle} numberOfLines={1} ellipsizeMode="tail">
-          {categoryLabel}
-          {place.unavailableReason ? ' · Not yet available for routing' : ''}
-        </Text>
-      </View>
-      <ChevronRight size={18} color={staticColors.iconFaint} />
-    </Pressable>
+        <ChevronRight size={18} color={staticColors.iconMuted} />
+      </Pressable>
+    </Animated.View>
   );
 }
 
-const ROW_MIN_HEIGHT = 60;
+const ROW_MIN_HEIGHT = 76;
 
 const styles = StyleSheet.create({
   row: {
@@ -84,6 +109,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     gap: spacing.md,
     backgroundColor: staticColors.white,
+    borderBottomWidth: 1,
+    borderBottomColor: staticColors.borderLight,
   },
   rowPressed: {
     backgroundColor: staticColors.neutralSurface,
@@ -99,28 +126,37 @@ const styles = StyleSheet.create({
     flex: 1,
     minWidth: 0,
   },
-  nameRow: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    gap: spacing.xs,
-  },
   name: {
     fontSize: 16,
     fontWeight: '600',
     color: staticColors.textPrimary,
-    flexShrink: 1,
   },
   nameMuted: {
     color: staticColors.textSecondaryStrong,
   },
   nameSecondary: {
-    fontSize: 13,
-    color: staticColors.textMuted,
-    flexShrink: 1,
+    // Darker than subtitle (below) — clear two-step bilingual hierarchy: English name
+    // strongest, Urdu name next, category/status label lightest.
+    fontSize: 15,
+    color: staticColors.textSecondaryStrong,
+    marginTop: 1,
   },
   subtitle: {
     fontSize: 13,
     color: staticColors.textMuted,
     marginTop: 2,
+  },
+  unavailableBadge: {
+    alignSelf: 'flex-start',
+    marginTop: 4,
+    paddingHorizontal: spacing.xs,
+    paddingVertical: 2,
+    borderRadius: radii.sm,
+    backgroundColor: `${staticColors.textMuted}1A`,
+  },
+  unavailableBadgeText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: staticColors.textSecondaryStrong,
   },
 });

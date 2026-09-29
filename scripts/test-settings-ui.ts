@@ -34,7 +34,7 @@ assert(settings.includes('handleRedownloadMap'), 'Update Map row must be functio
 assert(settings.includes('handleDeleteMap'), 'Delete Map row must be functional');
 assert(settings.includes("navigation.navigate('AppGuide')"), 'App Guide row must be functional');
 
-assert(settings.includes("disabled={type !== 'toggle' && !onPress}"), 'Info-only rows must not look or behave like active buttons');
+assert(settings.includes('disabled={!isToggle && !onPress}'), 'Info-only rows must not look or behave like active buttons');
 assert(settings.includes('Download Date') && settings.includes('Map Size'), 'Offline info rows must remain info-only');
 assert(settings.includes('Developer Mode') && settings.includes('__DEV__'), 'Developer Mode must be hidden outside development builds');
 assert(appStore.includes('persist') && appStore.includes('settings'), 'Settings must persist through app restarts');

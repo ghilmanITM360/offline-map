@@ -86,4 +86,12 @@ describe('NavigationMapLayersV1 marker ownership', () => {
     expect(screen.queryByTestId('navigation-user-location-marker')).not.toBeOnTheScreen();
     expectNoBrowseMarkerSet();
   });
+
+  test('#157: START, destination, and user markers expose an accessible name', async () => {
+    await render(<NavigationMapLayersV1 overlay={overlay()} />);
+
+    expect(screen.getByTestId('navigation-start-marker').props.accessibilityLabel).toBe('Start');
+    expect(screen.getByTestId('navigation-destination-marker').props.accessibilityLabel).toBeTruthy();
+    expect(screen.getByTestId('navigation-user-location-marker').props.accessibilityLabel).toBe('Your location');
+  });
 });

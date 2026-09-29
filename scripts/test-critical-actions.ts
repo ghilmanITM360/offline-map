@@ -90,7 +90,7 @@ assert(
   'Settings Location Permission should explain Manage behavior',
 );
 assert(
-  settingsScreen.includes("disabled={type !== 'toggle' && !onPress}"),
+  settingsScreen.includes('disabled={!isToggle && !onPress}'),
   'Settings info-only rows should be visually and interactively non-actionable',
 );
 assert(settingsScreen.includes('Voice Language'), 'Settings should label speech locale as Voice Language');

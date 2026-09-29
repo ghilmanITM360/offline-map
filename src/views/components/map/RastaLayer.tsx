@@ -81,6 +81,7 @@ function RastaLayerImpl({ rastas, variant, focused = false, keyPrefix, onPressRa
                 strokeWidth={16}
                 zIndex={20}
                 tappable
+                accessibilityLabel={rasta.label}
                 onPress={(e) => onPressRasta(rasta.sourceId ?? rasta.id, e.nativeEvent.coordinate)}
               />
             )}

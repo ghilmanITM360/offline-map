@@ -52,6 +52,23 @@ describe('MapLabelOverlay', () => {
     expect(label.props.numberOfLines).toBeUndefined();
   });
 
+  it('speaks item.accessibilityLabel over an abbreviated LOD text, for pressable and passive labels', async () => {
+    const pointForCoordinate = jest.fn(() => Promise.resolve({ x: 100, y: 100 }));
+    await render(
+      <MapLabelOverlay
+        mapRef={makeMapRef(pointForCoordinate)}
+        items={[
+          gateItem({ id: 'g12', text: '12', variant: 'number', accessibilityLabel: 'Gate 12', onPress: jest.fn() }),
+          gateItem({ id: 'g13', text: 'G13', variant: 'compact', accessibilityLabel: 'Gate 13' }),
+        ]}
+      />,
+    );
+
+    expect(await screen.findByLabelText('Gate 12')).toBeOnTheScreen();
+    expect(screen.getByLabelText('Gate 13')).toBeOnTheScreen();
+    expect(screen.queryByLabelText('12')).toBeNull();
+  });
+
   it('stacks items by zPriority so a selected gate paints above a lower-priority label', async () => {
     const pointForCoordinate = jest.fn(() => Promise.resolve({ x: 50, y: 50 }));
     await render(
@@ -159,6 +176,19 @@ describe('MapLabelOverlay', () => {
     });
 
     await waitFor(() => expect(screen.queryByText('Selected Hidden Gate')).not.toBeOnTheScreen());
+  });
+
+  it('#157: exposes an accessible name for a non-interactive label (no onPress)', async () => {
+    const pointForCoordinate = jest.fn(() => Promise.resolve({ x: 100, y: 100 }));
+    await render(
+      <MapLabelOverlay
+        mapRef={makeMapRef(pointForCoordinate)}
+        items={[gateItem({ id: 'gate_readonly', text: 'Gate 09', secondaryText: 'گیٹ 09' })]}
+      />,
+    );
+
+    const label = await screen.findByLabelText('Gate 09, گیٹ 09');
+    expect(label).toBeOnTheScreen();
   });
 
   it('does not update state or warn after unmount while a projection is still in flight', async () => {

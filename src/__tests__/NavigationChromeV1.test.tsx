@@ -86,6 +86,56 @@ describe('NavigationChromeV1 — Exit/recenter/mute touch targets', () => {
     expect(screen.getByText('Gate 8')).toBeOnTheScreen();
   });
 
+  test('B-001: next-step preview shows short maneuver + road name, not the full raw sentence', async () => {
+    const twoStepInstructions = [
+      { id: 'i1', text: 'Head toward Gate 8', distance: 300, type: 'straight', coordinate: { latitude: 24.9, longitude: 67.1 } },
+      {
+        id: 'i2',
+        text: 'Turn left at Rasta 11 & Rasta 04 Junction onto Rasta 09 & Rasta 01 Junction.',
+        distance: 40,
+        type: 'left',
+        roadName: 'Rasta 05',
+        coordinate: { latitude: 24.903, longitude: 67.103 },
+      },
+    ];
+    await render(<NavigationChromeV1 overlay={baseOverlay({ instructions: twoStepInstructions })} hasBaseMap />);
+
+    expect(screen.getByText('Then: Left Turn onto Rasta 05')).toBeOnTheScreen();
+    expect(screen.queryByText(/Turn left at Rasta 11/)).toBeNull();
+  });
+
+  describe('next-step preview for an arrival maneuver names the destination', () => {
+    const arrivalStep = { id: 'i2', text: 'Arrive at Gate 8', distance: 0, type: 'arrival', coordinate: { latitude: 24.903, longitude: 67.103 } };
+    const withArrival = [instructions[0], arrivalStep];
+
+    test('arrival shows "Arrive at <destination.name>", not a bare "Arrive"', async () => {
+      await render(<NavigationChromeV1 overlay={baseOverlay({ instructions: withArrival })} hasBaseMap />);
+      expect(screen.getByText('Then: Arrive at Gate 8')).toBeOnTheScreen();
+      expect(screen.queryByText('Then: Arrive')).toBeNull();
+    });
+
+    test('long destination name renders in full text (single line, tail-ellipsized by layout)', async () => {
+      const longName = 'Main Ijtema Ground Northern Parking Area Overflow Section Gate 12';
+      await render(
+        <NavigationChromeV1 overlay={baseOverlay({ instructions: withArrival, destination: { ...destination, name: longName } })} hasBaseMap />,
+      );
+      const text = screen.getByText(`Then: Arrive at ${longName}`);
+      expect(text.props.numberOfLines).toBe(1);
+    });
+
+    test.each([null, { ...destination, name: '   ' }])('missing destination name (%p) falls back without undefined/empty text', async (dest) => {
+      await render(<NavigationChromeV1 overlay={baseOverlay({ instructions: withArrival, destination: dest as Place | null })} hasBaseMap />);
+      expect(screen.getByText('Then: Arrive at destination')).toBeOnTheScreen();
+      expect(screen.queryByText(/undefined|at\s*$/)).toBeNull();
+    });
+
+    test('current arrival step shows the destination on the road-name line instead of "Continue ahead"', async () => {
+      await render(<NavigationChromeV1 overlay={baseOverlay({ instructions: [arrivalStep] })} hasBaseMap />);
+      expect(screen.getByText('Arrive')).toBeOnTheScreen();
+      expect(screen.queryByText('Continue ahead')).toBeNull();
+    });
+  });
+
   test('keeps base-map status below the maneuver in the shared top stack', async () => {
     await render(<NavigationChromeV1 overlay={baseOverlay()} hasBaseMap={false} />);
 
@@ -121,6 +171,21 @@ describe('NavigationChromeV1 — Exit/recenter/mute touch targets', () => {
     const stackContent = within(stack);
     expect(stackContent.getByText('Recalculating your route')).toBeOnTheScreen();
     expect(stackContent.queryByText('Base map unavailable. Offline route guidance continues.')).not.toBeOnTheScreen();
+  });
+
+  test('#156: weak-GPS banner is a polite live region', async () => {
+    await render(<NavigationChromeV1 overlay={baseOverlay({ isWeakGps: true })} hasBaseMap={false} />);
+    expect(screen.getByText('Weak GPS signal detected. Route updates may be slower.').parent?.props.accessibilityLiveRegion).toBe('polite');
+  });
+
+  test('#156: reroute-hint banner is a polite live region', async () => {
+    await render(<NavigationChromeV1 overlay={baseOverlay({ rerouteStatusMessage: 'Recalculating your route' })} hasBaseMap={false} />);
+    expect(screen.getByText('Recalculating your route').parent?.props.accessibilityLiveRegion).toBe('polite');
+  });
+
+  test('#156: map-unavailable banner is a polite live region', async () => {
+    await render(<NavigationChromeV1 overlay={baseOverlay()} hasBaseMap={false} />);
+    expect(screen.getByText('Base map unavailable. Offline route guidance continues.').parent?.props.accessibilityLiveRegion).toBe('polite');
   });
 
   test('pressing Exit requests confirmation instead of stopping directly', async () => {

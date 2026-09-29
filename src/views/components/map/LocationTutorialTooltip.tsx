@@ -4,9 +4,10 @@
  */
 
 import React, { useEffect, useRef } from 'react';
-import { Animated, StyleSheet, Text } from 'react-native';
+import { AccessibilityInfo, Animated, StyleSheet, Text } from 'react-native';
 
 import { staticColors } from '../../../theme';
+import { useReducedMotion } from '../../../viewmodels/useReducedMotion';
 
 const AUTO_DISMISS_MS = 3200;
 const FADE_MS = 220;
@@ -23,17 +24,32 @@ interface LocationTutorialTooltipProps {
  * is gated by the persisted hasSeenLocationTutorial flag so it never appears again. */
 export function LocationTutorialTooltip({ onDismiss, bottomOffset }: LocationTutorialTooltipProps) {
   const opacity = useRef(new Animated.Value(0)).current;
+  const reducedMotion = useReducedMotion();
+
+  // Same one-shot pattern as NavigationChromeV2's arrival announcement (#64): the tooltip
+  // is pointerEvents="none" plain text with no focus/live-region wiring, so without this
+  // TalkBack users get no signal it ever appeared.
+  useEffect(() => {
+    AccessibilityInfo.announceForAccessibility("You're here. Your location is shown on the map.");
+  }, []);
 
   useEffect(() => {
-    const show = Animated.timing(opacity, { toValue: 1, duration: FADE_MS, useNativeDriver: true });
-    show.start();
+    if (reducedMotion) {
+      opacity.setValue(1);
+    } else {
+      Animated.timing(opacity, { toValue: 1, duration: FADE_MS, useNativeDriver: true }).start();
+    }
 
     const dismissTimer = setTimeout(() => {
-      Animated.timing(opacity, { toValue: 0, duration: FADE_MS, useNativeDriver: true }).start(() => onDismiss());
+      if (reducedMotion) {
+        onDismiss();
+      } else {
+        Animated.timing(opacity, { toValue: 0, duration: FADE_MS, useNativeDriver: true }).start(() => onDismiss());
+      }
     }, AUTO_DISMISS_MS);
 
     return () => clearTimeout(dismissTimer);
-  }, []);
+  }, [reducedMotion]);
 
   return (
     <Animated.View pointerEvents="none" style={[styles.wrap, { bottom: bottomOffset, opacity }]}>

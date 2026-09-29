@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useRef, useCallback, useEffect } from 'react';
+import { useRef, useCallback, useEffect, useState } from 'react';
 import { Paths } from 'expo-file-system';
 import { useAppStore } from '../store/useAppStore';
 import { OfflineMapService } from '../services/OfflineMapService';
@@ -14,6 +14,11 @@ import { OfflineMapStatusService } from '../services/OfflineMapStatusService';
 import { OfflineDataService } from '../services/OfflineDataService';
 
 const REDIRECT_DELAY_MS = 1200;
+// #153 Finding 4: this is the single source of truth for the "Continue to Map" fallback —
+// previously DownloadMapScreen ran its own independent timer for this, uncoordinated with
+// the auto-redirect timer below. Now both are driven from here, gated on whether the
+// auto-redirect actually navigated away (hasNavigatedRef).
+const REDIRECT_FALLBACK_MS = 2600;
 const TILE_DOWNLOAD_MAX_RETRIES = 2;
 const BYTES_PER_TILE_ESTIMATE = 0.08 * 1024 * 1024;
 const STORAGE_SAFETY_MARGIN_BYTES = 20 * 1024 * 1024;
@@ -72,6 +77,8 @@ export function useDownloadMapViewModel() {
   const completionLockRef = useRef(false);
   const downloadInProgressRef = useRef(false);
   const downloadWorkerRef = useRef<Promise<void> | null>(null);
+  const hasNavigatedRef = useRef(false);
+  const [showContinueFallback, setShowContinueFallback] = useState(false);
 
   useEffect(() => {
     return () => {
@@ -95,12 +102,28 @@ export function useDownloadMapViewModel() {
       try {
         logDownload('navigation triggered');
         navigation.reset({ index: 0, routes: [{ name: 'Main' }] });
+        hasNavigatedRef.current = true;
       } catch (error) {
         logDownload('navigation failed', error);
       }
     },
     [],
   );
+
+  // #153 Finding 4: single source of truth for the "Continue to Map" fallback button —
+  // only arms if the auto-redirect above hasn't already navigated away by then.
+  useEffect(() => {
+    if (downloadState.phase !== 'complete') {
+      setShowContinueFallback(false);
+      return;
+    }
+    const timeout = setTimeout(() => {
+      if (!hasNavigatedRef.current && isMountedRef.current) {
+        setShowContinueFallback(true);
+      }
+    }, REDIRECT_FALLBACK_MS);
+    return () => clearTimeout(timeout);
+  }, [downloadState.phase]);
 
   const applyFailureState = useCallback(
     (descriptor: DownloadFailureDescriptor) => {
@@ -495,7 +518,12 @@ export function useDownloadMapViewModel() {
       await OfflineMapStatusService.setDownloadedFlag(false);
       await OfflineMapStatusService.setGraphOnlyMode(false);
       await OfflineMapStatusService.setSkippedOnlineMode(true);
-      setOfflineMapStatus('not_downloaded', 'Using online mode. You can download the offline map anytime from Settings.');
+      setOfflineMapStatus(
+        'not_downloaded',
+        OfflineMapService.isOfflineTileDownloadAvailable()
+          ? 'Using online mode. You can download the offline map anytime from Settings.'
+          : 'Using online mode. The picture map needs internet; Ijtema directions still work offline.',
+      );
       safeSetDownloadState({ phase: 'idle', errorMessage: null, resumable: false });
       triggerNavigationToMain(navigation);
     },
@@ -541,6 +569,7 @@ export function useDownloadMapViewModel() {
 
   return {
     downloadState,
+    showContinueFallback,
     offlineTileDownloadAvailable: OfflineMapService.isOfflineTileDownloadAvailable(),
     startDownload,
     pauseDownload,

@@ -103,6 +103,23 @@ describe('usePermissionViewModel — requestPermission denial handling', () => {
     });
     expect(Alert.alert).toHaveBeenCalledTimes(2);
   });
+
+  it('PERM-006: a rejected permission-request promise surfaces a visible Alert, not just a console log', async () => {
+    (Location.requestForegroundPermissionsAsync as jest.Mock).mockRejectedValueOnce(new Error('native module unavailable'));
+    jest.spyOn(console, 'error').mockImplementation(() => {});
+
+    const { result } = await renderHook(() => usePermissionViewModel());
+    await act(async () => {
+      await result.current.requestPermission(mockNavigation);
+    });
+
+    expect(Alert.alert).toHaveBeenCalledWith(
+      "Couldn't check location permission",
+      expect.any(String),
+      expect.any(Array),
+    );
+    expect(result.current.loading).toBe(false);
+  });
 });
 
 describe('usePermissionViewModel — Continue Without Location persistence', () => {

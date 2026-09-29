@@ -30,6 +30,8 @@ export interface MapLabelItem {
    * cross-layer stacking (e.g. a selected gate label over a block label) is unchanged. */
   zPriority: number;
   onPress?: () => void;
+  /** Spoken name when `text` is an abbreviated LOD form (e.g. gate "12" -> "Gate 12"). */
+  accessibilityLabel?: string;
 }
 
 export interface MapLabelOverlayHandle {
@@ -262,6 +264,7 @@ export const MapLabelOverlay = React.forwardRef<MapLabelOverlayHandle, MapLabelO
           }
 
           const labelStyles = getLabelStyles(item);
+          const spokenLabel = item.accessibilityLabel ?? (item.secondaryText ? `${item.text}, ${item.secondaryText}` : item.text);
           const content = (
             <View style={labelStyles.container} onLayout={(e) => handleItemLayout(item.id, e)}>
               <Text style={labelStyles.text}>{item.text}</Text>
@@ -284,14 +287,20 @@ export const MapLabelOverlay = React.forwardRef<MapLabelOverlayHandle, MapLabelO
                 onPress={item.onPress}
                 hitSlop={8}
                 accessibilityRole="button"
-                accessibilityLabel={item.secondaryText ? `${item.text}, ${item.secondaryText}` : item.text}
+                accessibilityLabel={spokenLabel}
               >
                 {content}
               </Pressable>
             );
           }
           return (
-            <View key={item.id} style={wrapperStyle} pointerEvents="none">
+            <View
+              key={item.id}
+              style={wrapperStyle}
+              pointerEvents="none"
+              accessible
+              accessibilityLabel={spokenLabel}
+            >
               {content}
             </View>
           );

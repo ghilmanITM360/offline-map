@@ -78,7 +78,7 @@ assert(
   'Navigation arrival sheet must offer both Recenter map and Done actions',
 );
 
-assert(settings.includes("disabled={type !== 'toggle' && !onPress}"), 'Settings info-only rows must be disabled');
+assert(settings.includes('disabled={!isToggle && !onPress}'), 'Settings info-only rows must be disabled');
 assert(settings.includes('numberOfLines={1}') && settings.includes('ellipsizeMode="tail"'), 'Settings labels/values must constrain long text');
 assert(settings.includes('Alert.alert') && settings.includes('Delete offline map data?'), 'Settings delete-map action must require confirmation');
 assert(settings.includes('App Guide') && settings.includes("navigation.navigate('AppGuide')"), 'Settings App Guide row must navigate');

@@ -83,6 +83,11 @@ export function usePermissionViewModel() {
       }
     } catch (error) {
       console.error(error);
+      Alert.alert(
+        "Couldn't check location permission",
+        'Something went wrong. Please try again, or continue without location for now.',
+        [{ text: 'OK' }],
+      );
     } finally {
       setLoading(false);
     }

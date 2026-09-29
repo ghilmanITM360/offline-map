@@ -105,11 +105,13 @@ export function NavigationChromeV1({ overlay, hasBaseMap }: { overlay: Navigatio
                 {currentStep.distance > 0 ? InstructionService.formatDistance(currentStep.distance, settings.distanceUnit) : ''}
               </Text>
               <Text style={styles.roadNameText} numberOfLines={1} ellipsizeMode="tail">
-                {currentStep.roadName ?? InstructionService.ROAD_NAME_FALLBACK}
+                {InstructionService.stepRoadLine(currentStep, destination?.name)}
               </Text>
               {nextStep && (
+                // B-001: was the full raw instruction sentence, clipped by numberOfLines={1}
+                // at exactly the upcoming place name — see NavigationChromeV2's identical fix.
                 <Text style={styles.nextStepText} numberOfLines={1}>
-                  Then: {nextStep.text}
+                  {InstructionService.nextStepPreview(nextStep, destination?.name)}
                 </Text>
               )}
             </View>
@@ -129,15 +131,15 @@ export function NavigationChromeV1({ overlay, hasBaseMap }: { overlay: Navigatio
             outranks basemap degradation. Never stack more than one. */}
         <View style={styles.topStatusStack}>
           {isWeakGps ? (
-            <View style={styles.weakGpsBanner}>
+            <View style={styles.weakGpsBanner} accessibilityLiveRegion="polite">
               <Text style={styles.weakGpsText}>Weak GPS signal detected. Route updates may be slower.</Text>
             </View>
           ) : rerouteStatusMessage && !reroutePending ? (
-            <View style={styles.rerouteHintBanner}>
+            <View style={styles.rerouteHintBanner} accessibilityLiveRegion="polite">
               <Text style={styles.rerouteHintText}>{rerouteStatusMessage}</Text>
             </View>
           ) : !hasBaseMap ? (
-            <View style={styles.mapUnavailableBanner}>
+            <View style={styles.mapUnavailableBanner} accessibilityLiveRegion="polite">
               <Text style={styles.mapUnavailableText}>Base map unavailable. Offline route guidance continues.</Text>
             </View>
           ) : null}

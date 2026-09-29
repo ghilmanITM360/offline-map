@@ -56,6 +56,7 @@ function FacilityLayerImpl({ places, selectedPlaceId, onPressFacility }: Facilit
             anchor={{ x: 0.5, y: 0.5 }}
             zIndex={isSelected ? 15 : 6}
             tracksViewChanges={false}
+            accessibilityLabel={place.name}
             onPress={(e) => onPressFacility(place, e.nativeEvent.coordinate)}
           >
             <View style={styles.facilityMarkerHitArea}>

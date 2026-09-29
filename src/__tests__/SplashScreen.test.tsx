@@ -500,7 +500,8 @@ describe('SplashScreen — unrelated dependency failures cannot bypass StartupMa
     await renderAndSettleHydration();
 
     expect(mockReplaceSpy).toHaveBeenCalledTimes(1);
-    expect(mockReplaceSpy).toHaveBeenCalledWith('Welcome');
+    // #153 Finding 3: a genuine read failure also tells Welcome why it's reappearing.
+    expect(mockReplaceSpy).toHaveBeenCalledWith('Welcome', { onboardingStatusReadFailed: true });
     expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('Failed to read welcome status'), expect.any(Error));
     errorSpy.mockRestore();
   });
@@ -512,7 +513,8 @@ describe('SplashScreen — unrelated dependency failures cannot bypass StartupMa
     await renderAndSettleHydration();
 
     expect(mockReplaceSpy).toHaveBeenCalledTimes(1);
-    expect(mockReplaceSpy).toHaveBeenCalledWith('Permission');
+    // #153 Finding 2: Splash always routes to Permission via the returning-user path.
+    expect(mockReplaceSpy).toHaveBeenCalledWith('Permission', { revoked: true });
     expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('Failed to read location permission status'), expect.any(Error));
     errorSpy.mockRestore();
   });
@@ -525,7 +527,7 @@ describe('SplashScreen — unrelated dependency failures cannot bypass StartupMa
     await renderAndSettleHydration();
 
     expect(mockReplaceSpy).toHaveBeenCalledTimes(1);
-    expect(mockReplaceSpy).toHaveBeenCalledWith('Permission');
+    expect(mockReplaceSpy).toHaveBeenCalledWith('Permission', { revoked: true });
     expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('Failed to read the skipped-location-permission preference'), expect.any(Error));
     errorSpy.mockRestore();
   });
@@ -621,7 +623,8 @@ describe('SplashScreen — unrelated dependency failures cannot bypass StartupMa
     await renderAndSettleHydration();
 
     expect(mockReplaceSpy).toHaveBeenCalledTimes(1);
-    expect(mockReplaceSpy).toHaveBeenCalledWith('Welcome'); // hasSeenWelcome falls back to false, which StartupManager prioritizes above everything else
+    // hasSeenWelcome falls back to false, which StartupManager prioritizes above everything else
+    expect(mockReplaceSpy).toHaveBeenCalledWith('Welcome', { onboardingStatusReadFailed: true });
     errorSpy.mockRestore();
   });
 

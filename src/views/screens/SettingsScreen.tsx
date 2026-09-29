@@ -92,7 +92,9 @@ export function SettingsScreen() {
     description,
     danger,
   }: SettingItemProps) => {
-    const rowPressHandler = type === 'toggle' ? onToggle : onPress;
+    const isToggle = type === 'toggle';
+    const rowPressHandler = isToggle ? onToggle : onPress;
+    const accessibleLabel = description ? `${label}, ${description}` : label;
     return (
       <Pressable
         android_ripple={{ color: `${theme.primary}22` }}
@@ -100,11 +102,14 @@ export function SettingsScreen() {
           styles.settingItem,
           {
             borderBottomColor: theme.border,
-            opacity: type !== 'toggle' && !onPress ? 0.88 : (pressed ? 0.72 : 1),
+            opacity: !isToggle && !onPress ? 0.88 : (pressed ? 0.72 : 1),
           },
         ]}
-        disabled={type !== 'toggle' && !onPress}
+        disabled={!isToggle && !onPress}
         onPress={rowPressHandler}
+        accessibilityRole={isToggle ? 'switch' : 'button'}
+        accessibilityLabel={accessibleLabel}
+        accessibilityState={isToggle ? { checked: !!value } : { disabled: !isToggle && !onPress }}
       >
       <View style={styles.settingMain}>
         <View style={styles.settingLabelContainer}>
@@ -124,6 +129,10 @@ export function SettingsScreen() {
             onValueChange={onToggle}
             trackColor={{ false: theme.border, true: theme.chipActive }}
             thumbColor={value ? theme.accent : staticColors.switchThumbOff}
+            // The row Pressable already carries the switch's accessible role/label/state —
+            // see LayersSheet.tsx's OverlayRow for why (avoids a redundant second
+            // TalkBack stop announcing "switch, on/off" a second time).
+            importantForAccessibility="no-hide-descendants"
           />
         ) : (
           <Text style={[styles.settingValue, { color: danger ? theme.danger : theme.primary }]} numberOfLines={1} ellipsizeMode="tail">
@@ -245,7 +254,7 @@ export function SettingsScreen() {
             label="North-up Map"
             value={settings.keepNorthFixed}
             onToggle={() => handleToggle('keepNorthFixed')}
-            description="Keep north fixed; disable heading-up rotation"
+            description="Map always points north instead of turning to match your walking direction"
           />
         </View>
 

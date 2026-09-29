@@ -32,17 +32,34 @@ describe('PublicDestinationsService', () => {
     });
   });
 
-  it('excludes any gate the map itself marks as not normally searchable', () => {
-    // Data-driven against the real source (rather than a hardcoded id list) — there are no
-    // unavailable gates in the current dataset, but this still guards the exclusion logic
-    // (see V2PlaceAdapter.getAllPlaces' userFacingBehavior.normalSearch filter) the moment
-    // one is ever added.
-    const expectedSearchableIds = new Set(
-      IJTEMA_GATES.filter((gate) => gate.userFacingBehavior.normalSearch === 'searchable').map((gate) => gate.id),
+  it('#146: browse shows every gate with a real coordinate, same as search, marked unavailable rather than hidden', () => {
+    // Product decision (#146): a gate blocked on ground-truth connector verification
+    // (e.g. Gate 18/19) still has a real, non-fabricated coordinate — it must appear
+    // consistently in both directory browse and search, disabled with a reason, not
+    // vanish from browse while still surfacing in search. Only a gate genuinely missing
+    // a coordinate (routingStatus === 'missing_coordinate') has nothing to show and stays
+    // excluded from both — none exist in the current dataset, but this still guards that
+    // exclusion the moment one is added.
+    const expectedIds = new Set(
+      IJTEMA_GATES.filter((gate) => gate.routingStatus !== 'missing_coordinate').map((gate) => gate.id),
     );
     const directoryGateIds = PublicDestinationsService.getByCategory('gates').map((g) => g.id);
-    expect(directoryGateIds).toHaveLength(expectedSearchableIds.size);
-    directoryGateIds.forEach((id) => expect(expectedSearchableIds.has(id)).toBe(true));
+    expect(directoryGateIds).toHaveLength(expectedIds.size);
+    directoryGateIds.forEach((id) => expect(expectedIds.has(id)).toBe(true));
+
+    const unavailableGates = IJTEMA_GATES.filter((gate) => gate.userFacingBehavior.normalSearch !== 'searchable');
+    expect(unavailableGates.length).toBeGreaterThan(0); // sanity: this dataset actually has a case to test
+    unavailableGates.forEach((gate) => {
+      const directoryPlace = PublicDestinationsService.getByCategory('gates').find((g) => g.id === gate.id);
+      const searchPlace = PublicDestinationsService.search(gate.name.en).find((p) => p.id === gate.id);
+      expect(directoryPlace).toBeDefined();
+      expect(searchPlace).toBeDefined();
+      // Never routable, never silently presented as a normal navigable destination.
+      expect(directoryPlace!.isRoutable).toBe(false);
+      expect(directoryPlace!.unavailableReason).toBeTruthy();
+      expect(searchPlace!.isRoutable).toBe(false);
+      expect(searchPlace!.unavailableReason).toBe(directoryPlace!.unavailableReason);
+    });
   });
 
   it('sorts blocks in natural numeric order, not lexicographic order', () => {

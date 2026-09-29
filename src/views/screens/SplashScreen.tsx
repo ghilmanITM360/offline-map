@@ -50,8 +50,10 @@ export function SplashScreen() {
       // take down the whole Promise.all below and force a hardcoded route. StartupManager
       // remains the only place that decides the route; these fallbacks only decide what
       // StartupManager sees when a read genuinely failed.
+      let onboardingStatusReadFailed = false;
       const hasSeenWelcomePromise = OnboardingStatusService.hasSeenWelcome().catch((error) => {
         console.error('[SplashScreen] Failed to read welcome status — assuming onboarding is not complete.', error);
+        onboardingStatusReadFailed = true;
         return false;
       });
 
@@ -171,7 +173,19 @@ export function SplashScreen() {
         skippedOnlineModeEnabled,
         isConnected,
       });
-      navigation.replace(route);
+      // StartupManager only routes Splash to 'Permission' when Welcome was already seen,
+      // permission is not granted, and the user never chose "Continue Without Location"
+      // (a skip bypasses this route). That covers a permission revoked outside the app,
+      // but also a first ask interrupted by closing the app on the Permission screen —
+      // so `revoked` selects PermissionScreen's hedged "may have been turned off" copy,
+      // not a definite revocation claim (#153 Finding 2).
+      if (route === 'Permission') {
+        navigation.replace(route, { revoked: true });
+      } else if (route === 'Welcome' && onboardingStatusReadFailed) {
+        navigation.replace(route, { onboardingStatusReadFailed: true });
+      } else {
+        navigation.replace(route);
+      }
     };
 
     void checkStatus();
@@ -240,7 +254,11 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     fontSize: 15,
-    color: staticColors.entryGateBorder,
+    // SPLASH-UX-001: entryGateBorder (#A5D6A7) on arrivalGreen measured 3.12:1 —
+    // below the 4.5:1 WCAG AA floor for normal-size text. lightGreenSubtext is the
+    // same token already used for the Urdu title on this exact background and is
+    // independently verified at 4.56:1.
+    color: staticColors.lightGreenSubtext,
     marginTop: 8,
   },
 });

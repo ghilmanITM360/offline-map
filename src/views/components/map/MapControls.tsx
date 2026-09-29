@@ -3,13 +3,14 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React from 'react';
-import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { ActivityIndicator, Animated, Pressable, Text, View } from 'react-native';
 import { AlertTriangle, Check, Compass, Layers, LocateFixed, Minus, Plus } from 'lucide-react-native';
 
 import { mapControlStyles as styles } from './mapControlStyles';
 import { staticColors } from '../../../theme';
 import { CompassMode } from '../../../viewmodels/useCameraManager';
+import { useReducedMotion } from '../../../viewmodels/useReducedMotion';
 
 export interface MapControlsRecenter {
   /** 'active' = CameraManager is in FOLLOWING_USER mode (Google-Maps-style sustained
@@ -46,6 +47,24 @@ interface MapControlsProps {
  * offset), not the layout of what's inside it. */
 export function MapControls({ variant, compassMode, onLayers, onCompassToggle, onZoomIn, onZoomOut, recenter }: MapControlsProps) {
   const isHeadingFollow = compassMode === 'FOLLOW_HEADING';
+
+  // Confirms the recenter tap actually resolved — the icon otherwise hard-cuts from a
+  // spinner straight to a static checkmark with no feedback the action succeeded.
+  // React-Bits-inspired ("SpringCheck" pattern under Micro), adapted to RN's own Animated
+  // (this codebase's existing animation convention — see NavigationChromeV2,
+  // LocationTutorialTooltip — not react-native-reanimated, which nothing here uses yet).
+  const successScale = useRef(new Animated.Value(1)).current;
+  const reducedMotion = useReducedMotion();
+  useEffect(() => {
+    if (recenter?.state !== 'success') return;
+    if (reducedMotion) {
+      successScale.setValue(1);
+      return;
+    }
+    successScale.setValue(0.6);
+    Animated.spring(successScale, { toValue: 1, useNativeDriver: true, friction: 4, tension: 140 }).start();
+  }, [recenter?.state, reducedMotion, successScale]);
+
   return (
     <>
       {variant === 'browse' && (
@@ -69,7 +88,10 @@ export function MapControls({ variant, compassMode, onLayers, onCompassToggle, o
         <Compass size={22} color={isHeadingFollow ? staticColors.info : staticColors.iconMuted} />
       </Pressable>
       {variant === 'browse' && (
-        <View style={styles.controlHelperBadge}>
+        // Sighted-only label repeating the compass button's own accessibilityLabel above —
+        // without this, TalkBack stops on it as a second, redundant announcement right after
+        // the button itself (same class of bug already fixed for LayersSheet's OverlayRow).
+        <View style={styles.controlHelperBadge} importantForAccessibility="no-hide-descendants">
           <Text style={styles.controlHelperText}>{isHeadingFollow ? 'Compass' : 'North-up'}</Text>
         </View>
       )}
@@ -108,7 +130,9 @@ export function MapControls({ variant, compassMode, onLayers, onCompassToggle, o
             {recenter.state === 'loading' ? (
               <ActivityIndicator size="small" color={staticColors.recenterBlue} />
             ) : recenter.state === 'success' ? (
-              <Check size={24} color={staticColors.success} />
+              <Animated.View style={{ transform: [{ scale: successScale }] }}>
+                <Check size={24} color={staticColors.success} />
+              </Animated.View>
             ) : recenter.state === 'failure' ? (
               <AlertTriangle size={22} color={staticColors.gateAccent} />
             ) : (

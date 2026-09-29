@@ -28,6 +28,7 @@ import {
   WifiOff,
   X,
   LayoutGrid,
+  Search,
 } from 'lucide-react-native';
 import { BottomSheetModal, BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import { useNavigation, DrawerActions, CompositeNavigationProp } from '@react-navigation/native';
@@ -50,6 +51,7 @@ import { markerColors, markerSizes, shadows, staticColors } from '../../theme';
 import { getDistance } from 'geolib';
 import { GRAPH_VALIDATION, IJTEMA_DATA, LANDMARK_PLACES, MAP_BOUNDS } from '../../constants/data';
 import { Coordinate, Place, RoutePreview } from '../../models/types';
+import { OfflineMapService } from '../../services/OfflineMapService';
 import { PlaceDetailService } from '../../services/PlaceDetailService';
 import { FavoriteService } from '../../services/FavoriteService';
 import { useAppStore } from '../../store/useAppStore';
@@ -728,12 +730,19 @@ export function HomeScreen() {
   // Declutter only once an actual route exists to preview — not while directionsDestination
   // alone is set (still picking a start point), since ROUTE_PREVIEW now covers both.
   const routePreviewDeclutterActive = mode === 'ROUTE_PREVIEW' && !directionsDestination && !!activePreviewRoute;
-  const previewVisibleBlocks = routePreviewDeclutterActive
-    ? v2MapLayers.blocks.filter((block) => block.isSelected)
-    : v2MapLayers.visibleBlocks;
-  const previewVisibleGateMarkers = routePreviewDeclutterActive
-    ? v2MapLayers.gates.filter((gate) => gate.isSelected || gate.id === previewEntryGateId)
-    : v2MapLayers.visibleGateMarkers;
+  // Memoized: both feed mapLabelItems' useMemo deps — a fresh .filter() array per render
+  // would rebuild every map label on each HomeScreen render while previewing a route.
+  const previewVisibleBlocks = useMemo(
+    () => (routePreviewDeclutterActive ? v2MapLayers.blocks.filter((block) => block.isSelected) : v2MapLayers.visibleBlocks),
+    [routePreviewDeclutterActive, v2MapLayers.blocks, v2MapLayers.visibleBlocks],
+  );
+  const previewVisibleGateMarkers = useMemo(
+    () =>
+      routePreviewDeclutterActive
+        ? v2MapLayers.gates.filter((gate) => gate.isSelected || gate.id === previewEntryGateId)
+        : v2MapLayers.visibleGateMarkers,
+    [routePreviewDeclutterActive, v2MapLayers.gates, v2MapLayers.visibleGateMarkers, previewEntryGateId],
+  );
   const previewVisibleRastas = routePreviewDeclutterActive ? [] : v2MapLayers.visibleRastas;
   const previewVisibleSpecialRoutes = routePreviewDeclutterActive ? [] : v2MapLayers.specialRoutes;
 
@@ -760,7 +769,13 @@ export function HomeScreen() {
 
     const items: MapLabelItem[] = [];
     const gateFocused = v2MapLayers.activeMapFilter === 'gates';
-    for (const gate of v2MapLayers.visibleGateMarkers) {
+    // During route-preview declutter, GateLayer/BlockLayer render only
+    // previewVisibleGateMarkers/previewVisibleBlocks (selected destination + resolved
+    // entry gate), not the zoom-LOD visibleGateMarkers/visibleBlockLabels sets below —
+    // iterate the exact same filtered arrays here so every label item this produces has
+    // a real marker/polygon underneath it, and vice versa (no orphan label floating with
+    // nothing to anchor to, no marker silently missing its only accessible/visual label).
+    for (const gate of routePreviewDeclutterActive ? previewVisibleGateMarkers : v2MapLayers.visibleGateMarkers) {
       if (gate.labelSuppressed && !gate.isSelected) continue;
       const gateNum = gate.label.replace('Gate ', '');
       const showFull = gate.isSelected || mapZoomLevel >= HIGH_ZOOM;
@@ -777,6 +792,9 @@ export function HomeScreen() {
         focused: gateFocused,
         needsConnectorVerification: gate.needsConnectorVerification,
         zPriority: gate.isSelected ? 16 : gateFocused ? 14 : 12,
+        // Full name even at low zoom ("12"/"G12"): this label is the gate's only accessible
+        // node — GateLayer drops its Marker label whenever a label item exists.
+        accessibilityLabel: gate.label,
         onPress: () => {
           const place = V2PlaceAdapter.getPlaceById(gate.id);
           if (!place) return;
@@ -786,7 +804,7 @@ export function HomeScreen() {
     }
 
     const blockFocused = v2MapLayers.activeMapFilter === 'blocks';
-    for (const block of v2MapLayers.visibleBlockLabels) {
+    for (const block of routePreviewDeclutterActive ? previewVisibleBlocks : v2MapLayers.visibleBlockLabels) {
       items.push({
         id: `block_${block.id}`,
         coordinate: block.center,
@@ -804,46 +822,63 @@ export function HomeScreen() {
       });
     }
 
-    const rastaFocused = v2MapLayers.activeMapFilter === 'rastas';
-    for (const rasta of v2MapLayers.visibleRastaLabels) {
-      items.push({
-        id: `rasta_${rasta.id}`,
-        coordinate: rasta.labelCoordinate,
-        text: rasta.label,
-        secondaryText: MapLocalizationService.getSecondaryLabel(rasta.name),
-        kind: 'rasta',
-        isSelected: rasta.isSelected,
-        focused: rastaFocused,
-        zPriority: 7,
-        onPress: () => {
-          const place = V2PlaceAdapter.getPlaceById(rasta.id);
-          if (!place) return;
-          handlePlaceSelectWithCameraIntent(place);
-        },
-      });
-    }
+    // Declutter hides rastas/special-routes entirely (previewVisibleRastas/
+    // previewVisibleSpecialRoutes are forced empty below) — their labels must not
+    // outlive their lines, so skip both loops rather than leaving text floating with
+    // no polyline underneath it.
+    if (!routePreviewDeclutterActive) {
+      const rastaFocused = v2MapLayers.activeMapFilter === 'rastas';
+      for (const rasta of v2MapLayers.visibleRastaLabels) {
+        items.push({
+          id: `rasta_${rasta.id}`,
+          coordinate: rasta.labelCoordinate,
+          text: rasta.label,
+          secondaryText: MapLocalizationService.getSecondaryLabel(rasta.name),
+          kind: 'rasta',
+          isSelected: rasta.isSelected,
+          focused: rastaFocused,
+          zPriority: 7,
+          onPress: () => {
+            const place = V2PlaceAdapter.getPlaceById(rasta.id);
+            if (!place) return;
+            handlePlaceSelectWithCameraIntent(place);
+          },
+        });
+      }
 
-    const routeFocused = v2MapLayers.activeMapFilter === 'special_routes';
-    for (const route of v2MapLayers.visibleSpecialRouteLabels) {
-      items.push({
-        id: `route_${route.id}`,
-        coordinate: route.labelCoordinate,
-        text: route.label,
-        secondaryText: MapLocalizationService.getSecondaryLabel(route.name),
-        kind: 'route',
-        isSelected: route.isSelected,
-        focused: routeFocused,
-        zPriority: 9,
-        onPress: () => {
-          const place = V2PlaceAdapter.getPlaceById(route.id);
-          if (!place) return;
-          handlePlaceSelectWithCameraIntent(place);
-        },
-      });
+      const routeFocused = v2MapLayers.activeMapFilter === 'special_routes';
+      for (const route of v2MapLayers.visibleSpecialRouteLabels) {
+        items.push({
+          id: `route_${route.id}`,
+          coordinate: route.labelCoordinate,
+          text: route.label,
+          secondaryText: MapLocalizationService.getSecondaryLabel(route.name),
+          kind: 'route',
+          isSelected: route.isSelected,
+          focused: routeFocused,
+          zPriority: 9,
+          onPress: () => {
+            const place = V2PlaceAdapter.getPlaceById(route.id);
+            if (!place) return;
+            handlePlaceSelectWithCameraIntent(place);
+          },
+        });
+      }
     }
 
     return items;
-  }, [showNavOverlay, navOverlay.mapLayers.gates, navOverlayV1.active, useV2Map, v2MapLayers, mapZoomLevel, handlePlaceSelectWithCameraIntent]);
+  }, [
+    showNavOverlay,
+    navOverlay.mapLayers.gates,
+    navOverlayV1.active,
+    useV2Map,
+    v2MapLayers,
+    mapZoomLevel,
+    handlePlaceSelectWithCameraIntent,
+    routePreviewDeclutterActive,
+    previewVisibleGateMarkers,
+    previewVisibleBlocks,
+  ]);
 
   const effectiveInitialRegion = useV2Map
     ? {
@@ -1573,12 +1608,19 @@ export function HomeScreen() {
           </View>
         )}
 
-        {mode !== 'NAVIGATION' && !directionsDestination && (
+        {/* ARRIVAL outranks NAVIGATION in deriveMapMode and still shows the navigation chrome, so the
+            search bar/chips must hide for both or they draw over the maneuver banner. */}
+        {mode !== 'NAVIGATION' && mode !== 'ARRIVAL' && !directionsDestination && (
         <SafeAreaView
           style={styles.topOverlay}
           pointerEvents="box-none"
           onLayout={(e) => setTopOverlayHeight(e.nativeEvent.layout.height)}
         >
+          {/* This bar was styled like a search bar (Google Maps-style pill, shadow,
+              52dp height) but only ever held the menu button — the actual "search for
+              a destination" action lived a scroll-row down, in a small chip. Filling the
+              bar with what it already visually promises makes search the obvious primary
+              action on the map, not a secondary chip beside a hamburger icon. */}
           <View style={[styles.searchBarContainer, { backgroundColor: theme.searchBar }]}>
             <Pressable
               onPress={() => {
@@ -1590,6 +1632,20 @@ export function HomeScreen() {
               accessibilityLabel="Open menu"
             >
               <Menu size={24} color={theme.subtext} />
+            </Pressable>
+            <Pressable
+              style={styles.searchBarAction}
+              onPress={() => {
+                logHomeControl('search_bar', 'open_directory');
+                nav.navigate('LocationsDirectory');
+              }}
+              accessibilityRole="button"
+              accessibilityLabel="Search destinations"
+            >
+              <Search size={18} color={theme.subtext} />
+              <Text style={[styles.searchBarPlaceholder, { color: theme.subtext }]} numberOfLines={1}>
+                Search destinations
+              </Text>
             </Pressable>
           </View>
 
@@ -1678,9 +1734,16 @@ export function HomeScreen() {
         {mode !== 'NAVIGATION' && isOffline && !offlineData.isDownloaded && (
           <View style={styles.emptyOfflineState}>
             <Text style={styles.emptyOfflineTitle}>Background map not downloaded. Ijtema routes still work.</Text>
-            <Pressable style={styles.emptyOfflineButton} onPress={() => nav.navigate('DownloadMap')}>
-              <Text style={styles.emptyOfflineButtonText}>Download background map</Text>
-            </Pressable>
+            {OfflineMapService.isOfflineTileDownloadAvailable() && (
+              <Pressable
+                style={styles.emptyOfflineButton}
+                onPress={() => nav.navigate('DownloadMap')}
+                accessibilityRole="button"
+                accessibilityLabel="Download background map"
+              >
+                <Text style={styles.emptyOfflineButtonText}>Download background map</Text>
+              </Pressable>
+            )}
           </View>
         )}
 
@@ -1923,6 +1986,15 @@ const styles = StyleSheet.create({
     ...shadows.medium,
   },
   iconButton: { padding: 14 },
+  searchBarAction: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    height: '100%',
+    paddingRight: 14,
+  },
+  searchBarPlaceholder: { fontSize: 15, flexShrink: 1 },
   chipsContainer: { marginTop: 10 },
   chipsContent: { paddingLeft: 12, paddingRight: 88, paddingBottom: 8 },
   chip: {
@@ -1976,7 +2048,7 @@ const styles = StyleSheet.create({
   outsideVenueBanner: {
     marginLeft: 12,
     marginRight: 76,
-    backgroundColor: '#F29900',
+    backgroundColor: staticColors.weakGpsBackground,
     borderRadius: 20,
     paddingLeft: 14,
     paddingRight: 8,
