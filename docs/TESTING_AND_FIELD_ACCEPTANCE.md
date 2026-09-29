@@ -25,7 +25,7 @@ npm run test:core-provider-routing-contract-v2
 npm run test:reroute-v2
 ```
 
-Current baseline (see `docs/PROJECT_STATUS.md` for the live snapshot): 51 Jest suites / 550 tests.
+Current baseline (Jest suite/test totals, chain length): see `docs/PROJECT_STATUS.md` (not hardcoded here).
 
 ## Release-build-only rule
 
@@ -39,4 +39,4 @@ For the Navigation rows, run both V1 (legacy Block destination) and V2 (Gate/fac
 
 ## Field acceptance
 
-Physical walking acceptance at the actual venue (#46) and physical-device LOC-01..12 verification (#45) are open and cannot be completed from a development environment — see `docs/KNOWN_LIMITATIONS_AND_OWNER_ACTIONS.md`.
+Physical walking acceptance at the actual venue (#46) and remaining physical-device LOC-06/08/09/10/11 verification (remainder of closed #45, tracked in #46; PHYSICAL DEVICE REQUIRED) are open and cannot be completed from a development environment — see `docs/KNOWN_LIMITATIONS_AND_OWNER_ACTIONS.md`.

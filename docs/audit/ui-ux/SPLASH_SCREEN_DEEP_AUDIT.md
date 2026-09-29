@@ -1,5 +1,7 @@
 # Splash Screen — Deep Forensic UI/UX, Startup & Accessibility Audit
 
+> **Status banner:** source findings in this file are as of canonical `1599c32`. PR #164 (merged) fixes #146, #150, #151, #154-#158 in source; those issues stay open until the owner closes them.
+
 Screen 01 of the Karachi Ijtema Navigation app. Audit-only — no application code changed.
 
 ## 1. Repository baseline

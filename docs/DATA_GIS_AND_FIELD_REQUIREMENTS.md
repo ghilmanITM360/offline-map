@@ -26,4 +26,4 @@ A generated-source pipeline (GeoJSON input → generator script → checksummed 
 
 ## Field verification status
 
-Gate connector geometry for two gates has not been field-surveyed (#43, #44) and must not be assumed routable from map data alone. Location-capability runtime behavior across the full LOC-01..12 matrix has not been verified on physical hardware (#45). Do not report GIS or location facts as confirmed beyond what's actually been surveyed or device-tested — see the evidence-level rule in `AGENTS.md`.
+Gate connector geometry for two gates has not been field-surveyed (#43, #44) and must not be assumed routable from map data alone. Location-capability runtime behavior across the full LOC-01..12 matrix has been emulator-verified only for LOC-01..05, 07 (partial), 12; LOC-06/08/09/10/11 (remainder of closed #45, tracked in #46) remain PHYSICAL DEVICE REQUIRED. Do not report GIS or location facts as confirmed beyond what's actually been surveyed or device-tested — see the evidence-level rule in `AGENTS.md`.

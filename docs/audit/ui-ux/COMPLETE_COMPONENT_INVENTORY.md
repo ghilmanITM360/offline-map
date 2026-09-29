@@ -1,5 +1,7 @@
 # Complete Component Inventory
 
+> **Status banner:** source findings in this file are as of canonical `1599c32`. PR #164 (merged) fixes #146, #150, #151, #154-#158 in source; those issues stay open until the owner closes them.
+
 Every reusable component under `src/views/components/` (branch
 `docs/ui-ux-audit-reconciliation`, as of commit `1995fa7`), read in full and
 recorded here. This is a source-level inventory — "Tests" and "Accessibility"

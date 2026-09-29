@@ -1,5 +1,7 @@
 # UI/UX Audit Progress
 
+> **Status banner:** source findings in this file are as of canonical `1599c32`. PR #164 (merged) fixes #146, #150, #151, #154-#158 in source; those issues stay open until the owner closes them.
+
 Tracks #126, #128, #144 against actual verified work. Do not mark any of these DONE
 based on this document alone — see each issue's own acceptance criteria.
 
@@ -155,8 +157,8 @@ session — its status is preserved as-is per this task's explicit instruction.
   at `1599c32` (matched `origin/integration/ijtema-clean-baseline` exactly at creation time),
   now pushed to `origin/docs/ui-ux-audit-reconciliation` and a documentation PR opened
   targeting `integration/ijtema-clean-baseline`, linked to #126 and #128
-- PR #121 (`fix/v2-data-structural-validation`): OPEN, MERGEABLE, not touched
-- PR #138 (`docs/ticket-reconciliation-matrix`): OPEN, MERGEABLE, not touched, not
+- PR #121 (`fix/v2-data-structural-validation`): OPEN, MERGEABLE, not touched (state on 2026-09-26; since merged)
+- PR #138 (`docs/ticket-reconciliation-matrix`): OPEN, MERGEABLE (state on 2026-09-26; since merged), not touched, not
   overwritten — this audit PR is a separate, narrower doc set and does not duplicate it
 - Neither #121 nor #138 was merged. No application source was modified. No fixes were
   implemented.

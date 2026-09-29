@@ -1,5 +1,7 @@
 # Historical Findings Reconciliation
 
+> **Status banner:** source findings in this file are as of canonical `1599c32`. PR #164 (merged) fixes #146, #150, #151, #154-#158 in source; those issues stay open until the owner closes them.
+
 Re-verifies each finding from the September 5, 2026 `.superpowers/premium-map-audit/`
 against current source at HEAD `1599c32` (branch `integration/ijtema-clean-baseline`,
 2026-09-26). 21 days and multiple accessibility-focused commits separate the original
