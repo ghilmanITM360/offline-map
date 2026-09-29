@@ -11,6 +11,8 @@
  */
 import { strict as assert } from 'node:assert';
 
+import { getPreciseDistance } from 'geolib';
+
 import { RoutingServiceV2 } from '../src/services/RoutingServiceV2';
 import type {
   NormalizedOutsideCandidate,
@@ -20,6 +22,9 @@ import type {
 process.env.EXPO_PUBLIC_USE_IJTEMA_V2_MAP = 'true';
 process.env.EXPO_PUBLIC_USE_IJTEMA_V2_ROUTING = 'true';
 process.env.EXPO_PUBLIC_USE_IJTEMA_OUTSIDE_STREET_GRAPH = 'true';
+
+const distanceMetersBetween = (a: { latitude: number; longitude: number }, b: { latitude: number; longitude: number }) =>
+  getPreciseDistance(a, b);
 
 const OUTSIDE_NORTH_EAST = { latitude: 24.9762, longitude: 67.011 };
 const DESTINATION = { type: 'block' as const, blockId: 'B34' };
@@ -280,6 +285,70 @@ assert.equal(
   }
 
   console.log('Initial routing and rerouting selected the same gate as calculateRoute in both scenarios.');
+}
+
+// ─── #161: accepted provider endpoint joins count toward the complete journey ──
+{
+  const M_PER_DEG_LAT = 111320;
+  const north = (c: { latitude: number; longitude: number }, m: number) => ({ latitude: c.latitude + m / M_PER_DEG_LAT, longitude: c.longitude });
+  const gateTarget = (gateId: string) => plan.candidates.find((candidate) => candidate.gateId === gateId)!.providerRouteTargetCoordinate;
+  const near = (actual: number, expected: number, label: string) =>
+    assert(Math.abs(actual - expected) <= 1, `${label}: expected ${expected} ±1, got ${actual}`);
+  const providerCandidate = (
+    provider: NormalizedOutsideCandidate['provider'],
+    gateId: string,
+    distanceM: number,
+    coordinates: Array<{ latitude: number; longitude: number }>,
+    id: string,
+  ): NormalizedOutsideCandidate => ({ ...normalizedCandidate(gateId, distanceM, id, coordinates), provider });
+  const finalizeOne = (candidate: NormalizedOutsideCandidate) =>
+    RoutingServiceV2.finalizeOutsideRoutingPlan({ plan, outsideCandidates: candidateSet([candidate]), walkingSpeedMs: 1.4 })!;
+
+  const gateId = 'GATE_20';
+  const target = gateTarget(gateId);
+  const planGate = plan.candidates.find((candidate) => candidate.gateId === gateId)!;
+  const providerDistanceM = 122;
+  const JOIN_M = 89; // inside the accepted endpoint tolerance
+  const startJoinM = distanceMetersBetween(OUTSIDE_NORTH_EAST, north(OUTSIDE_NORTH_EAST, JOIN_M));
+  const endJoinM = distanceMetersBetween(target, north(target, JOIN_M));
+
+  const scenarios = [
+    { label: 'exact endpoints', coordinates: [OUTSIDE_NORTH_EAST, target], joinM: 0 },
+    { label: 'origin join only', coordinates: [north(OUTSIDE_NORTH_EAST, JOIN_M), target], joinM: startJoinM },
+    { label: 'gate join only', coordinates: [OUTSIDE_NORTH_EAST, north(target, JOIN_M)], joinM: endJoinM },
+    { label: 'both joins', coordinates: [north(OUTSIDE_NORTH_EAST, JOIN_M), north(target, JOIN_M)], joinM: startJoinM + endJoinM },
+  ];
+  const exact = finalizeOne(providerCandidate('google', gateId, providerDistanceM, scenarios[0].coordinates, 'g-exact'));
+  near(exact.startConnectorDistanceM!, providerDistanceM, 'exact endpoints add zero to the outside distance');
+  for (const scenario of scenarios.slice(1)) {
+    const result = finalizeOne(providerCandidate('google', gateId, providerDistanceM, scenario.coordinates, `g-${scenario.label}`));
+    near(result.startConnectorDistanceM!, providerDistanceM + scenario.joinM, `${scenario.label}: outside distance includes the measured join`);
+    near(result.routeCostM!, providerDistanceM + scenario.joinM + planGate.penaltyM + planGate.internalCostM, `${scenario.label}: route cost includes the measured join`);
+    near(result.totalDistance - exact.totalDistance, scenario.joinM, `${scenario.label}: total distance grows by the join`);
+    assert(result.estimatedTimeMin >= exact.estimatedTimeMin, `${scenario.label}: ETA must not shrink when the journey is longer`);
+  }
+
+  // Selection uses the full composed cost: A's provider distance is smaller, but its joins make it worse.
+  const candidateA = plan.candidates.find((candidate) => candidate.gateId === 'GATE_20')!;
+  const candidateB = plan.candidates.find((candidate) => candidate.gateId === 'GATE_15')!;
+  const coreA = candidateA.connectorCostM + candidateA.penaltyM + candidateA.internalCostM;
+  const coreB = candidateB.connectorCostM + candidateB.penaltyM + candidateB.internalCostM;
+  const distanceA = 1;
+  const distanceB = coreA + distanceA - coreB + 100; // B is 100 m worse on provider distance alone
+  const aWithJoins = [north(OUTSIDE_NORTH_EAST, JOIN_M), north(gateTarget('GATE_20'), JOIN_M)];
+  const selection = RoutingServiceV2.finalizeOutsideRoutingPlan({
+    plan,
+    outsideCandidates: candidateSet([
+      providerCandidate('google', 'GATE_20', distanceA, aWithJoins, 'g-A'),
+      providerCandidate('google', 'GATE_15', distanceB, [OUTSIDE_NORTH_EAST, gateTarget('GATE_15')], 'g-B'),
+    ]),
+    walkingSpeedMs: 1.4,
+  })!;
+  assert.equal(selection.startResolution?.gate?.id, 'GATE_15', 'a candidate with larger accepted endpoint gaps must not beat an exact-endpoint candidate it only beats on declared provider distance');
+
+  // Bundled OSM already includes its connectors — the same displaced geometry must not be charged again.
+  const osm = finalizeOne(providerCandidate('offline-osm', gateId, providerDistanceM, scenarios[3].coordinates, 'osm-both'));
+  assert.equal(osm.startConnectorDistanceM, providerDistanceM, 'offline-osm distance already includes its connectors — no extra join charge');
 }
 
 delete process.env.EXPO_PUBLIC_USE_IJTEMA_OUTSIDE_STREET_GRAPH;
