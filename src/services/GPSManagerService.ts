@@ -8,6 +8,7 @@ import { AppState, AppStateStatus } from 'react-native';
 import { Coordinate } from '../models/types';
 import { NAVIGATION_WATCH_TIME_INTERVAL_MS } from '../constants/navigation';
 import { OnboardingStatusService } from './OnboardingStatusService';
+import { isValidCoordinate } from '../utils/isValidCoordinate';
 
 type LocationCallback = (coord: Coordinate) => void;
 type LocationTrackingMode = 'follow' | 'navigation';
@@ -131,7 +132,10 @@ class GPSManager {
     this.subscriptionMode = mode;
   }
 
-  private publishFix(location: Location.LocationObject): Coordinate {
+  private publishFix(location: Location.LocationObject): Coordinate | null {
+    // #147: a NaN/Infinity/out-of-range sensor fix is dropped before the store or any listener
+    // (V1 navigation, Home camera follow) can consume it.
+    if (!isValidCoordinate(location.coords)) return null;
     const coord: Coordinate = {
       latitude: location.coords.latitude,
       longitude: location.coords.longitude,
