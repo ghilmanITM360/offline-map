@@ -28,6 +28,7 @@ apply plugin: "com.facebook.react.rootproject"
 // but AGP 8.11 writes it to intermediates/cxx/<Debug|RelWithDebInfo>/<hash>/obj/<abi>,
 // so a clean build fails with "ninja: error: ... libworklets.so, needed".
 // Mirror the built library into the expected path before Reanimated's CMake build runs.
+// Do not use Copy: AGP may hard-link source and legacy outputs, so Copy can truncate both.
 // Remove when Reanimated >= 4.3 (links worklets via prefab) is adopted.
 gradle.projectsEvaluated {
   def worklets = rootProject.findProject(':react-native-worklets')
@@ -35,23 +36,108 @@ gradle.projectsEvaluated {
   if (worklets == null || reanimated == null) return
   [[variant: 'Release', cmake: 'RelWithDebInfo', legacy: 'release'],
    [variant: 'Debug', cmake: 'Debug', legacy: 'debug']].each { t ->
-    def sync = worklets.tasks.register("syncLegacyWorkletsObj${t.variant}", Copy) {
-      dependsOn worklets.tasks.named("externalNativeBuild${t.variant}")
-      from(worklets.fileTree(dir: worklets.layout.buildDirectory.dir("intermediates/cxx/${t.cmake}"), include: '*/obj/*/libworklets.so'))
-      eachFile { path = "${relativePath.segments[-2]}/${name}" }
-      includeEmptyDirs = false
-      // Never pick an arbitrary binary: several <hash> dirs for one ABI (stale output) is ambiguous.
-      doFirst {
-        def found = worklets.fileTree(dir: worklets.layout.buildDirectory.dir("intermediates/cxx/${t.cmake}"), include: '*/obj/*/libworklets.so').files
-        def byAbi = found.groupBy { it.parentFile.name }
-        def dupes = byAbi.findAll { abi, files -> files.size() > 1 }
-        if (found.isEmpty() || !dupes.isEmpty()) {
-          throw new GradleException(found.isEmpty()
-            ? "No libworklets.so under react-native-worklets/android/build/intermediates/cxx/${t.cmake}"
-            : "Ambiguous libworklets.so (stale CMake hash dirs) for ${dupes.keySet()}: ${dupes.values().flatten()}. Run './gradlew clean' and rebuild.")
+    def sourceTree = worklets.fileTree(
+      dir: worklets.layout.buildDirectory.dir("intermediates/cxx/${t.cmake}"),
+      include: '*/obj/*/libworklets.so'
+    )
+    def destinationDir = worklets.layout.buildDirectory.dir("intermediates/cmake/${t.legacy}/obj")
+    def expectedElf = [
+      'armeabi-v7a': [elfClass: 1, machine: 40],
+      'arm64-v8a': [elfClass: 2, machine: 183],
+      'x86': [elfClass: 1, machine: 3],
+      'x86_64': [elfClass: 2, machine: 62],
+    ]
+    def validateElf = { File library, String abi ->
+      if (!library.isFile() || library.length() == 0) {
+        throw new GradleException("Invalid ${abi} libworklets.so: missing or empty: ${library}")
+      }
+      def header = new byte[20]
+      library.withInputStream { stream ->
+        try {
+          new DataInputStream(stream).readFully(header)
+        } catch (EOFException ignored) {
+          throw new GradleException("Invalid ${abi} libworklets.so: truncated ELF header: ${library}")
         }
       }
-      into worklets.layout.buildDirectory.dir("intermediates/cmake/${t.legacy}/obj")
+      def expected = expectedElf[abi]
+      def elfClass = header[4] & 0xff
+      def encoding = header[5] & 0xff
+      def machine = (header[18] & 0xff) | ((header[19] & 0xff) << 8)
+      if (header[0..3] != [0x7f, 0x45, 0x4c, 0x46] || encoding != 1 || expected == null ||
+          elfClass != expected.elfClass || machine != expected.machine) {
+        throw new GradleException(
+          "Invalid ${abi} libworklets.so ELF header (class=${elfClass}, encoding=${encoding}, machine=${machine}): ${library}"
+        )
+      }
+    }
+    def sha256 = { File library ->
+      def digest = java.security.MessageDigest.getInstance('SHA-256')
+      library.withInputStream { input ->
+        def buffer = new byte[8192]
+        for (int count = input.read(buffer); count != -1; count = input.read(buffer)) {
+          digest.update(buffer, 0, count)
+        }
+      }
+      digest.digest().encodeHex().toString()
+    }
+    def sync = worklets.tasks.register("syncLegacyWorkletsObj${t.variant}") {
+      dependsOn worklets.tasks.named("externalNativeBuild${t.variant}")
+      inputs.files(sourceTree).withPropertyName('workletsLibraries')
+      outputs.dir(destinationDir).withPropertyName('legacyWorkletsDirectory')
+      // externalNativeBuild may recreate this output as a hard link without Gradle
+      // detecting a changed task input, so validation and replacement must always run.
+      outputs.upToDateWhen { false }
+      doLast {
+        def found = sourceTree.files.sort { it.absolutePath }
+        def byAbi = found.groupBy { it.parentFile.name }
+        def dupes = byAbi.findAll { abi, files -> files.size() > 1 }
+        def requiredAbis = worklets.findProperty('reactNativeArchitectures').toString()
+          .split(',').collect { it.trim() }.findAll { !it.isEmpty() } as Set
+        def missing = requiredAbis - byAbi.keySet()
+        if (!missing.isEmpty() || !dupes.isEmpty()) {
+          throw new GradleException(!missing.isEmpty()
+            ? "Missing libworklets.so for ${missing} under react-native-worklets/android/build/intermediates/cxx/${t.cmake}"
+            : "Ambiguous libworklets.so (stale CMake hash dirs) for ${dupes.keySet()}: ${dupes.values().flatten()}. Run './gradlew clean' and rebuild.")
+        }
+        found.each { source ->
+          def abi = source.parentFile.name
+          validateElf(source, abi)
+          def destination = destinationDir.get().file("${abi}/libworklets.so").asFile
+          destination.parentFile.mkdirs()
+          def temporary = java.nio.file.Files.createTempFile(destination.parentFile.toPath(), '.libworklets.', '.tmp')
+          try {
+            java.nio.file.Files.copy(
+              source.toPath(),
+              temporary,
+              java.nio.file.StandardCopyOption.REPLACE_EXISTING
+            )
+            validateElf(temporary.toFile(), abi)
+            try {
+              java.nio.file.Files.move(
+                temporary,
+                destination.toPath(),
+                java.nio.file.StandardCopyOption.ATOMIC_MOVE,
+                java.nio.file.StandardCopyOption.REPLACE_EXISTING
+              )
+            } catch (java.nio.file.AtomicMoveNotSupportedException ignored) {
+              java.nio.file.Files.move(
+                temporary,
+                destination.toPath(),
+                java.nio.file.StandardCopyOption.REPLACE_EXISTING
+              )
+            }
+          } finally {
+            java.nio.file.Files.deleteIfExists(temporary)
+          }
+          validateElf(destination, abi)
+          if (java.nio.file.Files.isSameFile(source.toPath(), destination.toPath())) {
+            throw new GradleException("Unsafe libworklets.so source/destination alias for ${abi}: ${source}")
+          }
+          if (sha256(source) != sha256(destination)) {
+            throw new GradleException("libworklets.so checksum mismatch for ${abi}: ${source} -> ${destination}")
+          }
+        }
+      }
     }
     reanimated.tasks.matching { it.name.startsWith("buildCMake${t.cmake}[") }.configureEach { dependsOn sync }
   }
