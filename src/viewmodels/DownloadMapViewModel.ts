@@ -518,7 +518,12 @@ export function useDownloadMapViewModel() {
       await OfflineMapStatusService.setDownloadedFlag(false);
       await OfflineMapStatusService.setGraphOnlyMode(false);
       await OfflineMapStatusService.setSkippedOnlineMode(true);
-      setOfflineMapStatus('not_downloaded', 'Using online mode. You can download the offline map anytime from Settings.');
+      setOfflineMapStatus(
+        'not_downloaded',
+        OfflineMapService.isOfflineTileDownloadAvailable()
+          ? 'Using online mode. You can download the offline map anytime from Settings.'
+          : 'Using online mode. The picture map needs internet; Ijtema directions still work offline.',
+      );
       safeSetDownloadState({ phase: 'idle', errorMessage: null, resumable: false });
       triggerNavigationToMain(navigation);
     },
