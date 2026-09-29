@@ -51,6 +51,7 @@ import { markerColors, markerSizes, shadows, staticColors } from '../../theme';
 import { getDistance } from 'geolib';
 import { GRAPH_VALIDATION, IJTEMA_DATA, LANDMARK_PLACES, MAP_BOUNDS } from '../../constants/data';
 import { Coordinate, Place, RoutePreview } from '../../models/types';
+import { OfflineMapService } from '../../services/OfflineMapService';
 import { PlaceDetailService } from '../../services/PlaceDetailService';
 import { FavoriteService } from '../../services/FavoriteService';
 import { useAppStore } from '../../store/useAppStore';
@@ -1731,14 +1732,16 @@ export function HomeScreen() {
         {mode !== 'NAVIGATION' && isOffline && !offlineData.isDownloaded && (
           <View style={styles.emptyOfflineState}>
             <Text style={styles.emptyOfflineTitle}>Background map not downloaded. Ijtema routes still work.</Text>
-            <Pressable
-              style={styles.emptyOfflineButton}
-              onPress={() => nav.navigate('DownloadMap')}
-              accessibilityRole="button"
-              accessibilityLabel="Download background map"
-            >
-              <Text style={styles.emptyOfflineButtonText}>Download background map</Text>
-            </Pressable>
+            {OfflineMapService.isOfflineTileDownloadAvailable() && (
+              <Pressable
+                style={styles.emptyOfflineButton}
+                onPress={() => nav.navigate('DownloadMap')}
+                accessibilityRole="button"
+                accessibilityLabel="Download background map"
+              >
+                <Text style={styles.emptyOfflineButtonText}>Download background map</Text>
+              </Pressable>
+            )}
           </View>
         )}
 
