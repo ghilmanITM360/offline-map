@@ -15,7 +15,7 @@ v1 is kept for rollback, not deleted, to avoid an API break — see `docs/KNOWN_
 
 ## Map-first UI, not screen-based
 
-One persistent `MapView` lives in `HomeScreen`. Directions, route preview, active navigation, and arrival are overlays/modes on that same map (`NavigationChromeV2`, `NavigationMapLayersV2`, `useNavigationOverlayV2`), not separate screens. `src/views/screens/NavigationScreen.tsx` is v1-only and exists as a defensive fallback, not the primary flow.
+One persistent `MapView` lives in `HomeScreen`. Directions, route preview, active navigation, and arrival are overlays/modes on that same map (`NavigationChromeV2`, `NavigationMapLayersV2`, `useNavigationOverlayV2`), not separate screens. The legacy v1 presentation renders as `NavigationChromeV1`/`NavigationMapLayersV1` overlays on `HomeScreen` (for legacy Block destinations); there is no separate `NavigationScreen.tsx`.
 
 Destination selection, directions, and route preview all render through one `LocationSheet` component (`src/views/components/map/LocationSheet.tsx`), which has a `routePreview` mode rather than being three separate sheets.
 

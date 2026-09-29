@@ -30,7 +30,7 @@ Release minify and resource shrinking are enabled (#80, merged) — verify this 
 
 ## Backup policy
 
-`dataExtractionRules`/`fullBackupContent` exclude the entire AsyncStorage (`RKStorage`) database from Android auto-backup/restore, since it shares storage with settings/favorites and includes last-known-location data that shouldn't survive a device restore silently (#58, merged, device-verified on both backup and restore paths).
+`dataExtractionRules`/`fullBackupContent` exclude the entire AsyncStorage (`RKStorage`) database from Android auto-backup/restore, since it shares storage with settings/favorites and includes last-known-location data that shouldn't survive a device restore silently (#58, merged; EMULATOR VERIFIED on both backup and restore paths: Pixel 7 Pro emulator, local backup transport; physical-device backup/restore not run).
 
 ## Google Routes proxy contract
 

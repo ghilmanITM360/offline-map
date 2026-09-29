@@ -1,5 +1,7 @@
 # Historical UI/UX Audit Inventory — "premium-map-audit" (September 5, 2026)
 
+> **Status banner:** source findings in this file are as of canonical `1599c32`. PR #164 (merged) fixes #146, #150, #151, #154-#158 in source; those issues stay open until the owner closes them.
+
 ## Provenance
 
 This audit was produced by a prior Claude session and stored locally at

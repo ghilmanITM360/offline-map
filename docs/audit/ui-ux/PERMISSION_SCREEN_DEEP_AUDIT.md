@@ -1,5 +1,7 @@
 # Permission Screen — Deep Forensic UI/UX, Functional-Interaction & Accessibility Audit
 
+> **Status banner:** source findings in this file are as of canonical `1599c32`. PR #164 (merged) fixes #146, #150, #151, #154-#158 in source; those issues stay open until the owner closes them.
+
 Audit-only. No production code modified. No fixes implemented.
 
 ## 0. Prior owner decision — confirmed app naming

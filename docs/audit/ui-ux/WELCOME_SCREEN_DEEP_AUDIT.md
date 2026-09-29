@@ -1,5 +1,7 @@
 # Welcome Screen — Deep Forensic UI/UX, Onboarding-Necessity & Accessibility Audit
 
+> **Status banner:** source findings in this file are as of canonical `1599c32`. PR #164 (merged) fixes #146, #150, #151, #154-#158 in source; those issues stay open until the owner closes them.
+
 Audit-only. No production code modified. No fixes implemented.
 
 ## 1. Repository baseline

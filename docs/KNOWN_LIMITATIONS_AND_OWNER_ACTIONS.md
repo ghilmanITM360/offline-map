@@ -30,7 +30,7 @@
 
 ## UI/UX owner decisions still open
 
-Product/scope calls that no agent may make. Identifiers are from the retired UI/UX audit (full text in git history at `fb13901`, and in `docs/audit/ui-ux/` where PR #152 lands):
+Product/scope calls that no agent may make. Identifiers are from the retired UI/UX audit (full text in git history at `fb13901`, and in `docs/audit/ui-ux/`):
 
 - Permission screen: PERM-001, PERM-002, PERM-003, PERM-007, PERM-008; #153 Finding 1.
 - Welcome screen: WEL-001 to WEL-006.
@@ -49,11 +49,11 @@ Product/scope calls that no agent may make. Identifiers are from the retired UI/
 
 | # | Action |
 |---|---|
-| #45 | LOC-01..12 Android location-capability runtime verification |
+| #46 | LOC-06/08/09/10/11 (remainder of closed #45) physical-device location-capability verification — PHYSICAL DEVICE REQUIRED |
 
 None of the above should be marked done based on source-level or emulator-level checks alone — see the evidence-level rule in `AGENTS.md`.
 
-## Device accessibility checklist (need TalkBack on a real device/emulator; all currently unverified at runtime)
+## Device accessibility checklist (PHYSICAL DEVICE REQUIRED for TalkBack; an emulator is supporting evidence only; all currently unverified at runtime)
 
 Source and Jest checks prove the wiring, not TalkBack behavior. Run on Android with TalkBack, at a small screen (about 5 inch, 1080x1920) and at the largest font scale, for both V1 and V2 navigation:
 

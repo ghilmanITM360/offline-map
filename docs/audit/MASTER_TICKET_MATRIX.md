@@ -36,11 +36,11 @@ rollup):
 |---|---|---|---|---|---|---|---|---|---|
 | A-1 | Canonical branch verification | #63 | — | ALREADY-DONE-WITH-EVIDENCE | — | AUDIT | — | EV-001, EV-002 | Re-verified this pass |
 | A-2 | `main`/canonical branch divergence audit | #115 | #63 | COVERED-BY-EXISTING-ISSUE | P1 | AUDIT | — | EV-004, EV-040 | 39 files, 1103/-559 lines diverged in `src/data/ijtema` area alone |
-| A-3 | `main`-only unique work reconciliation (NEW-02/03/06) | #115 | #63 | COVERED-BY-EXISTING-ISSUE | P1 | engineering | — | EV-028, EV-029, EV-030 | NEW-06 genuinely unresolved; NEW-02/03 need diff-level confirmation |
+| A-3 | `main`-only unique work reconciliation (NEW-02/03/06) | #115 | #63 | COVERED-BY-EXISTING-ISSUE | P1 | engineering | — | EV-028, EV-029, EV-030 | NEW-06 genuinely unresolved; NEW-02/03 need diff-level confirmation (NEW-03 addressed by PR #162, closes #160) |
 | A-4 | PR reconciliation / stale PR cleanup | #50 (closed) | #63 | ALREADY-DONE-WITH-EVIDENCE | — | cleanup | — | — | — |
 | A-5 | Worktree/stash cleanup | #51 (closed) | #63 | ALREADY-DONE-WITH-EVIDENCE | — | cleanup | — | — | Two read-only audit worktrees (`audit2`, `integration-audit`) remain from prior passes — harmless, undecided, not touched |
 | A-6 | One authoritative branch (retire `main`) | #115 | #63 | COVERED-BY-EXISTING-ISSUE | — | — | NEW-06 resolution (#115) | — | Explicit: do not retire `main` until #115 resolves NEW-06 |
-| A-7 | PR #121 (DATA-VALIDATION-002) merge | #118 | — | COVERED-BY-EXISTING-ISSUE | P1 | bug | Owner merge action | PR #121 CI green, mergeable | Blocked by this session's own merge-safety guard, not a repo check |
+| A-7 | PR #121 (DATA-VALIDATION-002) merge | #118 | — | COVERED-BY-EXISTING-ISSUE | P1 | bug | Owner merge action | PR #121 CI green, mergeable | Merged 2026-09-29 (`5473399`); #118 auto-closed on merge |
 
 ## Epic B — Navigation / Routing
 
@@ -164,7 +164,7 @@ rollup):
 |---|---|---|---|---|---|---|---|---|---|
 | I-1 | Gate-label zoom-visibility deliberate review | #127 | #126 | COVERED-BY-NEW-ISSUE | P3 | — | — | `docs/ARCHITECTURE.md:38-40` | Side effect of redesign, never separately reviewed |
 | I-2 | Gate-label clipping | — | — | ALREADY-DONE-WITH-EVIDENCE | — | — | — | `docs/ARCHITECTURE.md:22` | Resolved via `MapLabelOverlay` |
-| I-3 | Loading/error/empty/disabled states, touch targets, readability, low-literacy/elderly, accessibility, back/recovery behavior | #128 | #126 | COVERED-BY-NEW-ISSUE | P2 | — | — | Zero prior doc coverage confirmed | One consolidated checklist issue, not per-screen, per anti-spam guidance |
+| I-3 | Loading/error/empty/disabled states, touch targets, readability, low-literacy/elderly, accessibility, back/recovery behavior | #128 | #126 | COVERED-BY-NEW-ISSUE | P2 | — | — | Zero prior tracked-doc coverage at the time; a prior untracked audit exists, see `docs/audit/ui-ux/HISTORICAL_AUDIT_INVENTORY.md` | One consolidated checklist issue, not per-screen, per anti-spam guidance |
 | I-4 | Map control semantics/font-scale/reduced-motion | #65, #100, #102 (closed) | #63 | ALREADY-DONE-WITH-EVIDENCE | — | — | — | — | Baseline #128 builds on |
 
 ## Epic J — Performance / Resource
@@ -175,7 +175,7 @@ rollup):
 | J-2 | Cold/warm/hot startup, TTID/TTFD | #130 | #129 | COVERED-BY-NEW-ISSUE | P2 | performance | — | EV-036 (official-doc) | Zero prior measurement |
 | J-3 | Memory (idle/nav/repeated-trip), CPU, rendering/jank, long session, background/resume, crash/ANR | #131 | #129 | COVERED-BY-NEW-ISSUE | P2 | performance | — | Monkey-stress ad hoc evidence in #45's thread | Battery/thermal explicitly marked physical-device-only within this issue |
 | J-4 | APK/installed/offline-dataset size | #132 | #129 | COVERED-BY-NEW-ISSUE | P3 | performance | — | — | Cross-referenced with F-9 |
-| J-5 | #55 emulator-tier reliability items (search latency, route gen, map rendering, GPS loss/recovery, network loss) | #55 (closed, source-level) | #63 | COVERED-BY-EXISTING-ISSUE | — | — | — | `docs/PROJECT_STATUS.md:75-81` | Source-level pass clean; emulator-tier pass still needed per doc — folds into #131/#46 |
+| J-5 | #55 emulator-tier reliability items (search latency, route gen, map rendering, GPS loss/recovery, network loss) | #55 (closed, source-level) | #63 | COVERED-BY-EXISTING-ISSUE | — | — | — | `docs/PROJECT_STATUS.md` (former :75-81 citation no longer exists; snapshot rewritten) | Source-level pass clean; emulator-tier pass still needed per doc — folds into #131/#46 |
 
 ## Epic K — Cleanup
 
@@ -185,8 +185,8 @@ rollup):
 | K-2 | Asset inventory / unused images | #52 (closed) | #63 | ALREADY-DONE-WITH-EVIDENCE | — | — | — | — | — |
 | K-3 | MD consolidation / redundant docs | #53 (closed) | #63 | ALREADY-DONE-WITH-EVIDENCE | — | — | — | 54→11 docs | — |
 | K-4 | Dead code (`pointInPolygon`×3, `entryPolicy.ts` haversine dup, `SnapToRoadService.snapToRoad()`) | #120 | #63 | COVERED-BY-EXISTING-ISSUE | P3 | cleanup | — | EV-018, EV-019 | `snapToRoad()` finding added this pass via comment |
-| K-5 | Unreachable screens (`NavigationScreen.tsx` v1-only reachability) | #120 | #63 | COVERED-BY-PARENT-CHECKLIST | — | — | — | `docs/ARCHITECTURE.md:18` | Added this pass via comment; do not remove without confirming v1 rollback path independence |
-| K-6 | V1 rollback-only disposition | #117 | #63 | COVERED-BY-EXISTING-ISSUE | P2 | cleanup | #118 (done) | `docs/KNOWN_LIMITATIONS_AND_OWNER_ACTIONS.md:10` | V1 is a deliberate, permanent rollback path — not wholesale deprecated |
+| K-5 | Unreachable screens (former `NavigationScreen.tsx` v1-only reachability; file no longer exists, v1 renders as `NavigationChromeV1`/`NavigationMapLayersV1` overlays) | #120 | #63 | COVERED-BY-PARENT-CHECKLIST | — | — | — | `docs/ARCHITECTURE.md:18` | Added this pass via comment; remaining `NavigationScreen` references in `src/` are comments only (verified); do not remove without confirming v1 rollback path independence |
+| K-6 | V1 rollback-only disposition | #117 | #63 | COVERED-BY-EXISTING-ISSUE | P2 | cleanup | #118 (done) | `docs/KNOWN_LIMITATIONS_AND_OWNER_ACTIONS.md:13` | V1 is a deliberate, permanent rollback path — not wholesale deprecated |
 | K-7 | Unused dependencies / debug logs / TODO-FIXME-HACK review | #120 | #63 | COVERED-BY-PARENT-CHECKLIST | — | — | — | — | No new findings this pass beyond what's already listed |
 | K-8 | Duplicate helpers / UI-data coupling | #120 | #63 | COVERED-BY-EXISTING-ISSUE | P3 | cleanup | — | EV-020, EV-021, EV-022 | — |
 | K-9 | Recurring dependency-security re-review | #62 (closed) | #63 | DEFERRED-FUTURE | P3 | security | — | `docs/RELEASE_SECURITY_PRIVACY.md:41` | Trigger: 2026-12-31 or sooner if an Expo SDK migration is scheduled; tracked via #63 comment, not a new ticket yet |
@@ -195,7 +195,7 @@ rollup):
 
 | ID | Requirement | Issue | Parent | Status | Priority | Type | Blocked by | Evidence | Notes |
 |---|---|---|---|---|---|---|---|---|---|
-| L-1 | Clean build/checksum/fresh install/first run/offline setup/Directory/search/live GPS/manual origin/Mimbar origin/Directions/Start/nav/reroute/GPS loss-recovery/airplane mode/arrival/Done/second journey/restart/background-resume/long session/perf evidence/final acceptance report | #135 | #63 | COVERED-BY-NEW-ISSUE | P1 | release | #46, #93, #95, #124, #126, #129 | — | Distinct from historical, already-closed #57 |
+| L-1 | Clean build/checksum/fresh install/first run/offline setup/Directory/search/live GPS/manual origin/Mimbar origin/Directions/Start/nav/reroute/GPS loss-recovery/airplane mode/arrival/Done/second journey/restart/background-resume/long session/perf evidence/final acceptance report | #135 | #63 | COVERED-BY-NEW-ISSUE | P1 | release | #46, #93, #95, #124, #126, #129, #139 | — | Distinct from historical, already-closed #57 |
 | L-2 | Historical field-test APK + evidence pack | #57 (closed) | #63 | ALREADY-DONE-WITH-EVIDENCE | — | — | — | — | Earlier cycle — not reused as this milestone's evidence |
 
 ## Epic M — Future Deployment
@@ -222,7 +222,7 @@ rollup):
 | Duplicate GPS observation, multiple background-resume generations (Epic C) | Refinements of #46's existing physical-session scenarios, not independently schedulable work |
 | Mimbar implementation, Mimbar-route acceptance test (Epic D) | Cannot be scoped before #116's field survey lands — filing now would be an empty placeholder; recorded as prose dependency on #116 |
 | Data import implementation, 1000+ storage architecture decision (Epic G/H) | Cannot be scoped before #133's owner decision lands |
-| `SnapToRoadService.snapToRoad()` dead method, `NavigationScreen.tsx` reachability audit (Epic K) | Too small to justify independent work; folded into #120 |
+| `SnapToRoadService.snapToRoad()` dead method, former `NavigationScreen.tsx` reachability audit (Epic K; file removed, verify no remaining references) | Too small to justify independent work; folded into #120 |
 | Recurring dependency-security review (Epic K) | Date-gated future reminder, not active work; tracked via #63 comment |
 | Alternate-route research (Epic B) | No evidence of current need; not requested this pass |
 | Tent future model (Epic G) | No real data requires it yet |
