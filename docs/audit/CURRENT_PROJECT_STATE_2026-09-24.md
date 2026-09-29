@@ -9,7 +9,7 @@ framework versions, and executed exactly one engineering ticket
 (based on canonical HEAD `1599c324b7b5cfc1a0a92b4b1158382d4a7a2b81`, not
 `main` — see §1a). Every claim below is tagged with an evidence status,
 backed by a citation in
-[`docs/audit/EVIDENCE_LEDGER.md`](docs/audit/EVIDENCE_LEDGER.md) (cited here
+[`docs/audit/EVIDENCE_LEDGER.md`](EVIDENCE_LEDGER.md) (cited here
 as `EV-###`). Nothing here is fabricated; where evidence doesn't exist, it
 says so instead of guessing.
 

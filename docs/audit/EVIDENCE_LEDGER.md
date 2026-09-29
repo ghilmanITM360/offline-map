@@ -1,7 +1,7 @@
 # Evidence Ledger
 
 Purpose: let anyone return weeks later and immediately see *why* a claim in
-[`CURRENT_PROJECT_STATE.md`](../../CURRENT_PROJECT_STATE.md) was made, and at
+[`CURRENT_PROJECT_STATE_2026-09-24.md`](CURRENT_PROJECT_STATE_2026-09-24.md) was made, and at
 what exact commit. This ledger does not restate full reasoning — it points at
 the smallest reproducible piece of evidence.
 
