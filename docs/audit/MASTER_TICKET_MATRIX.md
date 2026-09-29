@@ -4,7 +4,7 @@ Purpose: a single table proving every known piece of project work is trackable �
 mapped to an issue, a sub-issue, an explicit parent checklist, DONE evidence, a
 field-data blocker, an owner decision, or explicitly deferred/future scope.
 Built 2026-09-24 during a full ticket-reconciliation pass. Companion to
-[`CURRENT_PROJECT_STATE.md`](../../CURRENT_PROJECT_STATE.md) and
+[`CURRENT_PROJECT_STATE_2026-09-24.md`](CURRENT_PROJECT_STATE_2026-09-24.md) and
 [`EVIDENCE_LEDGER.md`](EVIDENCE_LEDGER.md).
 
 **Coverage states used**: COVERED-BY-EXISTING-ISSUE · COVERED-BY-NEW-ISSUE ·
