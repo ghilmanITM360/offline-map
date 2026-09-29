@@ -317,6 +317,8 @@ export interface V2ActiveRoute extends V2RoutePreview {
     label: string;
     type: 'inside_snap' | 'official_gate' | 'manual_place';
     gateId?: string;
+    /** True only when user explicitly selected this gate for the navigation session. */
+    manuallySelectedGate?: boolean;
   };
   destination: {
     coordinate: Coordinate;
