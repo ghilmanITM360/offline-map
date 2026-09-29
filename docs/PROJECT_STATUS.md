@@ -95,5 +95,5 @@ The APK file lives outside git (local build output). Rebuild it from the commit 
 
 ## In progress / next
 
-- No fix PRs are open. Next by priority: #139 (needs the owner's product decision: restore the journey vs notify and rebuild the route), NAV-004 background-resume GPS freshness (part of #46's physical tier), #124 physical-device re-run, then #115 (owner decision on `main`).
-- Owner decisions pending: #139 restore-or-notify, splash config sync, V1 extend/no-extend wording, `AGENTS.md` "main trails" wording, independent human review of the merged PRs (still recommended).
+- Open PR #172 addresses NAV-004 background-resume GPS freshness; it remains pending until merged and physically verified under #46. Next priorities include #139 (needs the owner's product decision: restore the journey vs notify and rebuild the route), #124 physical-device re-run, then #115 (owner decision on `main`).
+- Open PR #173 addresses splash config sync; it remains pending until merged and Android-validated. Owner decisions pending: #139 restore-or-notify, V1 extend/no-extend wording, `AGENTS.md` "main trails" wording, independent human review of the merged PRs (still recommended).
