@@ -128,3 +128,28 @@ describe('DownloadMapScreen — action buttons expose accessible role and name',
     expect(screen.getByRole('button', { name: 'Use Online Mode' })).toBeTruthy();
   });
 });
+
+// The screen used to promise a Settings download that Settings does not offer when the
+// tile source is unavailable (every release build). Dialog copy must follow the flag.
+describe('DownloadMapScreen — confirmation copy matches real download support', () => {
+  const dialogBody = async (label: string, vm: Record<string, unknown>) => {
+    useAppStore.setState({ hasInternet: true });
+    mockedUseDownloadMapViewModel.mockReturnValue(baseViewModel(vm));
+    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
+    await render(<DownloadMapScreen />);
+    fireEvent.press(screen.getByRole('button', { name: label }));
+    const body = String(alertSpy.mock.calls[0][1]);
+    alertSpy.mockRestore();
+    return body;
+  };
+
+  test.each(['Use Venue Map Only', 'Use Online Mode'])('%s: no Settings promise when download is unavailable', async (label) => {
+    const body = await dialogBody(label, { offlineTileDownloadAvailable: false });
+    expect(body).not.toMatch(/Settings/);
+    expect(body).toMatch(/without internet/);
+  });
+
+  test.each(['Use Venue Map Only', 'Use Online Mode'])('%s: keeps Settings hint when download is available', async (label) => {
+    expect(await dialogBody(label, { offlineTileDownloadAvailable: true })).toMatch(/Settings/);
+  });
+});

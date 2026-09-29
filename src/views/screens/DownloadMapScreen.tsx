@@ -124,7 +124,9 @@ export function DownloadMapScreen() {
   const confirmVenueMapOnly = () => {
     Alert.alert(
       'Use venue map only?',
-      'You can navigate inside the Ijtema area and to/from it on nearby roads without a background map. You can download the full background map anytime from Settings.',
+      offlineTileDownloadAvailable
+        ? 'You can navigate inside the Ijtema area and to/from it on nearby roads without a background map. You can download the full background map anytime from Settings.'
+        : 'Directions inside the Ijtema and on nearby roads work without internet. The picture map behind the venue cannot be saved on your phone in this version.',
       [
         { text: 'Cancel', style: 'cancel' },
         { text: 'Continue', onPress: () => continueWithVenueMapOnly(navigation) },
@@ -135,7 +137,9 @@ export function DownloadMapScreen() {
   const confirmOnlineMode = () => {
     Alert.alert(
       'Continue without downloading?',
-      "You'll need internet to see the map and get directions. You can download the offline map anytime from Settings.",
+      offlineTileDownloadAvailable
+        ? "You'll need internet to see the map and get directions. You can download the offline map anytime from Settings."
+        : 'The picture map behind the venue needs internet. Directions inside the Ijtema and on nearby roads still work without internet.',
       [
         { text: 'Cancel', style: 'cancel' },
         { text: 'Continue', onPress: () => continueWithOnlineMode(navigation) },
