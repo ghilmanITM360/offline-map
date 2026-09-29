@@ -4,14 +4,14 @@ Current snapshot only. This file is replaced on each update, not appended to —
 
 **Last updated:** 2026-09-29
 **Canonical branch:** `integration/ijtema-clean-baseline`
-**Snapshot basis:** canonical `f360d83e0dcdfc90faf39a664c2033771d431b76` (merge of PR #138). Later commits that only change documentation are not re-measured; anything that changes source or `android/` requires re-running the baseline below.
+**Verified code baseline:** `28e98dc1c99be0e75b8396b736085cf7a7669fef` (merge of PR #170), the last commit that changed source. This documentation update is applied on top of it by PR #167; the final merged canonical HEAD is reported in that PR, not here, because a document cannot name its own commit. Commits that only change documentation are not re-measured; anything that changes source or `android/` requires re-running the baseline below.
 **Current milestone:** **Android APK Acceptance** — a fully tested, stable Android APK. Store/Play publishing, production signing, and legal/store submission are explicitly out of this milestone (tracked separately, see "Future Deployment" below).
 
 Full ticket-by-requirement coverage: [`docs/audit/MASTER_TICKET_MATRIX.md`](audit/MASTER_TICKET_MATRIX.md).
 
 ## Integration record (2026-09-29)
 
-Six PRs were merged with merge commits, in this order: #165 (`b7473b0`), #162 (`f02d56a`), #164 (`27eb527`), #152 (`8e4fef6`), #121 (`5473399`), #138 (`f360d83`). Each merge was guarded by the expected PR head SHA and green CI. The review was **owner-led with AI-assisted technical review — it was not an independent human review**, and no GitHub approvals exist on these PRs. The repository has no branch protection or CODEOWNERS, so nothing enforced a reviewer.
+Ten PRs were merged with merge commits, in two batches. Batch 1: #165 (`b7473b0`), #162 (`f02d56a`), #164 (`27eb527`), #152 (`8e4fef6`), #121 (`5473399`), #138 (`f360d83`). Batch 2 (code fixes): #166 (`aa2811f`, #143), #168 (`756fb4a`, #147), #171 (`1111914`, refs #161), #170 (`28e98dc`, #149 and refs #169). Each merge was guarded by the expected PR head SHA and green CI. The review was **owner-led with AI-assisted technical review — it was not an independent human review**, and no GitHub approvals exist on these PRs. The repository has no branch protection or CODEOWNERS, so nothing enforced a reviewer.
 
 ## Readiness
 
@@ -20,16 +20,18 @@ Six PRs were merged with merge commits, in this order: #165 (`b7473b0`), #162 (`
 | Current-milestone (APK) readiness | Not yet — see #135 (Final Android APK Acceptance) checklist; blocked on #46, #93, #95, #139, #126 (UI/UX audit), #129 (performance profiling); #124 needs a physical-device confirmation |
 | Future-deployment readiness | Not started, correctly out of scope — owner actions #47/#48/#49, plus #137 (iOS key) |
 
-## Test baseline (SOURCE/RUNTIME VERIFIED on `f360d83`, 2026-09-29)
+## Test baseline (SOURCE/RUNTIME VERIFIED on `28e98dc`, 2026-09-29)
 
 - `npm run typecheck` — clean
 - `npm run lint` — clean
-- `npm run test:components` (Jest, `--runInBand`) — **80 suites / 698 tests, all passing**
-- `npm test` (103-step script chain, includes the v2 structural-validation step) — passes
+- `npm run test:components` (Jest, `--runInBand`) — **83 suites / 712 tests, all passing**
+- `npm test` (110-step script chain, includes the v2 structural-validation step) — passes
 - `test:all-gates-v2`, `test:outside-street-gate-selection-cost-v2`, `test:core-provider-routing-contract-v2`, `test:reroute-v2` — pass
 - `git diff --check` — clean
 
 ## Testing APK (build evidence, not a release)
+
+**This table describes the earlier APK built from `f360d83`; it predates the batch-2 code fixes (#166/#168/#170/#171) and is superseded.** Evidence for a fresh APK built from the integrated head is recorded on #135 (an APK's checksum cannot be committed into the commit it is built from). The emulator results below were observed on the `f360d83` build and are not re-claimed for later builds.
 
 | | |
 |---|---|
@@ -54,15 +56,17 @@ The APK file lives outside git (local build output). Rebuild it from the commit 
 ## Open issues by priority (P1)
 
 - #46 — Physical Ijtima walking acceptance test (FIELD REQUIRED)
+- #139 — Active journey lost after Android process death (product decision + physical device)
 - #48 — Production signing / Play App Signing (owner action, Future Deployment)
 - #49 — Google Maps production restrictions verification (owner action, Future Deployment; also has a live-risk component — historical exposed key)
 - #93 — Nearest-node snapping continuity/hysteresis (root cause confirmed, fix deferred pending #46 field data)
 - #115 — NEW-06 connector-cost ambiguity; remaining acceptance is the `EVIDENCE_LEDGER.md` EV-028–030 update
 - #124 — "Direct guide" despite a valid OSM route: not reproduced on the baseline (fixed by #107/#108); needs a physical-device re-run before closing
 - #135 — Final Android APK Acceptance (current-milestone gate)
-- #139 — Active journey lost after Android process death (product decision + physical device)
 - #150, #151, #153 — a11y/UX findings **fixed in source by #164**; they stay open until the owner confirms on a device
 - #160 — closed by #162 (manual gate retained across reroutes); #118 — closed by #121 (v2 structural validation)
+- #161 (P2) — provider endpoint joins now count toward gate choice, distance, cost and ETA for Google routes (#171). **Stays open**: acceptance needs a deployed Google proxy (#123); only source/contract-test evidence exists.
+- #169 (P2) — V1 reroute-never-completes fixed in source and unit-tested (#170). **Stays open**: device verification outstanding (PHYSICAL DEVICE REQUIRED).
 
 **P2/P3 and full breakdown:** see `docs/audit/MASTER_TICKET_MATRIX.md`.
 
@@ -70,6 +74,7 @@ The APK file lives outside git (local build output). Rebuild it from the commit 
 
 ## Recently closed
 
+- #143 — stuck V2 "Rerouting…" state cleared when the reroute path throws (PR #166); #147 — malformed GPS fixes rejected in the store and at the `GPSManagerService` publishing boundary (PR #168); #149 — V1 lifecycle resets (PR #170). Source/unit evidence only; no device verification.
 - #160 — manual gate retained across automatic reroutes (PR #162); #118 — v2 dataset structural validation (PR #121)
 - #96 — Non-routable destinations show a muted, distinguishable tap affordance (PR #98)
 - #103, #105, #107, #109, #111, #113 — routing/navigation correctness fixes (all merged, see git log)
@@ -90,6 +95,5 @@ The APK file lives outside git (local build output). Rebuild it from the commit 
 
 ## In progress / next
 
-- PR #166 — `fix(#143)`: clears the stuck "Rerouting…" state when the reroute path throws (open, not merged; regression test fails without the fix).
-- Recommended next engineering tickets: #115 (docs/evidence closure), #161 (provider endpoint joins in complete-journey cost), #149 (legacy V1 lifecycle-reset parity), #147 (reject malformed GPS fixes).
-- Owner decisions pending: splash config sync, V1 extend/no-extend wording, `AGENTS.md` "main trails" wording, independent human review of the merged #165/#162/#164 (still recommended).
+- No fix PRs are open. Next by priority: #139 (needs the owner's product decision: restore the journey vs notify and rebuild the route), NAV-004 background-resume GPS freshness (part of #46's physical tier), #124 physical-device re-run, then #115 (docs/evidence closure).
+- Owner decisions pending: #139 restore-or-notify, splash config sync, V1 extend/no-extend wording, `AGENTS.md` "main trails" wording, independent human review of the merged PRs (still recommended).
