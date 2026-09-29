@@ -5,8 +5,7 @@
 
 import { staticColors } from '../theme';
 
-// Relative-luminance WCAG 2.2 contrast ratio — same method used elsewhere in this
-// codebase's audit docs (docs/audit/ui-ux/SPLASH_SCREEN_DEEP_AUDIT.md).
+// Relative-luminance WCAG 2.2 contrast ratio; see issue #153.
 function channel(c: number) {
   const s = c / 255;
   return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
@@ -23,7 +22,7 @@ function contrastRatio(hexA: string, hexB: string) {
   return (l1 + 0.05) / (l2 + 0.05);
 }
 
-describe('Permission screen loading-state button contrast (PERM-005)', () => {
+describe('Permission screen loading-state button contrast (#153 PERM-005)', () => {
   test('white spinner on the disabled/loading button background meets WCAG 1.4.11 (>=3:1)', () => {
     const ratio = contrastRatio('#FFFFFF', staticColors.focusedBlock);
     expect(ratio).toBeGreaterThanOrEqual(3);

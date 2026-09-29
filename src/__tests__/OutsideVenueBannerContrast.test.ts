@@ -5,8 +5,7 @@
 
 import { staticColors } from '../theme';
 
-// Relative-luminance WCAG 2.2 contrast ratio, same method used elsewhere in this
-// codebase's audit docs (docs/audit/ui-ux/SPLASH_SCREEN_DEEP_AUDIT.md).
+// Relative-luminance WCAG 2.2 contrast ratio; see issue #150.
 function channel(c: number) {
   const s = c / 255;
   return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;

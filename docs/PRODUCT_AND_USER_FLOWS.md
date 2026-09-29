@@ -20,3 +20,5 @@ All on the one persistent map (see `docs/ARCHITECTURE.md` for why this is map-fi
 Start-source (GPS, search, map tap, remembered state) never changes routing policy — every outside coordinate goes through the same `prepareOutsideRoutingPlan` → provider fallback → `finalizeOutsideRoutingPlan` pipeline described in `docs/OFFLINE_NAVIGATION_AND_ROUTING.md`.
 
 Manual gate selection, once made, stays authoritative across an automatic reroute — the app does not silently override a user's explicit gate choice.
+
+Active navigation and arrival have two live presentations: `NavigationChromeV1`/`NavigationMapLayersV1` for legacy Block destinations and `NavigationChromeV2`/`NavigationMapLayersV2` for Gate/facility destinations. Only one renders content, chosen by `sourceVersion`. A navigation or arrival UI change must land in both, or state why one is exempt (see NAV-004 in `docs/KNOWN_LIMITATIONS_AND_OWNER_ACTIONS.md`).
