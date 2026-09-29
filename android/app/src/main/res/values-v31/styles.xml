@@ -1,0 +1,9 @@
+<resources>
+  <!-- API 31+: the system splash ignores windowBackground; set its background and icon explicitly.
+       Full re-declaration is required because this replaces the values/ style of the same name. -->
+  <style name="Theme.App.SplashScreen" parent="AppTheme">
+    <item name="android:windowBackground">@drawable/ic_launcher_background</item>
+    <item name="android:windowSplashScreenBackground">@color/splashscreen_background</item>
+    <item name="android:windowSplashScreenAnimatedIcon">@drawable/splashscreen_icon_v31</item>
+  </style>
+</resources>

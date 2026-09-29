@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android 12+ splash icon: the 288dp pin canvas, scaled to 85% so the pin sits inside the
+     192dp visible circle the system masks the splash icon to. Reuses splashscreen_logo.png. -->
+<inset xmlns:android="http://schemas.android.com/apk/res/android"
+    android:drawable="@drawable/splashscreen_logo"
+    android:inset="7.5%" />
