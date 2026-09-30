@@ -185,6 +185,47 @@ describe('Get Directions redesign — structure and semantics', () => {
     expect(screen.getByRole('button', { name: /Use my current location/ })).toBeOnTheScreen();
   });
 
+  test('Back from the start chooser returns to the summary; Back from the summary closes', async () => {
+    mockedVm.mockReturnValue(vm());
+    const user = userEvent.setup();
+    await renderSheet();
+
+    await user.press(screen.getByRole('button', { name: 'Change starting point' }));
+    await user.press(screen.getByRole('button', { name: 'Back' }));
+
+    expect(onClose).not.toHaveBeenCalled();
+    expect(screen.getByRole('header', { name: 'Going to' })).toBeOnTheScreen();
+
+    await user.press(screen.getByRole('button', { name: 'Back' }));
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  test('Back from the destination picker returns to the summary', async () => {
+    mockedVm.mockReturnValue(vm());
+    const user = userEvent.setup();
+    await renderSheet({ onChangeDestination: jest.fn() });
+
+    await user.press(screen.getByRole('button', { name: 'Change destination' }));
+    expect(screen.getByRole('button', { name: 'Cancel changing destination' })).toBeOnTheScreen();
+    await user.press(screen.getByRole('button', { name: 'Back' }));
+
+    expect(onClose).not.toHaveBeenCalled();
+    expect(screen.getByRole('header', { name: 'Going to' })).toBeOnTheScreen();
+  });
+
+  test('tapping the destination or start row runs the same action as its change button', async () => {
+    mockedVm.mockReturnValue(vm());
+    const user = userEvent.setup();
+    await renderSheet({ onChangeDestination: jest.fn() });
+
+    await user.press(screen.getByText(destination.name));
+    expect(screen.getByRole('button', { name: 'Cancel changing destination' })).toBeOnTheScreen();
+    await user.press(screen.getByRole('button', { name: 'Cancel changing destination' }));
+
+    await user.press(screen.getByText('My current location'));
+    expect(screen.getByText('Choose where you are starting from')).toBeOnTheScreen();
+  });
+
   test('recommended emphasis only follows the real start source', async () => {
     mockedVm.mockReturnValue(
       vm({ startSource: 'manual_place', isCurrentLocationStartActive: false, showManualStartSearch: true }),

@@ -339,6 +339,19 @@ function RoutePreviewSection({
 
   const editingStart = showStartOptions || showManualStartSearch;
   const editingAnything = editingStart || showDestinationOptions;
+  // Back from a picker returns to the Get Directions summary; only from the summary does it leave
+  // the journey. A remembered manual start keeps its search open (source-driven), so Back leaves.
+  const handleBack = () => {
+    if (showDestinationOptions) {
+      setShowDestinationOptions(false);
+      setDestSearch('');
+    } else if (showStartOptions && startSource !== 'manual_place') {
+      setShowStartOptions(false);
+      setIsEditingManualStart(false);
+    } else {
+      onClose();
+    }
+  };
   const directGuide = outsideRoute?.provider === 'direct-guide';
   const offlineCaption = directionsOfflineCaption(outsideRoute?.provider, !!basemapOffline);
   // Past ~150% font the pinned footer would eat the sheet: it keeps only the action (and its
@@ -441,7 +454,7 @@ function RoutePreviewSection({
       <DirectionsHeader
         title="Get Directions"
         subtitle={editingStart ? 'Choose where you are starting from' : 'Plan your walking route inside Ijtema'}
-        onBack={onClose}
+        onBack={handleBack}
       />
 
       <KeyboardAvoidingView

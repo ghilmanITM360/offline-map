@@ -57,7 +57,7 @@ const { useNavigation } = jest.requireMock('@react-navigation/native') as { useN
 const mockedUseHomeViewModel = useHomeViewModel as jest.Mock;
 const mockedUseDirectionsViewModel = useDirectionsViewModel as jest.Mock;
 const { __getLastBottomSheetModalProps } = jest.requireMock('@gorhom/bottom-sheet') as {
-  __getLastBottomSheetModalProps: () => { onChange: (index: number) => void; onDismiss: () => void };
+  __getLastBottomSheetModalProps: () => { onChange: (index: number) => void; onDismiss: () => void; snapPoints: string[] };
 };
 
 const gateResult: Place = {
@@ -275,6 +275,40 @@ describe('HomeScreen — hardware back button (mode-aware, Google Maps parity)',
     expect(screen.queryByText('Get Directions')).not.toBeOnTheScreen();
     expect(await screen.findByText('Main North Gate')).toBeOnTheScreen();
     expect(setSelectedPlaceSpy).not.toHaveBeenCalledWith(null);
+  });
+});
+
+describe('HomeScreen — Get Directions sheet detents (#177)', () => {
+  test('route preview uses the 79% middle detent; place preview keeps 15/50/92', async () => {
+    mockedUseDirectionsViewModel.mockReturnValue({
+      route: null,
+      startSource: 'live_gps',
+      rememberedLocationAgeLabel: '',
+      rememberedLocationAvailable: false,
+      rememberedLocationInsideVenue: false,
+      currentRouteOriginInsideVenue: true,
+      loadState: 'idle',
+      errorMessage: null,
+      manualStart: null,
+      chooseManualStart: jest.fn(),
+      setIsEditingManualStart: jest.fn(),
+      setManualStartPlace: jest.fn(),
+      chooseCurrentLocation: jest.fn(async () => true),
+      chooseRememberedLocation: jest.fn(() => true),
+      calculateRoute: jest.fn(async () => {}),
+      showManualStartSearch: false,
+      canStartNavigation: true,
+      startNavigationDisabledReason: '',
+    });
+    const user = userEvent.setup();
+    await render(<HomeScreen />);
+
+    await user.press(screen.getByTestId('facility_marker_LM_GATE_MAIN_NORTH'));
+    expect(__getLastBottomSheetModalProps().snapPoints).toEqual(['15%', '50%', '92%']);
+
+    await user.press(await screen.findByText('Directions'));
+    expect(await screen.findByText('Get Directions')).toBeOnTheScreen();
+    expect(__getLastBottomSheetModalProps().snapPoints).toEqual(['15%', '79%', '92%']);
   });
 });
 

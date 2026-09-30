@@ -130,6 +130,12 @@ const VENUE_BOUNDARY = [
 const SATELLITE_DIM_LAT_PAD = (IJTEMA_MAP_BOUNDS.maxLat - IJTEMA_MAP_BOUNDS.minLat) * 0.5;
 const SATELLITE_DIM_LNG_PAD = (IJTEMA_MAP_BOUNDS.maxLng - IJTEMA_MAP_BOUNDS.minLng) * 0.5;
 const ROUTE_FIT_BOTTOM_PADDING = 32;
+// Get Directions pins its CTA footer (~155 dp) under a ~97 dp header, so the shared
+// 50% detent (~252 dp on a 914 dp window) leaves no scroll area and hides both cards.
+// 79% (~398 dp) shows the header, the Going to card through its whole destination row, and
+// the footer (76% clipped that row by ~11 dp on the 914 dp emulator window), while the map
+// keeps ~42% of the window. Same three-detent index contract.
+const ROUTE_PREVIEW_SNAP_POINTS = ['15%', '79%', '92%'];
 const SATELLITE_DIM_BOUNDARY = [
   { latitude: IJTEMA_MAP_BOUNDS.minLat - SATELLITE_DIM_LAT_PAD, longitude: IJTEMA_MAP_BOUNDS.minLng - SATELLITE_DIM_LNG_PAD },
   { latitude: IJTEMA_MAP_BOUNDS.minLat - SATELLITE_DIM_LAT_PAD, longitude: IJTEMA_MAP_BOUNDS.maxLng + SATELLITE_DIM_LNG_PAD },
@@ -266,7 +272,7 @@ export function HomeScreen() {
     cameraManager,
     mapType,
     selectedPlace,
-    snapPoints,
+    snapPoints: baseSnapPoints,
     initialRegion,
     isOffline,
     offlineData,
@@ -919,6 +925,10 @@ export function HomeScreen() {
   // and let the banner overlap the chip row. Now derived from the search+chip overlay's
   // own onLayout height (topOverlayHeight). Falls back to the old constant only for the
   // one frame before the first layout pass reports a height.
+  const snapPoints = useMemo(
+    () => (mode === 'ROUTE_PREVIEW' ? ROUTE_PREVIEW_SNAP_POINTS : baseSnapPoints),
+    [mode, baseSnapPoints],
+  );
   const bannerStackTop = topOverlayHeight > 0 ? topOverlayHeight + 8 : topInsetBase + 140;
   // The full Layers/Compass/Zoom/Recenter cluster is one bottom-anchored stack (see
   // MapControls) instead of two independently-positioned pieces (a top-anchored

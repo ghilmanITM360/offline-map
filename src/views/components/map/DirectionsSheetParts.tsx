@@ -74,6 +74,7 @@ export function RouteEndpointCard({
   onAction: () => void;
   children?: React.ReactNode;
 }) {
+  const Chevron = I18nManager.isRTL ? ChevronLeft : ChevronRight;
   return (
     <View style={styles.card}>
       <View style={styles.cardHeader}>
@@ -85,13 +86,16 @@ export function RouteEndpointCard({
           <Text style={styles.cardHelper}>{helper}</Text>
         </View>
       </View>
-      <View style={styles.inner}>
+      {/* Whole row is a touch shortcut for the labelled action below; it is not its own screen-reader
+          stop, so the action is announced once. */}
+      <Pressable accessible={false} onPress={onAction} style={styles.inner}>
         <View style={styles.innerDisc}>{icon}</View>
         <View style={styles.flex}>
           <Text style={styles.innerName}>{name}</Text>
           {detail ? <Text style={styles.innerDetail}>{detail}</Text> : null}
         </View>
-      </View>
+        <Chevron size={20} color={c.secondaryText} />
+      </Pressable>
       {children}
       <Pressable
         style={({ pressed }) => [styles.action, pressed && styles.actionPressed]}
