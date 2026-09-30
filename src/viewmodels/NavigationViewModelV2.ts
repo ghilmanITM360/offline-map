@@ -17,6 +17,8 @@ import {
 import { RerouteService } from '../services/RerouteService';
 import { GPSManagerService } from '../services/GPSManagerService';
 import { RoutingServiceV2 } from '../services/RoutingServiceV2';
+import type { RoutePreviewV2 } from '../services/RoutingServiceV2';
+import { destinationFromPlace } from '../services/V2DirectionsService';
 import { EntryGateRoutingService } from '../services/EntryGateRoutingService';
 import { V2DirectionsService } from '../services/V2DirectionsService';
 import { V2NavigationAdapter, isV2ActiveRoute } from '../services/V2NavigationAdapter';
@@ -86,6 +88,33 @@ function placeFromV2Destination(route: V2ActiveRoute, existingDestination: Place
     sourceVersion: 'v2',
     sourceKind: destination.type,
   };
+}
+
+export type { RoutePreviewV2 } from '../services/RoutingServiceV2';
+
+export interface NavigationPreviewStartInput {
+  route: RoutePreviewV2 | null;
+  destination: Place | null;
+  startPlace?: Place | null;
+  currentLocation?: Coordinate | null;
+}
+
+/** Compose and start the existing preview without mounting a second navigation watcher. */
+export function startPreviewNavigationV2(input: NavigationPreviewStartInput) {
+  const check = V2NavigationAdapter.canStartActiveNavigation(input);
+  if (!check.canStart || !input.route || !input.destination) return check;
+  const route = V2NavigationAdapter.fromPreview({
+    previewRoute: input.route,
+    destination: input.destination,
+    startPlace: input.startPlace,
+    currentLocation: input.startPlace ? null : input.currentLocation,
+  });
+  useAppStore.getState().startNavigation(input.destination, route, route.instructions);
+  return check;
+}
+
+export function recommendPreviewEntryGate(coordinate: Coordinate, place: Place | null) {
+  return RoutingServiceV2.recommendOutsideEntryGate(coordinate, place ? destinationFromPlace(place) : null);
 }
 
 export function useNavigationViewModelV2() {

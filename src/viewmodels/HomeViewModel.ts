@@ -385,3 +385,6 @@ export function useHomeViewModel({ isFocused = true }: { isFocused?: boolean } =
     setSelectedPlace,
   };
 }
+
+/** Developer diagnostics belong to the ViewModel boundary. */
+export const getHomeRouteDiagnostics = () => RoutingService.runRouteDiagnostics();

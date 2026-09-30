@@ -15,7 +15,7 @@ const home = readFileSync('src/views/screens/HomeScreen.tsx', 'utf8');
 // the same destination-aware selection as real route computation (falling back
 // to nearest-gate only when no destination is selected yet).
 assert(
-  home.includes('RoutingServiceV2.recommendOutsideEntryGate'),
+  home.includes('recommendPreviewEntryGate(currentLocation, selectedPlace)') && readFileSync('src/viewmodels/NavigationViewModelV2.ts', 'utf8').includes('return RoutingServiceV2.recommendOutsideEntryGate'),
   'Home must compute the outside-venue banner gate through the shared, route-consistent gate selector',
 );
 assert(
