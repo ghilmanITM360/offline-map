@@ -160,4 +160,3 @@ export const directionsSheetColors = {
   optionSelectedBorder: '#D7E2D5',
   bannerFill: '#F0F6EF',
 } as const;
-
