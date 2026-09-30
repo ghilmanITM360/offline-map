@@ -50,8 +50,17 @@ interface RerouteOptions {
   allowDirectGuide?: boolean;
 }
 
-function isArrived(route: V2ActiveRoute, coordinate: Coordinate | null): boolean {
-  if (!coordinate) return false;
+function isArrived(route: V2ActiveRoute, coordinate: Coordinate | null, stepIndex: number): boolean {
+  if (!coordinate || route.instructions.length === 0) return false;
+  const lastIndex = route.instructions.length - 1;
+  const lastInstruction = route.instructions[lastIndex];
+  // Production appends an arrival marker at the final walking instruction's
+  // endpoint. The walking segment already qualifies for proximity-based arrival.
+  const finalSegmentIndex = lastInstruction.type === 'arrival' && lastIndex > 0 &&
+    route.instructions[lastIndex - 1].routeIndex === lastInstruction.routeIndex
+    ? lastIndex - 1
+    : lastIndex;
+  if (stepIndex < finalSegmentIndex) return false;
   return getDistance(coordinate, route.destination.coordinate) <= ARRIVAL_THRESHOLD_METERS;
 }
 
@@ -468,10 +477,10 @@ export function useNavigationViewModelV2() {
     setSnappedLocation(progress.snappedCoordinate);
     setRemainingDistance(progress.remainingDistanceM);
     setEtaMinutes(progress.etaMinutes);
-    setArrived(isArrived(route, currentLocation));
 
     const guidance = calculateLiveManeuverDistanceV2({ route, currentStepIndex, progressMeters: progress.progressMeters });
     const nextIndex = guidance.stepIndex;
+    setArrived(isArrived(route, currentLocation, nextIndex));
     if (nextIndex !== currentStepIndex) {
       setCurrentStepIndex(nextIndex);
     }
