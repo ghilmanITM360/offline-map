@@ -30,24 +30,25 @@ import { isValidCoordinate } from '../utils/isValidCoordinate';
 export type RouteSelectionMode = 'idle' | 'selectingStart' | 'selectingDestination';
 
 function sanitizePersistedPlace(place: Place | null | undefined): Place | null {
-  if (!place) return null;
+  if (!place || typeof place !== 'object' || Array.isArray(place) || typeof place.id !== 'string') return null;
   if (!MapFeatureFlagsService.useIjtemaV2Map()) return place;
   return place.sourceVersion === 'v2' ? place : null;
 }
 
-function sanitizePersistedPlaces(places: Place[] | undefined): Place[] {
+function sanitizePersistedPlaces(places: unknown): Place[] {
   if (!Array.isArray(places)) return [];
   return places
     .map((place) => sanitizePersistedPlace(place))
     .filter((place): place is Place => Boolean(place));
 }
 
-function sanitizePersistedFavorite(favorite: FavoritePlace): FavoritePlace | null {
+function sanitizePersistedFavorite(favorite: FavoritePlace | null | undefined): FavoritePlace | null {
+  if (!favorite || typeof favorite !== 'object' || Array.isArray(favorite) || typeof favorite.placeId !== 'string') return null;
   if (!MapFeatureFlagsService.useIjtemaV2Map()) return favorite;
   return V2PlaceAdapter.getPlaceById(favorite.placeId) ? favorite : null;
 }
 
-function sanitizePersistedFavorites(favorites: FavoritePlace[] | undefined): FavoritePlace[] {
+function sanitizePersistedFavorites(favorites: unknown): FavoritePlace[] {
   if (!Array.isArray(favorites)) return [];
   return favorites
     .map((favorite) => sanitizePersistedFavorite(favorite))
@@ -548,8 +549,6 @@ export const useAppStore = create<AppState>()(
         const state = persistedState as Partial<AppState>;
         return {
           ...state,
-          recentSearches: sanitizePersistedPlaces(state.recentSearches),
-          favorites: sanitizePersistedFavorites(state.favorites),
           selectedPlace: sanitizePersistedPlace(state.selectedPlace),
           routePlannerOrigin: sanitizePersistedPlace(state.routePlannerOrigin),
           routePlannerDest: sanitizePersistedPlace(state.routePlannerDest),
@@ -571,6 +570,10 @@ export const useAppStore = create<AppState>()(
           ...currentState,
           ...allowedState,
           settings: sanitizePersistedSettings(persisted.settings, currentState.settings),
+          recentSearches: Object.prototype.hasOwnProperty.call(persisted, 'recentSearches')
+            ? sanitizePersistedPlaces(persisted.recentSearches) : currentState.recentSearches,
+          favorites: Object.prototype.hasOwnProperty.call(persisted, 'favorites')
+            ? sanitizePersistedFavorites(persisted.favorites) : currentState.favorites,
         };
       },
       // Only persist these keys — runtime GPS and transient UI state are not persisted
