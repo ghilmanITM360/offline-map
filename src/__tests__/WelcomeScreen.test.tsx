@@ -27,8 +27,8 @@ describe('WelcomeScreen (#159 WEL-007)', () => {
   test('renders the bilingual title and all four benefits', async () => {
     await render(<WelcomeScreen />);
 
-    expect(screen.getByText('Welcome to Karachi Ijtema Navigation')).toBeOnTheScreen();
-    expect(screen.getByText('کراچی اجتماع نیویگیشن میں خوش آمدید')).toBeOnTheScreen();
+    expect(screen.getByText('Welcome to Ijtema Map')).toBeOnTheScreen();
+    expect(screen.getByText('اجتماع میپ میں خوش آمدید')).toBeOnTheScreen();
     expect(screen.getByText('Find your location')).toBeOnTheScreen();
     expect(screen.getByText('Navigate to blocks and gates')).toBeOnTheScreen();
     expect(screen.getByText('Use offline maps')).toBeOnTheScreen();
