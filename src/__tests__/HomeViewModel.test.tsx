@@ -43,6 +43,27 @@ describe('HomeViewModel pending directory selection', () => {
     expect(useAppStore.getState().pendingDirectorySelection).toBeNull();
   });
 
+  test('holds a hand-off until Home is the focused screen (#190)', async () => {
+    const hook = await renderHook(
+      (props: { isFocused: boolean }) => useHomeViewModel({ isFocused: props.isFocused }),
+      { initialProps: { isFocused: false } },
+    );
+
+    await act(() => {
+      useAppStore.getState().setPendingDirectorySelection(directoryPlace);
+    });
+
+    // The Directory has not finished popping: applying the selection now would present
+    // the sheet over the screen that is still on top.
+    expect(hook.result.current.selectedPlace).toBeNull();
+    expect(useAppStore.getState().pendingDirectorySelection).toEqual(directoryPlace);
+
+    await hook.rerender({ isFocused: true });
+
+    expect(hook.result.current.selectedPlace).toEqual(directoryPlace);
+    expect(useAppStore.getState().pendingDirectorySelection).toBeNull();
+  });
+
   test('does nothing when no destination is pending', async () => {
     const hook = await renderHook(() => useHomeViewModel());
 

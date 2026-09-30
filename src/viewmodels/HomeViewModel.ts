@@ -44,7 +44,7 @@ function getHomeSnappedCoordinate(coord: { latitude: number; longitude: number }
   return RoutePointService.nodeToCoordinate(nearestNode);
 }
 
-export function useHomeViewModel() {
+export function useHomeViewModel({ isFocused = true }: { isFocused?: boolean } = {}) {
   const mapRef = useRef<MapView>(null);
   const bottomSheetRef = useRef<BottomSheetModal>(null);
   // Mirrors HomeScreen's sheetIndex state (-1 = closed) so handlePlaceSelect can decide
@@ -190,11 +190,13 @@ export function useHomeViewModel() {
   // sibling reached before/pushed on top of Main) through the exact same selection
   // pipeline as a map tap or search result — no parallel selection path. The field is
   // cleared the instant it's consumed so it never re-fires on a later unrelated render.
+  // Held until Home is focused again, i.e. after the Directory has finished popping, so the
+  // sheet never presents over the screen that is still on top (#190).
   useEffect(() => {
-    if (!pendingDirectorySelection) return;
+    if (!pendingDirectorySelection || !isFocused) return;
     handlePlaceSelect(pendingDirectorySelection);
     setPendingDirectorySelection(null);
-  }, [pendingDirectorySelection, handlePlaceSelect, setPendingDirectorySelection]);
+  }, [pendingDirectorySelection, isFocused, handlePlaceSelect, setPendingDirectorySelection]);
 
   const handleRecenter = useCallback(async (): Promise<boolean> => {
     const recenterTo = (location: typeof currentLocation) => {
