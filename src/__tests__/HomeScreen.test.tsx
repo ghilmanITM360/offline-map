@@ -272,6 +272,111 @@ describe('HomeScreen — foreground workflow exclusivity (#190)', () => {
   });
 });
 
+// #128 — TalkBack reaches the Home MapView (sibling of the portal-hosted sheet, so earlier in
+// the Android accessibility tree) before the sheet, and gorhom's default accessible sheet
+// container swallows its own title, subtitle and footer text. Exclusive workflows must hide the
+// map subtree; Place Details must not, because marker selection is still a valid action there.
+describe('HomeScreen — accessibility tree ownership (#128)', () => {
+  const mapA11y = () =>
+    screen.getByTestId('home-map-view', { includeHiddenElements: true }).props.importantForAccessibility;
+  const sheetProps = () =>
+    __getLastBottomSheetModalProps() as unknown as {
+      accessible?: boolean | null;
+      accessibilityLabel?: string | null;
+      accessibilityRole?: string | null;
+    };
+
+  function mockRoutePreviewDirections() {
+    mockedUseDirectionsViewModel.mockReturnValue({
+      route: null,
+      startSource: 'live_gps',
+      rememberedLocationAgeLabel: '',
+      rememberedLocationAvailable: false,
+      rememberedLocationInsideVenue: false,
+      currentRouteOriginInsideVenue: true,
+      loadState: 'idle',
+      errorMessage: null,
+      manualStart: null,
+      chooseManualStart: jest.fn(),
+      setIsEditingManualStart: jest.fn(),
+      setManualStartPlace: jest.fn(),
+      chooseCurrentLocation: jest.fn(async () => true),
+      chooseRememberedLocation: jest.fn(() => true),
+      calculateRoute: jest.fn(async () => {}),
+      showManualStartSearch: false,
+      canStartNavigation: true,
+      startNavigationDisabledReason: '',
+    });
+  }
+
+  test('map stays reachable while exploring and on Place Details', async () => {
+    const user = userEvent.setup();
+    await render(<HomeScreen />);
+    expect(mapA11y()).toBe('auto');
+
+    await user.press(screen.getByTestId('facility_marker_LM_GATE_MAIN_NORTH'));
+    expect(await screen.findByText('Official entry / exit gate')).toBeOnTheScreen();
+    expect(mapA11y()).toBe('auto');
+  });
+
+  test('map subtree is hidden from accessibility while Get Directions is open, and restored when it closes', async () => {
+    mockRoutePreviewDirections();
+    const user = userEvent.setup();
+    await render(<HomeScreen />);
+
+    await user.press(screen.getByTestId('facility_marker_LM_GATE_MAIN_NORTH'));
+    await user.press(await screen.findByText('Directions'));
+    expect(await screen.findByText('Get Directions')).toBeOnTheScreen();
+    expect(mapA11y()).toBe('no-hide-descendants');
+
+    await act(async () => {
+      DeviceEventEmitter.emit('hardwareBackPress');
+    });
+    expect(screen.queryByText('Get Directions')).not.toBeOnTheScreen();
+    expect(mapA11y()).toBe('auto');
+  });
+
+  test('sheet container is not itself an accessibility stop that swallows its text', async () => {
+    const user = userEvent.setup();
+    await render(<HomeScreen />);
+    await user.press(screen.getByTestId('facility_marker_LM_GATE_MAIN_NORTH'));
+
+    expect(sheetProps().accessible).toBe(false);
+    expect(sheetProps().accessibilityLabel).toBeNull();
+    expect(sheetProps().accessibilityRole).toBeNull();
+  });
+
+  test('sheet background is decorative, not a labelled "Bottom Sheet" stop', async () => {
+    const user = userEvent.setup();
+    await render(<HomeScreen />);
+    await user.press(screen.getByTestId('facility_marker_LM_GATE_MAIN_NORTH'));
+    const { backgroundComponent: Background } = __getLastBottomSheetModalProps() as unknown as {
+      backgroundComponent?: React.ComponentType<{ pointerEvents: 'none'; style: object }>;
+    };
+    expect(Background).toBeDefined();
+
+    await render(<Background pointerEvents="none" style={{}} />);
+    type Json = { props: Record<string, unknown>; children?: Json[] | null };
+    const find = (n: Json): Json | undefined =>
+      n.props.pointerEvents === 'none' ? n : n.children?.map((c) => (typeof c === 'string' ? undefined : find(c))).find(Boolean);
+    const background = find(screen.toJSON() as Json)!;
+    expect(background.props.accessible).not.toBe(true);
+    expect(background.props.importantForAccessibility).toBe('no');
+    expect(background.props.accessibilityLabel).toBeUndefined();
+    expect(background.props.accessibilityRole).toBeUndefined();
+  });
+
+  test('Get Directions title stays an independently reachable heading', async () => {
+    mockRoutePreviewDirections();
+    const user = userEvent.setup();
+    await render(<HomeScreen />);
+    await user.press(screen.getByTestId('facility_marker_LM_GATE_MAIN_NORTH'));
+    await user.press(await screen.findByText('Directions'));
+
+    expect(await screen.findByRole('header', { name: 'Get Directions' })).toBeOnTheScreen();
+  });
+});
+
 // Deliberately placed early in the file (not after "recenter follow mode" below): the
 // "recenter" tests are the only ones in this file that call jest.advanceTimersByTime, which
 // also flushes any MapLabelOverlay projection work queued by earlier tests' rAF callbacks —
@@ -730,11 +835,11 @@ describe('HomeScreen — navigation completion cleanup', () => {
     await act(async () => {
       useAppStore.getState().startNavigation(v1Destination, v1Route as any, []);
     });
-    expect(await screen.findByTestId('navigation-user-location-marker')).toBeOnTheScreen();
-    expect(screen.getAllByTestId('navigation-start-marker')).toHaveLength(1);
-    expect(screen.getAllByTestId('navigation-destination-marker')).toHaveLength(1);
-    expect(screen.queryByTestId('browse-user-location-marker')).not.toBeOnTheScreen();
-    expect(screen.queryByTestId('browse-user-accuracy-circle')).not.toBeOnTheScreen();
+    expect(await screen.findByTestId('navigation-user-location-marker', { includeHiddenElements: true })).toBeOnTheScreen();
+    expect(screen.getAllByTestId('navigation-start-marker', { includeHiddenElements: true })).toHaveLength(1);
+    expect(screen.getAllByTestId('navigation-destination-marker', { includeHiddenElements: true })).toHaveLength(1);
+    expect(screen.queryByTestId('browse-user-location-marker', { includeHiddenElements: true })).not.toBeOnTheScreen();
+    expect(screen.queryByTestId('browse-user-accuracy-circle', { includeHiddenElements: true })).not.toBeOnTheScreen();
     expect(screen.queryByTestId('selected-place-marker')).not.toBeOnTheScreen();
 
     await user.press(screen.getByTestId('nav-exit-button'));
@@ -743,11 +848,11 @@ describe('HomeScreen — navigation completion cleanup', () => {
     )?.onPress;
     await act(async () => confirmExit?.());
 
-    await waitFor(() => expect(screen.queryByTestId('navigation-user-location-marker')).not.toBeOnTheScreen());
-    expect(screen.queryByTestId('navigation-start-marker')).not.toBeOnTheScreen();
-    expect(screen.queryByTestId('navigation-destination-marker')).not.toBeOnTheScreen();
-    expect(screen.getAllByTestId('browse-user-location-marker')).toHaveLength(1);
-    expect(screen.getAllByTestId('browse-user-accuracy-circle')).toHaveLength(1);
+    await waitFor(() => expect(screen.queryByTestId('navigation-user-location-marker', { includeHiddenElements: true })).not.toBeOnTheScreen());
+    expect(screen.queryByTestId('navigation-start-marker', { includeHiddenElements: true })).not.toBeOnTheScreen();
+    expect(screen.queryByTestId('navigation-destination-marker', { includeHiddenElements: true })).not.toBeOnTheScreen();
+    expect(screen.getAllByTestId('browse-user-location-marker', { includeHiddenElements: true })).toHaveLength(1);
+    expect(screen.getAllByTestId('browse-user-accuracy-circle', { includeHiddenElements: true })).toHaveLength(1);
     expect(screen.queryByTestId('selected-place-marker')).not.toBeOnTheScreen();
     alertSpy.mockRestore();
   });
@@ -801,7 +906,7 @@ describe('HomeScreen — canonical navigation pan ownership', () => {
     } as unknown as ReturnType<typeof NavigationOverlayV1Module.useNavigationOverlayV1>);
     await render(<HomeScreen />);
 
-    await fireEvent(screen.getByTestId('home-map-view'), 'panDrag');
+    await fireEvent(screen.getByTestId('home-map-view', { includeHiddenElements: true }), 'panDrag');
 
     expect(setIsAutoFollowing).toHaveBeenCalledWith(false);
     overlaySpy.mockRestore();
@@ -852,11 +957,11 @@ describe('HomeScreen — v1 Arrival marker fallback', () => {
 
     await render(<HomeScreen />);
 
-    expect(screen.getAllByTestId('browse-user-location-marker')).toHaveLength(1);
-    expect(screen.getAllByTestId('browse-user-accuracy-circle')).toHaveLength(1);
-    expect(screen.queryByTestId('navigation-user-location-marker')).not.toBeOnTheScreen();
-    expect(screen.queryByTestId('navigation-start-marker')).not.toBeOnTheScreen();
-    expect(screen.getAllByTestId('navigation-destination-marker')).toHaveLength(1);
+    expect(screen.getAllByTestId('browse-user-location-marker', { includeHiddenElements: true })).toHaveLength(1);
+    expect(screen.getAllByTestId('browse-user-accuracy-circle', { includeHiddenElements: true })).toHaveLength(1);
+    expect(screen.queryByTestId('navigation-user-location-marker', { includeHiddenElements: true })).not.toBeOnTheScreen();
+    expect(screen.queryByTestId('navigation-start-marker', { includeHiddenElements: true })).not.toBeOnTheScreen();
+    expect(screen.getAllByTestId('navigation-destination-marker', { includeHiddenElements: true })).toHaveLength(1);
     expect(screen.queryByTestId('selected-place-marker')).not.toBeOnTheScreen();
 
     overlaySpy.mockRestore();
@@ -880,13 +985,13 @@ describe('HomeScreen — resolved base-map rendering', () => {
     mockedUseHomeViewModel.mockImplementation(useDownloadedTilesViewModel);
     await render(<HomeScreen />);
 
-    expect(screen.getAllByTestId('local-base-map-tiles')).toHaveLength(1);
-    expect(screen.getByTestId('home-map-view').props.mapType).toBe('none');
+    expect(screen.getAllByTestId('local-base-map-tiles', { includeHiddenElements: true })).toHaveLength(1);
+    expect(screen.getByTestId('home-map-view', { includeHiddenElements: true }).props.mapType).toBe('none');
   });
 
   test('map padding bottom inset is just the safe area with no sheet open', async () => {
     await render(<HomeScreen />);
-    expect(screen.getByTestId('home-map-view').props.mapPadding.bottom).toBe(34);
+    expect(screen.getByTestId('home-map-view', { includeHiddenElements: true }).props.mapPadding.bottom).toBe(34);
   });
 
   test('map padding grows past the safe area to clear the sheet once a place is selected, so Google attribution stays visible (ATTR-001)', async () => {
@@ -895,7 +1000,7 @@ describe('HomeScreen — resolved base-map rendering', () => {
     await user.press(screen.getByTestId('facility_marker_LM_MASJID_MAIN'));
     await screen.findByText('Main Masjid');
 
-    expect(screen.getByTestId('home-map-view').props.mapPadding.bottom).toBeGreaterThan(0);
+    expect(screen.getByTestId('home-map-view', { includeHiddenElements: true }).props.mapPadding.bottom).toBeGreaterThan(0);
   });
 
   // ATTR-001 follow-up: on-device, dragging Route Preview to its plain, always-declared
@@ -955,7 +1060,7 @@ describe('HomeScreen — resolved base-map rendering', () => {
       sheetProps.onChange(2);
     });
 
-    const mapPaddingBottom = screen.getByTestId('home-map-view').props.mapPadding.bottom;
+    const mapPaddingBottom = screen.getByTestId('home-map-view', { includeHiddenElements: true }).props.mapPadding.bottom;
     expect(sheetProps.maxDynamicContentSize).toBeGreaterThan(0);
     // The dynamic-content ceiling can never actually render taller than mapPadding
     // assumed it might — same shared formula (computeMaxSheetOcclusionForAttribution)
@@ -1027,7 +1132,7 @@ describe('HomeScreen — resolved base-map rendering', () => {
       scheduledFrames.splice(0).forEach((callback) => callback(performance.now()));
     });
 
-    const mapPaddingBottom = screen.getByTestId('home-map-view').props.mapPadding.bottom;
+    const mapPaddingBottom = screen.getByTestId('home-map-view', { includeHiddenElements: true }).props.mapPadding.bottom;
     const [, edgeInsets] = cameraFitRouteSpy.mock.calls.at(-1) as [unknown, { top: number; bottom: number }];
     // react-native-maps adds fitToCoordinates edgePadding to MapView mapPadding on
     // Android. Reusing the sheet inset here double-counts the occluded area and can
@@ -1049,9 +1154,9 @@ describe('HomeScreen — resolved base-map rendering', () => {
     mockedUseHomeViewModel.mockImplementation(useDownloadedTilesViewModel);
     await render(<HomeScreen />);
 
-    expect(screen.queryByTestId('local-base-map-tiles')).not.toBeOnTheScreen();
-    expect(screen.getByTestId('home-map-view').props.mapType).toBe('standard');
-    expect(screen.getByTestId('home-map-view').props.provider).toBe('google');
+    expect(screen.queryByTestId('local-base-map-tiles', { includeHiddenElements: true })).not.toBeOnTheScreen();
+    expect(screen.getByTestId('home-map-view', { includeHiddenElements: true }).props.mapType).toBe('standard');
+    expect(screen.getByTestId('home-map-view', { includeHiddenElements: true }).props.provider).toBe('google');
   });
 
   test('Google load watchdog switches once to one LocalTile fallback', async () => {
@@ -1069,8 +1174,8 @@ describe('HomeScreen — resolved base-map rendering', () => {
       jest.advanceTimersByTime(7_100);
     });
 
-    expect(screen.getAllByTestId('local-base-map-tiles')).toHaveLength(1);
-    expect(screen.getByTestId('home-map-view').props.mapType).toBe('none');
+    expect(screen.getAllByTestId('local-base-map-tiles', { includeHiddenElements: true })).toHaveLength(1);
+    expect(screen.getByTestId('home-map-view', { includeHiddenElements: true }).props.mapType).toBe('none');
   });
 
   // MAPLOAD-04 (#28): a Google map that loads successfully AFTER the 7s watchdog fires
@@ -1090,16 +1195,16 @@ describe('HomeScreen — resolved base-map rendering', () => {
     await act(async () => {
       jest.advanceTimersByTime(7_100);
     });
-    const map = screen.getByTestId('home-map-view');
-    expect(screen.getAllByTestId('local-base-map-tiles')).toHaveLength(1);
+    const map = screen.getByTestId('home-map-view', { includeHiddenElements: true });
+    expect(screen.getAllByTestId('local-base-map-tiles', { includeHiddenElements: true })).toHaveLength(1);
     expect(map.props.mapType).toBe('none');
 
     await act(async () => {
       map.props.onMapLoaded();
     });
 
-    expect(screen.queryByTestId('local-base-map-tiles')).not.toBeOnTheScreen();
-    expect(screen.getByTestId('home-map-view').props.mapType).toBe('standard');
+    expect(screen.queryByTestId('local-base-map-tiles', { includeHiddenElements: true })).not.toBeOnTheScreen();
+    expect(screen.getByTestId('home-map-view', { includeHiddenElements: true }).props.mapType).toBe('standard');
   });
 
   // MAPLOAD-05/07 (#28): once the app has genuinely left Google mode (offline / no key —
@@ -1120,19 +1225,19 @@ describe('HomeScreen — resolved base-map rendering', () => {
       return { ...home, isOffline: !hasInternet, offlineData: { isDownloaded: true } };
     });
     await render(<HomeScreen />);
-    const map = screen.getByTestId('home-map-view');
+    const map = screen.getByTestId('home-map-view', { includeHiddenElements: true });
 
     await act(async () => {
       useAppStore.setState({ hasInternet: false });
     });
-    expect(screen.getAllByTestId('local-base-map-tiles')).toHaveLength(1);
+    expect(screen.getAllByTestId('local-base-map-tiles', { includeHiddenElements: true })).toHaveLength(1);
 
     await act(async () => {
       map.props.onMapLoaded();
     });
 
-    expect(screen.getAllByTestId('local-base-map-tiles')).toHaveLength(1);
-    expect(screen.getByTestId('home-map-view').props.mapType).toBe('none');
+    expect(screen.getAllByTestId('local-base-map-tiles', { includeHiddenElements: true })).toHaveLength(1);
+    expect(screen.getByTestId('home-map-view', { includeHiddenElements: true }).props.mapType).toBe('none');
   });
 
   // MAPLOAD-08 (#28): unmounting mid-watchdog must not throw or leak the timer. The watchdog
@@ -1158,7 +1263,7 @@ describe('HomeScreen — resolved base-map rendering', () => {
     mockedUseHomeViewModel.mockImplementation(useDownloadedTilesViewModel);
     useAppStore.setState({ routePlannerDest: gateResult, activeRoute: v1Route as any });
     await render(<HomeScreen />);
-    const map = screen.getByTestId('home-map-view');
+    const map = screen.getByTestId('home-map-view', { includeHiddenElements: true });
 
     await act(async () => {
       jest.advanceTimersByTime(7_100);
@@ -1175,7 +1280,7 @@ describe('HomeScreen — resolved base-map rendering', () => {
     mockedUseHomeViewModel.mockImplementation(useDownloadedTilesViewModel);
     await render(<HomeScreen />);
 
-    expect(screen.queryByTestId('local-base-map-tiles')).not.toBeOnTheScreen();
+    expect(screen.queryByTestId('local-base-map-tiles', { includeHiddenElements: true })).not.toBeOnTheScreen();
     expect(screen.getByText(MapConfigService.getMissingGoogleMapsMessage())).toBeOnTheScreen();
   });
 
@@ -1194,14 +1299,14 @@ describe('HomeScreen — resolved base-map rendering', () => {
       return { ...home, isOffline: !hasInternet, offlineData: { isDownloaded: true } };
     });
     await render(<HomeScreen />);
-    expect(screen.getAllByTestId('local-base-map-tiles')).toHaveLength(1);
+    expect(screen.getAllByTestId('local-base-map-tiles', { includeHiddenElements: true })).toHaveLength(1);
 
     await act(async () => {
       useAppStore.setState({ hasInternet: true });
     });
 
-    expect(screen.queryByTestId('local-base-map-tiles')).not.toBeOnTheScreen();
-    expect(screen.getByTestId('home-map-view').props.mapType).toBe('standard');
+    expect(screen.queryByTestId('local-base-map-tiles', { includeHiddenElements: true })).not.toBeOnTheScreen();
+    expect(screen.getByTestId('home-map-view', { includeHiddenElements: true }).props.mapType).toBe('standard');
   });
 });
 
@@ -1613,7 +1718,7 @@ describe('HomeScreen — recenter follow mode (Google Maps parity)', () => {
     await pressRecenterAndSettle(user);
     expect(await screen.findByLabelText('Following my current location. Tap to re-center.')).toBeOnTheScreen();
 
-    await fireEvent(screen.getByTestId('home-map-view'), 'panDrag');
+    await fireEvent(screen.getByTestId('home-map-view', { includeHiddenElements: true }), 'panDrag');
 
     expect(cameraStopFollowingSpy).toHaveBeenCalled();
     expect(await screen.findByLabelText('Center map on my current location')).toBeOnTheScreen();
