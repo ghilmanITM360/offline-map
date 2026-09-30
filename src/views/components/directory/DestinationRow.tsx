@@ -5,12 +5,13 @@
 
 import React from 'react';
 import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
-import { ChevronRight, Milestone, Route, Signpost } from 'lucide-react-native';
+import { Milestone, Route, Signpost } from 'lucide-react-native';
 
 import { V2Place } from '../../../models/types';
 import { usePressScale } from '../../../viewmodels/usePressScale';
 import { placeCategoryLabel } from '../../../utils/placeCategoryLabel';
 import { radii, spacing, staticColors } from '../../../theme';
+import { forwardChevron } from '../common/directionalIcons';
 
 const CATEGORY_ICON: Partial<Record<V2Place['category'], typeof Signpost>> = {
   Gate: Signpost,
@@ -38,6 +39,7 @@ export function DestinationRow({
   showCategory?: boolean;
 }) {
   const Icon = CATEGORY_ICON[place.category] ?? Signpost;
+  const ForwardIcon = forwardChevron();
   const accent = CATEGORY_ACCENT[place.category] ?? staticColors.normalBlock;
   const categoryLabel = placeCategoryLabel(place.category);
   // #96: unavailable rows stay tappable-to-view (map/sheet navigation is correct
@@ -86,7 +88,7 @@ export function DestinationRow({
             </View>
           ) : null}
         </View>
-        <ChevronRight size={18} color={staticColors.iconMuted} />
+        <ForwardIcon size={18} color={staticColors.iconMuted} />
       </Pressable>
     </Animated.View>
   );

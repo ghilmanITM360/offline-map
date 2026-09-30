@@ -6,14 +6,16 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable, Image, Linking, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ChevronLeft, Info, Heart, Shield, ExternalLink } from 'lucide-react-native';
+import { Info, Heart, Shield, ExternalLink } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
+import { backChevron } from '../components/common/directionalIcons';
 
 const PRIVACY_POLICY_URL = 'TODO_PRIVACY_POLICY_URL'; // fixed: replace placeholder privacy URL with an explicit TODO constant
 const TERMS_OF_SERVICE_URL = 'TODO_TERMS_OF_SERVICE_URL'; // fixed: replace placeholder terms URL with an explicit TODO constant
 
 export function AboutScreen() {
   const navigation = useNavigation();
+  const BackIcon = backChevron();
 
   const openExternalUrl = async (url: string) => {
     if (!url.startsWith('http')) {
@@ -36,7 +38,7 @@ export function AboutScreen() {
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <Pressable onPress={() => navigation.canGoBack() ? navigation.goBack() : navigation.navigate('Home' as never)} style={styles.backButton}>
-          <ChevronLeft size={28} color="#333" />
+          <BackIcon size={28} color="#333" />
         </Pressable>
         <Text style={styles.headerTitle}>About App</Text>
       </View>

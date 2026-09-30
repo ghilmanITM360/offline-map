@@ -16,7 +16,6 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
-  ChevronLeft,
   Map as MapIcon,
   Navigation,
   Download,
@@ -41,6 +40,7 @@ const SPEED_PRESETS: { label: string; value: number }[] = [
   { label: 'Fast', value: 1.4 },
 ];
 import { useNavigation } from '@react-navigation/native';
+import { backChevron } from '../components/common/directionalIcons';
 import { useSettingsViewModel } from '../../viewmodels/SettingsViewModel';
 import { useTheme } from '../../services/useTheme';
 import { useAppStore } from '../../store/useAppStore';
@@ -52,6 +52,7 @@ declare const __DEV__: boolean;
 
 export function SettingsScreen() {
   const navigation = useNavigation<any>();
+  const BackIcon = backChevron();
   const theme = useTheme();
   const offlineData = useAppStore((s) => s.offlineData); // fixed: focused selector prevents every GPS store update from re-rendering SettingsScreen
   const hasInternet = useAppStore((s) => s.hasInternet);
@@ -197,7 +198,7 @@ export function SettingsScreen() {
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
       <View style={[styles.header, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
         <Pressable onPress={() => navigation.canGoBack() ? navigation.goBack() : navigation.navigate('Home')} style={styles.backButton}>
-          <ChevronLeft size={28} color={theme.text} />
+          <BackIcon size={28} color={theme.text} />
         </Pressable>
         <Text style={[styles.headerTitle, { color: theme.text }]}>Settings</Text>
       </View>

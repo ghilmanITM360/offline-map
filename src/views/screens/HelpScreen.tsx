@@ -6,13 +6,15 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable, Linking, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ChevronLeft, HelpCircle, MessageCircle, FileText, ExternalLink, MapPin, Phone } from 'lucide-react-native';
+import { HelpCircle, MessageCircle, FileText, ExternalLink, MapPin, Phone } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
+import { backChevron } from '../components/common/directionalIcons';
 
 const OFFICIAL_WEBSITE_URL = 'TODO_OFFICIAL_WEBSITE_URL'; // fixed: replace placeholder website with an explicit TODO constant
 
 export function HelpScreen() {
   const navigation = useNavigation();
+  const BackIcon = backChevron();
 
   const openExternalUrl = async (url: string) => {
     if (!url.startsWith('http')) {
@@ -70,7 +72,7 @@ export function HelpScreen() {
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <Pressable onPress={() => navigation.canGoBack() ? navigation.goBack() : navigation.navigate('Home' as never)} style={styles.backButton}>
-          <ChevronLeft size={28} color="#333" />
+          <BackIcon size={28} color="#333" />
         </Pressable>
         <Text style={styles.headerTitle}>Help & Support</Text>
       </View>
