@@ -28,6 +28,7 @@ const GPS_STALE_MESSAGE = 'Waiting for a fresh GPS position…';
 export function useNavigationViewModel() {
   const {
     destination,
+    navigationSessionId,
     stopNavigation,
     currentLocation,
     routePlannerOrigin,
@@ -89,6 +90,16 @@ export function useNavigationViewModel() {
     lastRerouteAtRef.current = 0;
     setRerouteStatusMessage(null);
   }, [destination]);
+
+  // A queued reroute belongs to one trip. Listener/status changes within that trip
+  // must leave it alive, but exit or replacement must retire it before it can speak.
+  useEffect(() => {
+    if (rerouteTimerRef.current) {
+      clearTimeout(rerouteTimerRef.current);
+      rerouteTimerRef.current = null;
+      setReroutePending(false);
+    }
+  }, [destination, navigationSessionId, setReroutePending]);
 
   // Capture the GPS location at the moment navigation starts so route generation
   // happens exactly once per destination change, never on every GPS tick.
@@ -316,9 +327,15 @@ export function useNavigationViewModel() {
 
           if (rerouteTimerRef.current) return;
 
+          const rerouteSessionId = useAppStore.getState().navigationSessionId;
           setReroutePending(true);
           setRerouteStatusMessage('Recalculating...');
           rerouteTimerRef.current = setTimeout(() => {
+            const currentSession = useAppStore.getState();
+            if (
+              currentSession.navigationSessionId !== rerouteSessionId ||
+              currentSession.destination !== dest
+            ) return;
             rerouteTimerRef.current = null;
             const latestRoute = routeRef.current;
             const latestCoord = latestGpsCoordRef.current ?? coord;
