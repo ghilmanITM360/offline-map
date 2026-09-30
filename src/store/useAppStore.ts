@@ -283,6 +283,30 @@ function subscribeHydrationOutcome(
   return () => hydrationOutcomeListeners.delete(wrapped);
 }
 
+function partializeAppState(state: AppState) {
+  return {
+    offlineData: state.offlineData,
+    offlineMapStatus: state.offlineMapStatus,
+    offlineMapStatusMessage: state.offlineMapStatusMessage,
+    downloadState: state.downloadState,
+    settings: state.settings,
+    recentSearches: sanitizePersistedPlaces(state.recentSearches),
+    favorites: sanitizePersistedFavorites(state.favorites),
+    lastKnownLocation: state.lastKnownLocation,
+    lastKnownLocationUpdatedAt: state.lastKnownLocationUpdatedAt,
+    hasSeenMapOverview: state.hasSeenMapOverview,
+    hasSeenLocationTutorial: state.hasSeenLocationTutorial,
+    showGraphNodes: state.showGraphNodes,
+    showRastaNames: state.showRastaNames,
+    showBlockPolygons: state.showBlockPolygons,
+    showGatesLayer: state.showGatesLayer,
+    showRastasLayer: state.showRastasLayer,
+    showSpecialRoutesLayer: state.showSpecialRoutesLayer,
+    showRouteDiagnostics: state.showRouteDiagnostics,
+    developerModeEnabled: state.developerModeEnabled,
+  };
+}
+
 export const useAppStore = create<AppState>()(
   persist(
     (set, get) => ({
@@ -509,28 +533,22 @@ export const useAppStore = create<AppState>()(
           routePlannerDest: sanitizePersistedPlace(state.routePlannerDest),
         };
       },
+      merge: (persistedState, currentState) => {
+        if (!persistedState || typeof persistedState !== 'object' || Array.isArray(persistedState)) {
+          return currentState;
+        }
+        // partialize constrains writes only. Apply that same boundary to every read,
+        // including same-version blobs and explicit rehydration during a live journey.
+        const persisted = persistedState as Record<string, unknown>;
+        const allowedKeys = Object.keys(partializeAppState(currentState));
+        const allowedState = Object.fromEntries(
+          allowedKeys.filter((key) => Object.prototype.hasOwnProperty.call(persisted, key))
+            .map((key) => [key, persisted[key]])
+        );
+        return { ...currentState, ...allowedState };
+      },
       // Only persist these keys — runtime GPS and transient UI state are not persisted
-      partialize: (state) => ({
-        offlineData: state.offlineData,
-        offlineMapStatus: state.offlineMapStatus,
-        offlineMapStatusMessage: state.offlineMapStatusMessage,
-        downloadState: state.downloadState,
-        settings: state.settings,
-        recentSearches: sanitizePersistedPlaces(state.recentSearches),
-        favorites: sanitizePersistedFavorites(state.favorites),
-        lastKnownLocation: state.lastKnownLocation,
-        lastKnownLocationUpdatedAt: state.lastKnownLocationUpdatedAt,
-        hasSeenMapOverview: state.hasSeenMapOverview,
-        hasSeenLocationTutorial: state.hasSeenLocationTutorial,
-        showGraphNodes: state.showGraphNodes,
-        showRastaNames: state.showRastaNames,
-        showBlockPolygons: state.showBlockPolygons,
-        showGatesLayer: state.showGatesLayer,
-        showRastasLayer: state.showRastasLayer,
-        showSpecialRoutesLayer: state.showSpecialRoutesLayer,
-        showRouteDiagnostics: state.showRouteDiagnostics,
-        developerModeEnabled: state.developerModeEnabled,
-      }),
+      partialize: partializeAppState,
     }
   )
 );

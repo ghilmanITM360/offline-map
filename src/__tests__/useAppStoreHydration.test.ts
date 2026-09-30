@@ -716,3 +716,63 @@ describe('waitForStoreHydration — AbortSignal listener cleanup (all outcomes)'
     expect(getEventListeners(controller.signal, 'abort')).toHaveLength(0);
   });
 });
+
+
+describe('persisted navigation state boundary', () => {
+  it('does not let a stored blob start navigation or replace runtime actions', async () => {
+    const storage = controllableStorage();
+    useAppStore.persist.setOptions({ storage: storage.storage });
+    const hydrate = useAppStore.persist.rehydrate();
+    storage.resolve({ version: 2, state: {
+      isNavigating: true,
+      navigationSessionId: 'stale-session',
+      activeRoute: { id: 'stale-route' },
+      currentLocation: { latitude: 24.96, longitude: 67.01 },
+      currentLocationSource: 'live',
+      startNavigation: 'corrupt-action',
+    } });
+    await hydrate;
+    const state = useAppStore.getState();
+    expect(state.isNavigating).toBe(false);
+    expect(state.activeRoute).toBeNull();
+    expect(state.currentLocation).toBeNull();
+    expect(state.startNavigation).toBe(initialStoreState.startNavigation);
+  });
+});
+
+
+describe('persisted runtime isolation across hydration', () => {
+  it.each([null, true, 42, 'invalid', []])('ignores malformed state container %p', async (value) => {
+    const storage = controllableStorage();
+    useAppStore.persist.setOptions({ storage: storage.storage });
+    const hydrate = useAppStore.persist.rehydrate();
+    storage.resolve({ version: 2, state: value });
+    await hydrate;
+    expect(useAppStore.getState().isNavigating).toBe(false);
+    expect(useAppStore.getState().startNavigation).toBe(initialStoreState.startNavigation);
+  });
+
+  it('preserves a current journey on repeated reads and respects navigation reset', async () => {
+    const location = { latitude: 24.96, longitude: 67.01 };
+    useAppStore.getState().setCurrentLocation(location);
+    useAppStore.getState().startNavigation({ id: 'B34', name: 'Block 34', category: 'Block', description: 'Block 34', coordinate: location, sourceVersion: 'v2' });
+    const session = useAppStore.getState().navigationSessionId;
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      const storage = controllableStorage();
+      useAppStore.persist.setOptions({ storage: storage.storage });
+      const hydrate = useAppStore.persist.rehydrate();
+      storage.resolve({ version: 2, state: { isNavigating: false, destination: 'stale',
+        navigationSessionId: 'stale-session', currentLocation: null,
+        hasSeenMapOverview: true } });
+      await hydrate;
+      expect(useAppStore.getState().isNavigating).toBe(true);
+      expect(useAppStore.getState().navigationSessionId).toBe(session);
+      expect(useAppStore.getState().currentLocation).toEqual(location);
+      expect(useAppStore.getState().destination?.id).toBe('B34');
+      expect(useAppStore.getState().hasSeenMapOverview).toBe(true);
+    }
+    useAppStore.getState().stopNavigation();
+    expect(useAppStore.getState().isNavigating).toBe(false);
+    expect(useAppStore.getState().destination).toBeNull();
+  });
+});
