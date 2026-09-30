@@ -39,7 +39,7 @@ import {
 import { useNavigation, useIsFocused, DrawerActions, CompositeNavigationProp } from '@react-navigation/native';
 import { DrawerNavigationProp, DrawerStatusContext } from '@react-navigation/drawer';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { useHomeViewModel } from '../../viewmodels/HomeViewModel';
+import { getHomeRouteDiagnostics, useHomeViewModel } from '../../viewmodels/HomeViewModel';
 import {
   computeMapControlsInset,
   computeMapContentInsets,
@@ -63,7 +63,6 @@ import { useAppStore } from '../../store/useAppStore';
 import { RoutePointService } from '../../services/RoutePointService';
 import { Paths } from 'expo-file-system';
 import { DrawerParamList, RootStackParamList } from '../../navigation/RootNavigator';
-import { RoutingService } from '../../services/RoutingService';
 import { MapConfigService } from '../../services/MapConfigService';
 import { resolveBaseMapMode } from '../../services/BaseMapModeResolver';
 import {
@@ -78,8 +77,8 @@ import { MapFeatureFlagsService } from '../../services/MapFeatureFlagsService';
 import { MapStartupController } from '../../services/MapStartupController';
 import { LocationAccessService } from '../../services/LocationAccessService';
 import { V2MapRenderingService, MEDIUM_ZOOM, HIGH_ZOOM } from '../../services/V2MapRenderingService';
-import { V2NavigationAdapter } from '../../services/V2NavigationAdapter';
-import { RoutingServiceV2 } from '../../services/RoutingServiceV2';
+import { recommendPreviewEntryGate, startPreviewNavigationV2 } from '../../viewmodels/NavigationViewModelV2';
+import type { RoutePreviewV2 } from '../../viewmodels/NavigationViewModelV2';
 import { destinationFromPlace } from '../../services/V2DirectionsService';
 import { MapLocalizationService } from '../../services/MapLocalizationService';
 import { V2PlaceAdapter } from '../../services/V2PlaceAdapter';
@@ -148,17 +147,7 @@ const SATELLITE_DIM_BOUNDARY = [
   { latitude: IJTEMA_MAP_BOUNDS.maxLat + SATELLITE_DIM_LAT_PAD, longitude: IJTEMA_MAP_BOUNDS.minLng - SATELLITE_DIM_LNG_PAD },
 ];
 
-type V2PreviewRoute = Extract<RoutePreview, { sourceVersion: 'v2' }> & {
-  startLabel: string;
-  destinationLabel: string;
-  startResolution?: {
-    mode: 'inside' | 'outside';
-    coordinate: { latitude: number; longitude: number };
-    gate?: { id: string; name: { en: string } };
-  };
-  outsideLegCoordinateCount?: number;
-  outsideLegSanityCapExceeded?: boolean;
-};
+type V2PreviewRoute = RoutePreviewV2;
 
 // gorhom's default sheet background is itself an accessible, "adjustable" View labelled "Bottom Sheet"
 // (hard-coded, not overridable by props), so TalkBack lands on an empty full-sheet stop. The background
@@ -228,7 +217,6 @@ export function HomeScreen() {
   const showRouteDiagnostics = useAppStore((s) => s.showRouteDiagnostics);
   const setShowRouteDiagnostics = useAppStore((s) => s.setShowRouteDiagnostics);
   const developerModeEnabled = useAppStore((s) => s.developerModeEnabled);
-  const startNavigation = useAppStore((s) => s.startNavigation);
   const [selectedEntryIdx, setSelectedEntryIdx] = useState(0);
   const [directionsDestination, setDirectionsDestination] = useState<Place | null>(null);
   const mapLabelOverlayRef = useRef<MapLabelOverlayHandle>(null);
@@ -931,9 +919,8 @@ export function HomeScreen() {
     if (!currentLocation || venueStatus.insideVenue) return null;
     // Destination-aware whenever a place is already selected, so this banner can
     // never disagree with the gate Directions would actually route through for the
-    // same position + destination (see RoutingServiceV2.recommendOutsideEntryGate).
-    const destination = selectedPlace ? destinationFromPlace(selectedPlace) : null;
-    return RoutingServiceV2.recommendOutsideEntryGate(currentLocation, destination) ?? null;
+    // same position + destination through the ViewModel recommendation.
+    return recommendPreviewEntryGate(currentLocation, selectedPlace) ?? null;
   }, [currentLocation, venueStatus.insideVenue, selectedPlace]);
   const outsideBannerAccessibilityLabel = nearestEntryGate
     ? `Outside Ijtema. Suggested entry through ${nearestEntryGate.name.en}. Final entry gate is confirmed when route preview is calculated.`
@@ -1217,25 +1204,16 @@ export function HomeScreen() {
   const handleStartPreviewNavigation = useCallback(() => {
     if (!activePreviewRoute || !previewDestination) return;
     invalidateStartupCameraIntent();
-    const startCheck = V2NavigationAdapter.canStartActiveNavigation({
-      route: activePreviewRoute as any,
+    const startCheck = startPreviewNavigationV2({
+      route: activePreviewRoute,
       destination: previewDestination,
+      startPlace: routePlannerOrigin,
+      currentLocation,
     });
     if (!startCheck.canStart) {
       Alert.alert('Cannot start navigation', startCheck.message);
-      return;
     }
-    const resolvedRoute = V2NavigationAdapter.fromPreview({
-      previewRoute: activePreviewRoute as any,
-      destination: previewDestination,
-      startPlace: routePlannerOrigin,
-      currentLocation: routePlannerOrigin ? null : currentLocation,
-    });
-    // The showAnyNavOverlay effect below arms the close-transition itself once
-    // isNavigating flips true — it's the single source of truth for that arm so it
-    // can unconditionally supersede whatever was previously in flight.
-    startNavigation(previewDestination, resolvedRoute, resolvedRoute.instructions);
-  }, [activePreviewRoute, currentLocation, invalidateStartupCameraIntent, previewDestination, routePlannerOrigin, startNavigation]);
+  }, [activePreviewRoute, currentLocation, invalidateStartupCameraIntent, previewDestination, routePlannerOrigin]);
 
   const handleClearPreviewRoute = useCallback(() => {
     Alert.alert('Cancel route?', 'You will need to choose your destination again.', [
@@ -1774,7 +1752,7 @@ export function HomeScreen() {
               </Text>
             )}
             <Text style={styles.diagnosticsText} numberOfLines={1}>
-              {RoutingService.runRouteDiagnostics().map((r) => `${r.from}->${r.to}:${r.success ? 'OK' : 'FAIL'}`).join(' | ')}
+              {getHomeRouteDiagnostics().map((r) => `${r.from}->${r.to}:${r.success ? 'OK' : 'FAIL'}`).join(' | ')}
             </Text>
           </View>
         )}

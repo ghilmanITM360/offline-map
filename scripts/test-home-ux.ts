@@ -24,7 +24,7 @@ assert(home.includes('marginRight: 76'), 'Outside-area warning should leave room
 assert(home.includes('paddingRight: 88'), 'Category chips should have trailing padding so the last chip is not hidden behind controls');
 assert(home.includes('setOutsideBannerDismissed'), 'Outside-area warning should be compact and dismissible');
 assert(
-  home.includes('RoutingServiceV2.recommendOutsideEntryGate'),
+  home.includes('recommendPreviewEntryGate(currentLocation, selectedPlace)') && readFileSync('src/viewmodels/NavigationViewModelV2.ts', 'utf8').includes('return RoutingServiceV2.recommendOutsideEntryGate'),
   'Home outside-area banner should explain nearest-gate offline routing',
 );
 assert(
