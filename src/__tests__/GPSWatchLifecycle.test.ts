@@ -10,6 +10,7 @@ jest.mock('expo-location', () => ({
   getForegroundPermissionsAsync: jest.fn(),
   hasServicesEnabledAsync: jest.fn(),
   watchPositionAsync: jest.fn(),
+  getCurrentPositionAsync: jest.fn(),
   Accuracy: { Balanced: 3, High: 4 },
 }));
 
@@ -138,4 +139,110 @@ it('a setup discarded because no listener requests its mode cannot publish later
   expect(remove).toHaveBeenCalledTimes(1);
   callback(nativeFix(24.8));
   expect(storeUpdater).not.toHaveBeenCalled();
+});
+
+
+it('a one-shot fix from a retired foreground interval cannot overwrite the resumed position', async () => {
+  (Location.watchPositionAsync as jest.Mock).mockResolvedValue({ remove: jest.fn() });
+  GPSManagerService.addListener(listener, 'navigation');
+  await new Promise<void>((resolve) => setImmediate(resolve));
+  const pending = deferred<Location.LocationObject>();
+  (Location.getCurrentPositionAsync as jest.Mock).mockReturnValueOnce(pending.promise);
+  let lastPosition: Coordinate | null = null;
+  GPSManagerService.setStoreUpdater((coordinate) => { lastPosition = coordinate; });
+  const retiredFix = GPSManagerService.forceFix();
+  await new Promise<void>((resolve) => setImmediate(resolve));
+  const onAppStateChange = (AppState.addEventListener as jest.Mock).mock.calls[0][1];
+  onAppStateChange('background');
+  onAppStateChange('active');
+  await new Promise<void>((resolve) => setImmediate(resolve));
+  (Location.getCurrentPositionAsync as jest.Mock).mockResolvedValueOnce(nativeFix(24.9));
+  expect(await GPSManagerService.forceFix()).toMatchObject({ latitude: 24.9 });
+  listener.mockClear();
+  pending.resolve(nativeFix(24.8));
+  expect(await retiredFix).toBeNull();
+  expect(lastPosition).toMatchObject({ latitude: 24.9 });
+  expect(listener).not.toHaveBeenCalled();
+});
+
+it('a retired one-shot permission request cannot start native acquisition in background', async () => {
+  (Location.watchPositionAsync as jest.Mock).mockResolvedValue({ remove: jest.fn() });
+  GPSManagerService.addListener(listener, 'navigation');
+  await new Promise<void>((resolve) => setImmediate(resolve));
+  const permission = deferred<{ status: string }>();
+  (Location.getForegroundPermissionsAsync as jest.Mock).mockReturnValueOnce(permission.promise);
+  (Location.getCurrentPositionAsync as jest.Mock).mockReset().mockResolvedValue(nativeFix(24.8));
+  const pendingFix = GPSManagerService.forceFix();
+  const onAppStateChange = (AppState.addEventListener as jest.Mock).mock.calls[0][1];
+  onAppStateChange('background');
+  permission.resolve({ status: 'granted' });
+  expect(await pendingFix).toBeNull();
+  expect(Location.getCurrentPositionAsync).not.toHaveBeenCalled();
+});
+
+
+it('ordinary watch setup does not retire a current one-shot request', async () => {
+  const pending = deferred<Location.LocationObject>();
+  (Location.getCurrentPositionAsync as jest.Mock).mockReturnValueOnce(pending.promise);
+  const currentFix = GPSManagerService.forceFix();
+  await new Promise<void>((resolve) => setImmediate(resolve));
+  (Location.watchPositionAsync as jest.Mock).mockResolvedValue({ remove: jest.fn() });
+  GPSManagerService.addListener(listener, 'navigation');
+  await new Promise<void>((resolve) => setImmediate(resolve));
+  let lastPosition: Coordinate | null = null;
+  GPSManagerService.setStoreUpdater((coordinate) => { lastPosition = coordinate; });
+  pending.resolve(nativeFix(24.9));
+  expect(await currentFix).toMatchObject({ latitude: 24.9 });
+  expect(lastPosition).toMatchObject({ latitude: 24.9 });
+});
+
+
+it('replacing a follow watch with navigation preserves a current foreground one-shot request', async () => {
+  (Location.watchPositionAsync as jest.Mock).mockResolvedValue({ remove: jest.fn() });
+  GPSManagerService.addListener(listener, 'follow');
+  await new Promise<void>((resolve) => setImmediate(resolve));
+  const pending = deferred<Location.LocationObject>();
+  (Location.getCurrentPositionAsync as jest.Mock).mockReturnValueOnce(pending.promise);
+  const currentFix = GPSManagerService.forceFix();
+  await new Promise<void>((resolve) => setImmediate(resolve));
+  GPSManagerService.addListener(listener, 'navigation');
+  await new Promise<void>((resolve) => setImmediate(resolve));
+  let lastPosition: Coordinate | null = null;
+  GPSManagerService.setStoreUpdater((coordinate) => { lastPosition = coordinate; });
+  pending.resolve(nativeFix(24.9));
+  expect(await currentFix).toMatchObject({ latitude: 24.9 });
+  expect(lastPosition).toMatchObject({ latitude: 24.9 });
+});
+
+it.each(['stop', 'background/resume'] as const)('retired permission cannot acquire after %s', async (retirement) => {
+  (Location.watchPositionAsync as jest.Mock).mockResolvedValue({ remove: jest.fn() });
+  GPSManagerService.addListener(listener, 'navigation');
+  await new Promise<void>((resolve) => setImmediate(resolve));
+  const permission = deferred<{ status: string }>();
+  (Location.getForegroundPermissionsAsync as jest.Mock).mockReturnValueOnce(permission.promise);
+  (Location.getCurrentPositionAsync as jest.Mock).mockReset().mockResolvedValue(nativeFix(24.8));
+  const pendingFix = GPSManagerService.forceFix();
+  if (retirement === 'stop') {
+    GPSManagerService.stop();
+  } else {
+    const onAppStateChange = (AppState.addEventListener as jest.Mock).mock.calls[0][1];
+    onAppStateChange('background');
+    onAppStateChange('active');
+  }
+  permission.resolve({ status: 'granted' });
+  expect(await pendingFix).toBeNull();
+  expect(Location.getCurrentPositionAsync).not.toHaveBeenCalled();
+});
+
+it('explicit stop retires a pending one-shot position even while foreground', async () => {
+  const pending = deferred<Location.LocationObject>();
+  (Location.getCurrentPositionAsync as jest.Mock).mockReturnValueOnce(pending.promise);
+  let lastPosition: Coordinate | null = null;
+  GPSManagerService.setStoreUpdater((coordinate) => { lastPosition = coordinate; });
+  const pendingFix = GPSManagerService.forceFix();
+  await new Promise<void>((resolve) => setImmediate(resolve));
+  GPSManagerService.stop();
+  pending.resolve(nativeFix(24.8));
+  expect(await pendingFix).toBeNull();
+  expect(lastPosition).toBeNull();
 });
