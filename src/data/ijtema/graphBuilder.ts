@@ -161,10 +161,14 @@ const buildAdjacency = (nodes: Record<string, GraphNode>, edges: GraphEdge[]): R
 const getWalkableConnectorNodes = (nodes: Record<string, GraphNode>): GraphNode[] =>
   Object.values(nodes).filter((node) => ['rasta_point', 'special_route_point', 'central_point'].includes(node.type));
 
+// Only marginal improvements retain known context. This default needs field calibration.
+export const GRAPH_SNAP_SWITCH_MARGIN_M = 5;
+
 export const findNearestGraphNode = (
   coordinate: Coordinate,
   nodes: Record<string, GraphNode>,
   allowedTypes: GraphNodeType[] = ['rasta_point', 'special_route_point', 'central_point'],
+  previousNodeId?: string,
 ): { node: GraphNode; distanceM: number } | undefined => {
   let nearest: { node: GraphNode; distanceM: number } | undefined;
 
@@ -176,6 +180,13 @@ export const findNearestGraphNode = (
     }
   }
 
+  const previous = previousNodeId ? nodes[previousNodeId] : undefined;
+  if (nearest && previous && allowedTypes.includes(previous.type)) {
+    const distanceM = distanceMeters(coordinate, previous.coordinate);
+    if (distanceM <= nearest.distanceM + GRAPH_SNAP_SWITCH_MARGIN_M) {
+      return { node: previous, distanceM };
+    }
+  }
   return nearest;
 };
 

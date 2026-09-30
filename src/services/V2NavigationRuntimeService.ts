@@ -3,6 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import { findNearestGraphNode } from '../data/ijtema/graphBuilder';
+import { IJTEMA_NAVIGATION_GRAPH_V2 } from '../data/ijtema/navigationGraph';
 import { Coordinate, V2ActiveRoute } from '../models/types';
 import { RerouteService } from './RerouteService';
 import { EntryGateRoutingService } from './EntryGateRoutingService';
@@ -203,16 +205,26 @@ export function buildV2RerouteRequest(input: {
   coordinate: Coordinate;
   walkingSpeedMs: number;
   forceOutside?: boolean;
+  previousSnapCoordinate?: Coordinate | null;
 }): {
   start: RoutingStartV2;
   destination: RoutingDestinationV2;
   walkingSpeedMs: number;
 } {
   const isOutside = input.forceOutside || !EntryGateRoutingService.isInsideIjtemaArea(input.coordinate);
+  const previousCoordinate = input.previousSnapCoordinate;
+  // History belongs to this active route/session, never to a shared global snap cache.
+  const routeNodes = Object.fromEntries(input.route.nodes
+    .filter(id => IJTEMA_NAVIGATION_GRAPH_V2.nodes[id])
+    .map(id => [id, IJTEMA_NAVIGATION_GRAPH_V2.nodes[id]]));
+  const previousNodeId = !isOutside && previousCoordinate &&
+    Number.isFinite(previousCoordinate.latitude) && Number.isFinite(previousCoordinate.longitude)
+    ? findNearestGraphNode({ lat: previousCoordinate.latitude, lng: previousCoordinate.longitude }, routeNodes)?.node.id
+    : undefined;
   return {
     start: isOutside
       ? { type: 'outside_coordinate', coordinate: input.coordinate }
-      : { type: 'inside_coordinate', coordinate: input.coordinate },
+      : { type: 'inside_coordinate', coordinate: input.coordinate, ...(previousNodeId ? { previousNodeId } : {}) },
     destination: destinationToRoutingV2(input.route),
     walkingSpeedMs: input.walkingSpeedMs,
   };
