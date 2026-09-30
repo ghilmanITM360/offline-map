@@ -119,12 +119,15 @@ export class LocationAccessService {
       }
 
       try {
+        let timeoutId: ReturnType<typeof setTimeout> | undefined;
         const current = await Promise.race([
           Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }),
           new Promise<never>((_, reject) => {
-            setTimeout(() => reject(new Error('timeout')), CURRENT_POSITION_TIMEOUT_MS);
+            timeoutId = setTimeout(() => reject(new Error('timeout')), CURRENT_POSITION_TIMEOUT_MS);
           }),
-        ]);
+        ]).finally(() => {
+          if (timeoutId !== undefined) clearTimeout(timeoutId);
+        });
         return {
           ok: true,
           coordinate: {
