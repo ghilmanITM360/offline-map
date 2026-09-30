@@ -24,6 +24,7 @@ class GPSManager {
   private subscription: Location.LocationSubscription | null = null;
   private subscriptionMode: LocationTrackingMode | null = null;
   private watchGeneration = 0;
+  private lifecycleGeneration = 0;
   private readonly listeners: Map<LocationCallback, LocationTrackingMode> = new Map();
   private appStateSubscription: { remove: () => void } | null = null;
   private appState: AppStateStatus = AppState.currentState;
@@ -105,7 +106,7 @@ class GPSManager {
     if (this.appState !== 'active') return;
     if (this.subscription && this.subscriptionMode === mode) return; // already running at the right duty cycle
     if (this.subscription && this.subscriptionMode !== mode) {
-      this.stop();
+      this.stopWatch();
     }
 
     const generation = ++this.watchGeneration;
@@ -175,12 +176,18 @@ class GPSManager {
    * so callers don't need any special-case handling.
    */
   async forceFix(): Promise<Coordinate | null> {
+    this.ensureAppStateListener();
     if (this.appState !== 'active') return null;
+    // Watch setup can advance independently. Only lifecycle retirement invalidates
+    // this one-shot request, including a background/resume round trip.
+    const generation = this.lifecycleGeneration;
+    const isCurrentRequest = () => generation === this.lifecycleGeneration && this.appState === 'active';
     const { status } = await Location.getForegroundPermissionsAsync();
-    if (status !== 'granted') return null;
+    if (status !== 'granted' || !isCurrentRequest()) return null;
     void OnboardingStatusService.clearSkippedLocationPermissionOnGrant(true);
     try {
       const location = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
+      if (!isCurrentRequest()) return null;
       return this.publishFix(location);
     } catch (err) {
       console.warn('[GPSManager] forceFix failed:', err);
@@ -189,6 +196,12 @@ class GPSManager {
   }
 
   stop(): void {
+    this.lifecycleGeneration += 1;
+    this.stopWatch();
+  }
+
+  private stopWatch(): void {
+    // Watch replacement retires callbacks without retiring foreground one-shot requests.
     // Invalidate before native removal, including setups still awaiting a handle.
     this.watchGeneration += 1;
     if (this.subscription) {
