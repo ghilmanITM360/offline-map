@@ -86,10 +86,10 @@ export function useNavigationViewModel() {
     progressMetersRef.current = 0;
     currentSegmentIndexRef.current = 0;
     // #149/#113: the cooldown is per-trip evidence like the refs above; stopNavigation nulls the
-    // destination, so every new trip passes through here.
+    // destination; the session counter also covers direct same-object restarts.
     lastRerouteAtRef.current = 0;
     setRerouteStatusMessage(null);
-  }, [destination]);
+  }, [destination, navigationSessionId]);
 
   // A queued reroute belongs to one trip. Listener/status changes within that trip
   // must leave it alive, but exit or replacement must retire it before it can speak.
@@ -106,9 +106,9 @@ export function useNavigationViewModel() {
   const initialLocationRef = useRef(currentLocation);
   useEffect(() => {
     initialLocationRef.current = currentLocation;
-  }, [destination]); // update only when destination changes, not on every location update
+  }, [destination, navigationSessionId]); // capture each trip, not every location update
 
-  // Calculate route ONLY when destination changes (or on first mount if GPS is
+  // Calculate route when a trip starts (or on first mount if GPS is
   // already available). currentLocation is intentionally excluded from deps.
   useEffect(() => {
     if (!destination) return;
@@ -171,7 +171,7 @@ export function useNavigationViewModel() {
         VoiceService.speak(generated[0].text, settingsRef.current.language);
       }
     }
-  }, [destination, routePlannerOrigin, activeRoute, routeInstructions]); // intentionally excludes current GPS ticks
+  }, [destination, navigationSessionId, routePlannerOrigin, activeRoute, routeInstructions]); // intentionally excludes current GPS ticks
 
   // GPS listener — registered once with the shared GPSManagerService
   const handleGPS = useCallback(
