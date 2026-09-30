@@ -30,8 +30,8 @@ export function WelcomeScreen() {
           <View style={styles.iconContainer}>
             <MapIcon size={64} color="#2E7D32" />
           </View>
-          <Text style={styles.title}>Welcome to Karachi Ijtema Navigation</Text>
-          <Text style={styles.urduTitle}>کراچی اجتماع نیویگیشن میں خوش آمدید</Text>
+          <Text style={styles.title}>Welcome to Ijtema Map</Text>
+          <Text style={styles.urduTitle}>اجتماع میپ میں خوش آمدید</Text>
           {onboardingStatusReadFailed && (
             <Text style={styles.notice}>We couldn't confirm your previous setup, so we're showing this again.</Text>
           )}
