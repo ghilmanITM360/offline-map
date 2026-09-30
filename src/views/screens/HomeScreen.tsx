@@ -30,7 +30,12 @@ import {
   LayoutGrid,
   Search,
 } from 'lucide-react-native';
-import { BottomSheetModal, BottomSheetScrollView, type BottomSheetFooterProps } from '@gorhom/bottom-sheet';
+import {
+  BottomSheetModal,
+  BottomSheetScrollView,
+  type BottomSheetBackgroundProps,
+  type BottomSheetFooterProps,
+} from '@gorhom/bottom-sheet';
 import { useNavigation, useIsFocused, DrawerActions, CompositeNavigationProp } from '@react-navigation/native';
 import { DrawerNavigationProp, DrawerStatusContext } from '@react-navigation/drawer';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -154,6 +159,13 @@ type V2PreviewRoute = Extract<RoutePreview, { sourceVersion: 'v2' }> & {
   outsideLegCoordinateCount?: number;
   outsideLegSanityCapExceeded?: boolean;
 };
+
+// gorhom's default sheet background is itself an accessible, "adjustable" View labelled "Bottom Sheet"
+// (hard-coded, not overridable by props), so TalkBack lands on an empty full-sheet stop. The background
+// is decoration only.
+function SheetBackground({ pointerEvents, style }: BottomSheetBackgroundProps) {
+  return <View pointerEvents={pointerEvents} style={style} accessible={false} importantForAccessibility="no" />;
+}
 
 function isV2PreviewRoute(route: unknown): route is V2PreviewRoute {
   return Boolean(
@@ -1311,6 +1323,13 @@ export function HomeScreen() {
         <MapView
             testID="home-map-view"
             ref={mapRef}
+            // Route preview, navigation and arrival are exclusive workflows: the map (and every marker
+            // in it) precedes the portal-hosted sheet in Android's accessibility tree, so TalkBack
+            // would walk ~30 irrelevant stops before reaching the workflow. Place Details keeps the
+            // map reachable because marker selection is still a valid action there.
+            importantForAccessibility={
+              mode === 'ROUTE_PREVIEW' || mode === 'NAVIGATION' || mode === 'ARRIVAL' ? 'no-hide-descendants' : 'auto'
+            }
             style={styles.map}
             provider={Platform.OS === 'android' && baseMapMode === 'GOOGLE_BASEMAP' ? PROVIDER_GOOGLE : undefined}
             // Google attribution/legal text renders relative to the padded map region —
@@ -1873,6 +1892,13 @@ export function HomeScreen() {
           // the accessibility tree while keeping it mounted, so selection, route and snap index
           // are exactly as the user left them when Home is foreground again.
           containerStyle={sheetSuppressed ? styles.sheetSuppressed : undefined}
+          // gorhom defaults the sheet container to accessible + role "adjustable" + label "Bottom Sheet",
+          // which makes TalkBack treat the whole sheet as one stop and swallow the non-actionable
+          // title, subtitle and footer summary inside it. Let the children own their semantics.
+          accessible={false}
+          accessibilityLabel={null}
+          accessibilityRole={null}
+          backgroundComponent={SheetBackground}
           footerComponent={renderDirectionsFooter}
           keyboardBehavior="interactive"
           keyboardBlurBehavior="restore"

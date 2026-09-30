@@ -196,7 +196,7 @@ async function flushLaunchMicrotasks() {
 async function renderAndMapReady() {
   const rendered = await render(<HomeScreen />);
   await act(async () => {
-    fireEvent(screen.getByTestId('home-map-view'), 'mapReady');
+    fireEvent(screen.getByTestId('home-map-view', { includeHiddenElements: true }), 'mapReady');
   });
   return rendered;
 }
@@ -209,7 +209,7 @@ function expectNoLaunchMutationOrCamera() {
 }
 
 const invalidatingInteractions: Array<[string, () => Promise<void> | void]> = [
-  ['user pan', () => fireEvent(screen.getByTestId('home-map-view'), 'panDrag')],
+  ['user pan', () => fireEvent(screen.getByTestId('home-map-view', { includeHiddenElements: true }), 'panDrag')],
   ['Recenter', async () => {
     fireEvent.press(screen.getByLabelText('Center map on my current location'));
     await jest.advanceTimersByTimeAsync(1300);
@@ -258,7 +258,7 @@ describe('HomeScreen - launch camera (Google Maps principles, adapted for a venu
 
     await render(<HomeScreen />);
     await act(async () => {
-      fireEvent(screen.getByTestId('home-map-view'), 'mapLoaded');
+      fireEvent(screen.getByTestId('home-map-view', { includeHiddenElements: true }), 'mapLoaded');
     });
     await flushProjectionTimers();
 
@@ -317,7 +317,7 @@ describe('HomeScreen - launch camera (Google Maps principles, adapted for a venu
     await renderAndMapReady();
     await flushLaunchMicrotasks();
     await act(async () => {
-      fireEvent(screen.getByTestId('home-map-view'), 'mapLoaded');
+      fireEvent(screen.getByTestId('home-map-view', { includeHiddenElements: true }), 'mapLoaded');
     });
     await flushProjectionTimers();
 
@@ -549,7 +549,7 @@ describe('HomeScreen - launch camera (Google Maps principles, adapted for a venu
     useAppStore.setState({ hasSeenMapOverview: true, hasLocationPermission: true, currentLocation: null });
 
     await render(<HomeScreen />);
-    const map = screen.getByTestId('home-map-view');
+    const map = screen.getByTestId('home-map-view', { includeHiddenElements: true });
     await act(async () => {
       fireEvent(map, 'mapReady');
     });
