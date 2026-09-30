@@ -71,7 +71,7 @@ export function HelpScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <Pressable onPress={() => navigation.canGoBack() ? navigation.goBack() : navigation.navigate('Home' as never)} style={styles.backButton}>
+        <Pressable onPress={() => navigation.canGoBack() ? navigation.goBack() : navigation.navigate('Home' as never)} style={styles.backButton} hitSlop={12} accessibilityRole="button" accessibilityLabel="Back">
           <BackIcon size={28} color="#333" />
         </Pressable>
         <Text style={styles.headerTitle}>Help & Support</Text>
