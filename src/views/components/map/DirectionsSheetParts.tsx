@@ -188,7 +188,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   headerText: { flex: 1, gap: 2 },
-  title: { fontSize: 26, fontWeight: '800', color: c.headingText },
+  title: { fontSize: 28, fontWeight: '800', color: c.headingText },
   subtitle: { fontSize: 14, lineHeight: 20, color: c.secondaryText },
 
   card: {
