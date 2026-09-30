@@ -106,13 +106,30 @@ describe('evaluateNavigationLocationCapability', () => {
     }).canStart).toBe(true);
   });
 
-  // Characterization of a known gap, not a desired behavior: a timestamp in the future (skewed
-  // clock, corrupt blob) is treated as fresh. Flip this assertion when that is fixed.
-  it('#139: currently accepts a future-dated fix (known gap)', () => {
+  it.each([
+    ['one millisecond in the future', nowMs + 1],
+    ['one hour in the future', nowMs + 3_600_000],
+    ['NaN', Number.NaN],
+    ['positive infinity', Number.POSITIVE_INFINITY],
+    ['negative infinity', Number.NEGATIVE_INFINITY],
+  ])('rejects a live fix timestamp %s', (_label, observedAtMs) => {
     expect(evaluateNavigationLocationCapability({
       startSource: 'live_gps',
-      coordinate: { latitude: 24.96, longitude: 67.01, accuracy: 8, observedAtMs: nowMs + 3_600_000 },
+      coordinate: { latitude: 24.96, longitude: 67.01, accuracy: 8, observedAtMs },
       nowMs,
-    }).canStart).toBe(true);
+    })).toEqual({
+      canStart: false,
+      message: 'Current location is stale. Wait for a fresh fix before starting live navigation.',
+    });
   });
+
+  it.each([Number.NaN, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY])(
+    'rejects an invalid current clock %s', (invalidNowMs) => {
+      expect(evaluateNavigationLocationCapability({
+        startSource: 'live_gps',
+        coordinate: { latitude: 24.96, longitude: 67.01, accuracy: 8, observedAtMs: nowMs },
+        nowMs: invalidNowMs,
+      }).canStart).toBe(false);
+    },
+  );
 });

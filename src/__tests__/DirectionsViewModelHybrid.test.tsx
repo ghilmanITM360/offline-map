@@ -79,6 +79,32 @@ describe('DirectionsViewModel hybrid outside routing', () => {
     expect(hook.result.current.startNavigationDisabledReason).toBe('');
   });
 
+  test('future-dated live GPS keeps route preview available but blocks Start until a fresh fix arrives', async () => {
+    useAppStore.setState({
+      currentLocation: { ...origin, accuracy: 10, observedAtMs: Date.now() + 3_600_000 },
+      currentLocationSource: 'live',
+    });
+    const hook = await renderHook(() => useDirectionsViewModel(destination));
+    await waitFor(() => expect(hook.result.current.loadState).toBe('ready'), { timeout: 5_000 });
+    const previewRoute = hook.result.current.route;
+    expect(previewRoute?.outsideRoute?.provider).toBe('offline-osm');
+    expect(hook.result.current.canStartNavigation).toBe(false);
+    expect(hook.result.current.startNavigationDisabledReason).toBe(
+      'Current location is stale. Wait for a fresh fix before starting live navigation.',
+    );
+    expect(useAppStore.getState().isNavigating).toBe(false);
+
+    await act(() => useAppStore.setState({
+      currentLocation: { ...origin, accuracy: 10, observedAtMs: Date.now() },
+    }));
+    await waitFor(() => expect(hook.result.current.canStartNavigation).toBe(true));
+    expect(hook.result.current.startNavigationDisabledReason).toBe('');
+    await waitFor(() => expect(hook.result.current.loadState).toBe('ready'));
+    expect(hook.result.current.route?.outsideRoute?.coordinates).toEqual(previewRoute?.outsideRoute?.coordinates);
+    expect(hook.result.current.route?.outsideRoute?.gateId).toBe(previewRoute?.outsideRoute?.gateId);
+    expect(hook.result.current.route?.totalDistance).toBe(previewRoute?.totalDistance);
+  });
+
   test.each([
     ['live', 'live_gps'],
     ['device_last_known', 'device_last_known'],
