@@ -7,7 +7,6 @@ import React from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
-  ChevronLeft,
   Download,
   Search,
   Navigation,
@@ -23,6 +22,7 @@ import {
   Circle,
 } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
+import { backChevron } from '../components/common/directionalIcons';
 
 type GuideSection = {
   key: string;
@@ -137,6 +137,7 @@ function LegendDot({ color }: { color: string }) {
 
 export function AppGuideScreen() {
   const navigation = useNavigation<any>();
+  const BackIcon = backChevron();
 
   return (
     <SafeAreaView style={styles.container}>
@@ -148,7 +149,7 @@ export function AppGuideScreen() {
           accessibilityRole="button"
           accessibilityLabel="Back"
         >
-          <ChevronLeft size={26} color="#202124" />
+          <BackIcon size={26} color="#202124" />
         </Pressable>
         <Text style={styles.headerTitle}>App Guide</Text>
       </View>

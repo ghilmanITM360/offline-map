@@ -17,13 +17,10 @@ import {
   Keyboard,
   Share,
   Alert,
-  I18nManager,
   useWindowDimensions,
 } from 'react-native';
 import { BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import {
-  ChevronLeft,
-  ChevronRight,
   Clock,
   Flag,
   LocateFixed,
@@ -49,6 +46,7 @@ import { NAV_TRANSITION_TIMINGS } from '../../../constants/navigationTransitions
 import { Button } from '../common/Button';
 import { Card } from '../common/Card';
 import { SearchBarField } from '../common/SearchBarField';
+import { backChevron, forwardChevron } from '../common/directionalIcons';
 import { directionsSheetColors, radii, staticColors } from '../../../theme';
 import { placeCategoryLabel } from '../../../utils/placeCategoryLabel';
 import { directionsOfflineCaption } from '../../../utils/directionsOfflineCopy';
@@ -211,7 +209,7 @@ function RoutePreviewSection({
 }) {
   const { fontScale } = useWindowDimensions();
   const footerHeight = useDirectionsFooterHeight();
-  const ChevronEnd = I18nManager.isRTL ? ChevronLeft : ChevronRight;
+  const ChevronEnd = forwardChevron();
   const currentLocation = useAppStore((s) => s.currentLocation);
   const distanceUnit = useAppStore((s) => s.settings.distanceUnit);
 
@@ -773,6 +771,7 @@ function RoutePreviewSection({
 }
 
 function PlaceSection(props: Extract<LocationSheetProps, { mode: 'preview' | 'details' }>) {
+  const BackIcon = backChevron();
   const {
     mode,
     place,
@@ -805,7 +804,7 @@ function PlaceSection(props: Extract<LocationSheetProps, { mode: 'preview' | 'de
               accessibilityRole="button"
               accessibilityLabel="Back"
             >
-              <ChevronLeft size={24} color={staticColors.iconMuted} />
+              <BackIcon size={24} color={staticColors.iconMuted} />
             </Pressable>
           )}
           <View style={{ flex: 1 }}>
