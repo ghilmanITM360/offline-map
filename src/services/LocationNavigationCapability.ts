@@ -67,7 +67,16 @@ export function evaluateNavigationLocationCapability(
   }
 
   const nowMs = input.nowMs ?? Date.now();
-  if (input.coordinate.observedAtMs == null || nowMs - input.coordinate.observedAtMs > MAX_LIVE_FIX_AGE_MS) {
+  const observedAtMs = input.coordinate.observedAtMs;
+  // A future or non-finite observation cannot establish freshness. Fail closed after
+  // clock rollback too; the next valid live fix can restore navigation eligibility.
+  if (
+    observedAtMs == null ||
+    !Number.isFinite(observedAtMs) ||
+    !Number.isFinite(nowMs) ||
+    observedAtMs > nowMs ||
+    nowMs - observedAtMs > MAX_LIVE_FIX_AGE_MS
+  ) {
     return {
       canStart: false,
       message: 'Current location is stale. Wait for a fresh fix before starting live navigation.',
