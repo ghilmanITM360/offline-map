@@ -23,6 +23,7 @@ type LocationTrackingMode = 'follow' | 'navigation';
 class GPSManager {
   private subscription: Location.LocationSubscription | null = null;
   private subscriptionMode: LocationTrackingMode | null = null;
+  private watchGeneration = 0;
   private readonly listeners: Map<LocationCallback, LocationTrackingMode> = new Map();
   private appStateSubscription: { remove: () => void } | null = null;
   private appState: AppStateStatus = AppState.currentState;
@@ -107,23 +108,30 @@ class GPSManager {
       this.stop();
     }
 
+    const generation = ++this.watchGeneration;
+    const isCurrentWatch = () => generation === this.watchGeneration && this.appState === 'active';
     const { status } = await Location.getForegroundPermissionsAsync();
-    if (status !== 'granted') return;
+    if (status !== 'granted' || !isCurrentWatch()) return;
     // Services-off check (LOC-01/#45): watchPositionAsync's underlying FusedLocationProviderClient
     // request triggers a native Play Services "enable location" resolution dialog when services are
     // off. Each dismissal counts as an app resume, which re-runs reconcileSubscription() and calls
     // start() again — an unbounded dialog-reappears-on-dismiss loop. Bail out before the native call.
-    if (!(await Location.hasServicesEnabledAsync())) return;
+    if (!(await Location.hasServicesEnabledAsync()) || !isCurrentWatch()) return;
     // Fire-and-forget: clearSkippedLocationPermissionOnGrant never throws (errors are logged
     // and swallowed internally) and starting the actual GPS watch below must not wait on it.
     void OnboardingStatusService.clearSkippedLocationPermissionOnGrant(true);
 
     const nextSubscription = await Location.watchPositionAsync(
       this.getWatchOptions(mode),
-      (location) => this.publishFix(location),
+      (location) => {
+        // Native removal cannot retract callbacks already queued for an old watch.
+        // Only the current foreground generation may update navigation consumers.
+        if (isCurrentWatch()) this.publishFix(location);
+      },
     );
 
-    if (this.appState !== 'active' || this.getRequestedMode() !== mode) {
+    if (!isCurrentWatch() || this.getRequestedMode() !== mode) {
+      if (generation === this.watchGeneration) this.watchGeneration += 1;
       nextSubscription.remove();
       return;
     }
@@ -181,6 +189,8 @@ class GPSManager {
   }
 
   stop(): void {
+    // Invalidate before native removal, including setups still awaiting a handle.
+    this.watchGeneration += 1;
     if (this.subscription) {
       this.subscription.remove();
       this.subscription = null;
