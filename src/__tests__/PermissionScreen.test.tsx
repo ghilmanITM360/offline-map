@@ -4,6 +4,7 @@
  */
 
 import React from 'react';
+import { StyleSheet } from 'react-native';
 import { render, screen } from './test-utils';
 
 import { PermissionScreen } from '../views/screens/PermissionScreen';
@@ -51,5 +52,13 @@ describe('PermissionScreen (#153 Finding 2, PERM-005)', () => {
 
     expect(screen.getByRole('button', { name: 'Allow Location' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Continue Without Location' })).toBeTruthy();
+  });
+
+  test('#163 PERM-008: "Continue Without Location" meets the 48dp minimum touch target', async () => {
+    await render(<PermissionScreen />);
+
+    const style = StyleSheet.flatten(screen.getByRole('button', { name: 'Continue Without Location' }).props.style);
+
+    expect(style.minHeight).toBeGreaterThanOrEqual(48);
   });
 });
