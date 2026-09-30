@@ -54,6 +54,28 @@ function sanitizePersistedFavorites(favorites: FavoritePlace[] | undefined): Fav
     .filter((favorite): favorite is FavoritePlace => Boolean(favorite));
 }
 
+function sanitizePersistedSettings(value: unknown, defaults: UserSettings): UserSettings {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return defaults;
+  const persisted = value as Record<string, unknown>;
+  const settings = { ...defaults };
+  if (persisted.mapMode === 'standard' || persisted.mapMode === 'satellite' || persisted.mapMode === 'hybrid') {
+    settings.mapMode = persisted.mapMode;
+  }
+  if (persisted.distanceUnit === 'meters' || persisted.distanceUnit === 'feet') {
+    settings.distanceUnit = persisted.distanceUnit;
+  }
+  if (persisted.language === 'en' || persisted.language === 'ur') settings.language = persisted.language;
+  const booleanKeys = ['autoFollowLocation', 'keepNorthFixed', 'darkMode', 'voiceInstructions', 'autoReroute'] as const;
+  for (const key of booleanKeys) {
+    if (typeof persisted[key] === 'boolean') settings[key] = persisted[key];
+  }
+  for (const key of ['walkingSpeed', 'mapSize'] as const) {
+    const candidate = persisted[key];
+    if (typeof candidate === 'number' && Number.isFinite(candidate) && candidate > 0) settings[key] = candidate;
+  }
+  return settings;
+}
+
 interface AppState {
   // --- Offline map ---
   offlineData: OfflineData;
@@ -545,7 +567,11 @@ export const useAppStore = create<AppState>()(
           allowedKeys.filter((key) => Object.prototype.hasOwnProperty.call(persisted, key))
             .map((key) => [key, persisted[key]])
         );
-        return { ...currentState, ...allowedState };
+        return {
+          ...currentState,
+          ...allowedState,
+          settings: sanitizePersistedSettings(persisted.settings, currentState.settings),
+        };
       },
       // Only persist these keys — runtime GPS and transient UI state are not persisted
       partialize: partializeAppState,
