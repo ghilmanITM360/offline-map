@@ -24,7 +24,13 @@ export function SheetHeader({ title, icon, onClose }: SheetHeaderProps) {
         <Text style={styles.title}>{title}</Text>
       </View>
       {onClose && (
-        <Pressable style={styles.closeBtn} onPress={onClose} hitSlop={12}>
+        <Pressable
+          style={styles.closeBtn}
+          onPress={onClose}
+          hitSlop={12}
+          accessibilityRole="button"
+          accessibilityLabel={`Close ${title}`}
+        >
           <X size={20} color={staticColors.iconMuted} />
         </Pressable>
       )}

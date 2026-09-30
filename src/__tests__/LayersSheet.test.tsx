@@ -66,3 +66,16 @@ describe('LayersSheet — overlay toggle rows', () => {
     expect(onToggleRastas).toHaveBeenCalledWith(false);
   });
 });
+
+describe('LayersSheet — close control (#128)', () => {
+  test('the header close icon is an accessible, labelled button that closes the sheet', async () => {
+    const onClose = jest.fn();
+    const user = userEvent.setup();
+    await render(<LayersSheet {...baseProps({ onClose })} />);
+
+    // Icon-only control: without role + name TalkBack cannot announce or operate it (WCAG 4.1.2).
+    await user.press(screen.getByRole('button', { name: 'Close Map Layers' }));
+
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+});
