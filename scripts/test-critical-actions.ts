@@ -44,7 +44,7 @@ assert(
   'Home current-location action should explain outside-venue fallback',
 );
 assert(
-  homeScreen.includes('RoutingServiceV2.recommendOutsideEntryGate') && homeScreen.includes('Suggested entry') && homeScreen.includes('nearestEntryGate.name.en'),
+  homeScreen.includes('recommendPreviewEntryGate(currentLocation, selectedPlace)') && readFileSync('src/viewmodels/NavigationViewModelV2.ts', 'utf8').includes('return RoutingServiceV2.recommendOutsideEntryGate') && homeScreen.includes('Suggested entry') && homeScreen.includes('nearestEntryGate.name.en'),
   'Home outside-area banner should name actual suggested gate, not a generic message',
 );
 

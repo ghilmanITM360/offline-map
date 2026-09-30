@@ -36,12 +36,12 @@ assert(
   navigationViewModelV1Source.includes("(activeRoute as { sourceVersion?: string }).sourceVersion === 'v2'"),
   'v1 navigation runtime must not adopt v2-shaped active routes',
 );
-// The single consolidated start-navigation path now lives on Home (route preview card ->
-// handleStartPreviewNavigation), not on a per-screen Directions handler — it must validate
-// v2 map/routing/navigation flags (and destination) via the shared adapter before starting.
+// Home forwards preview start to NavigationViewModelV2, which validates the existing
+// v2 flags and destination through the shared adapter before composing the active route.
 assert(
-  homeScreenSource.includes('V2NavigationAdapter.canStartActiveNavigation'),
-  'Home start-navigation handler must validate v2 flags/destination before starting active navigation',
+  homeScreenSource.includes('startPreviewNavigationV2({') &&
+    navigationViewModelV2Source.includes('V2NavigationAdapter.canStartActiveNavigation(input)'),
+  'ViewModel start must validate v2 flags/destination before starting active navigation',
 );
 
 const runtimeCoordinateLiteralPattern = /\b(?:24|66|67)\.\d{3,}\b/;

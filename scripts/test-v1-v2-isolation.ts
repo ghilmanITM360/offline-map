@@ -10,6 +10,7 @@ import { V2NavigationAdapter } from '../src/services/V2NavigationAdapter';
 const searchSource = readFileSync('src/services/SearchService.ts', 'utf8');
 const directionsVmSource = readFileSync('src/viewmodels/DirectionsViewModel.ts', 'utf8');
 const homeScreenSource = readFileSync('src/views/screens/HomeScreen.tsx', 'utf8');
+const navigationV2Source = readFileSync('src/viewmodels/NavigationViewModelV2.ts', 'utf8');
 const navigationV1Source = readFileSync('src/viewmodels/NavigationViewModel.ts', 'utf8');
 const storeSource = readFileSync('src/store/useAppStore.ts', 'utf8');
 const legacyDataSource = readFileSync('src/constants/data.ts', 'utf8');
@@ -21,7 +22,7 @@ assert(
 );
 // v2 active navigation now starts from Home's route preview card (the single consolidated
 // start-navigation path), not from a per-screen Directions handler.
-assert(homeScreenSource.includes('V2NavigationAdapter.fromPreview'), 'Home start-navigation handler must adapt v2 previews before active navigation');
+assert(homeScreenSource.includes('startPreviewNavigationV2({') && navigationV2Source.includes('V2NavigationAdapter.fromPreview({'), 'Home must forward to the V2 ViewModel, which adapts previews before active navigation');
 // Both v1 and v2 navigation now run unconditionally inside HomeScreen (no outer screen to
 // gate on activeRoute.sourceVersion), so NavigationViewModel (v1) must reject a v2-shaped
 // activeRoute itself — checked with an inline duck-type test, not V2NavigationAdapter's
