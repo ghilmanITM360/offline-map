@@ -339,6 +339,9 @@ const styles = StyleSheet.create({
   chipsRow: {
     marginTop: spacing.md,
     flexGrow: 0,
+    // Default flexShrink is 1: with the tall results list below in the same column, Yoga shrank this
+    // row and clipped the 48dp chips to ~36dp. Keep its full content height.
+    flexShrink: 0,
   },
   chipsContent: {
     paddingHorizontal: spacing.xl,

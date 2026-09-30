@@ -4,7 +4,7 @@
  */
 
 import React from 'react';
-import { DeviceEventEmitter } from 'react-native';
+import { DeviceEventEmitter, StyleSheet } from 'react-native';
 import { act, fireEvent, render, screen } from './test-utils';
 
 import { LocationsDirectoryScreen } from '../views/screens/LocationsDirectoryScreen';
@@ -252,6 +252,20 @@ describe('LocationsDirectoryScreen — recent destinations (#99)', () => {
 
     expect(await screen.findByLabelText('Block 24, Block')).toBeOnTheScreen();
     expect(screen.queryByText('Recent')).not.toBeOnTheScreen();
+  });
+});
+
+describe('LocationsDirectoryScreen — category chips (#128)', () => {
+  test('the chip row keeps its full height instead of shrinking under the results list', async () => {
+    mockNav();
+    await render(<LocationsDirectoryScreen />);
+
+    // Both ScrollViews share one column. The horizontal one has a default flexShrink of 1, so when the
+    // results list overflows Yoga shrinks it and clips the 48dp chips to ~36dp (seen on the API 36 emulator).
+    let node: any = screen.getByRole('button', { name: 'Blocks' });
+    while (node && !node.props.horizontal) node = node.parent;
+    expect(node).toBeTruthy();
+    expect(StyleSheet.flatten(node.props.style).flexShrink).toBe(0);
   });
 });
 
