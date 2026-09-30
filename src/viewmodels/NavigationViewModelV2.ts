@@ -147,6 +147,8 @@ export function useNavigationViewModelV2() {
   );
   const destination = route ? placeFromV2Destination(route, destinationFromStore) : destinationFromStore;
   const [snappedLocation, setSnappedLocation] = useState<Coordinate | null>(route?.origin.coordinate ?? null);
+  const previousSnapCoordinateRef = useRef(snappedLocation);
+  useEffect(() => { previousSnapCoordinateRef.current = snappedLocation; }, [snappedLocation]);
   const [remainingDistance, setRemainingDistance] = useState(route?.totalDistanceM ?? 0);
   const [maneuverDistance, setManeuverDistance] = useState(route?.instructions[0]?.distanceM ?? 0);
   const [etaMinutes, setEtaMinutes] = useState(route?.etaMinutes ?? 0);
@@ -368,6 +370,7 @@ export function useNavigationViewModelV2() {
         const rerouteRequest = buildV2RerouteRequest({
           route: routeAtRequest,
           coordinate,
+          previousSnapCoordinate: previousSnapCoordinateRef.current,
           walkingSpeedMs: settings.walkingSpeed ?? 1.4,
         });
         candidate = RoutingServiceV2.calculateRoute(rerouteRequest);

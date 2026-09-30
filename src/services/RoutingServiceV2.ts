@@ -44,7 +44,7 @@ export type RoutingStartV2 =
   | { type: 'block'; blockId: string }
   | { type: 'rasta'; rastaId: string }
   | { type: 'special_route'; routeId: string }
-  | { type: 'inside_coordinate'; coordinate: AppCoordinate }
+  | { type: 'inside_coordinate'; coordinate: AppCoordinate; previousNodeId?: string }
   | { type: 'outside_coordinate'; coordinate: AppCoordinate; manualGateId?: string };
 
 export type RoutingDestinationV2 =
@@ -440,7 +440,7 @@ const resolveStartCandidates = (start: RoutingStartV2): RouteCandidateSet => {
     };
   }
 
-  const startResolution = EntryGateRoutingService.resolveRouteStartForUser(start.coordinate);
+  const startResolution = EntryGateRoutingService.resolveRouteStartForUser(start.coordinate, { previousNodeId: start.previousNodeId });
   return {
     nodeIds: getConnectedCandidates(startResolution.candidateNodes),
     label: 'Current location',

@@ -36,6 +36,7 @@ export interface VenueStatusV2 {
 export interface ResolveRouteStartOptionsV2 {
   manualGateId?: string;
   forceOutside?: boolean;
+  previousNodeId?: string;
 }
 
 const toV2Coordinate = (coordinate: AppCoordinate | V2Coordinate): V2Coordinate =>
@@ -229,7 +230,7 @@ export class EntryGateRoutingService {
       'rasta_point',
       'special_route_point',
       'central_point',
-    ]);
+    ], options.previousNodeId);
 
     if (!nearest) {
       return {
