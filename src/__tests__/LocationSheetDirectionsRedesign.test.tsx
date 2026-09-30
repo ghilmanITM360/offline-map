@@ -9,6 +9,7 @@ import { Dimensions, I18nManager, StyleSheet } from 'react-native';
 import { render, screen, userEvent, within } from './test-utils';
 
 import { LocationSheet } from '../views/components/map/LocationSheet';
+import { DirectionsSheetFooter } from '../views/components/map/DirectionsSheetFooter';
 import { DirectionsHeader, StartOptionCard } from '../views/components/map/DirectionsSheetParts';
 import { useDirectionsViewModel } from '../viewmodels/DirectionsViewModel';
 import { placeCategoryLabel } from '../utils/placeCategoryLabel';
@@ -26,6 +27,8 @@ jest.mock('@gorhom/bottom-sheet', () => {
     __esModule: true,
     BottomSheetScrollView: (props: { children?: React.ReactNode }) =>
       ReactActual.createElement(View, { testID: 'sheet-scroll' }, props.children),
+    BottomSheetFooter: (props: { children?: React.ReactNode }) =>
+      ReactActual.createElement(View, { testID: 'sheet-footer' }, props.children),
   };
 });
 
@@ -104,9 +107,13 @@ function vm(overrides: Record<string, unknown> = {}) {
 }
 
 const onClose = jest.fn();
+// The pinned footer lives in the modal's footer slot, outside the scroll area — mount it as HomeScreen does.
 const renderSheet = (props: Partial<React.ComponentProps<typeof LocationSheet>> = {}) =>
   render(
-    <LocationSheet mode="routePreview" destination={destination} onClose={onClose} {...(props as object)} />,
+    <>
+      <LocationSheet mode="routePreview" destination={destination} onClose={onClose} {...(props as object)} />
+      <DirectionsSheetFooter animatedFooterPosition={{ value: 0, get: () => 0 } as never} />
+    </>,
   );
 
 beforeEach(() => {
@@ -210,6 +217,7 @@ describe('Get Directions redesign — pinned footer', () => {
     expect(screen.getByText('Route ready')).toBeOnTheScreen();
     expect(screen.getByText('Fix is stale.')).toBeOnTheScreen();
     expect(screen.getByRole('button', { name: 'Start Navigation. Fix is stale.' })).toBeDisabled();
+    expect(within(screen.getByTestId('sheet-footer')).getByText('Fix is stale.')).toBeOnTheScreen();
   });
 
   test('enabled CTA keeps its plain accessible name', async () => {
@@ -237,6 +245,27 @@ describe('Get Directions redesign — pinned footer', () => {
     await renderSheet({ onChangeDestination: jest.fn() });
 
     await user.press(screen.getByRole('button', { name: 'Change destination' }));
+    expect(screen.queryByRole('button', { name: 'Start Navigation' })).not.toBeOnTheScreen();
+  });
+
+  test('the footer hides at the collapsed snap so it cannot cover the header', async () => {
+    mockedVm.mockReturnValue(ready());
+    await render(
+      <>
+        <LocationSheet mode="routePreview" destination={destination} onClose={onClose} />
+        <DirectionsSheetFooter animatedFooterPosition={{ value: 0, get: () => 0 } as never} collapsed />
+      </>,
+    );
+
+    expect(screen.queryByRole('button', { name: 'Start Navigation' })).not.toBeOnTheScreen();
+  });
+
+  test('closing the sheet clears the published footer', async () => {
+    mockedVm.mockReturnValue(ready());
+    const view = await renderSheet();
+    expect(screen.getByRole('button', { name: 'Start Navigation' })).toBeOnTheScreen();
+
+    await view.rerender(<DirectionsSheetFooter animatedFooterPosition={{ value: 0, get: () => 0 } as never} />);
     expect(screen.queryByRole('button', { name: 'Start Navigation' })).not.toBeOnTheScreen();
   });
 

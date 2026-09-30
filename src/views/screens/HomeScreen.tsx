@@ -30,7 +30,7 @@ import {
   LayoutGrid,
   Search,
 } from 'lucide-react-native';
-import { BottomSheetModal, BottomSheetScrollView } from '@gorhom/bottom-sheet';
+import { BottomSheetModal, BottomSheetScrollView, type BottomSheetFooterProps } from '@gorhom/bottom-sheet';
 import { useNavigation, DrawerActions, CompositeNavigationProp } from '@react-navigation/native';
 import { DrawerNavigationProp } from '@react-navigation/drawer';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -99,6 +99,7 @@ import { NavigationChromeV2 } from '../components/navigation/NavigationChromeV2'
 import { NavigationMapLayersV1 } from '../components/navigation/NavigationMapLayersV1';
 import { NavigationChromeV1 } from '../components/navigation/NavigationChromeV1';
 import { LocationSheet } from '../components/map/LocationSheet';
+import { DirectionsSheetFooter } from '../components/map/DirectionsSheetFooter';
 import { UserLocationMarker } from '../components/map/UserLocationMarker';
 import { resolveMapMarkerOwnership } from '../components/map/MapMarkerOwnership';
 import { LocationTutorialTooltip } from '../components/map/LocationTutorialTooltip';
@@ -984,6 +985,14 @@ export function HomeScreen() {
   const minimumVisibleMapHeight = mode === 'ROUTE_PREVIEW'
     ? MIN_TOP_VISIBLE_MAP_FOR_ROUTE_PREVIEW
     : MIN_TOP_VISIBLE_MAP_FOR_ATTRIBUTION;
+  // Route-preview footer (Start Navigation, summary) is pinned by gorhom's footer slot; hide it at
+  // the collapsed snap, where only the handle and header are meant to show.
+  const renderDirectionsFooter = useCallback(
+    (footerProps: BottomSheetFooterProps) => (
+      <DirectionsSheetFooter {...footerProps} collapsed={sheetIndex === 0} />
+    ),
+    [sheetIndex],
+  );
   const sheetTopInset = useMemo(
     () => (topOverlayHeight > 0 ? topOverlayHeight + 8 : 0) + minimumVisibleMapHeight,
     [minimumVisibleMapHeight, topOverlayHeight],
@@ -1840,6 +1849,7 @@ export function HomeScreen() {
           topInset={sheetTopInset}
           maxDynamicContentSize={sheetMaxDynamicContentSize}
           enablePanDownToClose
+          footerComponent={renderDirectionsFooter}
           keyboardBehavior="interactive"
           keyboardBlurBehavior="restore"
           android_keyboardInputMode="adjustResize"

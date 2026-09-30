@@ -20,7 +20,6 @@ import {
   I18nManager,
   useWindowDimensions,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import {
   ChevronLeft,
@@ -54,6 +53,7 @@ import { directionsSheetColors, radii, staticColors } from '../../../theme';
 import { placeCategoryLabel } from '../../../utils/placeCategoryLabel';
 import { directionsOfflineCaption } from '../../../utils/directionsOfflineCopy';
 import { DirectionsHeader, OfflineInfo, RouteEndpointCard, StartOptionCard } from './DirectionsSheetParts';
+import { publishDirectionsFooter, useDirectionsFooterHeight } from './DirectionsSheetFooter';
 import { OutsideRouteStatusCard } from '../navigation/OutsideRouteStatusCard';
 import type { NormalizedOutsideCandidate } from '../../../models/outsideRouting';
 
@@ -210,7 +210,7 @@ function RoutePreviewSection({
   basemapOffline?: boolean;
 }) {
   const { fontScale } = useWindowDimensions();
-  const insets = useSafeAreaInsets();
+  const footerHeight = useDirectionsFooterHeight();
   const ChevronEnd = I18nManager.isRTL ? ChevronLeft : ChevronRight;
   const currentLocation = useAppStore((s) => s.currentLocation);
   const distanceUnit = useAppStore((s) => s.settings.distanceUnit);
@@ -358,9 +358,83 @@ function RoutePreviewSection({
   ) : null;
   const captionNode = offlineCaption ? <OfflineInfo text={offlineCaption} banner={editingStart} /> : null;
   const footerVisible = !editingAnything && (showLoading || showError || showRouteReady);
-  const footerCaption = footerVisible && showRouteReady && !compactFooter;
-  // Everywhere the footer/ready body isn't already carrying it.
-  const bodyCaption = editingStart || (!editingAnything && !showRouteReady);
+  // The caption scrolls with the content: the pinned footer only has room for the route summary,
+  // the action and its disabled reason (gorhom's visible area at the 50% snap is small).
+
+  const footerNode = footerVisible ? (
+    <>
+            {showLoading && (
+              <View accessibilityLiveRegion="polite" style={styles.footerStatus}>
+                <View style={styles.statusRow}>
+                  <RefreshCw size={18} color={directionsSheetColors.brand} />
+                  <Text style={styles.statusTitle}>Finding route...</Text>
+                </View>
+                <Text style={styles.statusText}>{routeStatusMessage}</Text>
+              </View>
+            )}
+
+            {showError &&
+              (destinationCannotBeRouted ? (
+                // Retrying re-runs the same failed lookup: an unverified/unconnected
+                // destination stays unroutable until its data is verified. Offer a
+                // change of destination instead (no route is invented).
+                <Button
+                  variant="brandTint"
+                  label="Choose another destination"
+                  onPress={onChangeDestination ? () => setShowDestinationOptions(true) : onClose}
+                />
+              ) : (
+                <Button
+                  variant="danger"
+                  icon={<RefreshCw size={18} color={staticColors.white} />}
+                  label="Retry"
+                  onPress={retryRoute}
+                />
+              ))}
+
+            {showRouteReady && (
+              <>
+                {!compactFooter && routeSummary}
+                <Button
+                  variant="brand"
+                  style={styles.cta}
+                  label={directGuide ? 'Start Direct Guide' : 'Start Navigation'}
+                  accessibilityLabel={
+                    !canStartNavigation && startNavigationDisabledReason
+                      ? `${directGuide ? 'Start Direct Guide' : 'Start Navigation'}. ${startNavigationDisabledReason}`
+                      : undefined
+                  }
+                  icon={<Navigation size={20} color={directionsSheetColors.brandText} />}
+                  trailingIcon={<ChevronEnd size={20} color={directionsSheetColors.brandText} />}
+                  disabled={!canStartNavigation}
+                  onPress={() => {
+                    if (destinationFromPlace(destination)) {
+                      // Built from the resolved preview route already sitting in the store
+                      // (see HomeScreen.handleStartPreviewNavigation) — starts NavigationOverlayV2
+                      // in place, then reveals the map the same way v1 does below.
+                      onStartNavigation?.();
+                      onClose();
+                      return;
+                    }
+                    // v1: starts the in-place NavigationOverlayV1 (via the store), then
+                    // reveals the map the same way v2 does — no screen navigation either way.
+                    handleStartNavigation();
+                    onClose();
+                  }}
+                />
+                {!canStartNavigation && startNavigationDisabledReason ? (
+                  <Text style={styles.footerReason}>{startNavigationDisabledReason}</Text>
+                ) : null}
+              </>
+            )}
+    </>
+  ) : null;
+  // Published to the modal's footer slot (see DirectionsSheetFooter) so it stays pinned to the
+  // visible bottom of the sheet at every snap point.
+  useEffect(() => {
+    publishDirectionsFooter(footerNode);
+  });
+  useEffect(() => () => publishDirectionsFooter(null), []);
 
   return (
     <View style={styles.container}>
@@ -377,7 +451,7 @@ function RoutePreviewSection({
       >
         <BottomSheetScrollView
           style={styles.scroll}
-          contentContainerStyle={[styles.scrollContent, { paddingBottom: 24 }]}
+          contentContainerStyle={[styles.scrollContent, { paddingBottom: 24 + footerHeight }]}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"
         >
@@ -663,8 +737,6 @@ function RoutePreviewSection({
                 </View>
               )}
 
-              {compactFooter && captionNode}
-
               {onCancelRoute && (
                 <Pressable
                   style={styles.linkButton}
@@ -679,78 +751,9 @@ function RoutePreviewSection({
           )}
           </FadeContent>
 
-          {bodyCaption && captionNode}
+          {captionNode}
         </BottomSheetScrollView>
 
-        {footerVisible && (
-          <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 12) + 12 }]}>
-            {showLoading && (
-              <View accessibilityLiveRegion="polite" style={styles.footerStatus}>
-                <View style={styles.statusRow}>
-                  <RefreshCw size={18} color={directionsSheetColors.brand} />
-                  <Text style={styles.statusTitle}>Finding route...</Text>
-                </View>
-                <Text style={styles.statusText}>{routeStatusMessage}</Text>
-              </View>
-            )}
-
-            {showError &&
-              (destinationCannotBeRouted ? (
-                // Retrying re-runs the same failed lookup: an unverified/unconnected
-                // destination stays unroutable until its data is verified. Offer a
-                // change of destination instead (no route is invented).
-                <Button
-                  variant="brandTint"
-                  label="Choose another destination"
-                  onPress={onChangeDestination ? () => setShowDestinationOptions(true) : onClose}
-                />
-              ) : (
-                <Button
-                  variant="danger"
-                  icon={<RefreshCw size={18} color={staticColors.white} />}
-                  label="Retry"
-                  onPress={retryRoute}
-                />
-              ))}
-
-            {showRouteReady && (
-              <>
-                {!compactFooter && routeSummary}
-                <Button
-                  variant="brand"
-                  style={styles.cta}
-                  label={directGuide ? 'Start Direct Guide' : 'Start Navigation'}
-                  accessibilityLabel={
-                    !canStartNavigation && startNavigationDisabledReason
-                      ? `${directGuide ? 'Start Direct Guide' : 'Start Navigation'}. ${startNavigationDisabledReason}`
-                      : undefined
-                  }
-                  icon={<Navigation size={20} color={directionsSheetColors.brandText} />}
-                  trailingIcon={<ChevronEnd size={20} color={directionsSheetColors.brandText} />}
-                  disabled={!canStartNavigation}
-                  onPress={() => {
-                    if (destinationFromPlace(destination)) {
-                      // Built from the resolved preview route already sitting in the store
-                      // (see HomeScreen.handleStartPreviewNavigation) — starts NavigationOverlayV2
-                      // in place, then reveals the map the same way v1 does below.
-                      onStartNavigation?.();
-                      onClose();
-                      return;
-                    }
-                    // v1: starts the in-place NavigationOverlayV1 (via the store), then
-                    // reveals the map the same way v2 does — no screen navigation either way.
-                    handleStartNavigation();
-                    onClose();
-                  }}
-                />
-                {!canStartNavigation && startNavigationDisabledReason ? (
-                  <Text style={styles.statusText}>{startNavigationDisabledReason}</Text>
-                ) : null}
-                {footerCaption && captionNode}
-              </>
-            )}
-          </View>
-        )}
       </KeyboardAvoidingView>
     </View>
   );
@@ -1036,13 +1039,11 @@ const styles = StyleSheet.create({
   readyBody: {
     gap: 10,
   },
-  footer: {
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    gap: 10,
-    backgroundColor: directionsSheetColors.background,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: directionsSheetColors.cardBorder,
+  // Compact on purpose: the pinned footer shares the small visible area at the 50% snap.
+  footerReason: {
+    fontSize: 13,
+    lineHeight: 18,
+    color: directionsSheetColors.secondaryText,
   },
   footerStatus: {
     gap: 4,
@@ -1050,8 +1051,13 @@ const styles = StyleSheet.create({
   cta: {
     borderRadius: radii.xl,
   },
+  // One line: label left, duration + distance right (wraps under large fonts).
   summary: {
-    gap: 2,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'baseline',
+    justifyContent: 'space-between',
+    columnGap: 12,
   },
   summaryLabel: {
     fontSize: 14,
@@ -1149,7 +1155,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   routeHeroDuration: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: '800',
     color: directionsSheetColors.brand,
   },

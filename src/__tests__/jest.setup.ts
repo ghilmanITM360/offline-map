@@ -97,7 +97,16 @@ jest.mock('@gorhom/bottom-sheet', () => {
       dismiss: jest.fn(),
       forceClose: jest.fn(),
     }));
-    return ReactActual.createElement(RNView, { ...props, testID: 'location-sheet-modal' }, props.children);
+    // Mirrors the real modal: the footer slot renders beside the content (Start Navigation lives there).
+    const FooterComponent = props.footerComponent;
+    return ReactActual.createElement(
+      RNView,
+      { ...props, testID: 'location-sheet-modal' },
+      props.children,
+      FooterComponent
+        ? ReactActual.createElement(FooterComponent, { animatedFooterPosition: { value: 0, get: () => 0 } })
+        : null,
+    );
   });
   BottomSheetModal.displayName = 'BottomSheetModal';
 
@@ -107,6 +116,10 @@ jest.mock('@gorhom/bottom-sheet', () => {
   const BottomSheetScrollView = (props: any) =>
     ReactActual.createElement(RNView, null, props.children);
   BottomSheetScrollView.displayName = 'BottomSheetScrollView';
+
+  const BottomSheetFooter = (props: any) =>
+    ReactActual.createElement(RNView, null, props.children);
+  BottomSheetFooter.displayName = 'BottomSheetFooter';
 
   const BottomSheetView = (props: any) =>
     ReactActual.createElement(RNView, null, props.children);
@@ -119,6 +132,7 @@ jest.mock('@gorhom/bottom-sheet', () => {
     BottomSheetModalProvider,
     BottomSheetScrollView,
     BottomSheetView,
+    BottomSheetFooter,
     __getLastBottomSheetModalProps: () => lastBottomSheetModalProps,
   };
 });
