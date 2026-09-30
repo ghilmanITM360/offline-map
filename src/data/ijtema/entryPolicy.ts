@@ -4,6 +4,7 @@
  */
 
 import { IJTEMA_GATES } from './gates';
+import { distanceMeters } from './graphBuilder';
 import { IJTEMA_NAVIGATION_GRAPH_V2 } from './navigationGraph';
 import { Coordinate, Gate } from './types';
 
@@ -55,20 +56,3 @@ export const findNearestOfficialEntryGate = (coordinate: Coordinate): Gate | und
 
   return nearestGate;
 };
-
-const distanceMeters = (from: Coordinate, to: Coordinate): number => {
-  const earthRadiusMeters = 6371000;
-  const fromLat = degreesToRadians(from.lat);
-  const toLat = degreesToRadians(to.lat);
-  const deltaLat = degreesToRadians(to.lat - from.lat);
-  const deltaLng = degreesToRadians(to.lng - from.lng);
-
-  const a =
-    Math.sin(deltaLat / 2) * Math.sin(deltaLat / 2) +
-    Math.cos(fromLat) * Math.cos(toLat) * Math.sin(deltaLng / 2) * Math.sin(deltaLng / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-
-  return earthRadiusMeters * c;
-};
-
-const degreesToRadians = (degrees: number): number => (degrees * Math.PI) / 180;
