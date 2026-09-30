@@ -272,6 +272,24 @@ describe('LocationAccessService.resolveCurrentLocation — #89 bounded current-p
     expect(Location.getLastKnownPositionAsync).not.toHaveBeenCalled();
   });
 
+  it.each(['success', 'failure'] as const)('120: releases the timeout after an early native %s', async (outcome) => {
+    (Location.getForegroundPermissionsAsync as jest.Mock).mockResolvedValue({ status: 'granted', canAskAgain: true });
+    (Location.getLastKnownPositionAsync as jest.Mock).mockResolvedValue(null);
+    if (outcome === 'success') {
+      (Location.getCurrentPositionAsync as jest.Mock).mockResolvedValue({
+        coords: { latitude: 24.96, longitude: 67.01, heading: null, accuracy: 8 },
+        timestamp: 1_790_000_000_000,
+      });
+    } else {
+      (Location.getCurrentPositionAsync as jest.Mock).mockRejectedValue(new Error('provider unavailable'));
+    }
+
+    const resolved = await LocationAccessService.resolveCurrentLocation(false);
+
+    expect(resolved.ok).toBe(outcome === 'success');
+    expect(jest.getTimerCount()).toBe(0);
+  });
+
   it('89-03: on timeout, a qualifying last-known fix is offered but never silently presented as a live fix', async () => {
     (Location.getForegroundPermissionsAsync as jest.Mock).mockResolvedValue({ status: 'granted', canAskAgain: true });
     (Location.getCurrentPositionAsync as jest.Mock).mockReturnValue(new Promise(() => {}));
