@@ -503,7 +503,10 @@ describe('LocationSheet (routePreview) — route ready CTA', () => {
 
     expect(screen.getByText('Route ready')).toBeOnTheScreen();
     expect(screen.getByText('Precise location is required for live navigation. Route preview remains available.')).toBeOnTheScreen();
-    const startButton = screen.getByRole('button', { name: 'Start Navigation' });
+    // The disabled reason is part of the CTA's accessible name, not only visible text (#177).
+    const startButton = screen.getByRole('button', {
+      name: 'Start Navigation. Precise location is required for live navigation. Route preview remains available.',
+    });
     expect(startButton).toBeDisabled();
     await user.press(startButton);
     expect(onStartNavigation).not.toHaveBeenCalled();

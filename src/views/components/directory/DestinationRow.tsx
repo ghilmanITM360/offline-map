@@ -9,14 +9,8 @@ import { ChevronRight, Milestone, Route, Signpost } from 'lucide-react-native';
 
 import { V2Place } from '../../../models/types';
 import { usePressScale } from '../../../viewmodels/usePressScale';
+import { placeCategoryLabel } from '../../../utils/placeCategoryLabel';
 import { radii, spacing, staticColors } from '../../../theme';
-
-const CATEGORY_LABEL: Record<V2Place['category'], string> = {
-  Block: 'Block',
-  Gate: 'Gate',
-  Rasta: 'Rasta',
-  SpecialRoute: 'Shahr-e-Pindal',
-} as Record<V2Place['category'], string>;
 
 const CATEGORY_ICON: Partial<Record<V2Place['category'], typeof Signpost>> = {
   Gate: Signpost,
@@ -45,7 +39,7 @@ export function DestinationRow({
 }) {
   const Icon = CATEGORY_ICON[place.category] ?? Signpost;
   const accent = CATEGORY_ACCENT[place.category] ?? staticColors.normalBlock;
-  const categoryLabel = CATEGORY_LABEL[place.category] ?? place.category;
+  const categoryLabel = placeCategoryLabel(place.category);
   // #96: unavailable rows stay tappable-to-view (map/sheet navigation is correct
   // today) — only the routing dead-end needs to be signaled earlier, so this never
   // touches onPress or blocks the Pressable. The unavailability is carried by the

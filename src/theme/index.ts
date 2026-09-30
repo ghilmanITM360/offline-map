@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-export { staticColors, themeColors } from './colors';
+export { staticColors, themeColors, directionsSheetColors } from './colors';
 export type { StaticColorToken } from './colors';
 export { typography } from './typography';
 export { spacing } from './spacing';

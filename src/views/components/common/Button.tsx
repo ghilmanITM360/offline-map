@@ -15,14 +15,16 @@ import {
   ViewStyle,
 } from 'react-native';
 
-import { staticColors, radii, spacing, typography } from '../../../theme';
+import { directionsSheetColors, staticColors, radii, spacing, typography } from '../../../theme';
 
-export type ButtonVariant = 'primary' | 'secondary' | 'outline' | 'danger' | 'icon';
+export type ButtonVariant = 'primary' | 'secondary' | 'outline' | 'danger' | 'icon' | 'brand' | 'brandTint';
 
 interface ButtonProps extends Omit<PressableProps, 'style'> {
   label?: string;
   variant?: ButtonVariant;
   icon?: React.ReactNode;
+  /** Rendered after the label (e.g. a chevron); mirror it yourself under RTL. */
+  trailingIcon?: React.ReactNode;
   loading?: boolean;
   fullWidth?: boolean;
   style?: StyleProp<ViewStyle>;
@@ -42,6 +44,7 @@ export function Button({
   label,
   variant = 'primary',
   icon,
+  trailingIcon,
   loading = false,
   fullWidth = true,
   disabled,
@@ -72,6 +75,7 @@ export function Button({
         <>
           {icon}
           {label ? <Text style={[styles.label, v.label]}>{label}</Text> : null}
+          {trailingIcon}
         </>
       )}
     </Pressable>
@@ -125,6 +129,17 @@ const VARIANTS: Record<ButtonVariant, { container: ViewStyle; pressed: ViewStyle
     container: { backgroundColor: staticColors.danger },
     pressed: { backgroundColor: staticColors.dangerText },
     label: { color: staticColors.white },
+  },
+  // Get Directions sheet (#177): green brand CTA + tinted action, scoped tokens only.
+  brand: {
+    container: { backgroundColor: directionsSheetColors.brand },
+    pressed: { backgroundColor: directionsSheetColors.brandPressed },
+    label: { color: directionsSheetColors.brandText, fontSize: 18 },
+  },
+  brandTint: {
+    container: { backgroundColor: directionsSheetColors.actionFill },
+    pressed: { backgroundColor: directionsSheetColors.actionPressedFill },
+    label: { color: directionsSheetColors.brand },
   },
   icon: {
     container: { backgroundColor: staticColors.white },
