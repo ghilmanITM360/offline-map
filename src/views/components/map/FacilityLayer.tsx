@@ -5,7 +5,7 @@
 
 import React from 'react';
 import { View } from 'react-native';
-import { Marker } from 'react-native-maps';
+import { Callout, Marker } from 'react-native-maps';
 import { Bus, Droplet, HelpCircle, Landmark, ParkingCircle, Search as SearchGlyph, Stethoscope, Utensils } from 'lucide-react-native';
 
 import { Coordinate, Place } from '../../../models/types';
@@ -57,6 +57,8 @@ function FacilityLayerImpl({ places, selectedPlaceId, onPressFacility }: Facilit
             zIndex={isSelected ? 15 : 6}
             tracksViewChanges={false}
             accessibilityLabel={place.name}
+            // Android names markers for TalkBack from the title, not accessibilityLabel (react-native-maps#3500).
+            title={place.name}
             onPress={(e) => onPressFacility(place, e.nativeEvent.coordinate)}
           >
             <View style={styles.facilityMarkerHitArea}>
@@ -64,6 +66,8 @@ function FacilityLayerImpl({ places, selectedPlaceId, onPressFacility }: Facilit
                 {facilityIcon(place, markerSizes.facility * 0.62, staticColors.white)}
               </View>
             </View>
+            {/* Suppresses the default info window that a title would otherwise pop on tap. */}
+            <Callout tooltip><View /></Callout>
           </Marker>
         );
       })}

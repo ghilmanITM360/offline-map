@@ -5,7 +5,7 @@
 
 import React from 'react';
 import { View } from 'react-native';
-import { Marker } from 'react-native-maps';
+import { Callout, Marker } from 'react-native-maps';
 
 import { V2GateLayer } from '../../../services/V2MapRenderingService';
 import { Coordinate } from '../../../models/types';
@@ -60,9 +60,15 @@ function GateLayerImpl({ gates, focused = false, onPressGate, keyPrefix }: GateL
             // Only when MapLabelOverlay has no item for this gate (same condition HomeScreen's
             // mapLabelItems skips on) — otherwise TalkBack would reach the gate twice.
             accessibilityLabel={needsWiderHitArea ? gate.label : undefined}
+            // Android's Google Maps SDK names every marker for TalkBack from its title (accessibilityLabel is ignored,
+            // react-native-maps#3500); without it each gate is announced as "Map Marker". Labelled gates are therefore
+            // announced twice (marker + overlay) — the SDK offers no way to hide its marker node.
+            title={gate.label}
             onPress={(e) => onPressGate?.(gate.id, e.nativeEvent.coordinate)}
           >
             {needsWiderHitArea ? <View style={styles.v2GateMarkerHitArea}>{dot}</View> : dot}
+            {/* A title alone makes Android pop a default info window on tap; an empty tooltip callout suppresses it. */}
+            <Callout tooltip><View /></Callout>
           </Marker>
         );
       })}
