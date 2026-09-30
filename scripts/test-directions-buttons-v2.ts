@@ -7,7 +7,7 @@ const homeScreenSource = readFileSync('src/views/screens/HomeScreen.tsx', 'utf8'
 
 assert(directionsScreenSource.includes('Get Directions'), 'Directions header must say Get Directions.');
 assert(directionsScreenSource.includes('Going to'), 'Directions screen must show destination card title.');
-assert(directionsScreenSource.includes('Where are you starting from?'), 'Directions screen must ask start question plainly.');
+assert(directionsScreenSource.includes('Choose where you are starting from'), 'Directions screen must state the start-selection task plainly.');
 assert(directionsScreenSource.includes('Use my current location'), 'Directions screen must keep current-location start CTA.');
 assert(directionsScreenSource.includes('Use last known location'), 'Directions screen must keep remembered-location CTA.');
 assert(directionsScreenSource.includes('Choose start manually'), 'Directions screen must keep manual-start CTA.');

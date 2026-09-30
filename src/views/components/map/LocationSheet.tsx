@@ -17,11 +17,15 @@ import {
   Keyboard,
   Share,
   Alert,
+  I18nManager,
+  useWindowDimensions,
 } from 'react-native';
 import { BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import {
   ChevronLeft,
+  ChevronRight,
   Clock,
+  Flag,
   LocateFixed,
   MapPin,
   Navigation,
@@ -31,7 +35,7 @@ import {
   X,
 } from 'lucide-react-native';
 
-import { useDirectionsViewModel } from '../../../viewmodels/DirectionsViewModel';
+import { useDirectionsViewModel, type StartSource } from '../../../viewmodels/DirectionsViewModel';
 import { useReducedMotion } from '../../../viewmodels/useReducedMotion';
 import { InstructionService } from '../../../services/InstructionService';
 import { SearchService } from '../../../services/SearchService';
@@ -45,7 +49,11 @@ import { NAV_TRANSITION_TIMINGS } from '../../../constants/navigationTransitions
 import { Button } from '../common/Button';
 import { Card } from '../common/Card';
 import { SearchBarField } from '../common/SearchBarField';
-import { staticColors } from '../../../theme';
+import { directionsSheetColors, radii, staticColors } from '../../../theme';
+import { placeCategoryLabel } from '../../../utils/placeCategoryLabel';
+import { directionsOfflineCaption } from '../../../utils/directionsOfflineCopy';
+import { DirectionsHeader, OfflineInfo, RouteEndpointCard, StartOptionCard } from './DirectionsSheetParts';
+import { publishDirectionsFooter, useDirectionsFooterHeight } from './DirectionsSheetFooter';
 import { OutsideRouteStatusCard } from '../navigation/OutsideRouteStatusCard';
 import type { NormalizedOutsideCandidate } from '../../../models/outsideRouting';
 
@@ -111,6 +119,9 @@ export type LocationSheetProps =
        * not anything this component does directly. Omitted falls back to the old onClose
        * behavior for callers that haven't wired it up. */
       onChangeDestination?: (place: Place) => void;
+      /** True when the map shows venue geometry only (no background imagery) — drives the
+       * truthful offline caption. Display-only; no connectivity logic lives here. */
+      basemapOffline?: boolean;
     }
   | {
       mode: 'preview' | 'details';
@@ -140,6 +151,7 @@ export function LocationSheet(props: LocationSheetProps) {
         onStartNavigation={props.onStartNavigation}
         onCancelRoute={props.onCancelRoute}
         onChangeDestination={props.onChangeDestination}
+        basemapOffline={props.basemapOffline}
       />
     );
   }
@@ -167,47 +179,19 @@ function FadeContent({ transitionKey, children }: { transitionKey: string; child
   return <Animated.View style={{ opacity }}>{children}</Animated.View>;
 }
 
-function StartOption({
-  icon,
-  title,
-  subtitle,
-  active,
-  disabled,
-  loading,
-  onPress,
-}: {
-  icon: React.ReactNode;
-  title: string;
-  subtitle: string;
-  active?: boolean;
-  disabled?: boolean;
-  loading?: boolean;
-  onPress: () => void;
-}) {
-  return (
-    <Pressable
-      style={[
-        styles.startOption,
-        active && styles.startOptionActive,
-        disabled && styles.startOptionDisabled,
-      ]}
-      disabled={disabled}
-      onPress={onPress}
-      accessibilityRole="button"
-      accessibilityLabel={`${title}. ${subtitle}`}
-      accessibilityState={{ selected: !!active, disabled: !!disabled, busy: !!loading }}
-    >
-      <View style={[styles.startOptionIcon, active && styles.startOptionIconActive]}>
-        {loading ? <RefreshCw size={18} color={active ? staticColors.white : staticColors.info} /> : icon}
-      </View>
-      <View style={styles.startOptionBody}>
-        <Text style={[styles.startOptionTitle, active && styles.startOptionTitleActive, disabled && styles.startOptionTitleDisabled]}>
-          {title}
-        </Text>
-        <Text style={[styles.startOptionSubtitle, disabled && styles.startOptionSubtitleDisabled]}>{subtitle}</Text>
-      </View>
-    </Pressable>
-  );
+/** One-line provenance under "Starting from", derived from the real start source. */
+function startSourceHelper(source: StartSource, unresolved: boolean): string {
+  if (unresolved) return 'Choose where you are starting from';
+  switch (source) {
+    case 'live_gps':
+      return 'Using GPS';
+    case 'device_last_known':
+      return 'Using your device’s last known location';
+    case 'remembered_location':
+      return 'Using your saved location';
+    default:
+      return 'Chosen by you';
+  }
 }
 
 function RoutePreviewSection({
@@ -216,13 +200,18 @@ function RoutePreviewSection({
   onStartNavigation,
   onCancelRoute,
   onChangeDestination,
+  basemapOffline,
 }: {
   destination: Place;
   onClose: () => void;
   onStartNavigation?: () => void;
   onCancelRoute?: () => void;
   onChangeDestination?: (place: Place) => void;
+  basemapOffline?: boolean;
 }) {
+  const { fontScale } = useWindowDimensions();
+  const footerHeight = useDirectionsFooterHeight();
+  const ChevronEnd = I18nManager.isRTL ? ChevronLeft : ChevronRight;
   const currentLocation = useAppStore((s) => s.currentLocation);
   const distanceUnit = useAppStore((s) => s.settings.distanceUnit);
 
@@ -255,6 +244,7 @@ function RoutePreviewSection({
     isOutsideStart,
     loadState,
     errorMessage,
+    manualStart,
     chooseManualStart,
     setIsEditingManualStart,
     setManualStartPlace,
@@ -279,11 +269,11 @@ function RoutePreviewSection({
   const [showStartOptions, setShowStartOptions] = useState(false);
   const startIcon =
     startSource === 'remembered_location' || startSource === 'device_last_known' ? (
-      <MapPin size={20} color={staticColors.info} />
+      <MapPin size={24} color={directionsSheetColors.brand} />
     ) : startSource === 'manual_place' ? (
-      <Navigation size={20} color={staticColors.info} />
+      <Navigation size={24} color={directionsSheetColors.brand} />
     ) : (
-      <LocateFixed size={20} color={staticColors.info} />
+      <LocateFixed size={24} color={directionsSheetColors.brand} />
     );
 
   const startCandidates = useMemo(() => {
@@ -347,20 +337,125 @@ function RoutePreviewSection({
     }
   }, [loadState]);
 
+  const editingStart = showStartOptions || showManualStartSearch;
+  const editingAnything = editingStart || showDestinationOptions;
+  // Back from a picker returns to the Get Directions summary; only from the summary does it leave
+  // the journey. A remembered manual start keeps its search open (source-driven), so Back leaves.
+  const handleBack = () => {
+    if (showDestinationOptions) {
+      setShowDestinationOptions(false);
+      setDestSearch('');
+    } else if (showStartOptions && startSource !== 'manual_place') {
+      setShowStartOptions(false);
+      setIsEditingManualStart(false);
+    } else {
+      onClose();
+    }
+  };
+  const directGuide = outsideRoute?.provider === 'direct-guide';
+  const offlineCaption = directionsOfflineCaption(outsideRoute?.provider, !!basemapOffline);
+  // Past ~150% font the pinned footer would eat the sheet: it keeps only the action (and its
+  // disabled reason) and the summary/caption scroll with the content instead.
+  const compactFooter = fontScale >= 1.5;
+
+  const routeSummary = showRouteReady ? (
+    <View style={styles.summary}>
+      <Text style={styles.summaryLabel}>Route ready</Text>
+      <View style={styles.routeHeroRow}>
+        {outsideRoute?.durationSeconds !== null && (
+          <Text style={styles.routeHeroDuration}>{routeEta}</Text>
+        )}
+        <Text style={styles.routeHeroDistance}>{routeDistance}</Text>
+      </View>
+    </View>
+  ) : null;
+  const captionNode = offlineCaption ? <OfflineInfo text={offlineCaption} banner={editingStart} /> : null;
+  const footerVisible = !editingAnything && (showLoading || showError || showRouteReady);
+  // The caption scrolls with the content: the pinned footer only has room for the route summary,
+  // the action and its disabled reason (gorhom's visible area at the 50% snap is small).
+
+  const footerNode = footerVisible ? (
+    <>
+            {showLoading && (
+              <View accessibilityLiveRegion="polite" style={styles.footerStatus}>
+                <View style={styles.statusRow}>
+                  <RefreshCw size={18} color={directionsSheetColors.brand} />
+                  <Text style={styles.statusTitle}>Finding route...</Text>
+                </View>
+                <Text style={styles.statusText}>{routeStatusMessage}</Text>
+              </View>
+            )}
+
+            {showError &&
+              (destinationCannotBeRouted ? (
+                // Retrying re-runs the same failed lookup: an unverified/unconnected
+                // destination stays unroutable until its data is verified. Offer a
+                // change of destination instead (no route is invented).
+                <Button
+                  variant="brandTint"
+                  label="Choose another destination"
+                  onPress={onChangeDestination ? () => setShowDestinationOptions(true) : onClose}
+                />
+              ) : (
+                <Button
+                  variant="danger"
+                  icon={<RefreshCw size={18} color={staticColors.white} />}
+                  label="Retry"
+                  onPress={retryRoute}
+                />
+              ))}
+
+            {showRouteReady && (
+              <>
+                {!compactFooter && routeSummary}
+                <Button
+                  variant="brand"
+                  style={styles.cta}
+                  label={directGuide ? 'Start Direct Guide' : 'Start Navigation'}
+                  accessibilityLabel={
+                    !canStartNavigation && startNavigationDisabledReason
+                      ? `${directGuide ? 'Start Direct Guide' : 'Start Navigation'}. ${startNavigationDisabledReason}`
+                      : undefined
+                  }
+                  icon={<Navigation size={20} color={directionsSheetColors.brandText} />}
+                  trailingIcon={<ChevronEnd size={20} color={directionsSheetColors.brandText} />}
+                  disabled={!canStartNavigation}
+                  onPress={() => {
+                    if (destinationFromPlace(destination)) {
+                      // Built from the resolved preview route already sitting in the store
+                      // (see HomeScreen.handleStartPreviewNavigation) — starts NavigationOverlayV2
+                      // in place, then reveals the map the same way v1 does below.
+                      onStartNavigation?.();
+                      onClose();
+                      return;
+                    }
+                    // v1: starts the in-place NavigationOverlayV1 (via the store), then
+                    // reveals the map the same way v2 does — no screen navigation either way.
+                    handleStartNavigation();
+                    onClose();
+                  }}
+                />
+                {!canStartNavigation && startNavigationDisabledReason ? (
+                  <Text style={styles.footerReason}>{startNavigationDisabledReason}</Text>
+                ) : null}
+              </>
+            )}
+    </>
+  ) : null;
+  // Published to the modal's footer slot (see DirectionsSheetFooter) so it stays pinned to the
+  // visible bottom of the sheet at every snap point.
+  useEffect(() => {
+    publishDirectionsFooter(footerNode);
+  });
+  useEffect(() => () => publishDirectionsFooter(null), []);
+
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <Pressable
-          onPress={onClose}
-          style={styles.backButton}
-          hitSlop={12}
-          accessibilityRole="button"
-          accessibilityLabel="Back"
-        >
-          <ChevronLeft size={28} color={staticColors.textPrimary} />
-        </Pressable>
-        <Text style={styles.headerTitle}>Get Directions</Text>
-      </View>
+      <DirectionsHeader
+        title="Get Directions"
+        subtitle={editingStart ? 'Choose where you are starting from' : 'Plan your walking route inside Ijtema'}
+        onBack={handleBack}
+      />
 
       <KeyboardAvoidingView
         style={styles.container}
@@ -369,15 +464,15 @@ function RoutePreviewSection({
       >
         <BottomSheetScrollView
           style={styles.scroll}
-          contentContainerStyle={[styles.scrollContent, { paddingBottom: 24 }]}
+          contentContainerStyle={[styles.scrollContent, { paddingBottom: 24 + footerHeight }]}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"
         >
-          <Card gap={14}>
+          {!editingStart && (
             <FadeContent transitionKey={showDestinationOptions ? 'destOptions' : 'destSummary'}>
             {showDestinationOptions ? (
-              <>
-                <Text style={styles.sectionTitle}>Where do you want to go?</Text>
+              <View style={styles.panel}>
+                <Text accessibilityRole="header" style={styles.sectionTitle}>Where do you want to go?</Text>
 
                 <SearchBarField
                   value={destSearch}
@@ -404,8 +499,8 @@ function RoutePreviewSection({
                           accessibilityRole="button"
                           accessibilityLabel={
                             isUnavailable
-                              ? `${candidate.name}, ${candidate.category}, navigation unavailable`
-                              : `${candidate.name}, ${candidate.category}`
+                              ? `${candidate.name}, ${placeCategoryLabel(candidate.category)}, navigation unavailable`
+                              : `${candidate.name}, ${placeCategoryLabel(candidate.category)}`
                           }
                         >
                           <MapPin size={16} color={staticColors.iconMuted} />
@@ -414,7 +509,7 @@ function RoutePreviewSection({
                               {candidate.name}
                             </Text>
                             <Text style={styles.searchItemMeta}>
-                              {candidate.category}
+                              {placeCategoryLabel(candidate.category)}
                               {isUnavailable ? ' · Not yet available for routing' : ''}
                             </Text>
                           </View>
@@ -439,172 +534,156 @@ function RoutePreviewSection({
                 >
                   <Text style={styles.linkButtonText}>Cancel</Text>
                 </Pressable>
-              </>
+              </View>
             ) : (
-              <>
-                <Text style={styles.cardLabel}>Going to</Text>
-                <View style={styles.destinationRow}>
-                  <View style={styles.destinationIconWrap}>
-                    <MapPin size={20} color={staticColors.success} />
-                  </View>
-                  <View style={styles.destinationBody}>
-                    <Text style={styles.destinationName}>{destination.name}</Text>
-                    <Text style={styles.destinationCategory}>{destination.category}</Text>
-                  </View>
-                </View>
+              <RouteEndpointCard
+                label="Going to"
+                helper="Your destination inside Ijtema"
+                headerIcon={<Flag size={16} color={directionsSheetColors.brand} />}
+                icon={<MapPin size={24} color={directionsSheetColors.brand} />}
+                name={destination.name}
+                detail={placeCategoryLabel(destination.category)}
+                actionLabel="Change destination"
+                actionAccessibilityLabel="Change destination"
+                onAction={onChangeDestination ? () => setShowDestinationOptions(true) : onClose}
+              >
                 {(destination.verificationWarning || destination.unavailableReason) && (
-                  <Card variant="warning" style={styles.destinationWarningCard}>
+                  <Card variant="warning" style={styles.statusCard}>
                     <Text style={[styles.statusTitle, styles.statusTitleWarning]}>Heads up</Text>
                     <Text style={styles.statusText}>
                       {destination.verificationWarning ?? destination.unavailableReason}
                     </Text>
                   </Card>
                 )}
-                <Pressable
-                  style={styles.linkButton}
-                  onPress={onChangeDestination ? () => setShowDestinationOptions(true) : onClose}
-                  accessibilityRole="button"
-                  accessibilityLabel="Change destination"
-                >
-                  <Text style={styles.linkButtonText}>Change destination</Text>
-                </Pressable>
-              </>
+              </RouteEndpointCard>
             )}
             </FadeContent>
-          </Card>
+          )}
 
-          <Card gap={14}>
-            <FadeContent transitionKey={showStartOptions || showManualStartSearch ? 'options' : 'summary'}>
-            {showStartOptions || showManualStartSearch ? (
-              <>
-                <Text style={styles.sectionTitle}>Where are you starting from?</Text>
+          <FadeContent transitionKey={showStartOptions || showManualStartSearch ? 'options' : 'summary'}>
+          {showStartOptions || showManualStartSearch ? (
+            <View style={styles.options}>
+              <StartOptionCard
+                active={isCurrentLocationStartActive}
+                loading={resolvingCurrentLocation}
+                disabled={resolvingCurrentLocation}
+                icon={<LocateFixed size={26} color={isCurrentLocationStartActive ? directionsSheetColors.brandText : directionsSheetColors.brand} />}
+                title="Use my current location"
+                subtitle={resolvingCurrentLocation ? 'Finding your location…' : 'Find best eligible official gate automatically'}
+                onPress={() => {
+                  setResolvingCurrentLocation(true);
+                  void chooseCurrentLocation()
+                    .then((ok) => {
+                      if (ok) setShowStartOptions(false);
+                    })
+                    .finally(() => setResolvingCurrentLocation(false));
+                }}
+              />
+              {!resolvingCurrentLocation && errorMessage && (
+                <Card variant="warning" style={styles.statusCard}>
+                  <Text style={styles.statusText}>{errorMessage}</Text>
+                </Card>
+              )}
 
-                <StartOption
-                  active={isCurrentLocationStartActive}
-                  loading={resolvingCurrentLocation}
-                  disabled={resolvingCurrentLocation}
-                  icon={<LocateFixed size={18} color={isCurrentLocationStartActive ? staticColors.white : staticColors.info} />}
-                  title="Use my current location"
-                  subtitle={resolvingCurrentLocation ? 'Finding your location…' : 'Find best eligible official gate automatically'}
-                  onPress={() => {
-                    setResolvingCurrentLocation(true);
-                    void chooseCurrentLocation()
-                      .then((ok) => {
-                        if (ok) setShowStartOptions(false);
-                      })
-                      .finally(() => setResolvingCurrentLocation(false));
-                  }}
-                />
-                {!resolvingCurrentLocation && errorMessage && (
-                  <Card variant="warning">
-                    <Text style={styles.statusText}>{errorMessage}</Text>
-                  </Card>
-                )}
+              <StartOptionCard
+                active={startSource === 'remembered_location'}
+                disabled={!rememberedLocationAvailable}
+                icon={<MapPin size={26} color={startSource === 'remembered_location' ? directionsSheetColors.brandText : directionsSheetColors.brand} />}
+                title="Use last known location"
+                subtitle={
+                  !rememberedLocationAvailable
+                    ? 'No saved location yet'
+                    : rememberedLocationInsideVenue
+                    ? `We will start from nearest path (${rememberedLocationAgeLabel})`
+                    : `We'll enter through best eligible official gate (${rememberedLocationAgeLabel})`
+                }
+                onPress={() => {
+                  if (chooseRememberedLocation()) setShowStartOptions(false);
+                }}
+              />
 
-                <StartOption
-                  active={startSource === 'remembered_location'}
-                  disabled={!rememberedLocationAvailable}
-                  icon={<MapPin size={18} color={startSource === 'remembered_location' ? staticColors.white : staticColors.info} />}
-                  title="Use last known location"
-                  subtitle={
-                    !rememberedLocationAvailable
-                      ? 'No saved location yet'
-                      : rememberedLocationInsideVenue
-                      ? `We will start from nearest path (${rememberedLocationAgeLabel})`
-                      : `We'll enter through best eligible official gate (${rememberedLocationAgeLabel})`
-                  }
-                  onPress={() => {
-                    if (chooseRememberedLocation()) setShowStartOptions(false);
-                  }}
-                />
+              <StartOptionCard
+                active={startSource === 'manual_place'}
+                icon={<Navigation size={26} color={startSource === 'manual_place' ? directionsSheetColors.brandText : directionsSheetColors.brand} />}
+                title="Choose start manually"
+                subtitle="Select gate, rasta, block, or point"
+                onPress={chooseManualStart}
+              />
 
-                <StartOption
-                  active={startSource === 'manual_place'}
-                  icon={<Navigation size={18} color={startSource === 'manual_place' ? staticColors.white : staticColors.info} />}
-                  title="Choose start manually"
-                  subtitle="Select gate, rasta, block, or point"
-                  onPress={chooseManualStart}
-                />
+              {showManualStartSearch && (
+                <View style={styles.manualSection}>
+                  <SearchBarField
+                    value={startSearch}
+                    onChangeText={setStartSearch}
+                    placeholder="Search start point: gate, rasta, block"
+                    onSubmitEditing={Keyboard.dismiss}
+                    onFocus={() => setIsEditingManualStart(true)}
+                  />
 
-                {showManualStartSearch && (
-                  <View style={styles.manualSection}>
-                    <SearchBarField
-                      value={startSearch}
-                      onChangeText={setStartSearch}
-                      placeholder="Search start point: gate, rasta, block"
-                      onSubmitEditing={Keyboard.dismiss}
-                      onFocus={() => setIsEditingManualStart(true)}
-                    />
+                  {startCandidates.length > 0 && (
+                    <View style={styles.searchResults}>
+                      {startCandidates.map((candidate: Place) => {
+                        const isUnavailable = candidate.isRoutable === false;
+                        return (
+                          <Pressable
+                            key={candidate.id}
+                            style={styles.searchItem}
+                            onPress={() => {
+                              setManualStartPlace(candidate);
+                              setStartSearch(candidate.name);
+                              setIsEditingManualStart(false);
+                              setShowStartOptions(false);
+                              Keyboard.dismiss();
+                            }}
+                            accessibilityRole="button"
+                            accessibilityLabel={
+                              isUnavailable
+                                ? `${candidate.name}, ${placeCategoryLabel(candidate.category)}, navigation unavailable`
+                                : `${candidate.name}, ${placeCategoryLabel(candidate.category)}`
+                            }
+                          >
+                            <MapPin size={16} color={staticColors.iconMuted} />
+                            <View style={styles.searchItemBody}>
+                              <Text style={[styles.searchItemName, isUnavailable && styles.searchItemNameMuted]}>
+                                {candidate.name}
+                              </Text>
+                              <Text style={styles.searchItemMeta}>
+                                {placeCategoryLabel(candidate.category)}
+                                {isUnavailable ? ' · Not yet available for routing' : ''}
+                              </Text>
+                            </View>
+                          </Pressable>
+                        );
+                      })}
+                    </View>
+                  )}
 
-                    {startCandidates.length > 0 && (
-                      <View style={styles.searchResults}>
-                        {startCandidates.map((candidate: Place) => {
-                          const isUnavailable = candidate.isRoutable === false;
-                          return (
-                            <Pressable
-                              key={candidate.id}
-                              style={styles.searchItem}
-                              onPress={() => {
-                                setManualStartPlace(candidate);
-                                setStartSearch(candidate.name);
-                                setIsEditingManualStart(false);
-                                setShowStartOptions(false);
-                                Keyboard.dismiss();
-                              }}
-                              accessibilityRole="button"
-                              accessibilityLabel={
-                                isUnavailable
-                                  ? `${candidate.name}, ${candidate.category}, navigation unavailable`
-                                  : `${candidate.name}, ${candidate.category}`
-                              }
-                            >
-                              <MapPin size={16} color={staticColors.iconMuted} />
-                              <View style={styles.searchItemBody}>
-                                <Text style={[styles.searchItemName, isUnavailable && styles.searchItemNameMuted]}>
-                                  {candidate.name}
-                                </Text>
-                                <Text style={styles.searchItemMeta}>
-                                  {candidate.category}
-                                  {isUnavailable ? ' · Not yet available for routing' : ''}
-                                </Text>
-                              </View>
-                            </Pressable>
-                          );
-                        })}
-                      </View>
-                    )}
-
-                    {startSearch.trim().length >= 2 && startCandidates.length === 0 && (
-                      <Text style={styles.emptySearchText}>No start points found.</Text>
-                    )}
-                  </View>
-                )}
-              </>
-            ) : (
-              <>
-                <Text style={styles.cardLabel}>Starting from</Text>
-                <View style={styles.destinationRow}>
-                  <View style={styles.destinationIconWrap}>{startIcon}</View>
-                  <View style={styles.destinationBody}>
-                    <Text style={styles.destinationName}>{startSourceLabel}</Text>
-                  </View>
+                  {startSearch.trim().length >= 2 && startCandidates.length === 0 && (
+                    <Text style={styles.emptySearchText}>No start points found.</Text>
+                  )}
                 </View>
-                <Pressable
-                  style={styles.linkButton}
-                  onPress={() => setShowStartOptions(true)}
-                  accessibilityRole="button"
-                  accessibilityLabel="Change starting point"
-                >
-                  <Text style={styles.linkButtonText}>Change Start</Text>
-                </Pressable>
-              </>
-            )}
-            </FadeContent>
-          </Card>
+              )}
+            </View>
+          ) : (
+            <RouteEndpointCard
+              label="Starting from"
+              helper={startSourceHelper(
+                startSource,
+                (startSource === 'live_gps' && !currentLocation) || (startSource === 'manual_place' && !manualStart),
+              )}
+              headerIcon={<LocateFixed size={16} color={directionsSheetColors.brand} />}
+              icon={startIcon}
+              name={startSourceLabel}
+              actionLabel="Change Start"
+              actionAccessibilityLabel="Change starting point"
+              onAction={() => setShowStartOptions(true)}
+            />
+          )}
+          </FadeContent>
 
           <FadeContent transitionKey={loadState}>
-          {showStartHint && (
-            <Card variant={outsideStart ? 'warning' : 'neutral'}>
+          {showStartHint && !editingAnything && (
+            <Card variant={outsideStart ? 'warning' : 'neutral'} style={styles.statusCard}>
               <Text style={[styles.statusTitle, outsideStart && styles.statusTitleWarning]}>
                 {outsideStart ? 'Outside Ijtema' : 'Start ready'}
               </Text>
@@ -617,51 +696,16 @@ function RoutePreviewSection({
             </Card>
           )}
 
-          {showLoading && (
-            <Card variant="info">
-              <View style={styles.statusRow}>
-                <RefreshCw size={18} color={staticColors.info} />
-                <Text style={styles.statusTitle}>Finding route...</Text>
-              </View>
-              <Text style={styles.statusText}>{routeStatusMessage}</Text>
-            </Card>
-          )}
-
-          {showError && (
-            <Card variant="error">
+          {showError && !editingAnything && (
+            <Card variant="error" style={styles.statusCard}>
               <Text style={[styles.statusTitle, styles.statusTitleError]}>Route problem</Text>
               <Text style={styles.statusText}>{errorMessage}</Text>
-              {destinationCannotBeRouted ? (
-                // Retrying re-runs the same failed lookup: an unverified/unconnected
-                // destination stays unroutable until its data is verified. Offer a
-                // change of destination instead (no route is invented).
-                <Button
-                  variant="secondary"
-                  fullWidth={false}
-                  label="Choose another destination"
-                  onPress={onChangeDestination ? () => setShowDestinationOptions(true) : onClose}
-                />
-              ) : (
-                <Button
-                  variant="danger"
-                  fullWidth={false}
-                  icon={<RefreshCw size={18} color={staticColors.white} />}
-                  label="Retry"
-                  onPress={retryRoute}
-                />
-              )}
             </Card>
           )}
 
-          {showRouteReady && (
-            <Card variant="success">
-              <Text style={styles.cardLabel}>Route ready</Text>
-              <View style={styles.routeHeroRow}>
-                {outsideRoute?.durationSeconds !== null && (
-                  <Text style={styles.routeHeroDuration}>{routeEta}</Text>
-                )}
-                <Text style={styles.routeHeroDistance}>{routeDistance}</Text>
-              </View>
+          {showRouteReady && !editingAnything && (
+            <View style={styles.readyBody}>
+              {compactFooter && routeSummary}
               <Text style={styles.statusText}>{routeEntrySummary}</Text>
 
               {outsideRoute && (
@@ -674,11 +718,11 @@ function RoutePreviewSection({
                 />
               )}
 
-              {outsideRoute?.provider === 'direct-guide' && showGateOptions && (
+              {directGuide && showGateOptions && (
                 <View style={styles.gateOptions}>
-                  <Text style={styles.cardLabel}>Choose official entry gate</Text>
+                  <Text accessibilityRole="header" style={styles.cardLabel}>Choose official entry gate</Text>
                   <Button
-                    variant={manualGateId ? 'outline' : 'secondary'}
+                    variant={manualGateId ? 'outline' : 'brandTint'}
                     label="Automatic gate"
                     accessibilityLabel="Use automatic gate selection"
                     // Selection state was previously conveyed only by variant color
@@ -693,7 +737,7 @@ function RoutePreviewSection({
                   {manualGateOptions.map((gate) => (
                     <Button
                       key={gate.gateId}
-                      variant={manualGateId === gate.gateId ? 'secondary' : 'outline'}
+                      variant={manualGateId === gate.gateId ? 'brandTint' : 'outline'}
                       label={gate.label}
                       accessibilityLabel={`Use ${gate.label}`}
                       accessibilityState={{ selected: manualGateId === gate.gateId }}
@@ -706,29 +750,6 @@ function RoutePreviewSection({
                 </View>
               )}
 
-              <Button
-                variant="primary"
-                label={outsideRoute?.provider === 'direct-guide' ? 'Start Direct Guide' : 'Start Navigation'}
-                disabled={!canStartNavigation}
-                onPress={() => {
-                  if (destinationFromPlace(destination)) {
-                    // Built from the resolved preview route already sitting in the store
-                    // (see HomeScreen.handleStartPreviewNavigation) — starts NavigationOverlayV2
-                    // in place, then reveals the map the same way v1 does below.
-                    onStartNavigation?.();
-                    onClose();
-                    return;
-                  }
-                  // v1: starts the in-place NavigationOverlayV1 (via the store), then
-                  // reveals the map the same way v2 does — no screen navigation either way.
-                  handleStartNavigation();
-                  onClose();
-                }}
-              />
-              {!canStartNavigation && startNavigationDisabledReason ? (
-                <Text style={styles.statusText}>{startNavigationDisabledReason}</Text>
-              ) : null}
-
               {onCancelRoute && (
                 <Pressable
                   style={styles.linkButton}
@@ -739,10 +760,13 @@ function RoutePreviewSection({
                   <Text style={styles.linkButtonText}>Cancel Route</Text>
                 </Pressable>
               )}
-            </Card>
+            </View>
           )}
           </FadeContent>
+
+          {captionNode}
         </BottomSheetScrollView>
+
       </KeyboardAvoidingView>
     </View>
   );
@@ -989,150 +1013,92 @@ function PlaceSection(props: Extract<LocationSheetProps, { mode: 'preview' | 'de
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: staticColors.sheetBackground,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    backgroundColor: staticColors.white,
-    borderBottomWidth: 1,
-    borderBottomColor: staticColors.borderLight,
-  },
-  backButton: {
-    paddingVertical: 6,
-    paddingRight: 12,
-  },
-  headerTitle: {
-    fontSize: 32,
-    fontWeight: '800',
-    color: staticColors.textPrimary,
+    backgroundColor: directionsSheetColors.background,
   },
   scroll: {
     flex: 1,
   },
   scrollContent: {
-    padding: 16,
-    gap: 14,
+    paddingHorizontal: 16,
+    paddingTop: 4,
+    gap: 10,
   },
   cardLabel: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: staticColors.textCaption,
-    textTransform: 'uppercase',
-    letterSpacing: 0.4,
+    fontSize: 16,
+    fontWeight: '800',
+    color: directionsSheetColors.headingText,
   },
   sectionTitle: {
     fontSize: 20,
     fontWeight: '800',
-    color: staticColors.textPrimary,
+    color: directionsSheetColors.headingText,
   },
-  destinationRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
+  panel: {
+    borderRadius: 14,
     borderWidth: 1,
-    borderColor: staticColors.borderLight,
-    borderRadius: 18,
-    paddingHorizontal: 14,
-    paddingVertical: 16,
+    borderColor: directionsSheetColors.cardBorder,
+    backgroundColor: directionsSheetColors.background,
+    padding: 14,
+    gap: 12,
   },
-  destinationIconWrap: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: staticColors.lightGreenSubtext,
-    alignItems: 'center',
-    justifyContent: 'center',
+  options: {
+    gap: 12,
   },
-  destinationBody: {
-    flex: 1,
-    gap: 3,
+  // Shared status cards (hint / error / warnings) follow the sheet's 14 dp card radius.
+  statusCard: {
+    borderRadius: 14,
+    padding: 14,
   },
-  destinationName: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: staticColors.textPrimary,
+  readyBody: {
+    gap: 10,
   },
-  destinationCategory: {
+  // Compact on purpose: the pinned footer shares the small visible area at the 50% snap.
+  footerReason: {
     fontSize: 13,
-    color: staticColors.iconMuted,
+    lineHeight: 18,
+    color: directionsSheetColors.secondaryText,
   },
+  footerStatus: {
+    gap: 4,
+  },
+  cta: {
+    borderRadius: radii.xl,
+  },
+  // One line: label left, duration + distance right (wraps under large fonts).
+  summary: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'baseline',
+    justifyContent: 'space-between',
+    columnGap: 12,
+  },
+  summaryLabel: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: directionsSheetColors.brand,
+  },
+  // Tap target: the label alone is ~24 dp tall; minHeight brings the whole row to the
+  // 48 dp minimum.
   linkButton: {
     alignSelf: 'flex-start',
-    // Elderly-friendly touch target — the label text alone (~24px tall) falls short of the
-    // 44/48px minimum; this padding widens the tappable area without changing visible spacing
-    // (the surrounding Card's own gap already accounts for a plain label's footprint).
-    paddingVertical: 10,
-    marginVertical: -10,
+    minHeight: 48,
+    justifyContent: 'center',
+    paddingHorizontal: 4,
   },
   linkButtonText: {
     fontSize: 16,
-    fontWeight: '700',
-    color: staticColors.info,
-  },
-  startOption: {
-    flexDirection: 'row',
-    gap: 14,
-    borderWidth: 1.5,
-    borderColor: staticColors.infoBorder,
-    borderRadius: 20,
-    paddingHorizontal: 14,
-    paddingVertical: 14,
-    alignItems: 'center',
-    backgroundColor: staticColors.white,
-  },
-  startOptionActive: {
-    backgroundColor: staticColors.routePreviewPill,
-    borderColor: staticColors.info,
-  },
-  startOptionDisabled: {
-    opacity: 0.56,
-  },
-  startOptionIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: staticColors.infoBackground,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  startOptionIconActive: {
-    backgroundColor: staticColors.info,
-  },
-  startOptionBody: {
-    flex: 1,
-    gap: 4,
-  },
-  startOptionTitle: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: staticColors.info,
-  },
-  startOptionTitleActive: {
-    color: staticColors.infoStrong,
-  },
-  startOptionTitleDisabled: {
-    color: staticColors.textCaption,
-  },
-  startOptionSubtitle: {
-    fontSize: 13,
-    lineHeight: 18,
-    color: staticColors.iconMuted,
-  },
-  startOptionSubtitleDisabled: {
-    color: staticColors.textMuted,
+    fontWeight: '800',
+    color: directionsSheetColors.brand,
   },
   manualSection: {
     gap: 10,
   },
   searchResults: {
     borderWidth: 1,
-    borderColor: staticColors.borderLight,
-    borderRadius: 16,
+    borderColor: directionsSheetColors.cardBorder,
+    borderRadius: 12,
     overflow: 'hidden',
-    backgroundColor: staticColors.white,
+    backgroundColor: directionsSheetColors.background,
   },
   searchItem: {
     flexDirection: 'row',
@@ -1164,12 +1130,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: staticColors.iconMuted,
   },
-  destinationWarningCard: {
-    marginTop: 14,
-    padding: 12,
-    borderRadius: 16,
-    gap: 4,
-  },
   statusRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1199,21 +1159,18 @@ const styles = StyleSheet.create({
   gateOptions: {
     gap: 10,
   },
-  // Hero duration/distance heading — adapted from the Google Maps UI Kit directions
-  // screen, where the route's ETA is the single largest, most prominent element on the
-  // page (24px bold, accent-colored) rather than a small metric pill buried below
-  // secondary info. Uses routeInside (the app's existing route/wayfinding accent,
-  // already used for the route line and recenter icon) instead of Figma's literal
-  // teal, so the hero number reads as "this app's route color" rather than a one-off hex.
+  // Hero duration/distance — the route's ETA is the largest element (adapted from the
+  // Google Maps UI Kit directions screen). Sheet brand green, not the route-line blue, so
+  // the sheet carries no blue (#177); the map keeps the route-line colours.
   routeHeroRow: {
     flexDirection: 'row',
     alignItems: 'baseline',
     gap: 8,
   },
   routeHeroDuration: {
-    fontSize: 30,
+    fontSize: 24,
     fontWeight: '800',
-    color: staticColors.routeInside,
+    color: directionsSheetColors.brand,
   },
   routeHeroDistance: {
     fontSize: 16,

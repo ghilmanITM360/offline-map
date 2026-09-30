@@ -132,3 +132,31 @@ export const staticColors = {
 } as const;
 
 export type StaticColorToken = keyof typeof staticColors;
+
+/**
+ * Get Directions sheet palette (issue #177). Sheet-scoped on purpose: the green visual
+ * language lives here so the global `success`/`info` tokens (map layers, Directory,
+ * other screens) are not repointed. Values are measured from the issue's reference
+ * images; text/fill pairs were checked against WCAG AA (see the #177 PR).
+ */
+export const directionsSheetColors = {
+  background: '#FEFEFE',
+  headingText: '#0B2420',
+  secondaryText: '#5A5C5E',
+  backButtonFill: '#F3F5F5',
+  cardBorder: '#EFEFEF',
+  innerCardFill: '#F1F9F4',
+  innerCardBorder: '#D7E0DD',
+  actionFill: '#EFF6F1',
+  actionPressedFill: '#DCEBE2',
+  iconDisc: '#DBEDE0',
+  iconDiscSolid: '#04633C',
+  brand: '#145E4A',
+  brandPressed: '#0E4838',
+  brandText: '#FFFFFF',
+  optionFill: '#FEFCFB',
+  optionBorder: '#E5E6E3',
+  optionSelectedFill: '#EBF5EB',
+  optionSelectedBorder: '#D7E2D5',
+  bannerFill: '#F0F6EF',
+} as const;

@@ -30,7 +30,7 @@ import {
   LayoutGrid,
   Search,
 } from 'lucide-react-native';
-import { BottomSheetModal, BottomSheetScrollView } from '@gorhom/bottom-sheet';
+import { BottomSheetModal, BottomSheetScrollView, type BottomSheetFooterProps } from '@gorhom/bottom-sheet';
 import { useNavigation, DrawerActions, CompositeNavigationProp } from '@react-navigation/native';
 import { DrawerNavigationProp } from '@react-navigation/drawer';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -99,6 +99,7 @@ import { NavigationChromeV2 } from '../components/navigation/NavigationChromeV2'
 import { NavigationMapLayersV1 } from '../components/navigation/NavigationMapLayersV1';
 import { NavigationChromeV1 } from '../components/navigation/NavigationChromeV1';
 import { LocationSheet } from '../components/map/LocationSheet';
+import { DirectionsSheetFooter } from '../components/map/DirectionsSheetFooter';
 import { UserLocationMarker } from '../components/map/UserLocationMarker';
 import { resolveMapMarkerOwnership } from '../components/map/MapMarkerOwnership';
 import { LocationTutorialTooltip } from '../components/map/LocationTutorialTooltip';
@@ -129,6 +130,12 @@ const VENUE_BOUNDARY = [
 const SATELLITE_DIM_LAT_PAD = (IJTEMA_MAP_BOUNDS.maxLat - IJTEMA_MAP_BOUNDS.minLat) * 0.5;
 const SATELLITE_DIM_LNG_PAD = (IJTEMA_MAP_BOUNDS.maxLng - IJTEMA_MAP_BOUNDS.minLng) * 0.5;
 const ROUTE_FIT_BOTTOM_PADDING = 32;
+// Get Directions pins its CTA footer (~155 dp) under a ~97 dp header, so the shared
+// 50% detent (~252 dp on a 914 dp window) leaves no scroll area and hides both cards.
+// 79% (~398 dp) shows the header, the Going to card through its whole destination row, and
+// the footer (76% clipped that row by ~11 dp on the 914 dp emulator window), while the map
+// keeps ~42% of the window. Same three-detent index contract.
+const ROUTE_PREVIEW_SNAP_POINTS = ['15%', '79%', '92%'];
 const SATELLITE_DIM_BOUNDARY = [
   { latitude: IJTEMA_MAP_BOUNDS.minLat - SATELLITE_DIM_LAT_PAD, longitude: IJTEMA_MAP_BOUNDS.minLng - SATELLITE_DIM_LNG_PAD },
   { latitude: IJTEMA_MAP_BOUNDS.minLat - SATELLITE_DIM_LAT_PAD, longitude: IJTEMA_MAP_BOUNDS.maxLng + SATELLITE_DIM_LNG_PAD },
@@ -265,7 +272,7 @@ export function HomeScreen() {
     cameraManager,
     mapType,
     selectedPlace,
-    snapPoints,
+    snapPoints: baseSnapPoints,
     initialRegion,
     isOffline,
     offlineData,
@@ -918,6 +925,10 @@ export function HomeScreen() {
   // and let the banner overlap the chip row. Now derived from the search+chip overlay's
   // own onLayout height (topOverlayHeight). Falls back to the old constant only for the
   // one frame before the first layout pass reports a height.
+  const snapPoints = useMemo(
+    () => (mode === 'ROUTE_PREVIEW' ? ROUTE_PREVIEW_SNAP_POINTS : baseSnapPoints),
+    [mode, baseSnapPoints],
+  );
   const bannerStackTop = topOverlayHeight > 0 ? topOverlayHeight + 8 : topInsetBase + 140;
   // The full Layers/Compass/Zoom/Recenter cluster is one bottom-anchored stack (see
   // MapControls) instead of two independently-positioned pieces (a top-anchored
@@ -984,6 +995,14 @@ export function HomeScreen() {
   const minimumVisibleMapHeight = mode === 'ROUTE_PREVIEW'
     ? MIN_TOP_VISIBLE_MAP_FOR_ROUTE_PREVIEW
     : MIN_TOP_VISIBLE_MAP_FOR_ATTRIBUTION;
+  // Route-preview footer (Start Navigation, summary) is pinned by gorhom's footer slot; hide it at
+  // the collapsed snap, where only the handle and header are meant to show.
+  const renderDirectionsFooter = useCallback(
+    (footerProps: BottomSheetFooterProps) => (
+      <DirectionsSheetFooter {...footerProps} collapsed={sheetIndex === 0} />
+    ),
+    [sheetIndex],
+  );
   const sheetTopInset = useMemo(
     () => (topOverlayHeight > 0 ? topOverlayHeight + 8 : 0) + minimumVisibleMapHeight,
     [minimumVisibleMapHeight, topOverlayHeight],
@@ -1840,6 +1859,7 @@ export function HomeScreen() {
           topInset={sheetTopInset}
           maxDynamicContentSize={sheetMaxDynamicContentSize}
           enablePanDownToClose
+          footerComponent={renderDirectionsFooter}
           keyboardBehavior="interactive"
           keyboardBlurBehavior="restore"
           android_keyboardInputMode="adjustResize"
@@ -1885,6 +1905,7 @@ export function HomeScreen() {
               onStartNavigation={handleStartPreviewNavigation}
               onCancelRoute={activePreviewRoute ? handleClearPreviewRoute : undefined}
               onChangeDestination={handleChangeDestination}
+              basemapOffline={graphOnlyFallbackUsed}
             />
           ) : selectedPlace ? (
             <LocationSheet

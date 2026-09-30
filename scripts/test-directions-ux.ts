@@ -7,7 +7,7 @@ const navigationCapability = readFileSync('src/services/LocationNavigationCapabi
 
 assert(screen.includes('Get Directions'), 'Directions screen must use layman-friendly heading');
 assert(screen.includes('Going to'), 'Directions screen must show destination card clearly');
-assert(screen.includes('Where are you starting from?'), 'Directions screen must focus on start selection');
+assert(screen.includes('Choose where you are starting from'), 'Directions screen must focus on start selection');
 assert(screen.includes('Use my current location'), 'Directions screen must include current-location action');
 assert(screen.includes('Find best eligible official gate automatically'), 'Directions screen should explain destination-aware current-location routing behavior');
 assert(screen.includes('Use last known location'), 'Directions screen should use clear last-known location labeling');

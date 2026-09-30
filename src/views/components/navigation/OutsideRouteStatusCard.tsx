@@ -6,7 +6,7 @@ import {
   outsideRouteMessage,
   outsideRouteProviderLabel,
 } from '../../../services/OutsideRouteLocalizationService';
-import { radii, spacing, staticColors, typography } from '../../../theme';
+import { directionsSheetColors, radii, spacing, staticColors, typography } from '../../../theme';
 import { Button } from '../common/Button';
 
 export interface OutsideRouteStatusCardProps {
@@ -34,7 +34,7 @@ export function OutsideRouteStatusCard({
       <View style={styles.titleRow}>
         {directGuide
           ? <AlertTriangle size={20} color={staticColors.warningText} />
-          : <Route size={20} color={staticColors.infoStrong} />}
+          : <Route size={20} color={directionsSheetColors.brand} />}
         <Text style={[styles.providerLabel, directGuide && styles.directTitle]}>
           {directGuide
             ? outsideRouteMessage('direct.notRoadRoute')
@@ -63,7 +63,7 @@ export function OutsideRouteStatusCard({
           <View style={styles.actions}>
             {onRetry && (
               <Button
-                variant="secondary"
+                variant="brandTint"
                 label={outsideRouteMessage('action.retryRoadRoute')}
                 accessibilityLabel={outsideRouteMessage('action.retryRoadRoute')}
                 disabled={retrying}
@@ -89,8 +89,8 @@ const styles = StyleSheet.create({
   container: {
     borderRadius: radii.md,
     borderWidth: 1,
-    borderColor: staticColors.infoBorder,
-    backgroundColor: staticColors.infoBackground,
+    borderColor: directionsSheetColors.innerCardBorder,
+    backgroundColor: directionsSheetColors.innerCardFill,
     padding: spacing.md,
     gap: spacing.sm,
   },
@@ -105,7 +105,7 @@ const styles = StyleSheet.create({
   },
   providerLabel: {
     ...typography.sheet.subtitle,
-    color: staticColors.infoStrong,
+    color: directionsSheetColors.brand,
     flexShrink: 1,
   },
   directTitle: {
@@ -118,7 +118,7 @@ const styles = StyleSheet.create({
   fallbackText: {
     ...typography.sheet.body,
     fontSize: 13,
-    color: staticColors.infoStrong,
+    color: directionsSheetColors.brand,
   },
   warningEnglish: {
     ...typography.sheet.body,
