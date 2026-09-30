@@ -7,6 +7,7 @@ import React from 'react';
 import { Alert, Animated, DeviceEventEmitter } from 'react-native';
 import { act, fireEvent, render, screen, userEvent, waitFor } from './test-utils';
 
+import { DrawerStatusContext } from '@react-navigation/drawer';
 import { HomeScreen } from '../views/screens/HomeScreen';
 import { useHomeViewModel } from '../viewmodels/HomeViewModel';
 import { useDirectionsViewModel } from '../viewmodels/DirectionsViewModel';
@@ -50,10 +51,14 @@ jest.mock('@react-navigation/native', () => {
   return {
     ...actual,
     useNavigation: jest.fn(),
+    useIsFocused: jest.fn(() => true),
   };
 });
 
-const { useNavigation } = jest.requireMock('@react-navigation/native') as { useNavigation: jest.Mock };
+const { useNavigation, useIsFocused } = jest.requireMock('@react-navigation/native') as {
+  useNavigation: jest.Mock;
+  useIsFocused: jest.Mock;
+};
 const mockedUseHomeViewModel = useHomeViewModel as jest.Mock;
 const mockedUseDirectionsViewModel = useDirectionsViewModel as jest.Mock;
 const { __getLastBottomSheetModalProps } = jest.requireMock('@gorhom/bottom-sheet') as {
@@ -204,7 +209,67 @@ beforeEach(() => {
   jest.clearAllMocks();
   useAppStore.setState(initialStoreState, true);
   useNavigation.mockReturnValue({ navigate: jest.fn(), dispatch: jest.fn(), goBack: jest.fn() });
+  useIsFocused.mockReturnValue(true);
   mockedUseHomeViewModel.mockImplementation(useFakeHomeViewModel);
+});
+
+// #190 — Home's sheet is portal-hosted above the whole navigator, so it must be suppressed
+// (hidden from touch and the accessibility tree, state preserved) whenever another screen or
+// the drawer owns the foreground, and Home's hardware-back handler must stand down with it.
+describe('HomeScreen — foreground workflow exclusivity (#190)', () => {
+  const sheetProps = () =>
+    __getLastBottomSheetModalProps() as unknown as { containerStyle?: { display?: string } | undefined };
+  const suppressed = () => sheetProps().containerStyle?.display === 'none';
+
+  async function openPlaceSheet() {
+    const user = userEvent.setup();
+    await render(<HomeScreen />);
+    await user.press(screen.getByTestId('facility_marker_LM_GATE_MAIN_NORTH'));
+    expect(await screen.findByText('Official entry / exit gate')).toBeOnTheScreen();
+  }
+
+  test('sheet is live while Home is the focused screen', async () => {
+    await openPlaceSheet();
+    expect(suppressed()).toBe(false);
+  });
+
+  test('sheet is suppressed while another screen is focused, and returns unchanged on refocus', async () => {
+    await openPlaceSheet();
+
+    useIsFocused.mockReturnValue(false);
+    await screen.rerender(<HomeScreen />);
+    expect(suppressed()).toBe(true);
+    // Suppression must not tear down what Home needs when the user comes back.
+    expect(setSelectedPlaceSpy).not.toHaveBeenCalledWith(null);
+
+    useIsFocused.mockReturnValue(true);
+    await screen.rerender(<HomeScreen />);
+    expect(suppressed()).toBe(false);
+    expect(screen.getByText('Official entry / exit gate')).toBeOnTheScreen();
+  });
+
+  test('sheet is suppressed while the drawer is open', async () => {
+    const user = userEvent.setup();
+    await render(
+      <DrawerStatusContext.Provider value="open">
+        <HomeScreen />
+      </DrawerStatusContext.Provider>,
+    );
+    await user.press(screen.getByTestId('facility_marker_LM_GATE_MAIN_NORTH'));
+    expect(suppressed()).toBe(true);
+  });
+
+  test('hardware back is left to the focused screen while Home is not focused', async () => {
+    await openPlaceSheet();
+    useIsFocused.mockReturnValue(false);
+    await screen.rerender(<HomeScreen />);
+
+    await act(async () => {
+      DeviceEventEmitter.emit('hardwareBackPress');
+    });
+
+    expect(setSelectedPlaceSpy).not.toHaveBeenCalledWith(null);
+  });
 });
 
 // Deliberately placed early in the file (not after "recenter follow mode" below): the

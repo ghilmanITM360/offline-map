@@ -31,8 +31,8 @@ import {
   Search,
 } from 'lucide-react-native';
 import { BottomSheetModal, BottomSheetScrollView, type BottomSheetFooterProps } from '@gorhom/bottom-sheet';
-import { useNavigation, DrawerActions, CompositeNavigationProp } from '@react-navigation/native';
-import { DrawerNavigationProp } from '@react-navigation/drawer';
+import { useNavigation, useIsFocused, DrawerActions, CompositeNavigationProp } from '@react-navigation/native';
+import { DrawerNavigationProp, DrawerStatusContext } from '@react-navigation/drawer';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useHomeViewModel } from '../../viewmodels/HomeViewModel';
 import {
@@ -173,6 +173,14 @@ function outsideRouteProvider(route: unknown): string | null {
 
 export function HomeScreen() {
   const nav = useNavigation<HomeScreenNavigationProp>();
+  // Home stays mounted under every other screen, and its bottom sheet is portal-hosted above
+  // the whole navigator (App.tsx), so it would otherwise stay drawn, touchable and answering
+  // hardware Back over the Directory, Settings, Help, About, Download Map or an open drawer
+  // (#190). One foreground workflow owns touches, accessibility focus and Back at a time.
+  const isHomeFocused = useIsFocused();
+  // Read the context directly: useDrawerStatus() throws when there is no drawer above Home.
+  const isDrawerOpen = React.useContext(DrawerStatusContext) === 'open';
+  const sheetSuppressed = !isHomeFocused || isDrawerOpen;
   const currentLocation = useAppStore((s) => s.currentLocation);
   const currentLocationSource = useAppStore((s) => s.currentLocationSource);
   const hasLocationPermission = useAppStore((s) => s.hasLocationPermission);
@@ -292,7 +300,7 @@ export function HomeScreen() {
     setSelectedPlace,
     updateSettings,
     settings,
-  } = useHomeViewModel();
+  } = useHomeViewModel({ isFocused: isHomeFocused });
 
   const releaseStartupMapReady = useCallback(() => {
     if (!mapReadyRef.current || startupMapReadyReleasedRef.current) return;
@@ -1234,6 +1242,8 @@ export function HomeScreen() {
   // no new close behavior introduced, just extending it to hardware back.
   useEffect(() => {
     const handler = BackHandler.addEventListener('hardwareBackPress', () => {
+      // Another screen (or the drawer) is in front: Back belongs to it, not to hidden Home state.
+      if (sheetSuppressed) return false;
       if (mode === 'DETAILS') {
         closeDetails();
         return true;
@@ -1250,7 +1260,7 @@ export function HomeScreen() {
       return false;
     });
     return () => handler.remove();
-  }, [mode, closeDetails, directionsDestination, handleCloseDirections, handleClearPreviewRoute, closeSheet]);
+  }, [sheetSuppressed, mode, closeDetails, directionsDestination, handleCloseDirections, handleClearPreviewRoute, closeSheet]);
 
   const openLayerOptions = () => setLayersSheetVisible(true);
 
@@ -1859,6 +1869,10 @@ export function HomeScreen() {
           topInset={sheetTopInset}
           maxDynamicContentSize={sheetMaxDynamicContentSize}
           enablePanDownToClose
+          // display:none drops the whole sheet (handle, content, pinned footer) from touch and
+          // the accessibility tree while keeping it mounted, so selection, route and snap index
+          // are exactly as the user left them when Home is foreground again.
+          containerStyle={sheetSuppressed ? styles.sheetSuppressed : undefined}
           footerComponent={renderDirectionsFooter}
           keyboardBehavior="interactive"
           keyboardBlurBehavior="restore"
@@ -2138,6 +2152,7 @@ const styles = StyleSheet.create({
   debugBtnText: { color: '#FFFFFF', fontSize: 11, fontWeight: '600' },
   // Google Maps-style capsule handle — was width-only (36) with no explicit
   // height/radius, relying on the bottom-sheet library's own default bar shape.
+  sheetSuppressed: { display: 'none' },
   sheetIndicator: { backgroundColor: staticColors.border, width: 36, height: 4, borderRadius: 2 },
   sheetContent: { padding: 20 },
   emptySheet: { alignItems: 'center', padding: 60 },
