@@ -213,9 +213,6 @@ beforeEach(() => {
   mockedUseHomeViewModel.mockImplementation(useFakeHomeViewModel);
 });
 
-// #190 — Home's sheet is portal-hosted above the whole navigator, so it must be suppressed
-// (hidden from touch and the accessibility tree, state preserved) whenever another screen or
-// the drawer owns the foreground, and Home's hardware-back handler must stand down with it.
 /** `title` of the Marker that wraps the element with this testID. Android's Google Maps SDK names a marker for
  * TalkBack from its title and ignores accessibilityLabel (react-native-maps#3500). */
 function markerTitleOf(testID: string): string | undefined {
@@ -231,6 +228,9 @@ function markerTitleOf(testID: string): string | undefined {
   return found;
 }
 
+// #190 — Home's sheet is portal-hosted above the whole navigator, so it must be suppressed
+// (hidden from touch and the accessibility tree, state preserved) whenever another screen or
+// the drawer owns the foreground, and Home's hardware-back handler must stand down with it.
 describe('HomeScreen — foreground workflow exclusivity (#190)', () => {
   const sheetProps = () =>
     __getLastBottomSheetModalProps() as unknown as { containerStyle?: { display?: string } | undefined };
@@ -557,7 +557,7 @@ describe('HomeScreen — canonical bottom-sheet dismissal', () => {
     await selectGate();
     await settleSheet();
 
-    expect(markerTitleOf('selected-place-marker')).toBeTruthy();
+    expect(markerTitleOf('selected-place-marker')).toBe('Main North Gate');
   });
 
   test('pan-down preview dismissal clears selection, marker, and pending presentation', async () => {
