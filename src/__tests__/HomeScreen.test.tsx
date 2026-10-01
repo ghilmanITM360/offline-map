@@ -590,7 +590,7 @@ describe('HomeScreen — canonical bottom-sheet dismissal', () => {
     const sheetExtent = (parseFloat(liftedMid) / 100) * container;
     const stack = screen.getByTestId('map-control-stack', { includeHiddenElements: true });
     expect(StyleSheet.flatten(stack.props.style).bottom).toBeCloseTo(
-      stackAbove(Math.max(TEST_BOTTOM_INSET, MIN_BOTTOM_FLOOR), sheetExtent, OVERLAY_CONTROL_GAP),
+      stackAbove(0, Math.max(sheetExtent, Math.max(TEST_BOTTOM_INSET, MIN_BOTTOM_FLOOR)), OVERLAY_CONTROL_GAP),
       1,
     );
   });
