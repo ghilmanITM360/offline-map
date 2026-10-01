@@ -111,7 +111,7 @@ assert(
   'HomeScreen must import the shared overlay-inset calculation',
 );
 assert(
-  homeScreen.includes('const estimatedControlStackBottom = computeMapControlsInset(insets.bottom, controlStackOverlay);'),
+  homeScreen.includes('const controlStackBottom = computeMapControlsInset('),
   'HomeScreen controlStack must derive its bottom offset from computeMapControlsInset',
 );
 assert(
