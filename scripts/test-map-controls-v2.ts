@@ -53,7 +53,7 @@ assert(
   'controlStackOverlay must always resolve to the sheet kind now that route preview lives inside the BottomSheetModal',
 );
 assert(
-  home.includes('const controlStackBottom = computeMapControlsInset('),
+  home.includes('const estimatedControlStackBottom = computeMapControlsInset(insets.bottom, controlStackOverlay);'),
   'controlStackBottom must be computed via the shared computeMapControlsInset calculation',
 );
 assert(!home.includes('activePreviewRoute ? 184 : 0'), 'Hardcoded route-preview-card height guess (184) must be gone');

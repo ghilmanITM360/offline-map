@@ -46,9 +46,12 @@ import {
   computeMaxSheetOcclusionForAttribution,
   computeNavControlsInset,
   insetAwareSnapPoints,
+  MIN_BOTTOM_FLOOR,
   MIN_TOP_VISIBLE_MAP_FOR_ATTRIBUTION,
   MIN_TOP_VISIBLE_MAP_FOR_ROUTE_PREVIEW,
+  OVERLAY_CONTROL_GAP,
   resolveNavBarHeight,
+  stackAbove,
   OverlayState,
 } from '../../viewmodels/useOverlayInsets';
 import { useTheme } from '../../services/useTheme';
@@ -153,8 +156,8 @@ type V2PreviewRoute = RoutePreviewV2;
 // gorhom's default sheet background is itself an accessible, "adjustable" View labelled "Bottom Sheet"
 // (hard-coded, not overridable by props), so TalkBack lands on an empty full-sheet stop. The background
 // is decoration only.
-function SheetBackground({ pointerEvents, style }: BottomSheetBackgroundProps) {
-  return <View pointerEvents={pointerEvents} style={style} accessible={false} importantForAccessibility="no" />;
+function SheetBackground({ pointerEvents, style, viewRef }: BottomSheetBackgroundProps & { viewRef?: React.Ref<View> }) {
+  return <View ref={viewRef} pointerEvents={pointerEvents} style={style} accessible={false} importantForAccessibility="no" />;
 }
 
 function isV2PreviewRoute(route: unknown): route is V2PreviewRoute {
@@ -252,6 +255,8 @@ export function HomeScreen() {
   const googleBaseMapLoaded = mapLoadWatchdog.state === 'GOOGLE_READY' || mapLoadWatchdog.state === 'GOOGLE_RECOVERED';
   const mapLoadFailed = mapLoadWatchdog.state === 'OFFLINE_FALLBACK';
   const [topOverlayHeight, setTopOverlayHeight] = useState(0);
+  const sheetBackgroundRef = useRef<View>(null);
+  const [measuredSheet, setMeasuredSheet] = useState<{ key: string; extent: number } | null>(null);
   const [isMapDragging, setIsMapDragging] = useState(false);
   const [recenterState, setRecenterState] = useState<'idle' | 'loading' | 'success' | 'failure'>('idle');
   const [showLocationTutorial, setShowLocationTutorial] = useState(false);
@@ -962,7 +967,35 @@ export function HomeScreen() {
   // place preview/details/directions (no separate floating card), so this always clears
   // the sheet at whatever snap height it's actually at (see useOverlayInsets.computeMapControlsInset).
   const controlStackOverlay: OverlayState = { kind: 'sheet', windowHeight: sheetContainerHeight, snapPoints, sheetIndex };
-  const controlStackBottom = computeMapControlsInset(insets.bottom, controlStackOverlay);
+  // The estimate above is only a first guess: the sheet's real extent depends on gorhom's detent maths (container,
+  // dynamic detent, route-preview insets) and was measured to differ (#208 F1). Once the sheet settles, read its real
+  // top edge from the window and stack the controls on that.
+  const measuredSheetExtent = measuredSheet && measuredSheet.key === `${mode}:${sheetIndex}` && sheetIndex >= 0
+    ? measuredSheet.extent
+    : null;
+  useEffect(() => {
+    if (sheetIndex < 0) return undefined;
+    const key = `${mode}:${sheetIndex}`;
+    // After the snap animation has settled, read where the sheet really starts. Absent in tests (no native view).
+    const timer = setTimeout(() => {
+      const view = sheetBackgroundRef.current;
+      if (!view || typeof view.measureInWindow !== 'function') return;
+      view.measureInWindow((_x, y, _width, height) => {
+        if (height > 0 && Number.isFinite(y)) setMeasuredSheet({ key, extent: Math.max(windowHeight - y, 0) });
+      });
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [mode, sheetIndex, windowHeight]);
+  const SheetBackgroundWithRef = useMemo(
+    () => function BoundSheetBackground(props: BottomSheetBackgroundProps) {
+      return <SheetBackground {...props} viewRef={sheetBackgroundRef} />;
+    },
+    [],
+  );
+  const estimatedControlStackBottom = computeMapControlsInset(insets.bottom, controlStackOverlay);
+  const controlStackBottom = measuredSheetExtent !== null
+    ? stackAbove(0, Math.max(measuredSheetExtent, Math.max(insets.bottom, MIN_BOTTOM_FLOOR)), OVERLAY_CONTROL_GAP)
+    : estimatedControlStackBottom;
   // Keeps block/gate/rasta/route labels from rendering under the search bar/chip
   // row (top) or the layers/compass/zoom/recenter control column (right, widest
   // button is the 56dp recenter circle at right:12/16 — see mapControlStyles.ts)
@@ -1898,7 +1931,7 @@ export function HomeScreen() {
           accessible={false}
           accessibilityLabel={null}
           accessibilityRole={null}
-          backgroundComponent={SheetBackground}
+          backgroundComponent={SheetBackgroundWithRef}
           footerComponent={renderDirectionsFooter}
           keyboardBehavior="interactive"
           keyboardBlurBehavior="restore"
