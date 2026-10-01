@@ -38,7 +38,11 @@ for (const deadOffsetGuess of ['isOffline ? 42', 'showMapWarningBanner ? 56', 's
 // an independently bottom-anchored recenter button — that old split is exactly what let a
 // route-preview card push the recenter button into the zoom controls (neither side's offset
 // accounted for the other's extent). A single shared bottom value can't collide with itself.
-assert((home.match(/<View style=\{\[styles\.controlStack, \{ bottom: controlStackBottom \}\]\}>/g) ?? []).length >= 1, 'HomeScreen must position the control stack via a single controlStackBottom value');
+// #208 F1: that single value now comes from the sheet's MEASURED top (gorhom animatedPosition), applied
+// through one animated style, so the cluster still moves as one unit.
+assert(home.includes('style={[styles.controlStack, controlStackStyle]}'), 'HomeScreen must position the control stack through a single controlStackStyle value');
+assert(home.includes('animatedPosition={sheetTopY}'), 'The sheet must report its measured top so the control stack follows it, not a declared snap percentage');
+assert(home.includes('resolveControlStackPlacement({'), 'The control stack placement must come from the shared resolveControlStackPlacement worklet');
 assert(home.includes('recenter={'), 'HomeScreen must pass the recenter button into MapControls\' single stack, not render it separately');
 
 // P0-2 (Google Maps routing parity fix): route preview is a single surface living inside

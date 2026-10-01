@@ -401,6 +401,21 @@ describe('HomeScreen — accessibility tree ownership (#128)', () => {
 // step back through MapMode one level at a time (never fall through to the drawer/stack
 // while a sheet mode is open). Fires the real 'hardwareBackPress' device event (what
 // BackHandler.addEventListener actually subscribes to on Android).
+describe('HomeScreen — map-control stack follows the measured sheet top (#208 F1)', () => {
+  test('the sheet exposes its measured position and the stack stays reachable while it rests', async () => {
+    const user = userEvent.setup();
+    await render(<HomeScreen />);
+    await user.press(screen.getByTestId('facility_marker_LM_GATE_MAIN_NORTH'));
+
+    const props = __getLastBottomSheetModalProps() as unknown as { animatedPosition?: { value: number } };
+    expect(props.animatedPosition).toBeDefined();
+    expect(typeof props.animatedPosition?.value).toBe('number');
+
+    const layers = screen.getByLabelText('Map layers and filters');
+    expect(layers).toBeOnTheScreen();
+  });
+});
+
 describe('HomeScreen — hardware back button (mode-aware, Google Maps parity)', () => {
   async function pressHardwareBack() {
     await act(async () => {
