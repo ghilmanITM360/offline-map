@@ -984,16 +984,18 @@ export function HomeScreen() {
       stackHeight: controlStackHeight,
     });
   };
+  const controlStackDeps = [windowHeight, insets.bottom, bannerStackTop, controlStackHeight];
   const controlStackStyle = useAnimatedStyle(() => {
     const { bottom, visible } = placeControlStack(sheetTopY.value);
     return { bottom, opacity: visible ? 1 : 0 };
-  });
+  }, controlStackDeps);
   // Opacity alone would leave a hidden stack touchable and focusable; mirror it as a boolean for the tree.
   useAnimatedReaction(
     () => placeControlStack(sheetTopY.value).visible,
     (visible, previous) => {
       if (visible !== previous) runOnJS(setControlStackHidden)(!visible);
     },
+    controlStackDeps,
   );
   // Keeps block/gate/rasta/route labels from rendering under the search bar/chip
   // row (top) or the layers/compass/zoom/recenter control column (right, widest
