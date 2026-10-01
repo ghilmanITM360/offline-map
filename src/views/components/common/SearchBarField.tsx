@@ -4,7 +4,7 @@
  */
 
 import React, { forwardRef } from 'react';
-import { StyleSheet, TextInput, TextInputProps } from 'react-native';
+import { StyleSheet, Text, TextInput, TextInputProps, TextStyle, View } from 'react-native';
 
 import { radii, spacing, staticColors } from '../../../theme';
 
@@ -16,18 +16,52 @@ import { radii, spacing, staticColors } from '../../../theme';
  * only wrapping chrome differs, the field itself is this shared component.
  */
 export const SearchBarField = forwardRef<TextInput, TextInputProps>(function SearchBarField(
-  { style, ...props },
+  { style, placeholder, value, accessibilityLabel, ...props },
   ref,
 ) {
+  // Android draws a TextInput's native hint itself: at 200% font on a 320 dp window it wrapped onto a second
+  // line that this fixed-height field clipped, and it cannot ellipsize (#128 A). While the (controlled) field is
+  // empty the visible hint is a one-line Text that ends in an ellipsis; the native placeholder stays, transparent,
+  // so the prop and the field's accessibility name (the hint itself, unless a caller passes a label) are unchanged.
+  const showHint = typeof placeholder === 'string' && placeholder.length > 0 && value === '';
+  const flat: TextStyle = StyleSheet.flatten([styles.input, style]) ?? {};
+  const num = (value: unknown, fallback: number) => (typeof value === 'number' ? value : fallback);
+  const border = num(flat.borderWidth, 0);
+  const hintLeft = num(flat.paddingLeft ?? flat.paddingHorizontal, spacing.lg) + border;
+  const hintRight = num(flat.paddingRight ?? flat.paddingHorizontal, spacing.lg) + border;
   return (
-    <TextInput
-      ref={ref}
-      style={[styles.input, style]}
-      placeholderTextColor={staticColors.textMuted}
-      returnKeyType="search"
-      maxFontSizeMultiplier={1.8}
-      {...props}
-    />
+    <View>
+      <TextInput
+        ref={ref}
+        style={[styles.input, style]}
+        value={value}
+        placeholder={placeholder}
+        accessibilityLabel={accessibilityLabel}
+        returnKeyType="search"
+        maxFontSizeMultiplier={1.8}
+        {...props}
+        // After the spread so a caller cannot un-hide the native hint underneath the overlay.
+        placeholderTextColor={showHint ? 'transparent' : props.placeholderTextColor ?? staticColors.textMuted}
+      />
+      {showHint && (
+        <Text
+          numberOfLines={1}
+          ellipsizeMode="tail"
+          maxFontSizeMultiplier={1.8}
+          pointerEvents="none"
+          accessible={false}
+          importantForAccessibility="no-hide-descendants"
+          // Same insets as the field's own text (callers add icon/clear-button room through paddingLeft/Right);
+          // left/right swap together in RTL, exactly as the TextInput's padding does.
+          style={[
+            styles.hint,
+            { left: hintLeft, right: hintRight },
+          ]}
+        >
+          {placeholder}
+        </Text>
+      )}
+    </View>
   );
 });
 
@@ -44,5 +78,15 @@ const styles = StyleSheet.create({
     color: staticColors.textPrimary,
     backgroundColor: staticColors.white,
     textAlignVertical: 'center',
+  },
+  hint: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    fontSize: 16,
+    color: staticColors.textMuted,
+    textAlignVertical: 'center',
+    // textAlignVertical is Android-only; this centres the line on iOS too.
+    justifyContent: 'center',
   },
 });

@@ -98,6 +98,13 @@ describe('LocationsDirectoryScreen — search', () => {
     expect(StyleSheet.flatten(field.props.style).paddingRight).toBe(16);
   });
 
+  test('#128 A: the title wraps instead of truncating beside the Map pill at 200% font on a narrow window', async () => {
+    mockNav();
+    await render(<LocationsDirectoryScreen />);
+
+    expect(screen.getByText('Find your way').props.numberOfLines).toBeUndefined();
+  });
+
   test('typing a query filters to matching destinations only', async () => {
     mockNav();
     await render(<LocationsDirectoryScreen />);
