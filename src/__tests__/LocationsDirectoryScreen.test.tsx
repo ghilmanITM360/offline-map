@@ -85,12 +85,25 @@ describe('LocationsDirectoryScreen — search', () => {
     expect(screen.getByText(firstGate.name)).toBeOnTheScreen();
   });
 
+  test('#128: the search placeholder is one short line, matching the field name, so it cannot wrap at 200% font', async () => {
+    // The old 31-character hint "Search blocks, gates, rastas..." wrapped to two lines at 200% system font on a
+    // 411 dp window, and the second line was clipped by the fixed-height field. Home's search says the same words.
+    mockNav();
+    await render(<LocationsDirectoryScreen />);
+
+    const field = screen.getByLabelText('Search destinations');
+    expect(field.props.placeholder).toBe('Search destinations');
+    expect(field.props.placeholder.length).toBeLessThanOrEqual(20);
+    // No room reserved for the clear button while it is not shown.
+    expect(StyleSheet.flatten(field.props.style).paddingRight).toBe(16);
+  });
+
   test('typing a query filters to matching destinations only', async () => {
     mockNav();
     await render(<LocationsDirectoryScreen />);
 
     await act(async () => {
-      fireEvent.changeText(screen.getByPlaceholderText('Search blocks, gates, rastas...'), '24');
+      fireEvent.changeText(screen.getByPlaceholderText('Search destinations'), '24');
     });
 
     expect(await screen.findByLabelText('Block 24, Block')).toBeOnTheScreen();
@@ -102,7 +115,7 @@ describe('LocationsDirectoryScreen — search', () => {
     await render(<LocationsDirectoryScreen />);
 
     await act(async () => {
-      fireEvent.changeText(screen.getByPlaceholderText('Search blocks, gates, rastas...'), 'zzz-not-a-real-place');
+      fireEvent.changeText(screen.getByPlaceholderText('Search destinations'), 'zzz-not-a-real-place');
     });
 
     expect(await screen.findByText('No matches for "zzz-not-a-real-place"')).toBeOnTheScreen();
@@ -124,7 +137,7 @@ describe('LocationsDirectoryScreen — search', () => {
     mockNav();
     await render(<LocationsDirectoryScreen />);
 
-    const input = screen.getByPlaceholderText('Search blocks, gates, rastas...');
+    const input = screen.getByPlaceholderText('Search destinations');
     await act(async () => fireEvent.changeText(input, '24'));
     expect(await screen.findByLabelText('Clear search')).toBeOnTheScreen();
 
@@ -259,7 +272,7 @@ describe('LocationsDirectoryScreen — recent destinations (#99)', () => {
     await render(<LocationsDirectoryScreen />);
 
     await act(async () => {
-      fireEvent.changeText(screen.getByPlaceholderText('Search blocks, gates, rastas...'), '24');
+      fireEvent.changeText(screen.getByPlaceholderText('Search destinations'), '24');
     });
 
     expect(await screen.findByLabelText('Block 24, Block')).toBeOnTheScreen();
@@ -287,7 +300,7 @@ describe('LocationsDirectoryScreen — Android hardware back', () => {
     await render(<LocationsDirectoryScreen />);
 
     await act(async () => {
-      fireEvent.changeText(screen.getByPlaceholderText('Search blocks, gates, rastas...'), '24');
+      fireEvent.changeText(screen.getByPlaceholderText('Search destinations'), '24');
     });
     expect(await screen.findByLabelText('Block 24, Block')).toBeOnTheScreen();
 
@@ -295,7 +308,7 @@ describe('LocationsDirectoryScreen — Android hardware back', () => {
       DeviceEventEmitter.emit('hardwareBackPress');
     });
 
-    expect(screen.getByPlaceholderText('Search blocks, gates, rastas...').props.value).toBe('');
+    expect(screen.getByPlaceholderText('Search destinations').props.value).toBe('');
     expect(await screen.findByText(/^Blocks \(\d+\)$/)).toBeOnTheScreen();
   });
 });
