@@ -1,0 +1,66 @@
+{
+  "GATE_01": {
+    "latitude": 24.975054,
+    "longitude": 67.006408
+  },
+  "GATE_02": {
+    "latitude": 24.975056,
+    "longitude": 67.005542
+  },
+  "GATE_03": {
+    "latitude": 24.972114,
+    "longitude": 67.001482
+  },
+  "GATE_04": {
+    "latitude": 24.973804,
+    "longitude": 66.998749
+  },
+  "GATE_05": {
+    "latitude": 24.969435,
+    "longitude": 66.997967
+  },
+  "GATE_07": {
+    "latitude": 24.967438,
+    "longitude": 66.998054
+  },
+  "GATE_08": {
+    "latitude": 24.964727,
+    "longitude": 66.999026
+  },
+  "GATE_12": {
+    "latitude": 24.963676,
+    "longitude": 67.006339
+  },
+  "GATE_13": {
+    "latitude": 24.963718,
+    "longitude": 67.006862
+  },
+  "GATE_14": {
+    "latitude": 24.965516,
+    "longitude": 67.007675
+  },
+  "GATE_15": {
+    "latitude": 24.968126,
+    "longitude": 67.008578
+  },
+  "GATE_16": {
+    "latitude": 24.970886,
+    "longitude": 67.010603
+  },
+  "GATE_17": {
+    "latitude": 24.972517,
+    "longitude": 67.01325
+  },
+  "GATE_20": {
+    "latitude": 24.975164,
+    "longitude": 67.011027
+  },
+  "GATE_21": {
+    "latitude": 24.975087,
+    "longitude": 67.008953
+  },
+  "GATE_22": {
+    "latitude": 24.975062,
+    "longitude": 67.007182
+  }
+}

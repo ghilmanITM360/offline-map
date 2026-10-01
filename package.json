@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "main": "node_modules/expo/AppEntry.js",
   "scripts": {
+    "test:walking-proxy": "node --import tsx --test backend/walking-proxy/server.test.mjs",
     "start": "expo start",
     "android": "expo run:android",
     "android:debug": "expo run:android",
