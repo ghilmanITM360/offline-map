@@ -4,19 +4,13 @@
  */
 
 import React from 'react';
-import { Alert, Animated, DeviceEventEmitter, Dimensions, StyleSheet } from 'react-native';
+import { Alert, Animated, DeviceEventEmitter, Dimensions } from 'react-native';
 import { getAnimatedStyle } from 'react-native-reanimated';
 import { act, fireEvent, render, screen, userEvent, waitFor } from './test-utils';
 
 import { DrawerStatusContext } from '@react-navigation/drawer';
 import { HomeScreen } from '../views/screens/HomeScreen';
-import {
-  insetAwareSnapPoints,
-  MIN_BOTTOM_FLOOR,
-  MIN_TOP_VISIBLE_MAP_FOR_ATTRIBUTION,
-  OVERLAY_CONTROL_GAP,
-  stackAbove,
-} from '../viewmodels/useOverlayInsets';
+import { MIN_BOTTOM_FLOOR, OVERLAY_CONTROL_GAP } from '../viewmodels/useOverlayInsets';
 import { useHomeViewModel } from '../viewmodels/HomeViewModel';
 import { useDirectionsViewModel } from '../viewmodels/DirectionsViewModel';
 import { useAppStore } from '../store/useAppStore';
