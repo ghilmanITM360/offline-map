@@ -49,7 +49,7 @@ assert(home.includes('recenter={'), 'HomeScreen must pass the recenter button in
 assert(!home.includes('routePreviewCardMeasuredHeight'), 'The floating route-preview card and its measured-height state must be gone (see LocationSheet routePreview mode)');
 assert(!home.includes("{ kind: 'measured'"), 'controlStackOverlay must not fall back to a measured floating-card extent anymore — the sheet is the only overlay kind now');
 assert(
-  home.includes("const controlStackOverlay: OverlayState = { kind: 'sheet', windowHeight: sheetContainerHeight, snapPoints: layoutSnapPoints, sheetIndex };"),
+  home.includes("const controlStackOverlay: OverlayState = { kind: 'sheet', windowHeight: sheetContainerHeight, snapPoints, sheetIndex };"),
   'controlStackOverlay must always resolve to the sheet kind now that route preview lives inside the BottomSheetModal',
 );
 assert(

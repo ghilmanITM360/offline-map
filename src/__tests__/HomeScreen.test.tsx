@@ -10,6 +10,7 @@ import { act, fireEvent, render, screen, userEvent, waitFor } from './test-utils
 import { DrawerStatusContext } from '@react-navigation/drawer';
 import { HomeScreen } from '../views/screens/HomeScreen';
 import {
+  insetAwareSnapPoints,
   MIN_BOTTOM_FLOOR,
   MIN_TOP_VISIBLE_MAP_FOR_ATTRIBUTION,
   OVERLAY_CONTROL_GAP,
@@ -583,7 +584,10 @@ describe('HomeScreen — canonical bottom-sheet dismissal', () => {
     // 50% snap is 50% of that container. Using the window height here made the stack float far above the sheet
     // (and, at larger snaps, escape the screen).
     const { height } = Dimensions.get('window');
-    const sheetExtent = 0.5 * (height - MIN_TOP_VISIBLE_MAP_FOR_ATTRIBUTION);
+    const container = height - MIN_TOP_VISIBLE_MAP_FOR_ATTRIBUTION;
+    // The middle snap is lifted by the bottom inset (insetAwareSnapPoints) and the stack clears that real extent.
+    const [, liftedMid] = insetAwareSnapPoints(['15%', '50%', '92%'], container, TEST_BOTTOM_INSET);
+    const sheetExtent = (parseFloat(liftedMid) / 100) * container;
     const stack = screen.getByTestId('map-control-stack', { includeHiddenElements: true });
     expect(StyleSheet.flatten(stack.props.style).bottom).toBeCloseTo(
       stackAbove(Math.max(TEST_BOTTOM_INSET, MIN_BOTTOM_FLOOR), sheetExtent, OVERLAY_CONTROL_GAP),
