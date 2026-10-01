@@ -132,7 +132,7 @@ describe('DownloadMapScreen — action buttons expose accessible role and name',
 
 // The screen used to promise a Settings download that Settings does not offer when the
 // tile source is unavailable (every release build). Dialog copy must follow the flag.
-describe('DownloadMapScreen — confirmation copy matches real download support', () => {
+describe('DownloadMapScreen — confirmation copy matches real download support (download available)', () => {
   const dialogBody = async (label: string, vm: Record<string, unknown>) => {
     useAppStore.setState({ hasInternet: true });
     mockedUseDownloadMapViewModel.mockReturnValue(baseViewModel(vm));
@@ -144,12 +144,6 @@ describe('DownloadMapScreen — confirmation copy matches real download support'
     return body;
   };
 
-  test.each(['Use Venue Map Only', 'Use Online Mode'])('%s: no Settings promise when download is unavailable', async (label) => {
-    const body = await dialogBody(label, { offlineTileDownloadAvailable: false });
-    expect(body).not.toMatch(/Settings/);
-    expect(body).toMatch(/without internet/);
-  });
-
   test.each(['Use Venue Map Only', 'Use Online Mode'])('%s: keeps Settings hint when download is available', async (label) => {
     expect(await dialogBody(label, { offlineTileDownloadAvailable: true })).toMatch(/Settings/);
   });
@@ -159,5 +153,79 @@ describe('DownloadMapScreen — confirmation copy matches real download support'
     await render(<DownloadMapScreen />);
     expect(screen.queryByText(/once downloaded/)).toBeNull();
     expect(screen.getByText(/work without internet\. The satellite background needs internet/)).toBeTruthy();
+  });
+});
+
+// Release builds cannot download tiles (#208 F3, Option B). The screen must be one honest step with one
+// real button, not a two-link "choice" whose two options do the same thing.
+describe('DownloadMapScreen — map setup step when background-map download is unavailable (#208 F3)', () => {
+  const noDownload = (overrides: Record<string, unknown> = {}) =>
+    baseViewModel({ offlineTileDownloadAvailable: false, ...overrides });
+
+  test('is titled "Map setup" as a heading and does not advertise an unavailable download', async () => {
+    useAppStore.setState({ hasInternet: true });
+    mockedUseDownloadMapViewModel.mockReturnValue(noDownload());
+    await render(<DownloadMapScreen />);
+
+    expect(screen.getByRole('header', { name: 'Map setup' })).toBeTruthy();
+    expect(screen.queryByText('Offline Maps')).toBeNull();
+    expect(screen.queryByText(/isn't available yet/)).toBeNull();
+  });
+
+  test('says what to expect: satellite background needs internet, venue routes work offline', async () => {
+    mockedUseDownloadMapViewModel.mockReturnValue(noDownload());
+    await render(<DownloadMapScreen />);
+
+    expect(screen.getByText('The satellite map background needs internet.')).toBeTruthy();
+    expect(screen.getByText('Venue routes and gates always work offline.')).toBeTruthy();
+  });
+
+  test('offers exactly one action, a Continue to map button, instead of the two look-alike links', async () => {
+    useAppStore.setState({ hasInternet: true });
+    mockedUseDownloadMapViewModel.mockReturnValue(noDownload());
+    await render(<DownloadMapScreen />);
+
+    expect(screen.getByRole('button', { name: 'Continue to map' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Use Venue Map Only' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Use Online Mode' })).toBeNull();
+  });
+
+  test('Continue to map persists the existing venue-map flag and navigates, with no confirmation dialog', async () => {
+    const vm = noDownload();
+    mockedUseDownloadMapViewModel.mockReturnValue(vm);
+    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
+    await render(<DownloadMapScreen />);
+
+    fireEvent.press(screen.getByRole('button', { name: 'Continue to map' }));
+
+    expect(vm.continueWithVenueMapOnly).toHaveBeenCalledWith(mockNavigation);
+    expect(alertSpy).not.toHaveBeenCalled();
+    alertSpy.mockRestore();
+  });
+
+  test('damaged map data says so plainly and never promises a re-download', async () => {
+    useAppStore.setState({ offlineMapStatus: 'corrupt' });
+    mockedUseDownloadMapViewModel.mockReturnValue(noDownload());
+    await render(<DownloadMapScreen />);
+
+    expect(screen.getByText('Saved map data is damaged.')).toBeTruthy();
+    expect(screen.queryByText(/re-download/i)).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Repair Download' })).toBeNull();
+  });
+
+  test('removing damaged map data asks for confirmation before it deletes anything', async () => {
+    useAppStore.setState({ offlineMapStatus: 'corrupt' });
+    const vm = noDownload();
+    mockedUseDownloadMapViewModel.mockReturnValue(vm);
+    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
+    await render(<DownloadMapScreen />);
+
+    fireEvent.press(screen.getByRole('button', { name: 'Remove damaged map data' }));
+    expect(vm.repairDownload).not.toHaveBeenCalled();
+    const buttons = alertSpy.mock.calls[0][2] as { text: string; onPress?: () => void }[];
+    buttons.find((b) => b.text === 'Remove')?.onPress?.();
+
+    expect(vm.repairDownload).toHaveBeenCalledTimes(1);
+    alertSpy.mockRestore();
   });
 });

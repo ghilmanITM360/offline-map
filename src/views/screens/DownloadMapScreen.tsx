@@ -21,6 +21,7 @@ import {
   Wifi,
   AlertTriangle,
   CheckCircle,
+  MapPin,
   Pause,
   Play,
   RotateCcw,
@@ -65,10 +66,12 @@ export function DownloadMapScreen() {
   const isError = phase === 'error';
   const isComplete = phase === 'complete';
   const isCorrupt = offlineMapStatus === 'corrupt' || offlineMapStatus === 'needs_update';
-  const showVenueMapOnlyAction = isIdle || isError || isCorrupt;
+  // Release builds cannot download tiles, so there is nothing to choose: one honest step, one button (#208 F3).
+  const isSetupStep = !offlineTileDownloadAvailable && (isIdle || isCorrupt);
+  const showVenueMapOnlyAction = !isSetupStep && (isIdle || isError || isCorrupt);
   const blockingMessage = isError
     ? (errorMessage ?? offlineMapStatusMessage ?? 'Download failed.')
-    : isCorrupt
+    : isCorrupt && !isSetupStep
       ? (offlineMapStatusMessage ?? 'Map data looks incomplete. Repair and re-download is required.')
       : null;
 
@@ -121,6 +124,17 @@ export function DownloadMapScreen() {
     );
   };
 
+  const confirmRemoveDamagedData = () => {
+    Alert.alert(
+      'Remove damaged map data?',
+      'This deletes the saved map data on this phone. Venue routes still work without it.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Remove', style: 'destructive', onPress: repairDownload },
+      ],
+    );
+  };
+
   const confirmVenueMapOnly = () => {
     Alert.alert(
       'Use venue map only?',
@@ -157,7 +171,7 @@ export function DownloadMapScreen() {
           }}
         >
           <View style={styles.header}>
-            <Text style={styles.title}>Offline Maps</Text>
+            <Text style={styles.title} accessibilityRole="header">{isSetupStep ? 'Map setup' : 'Offline Maps'}</Text>
             <Text style={styles.urduTitle}>آف لائن نقشہ</Text>
             <Text style={styles.subtitle}>
               {offlineTileDownloadAvailable
@@ -172,6 +186,8 @@ export function DownloadMapScreen() {
                 <CheckCircle size={28} color={staticColors.success} />
               ) : isCorrupt ? (
                 <AlertTriangle size={28} color={staticColors.warning} />
+              ) : isSetupStep ? (
+                <MapPin size={28} color={staticColors.success} />
               ) : (
                 <Download size={28} color={staticColors.success} />
               )}
@@ -198,10 +214,13 @@ export function DownloadMapScreen() {
               </View>
             )}
 
-            {!offlineTileDownloadAvailable && isIdle && (
-              <View style={styles.warningBox}>
-                <AlertTriangle size={18} color={staticColors.warningText} />
-                <Text style={styles.warningText}>Offline background-map download isn't available yet on this app.</Text>
+            {isSetupStep && isIdle && (
+              <View style={styles.setupInfo}>
+                <Wifi size={18} color={staticColors.iconMuted} style={styles.setupInfoIcon} />
+                <View style={styles.setupNote}>
+                  <Text style={styles.setupText}>The satellite map background needs internet.</Text>
+                  <Text style={styles.setupText}>Venue routes and gates always work offline.</Text>
+                </View>
               </View>
             )}
 
@@ -232,7 +251,9 @@ export function DownloadMapScreen() {
             {isCorrupt && (
               <View style={styles.warningBox}>
                 <Wrench size={18} color={staticColors.warningText} />
-                <Text style={styles.warningText}>Map data looks incomplete. Repair and re-download is required.</Text>
+                <Text style={styles.warningText}>
+                  {isSetupStep ? 'Saved map data is damaged.' : 'Map data looks incomplete. Repair and re-download is required.'}
+                </Text>
               </View>
             )}
 
@@ -302,15 +323,27 @@ export function DownloadMapScreen() {
                 </Pressable>
               )}
 
+              {isSetupStep && (
+                <Pressable
+                  style={[styles.primaryButton, styles.fullWidthButton]}
+                  onPress={() => continueWithVenueMapOnly(navigation)}
+                  accessibilityRole="button"
+                  accessibilityLabel="Continue to map"
+                >
+                  <ArrowRight size={18} color={staticColors.white} />
+                  <Text style={styles.primaryButtonText}>Continue to map</Text>
+                </Pressable>
+              )}
+
               {isCorrupt && (
                 <Pressable
                   style={styles.secondaryButton}
-                  onPress={repairDownload}
+                  onPress={isSetupStep ? confirmRemoveDamagedData : repairDownload}
                   accessibilityRole="button"
-                  accessibilityLabel="Repair Download"
+                  accessibilityLabel={isSetupStep ? 'Remove damaged map data' : 'Repair Download'}
                 >
                   <Wrench size={18} color={staticColors.success} />
-                  <Text style={styles.secondaryButtonText}>Repair Download</Text>
+                  <Text style={styles.secondaryButtonText}>{isSetupStep ? 'Remove damaged map data' : 'Repair Download'}</Text>
                 </Pressable>
               )}
 
@@ -353,7 +386,7 @@ export function DownloadMapScreen() {
             </Text>
           )}
 
-          {(isIdle || isError) && hasInternet && (
+          {!isSetupStep && (isIdle || isError) && hasInternet && (
             <Pressable
               style={styles.skipButton}
               onPress={confirmOnlineMode}
@@ -545,6 +578,29 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: spacing.sm,
+  },
+  setupNote: {
+    flex: 1,
+    gap: spacing.xs,
+  },
+  setupInfo: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.sm + 2,
+    marginBottom: spacing.lg,
+  },
+  setupText: {
+    color: staticColors.iconMuted,
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  setupInfoIcon: {
+    marginTop: 2,
+  },
+  fullWidthButton: {
+    alignSelf: 'stretch',
+    flexGrow: 1,
+    minHeight: 48,
   },
   infoBox: {
     flexDirection: 'row',
