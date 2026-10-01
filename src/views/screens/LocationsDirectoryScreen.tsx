@@ -211,8 +211,10 @@ export function LocationsDirectoryScreen() {
         <SearchBarField
           value={query}
           onChangeText={setQuery}
-          placeholder="Search blocks, gates, rastas..."
-          style={styles.searchInput}
+          // Same words as Home's search and this field's name. The old 31-character hint wrapped at 200% font
+          // and the fixed-height field clipped it; Android's TextInput cannot ellipsize a placeholder.
+          placeholder="Search destinations"
+          style={[styles.searchInput, query.length > 0 && styles.searchInputWithClear]}
           accessibilityLabel="Search destinations"
           autoCorrect={false}
         />
@@ -326,6 +328,9 @@ const styles = StyleSheet.create({
   },
   searchInput: {
     paddingLeft: 44,
+    paddingRight: spacing.lg,
+  },
+  searchInputWithClear: {
     paddingRight: 44,
   },
   clearButton: {
