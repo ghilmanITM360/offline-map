@@ -489,7 +489,12 @@ describe('HomeScreen — Get Directions sheet detents (#177)', () => {
     await render(<HomeScreen />);
 
     await user.press(screen.getByTestId('facility_marker_LM_GATE_MAIN_NORTH'));
-    expect(__getLastBottomSheetModalProps().snapPoints).toEqual(['15%', '50%', '92%']);
+    // Place preview keeps the 15/50/92 contract; only the middle snap is lifted by the device's bottom
+    // system inset (see insetAwareSnapPoints), so the CTA is not left behind the navigation bar.
+    const [lowSnap, midSnap, highSnap] = __getLastBottomSheetModalProps().snapPoints as string[];
+    expect([lowSnap, highSnap]).toEqual(['15%', '92%']);
+    expect(parseFloat(midSnap)).toBeGreaterThanOrEqual(50);
+    expect(parseFloat(midSnap)).toBeLessThan(60);
 
     await user.press(await screen.findByText('Directions'));
     expect(await screen.findByText('Get Directions')).toBeOnTheScreen();

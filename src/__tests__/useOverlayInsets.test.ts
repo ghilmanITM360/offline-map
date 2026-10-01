@@ -9,6 +9,7 @@ import {
   computeMaxSheetOcclusionForAttribution,
   computeNavControlsInset,
   computeNavRecenterInset,
+  insetAwareSnapPoints,
   MIN_BOTTOM_FLOOR,
   MIN_TOP_VISIBLE_MAP_FOR_ATTRIBUTION,
   MIN_TOP_VISIBLE_MAP_FOR_ROUTE_PREVIEW,
@@ -227,5 +228,38 @@ describe('Navigation mode: trip bar -> recenter -> compass/zoom stack', () => {
     const recenterBottom = computeNavRecenterInset(navBarHeight);
     const navControlsBottom = computeNavControlsInset(navBarHeight);
     expect(navControlsBottom).toBeGreaterThan(recenterBottom);
+  });
+});
+
+describe('insetAwareSnapPoints (#128: place-preview CTA under the 3-button navigation bar)', () => {
+  const base = ['15%', '50%', '92%'];
+
+  it('leaves the snaps alone when the device has no bottom system inset', () => {
+    expect(insetAwareSnapPoints(base, 480, 0)).toEqual(base);
+  });
+
+  it('adds the bottom inset to the middle snap only, so the visible part above the bar is still 50% of the container', () => {
+    // 3-button navigation: 48 dp bar on the 479.6 dp container measured on the API 36 emulator.
+    const [low, mid, high] = insetAwareSnapPoints(base, 479.6, 48);
+    expect(low).toBe('15%');
+    expect(high).toBe('92%');
+    expect(parseFloat(mid)).toBeCloseTo(50 + (48 / 479.6) * 100, 1);
+  });
+
+  it('gesture navigation (24 dp) gets a smaller lift than 3-button (48 dp)', () => {
+    const gesture = parseFloat(insetAwareSnapPoints(base, 479.6, 24)[1]);
+    const threeButton = parseFloat(insetAwareSnapPoints(base, 479.6, 48)[1]);
+    expect(gesture).toBeGreaterThan(50);
+    expect(threeButton).toBeGreaterThan(gesture);
+  });
+
+  it('never lifts the middle snap to or past the top snap', () => {
+    const [, mid] = insetAwareSnapPoints(base, 100, 80);
+    expect(parseFloat(mid)).toBeLessThan(92);
+  });
+
+  it('returns the input unchanged for an unusable container height', () => {
+    expect(insetAwareSnapPoints(base, 0, 48)).toEqual(base);
+    expect(insetAwareSnapPoints(base, -10, 48)).toEqual(base);
   });
 });

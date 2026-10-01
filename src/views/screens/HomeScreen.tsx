@@ -45,6 +45,7 @@ import {
   computeMapContentInsets,
   computeMaxSheetOcclusionForAttribution,
   computeNavControlsInset,
+  insetAwareSnapPoints,
   MIN_TOP_VISIBLE_MAP_FOR_ATTRIBUTION,
   MIN_TOP_VISIBLE_MAP_FOR_ROUTE_PREVIEW,
   resolveNavBarHeight,
@@ -932,9 +933,20 @@ export function HomeScreen() {
   // and let the banner overlap the chip row. Now derived from the search+chip overlay's
   // own onLayout height (topOverlayHeight). Falls back to the old constant only for the
   // one frame before the first layout pass reports a height.
-  const snapPoints = useMemo(
+  // Snap percentages are measured against the sheet's container, which stops at the top inset below
+  // the overlays and runs to the window bottom — behind the system navigation bar.
+  const sheetContainerHeight = windowHeight - ((topOverlayHeight > 0 ? topOverlayHeight + 8 : 0) + MIN_TOP_VISIBLE_MAP_FOR_ATTRIBUTION);
+  // Declared snaps drive the map-control and mapPadding estimates; the sheet itself is given the
+  // inset-lifted ones. The estimates already over-reach (see #208 F1), so they must not grow with the lift.
+  const layoutSnapPoints = useMemo(
     () => (mode === 'ROUTE_PREVIEW' ? ROUTE_PREVIEW_SNAP_POINTS : baseSnapPoints),
     [mode, baseSnapPoints],
+  );
+  const snapPoints = useMemo(
+    () => (mode === 'ROUTE_PREVIEW'
+      ? layoutSnapPoints
+      : insetAwareSnapPoints(layoutSnapPoints, sheetContainerHeight, insets.bottom)),
+    [mode, layoutSnapPoints, sheetContainerHeight, insets.bottom],
   );
   const bannerStackTop = topOverlayHeight > 0 ? topOverlayHeight + 8 : topInsetBase + 140;
   // The full Layers/Compass/Zoom/Recenter cluster is one bottom-anchored stack (see
@@ -944,7 +956,7 @@ export function HomeScreen() {
   // can't collide with itself. Route preview lives inside the same BottomSheetModal as
   // place preview/details/directions (no separate floating card), so this always clears
   // the sheet at whatever snap height it's actually at (see useOverlayInsets.computeMapControlsInset).
-  const controlStackOverlay: OverlayState = { kind: 'sheet', windowHeight, snapPoints, sheetIndex };
+  const controlStackOverlay: OverlayState = { kind: 'sheet', windowHeight, snapPoints: layoutSnapPoints, sheetIndex };
   const controlStackBottom = computeMapControlsInset(insets.bottom, controlStackOverlay);
   // Keeps block/gate/rasta/route labels from rendering under the search bar/chip
   // row (top) or the layers/compass/zoom/recenter control column (right, widest
@@ -963,11 +975,11 @@ export function HomeScreen() {
       right: 80,
       bottomSafeArea: insets.bottom,
       windowHeight,
-      snapPoints,
+      snapPoints: layoutSnapPoints,
       sheetIndex,
       navBarHeight: activeNavBottomBarHeight,
     }),
-    [activeNavBottomBarHeight, insets.bottom, mode, sheetIndex, snapPoints, topOverlayHeight, windowHeight],
+    [activeNavBottomBarHeight, insets.bottom, layoutSnapPoints, mode, sheetIndex, topOverlayHeight, windowHeight],
   );
   // MapView mapPadding already reserves the sheet-covered area. react-native-maps adds
   // fitToCoordinates edgePadding on top of that base padding on Android, so repeating

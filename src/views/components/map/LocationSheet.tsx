@@ -20,6 +20,7 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { BottomSheetScrollView } from '@gorhom/bottom-sheet';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   Clock,
   Flag,
@@ -772,6 +773,7 @@ function RoutePreviewSection({
 
 function PlaceSection(props: Extract<LocationSheetProps, { mode: 'preview' | 'details' }>) {
   const BackIcon = backChevron();
+  const insets = useSafeAreaInsets();
   const {
     mode,
     place,
@@ -793,7 +795,8 @@ function PlaceSection(props: Extract<LocationSheetProps, { mode: 'preview' | 'de
   const isDetails = mode === 'details';
 
   return (
-    <BottomSheetScrollView contentContainerStyle={sheetStyles.sheetContent}>
+    // The sheet runs to the window bottom, behind the system navigation bar: let the last row scroll clear of it.
+    <BottomSheetScrollView contentContainerStyle={[sheetStyles.sheetContent, { paddingBottom: sheetStyles.sheetContent.padding + insets.bottom }]}>
       <View>
         <View style={sheetStyles.placeHeader}>
           {isDetails && (

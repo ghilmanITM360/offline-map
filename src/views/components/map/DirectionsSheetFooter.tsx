@@ -6,6 +6,7 @@
 import React, { useSyncExternalStore } from 'react';
 import { StyleSheet, View, type LayoutChangeEvent } from 'react-native';
 import { BottomSheetFooter, type BottomSheetFooterProps } from '@gorhom/bottom-sheet';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { directionsSheetColors } from '../../../theme';
 
@@ -51,6 +52,7 @@ export function DirectionsSheetFooter({
   collapsed?: boolean;
 }) {
   const node = useSyncExternalStore(subscribe, () => footerNode, () => null);
+  const insets = useSafeAreaInsets();
   if (!node || collapsed) return null;
   const onLayout = (event: LayoutChangeEvent) => {
     const next = Math.round(event.nativeEvent.layout.height);
@@ -61,7 +63,8 @@ export function DirectionsSheetFooter({
   return (
     <BottomSheetFooter animatedFooterPosition={animatedFooterPosition}>
       <View onLayout={onLayout}>
-        <View style={styles.footer}>{node}</View>
+        {/* The sheet's container runs to the window bottom, behind the system navigation bar. */}
+        <View style={[styles.footer, { paddingBottom: styles.footer.paddingBottom + insets.bottom }]}>{node}</View>
         <View pointerEvents="none" style={styles.skirt} />
       </View>
     </BottomSheetFooter>
