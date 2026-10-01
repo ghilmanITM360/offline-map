@@ -958,6 +958,15 @@ export function HomeScreen() {
       : insetAwareSnapPoints(layoutSnapPoints, sheetContainerHeight, insets.bottom)),
     [mode, layoutSnapPoints, sheetContainerHeight, insets.bottom],
   );
+  // The reserved top band is applied here, as pixel heights of the sheet's container (window minus the band),
+  // instead of as gorhom's `topInset`. gorhom derives its container height from `topInset` only when the sheet
+  // mounts and never recomputes it for a later change, so a mode switch while the sheet stays presented
+  // (Place preview -> Route Preview: 160 -> 280) left every detent and the pinned footer on the old container:
+  // the sheet and footer ended short of (or ran past) the window bottom (#208 F2, #128 D).
+  const sheetSnapPoints = useMemo(
+    () => snapPoints.map((snap) => Math.round((parseFloat(snap) / 100) * sheetContainerHeight)),
+    [snapPoints, sheetContainerHeight],
+  );
   const bannerStackTop = topOverlayHeight > 0 ? topOverlayHeight + 8 : topInsetBase + 140;
   // The full Layers/Compass/Zoom/Recenter cluster is one bottom-anchored stack (see
   // MapControls) instead of two independently-positioned pieces (a top-anchored
@@ -1047,9 +1056,9 @@ export function HomeScreen() {
   // drag to 92% does it. mapLabelEdgeInsets' clamp alone can't fix this: it only changes
   // what we tell the Google Maps SDK is obstructed, not how tall the sheet actually
   // renders, so the SDK can still place the logo somewhere the real (taller) sheet covers.
-  // `topInset` is gorhom's own mechanism for this — it shrinks the containerHeight every
-  // snap point (declared and dynamic) is computed against, so 92% of a container that's
-  // already missing the top's reserved band can never reach into it (ATTR-001 follow-up).
+  // The reserved band is therefore taken out of the heights the snaps are computed from (see
+  // sheetSnapPoints) — not passed as gorhom's `topInset`, which it does not re-apply once the
+  // sheet is presented (#208 F2) — so 92% of that container can never reach into it (ATTR-001).
   const minimumVisibleMapHeight = mode === 'ROUTE_PREVIEW'
     ? MIN_TOP_VISIBLE_MAP_FOR_ROUTE_PREVIEW
     : MIN_TOP_VISIBLE_MAP_FOR_ATTRIBUTION;
@@ -1061,11 +1070,7 @@ export function HomeScreen() {
     ),
     [sheetIndex],
   );
-  const sheetTopInset = useMemo(
-    () => (topOverlayHeight > 0 ? topOverlayHeight + 8 : 0) + minimumVisibleMapHeight,
-    [minimumVisibleMapHeight, topOverlayHeight],
-  );
-  // Backstop for the one case topInset alone doesn't bound: dynamic sizing computing a
+  // Caps dynamic sizing so a content-sized detent can never reach into the reserved top band: dynamic sizing computing a
   // detent from content so tall it would still exceed the shrunk container. Same shared
   // formula the mapPadding clamp above uses, so the two ceilings can't drift apart.
   const sheetMaxDynamicContentSize = useMemo(
@@ -1921,13 +1926,14 @@ export function HomeScreen() {
           // `index` here is the position it animates to on that mount, not a live/controlled
           // value, so it must match the snap index every present() caller opens to (1).
           index={1}
-          snapPoints={snapPoints}
+          snapPoints={sheetSnapPoints}
           animatedPosition={sheetTopY}
           // Dynamic sizing inserts and sorts an extra detent, changing onChange indexes.
           // Route Preview uses those indexes to keep mapPadding and camera framing aligned,
           // so retain the declared 15/50/92% index contract while that mode is active.
           enableDynamicSizing={mode !== 'ROUTE_PREVIEW'}
-          topInset={sheetTopInset}
+          // Not dragged past the top detent into the reserved band; no topInset (see sheetSnapPoints).
+          enableOverDrag={false}
           maxDynamicContentSize={sheetMaxDynamicContentSize}
           enablePanDownToClose
           // display:none drops the whole sheet (handle, content, pinned footer) from touch and
