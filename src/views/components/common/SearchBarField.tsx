@@ -22,9 +22,13 @@ export const SearchBarField = forwardRef<TextInput, TextInputProps>(function Sea
   // Android draws a TextInput's native hint itself: at 200% font on a 320 dp window it wrapped onto a second
   // line that this fixed-height field clipped, and it cannot ellipsize (#128 A). While the (controlled) field is
   // empty the visible hint is a one-line Text that ends in an ellipsis; the native placeholder stays, transparent,
-  // so the prop and the field's name are unchanged.
+  // so the prop and the field's accessibility name (the hint itself, unless a caller passes a label) are unchanged.
   const showHint = typeof placeholder === 'string' && placeholder.length > 0 && value === '';
   const flat: TextStyle = StyleSheet.flatten([styles.input, style]) ?? {};
+  const num = (value: unknown, fallback: number) => (typeof value === 'number' ? value : fallback);
+  const border = num(flat.borderWidth, 0);
+  const hintLeft = num(flat.paddingLeft ?? flat.paddingHorizontal, spacing.lg) + border;
+  const hintRight = num(flat.paddingRight ?? flat.paddingHorizontal, spacing.lg) + border;
   return (
     <View>
       <TextInput
@@ -32,11 +36,12 @@ export const SearchBarField = forwardRef<TextInput, TextInputProps>(function Sea
         style={[styles.input, style]}
         value={value}
         placeholder={placeholder}
-        placeholderTextColor={showHint ? 'transparent' : staticColors.textMuted}
-        accessibilityLabel={accessibilityLabel ?? placeholder}
+        accessibilityLabel={accessibilityLabel}
         returnKeyType="search"
         maxFontSizeMultiplier={1.8}
         {...props}
+        // After the spread so a caller cannot un-hide the native hint underneath the overlay.
+        placeholderTextColor={showHint ? 'transparent' : props.placeholderTextColor ?? staticColors.textMuted}
       />
       {showHint && (
         <Text
@@ -50,7 +55,7 @@ export const SearchBarField = forwardRef<TextInput, TextInputProps>(function Sea
           // left/right swap together in RTL, exactly as the TextInput's padding does.
           style={[
             styles.hint,
-            { left: flat.paddingLeft ?? flat.paddingHorizontal ?? spacing.lg, right: flat.paddingRight ?? flat.paddingHorizontal ?? spacing.lg },
+            { left: hintLeft, right: hintRight },
           ]}
         >
           {placeholder}
@@ -81,5 +86,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: staticColors.textMuted,
     textAlignVertical: 'center',
+    // textAlignVertical is Android-only; this centres the line on iOS too.
+    justifyContent: 'center',
   },
 });

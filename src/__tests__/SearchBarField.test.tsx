@@ -40,13 +40,20 @@ describe('SearchBarField — hint at large font scale and narrow widths (#128 A)
     expect(overlay?.props.pointerEvents).toBe('none');
   });
 
-  test('keeps the native placeholder (transparent) and names the field once', async () => {
+  test('keeps the native placeholder (transparent) as the field\'s name, with no extra label added', async () => {
     await render(<SearchBarField testID="field" value="" onChangeText={jest.fn()} placeholder="Search destinations" />);
 
     const input = screen.getByTestId('field');
     expect(input.props.placeholder).toBe('Search destinations');
     expect(input.props.placeholderTextColor).toBe('transparent');
-    expect(input.props.accessibilityLabel).toBe('Search destinations');
+    // The hint stays the accessibility name (as before); a second label would make TalkBack say it twice.
+    expect(input.props.accessibilityLabel).toBeUndefined();
+  });
+
+  test('a caller cannot un-hide the native hint underneath the overlay', async () => {
+    await render(<SearchBarField testID="field" value="" placeholder="Search destinations" placeholderTextColor="red" />);
+
+    expect(screen.getByTestId('field').props.placeholderTextColor).toBe('transparent');
   });
 
   test('an explicit accessibilityLabel is not overridden', async () => {
