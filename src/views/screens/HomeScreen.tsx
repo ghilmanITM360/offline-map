@@ -938,8 +938,8 @@ export function HomeScreen() {
   // and let the banner overlap the chip row. Now derived from the search+chip overlay's
   // own onLayout height (topOverlayHeight). Falls back to the old constant only for the
   // one frame before the first layout pass reports a height.
-  // Snap percentages are measured against the sheet's container, which stops at the top inset below
-  // the overlays (same formula as `sheetTopInset`) and runs to the window bottom, behind the system
+  // Snap percentages are measured against the sheet's container: the window minus the reserved top
+  // band below the overlays (see sheetSnapPoints), running to the window bottom, behind the system
   // navigation bar. The map-control stack must clear the sheet by that real extent: using the window
   // height made it float far above the sheet and, at the larger snaps, leave the screen (#208 F1).
   const sheetContainerHeight = windowHeight - (
@@ -1070,9 +1070,9 @@ export function HomeScreen() {
     ),
     [sheetIndex],
   );
-  // Caps dynamic sizing so a content-sized detent can never reach into the reserved top band: dynamic sizing computing a
-  // detent from content so tall it would still exceed the shrunk container. Same shared
-  // formula the mapPadding clamp above uses, so the two ceilings can't drift apart.
+  // Caps dynamic sizing so a content-sized detent can never reach into the reserved top band, even for
+  // content taller than the container. Same shared formula the mapPadding clamp above uses, so the two
+  // ceilings can't drift apart.
   const sheetMaxDynamicContentSize = useMemo(
     () => computeMaxSheetOcclusionForAttribution(
       windowHeight,
