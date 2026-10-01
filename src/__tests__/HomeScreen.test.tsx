@@ -493,7 +493,7 @@ describe('HomeScreen — Get Directions sheet detents (#177)', () => {
     // system inset (see insetAwareSnapPoints), so the CTA is not left behind the navigation bar.
     const [lowSnap, midSnap, highSnap] = __getLastBottomSheetModalProps().snapPoints as string[];
     expect([lowSnap, highSnap]).toEqual(['15%', '92%']);
-    expect(parseFloat(midSnap)).toBeGreaterThanOrEqual(50);
+    expect(parseFloat(midSnap)).toBeGreaterThan(50);
     expect(parseFloat(midSnap)).toBeLessThan(60);
 
     await user.press(await screen.findByText('Directions'));
