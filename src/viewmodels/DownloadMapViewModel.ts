@@ -99,6 +99,8 @@ export function useDownloadMapViewModel() {
 
   const triggerNavigationToMain = useCallback(
     (navigation: NativeStackNavigationProp<RootStackParamList, 'DownloadMap'>) => {
+      // One reset per screen: a second tap while the first is in flight must not reset again (#208 S16).
+      if (hasNavigatedRef.current) return;
       try {
         logDownload('navigation triggered');
         navigation.reset({ index: 0, routes: [{ name: 'Main' }] });

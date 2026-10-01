@@ -194,12 +194,19 @@ export const MapLabelOverlay = React.forwardRef<MapLabelOverlayHandle, MapLabelO
       requestAnimationFrame(() => {
         const currentItems = itemsRef.current;
         Promise.all(
-          currentItems.map((item) =>
-            map
-              .pointForCoordinate(item.coordinate)
-              .then((point) => [item.id, point] as const)
-              .catch(() => null),
-          ),
+          currentItems.map((item) => {
+            // The native call throws synchronously for a coordinate it cannot read (seen on a release build:
+            // "Expected argument 0 ... to be a number, but got null"). Uncaught inside this rAF callback that tears
+            // down the React host and blanks the whole screen, so a bad item must only lose its own label.
+            try {
+              return map
+                .pointForCoordinate(item.coordinate)
+                .then((point) => [item.id, point] as const)
+                .catch(() => null);
+            } catch {
+              return Promise.resolve(null);
+            }
+          }),
         )
           .then((resolved) => {
             if (!mountedRef.current) return;
