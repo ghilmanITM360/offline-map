@@ -171,7 +171,7 @@ export function LocationsDirectoryScreen() {
   const renderSearchResults = () => {
     if (searchResults.length === 0) {
       return (
-        <View style={styles.emptyState}>
+        <View style={styles.emptyState} accessibilityLiveRegion="polite">
           <Text style={styles.emptyTitle}>{`No matches for "${trimmedQuery}"`}</Text>
           <Text style={styles.emptyHint}>Try a block or gate number, like 24 or Gate 15.</Text>
         </View>
