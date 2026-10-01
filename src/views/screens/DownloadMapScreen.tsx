@@ -215,11 +215,11 @@ export function DownloadMapScreen() {
             )}
 
             {isSetupStep && isIdle && (
-              <View style={styles.infoBox}>
-                <Wifi size={18} color={staticColors.iconMuted} />
+              <View style={styles.setupInfo}>
+                <Wifi size={18} color={staticColors.iconMuted} style={styles.setupInfoIcon} />
                 <View style={styles.setupNote}>
-                  <Text style={styles.infoText}>The satellite map background needs internet.</Text>
-                  <Text style={styles.infoText}>Venue routes and gates always work offline.</Text>
+                  <Text style={styles.setupText}>The satellite map background needs internet.</Text>
+                  <Text style={styles.setupText}>Venue routes and gates always work offline.</Text>
                 </View>
               </View>
             )}
@@ -325,7 +325,7 @@ export function DownloadMapScreen() {
 
               {isSetupStep && (
                 <Pressable
-                  style={styles.primaryButton}
+                  style={[styles.primaryButton, styles.fullWidthButton]}
                   onPress={() => continueWithVenueMapOnly(navigation)}
                   accessibilityRole="button"
                   accessibilityLabel="Continue to map"
@@ -582,6 +582,25 @@ const styles = StyleSheet.create({
   setupNote: {
     flex: 1,
     gap: spacing.xs,
+  },
+  setupInfo: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.sm + 2,
+    marginBottom: spacing.lg,
+  },
+  setupText: {
+    color: staticColors.iconMuted,
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  setupInfoIcon: {
+    marginTop: 2,
+  },
+  fullWidthButton: {
+    alignSelf: 'stretch',
+    flexGrow: 1,
+    minHeight: 48,
   },
   infoBox: {
     flexDirection: 'row',
