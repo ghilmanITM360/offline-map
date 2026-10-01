@@ -30,4 +30,18 @@ describe('RastaLayer — hit-corridor accessibility (#157)', () => {
 
     expect(screen.getByLabelText('Rasta 1')).toBeTruthy();
   });
+  test('#157: endpoint markers carry a native title so TalkBack does not say "Map Marker"', async () => {
+    // Android's Google Maps SDK names a marker from its title and ignores accessibilityLabel (react-native-maps#3500).
+    await render(<RastaLayer rastas={[makeRasta()]} variant="home" keyPrefix="test" />);
+
+    const titles: string[] = [];
+    const walk = (node: any) => {
+      if (!node || typeof node === 'string') return;
+      if (Array.isArray(node)) return node.forEach(walk);
+      if (node.props?.title) titles.push(node.props.title);
+      walk(node.children);
+    };
+    walk(screen.toJSON());
+    expect(titles).toEqual(['Rasta 1 start', 'Rasta 1 end']);
+  });
 });

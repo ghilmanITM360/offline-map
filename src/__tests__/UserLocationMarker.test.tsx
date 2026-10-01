@@ -45,4 +45,17 @@ describe('UserLocationMarker — marker accessibility (#157)', () => {
 
     expect(screen.queryByText('last known')).not.toBeOnTheScreen();
   });
+  test('#157: the marker carries its name as the native title so TalkBack does not say "Map Marker"', async () => {
+    // Android's Google Maps SDK names a marker for TalkBack from its title and ignores accessibilityLabel
+    // (react-native-maps#3500).
+    const coordinate = { latitude: 24.9645, longitude: 67.0065 };
+    await render(<UserLocationMarker coordinate={coordinate} pulseAnim={new Animated.Value(0)} />);
+    expect(screen.getByTestId('browse-user-location-marker').props.title).toBe('Your location');
+  });
+
+  test('#157: a remembered fix is titled as last known', async () => {
+    const coordinate = { latitude: 24.9645, longitude: 67.0065 };
+    await render(<UserLocationMarker coordinate={coordinate} pulseAnim={new Animated.Value(0)} isRemembered />);
+    expect(screen.getByTestId('browse-user-location-marker').props.title).toBe('Your last known location');
+  });
 });

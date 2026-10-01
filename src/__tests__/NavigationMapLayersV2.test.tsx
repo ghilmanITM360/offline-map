@@ -68,6 +68,15 @@ describe('NavigationMapLayersV2 marker ownership', () => {
     expect(screen.getByTestId('navigation-destination-marker').props.accessibilityLabel).toBeTruthy();
     expect(screen.getByTestId('navigation-user-location-marker').props.accessibilityLabel).toBe('Your location');
   });
+
+  test('#157: START, destination, and user markers carry a native title so TalkBack does not say "Map Marker"', async () => {
+    // Android's Google Maps SDK names a marker from its title and ignores accessibilityLabel (react-native-maps#3500).
+    await render(<NavigationMapLayersV2 overlay={overlay()} />);
+
+    expect(screen.getByTestId('navigation-start-marker').props.title).toBeTruthy();
+    expect(screen.getByTestId('navigation-destination-marker').props.title).toBeTruthy();
+    expect(screen.getByTestId('navigation-user-location-marker').props.title).toBe('Your location');
+  });
 });
 
 describe('AUD-10: hybrid inside-leg walked/remaining progress', () => {

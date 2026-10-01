@@ -216,6 +216,21 @@ beforeEach(() => {
 // #190 — Home's sheet is portal-hosted above the whole navigator, so it must be suppressed
 // (hidden from touch and the accessibility tree, state preserved) whenever another screen or
 // the drawer owns the foreground, and Home's hardware-back handler must stand down with it.
+/** `title` of the Marker that wraps the element with this testID. Android's Google Maps SDK names a marker for
+ * TalkBack from its title and ignores accessibilityLabel (react-native-maps#3500). */
+function markerTitleOf(testID: string): string | undefined {
+  let found: string | undefined;
+  const walk = (node: any, markerTitle?: string) => {
+    if (!node || typeof node === 'string') return;
+    if (Array.isArray(node)) return node.forEach((n) => walk(n, markerTitle));
+    const title = node.props?.title ?? markerTitle;
+    if (node.props?.testID === testID) found = markerTitle;
+    walk(node.children, title);
+  };
+  walk(screen.toJSON());
+  return found;
+}
+
 describe('HomeScreen — foreground workflow exclusivity (#190)', () => {
   const sheetProps = () =>
     __getLastBottomSheetModalProps() as unknown as { containerStyle?: { display?: string } | undefined };
@@ -536,6 +551,14 @@ describe('HomeScreen — canonical bottom-sheet dismissal', () => {
       sheetProps.onChange(index);
     });
   }
+
+  test('#157: the selected-place pin carries the place name as its native title so TalkBack does not say "Map Marker"', async () => {
+    await render(<HomeScreen />);
+    await selectGate();
+    await settleSheet();
+
+    expect(markerTitleOf('selected-place-marker')).toBeTruthy();
+  });
 
   test('pan-down preview dismissal clears selection, marker, and pending presentation', async () => {
     await render(<HomeScreen />);
@@ -1602,6 +1625,77 @@ describe('HomeScreen — route preview is a single surface (P0-2 consolidation)'
     // Place-details-only content (PlaceSection, not RoutePreviewSection) must not also be
     // mounted underneath — confirms there isn't a second, duplicate sheet.
     expect(screen.queryByText('Share')).not.toBeOnTheScreen();
+  });
+
+  test('#157: route-preview start and destination pins carry a native title so TalkBack does not say "Map Marker"', async () => {
+    const destination: Place = {
+      id: 'LM_MASJID_MAIN',
+      name: 'Main Masjid',
+      category: 'Masjid',
+      description: 'Central prayer hall for the Ijtema ground.',
+      coordinate: { latitude: 24.9682, longitude: 67.003 },
+      sourceVersion: 'v1',
+    };
+    const previewRoute = {
+      id: 'v2_route_P3_P6',
+      sourceVersion: 'v2' as const,
+      nodes: ['P3', 'P6'],
+      coordinates: [
+        { latitude: 24.97, longitude: 67.0025 },
+        { latitude: 24.9682, longitude: 67.003 },
+      ],
+      totalDistance: 200,
+      estimatedTimeMin: 3,
+      segments: [{ fromId: 'P3', toId: 'P6', distance: 200, isRasta: true }],
+      startLabel: 'Gate 5',
+      destinationLabel: destination.name,
+      destinationEntryNodeId: 'P6',
+      startResolution: { mode: 'inside' as const, coordinate: { latitude: 24.97, longitude: 67.0025 } },
+      instructions: [],
+    };
+    mockedUseHomeViewModel.mockImplementation(() => ({ ...useFakeHomeViewModel(), selectedPlace: destination }));
+    mockedUseDirectionsViewModel.mockReturnValue({
+      route: previewRoute,
+      startSource: 'live_gps',
+      startSourceLabel: 'My current location',
+      rememberedLocationAgeLabel: '',
+      rememberedLocationAvailable: false,
+      rememberedLocationInsideVenue: false,
+      currentRouteOriginInsideVenue: true,
+      loadState: 'ready',
+      errorMessage: null,
+      manualStart: null,
+      chooseManualStart: jest.fn(),
+      setIsEditingManualStart: jest.fn(),
+      setManualStartPlace: jest.fn(),
+      chooseCurrentLocation: jest.fn(async () => true),
+      chooseRememberedLocation: jest.fn(() => true),
+      calculateRoute: jest.fn(async () => {}),
+      showManualStartSearch: false,
+      canStartNavigation: true,
+      startNavigationDisabledReason: '',
+    });
+    useAppStore.setState({
+      routePlannerDest: destination,
+      routePlannerOrigin: {
+        id: 'GATE_05',
+        name: 'Gate 5',
+        category: 'Gate',
+        description: 'Official Gate 5.',
+        coordinate: { latitude: 24.97, longitude: 67.0025 },
+        sourceVersion: 'v2',
+        sourceKind: 'gate',
+      } as Place,
+      activeRoute: previewRoute,
+      currentLocation: previewRoute.coordinates[0],
+    });
+
+    await render(<HomeScreen />);
+
+    // The map subtree is hidden from accessibility services during route preview, so read the tree directly.
+    await screen.findByText('Start Navigation');
+    expect(markerTitleOf('preview-destination-marker')).toBe('Main Masjid');
+    expect(markerTitleOf('preview-start-marker')).toBe('Gate 5');
   });
 
   test('destination selected -> Directions tap -> route preview appears once -> Start Navigation works', async () => {

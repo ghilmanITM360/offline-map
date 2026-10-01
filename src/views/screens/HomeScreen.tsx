@@ -20,7 +20,7 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import MapView, { Marker, Polygon, Polyline, PROVIDER_GOOGLE, LocalTile } from 'react-native-maps';
+import MapView, { Callout, Marker, Polygon, Polyline, PROVIDER_GOOGLE, LocalTile } from 'react-native-maps';
 import {
   Menu,
   Navigation,
@@ -1574,19 +1574,23 @@ export function HomeScreen() {
 
           {/* Selected place pin — hidden during route preview to avoid duplicate destination marker */}
           {markerOwnership.showBrowseSelection && selectedPlace && selectedPlaceMarkerCoordinate && !activePreviewRoute && (
-            <Marker coordinate={selectedPlaceMarkerCoordinate} tracksViewChanges={false}>
+            // Android's Google Maps SDK names a marker for TalkBack from its title and ignores accessibilityLabel
+            // (react-native-maps#3500); an empty tooltip callout stops the title popping a default info window.
+            <Marker coordinate={selectedPlaceMarkerCoordinate} tracksViewChanges={false} title={selectedPlace.name}>
               <View testID="selected-place-marker" style={styles.selectedMarker}>
                 <MapPin size={markerSizes.destination} color={staticColors.gateAccent} fill={staticColors.gateAccent} />
               </View>
+              <Callout tooltip><View /></Callout>
             </Marker>
           )}
 
           {/* Route preview destination pin — shown when route is active. */}
           {previewDestinationCoordinate && activePreviewRoute && (
-            <Marker coordinate={previewDestinationCoordinate} tracksViewChanges={false}>
-              <View style={styles.selectedMarker}>
+            <Marker coordinate={previewDestinationCoordinate} tracksViewChanges={false} title={previewDestination?.name ?? activePreviewRoute.destinationLabel}>
+              <View testID="preview-destination-marker" style={styles.selectedMarker}>
                 <MapPin size={markerSizes.destination} color={staticColors.gateAccent} fill={staticColors.gateAccent} />
               </View>
+              <Callout tooltip><View /></Callout>
             </Marker>
           )}
 
@@ -1602,10 +1606,11 @@ export function HomeScreen() {
           )}
 
           {showPreviewStartMarker && previewStartCoordinate && (
-            <Marker coordinate={previewStartCoordinate} anchor={{ x: 0.5, y: 1 }} tracksViewChanges={false}>
-              <View style={styles.previewStartMarker}>
+            <Marker coordinate={previewStartCoordinate} anchor={{ x: 0.5, y: 1 }} tracksViewChanges={false} title={routePlannerOrigin?.name ?? activePreviewRoute?.startLabel}>
+              <View testID="preview-start-marker" style={styles.previewStartMarker}>
                 <Navigation size={13} color={staticColors.white} />
               </View>
+              <Callout tooltip><View /></Callout>
             </Marker>
           )}
           </MapView>
