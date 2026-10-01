@@ -1692,7 +1692,7 @@ export function HomeScreen() {
                 stack (showMapWarningBanner's own copy already covers the offline case).
                 Route/gate context (showOutsideBanner) stays a separate, non-competing slot. */}
             {showMapWarningBanner ? (
-              <View style={[styles.mapWarningBanner, styles.bannerStackItem]}>
+              <View style={[styles.mapWarningBanner, styles.bannerStackItem]} accessibilityLiveRegion="polite">
                 <Text style={styles.mapWarningText}>
                   {hasGoogleMapsKey && mapLoadFailed
                     ? MapConfigService.getMapLoadFailedMessage()
@@ -1702,7 +1702,7 @@ export function HomeScreen() {
                 </Text>
               </View>
             ) : isOffline ? (
-              <View style={[styles.offlineIndicator, styles.bannerStackItem]}>
+              <View style={[styles.offlineIndicator, styles.bannerStackItem]} accessibilityLiveRegion="polite">
                 <WifiOff size={14} color="#FFFFFF" />
                 <Text style={styles.offlineText}>Offline</Text>
               </View>

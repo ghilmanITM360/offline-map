@@ -991,6 +991,21 @@ describe('HomeScreen — v1 Arrival marker fallback', () => {
   });
 });
 
+describe('HomeScreen — status banners are announced (#128)', () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  test('the offline map-warning banner is a polite live region so a connectivity drop is announced', async () => {
+    mockedUseHomeViewModel.mockImplementation(() => ({ ...useFakeHomeViewModel(), isOffline: true, offlineData: { isDownloaded: false } }));
+    useAppStore.setState({ hasInternet: false, offlineMapStatus: 'not_downloaded' });
+    await render(<HomeScreen />);
+
+    const banner = screen.getByText('Downloaded background map unavailable. Ijtema routes still work.').parent;
+    expect(banner?.props.accessibilityLiveRegion).toBe('polite');
+  });
+});
+
 describe('HomeScreen — resolved base-map rendering', () => {
   function useDownloadedTilesViewModel() {
     return { ...useFakeHomeViewModel(), isOffline: false, offlineData: { isDownloaded: true } };
