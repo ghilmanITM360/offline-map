@@ -4,6 +4,7 @@
  */
 
 import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
+import ReanimatedView, { runOnJS, useAnimatedReaction, useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
 import {
   View,
   Text,
@@ -42,6 +43,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { getHomeRouteDiagnostics, useHomeViewModel } from '../../viewmodels/HomeViewModel';
 import {
   computeMapControlsInset,
+  resolveControlStackPlacement,
   computeMapContentInsets,
   computeMaxSheetOcclusionForAttribution,
   computeNavControlsInset,
@@ -172,6 +174,9 @@ function outsideRouteProvider(route: unknown): string | null {
   const outsideRoute = (route as { outsideRoute?: { provider?: unknown } }).outsideRoute;
   return typeof outsideRoute?.provider === 'string' ? outsideRoute.provider : null;
 }
+
+// Layers 48 + compass 48 + north-up badge + zoom pair 97 + recenter 56 + gaps; used only until onLayout measures the stack.
+const CONTROL_STACK_FALLBACK_HEIGHT = 300;
 
 export function HomeScreen() {
   const nav = useNavigation<HomeScreenNavigationProp>();
@@ -963,6 +968,35 @@ export function HomeScreen() {
   // the sheet at whatever snap height it's actually at (see useOverlayInsets.computeMapControlsInset).
   const controlStackOverlay: OverlayState = { kind: 'sheet', windowHeight: sheetContainerHeight, snapPoints, sheetIndex };
   const controlStackBottom = computeMapControlsInset(insets.bottom, controlStackOverlay);
+  // The stack itself follows the sheet's MEASURED top (gorhom's animatedPosition, window-space Y, written
+  // on the UI thread) — the percentage estimate above overshoots by up to ~217 dp (#208 F1) and stays only
+  // for the tooltip anchor and mapPadding. A closed sheet reports a Y at/after the window bottom.
+  const sheetTopY = useSharedValue(windowHeight);
+  const [controlStackHeight, setControlStackHeight] = useState(CONTROL_STACK_FALLBACK_HEIGHT);
+  const [controlStackHidden, setControlStackHidden] = useState(false);
+  const placeControlStack = (y: number) => {
+    'worklet';
+    return resolveControlStackPlacement({
+      sheetTopY: y,
+      windowHeight,
+      floor: insets.bottom,
+      topOverlayBottom: bannerStackTop,
+      stackHeight: controlStackHeight,
+    });
+  };
+  const controlStackDeps = [windowHeight, insets.bottom, bannerStackTop, controlStackHeight];
+  const controlStackStyle = useAnimatedStyle(() => {
+    const { bottom, visible } = placeControlStack(sheetTopY.value);
+    return { bottom, opacity: visible ? 1 : 0 };
+  }, controlStackDeps);
+  // Opacity alone would leave a hidden stack touchable and focusable; mirror it as a boolean for the tree.
+  useAnimatedReaction(
+    () => placeControlStack(sheetTopY.value).visible,
+    (visible, previous) => {
+      if (visible !== previous) runOnJS(setControlStackHidden)(!visible);
+    },
+    controlStackDeps,
+  );
   // Keeps block/gate/rasta/route labels from rendering under the search bar/chip
   // row (top) or the layers/compass/zoom/recenter control column (right, widest
   // button is the 56dp recenter circle at right:12/16 — see mapControlStyles.ts)
@@ -1797,7 +1831,14 @@ export function HomeScreen() {
 
         {mode !== 'NAVIGATION' && (
           <>
-            <View style={[styles.controlStack, { bottom: controlStackBottom }]} testID="map-control-stack">
+            <ReanimatedView.View
+              testID="map-control-stack"
+              style={[styles.controlStack, controlStackStyle]}
+              pointerEvents={controlStackHidden ? 'none' : 'auto'}
+              accessibilityElementsHidden={controlStackHidden}
+              importantForAccessibility={controlStackHidden ? 'no-hide-descendants' : 'auto'}
+              onLayout={(event) => setControlStackHeight(event.nativeEvent.layout.height)}
+            >
               <MapControls
                 variant="browse"
                 compassMode={compassMode}
@@ -1819,7 +1860,7 @@ export function HomeScreen() {
                 }}
                 recenter={{ state: recenterButtonState, onPress: () => void handleRecenterPress() }}
               />
-            </View>
+            </ReanimatedView.View>
 
             {showLocationTutorial && (
               <LocationTutorialTooltip
@@ -1881,6 +1922,7 @@ export function HomeScreen() {
           // value, so it must match the snap index every present() caller opens to (1).
           index={1}
           snapPoints={snapPoints}
+          animatedPosition={sheetTopY}
           // Dynamic sizing inserts and sorts an extra detent, changing onChange indexes.
           // Route Preview uses those indexes to keep mapPadding and camera framing aligned,
           // so retain the declared 15/50/92% index contract while that mode is active.
@@ -1935,7 +1977,11 @@ export function HomeScreen() {
               setDetailsExpanded(false);
             }
           }}
-          onDismiss={handleSheetDismiss}
+          onDismiss={() => {
+            // The modal unmounts on dismiss, so gorhom stops writing the position; park it at the window bottom.
+            sheetTopY.value = windowHeight;
+            handleSheetDismiss();
+          }}
         >
           {routePreviewSheetDestination ? (
             <LocationSheet

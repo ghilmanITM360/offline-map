@@ -119,6 +119,29 @@ export function computeMapControlsInset(insetsBottom: number, overlay: OverlaySt
   return stackAbove(floor, extent, OVERLAY_CONTROL_GAP);
 }
 
+/** Placement of the browse map-control stack from the sheet's MEASURED top edge (window-space Y,
+ * gorhom's `animatedPosition`) rather than a declared snap percentage — gorhom applies the percentages
+ * to its own container (window minus topInset) and dynamic sizing adds detents, so the estimate in
+ * resolveOverlayExtent overshoots by up to ~217 dp (#208 F1). A sheet top at/after the window bottom
+ * (closed, or gorhom's pre-layout sentinel) means no overlay. `visible` is false when the stack no longer
+ * fits between the search/chip overlays and the sheet; the caller hides it rather than overlap either.
+ * Runs on the UI thread inside useAnimatedStyle. */
+export function resolveControlStackPlacement(inputs: {
+  sheetTopY: number;
+  windowHeight: number;
+  floor: number;
+  topOverlayBottom: number;
+  stackHeight: number;
+}): { bottom: number; visible: boolean } {
+  'worklet';
+  const { sheetTopY, windowHeight, floor, topOverlayBottom, stackHeight } = inputs;
+  const resting = Math.max(floor, MIN_BOTTOM_FLOOR) + OVERLAY_CONTROL_GAP;
+  if (!Number.isFinite(sheetTopY) || sheetTopY >= windowHeight) return { bottom: resting, visible: true };
+  const bottom = Math.max(windowHeight - sheetTopY + OVERLAY_CONTROL_GAP, resting);
+  const visible = sheetTopY - OVERLAY_CONTROL_GAP - topOverlayBottom >= stackHeight;
+  return { bottom, visible };
+}
+
 /** Trip-info bar height for navigation-mode stacking — its real measured height once
  * onLayout has fired, else a floor + fallback estimate for the single frame before that. */
 export function resolveNavBarHeight(measuredHeight: number, insetsBottom: number): number {

@@ -4,18 +4,13 @@
  */
 
 import React from 'react';
-import { Alert, Animated, DeviceEventEmitter, Dimensions, StyleSheet } from 'react-native';
+import { Alert, Animated, DeviceEventEmitter, Dimensions } from 'react-native';
+import { getAnimatedStyle } from 'react-native-reanimated';
 import { act, fireEvent, render, screen, userEvent, waitFor } from './test-utils';
 
 import { DrawerStatusContext } from '@react-navigation/drawer';
 import { HomeScreen } from '../views/screens/HomeScreen';
-import {
-  insetAwareSnapPoints,
-  MIN_BOTTOM_FLOOR,
-  MIN_TOP_VISIBLE_MAP_FOR_ATTRIBUTION,
-  OVERLAY_CONTROL_GAP,
-  stackAbove,
-} from '../viewmodels/useOverlayInsets';
+import { MIN_BOTTOM_FLOOR, OVERLAY_CONTROL_GAP } from '../viewmodels/useOverlayInsets';
 import { useHomeViewModel } from '../viewmodels/HomeViewModel';
 import { useDirectionsViewModel } from '../viewmodels/DirectionsViewModel';
 import { useAppStore } from '../store/useAppStore';
@@ -411,6 +406,21 @@ describe('HomeScreen — accessibility tree ownership (#128)', () => {
 // step back through MapMode one level at a time (never fall through to the drawer/stack
 // while a sheet mode is open). Fires the real 'hardwareBackPress' device event (what
 // BackHandler.addEventListener actually subscribes to on Android).
+describe('HomeScreen — map-control stack follows the measured sheet top (#208 F1)', () => {
+  test('the sheet exposes its measured position and the stack stays reachable while it rests', async () => {
+    const user = userEvent.setup();
+    await render(<HomeScreen />);
+    await user.press(screen.getByTestId('facility_marker_LM_GATE_MAIN_NORTH'));
+
+    const props = __getLastBottomSheetModalProps() as unknown as { animatedPosition?: { value: number } };
+    expect(props.animatedPosition).toBeDefined();
+    expect(typeof props.animatedPosition?.value).toBe('number');
+
+    const layers = screen.getByLabelText('Map layers and filters');
+    expect(layers).toBeOnTheScreen();
+  });
+});
+
 describe('HomeScreen — hardware back button (mode-aware, Google Maps parity)', () => {
   async function pressHardwareBack() {
     await act(async () => {
@@ -575,24 +585,24 @@ describe('HomeScreen — canonical bottom-sheet dismissal', () => {
     expect(markerTitleOf('selected-place-marker')).toBe('Main North Gate');
   });
 
-  test('#208 F1: the control stack clears the sheet by its real extent (a percent of the sheet container), not of the window', async () => {
+  test('#208 F1: the control stack sits above the sheet\'s measured top edge, whatever the declared snaps say', async () => {
     await render(<HomeScreen />);
     await selectGate();
     await settleSheet();
 
-    // The modal's container stops 160 dp below the top (no overlay height is measured under test), so the
-    // 50% snap is 50% of that container. Using the window height here made the stack float far above the sheet
-    // (and, at larger snaps, escape the screen).
     const { height } = Dimensions.get('window');
-    const container = height - MIN_TOP_VISIBLE_MAP_FOR_ATTRIBUTION;
-    // The middle snap is lifted by the bottom inset (insetAwareSnapPoints) and the stack clears that real extent.
-    const [, liftedMid] = insetAwareSnapPoints(['15%', '50%', '92%'], container, TEST_BOTTOM_INSET);
-    const sheetExtent = (parseFloat(liftedMid) / 100) * container;
-    const stack = screen.getByTestId('map-control-stack', { includeHiddenElements: true });
-    expect(StyleSheet.flatten(stack.props.style).bottom).toBeCloseTo(
-      stackAbove(0, Math.max(sheetExtent, Math.max(TEST_BOTTOM_INSET, MIN_BOTTOM_FLOOR)), OVERLAY_CONTROL_GAP),
-      1,
-    );
+    const stackNode = () => screen.getByTestId('map-control-stack', { includeHiddenElements: true });
+    const stackBottom = () => getAnimatedStyle(stackNode()).bottom;
+    const sheet = __getLastBottomSheetModalProps() as unknown as { animatedPosition: { value: number } };
+
+    // Before gorhom reports a position (or once the sheet is closed) the stack rests above the bottom inset.
+    expect(stackBottom()).toBe(Math.max(TEST_BOTTOM_INSET, MIN_BOTTOM_FLOOR) + OVERLAY_CONTROL_GAP);
+
+    // gorhom reports the sheet top in window coordinates; the stack stacks OVERLAY_CONTROL_GAP above it.
+    await act(async () => {
+      sheet.animatedPosition.value = height - 240;
+    });
+    await waitFor(() => expect(stackBottom()).toBeCloseTo(240 + OVERLAY_CONTROL_GAP, 1));
   });
 
   test('pan-down preview dismissal clears selection, marker, and pending presentation', async () => {

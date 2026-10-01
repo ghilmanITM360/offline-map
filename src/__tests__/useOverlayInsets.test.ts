@@ -16,6 +16,7 @@ import {
   NAV_BAR_FALLBACK_HEIGHT,
   OVERLAY_CONTROL_GAP,
   RECENTER_BUTTON_SIZE,
+  resolveControlStackPlacement,
   resolveNavBarHeight,
   resolveOverlayExtent,
   stackAbove,
@@ -275,5 +276,37 @@ describe('insetAwareSnapPoints (#128: place-preview CTA under the 3-button navig
   it('returns the input unchanged for an unusable container height', () => {
     expect(insetAwareSnapPoints(base, 0, 48)).toEqual(base);
     expect(insetAwareSnapPoints(base, -10, 48)).toEqual(base);
+  });
+});
+
+describe('resolveControlStackPlacement — follows the real sheet top (#208 F1)', () => {
+  const base = { windowHeight: 914, floor: 16, topOverlayBottom: 275, stackHeight: 230 };
+
+  it('sits OVERLAY_CONTROL_GAP above the measured sheet top, not above a declared snap percentage', () => {
+    // Place preview on the 1080x2400 emulator: the sheet top is ~674dp down, i.e. ~240dp of sheet.
+    const placement = resolveControlStackPlacement({ ...base, sheetTopY: 674 });
+    expect(placement).toEqual({ bottom: 914 - 674 + OVERLAY_CONTROL_GAP, visible: true });
+  });
+
+  it('falls back to the resting offset for gorhom\'s pre-layout sentinel and a closed sheet', () => {
+    for (const sheetTopY of [914, 2400, Number.NaN, Infinity]) {
+      expect(resolveControlStackPlacement({ ...base, sheetTopY })).toEqual({ bottom: 32, visible: true });
+    }
+  });
+
+  it('never goes below the safe-area floor', () => {
+    expect(resolveControlStackPlacement({ ...base, floor: 48, sheetTopY: 910 }).bottom).toBe(48 + OVERLAY_CONTROL_GAP);
+  });
+
+  it('hides the stack instead of letting it reach the search/chip row when the sheet is too tall', () => {
+    // 92% detent: only ~160dp of map remains below the overlays, less than the 230dp stack.
+    expect(resolveControlStackPlacement({ ...base, sheetTopY: 435 })).toEqual({ bottom: 914 - 435 + OVERLAY_CONTROL_GAP, visible: false });
+    expect(resolveControlStackPlacement({ ...base, sheetTopY: 0 }).visible).toBe(false);
+  });
+
+  it('stays visible exactly when the stack fits between the overlays and the sheet', () => {
+    const fits = base.topOverlayBottom + base.stackHeight + OVERLAY_CONTROL_GAP;
+    expect(resolveControlStackPlacement({ ...base, sheetTopY: fits }).visible).toBe(true);
+    expect(resolveControlStackPlacement({ ...base, sheetTopY: fits - 1 }).visible).toBe(false);
   });
 });
