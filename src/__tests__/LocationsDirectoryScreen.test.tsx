@@ -121,6 +121,18 @@ describe('LocationsDirectoryScreen — search', () => {
     expect(await screen.findByText('No matches for "zzz-not-a-real-place"')).toBeOnTheScreen();
   });
 
+  test('#128: the no-matches message is a polite live region so a screen reader hears it after typing', async () => {
+    mockNav();
+    await render(<LocationsDirectoryScreen />);
+
+    await act(async () => {
+      fireEvent.changeText(screen.getByLabelText('Search destinations'), 'zzz-not-a-real-place');
+    });
+
+    const message = await screen.findByText('No matches for "zzz-not-a-real-place"');
+    expect(message.parent?.props.accessibilityLiveRegion).toBe('polite');
+  });
+
   test('the clear button resets the search query', async () => {
     mockNav();
     await render(<LocationsDirectoryScreen />);
