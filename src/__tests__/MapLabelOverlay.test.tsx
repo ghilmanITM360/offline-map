@@ -43,6 +43,28 @@ describe('MapLabelOverlay', () => {
     jest.restoreAllMocks();
   });
 
+  it('#208 blank screen: a label whose coordinate makes the native call throw is skipped, not fatal', async () => {
+    // On a release build "Expected argument 0 of method pointForCoordinate to be a number, but got null" was
+    // thrown synchronously inside the rAF projection callback. Nothing caught it, React's host was torn down and
+    // the whole Home screen turned into a blank frame. One bad item must only lose its own label.
+    const pointForCoordinate = jest.fn((coordinate: { latitude: number | null }) => {
+      if (coordinate?.latitude == null) throw new Error('Expected argument 0 of method "pointForCoordinate" to be a number, but got null');
+      return Promise.resolve({ x: 100, y: 100 });
+    });
+    await render(
+      <MapLabelOverlay
+        mapRef={makeMapRef(pointForCoordinate as unknown as jest.Mock)}
+        items={[
+          gateItem({ id: 'bad', text: 'Bad', coordinate: { latitude: null as unknown as number, longitude: 67.1 } }),
+          gateItem({ id: 'good', text: 'Gate 08' }),
+        ]}
+      />,
+    );
+
+    expect(await screen.findByText('Gate 08')).toBeOnTheScreen();
+    expect(screen.queryByText('Bad')).toBeNull();
+  });
+
   it('renders full label text untruncated, with no numberOfLines/clipping prop', async () => {
     const pointForCoordinate = jest.fn(() => Promise.resolve({ x: 100, y: 100 }));
     await render(<MapLabelOverlay mapRef={makeMapRef(pointForCoordinate)} items={[gateItem()]} />);
