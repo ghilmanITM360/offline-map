@@ -5,7 +5,7 @@
 
 import React from 'react';
 import { Animated, StyleSheet, Text, View } from 'react-native';
-import { Circle, Marker } from 'react-native-maps';
+import { Callout, Circle, Marker } from 'react-native-maps';
 import { Navigation } from 'lucide-react-native';
 
 import { Coordinate } from '../../../models/types';
@@ -61,6 +61,9 @@ export function UserLocationMarker({ coordinate, accuracy, heading, isFollowing 
         flat={validHeading}
         rotation={validHeading ? heading : 0}
         accessibilityLabel={isRemembered ? 'Your last known location' : 'Your location'}
+        // Android's Google Maps SDK names a marker for TalkBack from its title and ignores accessibilityLabel
+        // (react-native-maps#3500); an empty tooltip callout stops the title popping a default info window.
+        title={isRemembered ? 'Your last known location' : 'Your location'}
       >
         <View style={styles.wrap}>
           <Animated.View
@@ -84,6 +87,7 @@ export function UserLocationMarker({ coordinate, accuracy, heading, isFollowing 
             </View>
           )}
         </View>
+        <Callout tooltip><View /></Callout>
       </Marker>
     </>
   );

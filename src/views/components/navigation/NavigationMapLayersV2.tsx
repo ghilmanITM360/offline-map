@@ -5,7 +5,7 @@
 
 import React, { useMemo } from 'react';
 import { Animated, Text, View } from 'react-native';
-import { Marker, Polyline } from 'react-native-maps';
+import { Callout, Marker, Polyline } from 'react-native-maps';
 import { Navigation, MapPin } from 'lucide-react-native';
 
 import { V2MapRenderingService } from '../../../services/V2MapRenderingService';
@@ -86,12 +86,14 @@ export function NavigationMapLayersV2({ overlay }: { overlay: NavigationOverlayV
             <Text style={styles.startMarkerLabelText}>START</Text>
           </View>
         </View>
+        <Callout tooltip><View /></Callout>
       </Marker>}
 
       {markerOwnership.showNavigationDestination && <Marker testID="navigation-destination-marker" coordinate={destinationCoordinate} title={route.destination.label} accessibilityLabel={route.destination.label} anchor={{ x: 0.5, y: 1 }} tracksViewChanges={false}>
         <View style={styles.destinationMarker}>
           <MapPin size={markerSizes.destination} color={staticColors.gateAccent} fill={staticColors.gateAccent} />
         </View>
+        <Callout tooltip><View /></Callout>
       </Marker>}
 
       {markerOwnership.showNavigationUser && snappedLocation && (
@@ -105,6 +107,9 @@ export function NavigationMapLayersV2({ overlay }: { overlay: NavigationOverlayV
           anchor={{ x: 0.5, y: 0.5 }}
           tracksViewChanges={false}
           accessibilityLabel={currentLocationSource === 'remembered' ? 'Your last known location' : 'Your location'}
+          // Android's Google Maps SDK names a marker for TalkBack from its title and ignores accessibilityLabel
+          // (react-native-maps#3500); an empty tooltip callout stops the title popping a default info window.
+          title={currentLocationSource === 'remembered' ? 'Your last known location' : 'Your location'}
         >
           <View style={styles.userMarkerWrap}>
             <Animated.View
@@ -125,6 +130,7 @@ export function NavigationMapLayersV2({ overlay }: { overlay: NavigationOverlayV
               </View>
             )}
           </View>
+          <Callout tooltip><View /></Callout>
         </Marker>
       )}
     </>

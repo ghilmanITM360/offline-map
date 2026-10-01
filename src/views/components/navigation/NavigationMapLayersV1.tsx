@@ -5,7 +5,7 @@
 
 import React from 'react';
 import { Animated, Text, View } from 'react-native';
-import { Marker, Polygon, Polyline } from 'react-native-maps';
+import { Callout, Marker, Polygon, Polyline } from 'react-native-maps';
 import { Navigation, MapPin } from 'lucide-react-native';
 
 import { IJTEMA_DATA } from '../../../constants/data';
@@ -85,6 +85,7 @@ export function NavigationMapLayersV1({ overlay }: { overlay: NavigationOverlayV
               <Text style={styles.startMarkerLabelText}>START</Text>
             </View>
           </View>
+          <Callout tooltip><View /></Callout>
         </Marker>
       )}
 
@@ -93,6 +94,7 @@ export function NavigationMapLayersV1({ overlay }: { overlay: NavigationOverlayV
           <View style={styles.destinationMarker}>
             <MapPin size={markerSizes.destination} color={staticColors.gateAccent} fill={staticColors.gateAccent} />
           </View>
+          <Callout tooltip><View /></Callout>
         </Marker>
       )}
 
@@ -104,6 +106,9 @@ export function NavigationMapLayersV1({ overlay }: { overlay: NavigationOverlayV
           anchor={{ x: 0.5, y: 0.5 }}
           tracksViewChanges={false}
           accessibilityLabel={currentLocationSource === 'remembered' ? 'Your last known location' : 'Your location'}
+          // Android's Google Maps SDK names a marker for TalkBack from its title and ignores accessibilityLabel
+          // (react-native-maps#3500); an empty tooltip callout stops the title popping a default info window.
+          title={currentLocationSource === 'remembered' ? 'Your last known location' : 'Your location'}
         >
           <View style={styles.userMarkerWrap}>
             <Animated.View
@@ -124,6 +129,7 @@ export function NavigationMapLayersV1({ overlay }: { overlay: NavigationOverlayV
               </View>
             )}
           </View>
+          <Callout tooltip><View /></Callout>
         </Marker>
       )}
     </>

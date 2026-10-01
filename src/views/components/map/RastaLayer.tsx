@@ -5,7 +5,7 @@
 
 import React from 'react';
 import { View } from 'react-native';
-import { Marker, Polyline } from 'react-native-maps';
+import { Callout, Marker, Polyline } from 'react-native-maps';
 
 import { V2PolylineLayer } from '../../../services/V2MapRenderingService';
 import { Coordinate } from '../../../models/types';
@@ -87,11 +87,16 @@ function RastaLayerImpl({ rastas, variant, focused = false, keyPrefix, onPressRa
             )}
             {start && end && (
               <>
-                <Marker coordinate={start} anchor={{ x: 0.5, y: 0.5 }} zIndex={6} tracksViewChanges={false}>
+                {/* Android's Google Maps SDK names a marker for TalkBack from its title and ignores accessibilityLabel
+                    (react-native-maps#3500), so an untitled endpoint is announced as "Map Marker". The empty tooltip
+                    callout stops the title popping a default info window. */}
+                <Marker coordinate={start} anchor={{ x: 0.5, y: 0.5 }} zIndex={6} tracksViewChanges={false} title={`${rasta.label} start`}>
                   <View style={[dotStyle, { borderColor: dotColor }]} />
+                  <Callout tooltip><View /></Callout>
                 </Marker>
-                <Marker coordinate={end} anchor={{ x: 0.5, y: 0.5 }} zIndex={6} tracksViewChanges={false}>
+                <Marker coordinate={end} anchor={{ x: 0.5, y: 0.5 }} zIndex={6} tracksViewChanges={false} title={`${rasta.label} end`}>
                   <View style={[dotStyle, { borderColor: dotColor }]} />
+                  <Callout tooltip><View /></Callout>
                 </Marker>
               </>
             )}
