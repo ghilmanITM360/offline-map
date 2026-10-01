@@ -10,7 +10,7 @@ import { act, fireEvent, render, screen, userEvent, waitFor } from './test-utils
 
 import { DrawerStatusContext } from '@react-navigation/drawer';
 import { HomeScreen } from '../views/screens/HomeScreen';
-import { MIN_BOTTOM_FLOOR, OVERLAY_CONTROL_GAP } from '../viewmodels/useOverlayInsets';
+import { MIN_BOTTOM_FLOOR, MIN_TOP_VISIBLE_MAP_FOR_ATTRIBUTION, OVERLAY_CONTROL_GAP } from '../viewmodels/useOverlayInsets';
 import { useHomeViewModel } from '../viewmodels/HomeViewModel';
 import { useDirectionsViewModel } from '../viewmodels/DirectionsViewModel';
 import { useAppStore } from '../store/useAppStore';
@@ -64,7 +64,7 @@ const { useNavigation, useIsFocused } = jest.requireMock('@react-navigation/nati
 const mockedUseHomeViewModel = useHomeViewModel as jest.Mock;
 const mockedUseDirectionsViewModel = useDirectionsViewModel as jest.Mock;
 const { __getLastBottomSheetModalProps } = jest.requireMock('@gorhom/bottom-sheet') as {
-  __getLastBottomSheetModalProps: () => { onChange: (index: number) => void; onDismiss: () => void; snapPoints: string[] };
+  __getLastBottomSheetModalProps: () => { onChange: (index: number) => void; onDismiss: () => void; snapPoints: Array<string | number> };
 };
 
 const gateResult: Place = {
@@ -510,15 +510,31 @@ describe('HomeScreen — Get Directions sheet detents (#177)', () => {
 
     await user.press(screen.getByTestId('facility_marker_LM_GATE_MAIN_NORTH'));
     // Place preview keeps the 15/50/92 contract; only the middle snap is lifted by the device's bottom
-    // system inset (see insetAwareSnapPoints), so the CTA is not left behind the navigation bar.
-    const [lowSnap, midSnap, highSnap] = __getLastBottomSheetModalProps().snapPoints as string[];
-    expect([lowSnap, highSnap]).toEqual(['15%', '92%']);
-    expect(parseFloat(midSnap)).toBeGreaterThan(50);
-    expect(parseFloat(midSnap)).toBeLessThan(60);
+    // system inset (see insetAwareSnapPoints), so the CTA is not left behind the navigation bar. The snaps
+    // are pixel heights of the sheet's container (window minus the reserved top band), not percentages:
+    // gorhom never recomputes its container for a later `topInset` change (#208 F2).
+    const { height } = Dimensions.get('window');
+    const placeContainer = height - MIN_TOP_VISIBLE_MAP_FOR_ATTRIBUTION;
+    const placeProps = __getLastBottomSheetModalProps() as unknown as { snapPoints: number[]; topInset?: number; enableOverDrag?: boolean };
+    const [lowSnap, midSnap, highSnap] = placeProps.snapPoints;
+    expect(placeProps.topInset).toBeUndefined();
+    expect(placeProps.enableOverDrag).toBe(false);
+    expect([lowSnap, highSnap]).toEqual([Math.round(0.15 * placeContainer), Math.round(0.92 * placeContainer)]);
+    expect(midSnap / placeContainer).toBeGreaterThan(0.5);
+    expect(midSnap / placeContainer).toBeLessThan(0.6);
 
     await user.press(await screen.findByText('Directions'));
     expect(await screen.findByText('Get Directions')).toBeOnTheScreen();
-    expect(__getLastBottomSheetModalProps().snapPoints).toEqual(['15%', '79%', '92%']);
+    // Switching to Route Preview must re-derive the heights from the route-preview band while the same
+    // sheet stays presented — with no mode-dependent topInset left for gorhom to hold stale.
+    const routeContainer = height - MIN_TOP_VISIBLE_MAP_FOR_ROUTE_PREVIEW;
+    const routeProps = __getLastBottomSheetModalProps() as unknown as { snapPoints: number[]; topInset?: number };
+    expect(routeProps.topInset).toBeUndefined();
+    expect(routeProps.snapPoints).toEqual([
+      Math.round(0.15 * routeContainer),
+      Math.round(0.79 * routeContainer),
+      Math.round(0.92 * routeContainer),
+    ]);
   });
 });
 
@@ -1093,11 +1109,10 @@ describe('HomeScreen — resolved base-map rendering', () => {
   // own containerHeight, so mapLabelEdgeInsets' clamp couldn't fix this alone: it only
   // changes what we tell the Google Maps SDK is obstructed, not how tall the sheet
   // actually renders, so the SDK could still place the logo somewhere the real (taller)
-  // sheet covered. `topInset` is gorhom's own mechanism for bounding this — it shrinks
-  // the containerHeight every snap point is computed against, so 92% of a shrunk
-  // container can never reach into the reserved band. `maxDynamicContentSize` remains a
-  // backstop for the one thing topInset alone doesn't cover: content so tall its
-  // dynamic-sizing detent would still exceed the shrunk container.
+  // sheet covered. The snap heights are computed from a container that already excludes
+  // the reserved band (see HomeScreen's sheetSnapPoints), so 92% of it can never reach into
+  // that band. `maxDynamicContentSize` remains a backstop for the one thing the snaps don't
+  // cover: content so tall its dynamic-sizing detent would still exceed that container.
   test('Route Preview always leaves room for the Google logo, even at the plain 92% snap (ATTR-001 follow-up)', async () => {
     mockedUseDirectionsViewModel.mockReturnValue({
       route: null,
@@ -1128,13 +1143,13 @@ describe('HomeScreen — resolved base-map rendering', () => {
 
     const sheetProps = __getLastBottomSheetModalProps() as unknown as {
       onChange: (index: number) => void;
-      topInset: number;
+      topInset?: number;
       maxDynamicContentSize: number;
       enableDynamicSizing: boolean;
     };
-    // Route Preview hides the search bar/chip row, so the sheet's own top reservation is
-    // the larger route-preview floor — no additional top overlay to add here.
-    expect(sheetProps.topInset).toBe(MIN_TOP_VISIBLE_MAP_FOR_ROUTE_PREVIEW);
+    // Route Preview hides the search bar/chip row, so the reserved top band is the larger route-preview
+    // floor. It is applied to the snap heights, not as a gorhom topInset (#208 F2).
+    expect(sheetProps.topInset).toBeUndefined();
     expect(sheetProps.enableDynamicSizing).toBe(false);
 
     // Route Preview disables dynamic detent insertion, so index 2 remains the declared
@@ -1190,9 +1205,9 @@ describe('HomeScreen — resolved base-map rendering', () => {
 
     const sheetProps = __getLastBottomSheetModalProps() as unknown as {
       onChange: (index: number) => void;
-      topInset: number;
+      topInset?: number;
     };
-    expect(sheetProps.topInset).toBe(MIN_TOP_VISIBLE_MAP_FOR_ROUTE_PREVIEW);
+    expect(sheetProps.topInset).toBeUndefined();
 
     const scheduledFrames: FrameRequestCallback[] = [];
     const requestAnimationFrameSpy = jest
