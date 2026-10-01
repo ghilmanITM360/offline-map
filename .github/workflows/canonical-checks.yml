@@ -39,6 +39,9 @@ jobs:
       - name: Install dependencies (reproducible, from lockfile)
         run: npm ci
 
+      - name: Private walking proxy contracts (fixture-backed, no provider credentials)
+        run: npm run test:walking-proxy
+
       - name: Typecheck
         run: npm run typecheck
 
