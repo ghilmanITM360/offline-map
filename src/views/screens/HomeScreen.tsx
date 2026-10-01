@@ -934,10 +934,15 @@ export function HomeScreen() {
   // own onLayout height (topOverlayHeight). Falls back to the old constant only for the
   // one frame before the first layout pass reports a height.
   // Snap percentages are measured against the sheet's container, which stops at the top inset below
-  // the overlays and runs to the window bottom — behind the system navigation bar.
-  const sheetContainerHeight = windowHeight - ((topOverlayHeight > 0 ? topOverlayHeight + 8 : 0) + MIN_TOP_VISIBLE_MAP_FOR_ATTRIBUTION);
-  // Declared snaps drive the map-control and mapPadding estimates; the sheet itself is given the
-  // inset-lifted ones. The estimates already over-reach (see #208 F1), so they must not grow with the lift.
+  // the overlays (same formula as `sheetTopInset`) and runs to the window bottom, behind the system
+  // navigation bar. The map-control stack must clear the sheet by that real extent: using the window
+  // height made it float far above the sheet and, at the larger snaps, leave the screen (#208 F1).
+  const sheetContainerHeight = windowHeight - (
+    (topOverlayHeight > 0 ? topOverlayHeight + 8 : 0)
+    + (mode === 'ROUTE_PREVIEW' ? MIN_TOP_VISIBLE_MAP_FOR_ROUTE_PREVIEW : MIN_TOP_VISIBLE_MAP_FOR_ATTRIBUTION)
+  );
+  // The sheet is given the inset-lifted snaps and the control stack clears exactly those. mapPadding and label
+  // culling still use the declared snaps: they over-reach (window height) and must not grow with the lift.
   const layoutSnapPoints = useMemo(
     () => (mode === 'ROUTE_PREVIEW' ? ROUTE_PREVIEW_SNAP_POINTS : baseSnapPoints),
     [mode, baseSnapPoints],
@@ -956,7 +961,7 @@ export function HomeScreen() {
   // can't collide with itself. Route preview lives inside the same BottomSheetModal as
   // place preview/details/directions (no separate floating card), so this always clears
   // the sheet at whatever snap height it's actually at (see useOverlayInsets.computeMapControlsInset).
-  const controlStackOverlay: OverlayState = { kind: 'sheet', windowHeight, snapPoints: layoutSnapPoints, sheetIndex };
+  const controlStackOverlay: OverlayState = { kind: 'sheet', windowHeight: sheetContainerHeight, snapPoints, sheetIndex };
   const controlStackBottom = computeMapControlsInset(insets.bottom, controlStackOverlay);
   // Keeps block/gate/rasta/route labels from rendering under the search bar/chip
   // row (top) or the layers/compass/zoom/recenter control column (right, widest
@@ -1792,7 +1797,7 @@ export function HomeScreen() {
 
         {mode !== 'NAVIGATION' && (
           <>
-            <View style={[styles.controlStack, { bottom: controlStackBottom }]}>
+            <View style={[styles.controlStack, { bottom: controlStackBottom }]} testID="map-control-stack">
               <MapControls
                 variant="browse"
                 compassMode={compassMode}

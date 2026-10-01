@@ -4,11 +4,18 @@
  */
 
 import React from 'react';
-import { Alert, Animated, DeviceEventEmitter } from 'react-native';
+import { Alert, Animated, DeviceEventEmitter, Dimensions, StyleSheet } from 'react-native';
 import { act, fireEvent, render, screen, userEvent, waitFor } from './test-utils';
 
 import { DrawerStatusContext } from '@react-navigation/drawer';
 import { HomeScreen } from '../views/screens/HomeScreen';
+import {
+  insetAwareSnapPoints,
+  MIN_BOTTOM_FLOOR,
+  MIN_TOP_VISIBLE_MAP_FOR_ATTRIBUTION,
+  OVERLAY_CONTROL_GAP,
+  stackAbove,
+} from '../viewmodels/useOverlayInsets';
 import { useHomeViewModel } from '../viewmodels/HomeViewModel';
 import { useDirectionsViewModel } from '../viewmodels/DirectionsViewModel';
 import { useAppStore } from '../store/useAppStore';
@@ -231,6 +238,9 @@ function markerTitleOf(testID: string): string | undefined {
 // #190 — Home's sheet is portal-hosted above the whole navigator, so it must be suppressed
 // (hidden from touch and the accessibility tree, state preserved) whenever another screen or
 // the drawer owns the foreground, and Home's hardware-back handler must stand down with it.
+// test-utils' SafeAreaProvider reports a 34 dp bottom inset.
+const TEST_BOTTOM_INSET = 34;
+
 describe('HomeScreen — foreground workflow exclusivity (#190)', () => {
   const sheetProps = () =>
     __getLastBottomSheetModalProps() as unknown as { containerStyle?: { display?: string } | undefined };
@@ -563,6 +573,26 @@ describe('HomeScreen — canonical bottom-sheet dismissal', () => {
     await settleSheet();
 
     expect(markerTitleOf('selected-place-marker')).toBe('Main North Gate');
+  });
+
+  test('#208 F1: the control stack clears the sheet by its real extent (a percent of the sheet container), not of the window', async () => {
+    await render(<HomeScreen />);
+    await selectGate();
+    await settleSheet();
+
+    // The modal's container stops 160 dp below the top (no overlay height is measured under test), so the
+    // 50% snap is 50% of that container. Using the window height here made the stack float far above the sheet
+    // (and, at larger snaps, escape the screen).
+    const { height } = Dimensions.get('window');
+    const container = height - MIN_TOP_VISIBLE_MAP_FOR_ATTRIBUTION;
+    // The middle snap is lifted by the bottom inset (insetAwareSnapPoints) and the stack clears that real extent.
+    const [, liftedMid] = insetAwareSnapPoints(['15%', '50%', '92%'], container, TEST_BOTTOM_INSET);
+    const sheetExtent = (parseFloat(liftedMid) / 100) * container;
+    const stack = screen.getByTestId('map-control-stack', { includeHiddenElements: true });
+    expect(StyleSheet.flatten(stack.props.style).bottom).toBeCloseTo(
+      stackAbove(0, Math.max(sheetExtent, Math.max(TEST_BOTTOM_INSET, MIN_BOTTOM_FLOOR)), OVERLAY_CONTROL_GAP),
+      1,
+    );
   });
 
   test('pan-down preview dismissal clears selection, marker, and pending presentation', async () => {
