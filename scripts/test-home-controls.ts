@@ -40,7 +40,7 @@ assert(home.includes('onLayout={(e) => setTopOverlayHeight'), 'Top overlay (sear
 // P0-2: route preview lives inside the BottomSheetModal (LocationSheet routePreview mode) —
 // no separate floating card to measure. Its extent already comes from the sheet's real snap
 // point via resolveOverlayExtent (see scripts/test-map-controls-v2.ts).
-assert(home.includes("const controlStackOverlay: OverlayState = { kind: 'sheet', windowHeight, snapPoints: layoutSnapPoints, sheetIndex };"), 'Control stack must derive its overlay extent from the route-preview sheet, not a separate measured card');
+assert(home.includes("const controlStackOverlay: OverlayState = { kind: 'sheet', windowHeight: sheetContainerHeight, snapPoints: layoutSnapPoints, sheetIndex };"), 'Control stack must derive its overlay extent from the route-preview sheet, not a separate measured card');
 assert(
   mapControlsSource.includes("variant: 'browse' | 'nav'") && mapControlsSource.includes("variant === 'browse'"),
   'MapControls must share one component across browse and nav modes',

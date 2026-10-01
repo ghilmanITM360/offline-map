@@ -38,7 +38,7 @@ for (const deadOffsetGuess of ['isOffline ? 42', 'showMapWarningBanner ? 56', 's
 // an independently bottom-anchored recenter button — that old split is exactly what let a
 // route-preview card push the recenter button into the zoom controls (neither side's offset
 // accounted for the other's extent). A single shared bottom value can't collide with itself.
-assert((home.match(/<View style=\{\[styles\.controlStack, \{ bottom: controlStackBottom \}\]\}>/g) ?? []).length >= 1, 'HomeScreen must position the control stack via a single controlStackBottom value');
+assert((home.match(/<View style=\{\[styles\.controlStack, \{ bottom: controlStackBottom \}\]\}[^>]*>/g) ?? []).length >= 1, 'HomeScreen must position the control stack via a single controlStackBottom value');
 assert(home.includes('recenter={'), 'HomeScreen must pass the recenter button into MapControls\' single stack, not render it separately');
 
 // P0-2 (Google Maps routing parity fix): route preview is a single surface living inside
@@ -49,7 +49,7 @@ assert(home.includes('recenter={'), 'HomeScreen must pass the recenter button in
 assert(!home.includes('routePreviewCardMeasuredHeight'), 'The floating route-preview card and its measured-height state must be gone (see LocationSheet routePreview mode)');
 assert(!home.includes("{ kind: 'measured'"), 'controlStackOverlay must not fall back to a measured floating-card extent anymore — the sheet is the only overlay kind now');
 assert(
-  home.includes("const controlStackOverlay: OverlayState = { kind: 'sheet', windowHeight, snapPoints: layoutSnapPoints, sheetIndex };"),
+  home.includes("const controlStackOverlay: OverlayState = { kind: 'sheet', windowHeight: sheetContainerHeight, snapPoints: layoutSnapPoints, sheetIndex };"),
   'controlStackOverlay must always resolve to the sheet kind now that route preview lives inside the BottomSheetModal',
 );
 assert(
