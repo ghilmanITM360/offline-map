@@ -85,7 +85,7 @@ describe('computeMapControlsInset — LocationSheet preview/details, route previ
 
   it('LocationSheet preview (PLACE_SELECTED, 50% snap): clears the sheet, not just the floor', () => {
     const inset = computeMapControlsInset(0, { kind: 'sheet', windowHeight, snapPoints, sheetIndex: 1 });
-    expect(inset).toBe(MIN_BOTTOM_FLOOR + 400 + OVERLAY_CONTROL_GAP);
+    expect(inset).toBe(400 + OVERLAY_CONTROL_GAP); // the sheet's extent already runs to the window bottom
     expect(inset).toBeGreaterThan(400); // controls sit above the sheet's top edge
   });
 
@@ -229,6 +229,20 @@ describe('Navigation mode: trip bar -> recenter -> compass/zoom stack', () => {
     const recenterBottom = computeNavRecenterInset(navBarHeight);
     const navControlsBottom = computeNavControlsInset(navBarHeight);
     expect(navControlsBottom).toBeGreaterThan(recenterBottom);
+  });
+});
+
+describe('computeMapControlsInset — extent is measured from the window bottom (#208 F1)', () => {
+  it('does not add the bottom safe-area inset on top of a sheet extent that already includes it', () => {
+    // A sheet reaches the window bottom, behind the 48 dp navigation bar, so its extent already contains the bar.
+    // The old stackAbove(floor, extent, gap) counted the bar twice and left the stack 48 dp above the sheet.
+    const windowHeight = 480;
+    const inset = computeMapControlsInset(48, { kind: 'sheet', windowHeight, snapPoints: ['15%', '60%', '92%'], sheetIndex: 1 });
+    expect(inset).toBeCloseTo(0.6 * windowHeight + OVERLAY_CONTROL_GAP, 5);
+  });
+
+  it('still rests above the bottom inset when nothing covers the map', () => {
+    expect(computeMapControlsInset(48, { kind: 'none' })).toBe(48 + OVERLAY_CONTROL_GAP);
   });
 });
 

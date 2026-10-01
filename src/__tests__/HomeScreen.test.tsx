@@ -4,11 +4,19 @@
  */
 
 import React from 'react';
-import { Alert, Animated, DeviceEventEmitter } from 'react-native';
+import { Alert, Animated, DeviceEventEmitter, Dimensions, StyleSheet } from 'react-native';
+import { getAnimatedStyle } from 'react-native-reanimated';
 import { act, fireEvent, render, screen, userEvent, waitFor } from './test-utils';
 
 import { DrawerStatusContext } from '@react-navigation/drawer';
 import { HomeScreen } from '../views/screens/HomeScreen';
+import {
+  insetAwareSnapPoints,
+  MIN_BOTTOM_FLOOR,
+  MIN_TOP_VISIBLE_MAP_FOR_ATTRIBUTION,
+  OVERLAY_CONTROL_GAP,
+  stackAbove,
+} from '../viewmodels/useOverlayInsets';
 import { useHomeViewModel } from '../viewmodels/HomeViewModel';
 import { useDirectionsViewModel } from '../viewmodels/DirectionsViewModel';
 import { useAppStore } from '../store/useAppStore';
@@ -231,6 +239,9 @@ function markerTitleOf(testID: string): string | undefined {
 // #190 — Home's sheet is portal-hosted above the whole navigator, so it must be suppressed
 // (hidden from touch and the accessibility tree, state preserved) whenever another screen or
 // the drawer owns the foreground, and Home's hardware-back handler must stand down with it.
+// test-utils' SafeAreaProvider reports a 34 dp bottom inset.
+const TEST_BOTTOM_INSET = 34;
+
 describe('HomeScreen — foreground workflow exclusivity (#190)', () => {
   const sheetProps = () =>
     __getLastBottomSheetModalProps() as unknown as { containerStyle?: { display?: string } | undefined };
@@ -578,6 +589,26 @@ describe('HomeScreen — canonical bottom-sheet dismissal', () => {
     await settleSheet();
 
     expect(markerTitleOf('selected-place-marker')).toBe('Main North Gate');
+  });
+
+  test('#208 F1: the control stack sits above the sheet\'s measured top edge, whatever the declared snaps say', async () => {
+    await render(<HomeScreen />);
+    await selectGate();
+    await settleSheet();
+
+    const { height } = Dimensions.get('window');
+    const stackNode = () => screen.getByTestId('map-control-stack', { includeHiddenElements: true });
+    const stackBottom = () => getAnimatedStyle(stackNode()).bottom;
+    const sheet = __getLastBottomSheetModalProps() as unknown as { animatedPosition: { value: number } };
+
+    // Before gorhom reports a position (or once the sheet is closed) the stack rests above the bottom inset.
+    expect(stackBottom()).toBe(Math.max(TEST_BOTTOM_INSET, MIN_BOTTOM_FLOOR) + OVERLAY_CONTROL_GAP);
+
+    // gorhom reports the sheet top in window coordinates; the stack stacks OVERLAY_CONTROL_GAP above it.
+    await act(async () => {
+      sheet.animatedPosition.value = height - 240;
+    });
+    await waitFor(() => expect(stackBottom()).toBeCloseTo(240 + OVERLAY_CONTROL_GAP, 1));
   });
 
   test('pan-down preview dismissal clears selection, marker, and pending presentation', async () => {

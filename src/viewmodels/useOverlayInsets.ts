@@ -113,6 +113,9 @@ export function stackAbove(belowBottomOffset: number, belowHeight: number, gap: 
 export function computeMapControlsInset(insetsBottom: number, overlay: OverlayState): number {
   const floor = Math.max(insetsBottom, MIN_BOTTOM_FLOOR);
   const extent = resolveOverlayExtent(overlay);
+  // A sheet's extent is measured from the window bottom, so it already contains the bottom inset: stack above
+  // whichever is larger instead of adding both (#208 F1). A measured card still rests on the floor.
+  if (overlay.kind === 'sheet') return stackAbove(0, Math.max(extent, floor), OVERLAY_CONTROL_GAP);
   return stackAbove(floor, extent, OVERLAY_CONTROL_GAP);
 }
 
