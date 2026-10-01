@@ -189,12 +189,10 @@ export function LocationsDirectoryScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <View style={styles.header}>
-        {/* Short, single-line title (was two lines: a long question plus a subtitle that
-            just repeated what the search placeholder already says) — freed the header
-            from wrapping awkwardly beside the Map pill and cut its vertical footprint. */}
-        <Text style={styles.title} numberOfLines={1}>
-          Find your way
-        </Text>
+        {/* Short title (was two lines: a long question plus a subtitle that just repeated what the
+            search placeholder already says). It may wrap: at 200% font on a 320 dp window one line
+            truncated to "Find your…" beside the Map pill (#128 A). */}
+        <Text style={styles.title}>Find your way</Text>
         <Pressable
           style={styles.viewMapButton}
           onPress={goToMap}
