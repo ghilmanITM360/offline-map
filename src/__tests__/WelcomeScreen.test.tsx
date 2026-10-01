@@ -29,10 +29,16 @@ describe('WelcomeScreen (#159 WEL-007)', () => {
 
     expect(screen.getByText('Welcome to Ijtema Map')).toBeOnTheScreen();
     expect(screen.getByText('اجتماع میپ میں خوش آمدید')).toBeOnTheScreen();
-    expect(screen.getByText('Find your location')).toBeOnTheScreen();
+    expect(screen.getByText('See where you are')).toBeOnTheScreen();
     expect(screen.getByText('Navigate to blocks and gates')).toBeOnTheScreen();
     expect(screen.getByText('Use offline maps')).toBeOnTheScreen();
     expect(screen.getByText('Get walking directions')).toBeOnTheScreen();
+  });
+
+  test('WEL-006: no benefit repeats the Permission screen heading one tap later', async () => {
+    await render(<WelcomeScreen />);
+
+    expect(screen.queryByText('Find your location')).not.toBeOnTheScreen();
   });
 
   test('pressing Continue replaces onto Permission', async () => {

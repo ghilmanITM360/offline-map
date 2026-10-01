@@ -11,7 +11,7 @@ import { Map as MapIcon, MapPin, Navigation, WifiOff, Footprints } from 'lucide-
 import { useWelcomeViewModel } from '../../viewmodels/WelcomeViewModel';
 
 const BENEFITS = [
-  { icon: MapPin, text: 'Find your location' },
+  { icon: MapPin, text: 'See where you are' },
   { icon: Navigation, text: 'Navigate to blocks and gates' },
   { icon: WifiOff, text: 'Use offline maps' },
   { icon: Footprints, text: 'Get walking directions' },
