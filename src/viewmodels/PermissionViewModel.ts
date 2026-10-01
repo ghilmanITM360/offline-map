@@ -69,7 +69,7 @@ export function usePermissionViewModel() {
       } else {
         const permission = await Location.getForegroundPermissionsAsync(); // fixed: inspect whether the permission can still be requested in-app
         if (!permission.canAskAgain) {
-          Alert.alert('Location permission required', 'Enable location access in Settings to use navigation.', [
+          Alert.alert('Location access is off', 'Enable location access in Settings to use navigation.', [
             { text: 'Cancel', style: 'cancel' },
             { text: 'Open Settings', onPress: () => { void Linking.openSettings(); } },
           ]); // fixed: route permanently denied users to the system settings app

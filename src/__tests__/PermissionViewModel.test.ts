@@ -88,7 +88,7 @@ describe('usePermissionViewModel — requestPermission denial handling', () => {
 
     expect(Alert.alert).toHaveBeenCalledTimes(1);
     expect(Alert.alert).toHaveBeenCalledWith(
-      'Location permission required',
+      'Location access is off',
       'Enable location access in Settings to use navigation.',
       expect.any(Array),
     );
