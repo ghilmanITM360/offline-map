@@ -339,12 +339,12 @@ function RoutePreviewSection({
   const editingStart = showStartOptions || showManualStartSearch;
   const editingAnything = editingStart || showDestinationOptions;
   // Back from a picker returns to the Get Directions summary; only from the summary does it leave
-  // the journey. A remembered manual start keeps its search open (source-driven), so Back leaves.
+  // the journey.
   const handleBack = () => {
     if (showDestinationOptions) {
       setShowDestinationOptions(false);
       setDestSearch('');
-    } else if (showStartOptions && startSource !== 'manual_place') {
+    } else if (editingStart) {
       setShowStartOptions(false);
       setIsEditingManualStart(false);
     } else {
