@@ -200,27 +200,14 @@ describe('Get Directions redesign — structure and semantics', () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
-  test('Back from the destination picker returns to the summary', async () => {
-    mockedVm.mockReturnValue(vm());
-    const user = userEvent.setup();
-    await renderSheet({ onChangeDestination: jest.fn() });
-
-    await user.press(screen.getByRole('button', { name: 'Change destination' }));
-    expect(screen.getByRole('button', { name: 'Cancel changing destination' })).toBeOnTheScreen();
-    await user.press(screen.getByRole('button', { name: 'Back' }));
-
-    expect(onClose).not.toHaveBeenCalled();
-    expect(screen.getByRole('header', { name: 'Going to' })).toBeOnTheScreen();
-  });
-
   test('tapping the destination or start row runs the same action as its change button', async () => {
     mockedVm.mockReturnValue(vm());
+    const onOpenDirectory = jest.fn();
     const user = userEvent.setup();
-    await renderSheet({ onChangeDestination: jest.fn() });
+    await renderSheet({ onChangeDestination: jest.fn(), onOpenDirectory });
 
     await user.press(screen.getByText(destination.name));
-    expect(screen.getByRole('button', { name: 'Cancel changing destination' })).toBeOnTheScreen();
-    await user.press(screen.getByRole('button', { name: 'Cancel changing destination' }));
+    expect(onOpenDirectory).toHaveBeenCalledWith('destination');
 
     await user.press(screen.getByText('My current location'));
     expect(screen.getByText('Choose where you are starting from')).toBeOnTheScreen();
@@ -296,12 +283,12 @@ describe('Get Directions redesign — pinned footer', () => {
     expect(screen.getByRole('button', { name: 'Start Navigation' })).toBeOnTheScreen();
   });
 
-  test('footer is hidden while choosing a start or destination, so it cannot cover results', async () => {
+  test('footer is hidden while choosing a start, so it cannot cover the options', async () => {
     mockedVm.mockReturnValue(ready());
     const user = userEvent.setup();
-    await renderSheet({ onChangeDestination: jest.fn() });
+    await renderSheet({ onChangeDestination: jest.fn(), onOpenDirectory: jest.fn() });
 
-    await user.press(screen.getByRole('button', { name: 'Change destination' }));
+    await user.press(screen.getByRole('button', { name: 'Change starting point' }));
     expect(screen.queryByRole('button', { name: 'Start Navigation' })).not.toBeOnTheScreen();
   });
 

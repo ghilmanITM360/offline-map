@@ -15,6 +15,7 @@ import { useHomeViewModel } from '../viewmodels/HomeViewModel';
 import { useDirectionsViewModel } from '../viewmodels/DirectionsViewModel';
 import { useAppStore } from '../store/useAppStore';
 import { MapConfigService } from '../services/MapConfigService';
+import { SearchService } from '../services/SearchService';
 import * as NavigationOverlayV1Module from '../viewmodels/useNavigationOverlayV1';
 import {
   MIN_TOP_VISIBLE_MAP_FOR_ROUTE_PREVIEW,
@@ -837,11 +838,12 @@ describe('HomeScreen — canonical bottom-sheet dismissal', () => {
     // "in flight" when Change Destination fires next, same as a user tapping through
     // before the previous transition's round-trip has confirmed.
     await user.press(await screen.findByLabelText('Change destination'));
-    await user.type(
-      await screen.findByPlaceholderText('Search destination: gate, rasta, block'),
-      'Gate 8',
-    );
-    await user.press(await screen.findByLabelText('Gate 08, Gate'));
+    // What the Directory does when the visitor taps Gate 08 for "Where do you want to go?".
+    const gate08 = SearchService.search('Gate 8').find((place) => place.name === 'Gate 08');
+    expect(gate08).toBeDefined();
+    await act(async () => {
+      useAppStore.getState().setDirectoryChoice({ purpose: 'destination', place: gate08! });
+    });
     expect(await screen.findByText('Gate 08')).toBeOnTheScreen();
 
     const sheetProps = __getLastBottomSheetModalProps();
