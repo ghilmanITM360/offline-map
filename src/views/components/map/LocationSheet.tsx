@@ -830,7 +830,7 @@ function PlaceSection(props: Extract<LocationSheetProps, { mode: 'preview' | 'de
             {place.urduName && (
               <Text style={[sheetStyles.placeUrdu, { color: theme.primary }]}>{place.urduName}</Text>
             )}
-            <Text style={[sheetStyles.placeCategory, { color: theme.subtext }]}>{place.category}</Text>
+            <Text style={[sheetStyles.placeCategory, { color: theme.subtext }]}>{placeCategoryLabel(place.category)}</Text>
             {place.sourceVersion !== 'v2' && place.category === 'Block' && (IJTEMA_DATA.blocks as any)[place.id]?.role && (
               <Text style={sheetStyles.placeRole}>{(IJTEMA_DATA.blocks as any)[place.id].role}</Text>
             )}
