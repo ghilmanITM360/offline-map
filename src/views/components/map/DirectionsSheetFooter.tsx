@@ -62,7 +62,9 @@ export function DirectionsSheetFooter({
   };
   return (
     <BottomSheetFooter animatedFooterPosition={animatedFooterPosition}>
-      <View onLayout={onLayout}>
+      {/* Marked important (not focusable) so it stays one node: with plain view groups TalkBack flattened the
+          footer's rows in among the body's and read them first (#128 B, observed on API 36 TalkBack). */}
+      <View testID="directions-footer" onLayout={onLayout} importantForAccessibility="yes">
         {/* The sheet's container runs to the window bottom, behind the system navigation bar. */}
         <View style={[styles.footer, { paddingBottom: styles.footer.paddingBottom + insets.bottom }]}>{node}</View>
         <View pointerEvents="none" style={styles.skirt} />

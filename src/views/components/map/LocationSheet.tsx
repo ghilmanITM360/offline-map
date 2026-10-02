@@ -357,8 +357,14 @@ function RoutePreviewSection({
   // disabled reason) and the summary/caption scroll with the content instead.
   const compactFooter = fontScale >= 1.5;
 
+  // One TalkBack stop ("Route ready, 13 min, 1.1 km") instead of three that Android sorts apart.
+  const routeSummaryLabel = [
+    'Route ready',
+    outsideRoute?.durationSeconds !== null ? routeEta : null,
+    routeDistance,
+  ].filter(Boolean).join(', ');
   const routeSummary = showRouteReady ? (
-    <View style={styles.summary}>
+    <View style={styles.summary} accessible accessibilityLabel={routeSummaryLabel}>
       <Text style={styles.summaryLabel}>Route ready</Text>
       <View style={styles.routeHeroRow}>
         {outsideRoute?.durationSeconds !== null && (
@@ -449,7 +455,15 @@ function RoutePreviewSection({
   useEffect(() => () => publishDirectionsFooter(null), []);
 
   return (
-    <View style={styles.container}>
+    // collapsable={false} keeps the body a native view and importantForAccessibility marks it as one node, so
+    // TalkBack reads it as a block before the pinned footer instead of interleaving their rows (#128 B;
+    // observed on API 36 TalkBack, not a platform guarantee).
+    <View
+      testID="directions-body"
+      style={styles.container}
+      collapsable={false}
+      importantForAccessibility="yes"
+    >
       <DirectionsHeader
         title="Get Directions"
         subtitle={editingStart ? 'Choose where you are starting from' : 'Plan your walking route inside Ijtema'}
