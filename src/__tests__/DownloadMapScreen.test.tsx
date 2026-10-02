@@ -177,7 +177,7 @@ describe('DownloadMapScreen — map setup step when background-map download is u
     await render(<DownloadMapScreen />);
 
     expect(screen.getByText('The satellite map background needs internet.')).toBeTruthy();
-    expect(screen.getByText('Venue routes and gates always work offline.')).toBeTruthy();
+    expect(screen.getByText('Ijtema routes and gates always work offline.')).toBeTruthy();
   });
 
   test('offers exactly one action, a Continue to map button, instead of the two look-alike links', async () => {

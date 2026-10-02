@@ -1765,7 +1765,7 @@ export function HomeScreen() {
                   {hasGoogleMapsKey && mapLoadFailed
                     ? MapConfigService.getMapLoadFailedMessage()
                     : isOffline
-                      ? 'Downloaded background map unavailable. Ijtema routes still work.'
+                      ? 'No internet. Ijtema routes still work.'
                       : MapConfigService.getMissingGoogleMapsMessage()}
                 </Text>
               </View>
