@@ -329,6 +329,11 @@ describe('HomeScreen — accessibility tree ownership (#128)', () => {
     });
   }
 
+  test("the map's Google toolbar (open in Maps / directions) is off (#128 C)", async () => {
+    await render(<HomeScreen />);
+    expect(screen.getByTestId('home-map-view', { includeHiddenElements: true }).props.toolbarEnabled).toBe(false);
+  });
+
   test('map stays reachable while exploring and on Place Details', async () => {
     const user = userEvent.setup();
     await render(<HomeScreen />);

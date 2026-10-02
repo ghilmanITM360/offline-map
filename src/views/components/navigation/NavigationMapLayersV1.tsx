@@ -5,7 +5,8 @@
 
 import React from 'react';
 import { Animated, Text, View } from 'react-native';
-import { Callout, Marker, Polygon, Polyline } from 'react-native-maps';
+import { Marker, Polygon, Polyline } from 'react-native-maps';
+import { NoInfoWindow } from '../map/NoInfoWindow';
 import { Navigation, MapPin } from 'lucide-react-native';
 
 import { IJTEMA_DATA } from '../../../constants/data';
@@ -85,7 +86,7 @@ export function NavigationMapLayersV1({ overlay }: { overlay: NavigationOverlayV
               <Text style={styles.startMarkerLabelText}>START</Text>
             </View>
           </View>
-          <Callout tooltip><View /></Callout>
+          <NoInfoWindow />
         </Marker>
       )}
 
@@ -94,7 +95,7 @@ export function NavigationMapLayersV1({ overlay }: { overlay: NavigationOverlayV
           <View style={styles.destinationMarker}>
             <MapPin size={markerSizes.destination} color={staticColors.gateAccent} fill={staticColors.gateAccent} />
           </View>
-          <Callout tooltip><View /></Callout>
+          <NoInfoWindow />
         </Marker>
       )}
 
@@ -129,7 +130,7 @@ export function NavigationMapLayersV1({ overlay }: { overlay: NavigationOverlayV
               </View>
             )}
           </View>
-          <Callout tooltip><View /></Callout>
+          <NoInfoWindow />
         </Marker>
       )}
     </>

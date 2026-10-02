@@ -5,7 +5,8 @@
 
 import React from 'react';
 import { Animated, StyleSheet, Text, View } from 'react-native';
-import { Callout, Circle, Marker } from 'react-native-maps';
+import { Circle, Marker } from 'react-native-maps';
+import { NoInfoWindow } from './NoInfoWindow';
 import { Navigation } from 'lucide-react-native';
 
 import { Coordinate } from '../../../models/types';
@@ -87,7 +88,7 @@ export function UserLocationMarker({ coordinate, accuracy, heading, isFollowing 
             </View>
           )}
         </View>
-        <Callout tooltip><View /></Callout>
+        <NoInfoWindow />
       </Marker>
     </>
   );

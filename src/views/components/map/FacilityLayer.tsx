@@ -5,7 +5,9 @@
 
 import React from 'react';
 import { View } from 'react-native';
-import { Callout, Marker } from 'react-native-maps';
+import { Marker } from 'react-native-maps';
+import { NoInfoWindow } from './NoInfoWindow';
+import { useMarkerPaintWindow } from './useMarkerPaintWindow';
 import { Bus, Droplet, HelpCircle, Landmark, ParkingCircle, Search as SearchGlyph, Stethoscope, Utensils } from 'lucide-react-native';
 
 import { Coordinate, Place } from '../../../models/types';
@@ -36,6 +38,41 @@ interface FacilityLayerProps {
   onPressFacility: (place: Place, coordinate?: Coordinate) => void;
 }
 
+function FacilityMarker({
+  place,
+  isSelected,
+  onPressFacility,
+}: {
+  place: Place;
+  isSelected: boolean;
+  onPressFacility: FacilityLayerProps['onPressFacility'];
+}) {
+  // Tracks while the SVG icon first paints and when the selected ring changes; see useMarkerPaintWindow.
+  const tracksViewChanges = useMarkerPaintWindow(isSelected);
+
+  return (
+    <Marker
+      testID={`facility_marker_${place.id}`}
+      coordinate={place.coordinate}
+      anchor={{ x: 0.5, y: 0.5 }}
+      zIndex={isSelected ? 15 : 6}
+      tracksViewChanges={tracksViewChanges}
+      accessibilityLabel={place.name}
+      // Android names markers for TalkBack from the title, not accessibilityLabel (react-native-maps#3500).
+      title={place.name}
+      onPress={(e) => onPressFacility(place, e.nativeEvent.coordinate)}
+    >
+      <View style={styles.facilityMarkerHitArea}>
+        <View style={[styles.facilityMarker, isSelected && styles.facilityMarkerSelected]}>
+          {facilityIcon(place, markerSizes.facility * 0.62, staticColors.white)}
+        </View>
+      </View>
+      {/* Suppresses the default info window that a title would otherwise pop on tap. */}
+      <NoInfoWindow />
+    </Marker>
+  );
+}
+
 /** Google-Maps-POI-style tappable markers for facilities (masjid, food, water,
  * medical, parking, terminals, help/lost-and-found) — the legacy `LANDMARK_PLACES`
  * dataset already carries routable coordinates (see LANDMARK_NEAREST_NODE in
@@ -46,31 +83,14 @@ interface FacilityLayerProps {
 function FacilityLayerImpl({ places, selectedPlaceId, onPressFacility }: FacilityLayerProps) {
   return (
     <>
-      {places.map((place) => {
-        const isSelected = place.id === selectedPlaceId;
-        return (
-          <Marker
-            key={`facility_${place.id}`}
-            testID={`facility_marker_${place.id}`}
-            coordinate={place.coordinate}
-            anchor={{ x: 0.5, y: 0.5 }}
-            zIndex={isSelected ? 15 : 6}
-            tracksViewChanges={false}
-            accessibilityLabel={place.name}
-            // Android names markers for TalkBack from the title, not accessibilityLabel (react-native-maps#3500).
-            title={place.name}
-            onPress={(e) => onPressFacility(place, e.nativeEvent.coordinate)}
-          >
-            <View style={styles.facilityMarkerHitArea}>
-              <View style={[styles.facilityMarker, isSelected && styles.facilityMarkerSelected]}>
-                {facilityIcon(place, markerSizes.facility * 0.62, staticColors.white)}
-              </View>
-            </View>
-            {/* Suppresses the default info window that a title would otherwise pop on tap. */}
-            <Callout tooltip><View /></Callout>
-          </Marker>
-        );
-      })}
+      {places.map((place) => (
+        <FacilityMarker
+          key={`facility_${place.id}`}
+          place={place}
+          isSelected={place.id === selectedPlaceId}
+          onPressFacility={onPressFacility}
+        />
+      ))}
     </>
   );
 }

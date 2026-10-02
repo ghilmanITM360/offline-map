@@ -5,7 +5,8 @@
 
 import React from 'react';
 import { View } from 'react-native';
-import { Callout, Marker } from 'react-native-maps';
+import { Marker } from 'react-native-maps';
+import { NoInfoWindow } from './NoInfoWindow';
 
 import { V2GateLayer } from '../../../services/V2MapRenderingService';
 import { Coordinate } from '../../../models/types';
@@ -68,7 +69,7 @@ function GateLayerImpl({ gates, focused = false, onPressGate, keyPrefix }: GateL
           >
             {needsWiderHitArea ? <View style={styles.v2GateMarkerHitArea}>{dot}</View> : dot}
             {/* A title alone makes Android pop a default info window on tap; an empty tooltip callout suppresses it. */}
-            <Callout tooltip><View /></Callout>
+            <NoInfoWindow />
           </Marker>
         );
       })}

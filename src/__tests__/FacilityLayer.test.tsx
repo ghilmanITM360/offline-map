@@ -4,9 +4,10 @@
  */
 
 import React from 'react';
-import { render, screen } from './test-utils';
+import { act, render, screen } from './test-utils';
 
 import { FacilityLayer } from '../views/components/map/FacilityLayer';
+import { MARKER_PAINT_MS } from '../views/components/map/useMarkerPaintWindow';
 import { V1Place } from '../models/types';
 
 function makePlace(overrides: Partial<V1Place> = {}): V1Place {
@@ -34,5 +35,39 @@ describe('FacilityLayer — marker accessibility (#151)', () => {
     await render(<FacilityLayer places={[makePlace()]} onPressFacility={jest.fn()} />);
 
     expect(screen.getByLabelText('Food Court 1')).toBeTruthy();
+  });
+});
+
+describe('FacilityLayer — marker rendering (#128 C)', () => {
+  beforeEach(() => jest.useFakeTimers());
+  afterEach(() => jest.useRealTimers());
+
+  const tracks = () => screen.getByTestId('facility_marker_LM_FOOD_01').props.tracksViewChanges;
+
+  // With tracksViewChanges={false} from the first frame, Android freezes the marker bitmap before the
+  // lucide SVG child has painted and the facility icons never appear on the map.
+  test('tracks view changes while the icon first paints, then freezes the bitmap', async () => {
+    await render(<FacilityLayer places={[makePlace()]} onPressFacility={jest.fn()} />);
+    expect(tracks()).toBe(true);
+
+    await act(async () => {
+      jest.advanceTimersByTime(MARKER_PAINT_MS + 100);
+    });
+    expect(tracks()).toBe(false);
+  });
+
+  test('tracks again briefly when the selected style changes, so the gold ring is captured', async () => {
+    const view = await render(<FacilityLayer places={[makePlace()]} onPressFacility={jest.fn()} />);
+    await act(async () => {
+      jest.advanceTimersByTime(MARKER_PAINT_MS + 100);
+    });
+    expect(tracks()).toBe(false);
+
+    await view.rerender(<FacilityLayer places={[makePlace()]} selectedPlaceId="LM_FOOD_01" onPressFacility={jest.fn()} />);
+    expect(tracks()).toBe(true);
+    await act(async () => {
+      jest.advanceTimersByTime(MARKER_PAINT_MS + 100);
+    });
+    expect(tracks()).toBe(false);
   });
 });
