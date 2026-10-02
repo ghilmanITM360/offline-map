@@ -142,6 +142,23 @@ describe('LocationSheet (routePreview) — start option selection', () => {
     expect(screen.getByText('Block 1')).toBeOnTheScreen();
   });
 
+  test('an unroutable gate says what to do, not "connector verification" (#128 E)', async () => {
+    mockedUseDirectionsViewModel.mockReturnValue(baseViewModel());
+    await renderWithFooter(
+      <LocationSheet
+        mode="routePreview"
+        destination={{
+          ...unavailableCandidatePlace,
+          unavailableReason: 'Gate 18 needs connector verification before routing.',
+        }}
+        onClose={onCloseSpy}
+      />,
+    );
+
+    expect(screen.getByText("Gate 18 isn't ready for directions yet. Choose another place.")).toBeOnTheScreen();
+    expect(screen.queryByText(/connector verification/)).not.toBeOnTheScreen();
+  });
+
   test('defaults to current GPS location without showing the start picker first', async () => {
     mockedUseDirectionsViewModel.mockReturnValue(baseViewModel());
     await renderWithFooter(<LocationSheet mode="routePreview" destination={destination} onClose={onCloseSpy} />);

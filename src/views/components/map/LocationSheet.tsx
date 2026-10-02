@@ -50,6 +50,7 @@ import { SearchBarField } from '../common/SearchBarField';
 import { backChevron, forwardChevron } from '../common/directionalIcons';
 import { directionsSheetColors, radii, staticColors } from '../../../theme';
 import { placeCategoryLabel } from '../../../utils/placeCategoryLabel';
+import { unavailableReasonCopy } from '../../../utils/unavailableReasonCopy';
 import { directionsOfflineCaption } from '../../../utils/directionsOfflineCopy';
 import { DirectionsHeader, OfflineInfo, RouteEndpointCard, StartOptionCard } from './DirectionsSheetParts';
 import { publishDirectionsFooter, useDirectionsFooterHeight } from './DirectionsSheetFooter';
@@ -564,7 +565,7 @@ function RoutePreviewSection({
                   <Card variant="warning" style={styles.statusCard}>
                     <Text style={[styles.statusTitle, styles.statusTitleWarning]}>Heads up</Text>
                     <Text style={styles.statusText}>
-                      {destination.verificationWarning ?? destination.unavailableReason}
+                      {destination.verificationWarning ?? unavailableReasonCopy(destination.unavailableReason)}
                     </Text>
                   </Card>
                 )}
@@ -858,7 +859,7 @@ function PlaceSection(props: Extract<LocationSheetProps, { mode: 'preview' | 'de
         {(place.verificationWarning || place.unavailableReason) && (
           <View style={sheetStyles.placeWarningBanner}>
             <Text style={sheetStyles.placeWarningBannerText}>
-              {place.verificationWarning ?? place.unavailableReason}
+              {place.verificationWarning ?? unavailableReasonCopy(place.unavailableReason)}
             </Text>
           </View>
         )}
@@ -991,7 +992,7 @@ function PlaceSection(props: Extract<LocationSheetProps, { mode: 'preview' | 'de
             accessibilityLabel="Share location"
             onPress={() => {
               if (!place.coordinate) {
-                Alert.alert('Place unavailable', place.unavailableReason ?? `${place.name} is not available on the map yet.`);
+                Alert.alert('Place unavailable', unavailableReasonCopy(place.unavailableReason) ?? `${place.name} is not available on the map yet.`);
                 return;
               }
               const { latitude, longitude } = place.coordinate;
