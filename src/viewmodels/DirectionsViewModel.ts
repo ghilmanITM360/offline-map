@@ -586,7 +586,9 @@ export function useDirectionsViewModel(destination: Place | null) {
     routeRefreshing,
     handleStartNavigation,
     showRememberedStartAction: rememberedLocationAvailable,
-    showManualStartSearch: isEditingManualStart || startSource === 'manual_place',
+    // Editing mode only. `startSource === 'manual_place'` records where the start came from; it
+    // must not keep the picker open after a place is chosen (#222 / #131).
+    showManualStartSearch: isEditingManualStart,
     canStartNavigation: isV2Destination
       ? v2NavigationStartCheck.canStart && navigationLocationCapability.canStart
       : Boolean(route) && navigationLocationCapability.canStart,
