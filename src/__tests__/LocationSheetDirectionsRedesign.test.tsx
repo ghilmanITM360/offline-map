@@ -330,9 +330,9 @@ describe('Get Directions redesign — truthful offline copy', () => {
   test('caption branches', () => {
     expect(directionsOfflineCaption(undefined, false)).toBe('Venue routes work without internet.');
     expect(directionsOfflineCaption('offline-osm', false)).toBe('Venue routes work without internet.');
-    expect(directionsOfflineCaption(undefined, true)).toBe(
-      'Venue routes work without internet. The background map picture may not load offline.',
-    );
+    // The map banner already says the imagery is missing; the sheet must not repeat it (#222 UX-01).
+    expect(directionsOfflineCaption(undefined, true)).toBeNull();
+    expect(directionsOfflineCaption('offline-osm', true)).toBeNull();
     expect(directionsOfflineCaption('google', false)).toBeNull();
     expect(directionsOfflineCaption('direct-guide', true)).toBeNull();
   });
@@ -340,16 +340,15 @@ describe('Get Directions redesign — truthful offline copy', () => {
   test('never claims offline maps or all-information availability', () => {
     const all = [
       directionsOfflineCaption(undefined, false),
-      directionsOfflineCaption(undefined, true),
     ].join(' ');
     expect(all).not.toMatch(/all maps|all .*information|Works Offline|download/i);
   });
 
-  test('venue routes show the caption and the basemap note when imagery is unavailable', async () => {
+  test('imagery unavailable: the map banner owns the message, the sheet adds no second one', async () => {
     mockedVm.mockReturnValue(vm({ loadState: 'ready', route }));
     await renderSheet({ basemapOffline: true } as never);
-    expect(screen.getByText(/Venue routes work without internet\./)).toBeOnTheScreen();
-    expect(screen.getByText(/background map picture may not load offline/)).toBeOnTheScreen();
+    expect(screen.queryByText(/without internet/)).not.toBeOnTheScreen();
+    expect(screen.queryByText(/background map picture/)).not.toBeOnTheScreen();
   });
 
   test.each(['google', 'direct-guide'] as const)('%s routes make no offline claim', async (provider) => {
