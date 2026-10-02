@@ -21,7 +21,8 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import MapView, { Callout, Marker, Polygon, Polyline, PROVIDER_GOOGLE, LocalTile } from 'react-native-maps';
+import MapView, { Marker, Polygon, Polyline, PROVIDER_GOOGLE, LocalTile } from 'react-native-maps';
+import { NoInfoWindow } from '../components/map/NoInfoWindow';
 import {
   Menu,
   Navigation,
@@ -1376,6 +1377,8 @@ export function HomeScreen() {
             showsUserLocation={false}
             showsMyLocationButton={false}
             showsCompass={false}
+            // Google's marker toolbar (open in Maps / directions) leaves the app and needs internet.
+            toolbarEnabled={false}
             scrollEnabled={!layersSheetVisible}
             zoomEnabled={!layersSheetVisible}
             rotateEnabled={!layersSheetVisible && !settings.keepNorthFixed}
@@ -1636,7 +1639,7 @@ export function HomeScreen() {
               <View testID="selected-place-marker" style={styles.selectedMarker}>
                 <MapPin size={markerSizes.destination} color={staticColors.gateAccent} fill={staticColors.gateAccent} />
               </View>
-              <Callout tooltip><View /></Callout>
+              <NoInfoWindow />
             </Marker>
           )}
 
@@ -1646,7 +1649,7 @@ export function HomeScreen() {
               <View testID="preview-destination-marker" style={styles.selectedMarker}>
                 <MapPin size={markerSizes.destination} color={staticColors.gateAccent} fill={staticColors.gateAccent} />
               </View>
-              <Callout tooltip><View /></Callout>
+              <NoInfoWindow />
             </Marker>
           )}
 
@@ -1666,7 +1669,7 @@ export function HomeScreen() {
               <View testID="preview-start-marker" style={styles.previewStartMarker}>
                 <Navigation size={13} color={staticColors.white} />
               </View>
-              <Callout tooltip><View /></Callout>
+              <NoInfoWindow />
             </Marker>
           )}
           </MapView>

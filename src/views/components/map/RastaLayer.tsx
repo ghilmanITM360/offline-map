@@ -5,7 +5,8 @@
 
 import React from 'react';
 import { View } from 'react-native';
-import { Callout, Marker, Polyline } from 'react-native-maps';
+import { Marker, Polyline } from 'react-native-maps';
+import { NoInfoWindow } from './NoInfoWindow';
 
 import { V2PolylineLayer } from '../../../services/V2MapRenderingService';
 import { Coordinate } from '../../../models/types';
@@ -92,11 +93,11 @@ function RastaLayerImpl({ rastas, variant, focused = false, keyPrefix, onPressRa
                     callout stops the title popping a default info window. */}
                 <Marker coordinate={start} anchor={{ x: 0.5, y: 0.5 }} zIndex={6} tracksViewChanges={false} title={`${rasta.label} start`}>
                   <View style={[dotStyle, { borderColor: dotColor }]} />
-                  <Callout tooltip><View /></Callout>
+                  <NoInfoWindow />
                 </Marker>
                 <Marker coordinate={end} anchor={{ x: 0.5, y: 0.5 }} zIndex={6} tracksViewChanges={false} title={`${rasta.label} end`}>
                   <View style={[dotStyle, { borderColor: dotColor }]} />
-                  <Callout tooltip><View /></Callout>
+                  <NoInfoWindow />
                 </Marker>
               </>
             )}

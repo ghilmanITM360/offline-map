@@ -5,7 +5,8 @@
 
 import React, { useMemo } from 'react';
 import { Animated, Text, View } from 'react-native';
-import { Callout, Marker, Polyline } from 'react-native-maps';
+import { Marker, Polyline } from 'react-native-maps';
+import { NoInfoWindow } from '../map/NoInfoWindow';
 import { Navigation, MapPin } from 'lucide-react-native';
 
 import { V2MapRenderingService } from '../../../services/V2MapRenderingService';
@@ -86,14 +87,14 @@ export function NavigationMapLayersV2({ overlay }: { overlay: NavigationOverlayV
             <Text style={styles.startMarkerLabelText}>START</Text>
           </View>
         </View>
-        <Callout tooltip><View /></Callout>
+        <NoInfoWindow />
       </Marker>}
 
       {markerOwnership.showNavigationDestination && <Marker testID="navigation-destination-marker" coordinate={destinationCoordinate} title={route.destination.label} accessibilityLabel={route.destination.label} anchor={{ x: 0.5, y: 1 }} tracksViewChanges={false}>
         <View style={styles.destinationMarker}>
           <MapPin size={markerSizes.destination} color={staticColors.gateAccent} fill={staticColors.gateAccent} />
         </View>
-        <Callout tooltip><View /></Callout>
+        <NoInfoWindow />
       </Marker>}
 
       {markerOwnership.showNavigationUser && snappedLocation && (
@@ -130,7 +131,7 @@ export function NavigationMapLayersV2({ overlay }: { overlay: NavigationOverlayV
               </View>
             )}
           </View>
-          <Callout tooltip><View /></Callout>
+          <NoInfoWindow />
         </Marker>
       )}
     </>
