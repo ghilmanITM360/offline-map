@@ -278,7 +278,7 @@ describe('Get Directions redesign — pinned footer', () => {
 
     const scroll = within(screen.getByTestId('sheet-scroll'));
     expect(scroll.getByText('Route ready')).toBeOnTheScreen();
-    expect(scroll.getByText('Venue routes work without internet.')).toBeOnTheScreen();
+    expect(scroll.getByText('Ijtema routes work without internet.')).toBeOnTheScreen();
     expect(scroll.queryByRole('button', { name: 'Start Navigation' })).not.toBeOnTheScreen();
     expect(screen.getByRole('button', { name: 'Start Navigation' })).toBeOnTheScreen();
   });
@@ -331,8 +331,8 @@ describe('Get Directions redesign — pinned footer', () => {
 
 describe('Get Directions redesign — truthful offline copy', () => {
   test('caption branches', () => {
-    expect(directionsOfflineCaption(undefined, false)).toBe('Venue routes work without internet.');
-    expect(directionsOfflineCaption('offline-osm', false)).toBe('Venue routes work without internet.');
+    expect(directionsOfflineCaption(undefined, false)).toBe('Ijtema routes work without internet.');
+    expect(directionsOfflineCaption('offline-osm', false)).toBe('Ijtema routes work without internet.');
     // The map banner already says the imagery is missing; the sheet must not repeat it (#222 UX-01).
     expect(directionsOfflineCaption(undefined, true)).toBeNull();
     expect(directionsOfflineCaption('offline-osm', true)).toBeNull();
@@ -366,7 +366,7 @@ describe('Get Directions redesign — truthful offline copy', () => {
     );
     await renderSheet();
 
-    expect(screen.getByText('Venue routes work without internet.')).toBeOnTheScreen();
+    expect(screen.getByText('Ijtema routes work without internet.')).toBeOnTheScreen();
   });
 });
 

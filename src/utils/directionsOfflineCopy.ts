@@ -5,7 +5,7 @@
 
 import type { OutsideRouteProviderId } from '../models/outsideRouting';
 
-const VENUE_OFFLINE = 'Venue routes work without internet.';
+const VENUE_OFFLINE = 'Ijtema routes work without internet.';
 
 /**
  * Offline claim for the Get Directions sheet. Only the bundled venue graph (and the

@@ -1069,7 +1069,7 @@ describe('HomeScreen — status banners are announced (#128)', () => {
     useAppStore.setState({ hasInternet: false, offlineMapStatus: 'not_downloaded' });
     await render(<HomeScreen />);
 
-    const banner = screen.getByText('Downloaded background map unavailable. Ijtema routes still work.').parent;
+    const banner = screen.getByText('No internet. Ijtema routes still work.').parent;
     expect(banner?.props.accessibilityLiveRegion).toBe('polite');
   });
 
@@ -1080,7 +1080,7 @@ describe('HomeScreen — status banners are announced (#128)', () => {
     useAppStore.setState({ hasInternet: false, offlineMapStatus: 'not_downloaded' });
     await render(<HomeScreen />);
 
-    expect(screen.getByText('Downloaded background map unavailable. Ijtema routes still work.')).toBeOnTheScreen();
+    expect(screen.getByText('No internet. Ijtema routes still work.')).toBeOnTheScreen();
     expect(screen.queryByText('Background map not downloaded. Ijtema routes still work.')).not.toBeOnTheScreen();
   });
 });

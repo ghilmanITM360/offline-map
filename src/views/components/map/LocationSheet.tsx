@@ -549,7 +549,7 @@ function RoutePreviewSection({
                 active={startSource === 'manual_place'}
                 icon={<Navigation size={26} color={startSource === 'manual_place' ? directionsSheetColors.brandText : directionsSheetColors.brand} />}
                 title="Choose start manually"
-                subtitle="Select gate, rasta, block, or point"
+                subtitle="Gate, rasta or block"
                 onPress={() => onOpenDirectory?.('start')}
               />
 

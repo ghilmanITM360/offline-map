@@ -127,7 +127,7 @@ export function DownloadMapScreen() {
   const confirmRemoveDamagedData = () => {
     Alert.alert(
       'Remove damaged map data?',
-      'This deletes the saved map data on this phone. Venue routes still work without it.',
+      'This deletes the saved map data on this phone. Ijtema routes still work without it.',
       [
         { text: 'Cancel', style: 'cancel' },
         { text: 'Remove', style: 'destructive', onPress: repairDownload },
@@ -219,7 +219,7 @@ export function DownloadMapScreen() {
                 <Wifi size={18} color={staticColors.iconMuted} style={styles.setupInfoIcon} />
                 <View style={styles.setupNote}>
                   <Text style={styles.setupText}>The satellite map background needs internet.</Text>
-                  <Text style={styles.setupText}>Venue routes and gates always work offline.</Text>
+                  <Text style={styles.setupText}>Ijtema routes and gates always work offline.</Text>
                 </View>
               </View>
             )}
