@@ -277,6 +277,8 @@ function RoutePreviewSection({
     setShowStartOptions(false);
     setDirectoryChoice(null);
   }, [directoryChoice, setDirectoryChoice, setManualStartPlace]);
+  // A choice that arrives after the sheet is gone must not leak into a later journey.
+  useEffect(() => () => setDirectoryChoice(null), [setDirectoryChoice]);
   const startIcon =
     startSource === 'remembered_location' || startSource === 'device_last_known' ? (
       <MapPin size={24} color={directionsSheetColors.brand} />

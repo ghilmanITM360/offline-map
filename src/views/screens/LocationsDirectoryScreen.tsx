@@ -80,7 +80,9 @@ export function LocationsDirectoryScreen() {
   const currentLocation = useAppStore((s) => s.currentLocation);
   const setPendingDirectorySelection = useAppStore((s) => s.setPendingDirectorySelection);
   // Set by Get Directions when it opens the Directory to choose a start or destination (null = plain browsing).
-  const purpose = useAppStore((s) => s.directoryPurpose);
+  // Read once at mount: this screen is pushed for one question, and clearing the store's copy on choose must not
+  // flip the title back to "Find your way" while the screen is still animating out.
+  const [purpose] = useState(() => useAppStore.getState().directoryPurpose);
   const setDirectoryPurpose = useAppStore((s) => s.setDirectoryPurpose);
   const setDirectoryChoice = useAppStore((s) => s.setDirectoryChoice);
   const recentSearches = useAppStore((s) => s.recentSearches);
