@@ -18,6 +18,7 @@ import { MapFeatureFlagsService } from '../services/MapFeatureFlagsService';
 import { IJTEMA_MAP_REGION } from '../data/ijtema';
 import { DEFAULT_MAP_ZOOM as DEFAULT_HOME_MAP_ZOOM, estimateZoomFromRegion } from '../utils/mapZoom';
 import { formatLastKnownAge } from '../utils/formatLastKnownAge';
+import { unavailableReasonCopy } from '../utils/unavailableReasonCopy';
 import { useCameraManager, CompassMode, PLACE_SELECTION_CAMERA_DURATION_MS } from './useCameraManager';
 
 declare const __DEV__: boolean;
@@ -173,7 +174,7 @@ export function useHomeViewModel({ isFocused = true }: { isFocused?: boolean } =
     if (!place.coordinate) {
       // Nothing for the camera to pan to — open the sheet right away so the
       // "place unavailable" info/alert isn't itself delayed.
-      Alert.alert('Place unavailable', place.unavailableReason ?? `${place.name} is not available on the map yet.`);
+      Alert.alert('Place unavailable', unavailableReasonCopy(place.unavailableReason) ?? `${place.name} is not available on the map yet.`);
       openSheet();
       return;
     }
