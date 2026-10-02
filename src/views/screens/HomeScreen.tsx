@@ -1822,9 +1822,14 @@ export function HomeScreen() {
           </View>
         )}
 
-        {mode !== 'NAVIGATION' && isOffline && !offlineData.isDownloaded && (
+        {/* One message per state: when the banner above already explains that the background map is missing,
+            this card only appears to carry the download action, without repeating the explanation. */}
+        {mode !== 'NAVIGATION' && isOffline && !offlineData.isDownloaded
+          && (!showMapWarningBanner || OfflineMapService.isOfflineTileDownloadAvailable()) && (
           <View style={styles.emptyOfflineState}>
-            <Text style={styles.emptyOfflineTitle}>Background map not downloaded. Ijtema routes still work.</Text>
+            {!showMapWarningBanner && (
+              <Text style={styles.emptyOfflineTitle}>Background map not downloaded. Ijtema routes still work.</Text>
+            )}
             {OfflineMapService.isOfflineTileDownloadAvailable() && (
               <Pressable
                 style={styles.emptyOfflineButton}

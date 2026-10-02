@@ -1070,6 +1070,17 @@ describe('HomeScreen — status banners are announced (#128)', () => {
     const banner = screen.getByText('Downloaded background map unavailable. Ijtema routes still work.').parent;
     expect(banner?.props.accessibilityLiveRegion).toBe('polite');
   });
+
+  // Offline with no downloaded map showed the banner AND a bottom card saying the same thing in other words;
+  // the card was also clipped behind the zoom buttons (#128 E: one message per state).
+  test('offline without a downloaded map says it once, in the banner', async () => {
+    mockedUseHomeViewModel.mockImplementation(() => ({ ...useFakeHomeViewModel(), isOffline: true, offlineData: { isDownloaded: false } }));
+    useAppStore.setState({ hasInternet: false, offlineMapStatus: 'not_downloaded' });
+    await render(<HomeScreen />);
+
+    expect(screen.getByText('Downloaded background map unavailable. Ijtema routes still work.')).toBeOnTheScreen();
+    expect(screen.queryByText('Background map not downloaded. Ijtema routes still work.')).not.toBeOnTheScreen();
+  });
 });
 
 describe('HomeScreen — resolved base-map rendering', () => {
