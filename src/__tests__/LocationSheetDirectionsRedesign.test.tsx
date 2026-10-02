@@ -261,6 +261,22 @@ describe('Get Directions redesign — pinned footer', () => {
     expect(within(screen.getByTestId('sheet-footer')).getByText('Fix is stale.')).toBeOnTheScreen();
   });
 
+  test('TalkBack reads header and content before the footer (#128 B)', async () => {
+    mockedVm.mockReturnValue(ready());
+    await renderSheet();
+
+    // TalkBack flattens plain view groups and sorts the leaves by overlap-sensitive geometry, which
+    // interleaved the footer's rows with the body's. Body and footer must each stay one node.
+    const body = screen.getByTestId('directions-body');
+    expect(body.props.collapsable).toBe(false);
+    expect(body.props.importantForAccessibility).toBe('yes');
+    const footer = within(screen.getByTestId('sheet-footer')).getByTestId('directions-footer');
+    expect(footer.props.importantForAccessibility).toBe('yes');
+
+    // The summary is one stop (eta and distance included), not three that Android sorts apart.
+    expect(within(footer).getByLabelText('Route ready, 4 min, 250 m')).toBeOnTheScreen();
+  });
+
   test('enabled CTA keeps its plain accessible name', async () => {
     mockedVm.mockReturnValue(ready());
     await renderSheet();
