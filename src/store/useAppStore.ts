@@ -28,6 +28,8 @@ import { V2PlaceAdapter } from '../services/V2PlaceAdapter';
 import { isValidCoordinate } from '../utils/isValidCoordinate';
 
 export type RouteSelectionMode = 'idle' | 'selectingStart' | 'selectingDestination';
+/** What the Directory is being opened to choose; null = plain browsing. */
+export type DirectoryPurpose = 'start' | 'destination';
 
 function sanitizePersistedPlace(place: Place | null | undefined): Place | null {
   if (!place || typeof place !== 'object' || Array.isArray(place) || typeof place.id !== 'string') return null;
@@ -169,6 +171,13 @@ interface AppState {
   // directory screen may set this before HomeScreen has even mounted.
   pendingDirectorySelection: Place | null;
   setPendingDirectorySelection: (place: Place | null) => void;
+  // The Directory is the one place chooser. An initiator (Get Directions) sets the purpose before opening it, the
+  // Directory shows that question and, instead of browsing, stores the chosen place in directoryChoice and returns;
+  // the initiator consumes (and clears) the choice. Both are ephemeral and never persisted.
+  directoryPurpose: DirectoryPurpose | null;
+  setDirectoryPurpose: (purpose: DirectoryPurpose | null) => void;
+  directoryChoice: { purpose: DirectoryPurpose; place: Place } | null;
+  setDirectoryChoice: (choice: { purpose: DirectoryPurpose; place: Place } | null) => void;
 
   // --- Route planner (From/To, Phase 3) ---
   routePlannerOrigin: Place | null;       // null = use current GPS
@@ -444,6 +453,10 @@ export const useAppStore = create<AppState>()(
       // --- Locations directory hand-off ---
       pendingDirectorySelection: null,
       setPendingDirectorySelection: (place) => set({ pendingDirectorySelection: place }),
+      directoryPurpose: null,
+      setDirectoryPurpose: (purpose) => set({ directoryPurpose: purpose }),
+      directoryChoice: null,
+      setDirectoryChoice: (choice) => set({ directoryChoice: choice }),
 
       // --- Route planner ---
       routePlannerOrigin: null,

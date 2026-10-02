@@ -12,8 +12,9 @@ assert(screen.includes('Use my current location'), 'Directions screen must inclu
 assert(screen.includes('Find best eligible official gate automatically'), 'Directions screen should explain destination-aware current-location routing behavior');
 assert(screen.includes('Use last known location'), 'Directions screen should use clear last-known location labeling');
 assert(screen.includes('Choose start manually'), 'Directions screen should expose manual start action explicitly');
-assert(screen.includes('Search start point: gate, rasta, block'), 'Directions screen must include manual start search');
-assert(screen.includes('showManualStartSearch'), 'Directions manual start search should only render while editing manual start');
+// The Directory is the one place chooser: the sheet opens it for a start instead of hosting its own search box (#222).
+assert(!screen.includes('Search start point: gate, rasta, block'), 'Directions screen must not host a second start search');
+assert(screen.includes("onOpenDirectory?.('start')"), 'Choose start manually must open the Directory to choose a start');
 assert(screen.includes('rememberedLocationAvailable'), 'Directions should disable last-known action when no remembered location exists');
 assert(screen.includes('Change destination'), 'Directions screen must include destination change action');
 assert(screen.includes('ScrollView'), 'Directions screen should use scroll layout');

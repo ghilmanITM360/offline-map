@@ -4,7 +4,7 @@
  */
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Animated, BackHandler, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Animated, BackHandler, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -16,6 +16,7 @@ import { V2Place } from '../../models/types';
 import { DestinationCategoryId, PublicDestinationsService } from '../../services/PublicDestinationsService';
 import { V2PlaceAdapter } from '../../services/V2PlaceAdapter';
 import { usePressScale } from '../../viewmodels/usePressScale';
+import { unavailableReasonCopy } from '../../utils/unavailableReasonCopy';
 import { SearchBarField } from '../components/common/SearchBarField';
 import { DestinationRow } from '../components/directory/DestinationRow';
 import { DestinationBlockGrid } from '../components/directory/DestinationBlockGrid';
@@ -78,6 +79,10 @@ export function LocationsDirectoryScreen() {
   const navigation = useNavigation<Nav>();
   const currentLocation = useAppStore((s) => s.currentLocation);
   const setPendingDirectorySelection = useAppStore((s) => s.setPendingDirectorySelection);
+  // Set by Get Directions when it opens the Directory to choose a start or destination (null = plain browsing).
+  const purpose = useAppStore((s) => s.directoryPurpose);
+  const setDirectoryPurpose = useAppStore((s) => s.setDirectoryPurpose);
+  const setDirectoryChoice = useAppStore((s) => s.setDirectoryChoice);
   const recentSearches = useAppStore((s) => s.recentSearches);
 
   // Deliberately ephemeral component state — search text, category filter, and scroll
@@ -118,12 +123,30 @@ export function LocationsDirectoryScreen() {
     }
   }, [navigation]);
 
+  // Leaving without choosing (Cancel, hardware back) must not leave the purpose behind for the next visit.
+  useEffect(() => () => setDirectoryPurpose(null), [setDirectoryPurpose]);
+
   const handleSelect = useCallback(
     (place: V2Place) => {
+      if (purpose) {
+        // An unavailable place is never a valid start or destination: say so and stay here.
+        const usable = purpose === 'start' ? place.isStartRoutable !== false : place.isRoutable !== false;
+        if (!usable) {
+          Alert.alert(
+            'Place unavailable',
+            unavailableReasonCopy(place.unavailableReason) ?? `${place.name} is not available on the map yet.`,
+          );
+          return;
+        }
+        setDirectoryChoice({ purpose, place });
+        setDirectoryPurpose(null);
+        goToMap();
+        return;
+      }
       setPendingDirectorySelection(place);
       goToMap();
     },
-    [goToMap, setPendingDirectorySelection],
+    [goToMap, purpose, setDirectoryChoice, setDirectoryPurpose, setPendingDirectorySelection],
   );
 
   // Android back: dismiss active search/filter state first (mirrors HomeScreen's own
@@ -192,15 +215,17 @@ export function LocationsDirectoryScreen() {
         {/* Short title (was two lines: a long question plus a subtitle that just repeated what the
             search placeholder already says). It may wrap: at 200% font on a 320 dp window one line
             truncated to "Find your…" beside the Map pill (#128 A). */}
-        <Text style={styles.title}>Find your way</Text>
+        <Text style={styles.title} accessibilityRole="header">
+          {purpose === 'start' ? 'Where are you starting from?' : purpose === 'destination' ? 'Where do you want to go?' : 'Find your way'}
+        </Text>
         <Pressable
           style={styles.viewMapButton}
           onPress={goToMap}
           accessibilityRole="button"
-          accessibilityLabel="View map"
+          accessibilityLabel={purpose ? 'Cancel and go back' : 'View map'}
         >
-          <MapIcon size={18} color={staticColors.info} />
-          <Text style={styles.viewMapLabel}>Map</Text>
+          {purpose ? <X size={18} color={staticColors.info} /> : <MapIcon size={18} color={staticColors.info} />}
+          <Text style={styles.viewMapLabel}>{purpose ? 'Cancel' : 'Map'}</Text>
         </Pressable>
       </View>
 

@@ -4,7 +4,7 @@
  */
 
 import React from 'react';
-import { DeviceEventEmitter, StyleSheet } from 'react-native';
+import { Alert, DeviceEventEmitter, StyleSheet } from 'react-native';
 import { act, fireEvent, render, screen } from './test-utils';
 
 import { LocationsDirectoryScreen } from '../views/screens/LocationsDirectoryScreen';
@@ -317,5 +317,64 @@ describe('LocationsDirectoryScreen — Android hardware back', () => {
 
     expect(screen.getByPlaceholderText('Search destinations').props.value).toBe('');
     expect(await screen.findByText(/^Blocks \(\d+\)$/)).toBeOnTheScreen();
+  });
+});
+
+describe('LocationsDirectoryScreen — choosing a start or destination for Get Directions (#222)', () => {
+  beforeEach(() => {
+    jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+  });
+
+  test('asks the start question, and Cancel goes back without choosing', async () => {
+    const navigation = mockNav({ canGoBack: true });
+    useAppStore.getState().setDirectoryPurpose('start');
+    await render(<LocationsDirectoryScreen />);
+
+    expect(screen.getByRole('header', { name: 'Where are you starting from?' })).toBeOnTheScreen();
+    await act(async () => fireEvent.press(screen.getByLabelText('Cancel and go back')));
+
+    expect(navigation.goBack).toHaveBeenCalledTimes(1);
+    expect(useAppStore.getState().directoryChoice).toBeNull();
+  });
+
+  test('choosing a gate stores the choice for the initiator and returns, without browsing the place', async () => {
+    const navigation = mockNav({ canGoBack: true });
+    useAppStore.getState().setDirectoryPurpose('start');
+    await render(<LocationsDirectoryScreen />);
+
+    await act(async () => {
+      fireEvent.press(screen.getByLabelText(`${firstGate.name}, Gate`));
+    });
+
+    expect(useAppStore.getState().directoryChoice).toEqual({ purpose: 'start', place: firstGate });
+    expect(useAppStore.getState().directoryPurpose).toBeNull();
+    expect(useAppStore.getState().pendingDirectorySelection).toBeNull();
+    expect(navigation.goBack).toHaveBeenCalledTimes(1);
+  });
+
+  test('an unavailable place is never a valid start: say so and stay in the Directory', async () => {
+    const navigation = mockNav({ canGoBack: true });
+    useAppStore.getState().setDirectoryPurpose('start');
+    await render(<LocationsDirectoryScreen />);
+    const unavailable = PublicDestinationsService.getByCategory('gates').find((gate) => gate.isStartRoutable === false);
+    expect(unavailable).toBeDefined();
+
+    await act(async () => {
+      fireEvent.press(screen.getByLabelText(new RegExp(`^${unavailable!.name}, Gate, navigation unavailable`)));
+    });
+
+    expect(Alert.alert).toHaveBeenCalledWith('Place unavailable', expect.stringContaining("isn't ready for directions yet"));
+    expect(useAppStore.getState().directoryChoice).toBeNull();
+    expect(navigation.goBack).not.toHaveBeenCalled();
+  });
+
+  test('leaving the Directory without choosing does not leave the purpose behind', async () => {
+    mockNav({ canGoBack: true });
+    useAppStore.getState().setDirectoryPurpose('destination');
+    const view = await render(<LocationsDirectoryScreen />);
+
+    await view.unmount();
+
+    expect(useAppStore.getState().directoryPurpose).toBeNull();
   });
 });
