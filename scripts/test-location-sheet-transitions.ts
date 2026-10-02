@@ -32,8 +32,8 @@ assert(
   'The route status section (loading/error/ready/hint) must be wrapped in FadeContent keyed on loadState',
 );
 assert(
-  source.includes("<FadeContent transitionKey={showDestinationOptions ? 'destOptions' : 'destSummary'}>"),
-  'The "Going to" destination section (summary <-> inline destination search) must be wrapped in FadeContent, matching the start-source section',
+  source.includes('<FadeContent transitionKey="destSummary">'),
+  'The "Going to" destination section must be wrapped in FadeContent, matching the start-source section',
 );
 
 console.log('LocationSheet transition checks passed.');

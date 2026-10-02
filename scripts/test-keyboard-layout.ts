@@ -13,8 +13,9 @@ assert(home.includes('contentContainerStyle={styles.chipsContent}'), 'Home chips
 assert(directions.includes('KeyboardAvoidingView'), 'Directions must protect FROM/TO layout when keyboard opens');
 assert(directions.includes("keyboardShouldPersistTaps=\"handled\""), 'Directions search result taps must work while keyboard is open');
 assert(directions.includes("keyboardDismissMode=\"on-drag\""), 'Directions keyboard should dismiss on scroll');
-assert(directions.includes('onSubmitEditing={Keyboard.dismiss}'), 'Manual start search must dismiss keyboard on submit');
-assert(directions.includes('setIsEditingManualStart(false)') && directions.includes('Keyboard.dismiss()'), 'Manual start result selection must close keyboard/results');
+// #222: place search lives only in the Directory, so the sheet has no text input for the keyboard to cover.
+assert(!directions.includes('SearchBarField') && !directions.includes('TextInput'), 'Directions must not host its own place search (the Directory is the one chooser)');
+assert(directions.includes("onOpenDirectory?.('start')"), 'Manual start must hand off to the Directory');
 assert(directions.includes('Choose start manually') && directions.includes('StartOption'), 'Directions start selection must use stacked option cards on small screens');
 
 assert(guide.includes('ScrollView'), 'App Guide must scroll on small screens and large font settings');

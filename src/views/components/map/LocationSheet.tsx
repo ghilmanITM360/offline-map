@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   AccessibilityInfo,
   Animated,
@@ -14,7 +14,6 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
-  Keyboard,
   Share,
   Alert,
   useWindowDimensions,
@@ -36,7 +35,6 @@ import {
 import { useDirectionsViewModel, type StartSource } from '../../../viewmodels/DirectionsViewModel';
 import { useReducedMotion } from '../../../viewmodels/useReducedMotion';
 import { InstructionService } from '../../../services/InstructionService';
-import { SearchService } from '../../../services/SearchService';
 import { destinationFromPlace } from '../../../services/V2DirectionsService';
 import { useAppStore, type DirectoryPurpose } from '../../../store/useAppStore';
 import { Place, RoutePreview, BlockEntryPoint, Gate } from '../../../models/types';
@@ -46,7 +44,6 @@ import { AppTheme } from '../../../services/ThemeService';
 import { NAV_TRANSITION_TIMINGS } from '../../../constants/navigationTransitions';
 import { Button } from '../common/Button';
 import { Card } from '../common/Card';
-import { SearchBarField } from '../common/SearchBarField';
 import { backChevron, forwardChevron } from '../common/directionalIcons';
 import { directionsSheetColors, radii, staticColors } from '../../../theme';
 import { placeCategoryLabel } from '../../../utils/placeCategoryLabel';
@@ -221,8 +218,6 @@ function RoutePreviewSection({
   const currentLocation = useAppStore((s) => s.currentLocation);
   const distanceUnit = useAppStore((s) => s.settings.distanceUnit);
 
-  const [showDestinationOptions, setShowDestinationOptions] = useState(false);
-  const [destSearch, setDestSearch] = useState('');
   const [showGateOptions, setShowGateOptions] = useState(false);
   // #89: resolveCurrentLocation has no visual affordance while in flight (up to
   // CURRENT_POSITION_TIMEOUT_MS) without this — the tap looked like it did nothing.
@@ -277,6 +272,12 @@ function RoutePreviewSection({
     setShowStartOptions(false);
     setDirectoryChoice(null);
   }, [directoryChoice, setDirectoryChoice, setManualStartPlace]);
+  // Same hand-off for "Change destination": the caller swaps its destination, which recalculates the route.
+  useEffect(() => {
+    if (directoryChoice?.purpose !== 'destination') return;
+    setDirectoryChoice(null);
+    onChangeDestination?.(directoryChoice.place);
+  }, [directoryChoice, onChangeDestination, setDirectoryChoice]);
   // A choice that arrives after the sheet is gone must not leak into a later journey.
   useEffect(() => () => setDirectoryChoice(null), [setDirectoryChoice]);
   const startIcon =
@@ -287,13 +288,6 @@ function RoutePreviewSection({
     ) : (
       <LocateFixed size={24} color={directionsSheetColors.brand} />
     );
-
-  const destCandidates = useMemo(() => {
-    if (!showDestinationOptions || destSearch.trim().length < 2) return [];
-    return SearchService.search(destSearch, currentLocation ?? undefined)
-      .filter((candidate) => candidate.id !== destination.id)
-      .slice(0, 8);
-  }, [currentLocation, destination.id, showDestinationOptions, destSearch]);
 
   const outsideStart = isOutsideStart;
   const routeMeta = route as RoutePreviewWithV2Meta | null;
@@ -343,14 +337,11 @@ function RoutePreviewSection({
   }, [loadState]);
 
   const editingStart = showStartOptions || showManualStartSearch;
-  const editingAnything = editingStart || showDestinationOptions;
+  const editingAnything = editingStart;
   // Back from a picker returns to the Get Directions summary; only from the summary does it leave
   // the journey.
   const handleBack = () => {
-    if (showDestinationOptions) {
-      setShowDestinationOptions(false);
-      setDestSearch('');
-    } else if (editingStart) {
+    if (editingStart) {
       setShowStartOptions(false);
       setIsEditingManualStart(false);
     } else {
@@ -405,7 +396,7 @@ function RoutePreviewSection({
                 <Button
                   variant="brandTint"
                   label="Choose another destination"
-                  onPress={onChangeDestination ? () => setShowDestinationOptions(true) : onClose}
+                  onPress={onChangeDestination && onOpenDirectory ? () => onOpenDirectory('destination') : onClose}
                 />
               ) : (
                 <Button
@@ -488,73 +479,7 @@ function RoutePreviewSection({
           keyboardDismissMode="on-drag"
         >
           {!editingStart && (
-            <FadeContent transitionKey={showDestinationOptions ? 'destOptions' : 'destSummary'}>
-            {showDestinationOptions ? (
-              <View style={styles.panel}>
-                <Text accessibilityRole="header" style={styles.sectionTitle}>Where do you want to go?</Text>
-
-                <SearchBarField
-                  value={destSearch}
-                  onChangeText={setDestSearch}
-                  placeholder="Search destination: gate, rasta, block"
-                  onSubmitEditing={Keyboard.dismiss}
-                  autoFocus
-                />
-
-                {destCandidates.length > 0 && (
-                  <View style={styles.searchResults}>
-                    {destCandidates.map((candidate: Place) => {
-                      const isUnavailable = candidate.isRoutable === false;
-                      return (
-                        <Pressable
-                          key={candidate.id}
-                          style={styles.searchItem}
-                          onPress={() => {
-                            setDestSearch('');
-                            setShowDestinationOptions(false);
-                            Keyboard.dismiss();
-                            onChangeDestination?.(candidate);
-                          }}
-                          accessibilityRole="button"
-                          accessibilityLabel={
-                            isUnavailable
-                              ? `${candidate.name}, ${placeCategoryLabel(candidate.category)}, navigation unavailable`
-                              : `${candidate.name}, ${placeCategoryLabel(candidate.category)}`
-                          }
-                        >
-                          <MapPin size={16} color={staticColors.iconMuted} />
-                          <View style={styles.searchItemBody}>
-                            <Text style={[styles.searchItemName, isUnavailable && styles.searchItemNameMuted]}>
-                              {candidate.name}
-                            </Text>
-                            <Text style={styles.searchItemMeta}>
-                              {placeCategoryLabel(candidate.category)}
-                              {isUnavailable ? ' · Not yet available for routing' : ''}
-                            </Text>
-                          </View>
-                        </Pressable>
-                      );
-                    })}
-                  </View>
-                )}
-
-                {destSearch.trim().length >= 2 && destCandidates.length === 0 && (
-                  <Text style={styles.emptySearchText}>No destinations found.</Text>
-                )}
-
-                <Pressable
-                  style={styles.linkButton}
-                  onPress={() => {
-                    setShowDestinationOptions(false);
-                    setDestSearch('');
-                  }}
-                  accessibilityRole="button"
-                  accessibilityLabel="Cancel changing destination"
-                >
-                  <Text style={styles.linkButtonText}>Cancel</Text>
-                </Pressable>
-              </View>
-            ) : (
+            <FadeContent transitionKey="destSummary">
               <RouteEndpointCard
                 label="Going to"
                 helper="Your destination inside Ijtema"
@@ -564,7 +489,7 @@ function RoutePreviewSection({
                 detail={placeCategoryLabel(destination.category)}
                 actionLabel="Change destination"
                 actionAccessibilityLabel="Change destination"
-                onAction={onChangeDestination ? () => setShowDestinationOptions(true) : onClose}
+                onAction={onChangeDestination && onOpenDirectory ? () => onOpenDirectory('destination') : onClose}
               >
                 {(destination.verificationWarning || destination.unavailableReason) && (
                   <Card variant="warning" style={styles.statusCard}>
@@ -575,7 +500,6 @@ function RoutePreviewSection({
                   </Card>
                 )}
               </RouteEndpointCard>
-            )}
             </FadeContent>
           )}
 
@@ -1002,14 +926,6 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: directionsSheetColors.headingText,
   },
-  panel: {
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: directionsSheetColors.cardBorder,
-    backgroundColor: directionsSheetColors.background,
-    padding: 14,
-    gap: 12,
-  },
   options: {
     gap: 12,
   },
@@ -1059,43 +975,7 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: directionsSheetColors.brand,
   },
-  searchResults: {
-    borderWidth: 1,
-    borderColor: directionsSheetColors.cardBorder,
-    borderRadius: 12,
-    overflow: 'hidden',
-    backgroundColor: directionsSheetColors.background,
-  },
-  searchItem: {
-    flexDirection: 'row',
-    gap: 12,
-    alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: staticColors.neutralSurface,
-  },
-  searchItemBody: {
-    flex: 1,
-    gap: 2,
-  },
-  searchItemName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: staticColors.textPrimary,
-  },
   // Same AA-passing muted token DestinationRow (#96/#146) uses for unroutable places.
-  searchItemNameMuted: {
-    color: staticColors.textSecondaryStrong,
-  },
-  searchItemMeta: {
-    fontSize: 13,
-    color: staticColors.iconMuted,
-  },
-  emptySearchText: {
-    fontSize: 14,
-    color: staticColors.iconMuted,
-  },
   statusRow: {
     flexDirection: 'row',
     alignItems: 'center',

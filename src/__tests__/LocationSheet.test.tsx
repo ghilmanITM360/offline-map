@@ -322,158 +322,59 @@ describe('LocationSheet (routePreview) — start chosen in the Directory', () =>
     expect(useAppStore.getState().directoryChoice).toBeNull();
     expect(screen.queryByText('Choose start manually')).not.toBeOnTheScreen();
   });
+});
 
-  test('a destination choice is left for its own consumer', async () => {
-    const setManualStartPlace = jest.fn();
-    mockedUseDirectionsViewModel.mockReturnValue(baseViewModel({ setManualStartPlace }));
+describe('LocationSheet (routePreview) — change destination', () => {
+  afterEach(() => {
+    useAppStore.setState({ directoryChoice: null });
+  });
+
+  test('tapping "Change destination" opens the Directory instead of closing the sheet', async () => {
+    mockedUseDirectionsViewModel.mockReturnValue(baseViewModel());
+    const onOpenDirectory = jest.fn();
+    const user = userEvent.setup();
     await renderWithFooter(
-      <LocationSheet mode="routePreview" destination={destination} onClose={onCloseSpy} onOpenDirectory={jest.fn()} />,
+      <LocationSheet
+        mode="routePreview"
+        destination={destination}
+        onClose={onCloseSpy}
+        onChangeDestination={jest.fn()}
+        onOpenDirectory={onOpenDirectory}
+      />,
+    );
+
+    await user.press(screen.getByText('Change destination'));
+
+    expect(onOpenDirectory).toHaveBeenCalledWith('destination');
+    expect(onCloseSpy).not.toHaveBeenCalled();
+    // The Directory is the one place chooser: no second search box inside the sheet.
+    expect(screen.queryByPlaceholderText('Search destination: gate, rasta, block')).not.toBeOnTheScreen();
+  });
+
+  test('a destination chosen in the Directory reaches onChangeDestination and is consumed', async () => {
+    mockedUseDirectionsViewModel.mockReturnValue(baseViewModel());
+    const onChangeDestination = jest.fn();
+    await renderWithFooter(
+      <LocationSheet
+        mode="routePreview"
+        destination={destination}
+        onClose={onCloseSpy}
+        onChangeDestination={onChangeDestination}
+        onOpenDirectory={jest.fn()}
+      />,
     );
 
     await act(async () => {
       useAppStore.getState().setDirectoryChoice({ purpose: 'destination', place: candidatePlace });
     });
 
-    expect(setManualStartPlace).not.toHaveBeenCalled();
-    expect(useAppStore.getState().directoryChoice).not.toBeNull();
-  });
-});
-
-describe('LocationSheet (routePreview) — change destination', () => {
-  test('tapping "Change destination" opens inline destination search instead of closing the sheet', async () => {
-    mockedUseDirectionsViewModel.mockReturnValue(baseViewModel());
-    const onChangeDestination = jest.fn();
-    const user = userEvent.setup();
-    await renderWithFooter(
-      <LocationSheet
-        mode="routePreview"
-        destination={destination}
-        onClose={onCloseSpy}
-        onChangeDestination={onChangeDestination}
-      />,
-    );
-
-    await user.press(screen.getByText('Change destination'));
-
-    expect(screen.getByText('Where do you want to go?')).toBeOnTheScreen();
-    expect(onCloseSpy).not.toHaveBeenCalled();
-  });
-
-  test('typing in the destination search box renders matching results', async () => {
-    mockedSearchServiceSearch.mockReturnValue([candidatePlace]);
-    mockedUseDirectionsViewModel.mockReturnValue(baseViewModel());
-    const user = userEvent.setup();
-    await renderWithFooter(
-      <LocationSheet
-        mode="routePreview"
-        destination={destination}
-        onClose={onCloseSpy}
-        onChangeDestination={jest.fn()}
-      />,
-    );
-
-    await user.press(screen.getByText('Change destination'));
-    const input = screen.getByPlaceholderText('Search destination: gate, rasta, block');
-    await user.type(input, 'Gate');
-
-    expect(await screen.findByText('Gate 1')).toBeOnTheScreen();
-    expect(mockedSearchServiceSearch).toHaveBeenCalled();
-  });
-
-  test('no-results message shown when destination search yields nothing', async () => {
-    mockedSearchServiceSearch.mockReturnValue([]);
-    mockedUseDirectionsViewModel.mockReturnValue(baseViewModel());
-    const user = userEvent.setup();
-    await renderWithFooter(
-      <LocationSheet
-        mode="routePreview"
-        destination={destination}
-        onClose={onCloseSpy}
-        onChangeDestination={jest.fn()}
-      />,
-    );
-
-    await user.press(screen.getByText('Change destination'));
-    const input = screen.getByPlaceholderText('Search destination: gate, rasta, block');
-    await user.type(input, 'zzz');
-
-    expect(await screen.findByText('No destinations found.')).toBeOnTheScreen();
-  });
-
-  test('tapping a destination search result invokes onChangeDestination with the picked place', async () => {
-    mockedSearchServiceSearch.mockReturnValue([candidatePlace]);
-    mockedUseDirectionsViewModel.mockReturnValue(baseViewModel());
-    const onChangeDestination = jest.fn();
-    const user = userEvent.setup();
-    await renderWithFooter(
-      <LocationSheet
-        mode="routePreview"
-        destination={destination}
-        onClose={onCloseSpy}
-        onChangeDestination={onChangeDestination}
-      />,
-    );
-
-    await user.press(screen.getByText('Change destination'));
-    const input = screen.getByPlaceholderText('Search destination: gate, rasta, block');
-    await user.type(input, 'Gate');
-
-    const result = await screen.findByText('Gate 1');
-    await user.press(result);
-
     expect(onChangeDestination).toHaveBeenCalledWith(candidatePlace);
-    expect(onCloseSpy).not.toHaveBeenCalled();
+    expect(useAppStore.getState().directoryChoice).toBeNull();
   });
 
-  test('an unroutable candidate in destination search reads as unavailable, not a plain choice', async () => {
-    mockedSearchServiceSearch.mockReturnValue([unavailableCandidatePlace]);
-    mockedUseDirectionsViewModel.mockReturnValue(baseViewModel());
-    const user = userEvent.setup();
-    await renderWithFooter(
-      <LocationSheet
-        mode="routePreview"
-        destination={destination}
-        onClose={onCloseSpy}
-        onChangeDestination={jest.fn()}
-      />,
-    );
-
-    await user.press(screen.getByText('Change destination'));
-    const input = screen.getByPlaceholderText('Search destination: gate, rasta, block');
-    await user.type(input, 'Gate 18');
-
-    const unavailableRow = await screen.findByLabelText('Gate 18, Gate, navigation unavailable');
-    expect(unavailableRow.props.accessibilityState?.disabled).not.toBe(true);
-    expect(screen.getByText(/Not yet available for routing/)).toBeOnTheScreen();
-  });
-
-  test('pressing "Cancel" during destination search returns to the destination summary without changing it', async () => {
-    mockedUseDirectionsViewModel.mockReturnValue(baseViewModel());
-    const onChangeDestination = jest.fn();
-    const user = userEvent.setup();
-    await renderWithFooter(
-      <LocationSheet
-        mode="routePreview"
-        destination={destination}
-        onClose={onCloseSpy}
-        onChangeDestination={onChangeDestination}
-      />,
-    );
-
-    await user.press(screen.getByText('Change destination'));
-    expect(screen.getByText('Where do you want to go?')).toBeOnTheScreen();
-
-    await user.press(screen.getByText('Cancel'));
-
-    expect(screen.getByText('Block 1')).toBeOnTheScreen();
-    expect(screen.queryByText('Where do you want to go?')).not.toBeOnTheScreen();
-    expect(onChangeDestination).not.toHaveBeenCalled();
-    expect(onCloseSpy).not.toHaveBeenCalled();
-  });
-
-  // Back-compat: a caller that hasn't wired onChangeDestination keeps the old
-  // exit-the-sheet behavior instead of opening a search box with nowhere to send its result.
-  test('falls back to onClose when onChangeDestination is not provided', async () => {
+  // Back-compat: a caller that hasn't wired the Directory hand-off keeps the old
+  // exit-the-sheet behavior instead of opening a chooser with nowhere to send its result.
+  test('falls back to onClose when the Directory hand-off is not provided', async () => {
     mockedUseDirectionsViewModel.mockReturnValue(baseViewModel());
     const user = userEvent.setup();
     await renderWithFooter(<LocationSheet mode="routePreview" destination={destination} onClose={onCloseSpy} />);
@@ -481,7 +382,6 @@ describe('LocationSheet (routePreview) — change destination', () => {
     await user.press(screen.getByText('Change destination'));
 
     expect(onCloseSpy).toHaveBeenCalledTimes(1);
-    expect(screen.queryByText('Where do you want to go?')).not.toBeOnTheScreen();
   });
 });
 
@@ -765,6 +665,7 @@ describe('LocationSheet (routePreview) — route ready CTA', () => {
 
   test('an unroutable destination gets "Choose another destination" instead of a futile Retry', async () => {
     const onChangeDestination = jest.fn();
+    const onOpenDirectory = jest.fn();
     mockedUseDirectionsViewModel.mockReturnValue(
       baseViewModel({ loadState: 'error', errorMessage: 'This gate is not ready for navigation. Please choose another nearby gate.' }),
     );
@@ -775,12 +676,13 @@ describe('LocationSheet (routePreview) — route ready CTA', () => {
         destination={{ ...destination, routingStatus: 'needs_connector_verification' }}
         onClose={onCloseSpy}
         onChangeDestination={onChangeDestination}
+        onOpenDirectory={onOpenDirectory}
       />,
     );
 
     expect(screen.queryByText('Retry')).toBeNull();
     await user.press(screen.getByText('Choose another destination'));
-    expect(screen.getByText('Where do you want to go?')).toBeTruthy();
+    expect(onOpenDirectory).toHaveBeenCalledWith('destination');
   });
 
   test('does not re-invoke calculateRoute on a second Retry tap while the first is still in flight', async () => {

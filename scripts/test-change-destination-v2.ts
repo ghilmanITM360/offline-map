@@ -19,25 +19,22 @@ assert(
   locationSheet.includes('onChangeDestination={props.onChangeDestination}'),
   'LocationSheet must forward onChangeDestination into RoutePreviewSection.',
 );
+// #222: the Directory is the one place chooser, so the sheet hosts no destination search of its own.
 assert(
-  /const \[showDestinationOptions, setShowDestinationOptions\] = useState\(false\);/.test(locationSheet),
-  'RoutePreviewSection must track whether the inline destination search is open.',
-);
-assert(
-  /const destCandidates = useMemo\(\(\) => \{\s*\n\s*if \(!showDestinationOptions \|\| destSearch\.trim\(\)\.length < 2\) return \[\];\s*\n\s*return SearchService\.search\(destSearch, currentLocation \?\? undefined\)/.test(locationSheet),
-  'Destination candidates must reuse SearchService.search — the same underlying mechanism "Change Start" already uses for manual start candidates, not a new search path.',
+  !locationSheet.includes('showDestinationOptions') && !locationSheet.includes('destCandidates'),
+  'RoutePreviewSection must not host an inline destination search; Change destination opens the Directory.',
 );
 assert(
   !/onPress=\{onClose\}\s*\n\s*accessibilityRole="button"\s*\n\s*accessibilityLabel="Change destination"/.test(locationSheet),
   '"Change destination" must no longer unconditionally call onClose — it must open the inline destination search when onChangeDestination is provided.',
 );
 assert(
-  locationSheet.includes('onPress={onChangeDestination ? () => setShowDestinationOptions(true) : onClose}'),
-  '"Change destination" must open the inline search via onChangeDestination, falling back to onClose only when no handler is supplied.',
+  locationSheet.includes("onChangeDestination && onOpenDirectory ? () => onOpenDirectory('destination') : onClose"),
+  '"Change destination" must open the Directory in destination mode, falling back to onClose only when no handlers are supplied.',
 );
 assert(
-  locationSheet.includes('onChangeDestination?.(candidate);'),
-  'Selecting a destination search result must call onChangeDestination with the picked place.',
+  locationSheet.includes('onChangeDestination?.(directoryChoice.place);'),
+  'A destination chosen in the Directory must reach onChangeDestination with the picked place.',
 );
 
 // HomeScreen wiring: reuses setDirectionsDestination (the same state handleOpenDirections
