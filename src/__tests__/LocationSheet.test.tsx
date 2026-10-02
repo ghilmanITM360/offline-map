@@ -11,6 +11,7 @@ import { LocationSheet } from '../views/components/map/LocationSheet';
 import { DirectionsSheetFooter } from '../views/components/map/DirectionsSheetFooter';
 import { useDirectionsViewModel } from '../viewmodels/DirectionsViewModel';
 import { SearchService } from '../services/SearchService';
+import { useAppStore } from '../store/useAppStore';
 import { LIGHT_THEME } from '../theme';
 import type { Place } from '../models/types';
 
@@ -249,16 +250,20 @@ describe('LocationSheet (routePreview) — start option selection', () => {
     expect(screen.getByText('No saved location yet')).toBeOnTheScreen();
   });
 
-  test('pressing "Choose start manually" invokes chooseManualStart', async () => {
-    const chooseManualStart = jest.fn();
-    mockedUseDirectionsViewModel.mockReturnValue(baseViewModel({ chooseManualStart }));
+  test('pressing "Choose start manually" opens the Directory to choose a start', async () => {
+    mockedUseDirectionsViewModel.mockReturnValue(baseViewModel());
+    const onOpenDirectory = jest.fn();
     const user = userEvent.setup();
-    await renderWithFooter(<LocationSheet mode="routePreview" destination={destination} onClose={onCloseSpy} />);
+    await renderWithFooter(
+      <LocationSheet mode="routePreview" destination={destination} onClose={onCloseSpy} onOpenDirectory={onOpenDirectory} />,
+    );
 
     await user.press(screen.getByText('Change Start'));
     await user.press(screen.getByText('Choose start manually'));
 
-    expect(chooseManualStart).toHaveBeenCalledTimes(1);
+    expect(onOpenDirectory).toHaveBeenCalledWith('start');
+    // The Directory is the one place chooser: no second search box inside the sheet.
+    expect(screen.queryByPlaceholderText('Search start point: gate, rasta, block')).not.toBeOnTheScreen();
   });
 
   test('active start option is visually reflected via accessible state', async () => {
@@ -292,68 +297,45 @@ describe('LocationSheet (routePreview) — start option selection', () => {
   });
 });
 
-describe('LocationSheet (routePreview) — manual start search ("Search")', () => {
-  test('typing in the manual-start search box renders matching results', async () => {
-    mockedSearchServiceSearch.mockReturnValue([candidatePlace]);
-    mockedUseDirectionsViewModel.mockReturnValue(
-      baseViewModel({ startSource: 'manual_place', showManualStartSearch: true }),
-    );
-    const user = userEvent.setup();
-    await renderWithFooter(<LocationSheet mode="routePreview" destination={destination} onClose={onCloseSpy} />);
-
-    const input = screen.getByPlaceholderText('Search start point: gate, rasta, block');
-    await user.type(input, 'Gate');
-
-    expect(await screen.findByText('Gate 1')).toBeOnTheScreen();
-    expect(mockedSearchServiceSearch).toHaveBeenCalled();
+describe('LocationSheet (routePreview) — start chosen in the Directory', () => {
+  afterEach(() => {
+    useAppStore.setState({ directoryChoice: null });
   });
 
-  test('no-results message shown when search yields nothing', async () => {
-    mockedSearchServiceSearch.mockReturnValue([]);
-    mockedUseDirectionsViewModel.mockReturnValue(
-      baseViewModel({ startSource: 'manual_place', showManualStartSearch: true }),
-    );
-    const user = userEvent.setup();
-    await renderWithFooter(<LocationSheet mode="routePreview" destination={destination} onClose={onCloseSpy} />);
-
-    const input = screen.getByPlaceholderText('Search start point: gate, rasta, block');
-    await user.type(input, 'zzz');
-
-    expect(await screen.findByText('No start points found.')).toBeOnTheScreen();
-  });
-
-  test('tapping a search result selects it as the manual start place', async () => {
-    mockedSearchServiceSearch.mockReturnValue([candidatePlace]);
+  test('a start chosen in the Directory is applied and the picker collapses', async () => {
     const setManualStartPlace = jest.fn();
     mockedUseDirectionsViewModel.mockReturnValue(
-      baseViewModel({ startSource: 'manual_place', showManualStartSearch: true, setManualStartPlace }),
+      baseViewModel({ startSource: 'manual_place', showManualStartSearch: false, setManualStartPlace }),
     );
     const user = userEvent.setup();
-    await renderWithFooter(<LocationSheet mode="routePreview" destination={destination} onClose={onCloseSpy} />);
+    await renderWithFooter(
+      <LocationSheet mode="routePreview" destination={destination} onClose={onCloseSpy} onOpenDirectory={jest.fn()} />,
+    );
+    await user.press(screen.getByText('Change Start'));
+    expect(screen.getByText('Choose start manually')).toBeOnTheScreen();
 
-    const input = screen.getByPlaceholderText('Search start point: gate, rasta, block');
-    await user.type(input, 'Gate');
-
-    const result = await screen.findByText('Gate 1');
-    await user.press(result);
+    await act(async () => {
+      useAppStore.getState().setDirectoryChoice({ purpose: 'start', place: candidatePlace });
+    });
 
     expect(setManualStartPlace).toHaveBeenCalledWith(candidatePlace);
+    expect(useAppStore.getState().directoryChoice).toBeNull();
+    expect(screen.queryByText('Choose start manually')).not.toBeOnTheScreen();
   });
 
-  test('an unroutable candidate in manual-start search reads as unavailable, not a plain choice', async () => {
-    mockedSearchServiceSearch.mockReturnValue([unavailableCandidatePlace]);
-    mockedUseDirectionsViewModel.mockReturnValue(
-      baseViewModel({ startSource: 'manual_place', showManualStartSearch: true }),
+  test('a destination choice is left for its own consumer', async () => {
+    const setManualStartPlace = jest.fn();
+    mockedUseDirectionsViewModel.mockReturnValue(baseViewModel({ setManualStartPlace }));
+    await renderWithFooter(
+      <LocationSheet mode="routePreview" destination={destination} onClose={onCloseSpy} onOpenDirectory={jest.fn()} />,
     );
-    const user = userEvent.setup();
-    await renderWithFooter(<LocationSheet mode="routePreview" destination={destination} onClose={onCloseSpy} />);
 
-    const input = screen.getByPlaceholderText('Search start point: gate, rasta, block');
-    await user.type(input, 'Gate 18');
+    await act(async () => {
+      useAppStore.getState().setDirectoryChoice({ purpose: 'destination', place: candidatePlace });
+    });
 
-    const unavailableRow = await screen.findByLabelText('Gate 18, Gate, navigation unavailable');
-    expect(unavailableRow.props.accessibilityState?.disabled).not.toBe(true);
-    expect(screen.getByText(/Not yet available for routing/)).toBeOnTheScreen();
+    expect(setManualStartPlace).not.toHaveBeenCalled();
+    expect(useAppStore.getState().directoryChoice).not.toBeNull();
   });
 });
 

@@ -6,6 +6,8 @@
 // #222 / #131 P0: picking a manual start (e.g. Gate 13) must close the picker and land on the
 // route-ready state. Real viewmodel + real LocationSheet — the mocked-VM suites cannot see the
 // source-driven `showManualStartSearch` that kept the picker open after a selection.
+// The start is chosen in the Directory (the one place chooser): the sheet asks for it through
+// onOpenDirectory and applies the directoryChoice the Directory leaves in the store.
 
 import React from 'react';
 import type { Place } from '../models/types';
@@ -13,12 +15,7 @@ import { useAppStore } from '../store/useAppStore';
 import { useDirectionsViewModel } from '../viewmodels/DirectionsViewModel';
 import { LocationSheet } from '../views/components/map/LocationSheet';
 import { DirectionsSheetFooter } from '../views/components/map/DirectionsSheetFooter';
-import { SearchService } from '../services/SearchService';
 import { act, render, renderHook, screen, userEvent, waitFor } from './test-utils';
-
-jest.mock('../services/SearchService', () => ({
-  SearchService: { search: jest.fn(() => []) },
-}));
 
 const initialStoreState = useAppStore.getState();
 const destination: Place = {
@@ -37,16 +34,15 @@ const gate13: Place = {
   coordinate: { latitude: 24.963718, longitude: 67.006862 },
   sourceVersion: 'v1',
 };
-const PLACEHOLDER = 'Search start point: gate, rasta, block';
 
 beforeEach(() => {
+  jest.clearAllMocks();
   process.env.EXPO_PUBLIC_USE_IJTEMA_V2_ROUTING = 'true';
   useAppStore.setState(initialStoreState, true);
   useAppStore.setState({
     currentLocation: { latitude: 24.9762, longitude: 67.011 },
     currentLocationSource: 'live',
   });
-  (SearchService.search as jest.Mock).mockReturnValue([gate13]);
 });
 
 describe('manual start selection (viewmodel)', () => {
@@ -70,10 +66,11 @@ describe('manual start selection (viewmodel)', () => {
 });
 
 describe('manual start selection (Get Directions sheet)', () => {
+  const onOpenDirectory = jest.fn();
   const mount = () =>
     render(
       <>
-        <LocationSheet mode="routePreview" destination={destination} onClose={jest.fn()} />
+        <LocationSheet mode="routePreview" destination={destination} onClose={jest.fn()} onOpenDirectory={onOpenDirectory} />
         <DirectionsSheetFooter animatedFooterPosition={{ value: 0, get: () => 0 } as never} />
       </>,
     );
@@ -81,8 +78,11 @@ describe('manual start selection (Get Directions sheet)', () => {
   async function pickGate13(user: ReturnType<typeof userEvent.setup>) {
     await user.press(screen.getByText('Change Start'));
     await user.press(screen.getByText('Choose start manually'));
-    await user.type(screen.getByPlaceholderText(PLACEHOLDER), 'Gate 13');
-    await user.press(await screen.findByRole('button', { name: /^Gate 13, / }));
+    expect(onOpenDirectory).toHaveBeenLastCalledWith('start');
+    // What the Directory does when the visitor taps Gate 13.
+    await act(async () => {
+      useAppStore.getState().setDirectoryChoice({ purpose: 'start', place: gate13 });
+    });
   }
 
   test('tapping Gate 13 closes the picker, shows it as the start, and reaches route ready', async () => {
@@ -90,8 +90,8 @@ describe('manual start selection (Get Directions sheet)', () => {
     await mount();
     await pickGate13(user);
 
-    expect(screen.queryByPlaceholderText(PLACEHOLDER)).not.toBeOnTheScreen();
     expect(screen.queryByText('Choose start manually')).not.toBeOnTheScreen();
+    expect(useAppStore.getState().directoryChoice).toBeNull();
     expect(screen.getByText('Gate 13')).toBeOnTheScreen();
     expect(screen.getByText('Block 34')).toBeOnTheScreen();
     expect(screen.getByText('Change Start')).toBeOnTheScreen();
@@ -112,7 +112,7 @@ describe('manual start selection (Get Directions sheet)', () => {
     const onClose = jest.fn();
     const user = userEvent.setup();
     await render(
-      <LocationSheet mode="routePreview" destination={destination} onClose={onClose} />,
+      <LocationSheet mode="routePreview" destination={destination} onClose={onClose} onOpenDirectory={onOpenDirectory} />,
     );
     await pickGate13(user);
     await user.press(screen.getByText('Change Start'));

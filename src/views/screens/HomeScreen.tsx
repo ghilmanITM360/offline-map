@@ -64,7 +64,7 @@ import { Coordinate, Place, RoutePreview } from '../../models/types';
 import { OfflineMapService } from '../../services/OfflineMapService';
 import { PlaceDetailService } from '../../services/PlaceDetailService';
 import { FavoriteService } from '../../services/FavoriteService';
-import { useAppStore } from '../../store/useAppStore';
+import { useAppStore, type DirectoryPurpose } from '../../store/useAppStore';
 import { RoutePointService } from '../../services/RoutePointService';
 import { Paths } from 'expo-file-system';
 import { DrawerParamList, RootStackParamList } from '../../navigation/RootNavigator';
@@ -1250,6 +1250,14 @@ export function HomeScreen() {
     setDirectionsDestination(place);
   }, [armSheetTransition]);
 
+  // Get Directions asks the Directory (the one place chooser) for a start or destination; the choice comes back
+  // through the store and Get Directions applies it. The sheet stays mounted, so its route intent is kept.
+  const setDirectoryPurpose = useAppStore((s) => s.setDirectoryPurpose);
+  const handleOpenDirectoryFor = useCallback((purpose: DirectoryPurpose) => {
+    setDirectoryPurpose(purpose);
+    nav.navigate('LocationsDirectory');
+  }, [nav, setDirectoryPurpose]);
+
   // Full reset to EXPLORE — replaces the two ad hoc `setSelectedPlace(null) +
   // bottomSheetRef.close()` call sites that existed independently before and didn't
   // account for detailsExpanded/arrived/directionsDestination.
@@ -2006,6 +2014,7 @@ export function HomeScreen() {
               onStartNavigation={handleStartPreviewNavigation}
               onCancelRoute={activePreviewRoute ? handleClearPreviewRoute : undefined}
               onChangeDestination={handleChangeDestination}
+              onOpenDirectory={handleOpenDirectoryFor}
               basemapOffline={graphOnlyFallbackUsed}
             />
           ) : selectedPlace ? (

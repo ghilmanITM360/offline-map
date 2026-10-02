@@ -38,7 +38,7 @@ import { useReducedMotion } from '../../../viewmodels/useReducedMotion';
 import { InstructionService } from '../../../services/InstructionService';
 import { SearchService } from '../../../services/SearchService';
 import { destinationFromPlace } from '../../../services/V2DirectionsService';
-import { useAppStore } from '../../../store/useAppStore';
+import { useAppStore, type DirectoryPurpose } from '../../../store/useAppStore';
 import { Place, RoutePreview, BlockEntryPoint, Gate } from '../../../models/types';
 import { IJTEMA_DATA } from '../../../constants/data';
 import { IJTEMA_GATES } from '../../../data/ijtema';
@@ -119,6 +119,9 @@ export type LocationSheetProps =
        * not anything this component does directly. Omitted falls back to the old onClose
        * behavior for callers that haven't wired it up. */
       onChangeDestination?: (place: Place) => void;
+      /** Opens the Directory, the one place chooser, to pick a start (or destination); the choice comes
+       * back through the store's directoryChoice. */
+      onOpenDirectory?: (purpose: DirectoryPurpose) => void;
       /** True when the map shows venue geometry only (no background imagery) — drives the
        * truthful offline caption. Display-only; no connectivity logic lives here. */
       basemapOffline?: boolean;
@@ -151,6 +154,7 @@ export function LocationSheet(props: LocationSheetProps) {
         onStartNavigation={props.onStartNavigation}
         onCancelRoute={props.onCancelRoute}
         onChangeDestination={props.onChangeDestination}
+        onOpenDirectory={props.onOpenDirectory}
         basemapOffline={props.basemapOffline}
       />
     );
@@ -200,6 +204,7 @@ function RoutePreviewSection({
   onStartNavigation,
   onCancelRoute,
   onChangeDestination,
+  onOpenDirectory,
   basemapOffline,
 }: {
   destination: Place;
@@ -207,6 +212,7 @@ function RoutePreviewSection({
   onStartNavigation?: () => void;
   onCancelRoute?: () => void;
   onChangeDestination?: (place: Place) => void;
+  onOpenDirectory?: (purpose: DirectoryPurpose) => void;
   basemapOffline?: boolean;
 }) {
   const { fontScale } = useWindowDimensions();
@@ -215,10 +221,6 @@ function RoutePreviewSection({
   const currentLocation = useAppStore((s) => s.currentLocation);
   const distanceUnit = useAppStore((s) => s.settings.distanceUnit);
 
-  const [startSearch, setStartSearch] = useState('');
-  // Mirrors showStartOptions/startSearch below — same inline-search pattern ("Change
-  // Start" already reuses SearchService.search this way instead of the full-screen
-  // search overlay), applied to the destination side instead of the start side.
   const [showDestinationOptions, setShowDestinationOptions] = useState(false);
   const [destSearch, setDestSearch] = useState('');
   const [showGateOptions, setShowGateOptions] = useState(false);
@@ -245,7 +247,6 @@ function RoutePreviewSection({
     loadState,
     errorMessage,
     manualStart,
-    chooseManualStart,
     setIsEditingManualStart,
     setManualStartPlace,
     chooseCurrentLocation,
@@ -267,6 +268,17 @@ function RoutePreviewSection({
   // front. Remembered/manual start only surface once the rider explicitly asks via
   // "Change Start" — picking one collapses back to the compact summary automatically.
   const [showStartOptions, setShowStartOptions] = useState(false);
+  // The Directory returns the chosen start through the store; apply it and collapse back to the summary.
+  const directoryChoice = useAppStore((s) => s.directoryChoice);
+  const setDirectoryChoice = useAppStore((s) => s.setDirectoryChoice);
+  useEffect(() => {
+    if (directoryChoice?.purpose !== 'start') return;
+    setManualStartPlace(directoryChoice.place);
+    setShowStartOptions(false);
+    setDirectoryChoice(null);
+  }, [directoryChoice, setDirectoryChoice, setManualStartPlace]);
+  // A choice that arrives after the sheet is gone must not leak into a later journey.
+  useEffect(() => () => setDirectoryChoice(null), [setDirectoryChoice]);
   const startIcon =
     startSource === 'remembered_location' || startSource === 'device_last_known' ? (
       <MapPin size={24} color={directionsSheetColors.brand} />
@@ -275,13 +287,6 @@ function RoutePreviewSection({
     ) : (
       <LocateFixed size={24} color={directionsSheetColors.brand} />
     );
-
-  const startCandidates = useMemo(() => {
-    if (!showManualStartSearch || startSearch.trim().length < 2) return [];
-    return SearchService.search(startSearch, currentLocation ?? undefined)
-      .filter((candidate) => candidate.id !== destination.id)
-      .slice(0, 8);
-  }, [currentLocation, destination.id, showManualStartSearch, startSearch]);
 
   const destCandidates = useMemo(() => {
     if (!showDestinationOptions || destSearch.trim().length < 2) return [];
@@ -621,62 +626,9 @@ function RoutePreviewSection({
                 icon={<Navigation size={26} color={startSource === 'manual_place' ? directionsSheetColors.brandText : directionsSheetColors.brand} />}
                 title="Choose start manually"
                 subtitle="Select gate, rasta, block, or point"
-                onPress={chooseManualStart}
+                onPress={() => onOpenDirectory?.('start')}
               />
 
-              {showManualStartSearch && (
-                <View style={styles.manualSection}>
-                  <SearchBarField
-                    value={startSearch}
-                    onChangeText={setStartSearch}
-                    placeholder="Search start point: gate, rasta, block"
-                    onSubmitEditing={Keyboard.dismiss}
-                    onFocus={() => setIsEditingManualStart(true)}
-                  />
-
-                  {startCandidates.length > 0 && (
-                    <View style={styles.searchResults}>
-                      {startCandidates.map((candidate: Place) => {
-                        const isUnavailable = candidate.isRoutable === false;
-                        return (
-                          <Pressable
-                            key={candidate.id}
-                            style={styles.searchItem}
-                            onPress={() => {
-                              setManualStartPlace(candidate);
-                              setStartSearch(candidate.name);
-                              setIsEditingManualStart(false);
-                              setShowStartOptions(false);
-                              Keyboard.dismiss();
-                            }}
-                            accessibilityRole="button"
-                            accessibilityLabel={
-                              isUnavailable
-                                ? `${candidate.name}, ${placeCategoryLabel(candidate.category)}, navigation unavailable`
-                                : `${candidate.name}, ${placeCategoryLabel(candidate.category)}`
-                            }
-                          >
-                            <MapPin size={16} color={staticColors.iconMuted} />
-                            <View style={styles.searchItemBody}>
-                              <Text style={[styles.searchItemName, isUnavailable && styles.searchItemNameMuted]}>
-                                {candidate.name}
-                              </Text>
-                              <Text style={styles.searchItemMeta}>
-                                {placeCategoryLabel(candidate.category)}
-                                {isUnavailable ? ' · Not yet available for routing' : ''}
-                              </Text>
-                            </View>
-                          </Pressable>
-                        );
-                      })}
-                    </View>
-                  )}
-
-                  {startSearch.trim().length >= 2 && startCandidates.length === 0 && (
-                    <Text style={styles.emptySearchText}>No start points found.</Text>
-                  )}
-                </View>
-              )}
             </View>
           ) : (
             <RouteEndpointCard
@@ -1106,9 +1058,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '800',
     color: directionsSheetColors.brand,
-  },
-  manualSection: {
-    gap: 10,
   },
   searchResults: {
     borderWidth: 1,
