@@ -22,6 +22,7 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import MapView, { Marker, Polygon, Polyline, PROVIDER_GOOGLE, LocalTile } from 'react-native-maps';
+import { SvgMarker } from '../components/map/useMarkerPaintWindow';
 import { NoInfoWindow } from '../components/map/NoInfoWindow';
 import {
   Menu,
@@ -1635,22 +1636,22 @@ export function HomeScreen() {
           {markerOwnership.showBrowseSelection && selectedPlace && selectedPlaceMarkerCoordinate && !activePreviewRoute && (
             // Android's Google Maps SDK names a marker for TalkBack from its title and ignores accessibilityLabel
             // (react-native-maps#3500); an empty tooltip callout stops the title popping a default info window.
-            <Marker coordinate={selectedPlaceMarkerCoordinate} tracksViewChanges={false} title={selectedPlace.name}>
+            <SvgMarker coordinate={selectedPlaceMarkerCoordinate} title={selectedPlace.name}>
               <View testID="selected-place-marker" style={styles.selectedMarker}>
                 <MapPin size={markerSizes.destination} color={staticColors.gateAccent} fill={staticColors.gateAccent} />
               </View>
               <NoInfoWindow />
-            </Marker>
+            </SvgMarker>
           )}
 
           {/* Route preview destination pin — shown when route is active. */}
           {previewDestinationCoordinate && activePreviewRoute && (
-            <Marker coordinate={previewDestinationCoordinate} tracksViewChanges={false} title={previewDestination?.name ?? activePreviewRoute.destinationLabel}>
+            <SvgMarker coordinate={previewDestinationCoordinate} title={previewDestination?.name ?? activePreviewRoute.destinationLabel}>
               <View testID="preview-destination-marker" style={styles.selectedMarker}>
                 <MapPin size={markerSizes.destination} color={staticColors.gateAccent} fill={staticColors.gateAccent} />
               </View>
               <NoInfoWindow />
-            </Marker>
+            </SvgMarker>
           )}
 
           {markerOwnership.showBrowseUser && currentLocation && (
@@ -1665,12 +1666,12 @@ export function HomeScreen() {
           )}
 
           {showPreviewStartMarker && previewStartCoordinate && (
-            <Marker coordinate={previewStartCoordinate} anchor={{ x: 0.5, y: 1 }} tracksViewChanges={false} title={routePlannerOrigin?.name ?? activePreviewRoute?.startLabel}>
+            <SvgMarker coordinate={previewStartCoordinate} anchor={{ x: 0.5, y: 1 }} title={routePlannerOrigin?.name ?? activePreviewRoute?.startLabel}>
               <View testID="preview-start-marker" style={styles.previewStartMarker}>
                 <Navigation size={13} color={staticColors.white} />
               </View>
               <NoInfoWindow />
-            </Marker>
+            </SvgMarker>
           )}
           </MapView>
 

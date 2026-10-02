@@ -12,15 +12,21 @@ const navMapLayers = readFileSync('src/views/components/navigation/NavigationMap
 // src/views/components/map/UserLocationMarker.tsx.
 const userLocationMarkerSource = readFileSync('src/views/components/map/UserLocationMarker.tsx', 'utf8');
 
-// --- user-location marker: tracksViewChanges must be permanently false ----
+// --- user-location marker: tracksViewChanges is bounded, never permanently true ----
 
 assert(home.includes('<UserLocationMarker'), 'Home must render the shared UserLocationMarker component bound to currentLocation.');
-const userLocationMarkerMatch = userLocationMarkerSource.match(/<Marker[\s\S]*?coordinate=\{coordinate\}[\s\S]*?<\/Marker>/);
-assert(userLocationMarkerMatch, 'UserLocationMarker must render a Marker bound to its coordinate prop.');
-const userLocationMarkerBlock = userLocationMarkerMatch![0];
+const userLocationMarkerMatch = userLocationMarkerSource.match(/<SvgMarker[\s\S]*?coordinate=\{coordinate\}[\s\S]*?<\/SvgMarker>/);
+assert(userLocationMarkerMatch, 'UserLocationMarker must render an SvgMarker bound to its coordinate prop.');
+// SvgMarker (useMarkerPaintWindow) tracks view changes only while the SVG icon first paints (a permanently
+// false marker captures a blank bitmap, #128 C), then freezes it, so there is still no per-frame re-snapshot.
+const paintWindow = readFileSync('src/views/components/map/useMarkerPaintWindow.tsx', 'utf8');
 assert(
-  userLocationMarkerBlock.includes('tracksViewChanges={false}'),
-  'User-location marker must set tracksViewChanges={false} to avoid re-render thrash.',
+  paintWindow.includes('tracking: false') && paintWindow.includes('MARKER_PAINT_MS'),
+  'useMarkerPaintWindow must freeze the marker bitmap after a bounded window to avoid re-render thrash.',
+);
+assert(
+  !userLocationMarkerMatch![0].includes('tracksViewChanges={true}'),
+  'User-location marker must never be permanently tracksViewChanges={true}.',
 );
 
 // --- gate markers: must NOT be permanently tracksViewChanges=true ----------
@@ -44,26 +50,31 @@ assert(
 
 // --- representative sample of other static markers fixed to false ---------
 
-const staticMarkerPatterns: Array<{ name: string; source: string; pattern: RegExp }> = [
-  { name: 'selected place marker', source: home, pattern: /<Marker[^>]*coordinate=\{selectedPlaceMarkerCoordinate\}[\s\S]*?<\/Marker>/ },
-  { name: 'preview start marker', source: home, pattern: /<Marker[^>]*coordinate=\{previewStartCoordinate\}[\s\S]*?<\/Marker>/ },
+const staticMarkerPatterns: Array<{ name: string; source: string; pattern: RegExp; svg?: boolean }> = [
+  { name: 'selected place marker', source: home, pattern: /<SvgMarker[^>]*coordinate=\{selectedPlaceMarkerCoordinate\}[\s\S]*?<\/SvgMarker>/, svg: true },
+  { name: 'preview start marker', source: home, pattern: /<SvgMarker[^>]*coordinate=\{previewStartCoordinate\}[\s\S]*?<\/SvgMarker>/, svg: true },
   // Final pass (task #39): these three live-navigation markers (route start pin, destination
   // pin, snapped-user-location pulse) were missing tracksViewChanges entirely, defaulting to
   // react-native-maps' tracksViewChanges=true — continuous re-snapshotting for the whole
   // duration of every nav session. Fixed to false, matching HomeScreen's identical browse-mode
   // pulse marker (same Animated.View pulse technique, already tracksViewChanges={false} there).
   { name: 'nav route start marker', source: navMapLayers, pattern: /<Marker[^>]*coordinate=\{startCoordinate\}[\s\S]*?<\/Marker>/ },
-  { name: 'nav route destination marker', source: navMapLayers, pattern: /<Marker[^>]*coordinate=\{destinationCoordinate\}[\s\S]*?<\/Marker>/ },
-  { name: 'nav snapped-user-location marker', source: navMapLayers, pattern: /<Marker[^>]*coordinate=\{snappedLocation\}[\s\S]*?<\/Marker>/ },
+  { name: 'nav route destination marker', source: navMapLayers, pattern: /<SvgMarker[^>]*coordinate=\{destinationCoordinate\}[\s\S]*?<\/SvgMarker>/, svg: true },
+  { name: 'nav snapped-user-location marker', source: navMapLayers, pattern: /<SvgMarker[\s\S]*?coordinate=\{snappedLocation\}[\s\S]*?<\/SvgMarker>/, svg: true },
 ];
 
-for (const { name, source, pattern } of staticMarkerPatterns) {
+for (const { name, source, pattern, svg } of staticMarkerPatterns) {
   const match = source.match(pattern);
   assert(match, `Must render the ${name}.`);
-  assert(
-    match![0].includes('tracksViewChanges={false}'),
-    `${name} must set tracksViewChanges={false} — it has no per-render visual state to re-rasterize.`,
-  );
+  if (svg) {
+    // SVG-icon markers go through SvgMarker: bounded tracking, then frozen (see useMarkerPaintWindow).
+    assert(!match![0].includes('tracksViewChanges={true}'), `${name} must not be permanently tracksViewChanges={true}.`);
+  } else {
+    assert(
+      match![0].includes('tracksViewChanges={false}'),
+      `${name} must set tracksViewChanges={false} — it has no per-render visual state to re-rasterize.`,
+    );
+  }
 }
 
 console.log('Marker performance v2 checks passed.');
