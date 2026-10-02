@@ -5,7 +5,8 @@
 
 import React from 'react';
 import { Animated, StyleSheet, Text, View } from 'react-native';
-import { Circle, Marker } from 'react-native-maps';
+import { Circle } from 'react-native-maps';
+import { SvgMarker } from './useMarkerPaintWindow';
 import { NoInfoWindow } from './NoInfoWindow';
 import { Navigation } from 'lucide-react-native';
 
@@ -54,11 +55,10 @@ export function UserLocationMarker({ coordinate, accuracy, heading, isFollowing 
         />
       )}
 
-      <Marker
+      <SvgMarker
         testID="browse-user-location-marker"
         coordinate={coordinate}
         anchor={{ x: 0.5, y: 0.5 }}
-        tracksViewChanges={false}
         flat={validHeading}
         rotation={validHeading ? heading : 0}
         accessibilityLabel={isRemembered ? 'Your last known location' : 'Your location'}
@@ -89,7 +89,7 @@ export function UserLocationMarker({ coordinate, accuracy, heading, isFollowing 
           )}
         </View>
         <NoInfoWindow />
-      </Marker>
+      </SvgMarker>
     </>
   );
 }

@@ -3,7 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { Marker, type MapMarkerProps } from 'react-native-maps';
 
 /**
  * Android's Google Maps SDK snapshots a marker's children into a bitmap. With `tracksViewChanges={false}`
@@ -28,4 +29,10 @@ export function useMarkerPaintWindow(key: unknown): boolean {
   }, [key]);
 
   return state.key !== key ? true : state.tracking;
+}
+
+/** A Marker whose children include an SVG icon: tracks view changes only while the icon first paints. */
+export function SvgMarker({ paintKey, ...props }: Omit<MapMarkerProps, 'tracksViewChanges'> & { paintKey?: unknown }) {
+  const tracksViewChanges = useMarkerPaintWindow(paintKey);
+  return <Marker {...props} tracksViewChanges={tracksViewChanges} />;
 }

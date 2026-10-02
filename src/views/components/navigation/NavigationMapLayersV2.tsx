@@ -6,6 +6,7 @@
 import React, { useMemo } from 'react';
 import { Animated, Text, View } from 'react-native';
 import { Marker, Polyline } from 'react-native-maps';
+import { SvgMarker } from '../map/useMarkerPaintWindow';
 import { NoInfoWindow } from '../map/NoInfoWindow';
 import { Navigation, MapPin } from 'lucide-react-native';
 
@@ -90,23 +91,21 @@ export function NavigationMapLayersV2({ overlay }: { overlay: NavigationOverlayV
         <NoInfoWindow />
       </Marker>}
 
-      {markerOwnership.showNavigationDestination && <Marker testID="navigation-destination-marker" coordinate={destinationCoordinate} title={route.destination.label} accessibilityLabel={route.destination.label} anchor={{ x: 0.5, y: 1 }} tracksViewChanges={false}>
+      {markerOwnership.showNavigationDestination && <SvgMarker testID="navigation-destination-marker" coordinate={destinationCoordinate} title={route.destination.label} accessibilityLabel={route.destination.label} anchor={{ x: 0.5, y: 1 }}>
         <View style={styles.destinationMarker}>
           <MapPin size={markerSizes.destination} color={staticColors.gateAccent} fill={staticColors.gateAccent} />
         </View>
         <NoInfoWindow />
-      </Marker>}
+      </SvgMarker>}
 
       {markerOwnership.showNavigationUser && snappedLocation && (
-        // tracksViewChanges={false} matches HomeScreen's identical browse-mode pulse marker
-        // (the Animated.View pulse still renders correctly with it off; leaving it default/true
-        // here would make this marker re-snapshot continuously during every nav session).
-        <Marker
+        // SvgMarker tracks view changes only while the Navigation icon first paints (see useMarkerPaintWindow),
+        // then freezes the bitmap so this marker does not re-snapshot continuously during every nav session.
+        <SvgMarker
           testID="navigation-user-location-marker"
           coordinate={snappedLocation}
           flat
           anchor={{ x: 0.5, y: 0.5 }}
-          tracksViewChanges={false}
           accessibilityLabel={currentLocationSource === 'remembered' ? 'Your last known location' : 'Your location'}
           // Android's Google Maps SDK names a marker for TalkBack from its title and ignores accessibilityLabel
           // (react-native-maps#3500); an empty tooltip callout stops the title popping a default info window.
@@ -132,7 +131,7 @@ export function NavigationMapLayersV2({ overlay }: { overlay: NavigationOverlayV
             )}
           </View>
           <NoInfoWindow />
-        </Marker>
+        </SvgMarker>
       )}
     </>
   );

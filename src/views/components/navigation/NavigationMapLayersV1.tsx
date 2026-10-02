@@ -6,6 +6,7 @@
 import React from 'react';
 import { Animated, Text, View } from 'react-native';
 import { Marker, Polygon, Polyline } from 'react-native-maps';
+import { SvgMarker } from '../map/useMarkerPaintWindow';
 import { NoInfoWindow } from '../map/NoInfoWindow';
 import { Navigation, MapPin } from 'lucide-react-native';
 
@@ -91,21 +92,20 @@ export function NavigationMapLayersV1({ overlay }: { overlay: NavigationOverlayV
       )}
 
       {markerOwnership.showNavigationDestination && destination && destinationCoordinate && (
-        <Marker testID="navigation-destination-marker" coordinate={destinationCoordinate} title={destination.name} accessibilityLabel={destination.name} anchor={{ x: 0.5, y: 1 }} tracksViewChanges={false}>
+        <SvgMarker testID="navigation-destination-marker" coordinate={destinationCoordinate} title={destination.name} accessibilityLabel={destination.name} anchor={{ x: 0.5, y: 1 }}>
           <View style={styles.destinationMarker}>
             <MapPin size={markerSizes.destination} color={staticColors.gateAccent} fill={staticColors.gateAccent} />
           </View>
           <NoInfoWindow />
-        </Marker>
+        </SvgMarker>
       )}
 
       {markerOwnership.showNavigationUser && snappedLocation && (
-        <Marker
+        <SvgMarker
           testID="navigation-user-location-marker"
           coordinate={snappedLocation}
           flat
           anchor={{ x: 0.5, y: 0.5 }}
-          tracksViewChanges={false}
           accessibilityLabel={currentLocationSource === 'remembered' ? 'Your last known location' : 'Your location'}
           // Android's Google Maps SDK names a marker for TalkBack from its title and ignores accessibilityLabel
           // (react-native-maps#3500); an empty tooltip callout stops the title popping a default info window.
@@ -131,7 +131,7 @@ export function NavigationMapLayersV1({ overlay }: { overlay: NavigationOverlayV
             )}
           </View>
           <NoInfoWindow />
-        </Marker>
+        </SvgMarker>
       )}
     </>
   );
