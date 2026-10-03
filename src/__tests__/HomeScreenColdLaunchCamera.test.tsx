@@ -49,6 +49,7 @@ const mockedResolveCurrentLocation = LocationAccessService.resolveCurrentLocatio
 const cameraAnimateToUserSpy = jest.fn();
 const cameraFitVenueBoundsSpy = jest.fn();
 const cameraFitRouteSpy = jest.fn();
+const cameraNotifyNativeMapReadySpy = jest.fn();
 const cameraStopFollowingSpy = jest.fn();
 const handlePlaceSelectSpy = jest.fn();
 const handleRecenterSpy = jest.fn(async () => true);
@@ -117,7 +118,7 @@ function useFakeHomeViewModel(overrides: Record<string, unknown> = {}) {
       stopFollowing: cameraStopFollowingSpy,
       enterNavigationCamera: jest.fn(),
       exitNavigationCamera: jest.fn(),
-      notifyNativeMapReady: jest.fn(),
+      notifyNativeMapReady: cameraNotifyNativeMapReadySpy,
       notifyMapLayout: jest.fn(),
     },
     mapType: 'standard' as const,
@@ -755,7 +756,7 @@ describe('#222 startup camera waits for the initial region', () => {
     expect(cameraAnimateToUserSpy).toHaveBeenCalledWith(block2AnchorCoordinate);
   });
 
-  test('if the region-complete never arrives the move still runs after a short bound', async () => {
+  test('if the region-complete never arrives the move still runs after the bound', async () => {
     useAppStore.setState({ hasSeenMapOverview: true, hasLocationPermission: false, currentLocation: null });
 
     await render(<HomeScreen />);
@@ -763,7 +764,7 @@ describe('#222 startup camera waits for the initial region', () => {
       fireEvent(screen.getByTestId('home-map-view', { includeHiddenElements: true }), 'mapReady');
     });
     await act(async () => {
-      await jest.advanceTimersByTimeAsync(2000);
+      await jest.advanceTimersByTimeAsync(9000);
     });
 
     expect(cameraAnimateToUserSpy).toHaveBeenCalledTimes(1);
@@ -793,5 +794,40 @@ describe('#222 startup camera waits for the initial region', () => {
 
     expect(cameraAnimateToUserSpy).not.toHaveBeenCalled();
     expect(cameraFitVenueBoundsSpy).not.toHaveBeenCalled();
+  });
+});
+
+describe('#222 camera commands wait for the initial region (any intent, not only the startup move)', () => {
+  test('the camera manager is told the map is ready only after the initial region is applied', async () => {
+    useAppStore.setState({ hasSeenMapOverview: true, hasLocationPermission: false, currentLocation: null });
+
+    await render(<HomeScreen />);
+    await act(async () => {
+      fireEvent(screen.getByTestId('home-map-view', { includeHiddenElements: true }), 'mapReady');
+    });
+    await flushProjectionTimers();
+
+    // A place chosen in the Directory queues its camera move in the manager; if the manager were ready now,
+    // the native map would drop that move because it has not applied its initial region yet.
+    expect(cameraNotifyNativeMapReadySpy).not.toHaveBeenCalled();
+
+    await settleInitialRegion();
+    await settleInitialRegion();
+
+    expect(cameraNotifyNativeMapReadySpy).toHaveBeenCalledTimes(1);
+  });
+
+  test('if the initial region never reports, the manager is still told after the bound', async () => {
+    useAppStore.setState({ hasSeenMapOverview: true, hasLocationPermission: false, currentLocation: null });
+
+    await render(<HomeScreen />);
+    await act(async () => {
+      fireEvent(screen.getByTestId('home-map-view', { includeHiddenElements: true }), 'mapReady');
+    });
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(9000);
+    });
+
+    expect(cameraNotifyNativeMapReadySpy).toHaveBeenCalledTimes(1);
   });
 });
