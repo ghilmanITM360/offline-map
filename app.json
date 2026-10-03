@@ -41,6 +41,7 @@
         }
       ],
       "./plugins/withAndroidManifestGradlePlaceholder.js",
+      "./plugins/withAndroidConfigChanges.js",
       "./plugins/withAndroidBuildGradleSigning.js"
     ]
   }
