@@ -16,7 +16,6 @@ assert(directions.includes("keyboardDismissMode=\"on-drag\""), 'Directions keybo
 // #222: place search lives only in the Directory, so the sheet has no text input for the keyboard to cover.
 assert(!directions.includes('SearchBarField') && !directions.includes('TextInput'), 'Directions must not host its own place search (the Directory is the one chooser)');
 assert(directions.includes("onOpenDirectory?.('start')"), 'Manual start must hand off to the Directory');
-assert(directions.includes('Choose start manually') && directions.includes('StartOption'), 'Directions start selection must use stacked option cards on small screens');
 
 assert(guide.includes('ScrollView'), 'App Guide must scroll on small screens and large font settings');
 assert(guide.includes('contentContainerStyle={styles.content}'), 'App Guide must use constrained scroll content');

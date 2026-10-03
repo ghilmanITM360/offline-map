@@ -143,7 +143,7 @@ describe('Route ready — FROM / TO at a glance', () => {
     expect(screen.getByText('Waiting for a precise location.')).toBeOnTheScreen();
   });
 
-  test('Change Start opens the start choices; Change destination opens the Directory; Back closes', async () => {
+  test('Change Start and Change destination both open the Directory; Back closes', async () => {
     mockedVm.mockReturnValue(readyVm());
     const onOpenDirectory = jest.fn();
     const user = userEvent.setup();
@@ -153,8 +153,7 @@ describe('Route ready — FROM / TO at a glance', () => {
     expect(onOpenDirectory).toHaveBeenCalledWith('destination');
 
     await user.press(screen.getByRole('button', { name: 'Change starting point' }));
-    expect(screen.getByText('Choose where you are starting from')).toBeOnTheScreen();
-    await user.press(screen.getByRole('button', { name: 'Back' }));
+    expect(onOpenDirectory).toHaveBeenLastCalledWith('start');
     expect(screen.getByText('Gate 13')).toBeOnTheScreen();
 
     await user.press(screen.getByRole('button', { name: 'Back' }));

@@ -171,86 +171,7 @@ describe('LocationSheet (routePreview) — start option selection', () => {
     expect(screen.queryByText('Choose start manually')).not.toBeOnTheScreen();
   });
 
-  test('pressing "Use my current location" invokes chooseCurrentLocation', async () => {
-    const chooseCurrentLocation = jest.fn(async () => true);
-    mockedUseDirectionsViewModel.mockReturnValue(baseViewModel({ chooseCurrentLocation }));
-    const user = userEvent.setup();
-    await renderWithFooter(<LocationSheet mode="routePreview" destination={destination} onClose={onCloseSpy} />);
-
-    await user.press(screen.getByText('Change Start'));
-    await user.press(screen.getByText('Use my current location'));
-
-    expect(chooseCurrentLocation).toHaveBeenCalledTimes(1);
-  });
-
-  test('89-04: shows a loading affordance while resolving current location, not a silent no-op', async () => {
-    let resolveChoose: (ok: boolean) => void = () => {};
-    const chooseCurrentLocation = jest.fn(
-      () => new Promise<boolean>((resolve) => { resolveChoose = resolve; }),
-    );
-    mockedUseDirectionsViewModel.mockReturnValue(baseViewModel({ chooseCurrentLocation }));
-    const user = userEvent.setup();
-    await renderWithFooter(<LocationSheet mode="routePreview" destination={destination} onClose={onCloseSpy} />);
-
-    await user.press(screen.getByText('Change Start'));
-    await user.press(screen.getByText('Use my current location'));
-
-    expect(screen.getByText('Finding your location…')).toBeOnTheScreen();
-    expect(screen.getByRole('button', { name: /Use my current location/ }).props.accessibilityState).toMatchObject({
-      busy: true,
-      disabled: true,
-    });
-
-    await act(async () => {
-      resolveChoose(false);
-      await Promise.resolve();
-    });
-
-    expect(screen.queryByText('Finding your location…')).not.toBeOnTheScreen();
-  });
-
-  test('89-05: surfaces the location-resolution failure message instead of silently resetting', async () => {
-    const chooseCurrentLocation = jest.fn(async () => false);
-    mockedUseDirectionsViewModel.mockReturnValue(baseViewModel({
-      chooseCurrentLocation,
-      loadState: 'needs_origin',
-      errorMessage: 'Current location is unavailable. Choose start manually.',
-    }));
-    await renderWithFooter(<LocationSheet mode="routePreview" destination={destination} onClose={onCloseSpy} />);
-
-    const user = userEvent.setup();
-    await user.press(screen.getByText('Change Start'));
-
-    expect(screen.getByText('Current location is unavailable. Choose start manually.')).toBeOnTheScreen();
-  });
-
-  test('pressing "Use last known location" invokes chooseRememberedLocation', async () => {
-    const chooseRememberedLocation = jest.fn(() => true);
-    mockedUseDirectionsViewModel.mockReturnValue(
-      baseViewModel({ chooseRememberedLocation, rememberedLocationAvailable: true }),
-    );
-    const user = userEvent.setup();
-    await renderWithFooter(<LocationSheet mode="routePreview" destination={destination} onClose={onCloseSpy} />);
-
-    await user.press(screen.getByText('Change Start'));
-    await user.press(screen.getByText('Use last known location'));
-
-    expect(chooseRememberedLocation).toHaveBeenCalledTimes(1);
-  });
-
-  test('"Use last known location" is disabled when no remembered location is available', async () => {
-    mockedUseDirectionsViewModel.mockReturnValue(
-      baseViewModel({ rememberedLocationAvailable: false }),
-    );
-    const user = userEvent.setup();
-    await renderWithFooter(<LocationSheet mode="routePreview" destination={destination} onClose={onCloseSpy} />);
-
-    await user.press(screen.getByText('Change Start'));
-
-    expect(screen.getByText('No saved location yet')).toBeOnTheScreen();
-  });
-
-  test('pressing "Choose start manually" opens the Directory to choose a start', async () => {
+  test('Change Start opens the Directory in start mode: no in-sheet chooser', async () => {
     mockedUseDirectionsViewModel.mockReturnValue(baseViewModel());
     const onOpenDirectory = jest.fn();
     const user = userEvent.setup();
@@ -259,11 +180,60 @@ describe('LocationSheet (routePreview) — start option selection', () => {
     );
 
     await user.press(screen.getByText('Change Start'));
-    await user.press(screen.getByText('Choose start manually'));
 
     expect(onOpenDirectory).toHaveBeenCalledWith('start');
-    // The Directory is the one place chooser: no second search box inside the sheet.
-    expect(screen.queryByPlaceholderText('Search start point: gate, rasta, block')).not.toBeOnTheScreen();
+    expect(screen.queryByText('Choose start manually')).not.toBeOnTheScreen();
+    expect(screen.queryByText('Use my current location')).not.toBeOnTheScreen();
+    expect(screen.queryByText('Use last known location')).not.toBeOnTheScreen();
+  });
+
+  test('a current-location quick choice from the Directory invokes chooseCurrentLocation', async () => {
+    const chooseCurrentLocation = jest.fn(async () => true);
+    mockedUseDirectionsViewModel.mockReturnValue(baseViewModel({ chooseCurrentLocation }));
+    await renderWithFooter(
+      <LocationSheet mode="routePreview" destination={destination} onClose={onCloseSpy} onOpenDirectory={jest.fn()} />,
+    );
+
+    await act(async () => {
+      useAppStore.getState().setDirectoryChoice({ purpose: 'start', quick: 'current_location' });
+    });
+
+    expect(chooseCurrentLocation).toHaveBeenCalledTimes(1);
+    expect(useAppStore.getState().directoryChoice).toBeNull();
+  });
+
+  test('a last-known quick choice from the Directory invokes chooseRememberedLocation', async () => {
+    const chooseRememberedLocation = jest.fn(() => true);
+    mockedUseDirectionsViewModel.mockReturnValue(
+      baseViewModel({ chooseRememberedLocation, rememberedLocationAvailable: true }),
+    );
+    await renderWithFooter(
+      <LocationSheet mode="routePreview" destination={destination} onClose={onCloseSpy} onOpenDirectory={jest.fn()} />,
+    );
+
+    await act(async () => {
+      useAppStore.getState().setDirectoryChoice({ purpose: 'start', quick: 'last_known' });
+    });
+
+    expect(chooseRememberedLocation).toHaveBeenCalledTimes(1);
+    expect(useAppStore.getState().directoryChoice).toBeNull();
+  });
+
+  test('89-05: needs_origin shows the failure message and recovers through the Directory', async () => {
+    mockedUseDirectionsViewModel.mockReturnValue(baseViewModel({
+      loadState: 'needs_origin',
+      errorMessage: 'Current location is unavailable. Choose start manually.',
+    }));
+    const onOpenDirectory = jest.fn();
+    await renderWithFooter(
+      <LocationSheet mode="routePreview" destination={destination} onClose={onCloseSpy} onOpenDirectory={onOpenDirectory} />,
+    );
+
+    expect(screen.getByText('Current location is unavailable. Choose start manually.')).toBeOnTheScreen();
+    const user = userEvent.setup();
+    await user.press(screen.getByText('Change Start'));
+
+    expect(onOpenDirectory).toHaveBeenCalledWith('start');
   });
 
   test('active start option is visually reflected via accessible state', async () => {
@@ -293,7 +263,7 @@ describe('LocationSheet (routePreview) — start option selection', () => {
     expect(screen.getByText('Device last known location')).toBeOnTheScreen();
     expect(screen.getByText('Using device last known location because live GPS is unavailable.')).toBeOnTheScreen();
     await user.press(screen.getByText('Change Start'));
-    expect(screen.getByRole('button', { name: /Use my current location/ }).props.accessibilityState).toMatchObject({ selected: false });
+    expect(screen.queryByRole('button', { name: /Use my current location/ })).not.toBeOnTheScreen();
   });
 });
 
@@ -302,17 +272,14 @@ describe('LocationSheet (routePreview) — start chosen in the Directory', () =>
     useAppStore.setState({ directoryChoice: null });
   });
 
-  test('a start chosen in the Directory is applied and the picker collapses', async () => {
+  test('a start chosen in the Directory is applied', async () => {
     const setManualStartPlace = jest.fn();
     mockedUseDirectionsViewModel.mockReturnValue(
       baseViewModel({ startSource: 'manual_place', showManualStartSearch: false, setManualStartPlace }),
     );
-    const user = userEvent.setup();
     await renderWithFooter(
       <LocationSheet mode="routePreview" destination={destination} onClose={onCloseSpy} onOpenDirectory={jest.fn()} />,
     );
-    await user.press(screen.getByText('Change Start'));
-    expect(screen.getByText('Choose start manually')).toBeOnTheScreen();
 
     await act(async () => {
       useAppStore.getState().setDirectoryChoice({ purpose: 'start', place: candidatePlace });
@@ -320,7 +287,6 @@ describe('LocationSheet (routePreview) — start chosen in the Directory', () =>
 
     expect(setManualStartPlace).toHaveBeenCalledWith(candidatePlace);
     expect(useAppStore.getState().directoryChoice).toBeNull();
-    expect(screen.queryByText('Choose start manually')).not.toBeOnTheScreen();
   });
 });
 

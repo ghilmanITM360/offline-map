@@ -8,7 +8,7 @@ import { Alert, Animated, BackHandler, Pressable, ScrollView, StyleSheet, Text, 
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { Map as MapIcon, Search, X } from 'lucide-react-native';
+import { LocateFixed, Map as MapIcon, MapPin, Search, X } from 'lucide-react-native';
 
 import { RootStackParamList } from '../../navigation/RootNavigator';
 import { useAppStore } from '../../store/useAppStore';
@@ -20,7 +20,9 @@ import { unavailableReasonCopy } from '../../utils/unavailableReasonCopy';
 import { SearchBarField } from '../components/common/SearchBarField';
 import { DestinationRow } from '../components/directory/DestinationRow';
 import { DestinationBlockGrid } from '../components/directory/DestinationBlockGrid';
-import { radii, shadows, spacing, staticColors, typography } from '../../theme';
+import { StartOptionCard } from '../components/map/DirectionsSheetParts';
+import { formatLastKnownAge } from '../../utils/formatLastKnownAge';
+import { directionsSheetColors, radii, shadows, spacing, staticColors, typography } from '../../theme';
 
 // One accent per category, reused for its chip's active state, its row icon (see
 // DestinationRow's own CATEGORY_ACCENT) and the Blocks tile — a single color system
@@ -78,6 +80,10 @@ type Nav = NativeStackNavigationProp<RootStackParamList, 'LocationsDirectory'>;
 export function LocationsDirectoryScreen() {
   const navigation = useNavigation<Nav>();
   const currentLocation = useAppStore((s) => s.currentLocation);
+  const currentLocationSource = useAppStore((s) => s.currentLocationSource);
+  const locationPermissionPrecision = useAppStore((s) => s.locationPermissionPrecision);
+  const lastKnownLocation = useAppStore((s) => s.lastKnownLocation);
+  const lastKnownLocationUpdatedAt = useAppStore((s) => s.lastKnownLocationUpdatedAt);
   const setPendingDirectorySelection = useAppStore((s) => s.setPendingDirectorySelection);
   // Set by Get Directions when it opens the Directory to choose a start or destination (null = plain browsing).
   // Read once at mount: this screen is pushed for one question, and clearing the store's copy on choose must not
@@ -114,6 +120,11 @@ export function LocationsDirectoryScreen() {
       .slice(0, 5);
   }, [recentSearches]);
 
+  // Start-only quick options, shown only when the location behind them is usable.
+  const canUseCurrentLocation =
+    !!currentLocation && currentLocationSource === 'live' && locationPermissionPrecision !== 'coarse';
+  const canUseLastKnown = !!lastKnownLocation;
+
   const goToMap = useCallback(() => {
     // Pushed from Home (reopened): back to the map, MapView never remounts. Reached at
     // launch via StartupManager (nothing to go back to): replace, matching how
@@ -149,6 +160,15 @@ export function LocationsDirectoryScreen() {
       goToMap();
     },
     [goToMap, purpose, setDirectoryChoice, setDirectoryPurpose, setPendingDirectorySelection],
+  );
+
+  const handleQuickStart = useCallback(
+    (quick: 'current_location' | 'last_known') => {
+      setDirectoryChoice({ purpose: 'start', quick });
+      setDirectoryPurpose(null);
+      goToMap();
+    },
+    [goToMap, setDirectoryChoice, setDirectoryPurpose],
   );
 
   // Android back: dismiss active search/filter state first (mirrors HomeScreen's own
@@ -278,6 +298,26 @@ export function LocationsDirectoryScreen() {
           renderSearchResults()
         ) : (
           <>
+            {purpose === 'start' && !activeCategory && (canUseCurrentLocation || canUseLastKnown) && (
+              <View style={styles.quickStarts}>
+                {canUseCurrentLocation && (
+                  <StartOptionCard
+                    icon={<LocateFixed size={26} color={directionsSheetColors.brand} />}
+                    title="Use my current location"
+                    subtitle="Find best eligible official gate automatically"
+                    onPress={() => handleQuickStart('current_location')}
+                  />
+                )}
+                {canUseLastKnown && (
+                  <StartOptionCard
+                    icon={<MapPin size={26} color={directionsSheetColors.brand} />}
+                    title="Use last known location"
+                    subtitle={`Saved ${formatLastKnownAge(lastKnownLocationUpdatedAt)}`}
+                    onPress={() => handleQuickStart('last_known')}
+                  />
+                )}
+              </View>
+            )}
             {!activeCategory && recentPlaces.length > 0 && (
               <View style={styles.section}>
                 <Text style={styles.sectionTitle} accessibilityRole="header">Recent</Text>
@@ -415,6 +455,11 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingBottom: spacing.xxl,
+  },
+  quickStarts: {
+    paddingHorizontal: spacing.xl,
+    marginTop: spacing.lg,
+    gap: spacing.sm,
   },
   section: {
     marginTop: spacing.lg,

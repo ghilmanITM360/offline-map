@@ -378,3 +378,84 @@ describe('LocationsDirectoryScreen — choosing a start or destination for Get D
     expect(useAppStore.getState().directoryPurpose).toBeNull();
   });
 });
+
+describe('LocationsDirectoryScreen — start quick options (#222)', () => {
+  const here = { latitude: 24.9762, longitude: 67.011 };
+  const openForStart = async () => {
+    const navigation = mockNav({ canGoBack: true });
+    useAppStore.getState().setDirectoryPurpose('start');
+    await render(<LocationsDirectoryScreen />);
+    return navigation;
+  };
+
+  test('current-location option appears only with a valid precise live location', async () => {
+    useAppStore.setState({ currentLocation: here, currentLocationSource: 'live', locationPermissionPrecision: 'fine' });
+    await openForStart();
+    expect(screen.getByLabelText(/^Use my current location/)).toBeOnTheScreen();
+  });
+
+  test.each([
+    ['no fix', { currentLocation: null, currentLocationSource: null, locationPermissionPrecision: 'fine' as const }],
+    ['coarse permission', { currentLocation: here, currentLocationSource: 'live' as const, locationPermissionPrecision: 'coarse' as const }],
+    ['non-live fix', { currentLocation: here, currentLocationSource: 'remembered' as const, locationPermissionPrecision: 'fine' as const }],
+  ])('current-location option is hidden: %s', async (_name, state) => {
+    useAppStore.setState(state);
+    await openForStart();
+    expect(screen.queryByLabelText(/^Use my current location/)).not.toBeOnTheScreen();
+  });
+
+  test('last-known option appears only when a remembered location exists', async () => {
+    useAppStore.setState({ lastKnownLocation: here, lastKnownLocationUpdatedAt: new Date().toISOString() });
+    await openForStart();
+    expect(screen.getByLabelText(/^Use last known location/)).toBeOnTheScreen();
+  });
+
+  test('last-known option is hidden without a remembered location', async () => {
+    await openForStart();
+    expect(screen.queryByLabelText(/^Use last known location/)).not.toBeOnTheScreen();
+  });
+
+  test('quick options never appear for destination choosing or plain browsing', async () => {
+    useAppStore.setState({
+      currentLocation: here,
+      currentLocationSource: 'live',
+      locationPermissionPrecision: 'fine',
+      lastKnownLocation: here,
+      lastKnownLocationUpdatedAt: new Date().toISOString(),
+    });
+    mockNav();
+    useAppStore.getState().setDirectoryPurpose('destination');
+    const view = await render(<LocationsDirectoryScreen />);
+    expect(screen.queryByLabelText(/^Use my current location/)).not.toBeOnTheScreen();
+    expect(screen.queryByLabelText(/^Use last known location/)).not.toBeOnTheScreen();
+    await view.unmount();
+
+    mockNav();
+    await render(<LocationsDirectoryScreen />);
+    expect(screen.queryByLabelText(/^Use my current location/)).not.toBeOnTheScreen();
+  });
+
+  test('tapping a quick option stores a place-less choice and returns', async () => {
+    useAppStore.setState({
+      currentLocation: here,
+      currentLocationSource: 'live',
+      locationPermissionPrecision: 'fine',
+      lastKnownLocation: here,
+      lastKnownLocationUpdatedAt: new Date().toISOString(),
+    });
+    const navigation = await openForStart();
+
+    await act(async () => fireEvent.press(screen.getByLabelText(/^Use my current location/)));
+    expect(useAppStore.getState().directoryChoice).toEqual({ purpose: 'start', quick: 'current_location' });
+    expect(useAppStore.getState().directoryPurpose).toBeNull();
+    expect(navigation.goBack).toHaveBeenCalledTimes(1);
+  });
+
+  test('tapping the last-known option stores the last_known choice', async () => {
+    useAppStore.setState({ lastKnownLocation: here, lastKnownLocationUpdatedAt: new Date().toISOString() });
+    await openForStart();
+
+    await act(async () => fireEvent.press(screen.getByLabelText(/^Use last known location/)));
+    expect(useAppStore.getState().directoryChoice).toEqual({ purpose: 'start', quick: 'last_known' });
+  });
+});

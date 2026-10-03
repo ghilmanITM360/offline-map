@@ -25,7 +25,7 @@ assert(homeScreen.includes('onMapReady={() =>') && homeScreen.includes('setIsMap
 // Navigation (v1 and v2 alike) shares Home's one MapView now, so this single check already
 // covers navigation rendering without a Google key or internet.
 assert(homeScreen.includes("mapType={baseMapMode === 'GOOGLE_BASEMAP' ? mapType : 'none'}"), 'Home map must render graph-only or local fallback without requesting Google tiles');
-assert(permissionScreen.includes('Choose start manually') || directionsScreen.includes('Choose start'), 'Denied GPS must leave a manual routing path');
+assert(permissionScreen.includes('Choose start manually') || directionsScreen.includes("onOpenDirectory?.('start')"), 'Denied GPS must leave a manual routing path');
 assert(settingsScreen.includes("AppState.addEventListener('change'"), 'Settings permission state must refresh safely after Android settings return');
 assert(
   navigationViewModelV1.includes("(activeRoute as { sourceVersion?: string }).sourceVersion === 'v2'"),

@@ -49,7 +49,7 @@ import { directionsSheetColors, radii, staticColors } from '../../../theme';
 import { placeCategoryLabel } from '../../../utils/placeCategoryLabel';
 import { unavailableReasonCopy } from '../../../utils/unavailableReasonCopy';
 import { directionsOfflineCaption } from '../../../utils/directionsOfflineCopy';
-import { DirectionsHeader, OfflineInfo, RouteEndpointCard, RouteEndpointRows, StartOptionCard } from './DirectionsSheetParts';
+import { DirectionsHeader, OfflineInfo, RouteEndpointCard, RouteEndpointRows } from './DirectionsSheetParts';
 import { publishDirectionsFooter, useDirectionsFooterHeight } from './DirectionsSheetFooter';
 import { OutsideRouteStatusCard } from '../navigation/OutsideRouteStatusCard';
 import type { NormalizedOutsideCandidate } from '../../../models/outsideRouting';
@@ -219,9 +219,6 @@ function RoutePreviewSection({
   const distanceUnit = useAppStore((s) => s.settings.distanceUnit);
 
   const [showGateOptions, setShowGateOptions] = useState(false);
-  // #89: resolveCurrentLocation has no visual affordance while in flight (up to
-  // CURRENT_POSITION_TIMEOUT_MS) without this — the tap looked like it did nothing.
-  const [resolvingCurrentLocation, setResolvingCurrentLocation] = useState(false);
   // Guards Retry against a same-tick double-tap: loadState only reflects the in-flight
   // request after DirectionsViewModel's state update commits and this component
   // re-renders, so a second tap landing before that commit would otherwise still see
@@ -233,16 +230,11 @@ function RoutePreviewSection({
     startSource,
     startSourceLabel,
     startSourceSupportingCopy,
-    isCurrentLocationStartActive,
-    rememberedLocationAgeLabel,
-    rememberedLocationAvailable,
-    rememberedLocationInsideVenue,
     currentRouteOriginInsideVenue,
     isOutsideStart,
     loadState,
     errorMessage,
     manualStart,
-    setIsEditingManualStart,
     setManualStartPlace,
     chooseCurrentLocation,
     chooseRememberedLocation,
@@ -254,27 +246,25 @@ function RoutePreviewSection({
     clearManualGateSelection,
     routeRefreshing,
     handleStartNavigation,
-    showManualStartSearch,
     canStartNavigation,
     startNavigationDisabledReason,
   } = useDirectionsViewModel(destination);
 
-  // Google Maps default: route starts from current GPS location, no picker shown up
-  // front. Remembered/manual start only surface once the rider explicitly asks via
-  // "Change Start" — picking one collapses back to the compact summary automatically.
-  const [showStartOptions, setShowStartOptions] = useState(false);
-  // The Directory returns the chosen start through the store; apply it and collapse back to the summary.
+  // The Directory is the only start chooser: Change Start always opens it in start mode. Current / last-known
+  // are quick options there; it returns them through the store and the VM applies them like a picked place.
+  const handleChangeStart = () => onOpenDirectory?.('start');
   const directoryChoice = useAppStore((s) => s.directoryChoice);
   const setDirectoryChoice = useAppStore((s) => s.setDirectoryChoice);
   useEffect(() => {
     if (directoryChoice?.purpose !== 'start') return;
-    setManualStartPlace(directoryChoice.place);
-    setShowStartOptions(false);
     setDirectoryChoice(null);
-  }, [directoryChoice, setDirectoryChoice, setManualStartPlace]);
+    if (!('quick' in directoryChoice)) setManualStartPlace(directoryChoice.place);
+    else if (directoryChoice.quick === 'current_location') void chooseCurrentLocation();
+    else chooseRememberedLocation();
+  }, [chooseCurrentLocation, chooseRememberedLocation, directoryChoice, setDirectoryChoice, setManualStartPlace]);
   // Same hand-off for "Change destination": the caller swaps its destination, which recalculates the route.
   useEffect(() => {
-    if (directoryChoice?.purpose !== 'destination') return;
+    if (directoryChoice?.purpose !== 'destination' || !('place' in directoryChoice)) return;
     setDirectoryChoice(null);
     onChangeDestination?.(directoryChoice.place);
   }, [directoryChoice, onChangeDestination, setDirectoryChoice]);
@@ -336,18 +326,6 @@ function RoutePreviewSection({
     }
   }, [loadState]);
 
-  const editingStart = showStartOptions || showManualStartSearch;
-  const editingAnything = editingStart;
-  // Back from a picker returns to the Get Directions summary; only from the summary does it leave
-  // the journey.
-  const handleBack = () => {
-    if (editingStart) {
-      setShowStartOptions(false);
-      setIsEditingManualStart(false);
-    } else {
-      onClose();
-    }
-  };
   const directGuide = outsideRoute?.provider === 'direct-guide';
   const offlineCaption = directionsOfflineCaption(outsideRoute?.provider, !!basemapOffline);
   // Past ~150% font the pinned footer would eat the sheet: it keeps only the action (and its
@@ -371,8 +349,8 @@ function RoutePreviewSection({
       </View>
     </View>
   ) : null;
-  const captionNode = offlineCaption ? <OfflineInfo text={offlineCaption} banner={editingStart} /> : null;
-  const footerVisible = !editingAnything && (showLoading || showError || showRouteReady);
+  const captionNode = offlineCaption ? <OfflineInfo text={offlineCaption} /> : null;
+  const footerVisible = showLoading || showError || showRouteReady;
   // The caption scrolls with the content: the pinned footer only has room for the route summary,
   // the action and its disabled reason (gorhom's visible area at the 50% snap is small).
 
@@ -463,8 +441,8 @@ function RoutePreviewSection({
     >
       <DirectionsHeader
         title="Get Directions"
-        subtitle={editingStart ? 'Choose where you are starting from' : 'Plan your walking route inside Ijtema'}
-        onBack={handleBack}
+        subtitle="Plan your walking route inside Ijtema"
+        onBack={onClose}
       />
 
       <KeyboardAvoidingView
@@ -478,7 +456,7 @@ function RoutePreviewSection({
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"
         >
-          {!editingStart && !showRouteReady && (
+          {!showRouteReady && (
             <FadeContent transitionKey="destSummary">
               <RouteEndpointCard
                 label="Going to"
@@ -503,7 +481,7 @@ function RoutePreviewSection({
             </FadeContent>
           )}
 
-          {!editingStart && showRouteReady && (
+          {showRouteReady && (
             <FadeContent transitionKey="routeEnds">
               <RouteEndpointRows
                 from={{
@@ -516,7 +494,7 @@ function RoutePreviewSection({
                   icon: startIcon,
                   actionLabel: 'Change Start',
                   actionAccessibilityLabel: 'Change starting point',
-                  onAction: () => setShowStartOptions(true),
+                  onAction: handleChangeStart,
                 }}
                 to={{
                   label: 'To',
@@ -540,58 +518,8 @@ function RoutePreviewSection({
             </FadeContent>
           )}
 
-          <FadeContent transitionKey={showStartOptions || showManualStartSearch ? 'options' : 'summary'}>
-          {showStartOptions || showManualStartSearch ? (
-            <View style={styles.options}>
-              <StartOptionCard
-                active={isCurrentLocationStartActive}
-                loading={resolvingCurrentLocation}
-                disabled={resolvingCurrentLocation}
-                icon={<LocateFixed size={26} color={isCurrentLocationStartActive ? directionsSheetColors.brandText : directionsSheetColors.brand} />}
-                title="Use my current location"
-                subtitle={resolvingCurrentLocation ? 'Finding your location…' : 'Find best eligible official gate automatically'}
-                onPress={() => {
-                  setResolvingCurrentLocation(true);
-                  void chooseCurrentLocation()
-                    .then((ok) => {
-                      if (ok) setShowStartOptions(false);
-                    })
-                    .finally(() => setResolvingCurrentLocation(false));
-                }}
-              />
-              {!resolvingCurrentLocation && errorMessage && (
-                <Card variant="warning" style={styles.statusCard}>
-                  <Text style={styles.statusText}>{errorMessage}</Text>
-                </Card>
-              )}
-
-              <StartOptionCard
-                active={startSource === 'remembered_location'}
-                disabled={!rememberedLocationAvailable}
-                icon={<MapPin size={26} color={startSource === 'remembered_location' ? directionsSheetColors.brandText : directionsSheetColors.brand} />}
-                title="Use last known location"
-                subtitle={
-                  !rememberedLocationAvailable
-                    ? 'No saved location yet'
-                    : rememberedLocationInsideVenue
-                    ? `We will start from nearest path (${rememberedLocationAgeLabel})`
-                    : `We'll enter through best eligible official gate (${rememberedLocationAgeLabel})`
-                }
-                onPress={() => {
-                  if (chooseRememberedLocation()) setShowStartOptions(false);
-                }}
-              />
-
-              <StartOptionCard
-                active={startSource === 'manual_place'}
-                icon={<Navigation size={26} color={startSource === 'manual_place' ? directionsSheetColors.brandText : directionsSheetColors.brand} />}
-                title="Choose start manually"
-                subtitle="Gate, rasta or block"
-                onPress={() => onOpenDirectory?.('start')}
-              />
-
-            </View>
-          ) : showRouteReady ? null : (
+          <FadeContent transitionKey="summary">
+          {showRouteReady ? null : (
             <RouteEndpointCard
               label="Starting from"
               helper={startSourceHelper(
@@ -603,13 +531,13 @@ function RoutePreviewSection({
               name={startSourceLabel}
               actionLabel="Change Start"
               actionAccessibilityLabel="Change starting point"
-              onAction={() => setShowStartOptions(true)}
+              onAction={handleChangeStart}
             />
           )}
           </FadeContent>
 
           <FadeContent transitionKey={loadState}>
-          {showStartHint && !editingAnything && (
+          {showStartHint && (
             <Card variant={outsideStart ? 'warning' : 'neutral'} style={styles.statusCard}>
               <Text style={[styles.statusTitle, outsideStart && styles.statusTitleWarning]}>
                 {outsideStart ? 'Outside Ijtema' : 'Start ready'}
@@ -623,14 +551,20 @@ function RoutePreviewSection({
             </Card>
           )}
 
-          {showError && !editingAnything && (
+          {loadState === 'needs_origin' && errorMessage && (
+            <Card variant="warning" style={styles.statusCard}>
+              <Text style={styles.statusText}>{errorMessage}</Text>
+            </Card>
+          )}
+
+          {showError && (
             <Card variant="error" style={styles.statusCard}>
               <Text style={[styles.statusTitle, styles.statusTitleError]}>Route problem</Text>
               <Text style={styles.statusText}>{errorMessage}</Text>
             </Card>
           )}
 
-          {showRouteReady && !editingAnything && (
+          {showRouteReady && (
             <View style={styles.readyBody}>
               {compactFooter && routeSummary}
               <Text style={styles.statusText}>{routeEntrySummary}</Text>
@@ -962,9 +896,6 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '800',
     color: directionsSheetColors.headingText,
-  },
-  options: {
-    gap: 12,
   },
   // Shared status cards (hint / error / warnings) follow the sheet's 14 dp card radius.
   statusCard: {

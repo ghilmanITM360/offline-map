@@ -24,7 +24,7 @@ assert(
   'LocationSheet must not call LayoutAnimation — it can conflict with BottomSheetModal internals',
 );
 assert(
-  source.includes("<FadeContent transitionKey={showStartOptions || showManualStartSearch ? 'options' : 'summary'}>"),
+  source.includes('<FadeContent transitionKey="summary">'),
   'The start-source section (summary <-> options/search) must be wrapped in FadeContent',
 );
 assert(
