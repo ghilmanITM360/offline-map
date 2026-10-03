@@ -179,6 +179,8 @@ function outsideRouteProvider(route: unknown): string | null {
 
 // Layers 48 + compass 48 + north-up badge + zoom pair 97 + recenter 56 + gaps; used only until onLayout measures the stack.
 const CONTROL_STACK_FALLBACK_HEIGHT = 300;
+const CONTROL_STACK_RIGHT = 12; // styles.controlStack.right
+const BANNER_CONTROL_GAP = 8;
 
 export function HomeScreen() {
   const nav = useNavigation<HomeScreenNavigationProp>();
@@ -984,6 +986,7 @@ export function HomeScreen() {
   // for the tooltip anchor and mapPadding. A closed sheet reports a Y at/after the window bottom.
   const sheetTopY = useSharedValue(windowHeight);
   const [controlStackHeight, setControlStackHeight] = useState(CONTROL_STACK_FALLBACK_HEIGHT);
+  const [controlStackWidth, setControlStackWidth] = useState(0);
   const [controlStackHidden, setControlStackHidden] = useState(false);
   const placeControlStack = (y: number) => {
     'worklet';
@@ -1760,7 +1763,15 @@ export function HomeScreen() {
                 stack (showMapWarningBanner's own copy already covers the offline case).
                 Route/gate context (showOutsideBanner) stays a separate, non-competing slot. */}
             {showMapWarningBanner ? (
-              <View style={[styles.mapWarningBanner, styles.bannerStackItem]} accessibilityLiveRegion="polite">
+              <View
+                style={[
+                  styles.mapWarningBanner,
+                  styles.bannerStackItem,
+                  // Full width would run under the Layers button when the sheet sits high.
+                  controlStackWidth > 0 && { marginRight: CONTROL_STACK_RIGHT + controlStackWidth + BANNER_CONTROL_GAP },
+                ]}
+                accessibilityLiveRegion="polite"
+              >
                 <Text style={styles.mapWarningText}>
                   {hasGoogleMapsKey && mapLoadFailed
                     ? MapConfigService.getMapLoadFailedMessage()
@@ -1859,7 +1870,10 @@ export function HomeScreen() {
               pointerEvents={controlStackHidden ? 'none' : 'auto'}
               accessibilityElementsHidden={controlStackHidden}
               importantForAccessibility={controlStackHidden ? 'no-hide-descendants' : 'auto'}
-              onLayout={(event) => setControlStackHeight(event.nativeEvent.layout.height)}
+              onLayout={(event) => {
+                setControlStackHeight(event.nativeEvent.layout.height);
+                setControlStackWidth(event.nativeEvent.layout.width);
+              }}
             >
               <MapControls
                 variant="browse"
@@ -2154,7 +2168,7 @@ const styles = StyleSheet.create({
   // replaces the old separately-anchored rightControls (top) + bottomControls
   // (bottom) pair that could collide when a route-preview card shrank the gap
   // between them.
-  controlStack: { position: 'absolute', right: 12, zIndex: Z.mapControls },
+  controlStack: { position: 'absolute', right: CONTROL_STACK_RIGHT, zIndex: Z.mapControls },
   bannerStack: { position: 'absolute', left: 0, right: 0, zIndex: Z.mapControls },
   bannerStackItem: { marginBottom: 8 },
   offlineIndicator: {
