@@ -233,7 +233,7 @@ export function SettingsScreen() {
                   return;
                 }
                 if (!hasGoogleMapsKey) {
-                  Alert.alert('Map key not configured', MapConfigService.getMissingGoogleMapsMessage());
+                  Alert.alert('Satellite unavailable', MapConfigService.getMissingGoogleMapsMessage());
                   return;
                 }
                 updateSettingValue('mapMode', 'satellite');

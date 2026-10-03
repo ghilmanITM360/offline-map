@@ -44,9 +44,9 @@ export type GoogleMapsRuntimeStatus = {
 };
 
 export const GOOGLE_MAPS_KEY_NOT_CONFIGURED_MESSAGE =
-  'Background map imagery is unavailable. Offline venue data still works.';
+  'Map background is unavailable. Ijtema routes still work.';
 export const GOOGLE_MAPS_LOAD_FAILED_MESSAGE =
-  'Map imagery failed to load. Offline venue data still works.';
+  'Map background did not load. Ijtema routes still work.';
 
 function hasEnvKey(value: string | undefined): boolean {
   return typeof value === 'string' && value.trim().length > 0;

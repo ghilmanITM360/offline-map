@@ -232,12 +232,12 @@ assert.equal(statusWithoutEnv.source, 'none', 'Map config should report none sou
 
 assert.equal(
   GOOGLE_MAPS_KEY_NOT_CONFIGURED_MESSAGE,
-  'Background map imagery is unavailable. Offline venue data still works.',
+  'Map background is unavailable. Ijtema routes still work.',
   'Missing-key warning message must match product copy',
 );
 assert.equal(
   GOOGLE_MAPS_LOAD_FAILED_MESSAGE,
-  'Map imagery failed to load. Offline venue data still works.',
+  'Map background did not load. Ijtema routes still work.',
   'Map-failed warning message must match product copy',
 );
 assert(
