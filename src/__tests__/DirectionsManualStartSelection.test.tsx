@@ -13,6 +13,7 @@ import React from 'react';
 import type { Place } from '../models/types';
 import { useAppStore } from '../store/useAppStore';
 import { useDirectionsViewModel } from '../viewmodels/DirectionsViewModel';
+import { LocationAccessService } from '../services/LocationAccessService';
 import { LocationSheet } from '../views/components/map/LocationSheet';
 import { DirectionsSheetFooter } from '../views/components/map/DirectionsSheetFooter';
 import { act, render, renderHook, screen, userEvent, waitFor } from './test-utils';
@@ -65,62 +66,174 @@ describe('manual start selection (viewmodel)', () => {
   });
 });
 
-describe('manual start selection (Get Directions sheet)', () => {
+describe('Directory is the single start chooser (Get Directions sheet)', () => {
   const onOpenDirectory = jest.fn();
-  const mount = () =>
+  const onChangeDestination = jest.fn();
+  const mount = (onClose = jest.fn()) =>
     render(
       <>
-        <LocationSheet mode="routePreview" destination={destination} onClose={jest.fn()} onOpenDirectory={onOpenDirectory} />
+        <LocationSheet
+          mode="routePreview"
+          destination={destination}
+          onClose={onClose}
+          onOpenDirectory={onOpenDirectory}
+          onChangeDestination={onChangeDestination}
+        />
         <DirectionsSheetFooter animatedFooterPosition={{ value: 0, get: () => 0 } as never} />
       </>,
     );
-
-  async function pickGate13(user: ReturnType<typeof userEvent.setup>) {
-    await user.press(screen.getByText('Change Start'));
-    await user.press(screen.getByText('Choose start manually'));
-    expect(onOpenDirectory).toHaveBeenLastCalledWith('start');
-    // What the Directory does when the visitor taps Gate 13.
-    await act(async () => {
-      useAppStore.getState().setDirectoryChoice({ purpose: 'start', place: gate13 });
+  // What the Directory leaves in the store when the visitor picks something.
+  const choose = (choice: NonNullable<ReturnType<typeof useAppStore.getState>['directoryChoice']>) =>
+    act(async () => {
+      useAppStore.getState().setDirectoryChoice(choice);
     });
-  }
+  const expectNoChooser = () => {
+    expect(screen.queryByText('Choose start manually')).not.toBeOnTheScreen();
+    expect(screen.queryByText('Use my current location')).not.toBeOnTheScreen();
+    expect(screen.queryByText('Use last known location')).not.toBeOnTheScreen();
+  };
 
-  test('tapping Gate 13 closes the picker, shows it as the start, and reaches route ready', async () => {
+  test('no start chosen: Change Start opens the Directory in start mode, with no 3-card chooser', async () => {
+    useAppStore.setState({ currentLocation: null, currentLocationSource: null });
     const user = userEvent.setup();
     await mount();
-    await pickGate13(user);
 
-    expect(screen.queryByText('Choose start manually')).not.toBeOnTheScreen();
+    await user.press(screen.getByText('Change Start'));
+
+    expect(onOpenDirectory).toHaveBeenCalledTimes(1);
+    expect(onOpenDirectory).toHaveBeenLastCalledWith('start');
+    expectNoChooser();
+  });
+
+  test('existing manual start: Change Start opens the Directory directly', async () => {
+    const user = userEvent.setup();
+    await mount();
+    await choose({ purpose: 'start', place: gate13 });
+    expect(screen.getByText('Gate 13')).toBeOnTheScreen();
+
+    await user.press(screen.getByText('Change Start'));
+
+    expect(onOpenDirectory).toHaveBeenLastCalledWith('start');
+    expectNoChooser();
+  });
+
+  test('existing GPS start: Change Start opens the Directory directly', async () => {
+    const user = userEvent.setup();
+    await mount();
+    expect(screen.getByText('My current location')).toBeOnTheScreen();
+
+    await user.press(screen.getByText('Change Start'));
+
+    expect(onOpenDirectory).toHaveBeenLastCalledWith('start');
+    expectNoChooser();
+  });
+
+  test('route-ready From row also opens the Directory directly', async () => {
+    const user = userEvent.setup();
+    await mount();
+    await waitFor(() => expect(screen.getByText('Route ready')).toBeOnTheScreen(), { timeout: 5_000 });
+
+    await user.press(screen.getByText('Change Start'));
+
+    expect(onOpenDirectory).toHaveBeenLastCalledWith('start');
+    expectNoChooser();
+  });
+
+  test('selecting Gate 13 returns with Gate 13 as the start, route ready, destination unchanged', async () => {
+    await mount();
+    await choose({ purpose: 'start', place: gate13 });
+
     expect(useAppStore.getState().directoryChoice).toBeNull();
     expect(screen.getByText('Gate 13')).toBeOnTheScreen();
     expect(screen.getByText('Block 34')).toBeOnTheScreen();
-    expect(screen.getByText('Change Start')).toBeOnTheScreen();
+    expect(onChangeDestination).not.toHaveBeenCalled();
     await waitFor(() => expect(screen.getByText('Route ready')).toBeOnTheScreen(), { timeout: 5_000 });
   });
 
-  test('Change Start reopens the picker intentionally after a manual selection', async () => {
-    const user = userEvent.setup();
+  test('selecting the current-location quick option returns with a GPS start', async () => {
+    const coordinate = { latitude: 24.9762, longitude: 67.011 };
+    jest.spyOn(LocationAccessService, 'resolveCurrentLocation').mockResolvedValue({
+      ok: true,
+      coordinate,
+      source: 'live',
+      permissionState: { granted: true, canAskAgain: true, status: 'granted', precision: 'fine' },
+    } as never);
     await mount();
-    await pickGate13(user);
+    await choose({ purpose: 'start', place: gate13 });
+    expect(screen.getByText('Gate 13')).toBeOnTheScreen();
 
-    await user.press(screen.getByText('Change Start'));
-    expect(screen.getByText('Choose start manually')).toBeOnTheScreen();
-    expect(screen.getByText('Use my current location')).toBeOnTheScreen();
+    await choose({ purpose: 'start', quick: 'current_location' });
+
+    expect(useAppStore.getState().directoryChoice).toBeNull();
+    await waitFor(() => expect(screen.getByText('My current location')).toBeOnTheScreen());
+    expect(screen.queryByText('Gate 13')).not.toBeOnTheScreen();
+    expect(screen.getByText('Block 34')).toBeOnTheScreen();
   });
 
-  test('Back from the reopened picker returns to the summary and keeps Gate 13', async () => {
+  test('selecting the last-known quick option returns with the remembered start', async () => {
+    useAppStore.setState({
+      lastKnownLocation: { latitude: 24.9762, longitude: 67.011 },
+      lastKnownLocationUpdatedAt: new Date().toISOString(),
+    });
+    await mount();
+
+    await choose({ purpose: 'start', quick: 'last_known' });
+
+    await waitFor(() => expect(screen.getAllByText(/^Last known location/).length).toBeGreaterThan(0));
+    expect(screen.getByText('Block 34')).toBeOnTheScreen();
+  });
+
+  test('cancelling the Directory (no choice) keeps the previous valid start and the destination', async () => {
     const onClose = jest.fn();
     const user = userEvent.setup();
-    await render(
-      <LocationSheet mode="routePreview" destination={destination} onClose={onClose} onOpenDirectory={onOpenDirectory} />,
-    );
-    await pickGate13(user);
+    await mount(onClose);
+    await choose({ purpose: 'start', place: gate13 });
     await user.press(screen.getByText('Change Start'));
 
-    await user.press(screen.getByRole('button', { name: /back/i }));
-
-    expect(onClose).not.toHaveBeenCalled();
-    expect(screen.queryByText('Choose start manually')).not.toBeOnTheScreen();
+    // Cancel leaves no choice behind: nothing changes.
+    expect(useAppStore.getState().directoryChoice).toBeNull();
     expect(screen.getByText('Gate 13')).toBeOnTheScreen();
+    expect(screen.getByText('Block 34')).toBeOnTheScreen();
+    expect(onClose).not.toHaveBeenCalled();
+    expect(onChangeDestination).not.toHaveBeenCalled();
+  });
+
+  test('a start choice never changes the destination', async () => {
+    await mount();
+    await choose({ purpose: 'start', place: gate13 });
+    await choose({ purpose: 'start', quick: 'last_known' });
+
+    expect(onChangeDestination).not.toHaveBeenCalled();
+    expect(screen.getByText('Block 34')).toBeOnTheScreen();
+  });
+
+  test('needs_origin (no GPS fix) recovers through the same Directory start flow', async () => {
+    useAppStore.setState({ currentLocation: null, currentLocationSource: 'live' });
+    const user = userEvent.setup();
+    await mount();
+
+    await user.press(screen.getByText('Change Start'));
+
+    expect(onOpenDirectory).toHaveBeenLastCalledWith('start');
+    expectNoChooser();
+  });
+
+  test('needs_origin after a failed current-location pick shows the error and recovers through the Directory', async () => {
+    jest.spyOn(LocationAccessService, 'resolveCurrentLocation').mockResolvedValue({
+      ok: false,
+      coordinate: null,
+      message: 'Current location unavailable. Choose starting point manually.',
+      permissionState: { granted: true, canAskAgain: true, status: 'granted', precision: 'fine' },
+    } as never);
+    const user = userEvent.setup();
+    await mount();
+
+    await choose({ purpose: 'start', quick: 'current_location' });
+    // The failed pick leaves the sheet in needs_origin; it says so and offers no chooser of its own.
+    await waitFor(() => expect(screen.getByText('Choose starting point to continue.')).toBeOnTheScreen());
+    expectNoChooser();
+
+    await user.press(screen.getByText('Change Start'));
+    expect(onOpenDirectory).toHaveBeenLastCalledWith('start');
   });
 });

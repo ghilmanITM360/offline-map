@@ -173,28 +173,24 @@ describe('Get Directions redesign — structure and semantics', () => {
     expect(screen.getByText('Using your saved location')).toBeOnTheScreen();
   });
 
-  test('choosing a start (State A) hides the destination card and uses the start subtitle', async () => {
+  test('Change Start opens the Directory in start mode and the summary stays put', async () => {
     mockedVm.mockReturnValue(vm());
+    const onOpenDirectory = jest.fn();
     const user = userEvent.setup();
-    await renderSheet();
+    await renderSheet({ onOpenDirectory });
 
     await user.press(screen.getByRole('button', { name: 'Change starting point' }));
 
-    expect(screen.getByText('Choose where you are starting from')).toBeOnTheScreen();
-    expect(screen.queryByRole('header', { name: 'Going to' })).not.toBeOnTheScreen();
-    expect(screen.getByRole('button', { name: /Use my current location/ })).toBeOnTheScreen();
+    expect(onOpenDirectory).toHaveBeenCalledWith('start');
+    expect(screen.getByRole('header', { name: 'Going to' })).toBeOnTheScreen();
+    expect(screen.queryByText('Choose where you are starting from')).not.toBeOnTheScreen();
+    expect(screen.queryByRole('button', { name: /Use my current location/ })).not.toBeOnTheScreen();
   });
 
-  test('Back from the start chooser returns to the summary; Back from the summary closes', async () => {
+  test('Back from the summary closes the sheet', async () => {
     mockedVm.mockReturnValue(vm());
     const user = userEvent.setup();
     await renderSheet();
-
-    await user.press(screen.getByRole('button', { name: 'Change starting point' }));
-    await user.press(screen.getByRole('button', { name: 'Back' }));
-
-    expect(onClose).not.toHaveBeenCalled();
-    expect(screen.getByRole('header', { name: 'Going to' })).toBeOnTheScreen();
 
     await user.press(screen.getByRole('button', { name: 'Back' }));
     expect(onClose).toHaveBeenCalledTimes(1);
@@ -210,21 +206,7 @@ describe('Get Directions redesign — structure and semantics', () => {
     expect(onOpenDirectory).toHaveBeenCalledWith('destination');
 
     await user.press(screen.getByText('My current location'));
-    expect(screen.getByText('Choose where you are starting from')).toBeOnTheScreen();
-  });
-
-  test('recommended emphasis only follows the real start source', async () => {
-    mockedVm.mockReturnValue(
-      vm({ startSource: 'manual_place', isCurrentLocationStartActive: false, showManualStartSearch: true }),
-    );
-    await renderSheet();
-
-    expect(screen.getByRole('button', { name: /Use my current location/ }).props.accessibilityState).toMatchObject({
-      selected: false,
-    });
-    expect(screen.getByRole('button', { name: /Choose start manually/ }).props.accessibilityState).toMatchObject({
-      selected: true,
-    });
+    expect(onOpenDirectory).toHaveBeenLastCalledWith('start');
   });
 });
 
@@ -281,15 +263,6 @@ describe('Get Directions redesign — pinned footer', () => {
     expect(scroll.getByText('Ijtema routes work without internet.')).toBeOnTheScreen();
     expect(scroll.queryByRole('button', { name: 'Start Navigation' })).not.toBeOnTheScreen();
     expect(screen.getByRole('button', { name: 'Start Navigation' })).toBeOnTheScreen();
-  });
-
-  test('footer is hidden while choosing a start, so it cannot cover the options', async () => {
-    mockedVm.mockReturnValue(ready());
-    const user = userEvent.setup();
-    await renderSheet({ onChangeDestination: jest.fn(), onOpenDirectory: jest.fn() });
-
-    await user.press(screen.getByRole('button', { name: 'Change starting point' }));
-    expect(screen.queryByRole('button', { name: 'Start Navigation' })).not.toBeOnTheScreen();
   });
 
   test('the footer hides at the collapsed snap so it cannot cover the header', async () => {

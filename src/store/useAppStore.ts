@@ -30,6 +30,10 @@ import { isValidCoordinate } from '../utils/isValidCoordinate';
 export type RouteSelectionMode = 'idle' | 'selectingStart' | 'selectingDestination';
 /** What the Directory is being opened to choose; null = plain browsing. */
 export type DirectoryPurpose = 'start' | 'destination';
+/** A Directory answer. Quick start options carry no place: the initiator already owns the location. */
+export type DirectoryChoice =
+  | { purpose: DirectoryPurpose; place: Place }
+  | { purpose: 'start'; quick: 'current_location' | 'last_known' };
 
 function sanitizePersistedPlace(place: Place | null | undefined): Place | null {
   if (!place || typeof place !== 'object' || Array.isArray(place) || typeof place.id !== 'string') return null;
@@ -176,8 +180,8 @@ interface AppState {
   // the initiator consumes (and clears) the choice. Both are ephemeral and never persisted.
   directoryPurpose: DirectoryPurpose | null;
   setDirectoryPurpose: (purpose: DirectoryPurpose | null) => void;
-  directoryChoice: { purpose: DirectoryPurpose; place: Place } | null;
-  setDirectoryChoice: (choice: { purpose: DirectoryPurpose; place: Place } | null) => void;
+  directoryChoice: DirectoryChoice | null;
+  setDirectoryChoice: (choice: DirectoryChoice | null) => void;
 
   // --- Route planner (From/To, Phase 3) ---
   routePlannerOrigin: Place | null;       // null = use current GPS
