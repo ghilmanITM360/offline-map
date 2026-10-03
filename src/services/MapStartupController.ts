@@ -4,6 +4,7 @@
  */
 
 import { Coordinate } from '../models/types';
+import { IJTEMA_BLOCKS } from '../data/ijtema';
 import type { LocationResolveResult } from './LocationAccessService';
 
 export interface MapStartupChecks {
@@ -29,6 +30,22 @@ export type MapStartupCameraDecision =
 export type ReturningLaunchCameraDecision =
   | { action: 'FIT_VENUE_BOUNDS'; reason: 'first_overview' | 'no_gps' }
   | { action: 'ANIMATE_TO_USER'; coordinate: Coordinate; source: 'live' };
+
+/**
+ * Where the Map opens when there is no destination, no active route and no usable location (#222).
+ * Block 2 is the verified repository entity (B2) used as a camera anchor only. It is not a detected
+ * location and not a surveyed Mimbar point (that is #116), so it is never used as a route start here.
+ */
+export type EntryCameraPlan =
+  | {
+      kind: 'VENUE_OVERVIEW';
+      reason: 'first_overview' | 'user_in_venue' | 'user_outside';
+      /** Present when a fresh live fix exists, so the caller can commit it as the user marker. */
+      user?: { coordinate: Coordinate; source: 'live' };
+    }
+  | { kind: 'FALLBACK_ANCHOR'; anchor: { id: 'B2'; name: string; coordinate: Coordinate }; notice: string };
+
+export const FALLBACK_LOCATION_NOTICE = 'Location unavailable. Showing Block 2.';
 
 const RETURNING_LAUNCH_RESOLVE_TIMEOUT_MS = 4000;
 
@@ -92,6 +109,35 @@ export class MapStartupController {
    * This method never mutates camera or store state itself — it only returns a decision, same
    * as resolveColdLaunchCamera above.
    */
+  /**
+   * #222 camera rules for a Map entry with no destination and no active route (those two cases are
+   * owned by the place and route camera, which also invalidate this decision when they arrive).
+   * A usable location, inside or outside the Ijtema, gets the grounds overview (the user marker is
+   * drawn by the map, so the user stays visible without zooming onto the dot); no usable location
+   * gets the Block 2 anchor with an explicit notice. Pure: callers commit the marker and move the camera.
+   */
+  static planEntryCamera(
+    decision: ReturningLaunchCameraDecision,
+    isInsideVenue: (coordinate: Coordinate) => boolean,
+  ): EntryCameraPlan {
+    if (decision.action === 'ANIMATE_TO_USER') {
+      return {
+        kind: 'VENUE_OVERVIEW',
+        reason: isInsideVenue(decision.coordinate) ? 'user_in_venue' : 'user_outside',
+        user: { coordinate: decision.coordinate, source: decision.source },
+      };
+    }
+    if (decision.reason === 'first_overview') return { kind: 'VENUE_OVERVIEW', reason: 'first_overview' };
+
+    const block2 = IJTEMA_BLOCKS.find((block) => block.id === 'B2');
+    if (!block2) return { kind: 'VENUE_OVERVIEW', reason: 'first_overview' };
+    return {
+      kind: 'FALLBACK_ANCHOR',
+      anchor: { id: 'B2', name: block2.name.en, coordinate: { latitude: block2.center.lat, longitude: block2.center.lng } },
+      notice: FALLBACK_LOCATION_NOTICE,
+    };
+  }
+
   static async resolveReturningLaunchCamera(
     checks: { hasSeenMapOverview: boolean; hasLocationPermission: boolean },
     resolveFreshLocation: () => Promise<LocationResolveResult>,

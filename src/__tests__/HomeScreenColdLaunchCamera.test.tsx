@@ -58,6 +58,8 @@ const setIsMapReadySpy = jest.fn();
 const liveCoordinate = { latitude: 24.9656, longitude: 67.0072, accuracy: 6, heading: 88 };
 const staleRememberedCoordinate = { latitude: 24.9011, longitude: 67.1012, accuracy: 40 };
 const deviceLastKnownCoordinate = { latitude: 24.9022, longitude: 67.1024, accuracy: 35 };
+// Verified repository entity B2 (Block 2) centre: the camera fallback when no usable location exists (#222).
+const block2AnchorCoordinate = { latitude: 24.9685, longitude: 66.9999167 };
 
 const basePermissionState: LocationResolveResult['permissionState'] = {
   granted: true,
@@ -283,9 +285,9 @@ describe('HomeScreen - launch camera (Google Maps principles, adapted for a venu
 
     expect(mockedResolveCurrentLocation).toHaveBeenCalledTimes(1);
     expect(mockedResolveCurrentLocation).toHaveBeenCalledWith(false);
-    expect(cameraAnimateToUserSpy).not.toHaveBeenCalled();
     expect(cameraAnimateToUserSpy).not.toHaveBeenCalledWith(staleRememberedCoordinate);
-    expect(cameraFitVenueBoundsSpy).toHaveBeenCalledTimes(1);
+    expect(cameraAnimateToUserSpy).toHaveBeenCalledWith(block2AnchorCoordinate);
+    expect(cameraFitVenueBoundsSpy).not.toHaveBeenCalled();
     expect(useAppStore.getState().currentLocation).toBeNull();
   });
 
@@ -306,9 +308,9 @@ describe('HomeScreen - launch camera (Google Maps principles, adapted for a venu
     expect(useAppStore.getState().currentLocation).toEqual(liveCoordinate);
     expect(useAppStore.getState().currentLocationSource).toBe('live');
     expect(screen.getByTestId('browse-user-location-marker').props.coordinate).toEqual(liveCoordinate);
-    expect(cameraAnimateToUserSpy).toHaveBeenCalledTimes(1);
-    expect(cameraAnimateToUserSpy).toHaveBeenCalledWith(liveCoordinate);
-    expect(cameraFitVenueBoundsSpy).not.toHaveBeenCalled();
+    // #222: a valid location inside the Ijtema shows the grounds overview, not a zoom onto the dot.
+    expect(cameraFitVenueBoundsSpy).toHaveBeenCalledTimes(1);
+    expect(cameraAnimateToUserSpy).not.toHaveBeenCalled();
   });
 
   test('Google mapLoaded after returning launch commit does not start a second resolver or camera decision', async () => {
@@ -322,8 +324,8 @@ describe('HomeScreen - launch camera (Google Maps principles, adapted for a venu
     await flushProjectionTimers();
 
     expect(mockedResolveCurrentLocation).toHaveBeenCalledTimes(1);
-    expect(cameraAnimateToUserSpy).toHaveBeenCalledTimes(1);
-    expect(cameraFitVenueBoundsSpy).not.toHaveBeenCalled();
+    expect(cameraFitVenueBoundsSpy).toHaveBeenCalledTimes(1);
+    expect(cameraAnimateToUserSpy).not.toHaveBeenCalled();
   });
 
   test.each([
@@ -344,8 +346,9 @@ describe('HomeScreen - launch camera (Google Maps principles, adapted for a venu
     await flushLaunchMicrotasks();
     await flushProjectionTimers();
 
-    expect(cameraFitVenueBoundsSpy).toHaveBeenCalledTimes(1);
-    expect(cameraAnimateToUserSpy).not.toHaveBeenCalled();
+    expect(cameraFitVenueBoundsSpy).not.toHaveBeenCalled();
+    expect(cameraAnimateToUserSpy).toHaveBeenCalledTimes(1);
+    expect(cameraAnimateToUserSpy).toHaveBeenCalledWith(block2AnchorCoordinate);
     expect(useAppStore.getState().currentLocation).toBeNull();
     expect(useAppStore.getState().currentLocationSource).toBeNull();
     expect(useAppStore.getState().hasSeenMapOverview).toBe(true);
@@ -359,8 +362,9 @@ describe('HomeScreen - launch camera (Google Maps principles, adapted for a venu
     await flushProjectionTimers();
 
     expect(mockedResolveCurrentLocation).not.toHaveBeenCalled();
-    expect(cameraFitVenueBoundsSpy).toHaveBeenCalledTimes(1);
-    expect(cameraAnimateToUserSpy).not.toHaveBeenCalled();
+    expect(cameraFitVenueBoundsSpy).not.toHaveBeenCalled();
+    expect(cameraAnimateToUserSpy).toHaveBeenCalledTimes(1);
+    expect(cameraAnimateToUserSpy).toHaveBeenCalledWith(block2AnchorCoordinate);
   });
 
   test('resolver timeout: fits venue, never writes first-overview state again, and ignores the later live result', async () => {
@@ -374,8 +378,9 @@ describe('HomeScreen - launch camera (Google Maps principles, adapted for a venu
     });
     await flushProjectionTimers();
 
-    expect(cameraFitVenueBoundsSpy).toHaveBeenCalledTimes(1);
-    expect(cameraAnimateToUserSpy).not.toHaveBeenCalled();
+    expect(cameraFitVenueBoundsSpy).not.toHaveBeenCalled();
+    expect(cameraAnimateToUserSpy).toHaveBeenCalledTimes(1);
+    expect(cameraAnimateToUserSpy).toHaveBeenCalledWith(block2AnchorCoordinate);
     expect(useAppStore.getState().currentLocation).toBeNull();
     expect(useAppStore.getState().hasSeenMapOverview).toBe(true);
 
@@ -385,8 +390,9 @@ describe('HomeScreen - launch camera (Google Maps principles, adapted for a venu
       await Promise.resolve();
     });
 
-    expect(cameraFitVenueBoundsSpy).toHaveBeenCalledTimes(1);
-    expect(cameraAnimateToUserSpy).not.toHaveBeenCalled();
+    expect(cameraFitVenueBoundsSpy).not.toHaveBeenCalled();
+    expect(cameraAnimateToUserSpy).toHaveBeenCalledTimes(1);
+    expect(cameraAnimateToUserSpy).toHaveBeenCalledWith(block2AnchorCoordinate);
     expect(useAppStore.getState().currentLocation).toBeNull();
   });
 
@@ -560,8 +566,8 @@ describe('HomeScreen - launch camera (Google Maps principles, adapted for a venu
     await flushProjectionTimers();
 
     expect(mockedResolveCurrentLocation).toHaveBeenCalledTimes(1);
-    expect(cameraAnimateToUserSpy).toHaveBeenCalledTimes(1);
-    expect(cameraAnimateToUserSpy).toHaveBeenCalledWith(liveCoordinate);
+    expect(cameraFitVenueBoundsSpy).toHaveBeenCalledTimes(1);
+    expect(cameraAnimateToUserSpy).not.toHaveBeenCalled();
   });
 
   test('continuous watcher is not released while the one-shot returning launch resolver is pending', async () => {
@@ -582,7 +588,7 @@ describe('HomeScreen - launch camera (Google Maps principles, adapted for a venu
     await flushProjectionTimers();
 
     expect(setIsMapReadySpy).toHaveBeenCalledTimes(1);
-    expect(cameraAnimateToUserSpy).toHaveBeenCalledTimes(1);
+    expect(cameraFitVenueBoundsSpy).toHaveBeenCalledTimes(1);
   });
 
   test('passive current-location update while resolver is pending does not issue a competing camera move', async () => {
@@ -607,9 +613,8 @@ describe('HomeScreen - launch camera (Google Maps principles, adapted for a venu
     });
     await flushProjectionTimers();
 
-    expect(cameraAnimateToUserSpy).toHaveBeenCalledTimes(1);
-    expect(cameraAnimateToUserSpy).toHaveBeenCalledWith(liveCoordinate);
-    expect(cameraAnimateToUserSpy).not.toHaveBeenCalledWith(watcherCoordinate);
+    expect(cameraFitVenueBoundsSpy).toHaveBeenCalledTimes(1);
+    expect(cameraAnimateToUserSpy).not.toHaveBeenCalled();
     expect(useAppStore.getState().currentLocation).toEqual(liveCoordinate);
   });
 
@@ -634,8 +639,9 @@ describe('HomeScreen - launch camera (Google Maps principles, adapted for a venu
     await flushProjectionTimers();
 
     expect(mockedResolveCurrentLocation).toHaveBeenCalledTimes(1);
-    expect(cameraFitVenueBoundsSpy).toHaveBeenCalledTimes(1);
-    expect(cameraAnimateToUserSpy).not.toHaveBeenCalled();
+    expect(cameraFitVenueBoundsSpy).not.toHaveBeenCalled();
+    expect(cameraAnimateToUserSpy).toHaveBeenCalledTimes(1);
+    expect(cameraAnimateToUserSpy).toHaveBeenCalledWith(block2AnchorCoordinate);
   });
 
   test('explicit remembered-location state remains visibly remembered and is not relabelled as live by launch fallback', async () => {
@@ -652,9 +658,67 @@ describe('HomeScreen - launch camera (Google Maps principles, adapted for a venu
     await flushLaunchMicrotasks();
     await flushProjectionTimers();
 
-    expect(cameraFitVenueBoundsSpy).toHaveBeenCalledTimes(1);
+    expect(cameraFitVenueBoundsSpy).not.toHaveBeenCalled();
+    expect(cameraAnimateToUserSpy).toHaveBeenCalledTimes(1);
+    expect(cameraAnimateToUserSpy).toHaveBeenCalledWith(block2AnchorCoordinate);
     expect(cameraAnimateToUserSpy).not.toHaveBeenCalledWith(staleRememberedCoordinate);
     expect(useAppStore.getState().currentLocationSource).toBe('remembered');
     expect(screen.getByText('last known')).toBeOnTheScreen();
+  });
+});
+
+describe('#222 Map entry camera rules', () => {
+  const outsideCoordinate = { latitude: 24.8607, longitude: 67.0011, accuracy: 12 };
+
+  test('no usable location: opens on Block 2 and says so, without presenting it as a detected location', async () => {
+    useAppStore.setState({ hasSeenMapOverview: true, hasLocationPermission: false, currentLocation: null });
+
+    await renderAndMapReady();
+    await flushProjectionTimers();
+
+    expect(cameraAnimateToUserSpy).toHaveBeenCalledWith(block2AnchorCoordinate);
+    expect(screen.getByText('Location unavailable. Showing Block 2.')).toBeOnTheScreen();
+    expect(useAppStore.getState().currentLocation).toBeNull();
+    expect(useAppStore.getState().currentLocationSource).toBeNull();
+  });
+
+  test('a live location inside the Ijtema shows the grounds overview and no fallback notice', async () => {
+    useAppStore.setState({ hasSeenMapOverview: true, hasLocationPermission: true, currentLocation: null });
+
+    await renderAndMapReady();
+    await flushLaunchMicrotasks();
+    await flushProjectionTimers();
+
+    expect(cameraFitVenueBoundsSpy).toHaveBeenCalledTimes(1);
+    expect(cameraAnimateToUserSpy).not.toHaveBeenCalled();
+    expect(useAppStore.getState().currentLocation).toEqual(liveCoordinate);
+    expect(screen.queryByText('Location unavailable. Showing Block 2.')).toBeNull();
+  });
+
+  test('a live location outside the Ijtema shows the venue context and still records the location for the outside status', async () => {
+    mockedResolveCurrentLocation.mockResolvedValue(locationResult('live', outsideCoordinate));
+    useAppStore.setState({ hasSeenMapOverview: true, hasLocationPermission: true, currentLocation: null });
+
+    await renderAndMapReady();
+    await flushLaunchMicrotasks();
+    await flushProjectionTimers();
+
+    expect(cameraFitVenueBoundsSpy).toHaveBeenCalledTimes(1);
+    expect(cameraAnimateToUserSpy).not.toHaveBeenCalled();
+    expect(useAppStore.getState().currentLocation).toEqual(outsideCoordinate);
+    expect(screen.queryByText('Location unavailable. Showing Block 2.')).toBeNull();
+  });
+
+  test('a destination already selected when the Map opens owns the camera: no overview and no Block 2 fallback', async () => {
+    mockedUseHomeViewModel.mockImplementation(() => useFakeHomeViewModel({ selectedPlace: searchResultPlace }));
+    useAppStore.setState({ hasSeenMapOverview: true, hasLocationPermission: false, currentLocation: null });
+
+    await renderAndMapReady();
+    await flushLaunchMicrotasks();
+    await flushProjectionTimers();
+
+    expect(cameraAnimateToUserSpy).not.toHaveBeenCalled();
+    expect(cameraFitVenueBoundsSpy).not.toHaveBeenCalled();
+    expect(screen.queryByText('Location unavailable. Showing Block 2.')).toBeNull();
   });
 });

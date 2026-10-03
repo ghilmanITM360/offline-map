@@ -79,7 +79,9 @@ import {
   MapLoadWatchdogState,
 } from '../../services/MapLoadWatchdog';
 import { MapFeatureFlagsService } from '../../services/MapFeatureFlagsService';
-import { MapStartupController } from '../../services/MapStartupController';
+import { MapStartupController, type EntryCameraPlan } from '../../services/MapStartupController';
+import { EntryGateRoutingService } from '../../services/EntryGateRoutingService';
+import { RoutingService } from '../../services/RoutingService';
 import { LocationAccessService } from '../../services/LocationAccessService';
 import { V2MapRenderingService, MEDIUM_ZOOM, HIGH_ZOOM } from '../../services/V2MapRenderingService';
 import { recommendPreviewEntryGate, startPreviewNavigationV2 } from '../../viewmodels/NavigationViewModelV2';
@@ -250,6 +252,8 @@ export function HomeScreen() {
   const hasGoogleMapsKey = mapRuntimeStatus.keyPresent;
   const useV2Map = MapFeatureFlagsService.useIjtemaV2Map();
   const [outsideBannerDismissed, setOutsideBannerDismissed] = useState(false);
+  // #222: set only when the Map opened on the Block 2 anchor because no usable location existed.
+  const [fallbackNotice, setFallbackNotice] = useState<string | null>(null);
   const [layersSheetVisible, setLayersSheetVisible] = useState(false);
   const [mapReady, setMapReadyState] = useState(false);
   // #28: single source of truth for Google-basemap load health — see MapLoadWatchdog.ts.
@@ -531,31 +535,25 @@ export function HomeScreen() {
     modeRef.current === 'EXPLORE'
   ), []);
 
-  const commitStartupVenueBounds = useCallback((
+  const commitStartupPlan = useCallback((
+    plan: EntryCameraPlan,
     venueBoundary: Coordinate[],
-    reason: 'first_overview' | 'no_gps',
     requestGeneration: number,
     cameraIntentGeneration: number,
   ) => {
     if (!startupCameraStillOwnsIntent(requestGeneration, cameraIntentGeneration)) return;
     startupCameraCommittedRef.current = true;
-    cameraManager.fitVenueBounds(venueBoundary);
-    if (reason === 'first_overview') setHasSeenMapOverview(true);
+    if (plan.kind === 'FALLBACK_ANCHOR') {
+      // Camera context only: the anchor is not written as the user's location.
+      cameraManager.animateToUser(plan.anchor.coordinate);
+      setFallbackNotice(plan.notice);
+    } else {
+      if (plan.user) setCurrentLocation(plan.user.coordinate, plan.user.source);
+      cameraManager.fitVenueBounds(venueBoundary);
+      if (plan.reason === 'first_overview') setHasSeenMapOverview(true);
+    }
     releaseStartupMapReady();
-  }, [cameraManager, releaseStartupMapReady, setHasSeenMapOverview, startupCameraStillOwnsIntent]);
-
-  const commitStartupLiveLocation = useCallback((
-    coordinate: typeof currentLocation,
-    requestGeneration: number,
-    cameraIntentGeneration: number,
-  ) => {
-    if (!coordinate) return;
-    if (!startupCameraStillOwnsIntent(requestGeneration, cameraIntentGeneration)) return;
-    startupCameraCommittedRef.current = true;
-    setCurrentLocation(coordinate, 'live');
-    cameraManager.animateToUser(coordinate);
-    releaseStartupMapReady();
-  }, [cameraManager, releaseStartupMapReady, setCurrentLocation, startupCameraStillOwnsIntent]);
+  }, [cameraManager, releaseStartupMapReady, setCurrentLocation, setHasSeenMapOverview, startupCameraStillOwnsIntent]);
 
   const beginStartupCameraDecision = useCallback((venueBoundary: Coordinate[]) => {
     if (startupCameraRequestStartedRef.current) return;
@@ -569,8 +567,14 @@ export function HomeScreen() {
       return;
     }
 
+    const isInsideVenue = (c: Coordinate) => (useV2Map ? EntryGateRoutingService.isInsideIjtemaArea(c) : RoutingService.isInsideVenue(c));
     if (!hasSeenMapOverview) {
-      commitStartupVenueBounds(venueBoundary, 'first_overview', requestGeneration, cameraIntentGeneration);
+      commitStartupPlan(
+        MapStartupController.planEntryCamera({ action: 'FIT_VENUE_BOUNDS', reason: 'first_overview' }, isInsideVenue),
+        venueBoundary,
+        requestGeneration,
+        cameraIntentGeneration,
+      );
       return;
     }
 
@@ -578,18 +582,19 @@ export function HomeScreen() {
       { hasSeenMapOverview, hasLocationPermission },
       () => LocationAccessService.resolveCurrentLocation(false),
     ).then((decision) => {
-      if (decision.action === 'ANIMATE_TO_USER') {
-        commitStartupLiveLocation(decision.coordinate, requestGeneration, cameraIntentGeneration);
-        return;
-      }
-      commitStartupVenueBounds(venueBoundary, decision.reason, requestGeneration, cameraIntentGeneration);
+      commitStartupPlan(
+        MapStartupController.planEntryCamera(decision, isInsideVenue),
+        venueBoundary,
+        requestGeneration,
+        cameraIntentGeneration,
+      );
     });
   }, [
-    commitStartupLiveLocation,
-    commitStartupVenueBounds,
+    commitStartupPlan,
     hasLocationPermission,
     hasSeenMapOverview,
     releaseStartupMapReady,
+    useV2Map,
   ]);
 
   useEffect(() => {
@@ -936,6 +941,8 @@ export function HomeScreen() {
     ? `Outside Ijtema. Suggested entry through ${nearestEntryGate.name.en}. Final entry gate is confirmed when route preview is calculated.`
     : 'Outside Ijtema. Suggested entry unavailable. Final entry gate is confirmed when route preview is calculated.';
   const showMapWarningBanner = baseMapMode === 'GRAPH_ONLY';
+  // The Block 2 opening view is a fallback, so the notice goes away as soon as a live location exists or the user moves on.
+  const showFallbackNotice = !!fallbackNotice && !(currentLocation && currentLocationSource === 'live') && mode === 'EXPLORE';
   const topInsetBase = Math.max(insets.top, Platform.OS === 'android' ? StatusBar.currentHeight ?? 0 : 0);
   // bannerStackTop used to be a hardcoded `topInsetBase + 140` guess at the combined
   // search bar + chip row height, which under-measured on some font scales/screen sizes
@@ -1757,7 +1764,7 @@ export function HomeScreen() {
         </SafeAreaView>
         )}
 
-        {mode !== 'NAVIGATION' && (isOffline || showMapWarningBanner || showOutsideBanner) && (
+        {mode !== 'NAVIGATION' && (isOffline || showMapWarningBanner || showOutsideBanner || showFallbackNotice) && (
           <View style={[styles.bannerStack, { top: bannerStackTop }]}>
             {/* Basemap/provider degradation outranks passive offline status — the two never
                 stack (showMapWarningBanner's own copy already covers the offline case).
@@ -1786,6 +1793,19 @@ export function HomeScreen() {
                 <Text style={styles.offlineText}>Offline</Text>
               </View>
             ) : null}
+
+            {showFallbackNotice && (
+              <View
+                style={[
+                  styles.mapWarningBanner,
+                  styles.bannerStackItem,
+                  controlStackWidth > 0 && { marginRight: CONTROL_STACK_RIGHT + controlStackWidth + BANNER_CONTROL_GAP },
+                ]}
+                accessibilityLiveRegion="polite"
+              >
+                <Text style={styles.mapWarningText}>{fallbackNotice}</Text>
+              </View>
+            )}
 
             {showOutsideBanner && (
               <Animated.View
