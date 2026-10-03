@@ -458,6 +458,7 @@ describe('LocationSheet (routePreview) — route ready CTA', () => {
 
     expect(screen.getByText('Direct guide — not a road route')).toBeOnTheScreen();
     expect(screen.getByText('Start Direct Guide')).toBeOnTheScreen();
+    expect(screen.getByText('Selected gate: Gate 05')).toBeOnTheScreen();
     expect(screen.queryByText('4 min')).not.toBeOnTheScreen();
     await user.press(screen.getByRole('button', { name: 'Retry road route' }));
     expect(retryOutsideRoute).toHaveBeenCalledTimes(1);
