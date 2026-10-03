@@ -181,8 +181,9 @@ function outsideRouteProvider(route: unknown): string | null {
 const CONTROL_STACK_FALLBACK_HEIGHT = 300;
 const CONTROL_STACK_RIGHT = 12; // styles.controlStack.right
 const BANNER_CONTROL_GAP = 8;
-// Upper bound on waiting for the first region-complete before a startup camera move runs anyway.
-const STARTUP_REGION_SETTLE_BOUND_MS = 1500;
+// Upper bound on waiting for the first region-complete before camera moves run anyway. On a loaded emulator
+// that event arrived about 6 s after onMapReady; on a normal device it is well under a second.
+const STARTUP_REGION_SETTLE_BOUND_MS = 8000;
 
 export function HomeScreen() {
   const nav = useNavigation<HomeScreenNavigationProp>();
@@ -240,8 +241,9 @@ export function HomeScreen() {
   const startupCameraRequestGenerationRef = useRef(0);
   const startupCameraIntentGenerationRef = useRef(0);
   // The native map applies initialRegion shortly after onMapReady, and a camera command issued before
-  // that is dropped (seen on the emulator with the instantly-resolved Block 2 opening). Startup camera
-  // moves therefore wait for the first region-complete, or a short bound if it never arrives.
+  // that is dropped (seen on the emulator: the Block 2 opening and a Directory-chosen place both stayed on
+  // the overview). So the camera manager is told the map is ready only on the first region-complete, or
+  // after a bound if it never arrives; moves issued earlier queue in the manager until then.
   const startupRegionSettledRef = useRef(false);
   const startupRegionWaitingMoveRef = useRef<(() => void) | null>(null);
   const startupRegionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -337,14 +339,16 @@ export function HomeScreen() {
   }, [releaseStartupMapReady]);
 
   const settleStartupRegion = useCallback(() => {
-    if (startupRegionSettledRef.current) return;
+    // A region-complete that arrives before onMapReady is ignored; the bound timer covers that case.
+    if (startupRegionSettledRef.current || !mapReadyRef.current) return;
     startupRegionSettledRef.current = true;
     if (startupRegionTimerRef.current) clearTimeout(startupRegionTimerRef.current);
     startupRegionTimerRef.current = null;
+    cameraManager.notifyNativeMapReady();
     const move = startupRegionWaitingMoveRef.current;
     startupRegionWaitingMoveRef.current = null;
     move?.();
-  }, []);
+  }, [cameraManager]);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -1435,7 +1439,6 @@ export function HomeScreen() {
             onMapReady={() => {
               mapReadyRef.current = true;
               setMapReadyState(true);
-              cameraManager.notifyNativeMapReady();
               if (!startupRegionSettledRef.current && !startupRegionTimerRef.current) {
                 startupRegionTimerRef.current = setTimeout(settleStartupRegion, STARTUP_REGION_SETTLE_BOUND_MS);
               }
