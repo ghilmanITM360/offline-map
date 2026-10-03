@@ -111,6 +111,61 @@ export function RouteEndpointCard({
   );
 }
 
+/**
+ * Route-ready summary: both ends of the walk as two short rows (FROM / TO) so neither needs
+ * recalling or scrolling to. Same actions and accessibility names as RouteEndpointCard.
+ */
+export function RouteEndpointRows({
+  from,
+  to,
+  children,
+}: {
+  from: EndpointRow;
+  to: EndpointRow;
+  children?: React.ReactNode;
+}) {
+  return (
+    <View style={styles.card}>
+      <EndpointRowView row={from} />
+      <View style={styles.rowDivider} />
+      <EndpointRowView row={to} />
+      {children}
+    </View>
+  );
+}
+
+export type EndpointRow = {
+  label: string;
+  name: string;
+  detail?: string;
+  icon: React.ReactNode;
+  actionLabel: string;
+  actionAccessibilityLabel: string;
+  onAction: () => void;
+};
+
+function EndpointRowView({ row }: { row: EndpointRow }) {
+  return (
+    <View style={styles.endpointRow}>
+      <View style={styles.innerDisc}>{row.icon}</View>
+      <View style={styles.flex}>
+        <Text style={styles.endpointLabel}>{row.label}</Text>
+        <Text style={styles.innerName}>{row.name}</Text>
+        {row.detail ? <Text style={styles.innerDetail}>{row.detail}</Text> : null}
+      </View>
+      <Pressable
+        style={({ pressed }) => [styles.endpointAction, pressed && styles.actionPressed]}
+        hitSlop={{ top: 2, bottom: 2 }}
+        onPress={row.onAction}
+        accessibilityRole="button"
+        accessibilityLabel={row.actionAccessibilityLabel}
+      >
+        <Text style={styles.actionText}>{row.actionLabel}</Text>
+      </Pressable>
+    </View>
+  );
+}
+
 /** One starting-location choice. `active` mirrors the real start source, never a guess. */
 export function StartOptionCard({
   icon,
@@ -248,6 +303,17 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   actionPressed: { backgroundColor: c.actionPressedFill },
+  endpointRow: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: TARGET + 8 },
+  endpointLabel: { fontSize: 12, fontWeight: '800', letterSpacing: 0.8, textTransform: 'uppercase', color: c.secondaryText },
+  endpointAction: {
+    minHeight: 44,
+    borderRadius: 12,
+    backgroundColor: c.actionFill,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 12,
+  },
+  rowDivider: { height: StyleSheet.hairlineWidth, backgroundColor: c.cardBorder },
   actionText: { fontSize: 15, fontWeight: '800', color: c.brand, flexShrink: 1 },
 
   option: {

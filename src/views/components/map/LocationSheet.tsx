@@ -49,7 +49,7 @@ import { directionsSheetColors, radii, staticColors } from '../../../theme';
 import { placeCategoryLabel } from '../../../utils/placeCategoryLabel';
 import { unavailableReasonCopy } from '../../../utils/unavailableReasonCopy';
 import { directionsOfflineCaption } from '../../../utils/directionsOfflineCopy';
-import { DirectionsHeader, OfflineInfo, RouteEndpointCard, StartOptionCard } from './DirectionsSheetParts';
+import { DirectionsHeader, OfflineInfo, RouteEndpointCard, RouteEndpointRows, StartOptionCard } from './DirectionsSheetParts';
 import { publishDirectionsFooter, useDirectionsFooterHeight } from './DirectionsSheetFooter';
 import { OutsideRouteStatusCard } from '../navigation/OutsideRouteStatusCard';
 import type { NormalizedOutsideCandidate } from '../../../models/outsideRouting';
@@ -478,7 +478,7 @@ function RoutePreviewSection({
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"
         >
-          {!editingStart && (
+          {!editingStart && !showRouteReady && (
             <FadeContent transitionKey="destSummary">
               <RouteEndpointCard
                 label="Going to"
@@ -500,6 +500,43 @@ function RoutePreviewSection({
                   </Card>
                 )}
               </RouteEndpointCard>
+            </FadeContent>
+          )}
+
+          {!editingStart && showRouteReady && (
+            <FadeContent transitionKey="routeEnds">
+              <RouteEndpointRows
+                from={{
+                  label: 'From',
+                  name: startSourceLabel,
+                  detail: startSourceHelper(
+                    startSource,
+                    (startSource === 'live_gps' && !currentLocation) || (startSource === 'manual_place' && !manualStart),
+                  ),
+                  icon: startIcon,
+                  actionLabel: 'Change Start',
+                  actionAccessibilityLabel: 'Change starting point',
+                  onAction: () => setShowStartOptions(true),
+                }}
+                to={{
+                  label: 'To',
+                  name: destination.name,
+                  detail: placeCategoryLabel(destination.category),
+                  icon: <MapPin size={24} color={directionsSheetColors.brand} />,
+                  actionLabel: 'Change destination',
+                  actionAccessibilityLabel: 'Change destination',
+                  onAction: onChangeDestination && onOpenDirectory ? () => onOpenDirectory('destination') : onClose,
+                }}
+              >
+                {(destination.verificationWarning || destination.unavailableReason) && (
+                  <Card variant="warning" style={styles.statusCard}>
+                    <Text style={[styles.statusTitle, styles.statusTitleWarning]}>Heads up</Text>
+                    <Text style={styles.statusText}>
+                      {destination.verificationWarning ?? unavailableReasonCopy(destination.unavailableReason)}
+                    </Text>
+                  </Card>
+                )}
+              </RouteEndpointRows>
             </FadeContent>
           )}
 
@@ -554,7 +591,7 @@ function RoutePreviewSection({
               />
 
             </View>
-          ) : (
+          ) : showRouteReady ? null : (
             <RouteEndpointCard
               label="Starting from"
               helper={startSourceHelper(
