@@ -195,11 +195,22 @@ async function flushLaunchMicrotasks() {
   });
 }
 
+const initialRegionEvent = { latitude: 24.9694, longitude: 67.0064, latitudeDelta: 0.026, longitudeDelta: 0.016 };
+
+// The native map applies its initial region shortly after onMapReady and reports it as the first
+// region-complete; startup camera moves wait for that event (or a short bound).
+async function settleInitialRegion() {
+  await act(async () => {
+    fireEvent(screen.getByTestId('home-map-view', { includeHiddenElements: true }), 'regionChangeComplete', initialRegionEvent);
+  });
+}
+
 async function renderAndMapReady() {
   const rendered = await render(<HomeScreen />);
   await act(async () => {
     fireEvent(screen.getByTestId('home-map-view', { includeHiddenElements: true }), 'mapReady');
   });
+  await settleInitialRegion();
   return rendered;
 }
 
@@ -562,6 +573,7 @@ describe('HomeScreen - launch camera (Google Maps principles, adapted for a venu
     await act(async () => {
       fireEvent(map, 'mapReady');
     });
+    await settleInitialRegion();
     await flushLaunchMicrotasks();
     await flushProjectionTimers();
 
@@ -720,5 +732,65 @@ describe('#222 Map entry camera rules', () => {
     expect(cameraAnimateToUserSpy).not.toHaveBeenCalled();
     expect(cameraFitVenueBoundsSpy).not.toHaveBeenCalled();
     expect(screen.queryByText('Location unavailable. Showing Block 2.')).toBeNull();
+  });
+});
+
+describe('#222 startup camera waits for the initial region', () => {
+  test('a camera move issued at map-ready is held until the first region-complete, then runs once', async () => {
+    useAppStore.setState({ hasSeenMapOverview: true, hasLocationPermission: false, currentLocation: null });
+
+    await render(<HomeScreen />);
+    await act(async () => {
+      fireEvent(screen.getByTestId('home-map-view', { includeHiddenElements: true }), 'mapReady');
+    });
+    await flushProjectionTimers();
+
+    expect(cameraAnimateToUserSpy).not.toHaveBeenCalled();
+
+    await settleInitialRegion();
+    await settleInitialRegion();
+
+    expect(cameraAnimateToUserSpy).toHaveBeenCalledTimes(1);
+    expect(cameraAnimateToUserSpy).toHaveBeenCalledWith(block2AnchorCoordinate);
+  });
+
+  test('if the region-complete never arrives the move still runs after a short bound', async () => {
+    useAppStore.setState({ hasSeenMapOverview: true, hasLocationPermission: false, currentLocation: null });
+
+    await render(<HomeScreen />);
+    await act(async () => {
+      fireEvent(screen.getByTestId('home-map-view', { includeHiddenElements: true }), 'mapReady');
+    });
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(2000);
+    });
+
+    expect(cameraAnimateToUserSpy).toHaveBeenCalledTimes(1);
+  });
+
+  test('a route preview that starts while the move is waiting wins: the held move never runs', async () => {
+    useAppStore.setState({ hasSeenMapOverview: true, hasLocationPermission: false, currentLocation: null });
+
+    await render(<HomeScreen />);
+    await act(async () => {
+      fireEvent(screen.getByTestId('home-map-view', { includeHiddenElements: true }), 'mapReady');
+    });
+    await act(async () => {
+      useAppStore.setState({
+        routePlannerDest: searchResultPlace,
+        activeRoute: {
+          sourceVersion: 'v2',
+          coordinates: [{ latitude: 24.963, longitude: 67.006 }, searchResultPlace.coordinate],
+          startResolution: { mode: 'inside', coordinate: { latitude: 24.963, longitude: 67.006 } },
+          destinationLabel: 'Gate 12',
+          startLabel: 'Current location',
+        } as any,
+      });
+    });
+    await settleInitialRegion();
+    await flushProjectionTimers();
+
+    expect(cameraAnimateToUserSpy).not.toHaveBeenCalled();
+    expect(cameraFitVenueBoundsSpy).not.toHaveBeenCalled();
   });
 });
