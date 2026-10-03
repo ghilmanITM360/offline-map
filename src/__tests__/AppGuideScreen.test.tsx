@@ -33,3 +33,15 @@ describe('AppGuideScreen — accessibility', () => {
     expect(mockNavigation.goBack).toHaveBeenCalled();
   });
 });
+
+describe('AppGuideScreen — start-selection wording (#222)', () => {
+  // The Directory is the single start chooser; the guide must name the Change Start action,
+  // not the removed "Choose start manually" card.
+  test('explains Change Start and no longer mentions the removed manual-start card', async () => {
+    await render(<AppGuideScreen />);
+
+    expect(screen.getAllByText(/Change Start/).length).toBeGreaterThan(0);
+    expect(screen.queryByText(/Choose start manually/)).toBeNull();
+    expect(screen.queryByText(/manual start/i)).toBeNull();
+  });
+});

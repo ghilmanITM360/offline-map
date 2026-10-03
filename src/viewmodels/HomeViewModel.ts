@@ -242,10 +242,10 @@ export function useHomeViewModel({ isFocused = true }: { isFocused?: boolean } =
         && (MapFeatureFlagsService.useIjtemaV2Map() || isInsideHomeVenue(lastKnownLocation));
       const actions = [
         {
-          text: 'Choose start manually',
+          text: 'Pick a start place',
           style: 'default' as const,
           onPress: () => {
-            Alert.alert('Manual start', 'Open Directions from a place and choose your start point manually.');
+            Alert.alert('Pick a start place', 'Open Get Directions from a place, then tap Change Start.');
           },
         },
         ...(!resolved.permissionState.canAskAgain && !resolved.permissionState.granted
@@ -287,7 +287,7 @@ export function useHomeViewModel({ isFocused = true }: { isFocused?: boolean } =
 
       Alert.alert(
         'Location unavailable',
-        resolved.message ?? 'Current location could not be found. Use a remembered location or choose a start manually in Directions.',
+        resolved.message ?? 'Current location could not be found. Use a remembered location, or tap Change Start in Directions.',
         actions,
       );
       devLogControl('recenter', 'location_unavailable', {
