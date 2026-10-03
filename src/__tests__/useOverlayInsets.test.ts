@@ -10,6 +10,7 @@ import {
   computeNavControlsInset,
   computeNavRecenterInset,
   insetAwareSnapPoints,
+  PLACE_PREVIEW_CONTENT_DP,
   MIN_BOTTOM_FLOOR,
   MIN_TOP_VISIBLE_MAP_FOR_ATTRIBUTION,
   MIN_TOP_VISIBLE_MAP_FOR_ROUTE_PREVIEW,
@@ -266,6 +267,28 @@ describe('insetAwareSnapPoints (#128: place-preview CTA under the 3-button navig
     const threeButton = parseFloat(insetAwareSnapPoints(base, 479.6, 48)[1]);
     expect(gesture).toBeGreaterThan(50);
     expect(threeButton).toBeGreaterThan(gesture);
+  });
+
+  it('a larger system font raises the middle snap so the Directions button is not cut off at rest', () => {
+    const normal = parseFloat(insetAwareSnapPoints(base, 479.6, 24)[1]);
+    const large = parseFloat(insetAwareSnapPoints(base, 479.6, 24, 2)[1]);
+    expect(large).toBeGreaterThan(normal);
+    expect(large).toBeCloseTo(((PLACE_PREVIEW_CONTENT_DP * 1.29 + 24) / 479.6) * 100, 1);
+    expect(insetAwareSnapPoints(base, 479.6, 24, 1)).toEqual(insetAwareSnapPoints(base, 479.6, 24));
+  });
+
+  it('on a short container the middle snap grows until the preview content, with its CTA, clears the bar', () => {
+    // A 711 dp tall window leaves a ~371 dp container: 50% plus the 48 dp bar (233 dp visible) would leave the
+    // 240 dp of preview content, and its Directions button, behind the three-button bar.
+    const container = 371;
+    const mid = parseFloat(insetAwareSnapPoints(base, container, 48)[1]);
+    expect((mid / 100) * container).toBeGreaterThanOrEqual(PLACE_PREVIEW_CONTENT_DP + 48 - 1);
+    expect(mid).toBeLessThan(92);
+  });
+
+  it('on a tall container the content minimum changes nothing', () => {
+    const mid = parseFloat(insetAwareSnapPoints(base, 900, 48)[1]);
+    expect(mid).toBeCloseTo(50 + (48 / 900) * 100, 1);
   });
 
   it('never lifts the middle snap to or past the top snap', () => {
