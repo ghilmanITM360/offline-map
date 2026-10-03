@@ -42,30 +42,6 @@ const destination: Place = {
 
 const route = { nodes: ['A', 'B'], coordinates: [], totalDistance: 250, estimatedTimeMin: 4 };
 
-function outsideRoute(provider: 'google' | 'offline-osm' | 'direct-guide') {
-  return {
-    sourceVersion: 'v2',
-    ...route,
-    outsideRoute: {
-      schemaVersion: 1,
-      candidateId: 'c1',
-      requestId: 'r1',
-      requestVersion: 1,
-      provider,
-      gateId: 'GATE_12',
-      distanceM: 120,
-      durationSeconds: provider === 'direct-guide' ? null : 240,
-      coordinates: [],
-      steps: [],
-      roadFollowing: provider !== 'direct-guide',
-      distanceKind: provider === 'direct-guide' ? 'direct-distance' : 'road',
-      warnings: [],
-      fallbackReason: null,
-      fallbackHistory: [],
-    },
-  };
-}
-
 function vm(overrides: Record<string, unknown> = {}) {
   return {
     route: null,
