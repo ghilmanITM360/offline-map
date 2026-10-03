@@ -49,7 +49,7 @@ export function usePermissionViewModel() {
     setOfflineMapStatus(statusValidation.status, statusValidation.reason ?? null);
 
     if (statusValidation.status === 'downloaded' || mapStatus.isDownloaded || !isConnected) {
-      navigation.replace('Main');
+      navigation.replace('LocationsDirectory'); // #153: same first screen as a returning launch (StartupManager 'ready')
       return;
     }
 
