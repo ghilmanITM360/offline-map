@@ -169,6 +169,61 @@ describe('useCameraManager', () => {
   });
 });
 
+describe('useCameraManager - a move issued before the initial region is applied is re-run (#222)', () => {
+  test('the last early move is replayed on the first settle and again on the second, then never more', async () => {
+    const mapRef = makeFakeMapRef();
+    const { result } = await renderHook(() => useCameraManager({ mapRef }));
+
+    await act(() => {
+      markCameraReady(result);
+      result.current.animateToPlace(PLACE);
+    });
+    expect(mapRef.current.animateToRegion).toHaveBeenCalledTimes(1);
+
+    await act(() => result.current.notifyInitialRegionSettled());
+    expect(mapRef.current.animateToRegion).toHaveBeenCalledTimes(2);
+
+    await act(() => result.current.notifyInitialRegionSettled());
+    expect(mapRef.current.animateToRegion).toHaveBeenCalledTimes(3);
+
+    await act(() => result.current.notifyInitialRegionSettled());
+    expect(mapRef.current.animateToRegion).toHaveBeenCalledTimes(3);
+  });
+
+  test('a newer move replaces the remembered one, so the replay never goes back to an older target', async () => {
+    const mapRef = makeFakeMapRef();
+    const { result } = await renderHook(() => useCameraManager({ mapRef }));
+
+    await act(() => {
+      markCameraReady(result);
+      result.current.animateToPlace(PLACE);
+      result.current.animateToUser(USER_COORD);
+    });
+    mapRef.current.animateToRegion.mockClear();
+
+    await act(() => result.current.notifyInitialRegionSettled());
+
+    expect(mapRef.current.animateToRegion).toHaveBeenCalledTimes(1);
+    expect(mapRef.current.animateToRegion).toHaveBeenCalledWith(
+      expect.objectContaining({ latitude: USER_COORD.latitude, longitude: USER_COORD.longitude }),
+      expect.any(Number),
+    );
+  });
+
+  test('settling with no early move does nothing', async () => {
+    const mapRef = makeFakeMapRef();
+    const { result } = await renderHook(() => useCameraManager({ mapRef }));
+
+    await act(() => {
+      markCameraReady(result);
+      result.current.notifyInitialRegionSettled();
+    });
+
+    expect(mapRef.current.animateToRegion).not.toHaveBeenCalled();
+  });
+});
+
+
 // Phase 0D-A: dimension-dependent camera commands (animateToRegion/fitToCoordinates,
 // via animateToUser/animateToPlace/fitVenueBounds/fitRoute) hit a native
 // "Map size can't be 0" exception when issued before the map view has both fired

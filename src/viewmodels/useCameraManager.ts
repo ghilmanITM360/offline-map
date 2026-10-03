@@ -28,6 +28,9 @@ interface Params {
 }
 
 const USER_ZOOM_DELTA = 0.005;
+// How many times a camera move issued before the map's initial region was applied is re-run (the first region-complete
+// and the time bound, whichever order they arrive in).
+const INITIAL_REGION_SETTLE_REPLAYS = 2;
 const PLACE_ZOOM_DELTA = 0.002;
 const DEFAULT_ROUTE_PADDING: EdgePadding = { top: 90, right: 64, bottom: 140, left: 64 };
 const DEFAULT_BOUNDS_PADDING: EdgePadding = { top: 48, right: 48, bottom: 48, left: 48 };
@@ -91,16 +94,33 @@ export function useCameraManager({ mapRef }: Params) {
   // Callers never lose an intent issued too early — the latest one simply
   // supersedes whatever was still pending, mirroring how a real camera only ever
   // has one "next destination" in flight.
+  // The native map applies its initial region some time after onMapReady (about 6 s on a loaded emulator) and
+  // drops a camera command issued before that. So the last move run in that window is remembered and re-run
+  // when the initial region is reported applied (see notifyInitialRegionSettled).
+  const lastEarlyIntentRef = useRef<(() => void) | null>(null);
+  const settleCountRef = useRef(0);
+
   const runWhenReady = useCallback(
     (intent: () => void) => {
       if (isCameraReady()) {
         intent();
+        if (settleCountRef.current < INITIAL_REGION_SETTLE_REPLAYS) lastEarlyIntentRef.current = intent;
         return;
       }
       pendingIntentRef.current = intent;
     },
     [isCameraReady],
   );
+
+  /** Called when the map's initial region is known to be applied (its first region-complete) and once more after
+   * a short time bound in case that event never comes, so a move dropped before then is re-run. Idempotent moves
+   * only; at most two replays, and a newer move replaces the remembered one. */
+  const notifyInitialRegionSettled = useCallback(() => {
+    if (settleCountRef.current >= INITIAL_REGION_SETTLE_REPLAYS) return;
+    settleCountRef.current += 1;
+    lastEarlyIntentRef.current?.();
+    if (settleCountRef.current >= INITIAL_REGION_SETTLE_REPLAYS) lastEarlyIntentRef.current = null;
+  }, []);
 
   const notifyNativeMapReady = useCallback(() => {
     if (nativeMapReadyRef.current) return;
@@ -273,6 +293,7 @@ export function useCameraManager({ mapRef }: Params) {
       rotateToHeading,
       nudgeZoom,
       notifyNativeMapReady,
+      notifyInitialRegionSettled,
       notifyMapLayout,
     }),
     [
@@ -289,6 +310,7 @@ export function useCameraManager({ mapRef }: Params) {
       rotateToHeading,
       nudgeZoom,
       notifyNativeMapReady,
+      notifyInitialRegionSettled,
       notifyMapLayout,
     ],
   );

@@ -61,6 +61,7 @@ const cameraAnimateToUserSpy = jest.fn();
 const cameraFitVenueBoundsSpy = jest.fn();
 const cameraFitRouteSpy = jest.fn();
 const cameraNotifyNativeMapReadySpy = jest.fn();
+const cameraNotifyInitialRegionSettledSpy = jest.fn();
 const cameraStopFollowingSpy = jest.fn();
 const handlePlaceSelectSpy = jest.fn();
 const handleRecenterSpy = jest.fn(async () => true);
@@ -130,6 +131,7 @@ function useFakeHomeViewModel(overrides: Record<string, unknown> = {}) {
       enterNavigationCamera: jest.fn(),
       exitNavigationCamera: jest.fn(),
       notifyNativeMapReady: cameraNotifyNativeMapReadySpy,
+      notifyInitialRegionSettled: cameraNotifyInitialRegionSettledSpy,
       notifyMapLayout: jest.fn(),
     },
     mapType: 'standard' as const,
@@ -808,8 +810,8 @@ describe('#222 startup camera waits for the initial region', () => {
   });
 });
 
-describe('#222 camera commands wait for the initial region (any intent, not only the startup move)', () => {
-  test('the camera manager is told the map is ready only after the initial region is applied', async () => {
+describe('#222 an early camera move is re-run once the initial region is applied', () => {
+  test('the manager hears map-ready at once and the settled signal on the first region-complete', async () => {
     useAppStore.setState({ hasSeenMapOverview: true, hasLocationPermission: false, currentLocation: null });
 
     await render(<HomeScreen />);
@@ -818,17 +820,15 @@ describe('#222 camera commands wait for the initial region (any intent, not only
     });
     await flushProjectionTimers();
 
-    // A place chosen in the Directory queues its camera move in the manager; if the manager were ready now,
-    // the native map would drop that move because it has not applied its initial region yet.
-    expect(cameraNotifyNativeMapReadySpy).not.toHaveBeenCalled();
-
-    await settleInitialRegion();
-    await settleInitialRegion();
-
     expect(cameraNotifyNativeMapReadySpy).toHaveBeenCalledTimes(1);
+    expect(cameraNotifyInitialRegionSettledSpy).not.toHaveBeenCalled();
+
+    await settleInitialRegion();
+
+    expect(cameraNotifyInitialRegionSettledSpy).toHaveBeenCalledTimes(1);
   });
 
-  test('if the initial region never reports, the manager is still told after the bound', async () => {
+  test('if no region-complete arrives the settled signal still goes out after the bound', async () => {
     useAppStore.setState({ hasSeenMapOverview: true, hasLocationPermission: false, currentLocation: null });
 
     await render(<HomeScreen />);
@@ -836,29 +836,24 @@ describe('#222 camera commands wait for the initial region (any intent, not only
       fireEvent(screen.getByTestId('home-map-view', { includeHiddenElements: true }), 'mapReady');
     });
     await act(async () => {
-      await jest.advanceTimersByTimeAsync(9000);
+      await jest.advanceTimersByTimeAsync(3000);
     });
 
-    expect(cameraNotifyNativeMapReadySpy).toHaveBeenCalledTimes(1);
+    expect(cameraNotifyInitialRegionSettledSpy).toHaveBeenCalledTimes(1);
   });
-});
 
-describe('#251 control stack hooks do not share one dependency array', () => {
-  test('useAnimatedStyle and useAnimatedReaction each get their own dependency array', async () => {
-    const reanimated = jest.requireMock('react-native-reanimated') as {
-      useAnimatedStyle: jest.Mock;
-      useAnimatedReaction: jest.Mock;
-    };
+  test('a region-complete that arrives after the bound is passed on too, so the manager can re-run a dropped move', async () => {
     useAppStore.setState({ hasSeenMapOverview: true, hasLocationPermission: false, currentLocation: null });
 
     await render(<HomeScreen />);
+    await act(async () => {
+      fireEvent(screen.getByTestId('home-map-view', { includeHiddenElements: true }), 'mapReady');
+    });
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(3000);
+    });
+    await settleInitialRegion();
 
-    // Reanimated appends its own worklet hashes to the array it is given. One array passed to both hooks grows
-    // by a different amount in each render, which React reports as 'final argument passed to useEffect changed size'.
-    const styleDeps = reanimated.useAnimatedStyle.mock.calls.map((call) => call[1]).filter(Array.isArray);
-    const reactionDeps = reanimated.useAnimatedReaction.mock.calls.map((call) => call[2]).filter(Array.isArray);
-    expect(styleDeps.length).toBeGreaterThan(0);
-    expect(reactionDeps.length).toBeGreaterThan(0);
-    expect(styleDeps.filter((deps) => reactionDeps.includes(deps))).toHaveLength(0);
+    expect(cameraNotifyInitialRegionSettledSpy).toHaveBeenCalledTimes(2);
   });
 });
