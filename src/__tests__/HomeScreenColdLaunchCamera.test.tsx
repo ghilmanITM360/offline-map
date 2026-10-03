@@ -128,6 +128,7 @@ function useFakeHomeViewModel(overrides: Record<string, unknown> = {}) {
     offlineData: { isDownloaded: false },
     mapZoomLevel: 15.5,
     venueStatus: { insideVenue: false, insideBlock: null },
+    isInsideVenue: (c: { latitude: number; longitude: number }) => c.latitude > 24.963 && c.latitude < 24.9758 && c.longitude > 66.9974 && c.longitude < 67.0155,
     compassMode: 'NORTH_UP' as const,
     setIsMapReady: setIsMapReadySpy,
     handlePlaceSelect: handlePlaceSelectSpy,

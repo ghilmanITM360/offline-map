@@ -174,6 +174,7 @@ function useFakeHomeViewModel() {
     isOffline: false,
     offlineData: { isDownloaded: false },
     mapZoomLevel: 15.5,
+    isInsideVenue: () => true,
     venueStatus: { insideVenue: false, insideBlock: null },
     compassMode: 'NORTH_UP' as const,
     setIsMapReady: jest.fn(),

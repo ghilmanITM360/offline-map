@@ -371,6 +371,8 @@ export function useHomeViewModel({ isFocused = true }: { isFocused?: boolean } =
     mapZoomLevel,
     updateSettings,
     venueStatus,
+    // Pure predicate for 'is this coordinate inside the Ijtema', for views that must not import routing services.
+    isInsideVenue: isInsideHomeVenue,
     compassMode,
     setIsMapReady,
     handlePlaceSelect,

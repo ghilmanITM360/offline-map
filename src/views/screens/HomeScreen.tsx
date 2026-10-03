@@ -80,8 +80,6 @@ import {
 } from '../../services/MapLoadWatchdog';
 import { MapFeatureFlagsService } from '../../services/MapFeatureFlagsService';
 import { MapStartupController, type EntryCameraPlan } from '../../services/MapStartupController';
-import { EntryGateRoutingService } from '../../services/EntryGateRoutingService';
-import { RoutingService } from '../../services/RoutingService';
 import { LocationAccessService } from '../../services/LocationAccessService';
 import { V2MapRenderingService, MEDIUM_ZOOM, HIGH_ZOOM } from '../../services/V2MapRenderingService';
 import { recommendPreviewEntryGate, startPreviewNavigationV2 } from '../../viewmodels/NavigationViewModelV2';
@@ -308,6 +306,7 @@ export function HomeScreen() {
     offlineData,
     mapZoomLevel,
     venueStatus,
+    isInsideVenue,
     compassMode,
     setIsMapReady,
     handlePlaceSelect,
@@ -596,7 +595,6 @@ export function HomeScreen() {
       return;
     }
 
-    const isInsideVenue = (c: Coordinate) => (useV2Map ? EntryGateRoutingService.isInsideIjtemaArea(c) : RoutingService.isInsideVenue(c));
     if (!hasSeenMapOverview) {
       commitStartupPlan(
         MapStartupController.planEntryCamera({ action: 'FIT_VENUE_BOUNDS', reason: 'first_overview' }, isInsideVenue),
@@ -623,7 +621,7 @@ export function HomeScreen() {
     hasLocationPermission,
     hasSeenMapOverview,
     releaseStartupMapReady,
-    useV2Map,
+    isInsideVenue,
   ]);
 
   useEffect(() => {
