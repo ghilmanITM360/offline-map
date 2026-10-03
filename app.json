@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Karachi Ijtema Offline Nav",
+    "name": "Ijtema Map",
     "slug": "karachi-ijtema-offline-nav",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -37,8 +37,8 @@
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "Karachi Ijtema Nav uses your location to show your position on the ground map and guide you with turn-by-turn walking directions to gates, blocks, and facilities.",
-          "locationAlwaysPermission": "Allow Karachi Ijtema Nav to use your location even when the app is in the background."
+          "locationWhenInUsePermission": "Ijtema Map uses your location to show your position on the ground map and guide you with turn-by-turn walking directions to gates, blocks, and facilities.",
+          "locationAlwaysPermission": "Allow Ijtema Map to use your location even when the app is in the background."
         }
       ],
       "./plugins/withAndroidManifestGradlePlaceholder.js",
