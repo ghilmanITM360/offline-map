@@ -224,6 +224,52 @@ describe('useCameraManager - a move issued before the initial region is applied 
     expect(mapRef.current.animateToRegion).toHaveBeenCalledTimes(2);
   });
 
+  test('a user gesture after the first positioning cancels the replay, so a pan is never pulled back', async () => {
+    const mapRef = makeFakeMapRef();
+    const { result } = await renderHook(() => useCameraManager({ mapRef }));
+
+    await act(() => {
+      markCameraReady(result);
+      result.current.animateToPlace(PLACE);
+    });
+    await act(() => result.current.notifyInitialRegionSettled());
+    expect(mapRef.current.animateToRegion).toHaveBeenCalledTimes(2);
+
+    await act(() => result.current.cancelEarlyReplay());
+    await act(() => result.current.notifyInitialRegionSettled());
+
+    expect(mapRef.current.animateToRegion).toHaveBeenCalledTimes(2);
+  });
+
+  test('a move that already ran after the region was applied can be released so it is not applied a second time', async () => {
+    const mapRef = makeFakeMapRef();
+    const { result } = await renderHook(() => useCameraManager({ mapRef }));
+
+    await act(() => {
+      markCameraReady(result);
+      result.current.notifyInitialRegionSettled();
+      result.current.animateToUser(USER_COORD);
+      result.current.cancelEarlyReplay();
+    });
+    await act(() => result.current.notifyInitialRegionSettled());
+
+    expect(mapRef.current.animateToRegion).toHaveBeenCalledTimes(1);
+  });
+
+  test('a move issued after a cancel is remembered again, so a later place selection still gets its replay', async () => {
+    const mapRef = makeFakeMapRef();
+    const { result } = await renderHook(() => useCameraManager({ mapRef }));
+
+    await act(() => {
+      markCameraReady(result);
+      result.current.cancelEarlyReplay();
+      result.current.animateToPlace(PLACE);
+    });
+    await act(() => result.current.notifyInitialRegionSettled());
+
+    expect(mapRef.current.animateToRegion).toHaveBeenCalledTimes(2);
+  });
+
   test('settling with no early move does nothing', async () => {
     const mapRef = makeFakeMapRef();
     const { result } = await renderHook(() => useCameraManager({ mapRef }));

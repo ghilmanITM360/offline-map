@@ -124,6 +124,12 @@ export function useCameraManager({ mapRef }: Params) {
     if (settleCountRef.current >= INITIAL_REGION_SETTLE_REPLAYS) lastEarlyIntentRef.current = null;
   }, []);
 
+  /** Forget the remembered early move: the user has taken the camera (a pan), or the move already ran after the
+   * initial region was applied. A later move is remembered again as usual. */
+  const cancelEarlyReplay = useCallback(() => {
+    lastEarlyIntentRef.current = null;
+  }, []);
+
   const notifyNativeMapReady = useCallback(() => {
     if (nativeMapReadyRef.current) return;
     nativeMapReadyRef.current = true;
@@ -296,6 +302,7 @@ export function useCameraManager({ mapRef }: Params) {
       nudgeZoom,
       notifyNativeMapReady,
       notifyInitialRegionSettled,
+      cancelEarlyReplay,
       notifyMapLayout,
     }),
     [
@@ -313,6 +320,7 @@ export function useCameraManager({ mapRef }: Params) {
       nudgeZoom,
       notifyNativeMapReady,
       notifyInitialRegionSettled,
+      cancelEarlyReplay,
       notifyMapLayout,
     ],
   );

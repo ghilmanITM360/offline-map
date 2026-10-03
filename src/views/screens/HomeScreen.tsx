@@ -199,7 +199,6 @@ export function HomeScreen() {
   const currentLocation = useAppStore((s) => s.currentLocation);
   const currentLocationSource = useAppStore((s) => s.currentLocationSource);
   const hasLocationPermission = useAppStore((s) => s.hasLocationPermission);
-  const hasSeenMapOverview = useAppStore((s) => s.hasSeenMapOverview);
   const setHasSeenMapOverview = useAppStore((s) => s.setHasSeenMapOverview);
   const setCurrentLocation = useAppStore((s) => s.setCurrentLocation);
   const hasSeenLocationTutorial = useAppStore((s) => s.hasSeenLocationTutorial);
@@ -577,6 +576,8 @@ export function HomeScreen() {
       // Camera context only: the Block 2 anchor is not written as the user's location.
       if (plan.kind === 'FALLBACK_ANCHOR') cameraManager.animateToUser(plan.anchor.coordinate);
       else cameraManager.fitVenueBounds(venueBoundary);
+      // The initial region was already applied before this move ran, so the manager must not replay it.
+      cameraManager.cancelEarlyReplay();
     };
     if (startupRegionSettledRef.current) moveCamera();
     else startupRegionWaitingMoveRef.current = moveCamera;
@@ -584,8 +585,8 @@ export function HomeScreen() {
       setFallbackNotice(plan.notice);
     } else {
       if (plan.user) setCurrentLocation(plan.user.coordinate, plan.user.source);
-      if (plan.reason === 'first_overview') setHasSeenMapOverview(true);
     }
+    setHasSeenMapOverview(true);
     releaseStartupMapReady();
   }, [cameraManager, releaseStartupMapReady, setCurrentLocation, setHasSeenMapOverview, startupCameraStillOwnsIntent]);
 
@@ -601,18 +602,8 @@ export function HomeScreen() {
       return;
     }
 
-    if (!hasSeenMapOverview) {
-      commitStartupPlan(
-        MapStartupController.planEntryCamera({ action: 'FIT_VENUE_BOUNDS', reason: 'first_overview' }, isInsideVenue),
-        venueBoundary,
-        requestGeneration,
-        cameraIntentGeneration,
-      );
-      return;
-    }
-
     void MapStartupController.resolveReturningLaunchCamera(
-      { hasSeenMapOverview, hasLocationPermission },
+      { hasLocationPermission },
       () => LocationAccessService.resolveCurrentLocation(false),
     ).then((decision) => {
       commitStartupPlan(
@@ -625,7 +616,6 @@ export function HomeScreen() {
   }, [
     commitStartupPlan,
     hasLocationPermission,
-    hasSeenMapOverview,
     releaseStartupMapReady,
     isInsideVenue,
   ]);
@@ -1303,6 +1293,26 @@ export function HomeScreen() {
     nav.navigate('LocationsDirectory');
   }, [nav, setDirectoryPurpose]);
 
+  // Once a place is selected the camera has moved on from Block 2, so the fallback notice is no longer true.
+  useEffect(() => {
+    if (selectedPlace) setFallbackNotice(null);
+  }, [selectedPlace]);
+
+  // "Change place" on the Block 2 notice opens the Directory in start mode with no route sheet to take the answer.
+  // Without a destination the pick returns like any Directory pick (the place is selected on the Map); the quick
+  // options only move the camera. Nothing here writes a location.
+  const directoryChoice = useAppStore((s) => s.directoryChoice);
+  const setDirectoryChoice = useAppStore((s) => s.setDirectoryChoice);
+  const setPendingDirectorySelection = useAppStore((s) => s.setPendingDirectorySelection);
+  const lastKnownLocation = useAppStore((s) => s.lastKnownLocation);
+  useEffect(() => {
+    if (directoryChoice?.purpose !== 'start' || directionsDestination) return;
+    setDirectoryChoice(null);
+    if ('place' in directoryChoice) setPendingDirectorySelection(directoryChoice.place);
+    else if (directoryChoice.quick === 'current_location') void handleRecenterPress();
+    else if (lastKnownLocation) cameraManager.animateToUser(lastKnownLocation);
+  }, [cameraManager, directionsDestination, directoryChoice, handleRecenterPress, lastKnownLocation, setDirectoryChoice, setPendingDirectorySelection]);
+
   // Full reset to EXPLORE — replaces the two ad hoc `setSelectedPlace(null) +
   // bottomSheetRef.close()` call sites that existed independently before and didn't
   // account for detailsExpanded/arrived/directionsDestination.
@@ -1492,6 +1502,7 @@ export function HomeScreen() {
             }}
             onPanDrag={() => {
               invalidateStartupCameraIntent();
+              cameraManager.cancelEarlyReplay();
               handleNavigationPan();
               setIsMapDragging(true);
             }}
@@ -1843,6 +1854,14 @@ export function HomeScreen() {
                 accessibilityLiveRegion="polite"
               >
                 <Text style={styles.mapWarningText}>{fallbackNotice}</Text>
+                <Pressable
+                  onPress={() => handleOpenDirectoryFor('start')}
+                  accessibilityRole="button"
+                  accessibilityLabel="Change place"
+                  style={styles.fallbackNoticeAction}
+                >
+                  <Text style={styles.fallbackNoticeActionText}>Change place</Text>
+                </Pressable>
               </View>
             )}
 
@@ -2249,6 +2268,8 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   mapWarningText: { color: '#7C4A03', fontSize: 12, fontWeight: '600' },
+  fallbackNoticeAction: { minHeight: 44, justifyContent: 'center', alignSelf: 'flex-start' },
+  fallbackNoticeActionText: { color: '#7C4A03', fontSize: 13, fontWeight: '700', textDecorationLine: 'underline' },
   outsideVenueBanner: {
     marginLeft: 12,
     marginRight: 76,

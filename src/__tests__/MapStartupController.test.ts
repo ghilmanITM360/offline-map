@@ -63,15 +63,21 @@ function liveResultWith(coordinate: unknown): LocationResolveResult {
 }
 
 describe('MapStartupController.resolveReturningLaunchCamera', () => {
-  it('1. first install + GPS: venue overview remains the first camera move, resolver never consulted', async () => {
+  it('1. first install is not special: with permission it resolves a fresh fix like any other launch', async () => {
     const resolveFreshLocation = resolverReturning({ ok: true, coordinate: liveCoordinate, source: 'live', permissionState: basePermissionState, message: null });
 
-    const decision = await MapStartupController.resolveReturningLaunchCamera(
-      { hasSeenMapOverview: false, hasLocationPermission: true },
-      resolveFreshLocation,
-    );
+    const decision = await MapStartupController.resolveReturningLaunchCamera({ hasLocationPermission: true }, resolveFreshLocation);
 
-    expect(decision).toEqual({ action: 'FIT_VENUE_BOUNDS', reason: 'first_overview' });
+    expect(decision).toEqual({ action: 'ANIMATE_TO_USER', coordinate: liveCoordinate, source: 'live' });
+    expect(resolveFreshLocation).toHaveBeenCalledTimes(1);
+  });
+
+  it('1b. first install without permission follows the same no-location rule and never consults the resolver', async () => {
+    const resolveFreshLocation = resolverReturning({ ok: true, coordinate: liveCoordinate, source: 'live', permissionState: basePermissionState, message: null });
+
+    const decision = await MapStartupController.resolveReturningLaunchCamera({ hasLocationPermission: false }, resolveFreshLocation);
+
+    expect(decision).toEqual({ action: 'FIT_VENUE_BOUNDS', reason: 'no_gps' });
     expect(resolveFreshLocation).not.toHaveBeenCalled();
   });
 
@@ -79,7 +85,7 @@ describe('MapStartupController.resolveReturningLaunchCamera', () => {
     const resolveFreshLocation = resolverReturning({ ok: true, coordinate: liveCoordinate, source: 'live', permissionState: basePermissionState, message: null });
 
     const decision = await MapStartupController.resolveReturningLaunchCamera(
-      { hasSeenMapOverview: true, hasLocationPermission: true },
+      { hasLocationPermission: true },
       resolveFreshLocation,
     );
 
@@ -96,7 +102,7 @@ describe('MapStartupController.resolveReturningLaunchCamera', () => {
     });
 
     const decision = await MapStartupController.resolveReturningLaunchCamera(
-      { hasSeenMapOverview: true, hasLocationPermission: true },
+      { hasLocationPermission: true },
       resolveFreshLocation,
     );
 
@@ -107,7 +113,7 @@ describe('MapStartupController.resolveReturningLaunchCamera', () => {
     const resolveFreshLocation = resolverReturning({ ok: true, coordinate: liveCoordinate, source: 'live', permissionState: basePermissionState, message: null }, 50);
 
     const decision = await MapStartupController.resolveReturningLaunchCamera(
-      { hasSeenMapOverview: true, hasLocationPermission: true },
+      { hasLocationPermission: true },
       resolveFreshLocation,
     );
 
@@ -118,7 +124,7 @@ describe('MapStartupController.resolveReturningLaunchCamera', () => {
     const resolveFreshLocation = resolverReturning({ ok: true, coordinate: liveCoordinate, source: 'live', permissionState: basePermissionState, message: null });
 
     const decision = await MapStartupController.resolveReturningLaunchCamera(
-      { hasSeenMapOverview: true, hasLocationPermission: false },
+      { hasLocationPermission: false },
       resolveFreshLocation,
     );
 
@@ -136,7 +142,7 @@ describe('MapStartupController.resolveReturningLaunchCamera', () => {
     });
 
     const decision = await MapStartupController.resolveReturningLaunchCamera(
-      { hasSeenMapOverview: true, hasLocationPermission: true },
+      { hasLocationPermission: true },
       resolveFreshLocation,
     );
 
@@ -147,7 +153,7 @@ describe('MapStartupController.resolveReturningLaunchCamera', () => {
     const resolveFreshLocation = resolverReturning({ ok: false, coordinate: null, source: null, permissionState: basePermissionState, message: 'Current location unavailable.' });
 
     const decision = await MapStartupController.resolveReturningLaunchCamera(
-      { hasSeenMapOverview: true, hasLocationPermission: true },
+      { hasLocationPermission: true },
       resolveFreshLocation,
     );
 
@@ -159,7 +165,7 @@ describe('MapStartupController.resolveReturningLaunchCamera', () => {
 
     await expect(
       MapStartupController.resolveReturningLaunchCamera(
-        { hasSeenMapOverview: true, hasLocationPermission: true },
+        { hasLocationPermission: true },
         resolveFreshLocation,
       ),
     ).resolves.toEqual({ action: 'FIT_VENUE_BOUNDS', reason: 'no_gps' });
@@ -171,7 +177,7 @@ describe('MapStartupController.resolveReturningLaunchCamera', () => {
       const resolveFreshLocation = resolverThatNeverSettles();
 
       const decisionPromise = MapStartupController.resolveReturningLaunchCamera(
-        { hasSeenMapOverview: true, hasLocationPermission: true },
+        { hasLocationPermission: true },
         resolveFreshLocation,
         1000,
       );
@@ -194,7 +200,7 @@ describe('MapStartupController.resolveReturningLaunchCamera', () => {
     });
 
     const decision = await MapStartupController.resolveReturningLaunchCamera(
-      { hasSeenMapOverview: true, hasLocationPermission: true },
+      { hasLocationPermission: true },
       resolveFreshLocation,
     );
 
@@ -207,7 +213,7 @@ describe('MapStartupController.resolveReturningLaunchCamera', () => {
       const resolveFreshLocation = resolverReturning({ ok: true, coordinate: liveCoordinate, source: 'live', permissionState: basePermissionState, message: null }, 5000);
 
       const decisionPromise = MapStartupController.resolveReturningLaunchCamera(
-        { hasSeenMapOverview: true, hasLocationPermission: true },
+        { hasLocationPermission: true },
         resolveFreshLocation,
         1000,
       );
@@ -224,14 +230,10 @@ describe('MapStartupController.resolveReturningLaunchCamera', () => {
     }
   });
 
-  it('11. first-install short-circuit never starts a watcher/timer at all', async () => {
+  it('11. a missing permission short-circuits without starting a watcher or timer', async () => {
     jest.useFakeTimers();
     try {
-      const resolveFreshLocation = resolverThatNeverSettles();
-      await MapStartupController.resolveReturningLaunchCamera(
-        { hasSeenMapOverview: false, hasLocationPermission: true },
-        resolveFreshLocation,
-      );
+      await MapStartupController.resolveReturningLaunchCamera({ hasLocationPermission: false }, resolverThatNeverSettles());
       expect(jest.getTimerCount()).toBe(0);
     } finally {
       jest.useRealTimers();
@@ -242,7 +244,7 @@ describe('MapStartupController.resolveReturningLaunchCamera', () => {
     const resolveFreshLocation = resolverReturning({ ok: true, coordinate: liveCoordinate, source: 'live', permissionState: basePermissionState, message: null });
 
     await MapStartupController.resolveReturningLaunchCamera(
-      { hasSeenMapOverview: true, hasLocationPermission: true },
+      { hasLocationPermission: true },
       resolveFreshLocation,
     );
 
@@ -253,7 +255,7 @@ describe('MapStartupController.resolveReturningLaunchCamera', () => {
     const resolveFreshLocation = resolverReturning({ ok: true, coordinate: liveCoordinate, source: 'live', permissionState: basePermissionState, message: null });
 
     const decision = await MapStartupController.resolveReturningLaunchCamera(
-      { hasSeenMapOverview: true, hasLocationPermission: true },
+      { hasLocationPermission: true },
       resolveFreshLocation,
     );
 
@@ -296,7 +298,7 @@ describe('MapStartupController.resolveColdLaunchCamera (unchanged sync decision,
 });
 
 describe('MapStartupController.resolveReturningLaunchCamera — rigorous live-coordinate validation', () => {
-  const checks = { hasSeenMapOverview: true, hasLocationPermission: true };
+  const checks = { hasLocationPermission: true };
 
   it('rejects NaN latitude (with an otherwise-valid longitude)', async () => {
     const resolveFreshLocation = resolverReturning(liveResultWith({ latitude: Number.NaN, longitude: 67.005 }));
@@ -378,7 +380,7 @@ describe('MapStartupController.resolveReturningLaunchCamera — rigorous live-co
 });
 
 describe('MapStartupController.resolveReturningLaunchCamera — synchronous resolver throws are caught', () => {
-  const checks = { hasSeenMapOverview: true, hasLocationPermission: true };
+  const checks = { hasLocationPermission: true };
 
   it('a resolver that throws synchronously (before ever returning a Promise) normalizes to venue overview, not an unhandled throw', async () => {
     const resolveFreshLocation = resolverThrowingSynchronously(new Error('native module unavailable'));
