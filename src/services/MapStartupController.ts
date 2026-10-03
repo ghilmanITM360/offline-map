@@ -96,8 +96,8 @@ export class MapStartupController {
    * This variant instead resolves a fresh fix itself, through the caller-supplied resolver
    * (LocationAccessService.resolveCurrentLocation in production), and only ever animates to a
    * result explicitly labelled 'live' — never a stale persisted or device-cached fallback.
-   * First-install and no-permission short-circuit before the resolver is ever invoked, so
-   * neither path's behavior or timing changes from resolveColdLaunchCamera above.
+   * No-permission short-circuits before the resolver is ever invoked. First install takes the same path as
+   * any other launch.
    *
    * Every non-live outcome — permission denied, services disabled, resolution failure, a
    * rejected resolver promise, a malformed result, or the resolver simply never settling —
@@ -139,14 +139,11 @@ export class MapStartupController {
   }
 
   static async resolveReturningLaunchCamera(
-    checks: { hasSeenMapOverview: boolean; hasLocationPermission: boolean },
+    checks: { hasLocationPermission: boolean },
     resolveFreshLocation: () => Promise<LocationResolveResult>,
     timeoutMs = RETURNING_LAUNCH_RESOLVE_TIMEOUT_MS,
   ): Promise<ReturningLaunchCameraDecision> {
-    if (!checks.hasSeenMapOverview) {
-      return { action: 'FIT_VENUE_BOUNDS', reason: 'first_overview' };
-    }
-
+    // First install is not special (#222): no permission or no live fix means the same no-location fallback.
     if (!checks.hasLocationPermission) {
       return { action: 'FIT_VENUE_BOUNDS', reason: 'no_gps' };
     }

@@ -62,6 +62,7 @@ const cameraFitVenueBoundsSpy = jest.fn();
 const cameraFitRouteSpy = jest.fn();
 const cameraNotifyNativeMapReadySpy = jest.fn();
 const cameraNotifyInitialRegionSettledSpy = jest.fn();
+const cameraCancelEarlyReplaySpy = jest.fn();
 const cameraStopFollowingSpy = jest.fn();
 const handlePlaceSelectSpy = jest.fn();
 const handleRecenterSpy = jest.fn(async () => true);
@@ -132,6 +133,7 @@ function useFakeHomeViewModel(overrides: Record<string, unknown> = {}) {
       exitNavigationCamera: jest.fn(),
       notifyNativeMapReady: cameraNotifyNativeMapReadySpy,
       notifyInitialRegionSettled: cameraNotifyInitialRegionSettledSpy,
+      cancelEarlyReplay: cameraCancelEarlyReplaySpy,
       notifyMapLayout: jest.fn(),
     },
     mapType: 'standard' as const,
@@ -249,36 +251,34 @@ const invalidatingInteractions: Array<[string, () => Promise<void> | void]> = [
 ];
 
 describe('HomeScreen - launch camera (Google Maps principles, adapted for a venue)', () => {
-  test('first install: fits the venue overview and marks the overview as seen', async () => {
-    useAppStore.setState({
-      hasSeenMapOverview: false,
-      hasLocationPermission: true,
-      currentLocation: liveCoordinate,
-    });
+  test('first install with a live fix follows the returning rule: resolves it, shows the grounds overview and marks the overview as seen', async () => {
+    useAppStore.setState({ hasSeenMapOverview: false, hasLocationPermission: true, currentLocation: null });
 
     await renderAndMapReady();
+    await flushLaunchMicrotasks();
     await flushProjectionTimers();
 
-    expect(mockedResolveCurrentLocation).not.toHaveBeenCalled();
+    expect(mockedResolveCurrentLocation).toHaveBeenCalledTimes(1);
     expect(cameraFitVenueBoundsSpy).toHaveBeenCalledTimes(1);
     expect(cameraAnimateToUserSpy).not.toHaveBeenCalled();
+    expect(useAppStore.getState().currentLocation).toEqual(liveCoordinate);
     expect(useAppStore.getState().hasSeenMapOverview).toBe(true);
+    expect(setIsMapReadySpy).toHaveBeenCalledTimes(1);
   });
 
-  test('first install with live resolver available: venue overview commits before the watcher is released', async () => {
-    useAppStore.setState({
-      hasSeenMapOverview: false,
-      hasLocationPermission: true,
-      currentLocation: liveCoordinate,
-    });
+  test('first install without location permission opens on Block 2 with the notice, never starts the resolver, and marks the overview as seen', async () => {
+    useAppStore.setState({ hasSeenMapOverview: false, hasLocationPermission: false, currentLocation: null });
 
     await renderAndMapReady();
+    await flushLaunchMicrotasks();
     await flushProjectionTimers();
 
     expect(mockedResolveCurrentLocation).not.toHaveBeenCalled();
-    expect(cameraFitVenueBoundsSpy).toHaveBeenCalledTimes(1);
-    expect(cameraAnimateToUserSpy).not.toHaveBeenCalled();
-    expect(setIsMapReadySpy).toHaveBeenCalledTimes(1);
+    expect(cameraAnimateToUserSpy).toHaveBeenCalledWith(block2AnchorCoordinate);
+    expect(cameraFitVenueBoundsSpy).not.toHaveBeenCalled();
+    expect(screen.getByText('Location unavailable. Showing Block 2.')).toBeOnTheScreen();
+    expect(useAppStore.getState().currentLocation).toBeNull();
+    expect(useAppStore.getState().hasSeenMapOverview).toBe(true);
   });
 
   test('Google mapLoaded before app mapReady does not start a startup resolver or camera decision', async () => {
@@ -855,5 +855,105 @@ describe('#222 an early camera move is re-run once the initial region is applied
     await settleInitialRegion();
 
     expect(cameraNotifyInitialRegionSettledSpy).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('#222 Change place on the Block 2 notice', () => {
+  const navigate = jest.fn();
+  const openFallbackMap = async () => {
+    useNavigation.mockReturnValue({ navigate, dispatch: jest.fn(), goBack: jest.fn() });
+    useAppStore.setState({ hasSeenMapOverview: true, hasLocationPermission: false, currentLocation: null });
+    await renderAndMapReady();
+    await flushProjectionTimers();
+  };
+
+  beforeEach(() => navigate.mockClear());
+
+  test('the notice offers one Change place action that opens the Directory in start-selection mode', async () => {
+    await openFallbackMap();
+
+    fireEvent.press(screen.getByRole('button', { name: 'Change place' }));
+
+    expect(navigate).toHaveBeenCalledWith('LocationsDirectory');
+    expect(useAppStore.getState().directoryPurpose).toBe('start');
+  });
+
+  test('opening the chooser does not turn the Block 2 fallback into a location', async () => {
+    await openFallbackMap();
+
+    fireEvent.press(screen.getByRole('button', { name: 'Change place' }));
+
+    expect(useAppStore.getState().currentLocation).toBeNull();
+    expect(useAppStore.getState().currentLocationSource).toBeNull();
+  });
+
+  test('a place picked in start mode with no destination open returns normally: the place is selected on the Map', async () => {
+    await openFallbackMap();
+
+    await act(async () => {
+      useAppStore.setState({ directoryChoice: { purpose: 'start', place: searchResultPlace as any } });
+    });
+
+    expect(useAppStore.getState().pendingDirectorySelection).toEqual(searchResultPlace);
+    expect(useAppStore.getState().directoryChoice).toBeNull();
+    expect(useAppStore.getState().currentLocation).toBeNull();
+  });
+
+  test('the last-known quick option moves the camera only and does not become a location', async () => {
+    await openFallbackMap();
+    cameraAnimateToUserSpy.mockClear();
+
+    await act(async () => {
+      useAppStore.setState({ lastKnownLocation: staleRememberedCoordinate, directoryChoice: { purpose: 'start', quick: 'last_known' } });
+    });
+
+    expect(cameraAnimateToUserSpy).toHaveBeenCalledWith(staleRememberedCoordinate);
+    expect(useAppStore.getState().currentLocation).toBeNull();
+    expect(useAppStore.getState().directoryChoice).toBeNull();
+  });
+
+  test('the notice goes away once a place is selected', async () => {
+    mockedUseHomeViewModel.mockImplementation(() => useFakeHomeViewModel({ selectedPlace: null }));
+    await openFallbackMap();
+    expect(screen.getByText('Location unavailable. Showing Block 2.')).toBeOnTheScreen();
+
+    mockedUseHomeViewModel.mockImplementation(() => useFakeHomeViewModel({ selectedPlace: searchResultPlace }));
+    await act(async () => {
+      useAppStore.setState({ currentLocation: null });
+    });
+    expect(screen.queryByText('Location unavailable. Showing Block 2.')).toBeNull();
+
+    // Closing the place sheet later must not bring back a notice that no longer describes the camera.
+    mockedUseHomeViewModel.mockImplementation(() => useFakeHomeViewModel({ selectedPlace: null }));
+    await act(async () => {
+      useAppStore.setState({ currentLocation: null });
+    });
+    expect(screen.queryByText('Location unavailable. Showing Block 2.')).toBeNull();
+  });
+});
+
+describe('#222 the first camera intent does not fight the user', () => {
+  test('a user pan releases the manager replay of the early move', async () => {
+    useAppStore.setState({ hasSeenMapOverview: true, hasLocationPermission: false, currentLocation: null });
+    await renderAndMapReady();
+    cameraCancelEarlyReplaySpy.mockClear();
+
+    fireEvent(screen.getByTestId('home-map-view', { includeHiddenElements: true }), 'panDrag');
+
+    expect(cameraCancelEarlyReplaySpy).toHaveBeenCalledTimes(1);
+  });
+
+  test('the startup move runs once and then releases the replay, because the initial region was already applied', async () => {
+    useAppStore.setState({ hasSeenMapOverview: true, hasLocationPermission: false, currentLocation: null });
+
+    await renderAndMapReady();
+    await flushProjectionTimers();
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(3000);
+    });
+    await settleInitialRegion();
+
+    expect(cameraAnimateToUserSpy).toHaveBeenCalledTimes(1);
+    expect(cameraCancelEarlyReplaySpy).toHaveBeenCalledTimes(1);
   });
 });

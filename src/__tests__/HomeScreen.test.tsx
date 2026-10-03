@@ -166,6 +166,7 @@ function useFakeHomeViewModel() {
       exitNavigationCamera: jest.fn(),
       notifyNativeMapReady: jest.fn(),
       notifyInitialRegionSettled: jest.fn(),
+      cancelEarlyReplay: jest.fn(),
       notifyMapLayout: jest.fn(),
     },
     mapType: 'standard' as const,
