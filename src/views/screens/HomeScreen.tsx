@@ -282,7 +282,7 @@ export function HomeScreen() {
   // cover two distinct snap heights (15%/50% peek vs preview) that mode alone can't
   // distinguish — see onChange below and useOverlayInsets.computeMapControlsInset.
   const [sheetIndex, setSheetIndex] = useState(-1);
-  const { height: windowHeight } = useWindowDimensions();
+  const { height: windowHeight, fontScale } = useWindowDimensions();
   const warningAnim = useRef(new Animated.Value(0)).current;
   const userPulseAnim = useRef(new Animated.Value(0)).current;
   const chipsAnim = useRef(new Animated.Value(1)).current;
@@ -999,8 +999,8 @@ export function HomeScreen() {
   const snapPoints = useMemo(
     () => (mode === 'ROUTE_PREVIEW'
       ? layoutSnapPoints
-      : insetAwareSnapPoints(layoutSnapPoints, sheetContainerHeight, insets.bottom)),
-    [mode, layoutSnapPoints, sheetContainerHeight, insets.bottom],
+      : insetAwareSnapPoints(layoutSnapPoints, sheetContainerHeight, insets.bottom, fontScale)),
+    [mode, layoutSnapPoints, sheetContainerHeight, insets.bottom, fontScale],
   );
   // The reserved top band is applied here, as pixel heights of the sheet's container (window minus the band),
   // instead of as gorhom's `topInset`. gorhom derives its container height from `topInset` only when the sheet

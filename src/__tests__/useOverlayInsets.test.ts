@@ -269,6 +269,14 @@ describe('insetAwareSnapPoints (#128: place-preview CTA under the 3-button navig
     expect(threeButton).toBeGreaterThan(gesture);
   });
 
+  it('a larger system font raises the middle snap so the Directions button is not cut off at rest', () => {
+    const normal = parseFloat(insetAwareSnapPoints(base, 479.6, 24)[1]);
+    const large = parseFloat(insetAwareSnapPoints(base, 479.6, 24, 2)[1]);
+    expect(large).toBeGreaterThan(normal);
+    expect(large).toBeCloseTo(((PLACE_PREVIEW_CONTENT_DP * 1.29 + 24) / 479.6) * 100, 1);
+    expect(insetAwareSnapPoints(base, 479.6, 24, 1)).toEqual(insetAwareSnapPoints(base, 479.6, 24));
+  });
+
   it('on a short container the middle snap grows until the preview content, with its CTA, clears the bar', () => {
     // A 711 dp tall window leaves a ~371 dp container: 50% plus the 48 dp bar (233 dp visible) would leave the
     // 240 dp of preview content, and its Directions button, behind the three-button bar.
