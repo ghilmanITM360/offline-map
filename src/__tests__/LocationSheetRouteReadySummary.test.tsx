@@ -160,4 +160,22 @@ describe('Route ready — FROM / TO at a glance', () => {
     await user.press(screen.getByRole('button', { name: 'Back' }));
     expect(onClose).toHaveBeenCalledTimes(1);
   });
+
+  test('each of FROM and TO is one TalkBack stop, not label + name + detail', async () => {
+    mockedVm.mockReturnValue(readyVm());
+    await renderSheet();
+
+    const from = screen.getByLabelText(/^From, Gate 13/);
+    const to = screen.getByLabelText(/^To, Block 1, Block/);
+    expect(from.props.accessible).toBe(true);
+    expect(to.props.accessible).toBe(true);
+    // The three texts live inside that one stop, so none may be its own stop.
+    expect(from).toContainElement(screen.getByText('From'));
+    expect(from).toContainElement(screen.getByText('Gate 13'));
+    expect(to).toContainElement(screen.getByText('To'));
+    expect(to).toContainElement(screen.getByText('Block 1'));
+    // Change actions stay separate buttons.
+    expect(screen.getByRole('button', { name: 'Change starting point' })).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: 'Change destination' })).toBeOnTheScreen();
+  });
 });
