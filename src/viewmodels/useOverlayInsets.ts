@@ -57,16 +57,25 @@ export function computeMaxSheetOcclusionForAttribution(
   return Math.max(windowHeight - top - minimumVisibleMapHeight, safeBottom);
 }
 
+/** Height (dp) of the place preview's content above the navigation bar, from the title to the bottom of the
+ * Directions button: 50% of the 479.6 dp container measured on the API 36 emulator, where the button just clears
+ * the bar. A shorter window gives a smaller container, so 50% alone would hide the button behind the bar. */
+export const PLACE_PREVIEW_CONTENT_DP = 0.5 * 479.6;
+
 /** Lifts the middle (place-preview) snap by the bottom system inset so what is visible above the
  * navigation bar is still the intended share of the container. The sheet's container runs to the window
  * bottom, so on a 48 dp three-button bar the primary CTA at the end of the 50% preview sat behind the bar.
- * Only the middle snap moves; the collapsed and expanded snaps keep their meaning. */
+ * On a short container the middle snap grows further, up to just under the top snap, so the primary button stays
+ * visible. Only the middle snap moves; the collapsed and expanded snaps keep their meaning. */
 export function insetAwareSnapPoints(snapPoints: readonly string[], containerHeight: number, bottomInset: number): string[] {
   if (bottomInset <= 0 || containerHeight <= 0 || snapPoints.length < 3) return [...snapPoints];
   const middle = parseFloat(snapPoints[1]);
   const top = parseFloat(snapPoints[snapPoints.length - 1]);
   if (!Number.isFinite(middle) || !Number.isFinite(top)) return [...snapPoints];
-  const lifted = Math.min(middle + (bottomInset / containerHeight) * 100, top - 1);
+  const lifted = Math.min(
+    Math.max(middle + (bottomInset / containerHeight) * 100, ((PLACE_PREVIEW_CONTENT_DP + bottomInset) / containerHeight) * 100),
+    top - 1,
+  );
   const next = [...snapPoints];
   next[1] = `${Math.round(lifted * 10) / 10}%`;
   return next;
