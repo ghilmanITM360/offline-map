@@ -501,7 +501,7 @@ export function useDirectionsViewModel(destination: Place | null) {
       setStartSource('manual_place');
       setIsEditingManualStart(true);
       setLoadState('needs_origin');
-      setErrorMessage('Current location is temporarily unavailable. Choose start point manually.');
+      setErrorMessage('Current location is temporarily unavailable. Choose where you are starting from.');
       return false;
     }
   };
@@ -511,7 +511,7 @@ export function useDirectionsViewModel(destination: Place | null) {
       setStartSource('manual_place');
       setIsEditingManualStart(true);
       setLoadState('needs_origin');
-      setErrorMessage('No remembered location inside the Ijtema ground is available. Choose a start point manually.');
+      setErrorMessage('No saved location inside the Ijtema ground is available. Choose where you are starting from.');
       return false;
     }
 

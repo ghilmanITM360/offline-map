@@ -36,8 +36,8 @@ assert(
   'Home current-location failure should offer remembered-location fallback',
 );
 assert(
-  homeVm.includes("text: 'Choose start manually'") && homeVm.includes("onPress: () =>"),
-  'Home current-location failure action should not include a dead \"Choose start manually\" option',
+  homeVm.includes("text: 'Pick a start place'") && homeVm.includes("onPress: () =>"),
+  'Home current-location failure action should not include a dead \"Pick a start place\" option',
 );
 assert(
   homeVm.includes('Outside Ijtema area'),

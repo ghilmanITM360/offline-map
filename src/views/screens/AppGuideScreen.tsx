@@ -71,7 +71,7 @@ const GUIDE_SECTIONS: GuideSection[] = [
     title: '5. Choose Start Source',
     urduTitle: '۵۔ آغاز کا مقام',
     body:
-      'Use My Current Location = live GPS now. Use Last Known Location = saved previous valid location. Choose start manually = pick your own start point. If you start outside Ijtema, routes enter from the nearest connected official gate.',
+      'Tap Change Start to open the place list. Use My Current Location = live GPS now. Use Last Known Location = your last saved location, not live. Or pick a gate, block or rasta yourself. If you start outside Ijtema, routes enter from the nearest connected official gate.',
   },
   {
     key: 'directions',
@@ -79,7 +79,7 @@ const GUIDE_SECTIONS: GuideSection[] = [
     title: '6. Directions Screen',
     urduTitle: '۶۔ ڈائریکشن اسکرین',
     body:
-      'Directions helps you choose where you are starting from. Pick current location, last known location, or manual start. When route is ready, tap Show route on map to see blue line, distance, and ETA on Home.',
+      'Directions shows where you are going and where you are starting from. Tap Change Start to pick current location, last known location, or a place. When route is ready, tap Show route on map to see blue line, distance, and ETA on Home.',
   },
   {
     key: 'navigation',
@@ -127,7 +127,7 @@ const GUIDE_SECTIONS: GuideSection[] = [
     title: '12. Troubleshooting',
     urduTitle: '۱۲۔ مسئلہ حل',
     body:
-      'Map not visible: use venue map only. Route not calculating: retry or change start point. GPS not working: use last known or manual start. If a gate needs connector verification or is not ready for navigation, choose another connected official gate.',
+      'Map not visible: use venue map only. Route not calculating: retry or tap Change Start. GPS not working: tap Change Start and pick a place, or use your last known location. If a gate needs connector verification or is not ready for navigation, choose another connected official gate.',
   },
 ];
 
@@ -177,7 +177,7 @@ export function AppGuideScreen() {
           <Text style={styles.quickTitle}>Start Source Mini Guide</Text>
           <Text style={styles.quickBody}>Use My Current Location: Live GPS location now.</Text>
           <Text style={styles.quickBody}>Use Last Known Location: Last saved valid location (not live).</Text>
-          <Text style={styles.quickBody}>Choose start manually: Pick block/rasta/gate yourself.</Text>
+          <Text style={styles.quickBody}>Pick a place: Choose a gate, block or rasta yourself.</Text>
         </View>
 
         {GUIDE_SECTIONS.map((section) => {
