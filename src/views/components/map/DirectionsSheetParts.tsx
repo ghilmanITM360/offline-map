@@ -148,7 +148,11 @@ function EndpointRowView({ row }: { row: EndpointRow }) {
   return (
     <View style={styles.endpointRow}>
       <View style={styles.innerDisc}>{row.icon}</View>
-      <View style={styles.flex}>
+      <View
+        style={styles.flex}
+        accessible
+        accessibilityLabel={[row.label, row.name, row.detail].filter(Boolean).join(', ')}
+      >
         <Text style={styles.endpointLabel}>{row.label}</Text>
         <Text style={styles.innerName}>{row.name}</Text>
         {row.detail ? <Text style={styles.innerDetail}>{row.detail}</Text> : null}
