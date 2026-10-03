@@ -124,3 +124,100 @@ describe('manual start selection (Get Directions sheet)', () => {
     expect(screen.getByText('Gate 13')).toBeOnTheScreen();
   });
 });
+
+// #222: with no chosen start there is nothing to pick between, so the start action goes straight to
+// the Directory (purpose 'start') instead of the three-card chooser and its "Choose start manually" hop.
+describe('no start chosen yet (Get Directions sheet)', () => {
+  const onOpenDirectory = jest.fn();
+  const onChangeDestination = jest.fn();
+  const mount = () =>
+    render(
+      <>
+        <LocationSheet
+          mode="routePreview"
+          destination={destination}
+          onClose={jest.fn()}
+          onOpenDirectory={onOpenDirectory}
+          onChangeDestination={onChangeDestination}
+        />
+        <DirectionsSheetFooter animatedFooterPosition={{ value: 0, get: () => 0 } as never} />
+      </>,
+    );
+
+  beforeEach(() => {
+    useAppStore.setState({ currentLocation: null, currentLocationSource: null, lastKnownLocation: null });
+  });
+
+  test('Change Start opens the Directory for a start with no intermediate chooser', async () => {
+    const user = userEvent.setup();
+    await mount();
+
+    await user.press(screen.getByText('Change Start'));
+
+    expect(onOpenDirectory).toHaveBeenCalledTimes(1);
+    expect(onOpenDirectory).toHaveBeenCalledWith('start');
+    expect(screen.queryByText('Choose start manually')).not.toBeOnTheScreen();
+    expect(screen.queryByText('Use my current location')).not.toBeOnTheScreen();
+  });
+
+  test('Gate 13 chosen in the Directory becomes the start; the destination is unchanged', async () => {
+    const user = userEvent.setup();
+    await mount();
+    await user.press(screen.getByText('Change Start'));
+
+    await act(async () => {
+      useAppStore.getState().setDirectoryChoice({ purpose: 'start', place: gate13 });
+    });
+
+    expect(screen.getByText('Gate 13')).toBeOnTheScreen();
+    expect(screen.getByText('Block 34')).toBeOnTheScreen();
+    expect(onChangeDestination).not.toHaveBeenCalled();
+    expect(useAppStore.getState().directoryChoice).toBeNull();
+    await waitFor(() => expect(screen.getByText('Route ready')).toBeOnTheScreen(), { timeout: 5_000 });
+  });
+
+  test('leaving the Directory without a choice keeps the start unset and the action available', async () => {
+    const user = userEvent.setup();
+    await mount();
+    await user.press(screen.getByText('Change Start'));
+
+    expect(screen.getByText('Choose starting point')).toBeOnTheScreen();
+    await user.press(screen.getByText('Change Start'));
+    expect(onOpenDirectory).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('start already chosen keeps its choices (Get Directions sheet)', () => {
+  const onOpenDirectory = jest.fn();
+  const mount = () =>
+    render(<LocationSheet mode="routePreview" destination={destination} onClose={jest.fn()} onOpenDirectory={onOpenDirectory} />);
+
+  test('GPS start: Change Start still offers current/last-known/manual, not the Directory', async () => {
+    const user = userEvent.setup();
+    await mount();
+
+    await user.press(screen.getByText('Change Start'));
+
+    expect(onOpenDirectory).not.toHaveBeenCalled();
+    expect(screen.getByText('Use my current location')).toBeOnTheScreen();
+    expect(screen.getByText('Choose start manually')).toBeOnTheScreen();
+  });
+
+  test('manual start: Change Start then Choose start manually opens the Directory; cancelling keeps Gate 13', async () => {
+    const user = userEvent.setup();
+    await mount();
+    await user.press(screen.getByText('Change Start'));
+    await user.press(screen.getByText('Choose start manually'));
+    await act(async () => {
+      useAppStore.getState().setDirectoryChoice({ purpose: 'start', place: gate13 });
+    });
+    onOpenDirectory.mockClear();
+
+    await user.press(screen.getByText('Change Start'));
+    await user.press(screen.getByText('Choose start manually'));
+    expect(onOpenDirectory).toHaveBeenCalledWith('start');
+    await user.press(screen.getByRole('button', { name: /back/i }));
+
+    expect(screen.getByText('Gate 13')).toBeOnTheScreen();
+  });
+});

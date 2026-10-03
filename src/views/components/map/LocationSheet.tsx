@@ -336,6 +336,11 @@ function RoutePreviewSection({
     }
   }, [loadState]);
 
+  // No start chosen yet: nothing to switch between, so go straight to the Directory instead of the chooser.
+  const handleChangeStart = () =>
+    startSource === 'manual_place' && !manualStart && !rememberedLocationAvailable && onOpenDirectory
+      ? onOpenDirectory('start')
+      : setShowStartOptions(true);
   const editingStart = showStartOptions || showManualStartSearch;
   const editingAnything = editingStart;
   // Back from a picker returns to the Get Directions summary; only from the summary does it leave
@@ -603,7 +608,7 @@ function RoutePreviewSection({
               name={startSourceLabel}
               actionLabel="Change Start"
               actionAccessibilityLabel="Change starting point"
-              onAction={() => setShowStartOptions(true)}
+              onAction={handleChangeStart}
             />
           )}
           </FadeContent>
