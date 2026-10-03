@@ -8,14 +8,13 @@ const navigationCapability = readFileSync('src/services/LocationNavigationCapabi
 assert(screen.includes('Get Directions'), 'Directions screen must use layman-friendly heading');
 assert(screen.includes('Going to'), 'Directions screen must show destination card clearly');
 assert(screen.includes('Choose where you are starting from'), 'Directions screen must focus on start selection');
-assert(screen.includes('Use my current location'), 'Directions screen must include current-location action');
-assert(screen.includes('Find best eligible official gate automatically'), 'Directions screen should explain destination-aware current-location routing behavior');
-assert(screen.includes('Use last known location'), 'Directions screen should use clear last-known location labeling');
-assert(screen.includes('Choose start manually'), 'Directions screen should expose manual start action explicitly');
+const directoryScreen = readFileSync('src/views/screens/LocationsDirectoryScreen.tsx', 'utf8');
+assert(directoryScreen.includes('Use my current location'), 'Directory must include current-location action');
+assert(directoryScreen.includes('Use last known location'), 'Directory should use clear last-known location labeling');
 // The Directory is the one place chooser: the sheet opens it for a start instead of hosting its own search box (#222).
 assert(!screen.includes('Search start point: gate, rasta, block'), 'Directions screen must not host a second start search');
 assert(screen.includes("onOpenDirectory?.('start')"), 'Choose start manually must open the Directory to choose a start');
-assert(screen.includes('rememberedLocationAvailable'), 'Directions should disable last-known action when no remembered location exists');
+assert(directoryScreen.includes('canUseLastKnown'), 'Directory should show the last-known option only when a remembered location exists');
 assert(screen.includes('Change destination'), 'Directions screen must include destination change action');
 assert(screen.includes('ScrollView'), 'Directions screen should use scroll layout');
 assert(screen.includes('paddingBottom'), 'Directions screen should add bottom padding for safe area');

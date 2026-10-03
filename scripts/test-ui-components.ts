@@ -49,12 +49,9 @@ assert(home.includes('KeyboardAvoidingView'), 'Home must use keyboard-aware layo
 
 assert(directions.includes('KeyboardAvoidingView'), 'Directions must use keyboard-aware layout');
 assert(directions.includes('keyboardDismissMode="on-drag"'), 'Directions must dismiss keyboard on scroll');
-assert(directions.includes('Use my current location'), 'Directions must expose current-location start action');
-assert(directions.includes('Use last known location'), 'Directions must expose last-known start action when available');
-assert(directions.includes('Choose start manually'), 'Directions must expose manual start action');
+assert(directions.includes("onOpenDirectory?.('start')"), 'Directions must hand every start change to the Directory (#222)');
 assert(directions.includes('Start Navigation'), 'Directions must expose a Start Navigation CTA once the route is ready');
 assert(directions.includes('Route ready'), 'Directions must show route-ready state');
-assert(directions.includes('Find best eligible official gate automatically'), 'Directions must explain destination-aware current-location routing behavior');
 assert(directions.includes('Change destination'), 'Directions must keep destination-change action');
 
 // Both v1 and v2 live navigation now run in-place on HomeScreen's persistent MapView — v1's

@@ -28,9 +28,10 @@ const navVm = readFileSync('src/viewmodels/NavigationViewModel.ts', 'utf8');
 const navChrome = readFileSync('src/views/components/navigation/NavigationChromeV1.tsx', 'utf8');
 const homeScreenSource = readFileSync('src/views/screens/HomeScreen.tsx', 'utf8');
 
-assert(directions.includes('Use my current location'), 'Directions should offer current-location start action');
-assert(directions.includes('Choose start manually'), 'Directions should keep manual-start fallback');
-assert(directions.includes('Find best eligible official gate automatically'), 'Directions should explain destination-aware outside-location gate selection');
+// #222: the start chooser is the Directory; the sheet only opens it.
+const directoryScreen = readFileSync('src/views/screens/LocationsDirectoryScreen.tsx', 'utf8');
+assert(directoryScreen.includes('Use my current location'), 'Directory should offer current-location start action');
+assert(directions.includes("onOpenDirectory?.('start')"), 'Directions should keep the Directory as the manual-start fallback');
 assert(navVm.includes('REROUTE_COOLDOWN_MS'), 'Navigation should include reroute cooldown to avoid loops');
 assert(navVm.includes('OFF_ROUTE_CONSECUTIVE_REQUIRED'), 'Navigation should require consecutive off-route samples before rerouting');
 assert(navVm.includes('MIN_MOVEMENT_FOR_REROUTE_M'), 'Navigation should block reroutes when movement is too small');
