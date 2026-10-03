@@ -37,10 +37,19 @@ describe('MapControls — Batch A accessibility', () => {
 
   test('compass button label changes with heading-follow state', async () => {
     const { rerender } = await render(<MapControls {...baseProps({ compassMode: 'NORTH_UP' })} />);
-    expect(screen.getByLabelText(/Map is north-up/)).toBeOnTheScreen();
+    expect(screen.getByLabelText(/Follow direction is off/)).toBeOnTheScreen();
 
     await rerender(<MapControls {...baseProps({ compassMode: 'FOLLOW_HEADING' })} />);
-    expect(screen.getByLabelText(/rotates with your compass heading/)).toBeOnTheScreen();
+    expect(screen.getByLabelText(/Follow direction is on/)).toBeOnTheScreen();
+  });
+
+  test('the control is not called a compass, since it follows the direction of travel and not a magnetometer', async () => {
+    const { rerender } = await render(<MapControls {...baseProps({ compassMode: 'NORTH_UP' })} />);
+    expect(screen.queryByLabelText(/compass/i)).toBeNull();
+
+    await rerender(<MapControls {...baseProps({ compassMode: 'FOLLOW_HEADING' })} />);
+    expect(screen.queryByLabelText(/compass/i)).toBeNull();
+    expect(screen.queryByText('Compass', { includeHiddenElements: true })).toBeNull();
   });
 
   test('nav variant omits the Layers button and the helper badge', async () => {
@@ -59,7 +68,7 @@ describe('MapControls — Batch A accessibility', () => {
 
     await user.press(screen.getByLabelText('Zoom in'));
     await user.press(screen.getByLabelText('Zoom out'));
-    await user.press(screen.getByLabelText(/Map is north-up/));
+    await user.press(screen.getByLabelText(/Follow direction is off/));
 
     expect(onZoomIn).toHaveBeenCalledTimes(1);
     expect(onZoomOut).toHaveBeenCalledTimes(1);

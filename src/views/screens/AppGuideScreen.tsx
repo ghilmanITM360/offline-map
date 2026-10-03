@@ -95,7 +95,7 @@ const GUIDE_SECTIONS: GuideSection[] = [
     title: '8. Map Controls',
     urduTitle: '۸۔ نقشہ کنٹرولز',
     body:
-      'Layer button changes map style. Compass button resets north-up view. Zoom buttons change level. Recenter button jumps back to your position.',
+      'Layer button changes map style. Follow direction button turns the map to face the way you are moving; tap it again for north-up. Zoom buttons change level. Recenter button jumps back to your position.',
   },
   {
     key: 'settings',
