@@ -1036,18 +1036,20 @@ export function HomeScreen() {
       stackHeight: controlStackHeight,
     });
   };
-  const controlStackDeps = [windowHeight, insets.bottom, bannerStackTop, controlStackHeight];
+  // Reanimated appends its own worklet hashes to the array it receives, so each hook needs a fresh one: a
+  // shared array grew differently per hook and React logged 'useEffect changed size' on every render (#251).
+  const controlStackDeps = () => [windowHeight, insets.bottom, bannerStackTop, controlStackHeight];
   const controlStackStyle = useAnimatedStyle(() => {
     const { bottom, visible } = placeControlStack(sheetTopY.value);
     return { bottom, opacity: visible ? 1 : 0 };
-  }, controlStackDeps);
+  }, controlStackDeps());
   // Opacity alone would leave a hidden stack touchable and focusable; mirror it as a boolean for the tree.
   useAnimatedReaction(
     () => placeControlStack(sheetTopY.value).visible,
     (visible, previous) => {
       if (visible !== previous) runOnJS(setControlStackHidden)(!visible);
     },
-    controlStackDeps,
+    controlStackDeps(),
   );
   // Keeps block/gate/rasta/route labels from rendering under the search bar/chip
   // row (top) or the layers/compass/zoom/recenter control column (right, widest

@@ -32,6 +32,17 @@ jest.mock('../services/LocationAccessService', () => ({
   },
 }));
 
+// Pass-through wrappers so a test can see which dependency arrays HomeScreen hands to the Reanimated hooks.
+jest.mock('react-native-reanimated', () => {
+  const actual = jest.requireActual('react-native-reanimated');
+  const wrapped: Record<string, jest.Mock> = {
+    useAnimatedStyle: jest.fn(actual.useAnimatedStyle),
+    useAnimatedReaction: jest.fn(actual.useAnimatedReaction),
+  };
+  // A proxy keeps every other export (including the default Animated object) exactly as the real module has it.
+  return new Proxy(actual, { get: (target, key: string) => wrapped[key] ?? target[key] });
+});
+
 jest.mock('@react-navigation/native', () => {
   const actual = jest.requireActual('@react-navigation/native');
   return {
@@ -829,5 +840,25 @@ describe('#222 camera commands wait for the initial region (any intent, not only
     });
 
     expect(cameraNotifyNativeMapReadySpy).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('#251 control stack hooks do not share one dependency array', () => {
+  test('useAnimatedStyle and useAnimatedReaction each get their own dependency array', async () => {
+    const reanimated = jest.requireMock('react-native-reanimated') as {
+      useAnimatedStyle: jest.Mock;
+      useAnimatedReaction: jest.Mock;
+    };
+    useAppStore.setState({ hasSeenMapOverview: true, hasLocationPermission: false, currentLocation: null });
+
+    await render(<HomeScreen />);
+
+    // Reanimated appends its own worklet hashes to the array it is given. One array passed to both hooks grows
+    // by a different amount in each render, which React reports as 'final argument passed to useEffect changed size'.
+    const styleDeps = reanimated.useAnimatedStyle.mock.calls.map((call) => call[1]).filter(Array.isArray);
+    const reactionDeps = reanimated.useAnimatedReaction.mock.calls.map((call) => call[2]).filter(Array.isArray);
+    expect(styleDeps.length).toBeGreaterThan(0);
+    expect(reactionDeps.length).toBeGreaterThan(0);
+    expect(styleDeps.filter((deps) => reactionDeps.includes(deps))).toHaveLength(0);
   });
 });
