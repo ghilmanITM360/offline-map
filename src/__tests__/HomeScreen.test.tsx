@@ -1275,6 +1275,43 @@ describe('HomeScreen — resolved base-map rendering', () => {
     expect(screen.getByTestId('home-map-view', { includeHiddenElements: true }).props.provider).toBe('google');
   });
 
+  // #128 loading + error states for the map itself: a cold start shows "Loading map..." (no blank
+  // map), and a Google load that never completes swaps it for the one polite imagery-failed banner.
+  describe('map load states (#128)', () => {
+    const withGoogleKey = () =>
+      jest.spyOn(MapConfigService, 'getRuntimeStatus').mockReturnValue({
+        keyPresent: true,
+        keyPreview: null,
+        packageName: 'com.test',
+        platform: 'android',
+        source: 'env',
+      });
+
+    test('shows "Loading map..." until Google reports the map loaded', async () => {
+      withGoogleKey();
+      await render(<HomeScreen />);
+      expect(screen.getByText('Loading map...')).toBeOnTheScreen();
+
+      await act(async () => {
+        screen.getByTestId('home-map-view', { includeHiddenElements: true }).props.onMapLoaded();
+      });
+      expect(screen.queryByText('Loading map...')).not.toBeOnTheScreen();
+    });
+
+    test('a map that never loads swaps the spinner for one polite "imagery failed" banner', async () => {
+      withGoogleKey();
+      await render(<HomeScreen />);
+
+      await act(async () => {
+        jest.advanceTimersByTime(7_100);
+      });
+
+      expect(screen.queryByText('Loading map...')).not.toBeOnTheScreen();
+      const banner = screen.getByText(MapConfigService.getMapLoadFailedMessage()).parent;
+      expect(banner?.props.accessibilityLiveRegion).toBe('polite');
+    });
+  });
+
   test('Google load watchdog switches once to one LocalTile fallback', async () => {
     jest.spyOn(MapConfigService, 'getRuntimeStatus').mockReturnValue({
       keyPresent: true,
