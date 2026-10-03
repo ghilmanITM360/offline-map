@@ -7,7 +7,7 @@
     <key>CFBundleDevelopmentRegion</key>
     <string>$(DEVELOPMENT_LANGUAGE)</string>
     <key>CFBundleDisplayName</key>
-    <string>Karachi Ijtema Offline Nav</string>
+    <string>Ijtema Map</string>
     <key>CFBundleExecutable</key>
     <string>$(EXECUTABLE_NAME)</string>
     <key>CFBundleIdentifier</key>
@@ -47,7 +47,7 @@
       <true/>
     </dict>
     <key>NSLocationWhenInUseUsageDescription</key>
-    <string>Karachi Ijtema Nav uses your location to show your position on the ground map and guide you with turn-by-turn walking directions to gates, blocks, and facilities.</string>
+    <string>Ijtema Map uses your location to show your position on the ground map and guide you with turn-by-turn walking directions to gates, blocks, and facilities.</string>
     <key>RCTNewArchEnabled</key>
     <true/>
     <key>UILaunchStoryboardName</key>
