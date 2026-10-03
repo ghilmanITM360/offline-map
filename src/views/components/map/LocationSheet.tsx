@@ -36,10 +36,10 @@ import { useDirectionsViewModel, type StartSource } from '../../../viewmodels/Di
 import { useReducedMotion } from '../../../viewmodels/useReducedMotion';
 import { InstructionService } from '../../../services/InstructionService';
 import { destinationFromPlace } from '../../../services/V2DirectionsService';
+import { V2PlaceAdapter } from '../../../services/V2PlaceAdapter';
 import { useAppStore, type DirectoryPurpose } from '../../../store/useAppStore';
 import { Place, RoutePreview, BlockEntryPoint, Gate } from '../../../models/types';
 import { IJTEMA_DATA } from '../../../constants/data';
-import { IJTEMA_GATES } from '../../../data/ijtema';
 import { AppTheme } from '../../../services/ThemeService';
 import { NAV_TRANSITION_TIMINGS } from '../../../constants/navigationTransitions';
 import { Button } from '../common/Button';
@@ -572,7 +572,7 @@ function RoutePreviewSection({
               {outsideRoute && (
                 <OutsideRouteStatusCard
                   route={outsideRoute}
-                  gateLabel={IJTEMA_GATES.find((gate) => gate.id === outsideRoute.gateId)?.name.en ?? outsideRoute.gateId.replace('GATE_', 'Gate ')}
+                  gateLabel={V2PlaceAdapter.getPlaceById(outsideRoute.gateId)?.name ?? outsideRoute.gateId.replace('GATE_', 'Gate ')}
                   retrying={routeRefreshing}
                   onRetry={outsideRoute.provider === 'direct-guide' ? () => void retryOutsideRoute() : undefined}
                   onChooseGate={outsideRoute.provider === 'direct-guide' ? () => setShowGateOptions(true) : undefined}
