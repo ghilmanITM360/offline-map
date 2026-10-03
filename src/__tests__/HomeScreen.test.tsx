@@ -4,7 +4,7 @@
  */
 
 import React from 'react';
-import { Alert, Animated, DeviceEventEmitter, Dimensions } from 'react-native';
+import { Alert, Animated, DeviceEventEmitter, Dimensions, StyleSheet } from 'react-native';
 import { getAnimatedStyle } from 'react-native-reanimated';
 import { act, fireEvent, render, screen, userEvent, waitFor } from './test-utils';
 
@@ -1071,6 +1071,21 @@ describe('HomeScreen — status banners are announced (#128)', () => {
 
     const banner = screen.getByText('No internet. Ijtema routes still work.').parent;
     expect(banner?.props.accessibilityLiveRegion).toBe('polite');
+  });
+
+  // The map-warning banner is full width, so its right end ran under the Layers button of the control stack
+  // when the sheet sat high (#208 F1 follow-up). It now ends before the stack's measured left edge.
+  test('#208: the map-warning banner stops short of the control stack\'s measured width', async () => {
+    mockedUseHomeViewModel.mockImplementation(() => ({ ...useFakeHomeViewModel(), isOffline: true, offlineData: { isDownloaded: false } }));
+    useAppStore.setState({ hasInternet: false, offlineMapStatus: 'not_downloaded' });
+    await render(<HomeScreen />);
+
+    const stack = screen.getByTestId('map-control-stack', { includeHiddenElements: true });
+    await fireEvent(stack, 'layout', { nativeEvent: { layout: { x: 0, y: 0, width: 48, height: 300 } } });
+
+    const banner = screen.getByText('No internet. Ijtema routes still work.').parent;
+    // 12 dp stack right offset + 48 dp measured stack width + 8 dp gap.
+    expect(StyleSheet.flatten(banner?.props.style).marginRight).toBe(68);
   });
 
   // Offline with no downloaded map showed the banner AND a bottom card saying the same thing in other words;
