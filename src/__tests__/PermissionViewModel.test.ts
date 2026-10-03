@@ -152,7 +152,7 @@ describe('usePermissionViewModel — Continue Without Location persistence', () 
       pressAlertButton('Continue Without Location');
     });
     expect(OnboardingStatusService.setSkippedLocationPermission).toHaveBeenCalledWith(true);
-    expect(mockNavigation.replace).toHaveBeenCalledWith('Main');
+    expect(mockNavigation.replace).toHaveBeenCalledWith('LocationsDirectory');
   });
 
   it('clears/supersedes the skip flag once a real permission grant is confirmed', async () => {
@@ -165,7 +165,7 @@ describe('usePermissionViewModel — Continue Without Location persistence', () 
 
     expect(useAppStore.getState().hasLocationPermission).toBe(true);
     expect(OnboardingStatusService.clearSkippedLocationPermissionOnGrant).toHaveBeenCalledWith(true);
-    expect(mockNavigation.replace).toHaveBeenCalledWith('Main');
+    expect(mockNavigation.replace).toHaveBeenCalledWith('LocationsDirectory');
   });
 
   it('does not clear the skip flag when permission is requested but denied', async () => {
@@ -237,7 +237,7 @@ describe('usePermissionViewModel — Continue Without Location persistence', () 
     });
 
     expect(OnboardingStatusService.setSkippedLocationPermission).toHaveBeenLastCalledWith(true);
-    expect(mockNavigation.replace).toHaveBeenCalledWith('Main');
+    expect(mockNavigation.replace).toHaveBeenCalledWith('LocationsDirectory');
 
     errorSpy.mockRestore();
   });
@@ -390,7 +390,7 @@ describe('usePermissionViewModel — Continue Without Location confirmation is g
     await confirmViaAlert(second.result);
 
     expect(mockNavigation.replace).toHaveBeenCalledTimes(1);
-    expect(mockNavigation.replace).toHaveBeenCalledWith('Main');
+    expect(mockNavigation.replace).toHaveBeenCalledWith('LocationsDirectory');
 
     // The first (unmounted) attempt's persistence now finally rejects, late — must not affect
     // anything: no additional Alert, no additional navigation, no error thrown.
@@ -442,7 +442,7 @@ describe('usePermissionViewModel — Continue Without Location confirmation is g
 
     await confirmViaAlert(result);
 
-    expect(mockNavigation.replace).toHaveBeenCalledWith('Main');
+    expect(mockNavigation.replace).toHaveBeenCalledWith('LocationsDirectory');
     expect(result.current.loading).toBe(false);
   });
 

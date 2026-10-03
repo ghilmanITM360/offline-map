@@ -103,7 +103,8 @@ export function useDownloadMapViewModel() {
       if (hasNavigatedRef.current) return;
       try {
         logDownload('navigation triggered');
-        navigation.reset({ index: 0, routes: [{ name: 'Main' }] });
+        // #153: setup completes into the Directory, the same first screen as a returning launch.
+        navigation.reset({ index: 0, routes: [{ name: 'LocationsDirectory' }] });
         hasNavigatedRef.current = true;
       } catch (error) {
         logDownload('navigation failed', error);

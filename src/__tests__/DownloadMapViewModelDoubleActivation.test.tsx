@@ -27,7 +27,7 @@ function Probe({ navigation }: { navigation: any }) {
 
 // #208 S16: two quick taps on the only action ran the navigation reset twice. On a release build the second reset
 // unmounted Home's MapView while its label projection was pending and the screen went blank.
-test('a double tap navigates to Main exactly once', async () => {
+test('a double tap navigates to the Directory exactly once', async () => {
   const navigation = { reset: jest.fn() };
   await render(<Probe navigation={navigation} />);
 
@@ -38,4 +38,5 @@ test('a double tap navigates to Main exactly once', async () => {
   });
 
   expect(navigation.reset).toHaveBeenCalledTimes(1);
+  expect(navigation.reset).toHaveBeenCalledWith({ index: 0, routes: [{ name: 'LocationsDirectory' }] });
 });
