@@ -210,6 +210,20 @@ describe('useCameraManager - a move issued before the initial region is applied 
     );
   });
 
+  test('a move queued until the map became ready is also replayed on settle', async () => {
+    const mapRef = makeFakeMapRef();
+    const { result } = await renderHook(() => useCameraManager({ mapRef }));
+
+    await act(() => result.current.animateToPlace(PLACE));
+    expect(mapRef.current.animateToRegion).not.toHaveBeenCalled();
+
+    await act(() => markCameraReady(result));
+    expect(mapRef.current.animateToRegion).toHaveBeenCalledTimes(1);
+
+    await act(() => result.current.notifyInitialRegionSettled());
+    expect(mapRef.current.animateToRegion).toHaveBeenCalledTimes(2);
+  });
+
   test('settling with no early move does nothing', async () => {
     const mapRef = makeFakeMapRef();
     const { result } = await renderHook(() => useCameraManager({ mapRef }));

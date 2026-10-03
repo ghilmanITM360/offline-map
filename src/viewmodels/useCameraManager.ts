@@ -84,22 +84,24 @@ export function useCameraManager({ mapRef }: Params) {
     [],
   );
 
-  const flushPendingIntent = useCallback(() => {
-    if (!isCameraReady() || !pendingIntentRef.current) return;
-    const intent = pendingIntentRef.current;
-    pendingIntentRef.current = null;
-    intent();
-  }, [isCameraReady]);
-
-  // Callers never lose an intent issued too early — the latest one simply
-  // supersedes whatever was still pending, mirroring how a real camera only ever
-  // has one "next destination" in flight.
   // The native map applies its initial region some time after onMapReady (about 6 s on a loaded emulator) and
   // drops a camera command issued before that. So the last move run in that window is remembered and re-run
   // when the initial region is reported applied (see notifyInitialRegionSettled).
   const lastEarlyIntentRef = useRef<(() => void) | null>(null);
   const settleCountRef = useRef(0);
 
+  const flushPendingIntent = useCallback(() => {
+    if (!isCameraReady() || !pendingIntentRef.current) return;
+    const intent = pendingIntentRef.current;
+    pendingIntentRef.current = null;
+    intent();
+    // A move queued until the map became ready (the usual Directory-to-place case) runs inside the same window.
+    if (settleCountRef.current < INITIAL_REGION_SETTLE_REPLAYS) lastEarlyIntentRef.current = intent;
+  }, [isCameraReady]);
+
+  // Callers never lose an intent issued too early — the latest one simply
+  // supersedes whatever was still pending, mirroring how a real camera only ever
+  // has one "next destination" in flight.
   const runWhenReady = useCallback(
     (intent: () => void) => {
       if (isCameraReady()) {
