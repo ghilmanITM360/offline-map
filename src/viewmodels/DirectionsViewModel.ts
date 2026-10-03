@@ -174,12 +174,12 @@ export function useDirectionsViewModel(destination: Place | null) {
 
   const startSourceLabel =
     startSource === 'live_gps'
-      ? (currentLocation ? 'My current location' : 'Choose starting point')
+      ? (currentLocation ? 'My current location' : 'Choose where to start')
       : startSource === 'device_last_known'
       ? 'Device last known location'
       : startSource === 'remembered_location'
       ? `Last known location (${rememberedLocationAgeLabel})`
-      : (manualStart?.name ?? 'Choose starting point');
+      : (manualStart?.name ?? 'Choose where to start');
   const startSourceSupportingCopy =
     startSource === 'live_gps'
       ? 'Using live GPS location now.'
@@ -189,7 +189,7 @@ export function useDirectionsViewModel(destination: Place | null) {
       ? `Using last known location ${rememberedLocationAgeLabel}.`
       : manualStart
       ? `Starting from ${manualStart.name}.`
-      : 'Choose a start point to continue.';
+      : 'Where are you starting from?';
   const isCurrentLocationStartActive = startSource === 'live_gps';
 
   const calculateRoute = useCallback(async () => {
@@ -202,7 +202,7 @@ export function useDirectionsViewModel(destination: Place | null) {
     const originCoord = resolveActiveOriginCoordinate();
     if (!originCoord && !(isV2Destination && startSource === 'manual_place' && manualStart)) {
       setLoadState('needs_origin');
-      setErrorMessage('Choose starting point to continue.');
+      setErrorMessage('Tap Change Start to continue.');
       setRoute(null);
       setAlternatives([]);
       setInstructions([]);
@@ -313,7 +313,7 @@ export function useDirectionsViewModel(destination: Place | null) {
 
     if (!originCoord) {
       setLoadState('needs_origin');
-      setErrorMessage('Choose starting point to continue.');
+      setErrorMessage('Tap Change Start to continue.');
       setRoute(null);
       setAlternatives([]);
       setInstructions([]);
@@ -474,7 +474,7 @@ export function useDirectionsViewModel(destination: Place | null) {
         setStartSource('manual_place');
         setIsEditingManualStart(true);
         setLoadState('needs_origin');
-        setErrorMessage(blockedMessage ?? resolved.message ?? 'Current location unavailable. Choose starting point manually.');
+        setErrorMessage(blockedMessage ?? resolved.message ?? 'Location unavailable. Tap Change Start to pick where you are.');
         return false;
       }
 

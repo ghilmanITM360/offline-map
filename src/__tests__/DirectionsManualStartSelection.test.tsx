@@ -222,7 +222,7 @@ describe('Directory is the single start chooser (Get Directions sheet)', () => {
     jest.spyOn(LocationAccessService, 'resolveCurrentLocation').mockResolvedValue({
       ok: false,
       coordinate: null,
-      message: 'Current location unavailable. Choose starting point manually.',
+      message: 'Location unavailable. Tap Change Start to pick where you are.',
       permissionState: { granted: true, canAskAgain: true, status: 'granted', precision: 'fine' },
     } as never);
     const user = userEvent.setup();
@@ -230,7 +230,7 @@ describe('Directory is the single start chooser (Get Directions sheet)', () => {
 
     await choose({ purpose: 'start', quick: 'current_location' });
     // The failed pick leaves the sheet in needs_origin; it says so and offers no chooser of its own.
-    await waitFor(() => expect(screen.getByText('Choose starting point to continue.')).toBeOnTheScreen());
+    await waitFor(() => expect(screen.getByText('Tap Change Start to continue.')).toBeOnTheScreen());
     expectNoChooser();
 
     await user.press(screen.getByText('Change Start'));
