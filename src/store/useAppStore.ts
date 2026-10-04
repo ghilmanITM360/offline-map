@@ -26,6 +26,7 @@ import {
 import { MapFeatureFlagsService } from '../services/MapFeatureFlagsService';
 import { V2PlaceAdapter } from '../services/V2PlaceAdapter';
 import { isValidCoordinate } from '../utils/isValidCoordinate';
+import { UnfinishedJourney, createUnfinishedJourney, parseUnfinishedJourney } from '../utils/unfinishedJourney';
 
 export type RouteSelectionMode = 'idle' | 'selectingStart' | 'selectingDestination';
 /** What the Directory is being opened to choose; null = plain browsing. */
@@ -155,6 +156,17 @@ interface AppState {
   destination: Place | null;
   startNavigation: (destination: Place, route?: RoutePreview | V2ActiveRoute | null, instructions?: Array<NavigationInstruction | V2NavigationInstruction>) => void;
   stopNavigation: () => void;
+  // #139 Option B: coordinate-free marker that survives process death (the ONLY navigation fact
+  // that does). Set by startNavigation, cleared by stopNavigation / arrival / dismiss / recovery.
+  // Read it through selectUnfinishedJourney so the 2 h expiry is applied on every read.
+  unfinishedJourney: UnfinishedJourney | null;
+  clearUnfinishedJourney: () => void;
+  /**
+   * "Get new route": consumes the marker and hands its destination to the normal place-select
+   * flow (pendingDirectorySelection). Never starts or resumes anything; the next Start
+   * Navigation is a brand new session. Returns the place, or null when there is nothing valid.
+   */
+  beginRecovery: () => Place | null;
   activeRoute: RoutePreview | V2ActiveRoute | null;
   setActiveRoute: (route: RoutePreview | V2ActiveRoute | null) => void;
   routeInstructions: Array<NavigationInstruction | V2NavigationInstruction>;
@@ -319,6 +331,12 @@ function subscribeHydrationOutcome(
   return () => hydrationOutcomeListeners.delete(wrapped);
 }
 
+/** The unfinished journey if one exists and is still inside its 2 h window (expiry evaluated on read). */
+export const selectUnfinishedJourney = (state: Pick<AppState, 'unfinishedJourney'>, nowMs: number = Date.now()) =>
+  parseUnfinishedJourney(state.unfinishedJourney, nowMs);
+export const selectHasUnfinishedJourney = (state: Pick<AppState, 'unfinishedJourney'>, nowMs: number = Date.now()) =>
+  selectUnfinishedJourney(state, nowMs) !== null;
+
 function partializeAppState(state: AppState) {
   return {
     offlineData: state.offlineData,
@@ -330,6 +348,7 @@ function partializeAppState(state: AppState) {
     favorites: sanitizePersistedFavorites(state.favorites),
     lastKnownLocation: state.lastKnownLocation,
     lastKnownLocationUpdatedAt: state.lastKnownLocationUpdatedAt,
+    unfinishedJourney: state.unfinishedJourney,
     hasSeenMapOverview: state.hasSeenMapOverview,
     hasSeenLocationTutorial: state.hasSeenLocationTutorial,
     showGraphNodes: state.showGraphNodes,
@@ -440,9 +459,29 @@ export const useAppStore = create<AppState>()(
           destination: dest,
           activeRoute: route,
           routeInstructions: instructions,
+          unfinishedJourney: createUnfinishedJourney(dest.id, Date.now()),
         })),
       stopNavigation: () =>
-        set({ isNavigating: false, destination: null, activeRoute: null, routeInstructions: [], reroutePending: false }),
+        set({
+          isNavigating: false,
+          destination: null,
+          activeRoute: null,
+          routeInstructions: [],
+          reroutePending: false,
+          unfinishedJourney: null,
+        }),
+      unfinishedJourney: null,
+      clearUnfinishedJourney: () => set({ unfinishedJourney: null }),
+      beginRecovery: () => {
+        const state = get();
+        // A live journey owns the marker; recovery only applies to a journey that did not survive.
+        if (state.isNavigating) return null;
+        const journey = selectUnfinishedJourney(state);
+        if (!journey) return null;
+        const place = V2PlaceAdapter.getPlaceById(journey.destinationId);
+        set({ unfinishedJourney: null, ...(place ? { pendingDirectorySelection: place } : {}) });
+        return place;
+      },
       activeRoute: null,
       setActiveRoute: (route) => set({ activeRoute: route }),
       routeInstructions: [],
@@ -591,6 +630,10 @@ export const useAppStore = create<AppState>()(
             ? sanitizePersistedPlaces(persisted.recentSearches) : currentState.recentSearches,
           favorites: Object.prototype.hasOwnProperty.call(persisted, 'favorites')
             ? sanitizePersistedFavorites(persisted.favorites) : currentState.favorites,
+          // Fails closed (unknown version, extra keys, expired, future-dated -> null). The expired or
+          // invalid blob entry is dropped from storage by the next normal write.
+          unfinishedJourney: Object.prototype.hasOwnProperty.call(persisted, 'unfinishedJourney')
+            ? parseUnfinishedJourney(persisted.unfinishedJourney, Date.now()) : currentState.unfinishedJourney,
         };
       },
       // Only persist these keys — runtime GPS and transient UI state are not persisted

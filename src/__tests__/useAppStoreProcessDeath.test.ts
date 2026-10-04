@@ -36,6 +36,8 @@ const PERSISTED_KEYS = [
   'lastKnownLocation', 'lastKnownLocationUpdatedAt', 'offlineData', 'offlineMapStatus',
   'offlineMapStatusMessage', 'recentSearches', 'settings', 'showBlockPolygons', 'showGatesLayer',
   'showGraphNodes', 'showRastaNames', 'showRastasLayer', 'showRouteDiagnostics', 'showSpecialRoutesLayer',
+  // #139 Option B: coordinate-free unfinished-journey marker (see UnfinishedJourneyMarker.test.ts for the privacy guard).
+  'unfinishedJourney',
 ];
 
 type Blob = { state: Record<string, unknown>; version: number };
