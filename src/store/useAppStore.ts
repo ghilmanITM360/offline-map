@@ -632,7 +632,8 @@ export const useAppStore = create<AppState>()(
             ? sanitizePersistedFavorites(persisted.favorites) : currentState.favorites,
           // Fails closed (unknown version, extra keys, expired, future-dated -> null). The expired or
           // invalid blob entry is dropped from storage by the next normal write.
-          unfinishedJourney: Object.prototype.hasOwnProperty.call(persisted, 'unfinishedJourney')
+          // A live journey owns its marker: a stale blob must never wipe it (explicit rehydrate mid-trip).
+          unfinishedJourney: Object.prototype.hasOwnProperty.call(persisted, 'unfinishedJourney') && !currentState.isNavigating
             ? parseUnfinishedJourney(persisted.unfinishedJourney, Date.now()) : currentState.unfinishedJourney,
         };
       },

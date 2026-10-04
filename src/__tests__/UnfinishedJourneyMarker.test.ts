@@ -178,6 +178,16 @@ describe('#139 Option B: hydration after process death', () => {
     expect(selectHasUnfinishedJourney(useAppStore.getState())).toBe(false);
   });
 
+  it('a stale blob rehydrated mid-journey cannot wipe the live journey marker', async () => {
+    useAppStore.getState().startNavigation(place, route, []);
+    useAppStore.persist.setOptions({
+      storage: recordingStorage({ state: { unfinishedJourney: null }, version: 2 }).storage,
+    });
+    await useAppStore.persist.rehydrate();
+    expect(useAppStore.getState().isNavigating).toBe(true);
+    expect(useAppStore.getState().unfinishedJourney).toEqual(marker({ createdAt: NOW }));
+  });
+
   it('a blob with no marker field leaves it null', async () => {
     useAppStore.setState(initialStoreState, true);
     useAppStore.persist.setOptions({ storage: recordingStorage({ state: {}, version: 2 }).storage });
