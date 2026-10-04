@@ -11,7 +11,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { LocateFixed, Map as MapIcon, MapPin, Search, X } from 'lucide-react-native';
 
 import { RootStackParamList } from '../../navigation/RootNavigator';
-import { useAppStore } from '../../store/useAppStore';
+import { selectUnfinishedJourney, useAppStore } from '../../store/useAppStore';
 import { V2Place } from '../../models/types';
 import { DestinationCategoryId, PublicDestinationsService } from '../../services/PublicDestinationsService';
 import { V2PlaceAdapter } from '../../services/V2PlaceAdapter';
@@ -92,6 +92,10 @@ export function LocationsDirectoryScreen() {
   const setDirectoryPurpose = useAppStore((s) => s.setDirectoryPurpose);
   const setDirectoryChoice = useAppStore((s) => s.setDirectoryChoice);
   const recentSearches = useAppStore((s) => s.recentSearches);
+  // #139 Option B: select the id (a primitive) so the selector's fresh marker object never churns the subscription.
+  const unfinishedDestinationId = useAppStore((s) => selectUnfinishedJourney(s)?.destinationId ?? null);
+  const beginRecovery = useAppStore((s) => s.beginRecovery);
+  const clearUnfinishedJourney = useAppStore((s) => s.clearUnfinishedJourney);
 
   // Deliberately ephemeral component state — search text, category filter, and scroll
   // position are not persisted (see brief: ephemeral directory UI).
@@ -160,6 +164,18 @@ export function LocationsDirectoryScreen() {
       goToMap();
     },
     [goToMap, purpose, setDirectoryChoice, setDirectoryPurpose, setPendingDirectorySelection],
+  );
+
+  // #139 Option B: never resumes the old journey. beginRecovery() hands the destination to the same
+  // pendingDirectorySelection bridge a normal pick uses, so Home builds a fresh route from live location.
+  const handleGetNewRoute = useCallback(() => {
+    beginRecovery();
+    goToMap();
+  }, [beginRecovery, goToMap]);
+
+  const unfinishedDestinationName = useMemo(
+    () => (unfinishedDestinationId ? V2PlaceAdapter.getPlaceById(unfinishedDestinationId)?.name ?? null : null),
+    [unfinishedDestinationId],
   );
 
   const handleQuickStart = useCallback(
@@ -294,6 +310,34 @@ export function LocationsDirectoryScreen() {
       </ScrollView>
 
       <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+        {unfinishedDestinationId !== null && !purpose && (
+          <View style={styles.recoveryCard} accessibilityLiveRegion="polite">
+            <Text style={styles.recoveryTitle}>Your last navigation didn't finish</Text>
+            <Text style={styles.recoveryBody}>
+              {unfinishedDestinationName
+                ? `You were heading to ${unfinishedDestinationName}. Want a new route from where you are now?`
+                : "Your last navigation didn't finish. Want a new route from where you are now?"}
+            </Text>
+            <View style={styles.recoveryActions}>
+              <Pressable
+                style={[styles.recoveryButton, styles.recoveryPrimary]}
+                onPress={handleGetNewRoute}
+                accessibilityRole="button"
+                accessibilityLabel="Get new route"
+              >
+                <Text style={styles.recoveryPrimaryLabel}>Get new route</Text>
+              </Pressable>
+              <Pressable
+                style={styles.recoveryButton}
+                onPress={clearUnfinishedJourney}
+                accessibilityRole="button"
+                accessibilityLabel="Dismiss"
+              >
+                <Text style={styles.recoverySecondaryLabel}>Dismiss</Text>
+              </Pressable>
+            </View>
+          </View>
+        )}
         {trimmedQuery.length > 0 ? (
           renderSearchResults()
         ) : (
@@ -460,6 +504,49 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.xl,
     marginTop: spacing.lg,
     gap: spacing.sm,
+  },
+  recoveryCard: {
+    marginHorizontal: spacing.xl,
+    marginTop: spacing.lg,
+    padding: spacing.lg,
+    borderRadius: radii.lg,
+    backgroundColor: staticColors.infoBackground,
+    gap: spacing.sm,
+  },
+  recoveryTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: staticColors.textPrimary,
+  },
+  recoveryBody: {
+    fontSize: 14,
+    color: staticColors.textPrimary,
+  },
+  recoveryActions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+    marginTop: spacing.xs,
+  },
+  recoveryButton: {
+    minHeight: 48,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: spacing.lg,
+    borderRadius: radii.xxl,
+  },
+  recoveryPrimary: {
+    backgroundColor: staticColors.info,
+  },
+  recoveryPrimaryLabel: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: staticColors.white,
+  },
+  recoverySecondaryLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: staticColors.info,
   },
   section: {
     marginTop: spacing.lg,
