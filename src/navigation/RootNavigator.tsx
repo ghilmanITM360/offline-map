@@ -21,6 +21,7 @@ import { CustomDrawer } from '../views/components/CustomDrawer';
 import { ConnectivityService } from '../services/ConnectivityService';
 import { GPSManagerService } from '../services/GPSManagerService';
 import { useAppStore } from '../store/useAppStore';
+import { startupReadiness } from '../services/StartupReadiness';
 
 export type DrawerParamList = {
   Home: undefined;
@@ -86,7 +87,13 @@ export function RootNavigator() {
   }, [setHasInternet]); // fixed: include store setter dependency
 
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
+    <Stack.Navigator
+      screenOptions={{ headerShown: false }}
+      screenListeners={({ route }) => ({
+        focus: () => startupReadiness.focus(route.name),
+        transitionEnd: (e) => startupReadiness.transitionEnd(route.name, e.data.closing),
+      })}
+    >
       <Stack.Screen name="Splash" component={SplashScreen} />
       <Stack.Screen name="Welcome" component={WelcomeScreen} />
       <Stack.Screen name="Permission" component={PermissionScreen} />
