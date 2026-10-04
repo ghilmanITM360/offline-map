@@ -254,6 +254,7 @@ export function useNavigationViewModel() {
         if (distToDest < ARRIVAL_THRESHOLD_M) {
           arrivedRef.current = true;
           setArrived(true);
+          useAppStore.getState().clearUnfinishedJourney(); // #139 Option B: arrival finishes the journey
           if (!isMuted && currentSettings.voiceInstructions) { // fixed: respect voice settings for arrival prompts
             VoiceService.speak(
               currentSettings.language === 'ur'

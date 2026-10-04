@@ -565,6 +565,11 @@ export function useNavigationViewModelV2() {
     }
   }, [attemptReroute, currentLocation, currentStepIndex, etaMinutes, instructions, isMuted, manualGateId, route, settings.voiceInstructions, settings.walkingSpeed]);
 
+  // #139 Option B: a journey that reached its destination is finished, not "unfinished".
+  useEffect(() => {
+    if (arrived) useAppStore.getState().clearUnfinishedJourney();
+  }, [arrived]);
+
   const handleExit = useCallback(() => {
     VoiceService.stopSpeaking();
     stopNavigation();
