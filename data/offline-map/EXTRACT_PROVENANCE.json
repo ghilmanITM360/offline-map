@@ -1,0 +1,14 @@
+{
+  "source": "OpenStreetMap data via Overpass API (overpass-api.de)",
+  "osmBase": "2026-10-05T09:00:51Z",
+  "extractedAt": "2026-10-05T09:02:27.091Z",
+  "bbox": {
+    "south": 24.943,
+    "west": 66.976,
+    "north": 25,
+    "east": 67.037
+  },
+  "query": "[out:xml][timeout:120][bbox:24.943,66.976,25,67.037];\n(\n  way[highway];way[building];way[landuse];way[natural];way[leisure];way[waterway];way[railway];way[amenity];\n  rel[landuse];rel[natural=water];rel[leisure];rel[building];\n  node[place];node[amenity];node[name][shop];\n);\n(._;>;);\nout meta;",
+  "file": "data/offline-map/ijtema-osm-extract.osm.pbf",
+  "sha256": "d4b24ee52ab83f86480372224a373f92dd1b8379adcb93659f6638091c368812"
+}

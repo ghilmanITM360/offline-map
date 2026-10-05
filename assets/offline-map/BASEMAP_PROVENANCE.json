@@ -1,0 +1,63 @@
+{
+  "schemaVersion": 1,
+  "purpose": "Bundled offline basemap for the Ijtema app (#140). Shipped in the APK, copied to app-private storage on first launch. No network download.",
+  "archive": {
+    "file": "assets/offline-map/ijtema-basemap.pmtiles",
+    "format": "PMTiles v3 / MVT, gzip",
+    "bytes": 434589,
+    "sha256": "d5e6883d55d55b0fa9e3230ab92585fb25a8949551528ef4d176192384a28cc0"
+  },
+  "bounds": {
+    "south": 24.943,
+    "west": 66.976,
+    "north": 25,
+    "east": 67.037
+  },
+  "zoom": {
+    "min": 12,
+    "max": 16,
+    "note": "Vector tiles; renderer overzooms beyond maxzoom for navigation (zoom ~18)."
+  },
+  "layers": {
+    "roads": 5260,
+    "landuse": 63,
+    "water": 27,
+    "buildings": 55,
+    "places": 536
+  },
+  "source": {
+    "source": "OpenStreetMap data via Overpass API (overpass-api.de)",
+    "osmBase": "2026-10-05T09:00:51Z",
+    "extractedAt": "2026-10-05T09:02:27.091Z",
+    "bbox": {
+      "south": 24.943,
+      "west": 66.976,
+      "north": 25,
+      "east": 67.037
+    },
+    "query": "[out:xml][timeout:120][bbox:24.943,66.976,25,67.037];\n(\n  way[highway];way[building];way[landuse];way[natural];way[leisure];way[waterway];way[railway];way[amenity];\n  rel[landuse];rel[natural=water];rel[leisure];rel[building];\n  node[place];node[amenity];node[name][shop];\n);\n(._;>;);\nout meta;",
+    "file": "data/offline-map/ijtema-osm-extract.osm.pbf",
+    "sha256": "d4b24ee52ab83f86480372224a373f92dd1b8379adcb93659f6638091c368812",
+    "extractFile": "data/offline-map/ijtema-osm-extract.osm.pbf"
+  },
+  "license": "Open Database License (ODbL) 1.0 — https://opendatacommons.org/licenses/odbl/1-0/",
+  "attribution": "© OpenStreetMap contributors",
+  "notDerivedFrom": [
+    "tile.openstreetmap.org",
+    "vector.openstreetmap.org",
+    "Google Maps imagery or data"
+  ],
+  "toolchain": {
+    "osmium": "osmium version 1.19.1",
+    "tippecanoe": "tippecanoe v2.79.0",
+    "pmtiles": "pmtiles dev, commit none, built at unknown",
+    "commands": [
+      "node scripts/offline-map/fetch-osm-extract.mjs   # refresh snapshot (needs network; only when updating)",
+      "node scripts/offline-map/build-basemap.mjs       # offline, from the committed snapshot",
+      "osmium export data/offline-map/ijtema-osm-extract.osm.pbf -f geojsonseq",
+      "tippecanoe -o basemap.mbtiles -Z 12 -z 16 --force --no-tile-size-limit --drop-densest-as-needed --clip-bounding-box 66.976,24.943,67.037,25 -L roads:… -L landuse:… -L water:… -L buildings:… -L places:…",
+      "pmtiles convert basemap.mbtiles assets/offline-map/ijtema-basemap.pmtiles"
+    ]
+  },
+  "builtAt": "2026-10-05T09:02:46.029Z"
+}

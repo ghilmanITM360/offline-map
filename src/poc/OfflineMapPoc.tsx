@@ -12,7 +12,7 @@ import { Directory, File, Paths } from 'expo-file-system';
 import { Camera, GeoJSONSource, Layer, Map, type CameraRef } from '@maplibre/maplibre-react-native';
 import type { StyleSpecification } from '@maplibre/maplibre-gl-style-spec';
 
-const ARCHIVE = require('../../assets/ijtema-poc.pmtiles');
+const ARCHIVE = require('../../assets/offline-map/ijtema-basemap.pmtiles');
 
 // Confirmed official gate coordinates (AGENTS.md).
 const GATE_12: [number, number] = [67.006339, 24.963676];
@@ -62,7 +62,7 @@ export function OfflineMapPoc() {
       try {
         const dir = new Directory(Paths.document, 'map');
         if (!dir.exists) dir.create();
-        const dest = new File(dir, 'ijtema-poc.pmtiles');
+        const dest = new File(dir, 'ijtema-basemap.pmtiles');
         if (!dest.exists) {
           const asset = await Asset.fromModule(ARCHIVE).downloadAsync();
           if (!asset.localUri) throw new Error('asset has no localUri');
