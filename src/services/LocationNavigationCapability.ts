@@ -6,6 +6,7 @@
 import { getDistance } from 'geolib';
 
 import type { Coordinate } from '../models/types';
+import { RerouteService } from './RerouteService';
 
 export type NavigationStartSource = 'live_gps' | 'device_last_known' | 'remembered_location' | 'manual_place';
 
@@ -89,10 +90,14 @@ export function evaluateNavigationLocationCapability(
 }
 
 /**
- * A live fix this close to the route's planned start counts as "there". Reuses the 50 m figure the live-navigation
- * gate already accepts for fix quality, so no new tolerance is introduced.
+ * How close a live fix must be to the route's planned start (its first point: the graph point a manual place snaps
+ * to, or the outside start) to count as "there". This is a different question from fix quality
+ * (MAX_LIVE_NAVIGATION_ACCURACY_M / freshness above), so it does not reuse that constant. It reuses the tolerance
+ * live guidance already applies when deciding a fix is on the planned route, which grows with fix uncertainty and
+ * is capped: a fix that passes here will not be treated as off-route the moment navigation begins.
  */
-export const NEAR_PLANNED_START_M = MAX_LIVE_NAVIGATION_ACCURACY_M;
+export const startMatchToleranceM = (fixAccuracyM = 0): number =>
+  RerouteService.getDynamicOffRouteThresholdMeters(fixAccuracyM);
 
 export type StartActionKind = 'start' | 'use_location' | 'turn_on_location' | 'precise_location' | 'not_near';
 
@@ -138,7 +143,7 @@ export function resolveStartAction(input: StartActionInput): StartAction {
   if (!fixUsable || !input.liveFix) {
     return { kind: 'use_location', primaryLabel: 'Use my location & start', secondaryLabel: 'View route' };
   }
-  if (input.plannedStart && getDistance(input.liveFix, input.plannedStart) > NEAR_PLANNED_START_M) {
+  if (input.plannedStart && getDistance(input.liveFix, input.plannedStart) > startMatchToleranceM(input.liveFix.accuracy)) {
     return {
       kind: 'not_near',
       title: `You're not near ${input.plannedStartName}`,
