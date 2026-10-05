@@ -6,6 +6,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { AppState } from 'react-native';
 import { useAppStore } from '../store/useAppStore';
+import { useRouteUpdatedNotice } from './useRouteUpdatedNotice';
 import { RoutingService } from '../services/RoutingService';
 import { InstructionService, Instruction } from '../services/InstructionService';
 import { SnapToRoadService } from '../services/SnapToRoadService';
@@ -49,6 +50,7 @@ export function useNavigationViewModel() {
   const [arrived, setArrived] = useState(false);
   const [isWeakGps, setIsWeakGps] = useState(false);
   const [rerouteStatusMessage, setRerouteStatusMessage] = useState<string | null>(null);
+  const routeUpdatedNotice = useRouteUpdatedNotice(setRerouteStatusMessage);
 
   // Refs to avoid stale closures inside the GPS callback
   const routeRef = useRef<RoutePreview | null>(null);
@@ -340,6 +342,7 @@ export function useNavigationViewModel() {
 
           const rerouteSessionId = useAppStore.getState().navigationSessionId;
           setReroutePending(true);
+          routeUpdatedNotice.cancel();
           setRerouteStatusMessage('Recalculating...');
           rerouteTimerRef.current = setTimeout(() => {
             const currentSession = useAppStore.getState();
@@ -387,7 +390,8 @@ export function useNavigationViewModel() {
                   settingsRef.current.language,
                 );
               }
-              setRerouteStatusMessage(resolvedStart.warning ?? null);
+              if (resolvedStart.warning) setRerouteStatusMessage(resolvedStart.warning);
+              else routeUpdatedNotice.announce();
             } else {
               setRerouteStatusMessage('Could not find a better route. continuing current route.');
             }
@@ -408,7 +412,7 @@ export function useNavigationViewModel() {
         }
       }
     },
-    [isMuted, rerouteStatusMessage, setReroutePending]
+    [isMuted, rerouteStatusMessage, routeUpdatedNotice, setReroutePending]
   );
 
   // Background resume (mirrors V2): GPSManagerService restarts the watch itself, but the first

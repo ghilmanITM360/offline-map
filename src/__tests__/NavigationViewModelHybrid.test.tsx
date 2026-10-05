@@ -115,6 +115,8 @@ describe('NavigationViewModelV2 hybrid rerouting', () => {
 
     expect(hook.result.current.route?.outsideRoute?.provider).toBe('offline-osm');
     expect(useAppStore.getState().isNavigating).toBe(true);
+    // A replaced route says so, so a long route whose new line lands off-screen is still noticed.
+    expect(hook.result.current.rerouteStatusMessage).toBe('Route updated');
   });
 
   test('manual Gate 12 reroute stays authoritative', async () => {
@@ -143,6 +145,7 @@ describe('NavigationViewModelV2 hybrid rerouting', () => {
     expect(useAppStore.getState().activeRoute).toBe(routeBeforeRetry);
     expect(useAppStore.getState().isNavigating).toBe(true);
     expect(hook.result.current.rerouteStatusMessage).toBe('Could not find a better route. Continuing current route.');
+    expect(hook.result.current.rerouteStatusMessage).not.toBe('Route updated');
     previewSpy.mockRestore();
   });
 

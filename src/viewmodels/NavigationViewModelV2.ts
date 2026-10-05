@@ -7,6 +7,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AppState, AppStateStatus } from 'react-native';
 import { getDistance } from 'geolib';
 import { useAppStore } from '../store/useAppStore';
+import { useRouteUpdatedNotice } from './useRouteUpdatedNotice';
 import { VoiceService } from '../services/VoiceService';
 import {
   Coordinate,
@@ -156,6 +157,7 @@ export function useNavigationViewModelV2() {
   const [arrived, setArrived] = useState(false);
   const [isWeakGps, setIsWeakGps] = useState(false);
   const [rerouteStatusMessage, setRerouteStatusMessage] = useState<string | null>(null);
+  const routeUpdatedNotice = useRouteUpdatedNotice(setRerouteStatusMessage);
   const [gpsSignalState, setGpsSignalState] = useState<GpsSignalStateV2>('GPS_GOOD');
   const [manualGateId, setManualGateId] = useState<string | null>(null);
 
@@ -326,6 +328,7 @@ export function useNavigationViewModelV2() {
     try {
       const routeAtRequest = route;
       setReroutePending(true);
+      routeUpdatedNotice.cancel();
       setRerouteStatusMessage(null);
 
       let candidate = null;
@@ -401,6 +404,7 @@ export function useNavigationViewModelV2() {
       offRouteAnchorRef.current = null;
       lastRerouteAtRef.current = Date.now();
       setReroutePending(false);
+      routeUpdatedNotice.announce();
       outsideHandle?.finish();
     } catch {
       // #143: any throw in the reroute path must not leave "Rerouting…" stuck; keep the current route.
@@ -415,7 +419,7 @@ export function useNavigationViewModelV2() {
         rerouteRequestInFlightRef.current = null;
       }
     }
-  }, [destination, route, setActiveRoute, setReroutePending, setRouteInstructions, settings.autoReroute, settings.walkingSpeed]);
+  }, [destination, route, routeUpdatedNotice, setActiveRoute, setReroutePending, setRouteInstructions, settings.autoReroute, settings.walkingSpeed]);
 
   const retryOutsideRoute = useCallback(async () => {
     const coordinate = currentLocation ?? snappedLocation;
