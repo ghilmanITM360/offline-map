@@ -6,7 +6,7 @@ const vm = readFileSync('src/viewmodels/DirectionsViewModel.ts', 'utf8');
 const navigationCapability = readFileSync('src/services/LocationNavigationCapability.ts', 'utf8');
 
 assert(screen.includes('Get Directions'), 'Directions screen must use layman-friendly heading');
-assert(screen.includes('Going to'), 'Directions screen must show destination card clearly');
+assert(screen.includes('Change destination.'), 'Directions screen must show a tappable destination row');
 assert(screen.includes('Choose where you are starting from'), 'Directions screen must focus on start selection');
 const directoryScreen = readFileSync('src/views/screens/LocationsDirectoryScreen.tsx', 'utf8');
 assert(directoryScreen.includes('Use my current location'), 'Directory must include current-location action');

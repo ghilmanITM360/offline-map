@@ -6,14 +6,14 @@ const directionsViewModelSource = readFileSync('src/viewmodels/DirectionsViewMod
 const homeScreenSource = readFileSync('src/views/screens/HomeScreen.tsx', 'utf8');
 
 assert(directionsScreenSource.includes('Get Directions'), 'Directions header must say Get Directions.');
-assert(directionsScreenSource.includes('Going to'), 'Directions screen must show destination card title.');
+assert(directionsScreenSource.includes('Change destination.'), 'Directions screen must show a tappable destination row.');
 assert(directionsScreenSource.includes('Choose where you are starting from'), 'Directions screen must state the start-selection task plainly.');
 // #222: every start change opens the Directory; the current-location / last-known quick options live there.
 const directoryScreenSource = readFileSync('src/views/screens/LocationsDirectoryScreen.tsx', 'utf8');
 assert(directionsScreenSource.includes("onOpenDirectory?.('start')"), 'Directions screen must hand every start change to the Directory.');
 assert(directoryScreenSource.includes('Use my current location'), 'Directory must keep the current-location start quick option.');
 assert(directoryScreenSource.includes('Use last known location'), 'Directory must keep the remembered-location quick option.');
-assert(directionsScreenSource.includes('Change destination'), 'Directions screen must let user change destination.');
+assert(directionsScreenSource.includes('Change destination.'), 'Directions screen must let user change destination.');
 assert(directionsScreenSource.includes('Finding route'), 'Directions screen must show provider-neutral calculating status copy.');
 assert(directionsScreenSource.includes('Route ready'), 'Directions screen must show success status copy.');
 assert(directionsScreenSource.includes('Start Navigation'), 'Directions screen must expose a Start Navigation CTA.');
