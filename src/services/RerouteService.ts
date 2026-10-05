@@ -54,7 +54,19 @@ export class RerouteService {
     return candidateProgressMeters;
   }
 
-  static projectProgressMetersOnRoute(coord: Coordinate, route: RoutePreview): {
+  /**
+   * Closest point on the route. With `continuity` (#93), a segment whose progress lies inside
+   * [previous - maxBacktrack, previous + maxForward] wins as long as it is within `acceptDistanceM`
+   * (the off-route tolerance). A route that doubles back beside itself therefore cannot pull progress
+   * onto the far corridor just because one noisy fix lands closer to it; once the walker is beyond the
+   * tolerance of the window, or no segment is in it, the global nearest segment applies again.
+   */
+  static projectProgressMetersOnRoute(coord: Coordinate, route: RoutePreview, continuity?: {
+    previousProgressMeters: number;
+    maxForwardMeters: number;
+    acceptDistanceM: number;
+    maxBacktrackMeters?: number;
+  }): {
     progressMeters: number;
     snappedCoordinate: Coordinate;
     distanceToRouteMeters: number;
@@ -74,6 +86,14 @@ export class RerouteService {
       distanceToRouteMeters: Infinity,
     };
 
+    const windowActive = continuity != null &&
+      Number.isFinite(continuity.previousProgressMeters) &&
+      Number.isFinite(continuity.maxForwardMeters) &&
+      Number.isFinite(continuity.acceptDistanceM);
+    const windowMin = windowActive ? continuity.previousProgressMeters - (continuity.maxBacktrackMeters ?? 15) : 0;
+    const windowMax = windowActive ? continuity.previousProgressMeters + continuity.maxForwardMeters : 0;
+    let bestInWindow = best;
+
     for (let i = 0; i < route.coordinates.length - 1; i++) {
       const a = route.coordinates[i];
       const b = route.coordinates[i + 1];
@@ -83,22 +103,31 @@ export class RerouteService {
         { latitude: b.latitude, longitude: b.longitude },
       );
       const progressMeters = cumulativeMeters + segmentMeters * projection.t;
+      const candidate = {
+        progressMeters,
+        snappedCoordinate: {
+          latitude: projection.point.latitude,
+          longitude: projection.point.longitude,
+          heading: coord.heading,
+          accuracy: coord.accuracy,
+        },
+        distanceToRouteMeters: projection.distanceToSegmentMeters,
+      };
       if (projection.distanceToSegmentMeters < best.distanceToRouteMeters) {
-        best = {
-          progressMeters,
-          snappedCoordinate: {
-            latitude: projection.point.latitude,
-            longitude: projection.point.longitude,
-            heading: coord.heading,
-            accuracy: coord.accuracy,
-          },
-          distanceToRouteMeters: projection.distanceToSegmentMeters,
-        };
+        best = candidate;
+      }
+      if (
+        windowActive &&
+        progressMeters >= windowMin &&
+        progressMeters <= windowMax &&
+        projection.distanceToSegmentMeters < bestInWindow.distanceToRouteMeters
+      ) {
+        bestInWindow = candidate;
       }
       cumulativeMeters += segmentMeters;
     }
 
-    return best;
+    return windowActive && bestInWindow.distanceToRouteMeters <= continuity.acceptDistanceM ? bestInWindow : best;
   }
 
   /**

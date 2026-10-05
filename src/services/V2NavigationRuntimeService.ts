@@ -93,14 +93,27 @@ const PLAUSIBLE_FORWARD_SPEED_FACTOR = 3;
 const GPS_JITTER_ALLOWANCE_M = 25;
 
 export function calculateNavigationProgressV2(input: NavigationProgressV2Input): NavigationProgressV2 {
-  const projection = RerouteService.projectProgressMetersOnRoute(input.coordinate, input.route);
-
   let maxForwardMeters: number | undefined;
   const observedAtMs = input.coordinate.observedAtMs;
   if (observedAtMs != null && input.previousObservedAtMs != null) {
     const elapsedSeconds = Math.max(1, (observedAtMs - input.previousObservedAtMs) / 1000);
     maxForwardMeters = input.walkingSpeedMs * PLAUSIBLE_FORWARD_SPEED_FACTOR * elapsedSeconds + GPS_JITTER_ALLOWANCE_M;
   }
+
+  // #93: the same elapsed-time bound that caps a fix's forward jump also defines which route
+  // segments are reachable from the previous progress; the off-route tolerance decides how far
+  // from that corridor the walker may drift before the global nearest segment applies again.
+  const projection = RerouteService.projectProgressMetersOnRoute(
+    input.coordinate,
+    input.route,
+    maxForwardMeters == null
+      ? undefined
+      : {
+          previousProgressMeters: input.previousProgressMeters,
+          maxForwardMeters,
+          acceptDistanceM: RerouteService.getDynamicOffRouteThresholdMeters(input.coordinate.accuracy ?? 0),
+        },
+  );
 
   const progressMeters = RerouteService.clampMonotonicProgress(
     input.previousProgressMeters,
