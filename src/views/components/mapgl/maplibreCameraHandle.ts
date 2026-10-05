@@ -28,14 +28,27 @@ interface Deps {
   isReady: () => boolean;
 }
 
+// Smallest area a fit may frame (≈ 110 m). A single point, or a route whose points coincide, would otherwise give a
+// zero-extent bounds.
+const MIN_FIT_SPAN_DEG = 0.001;
+
 export function createMapLibreCameraHandle({ getCamera, getMap, getViewport, isReady }: Deps): MapCameraHandle {
   const readyCamera = () => (isReady() ? getCamera() : null);
+  // Camera commands are fire-and-forget for the app; a native rejection (view torn down mid-flight) must never become
+  // an unhandled promise rejection.
+  const send = (stop: Record<string, unknown>) => {
+    void readyCamera()?.setStop(stop as never)?.catch(() => undefined);
+  };
   const readyMap = () => (isReady() ? getMap() : null);
   return {
     animateToRegion(region, duration = 500) {
-      void readyCamera()?.setStop({
+      // Region/bounds moves are north-up and flat (Google's behaviour); MapLibre would keep the tilted, rotated
+      // navigation camera after Exit, and the user cannot undo tilt by gesture.
+      send({
         center: [region.longitude, region.latitude],
         zoom: regionToMapLibreZoom(region, getViewport().width),
+        bearing: 0,
+        pitch: 0,
         duration,
         easing: 'ease',
       });
@@ -50,9 +63,19 @@ export function createMapLibreCameraHandle({ getCamera, getMap, getViewport, isR
         south = Math.min(south, c.latitude);
         north = Math.max(north, c.latitude);
       }
-      void readyCamera()?.setStop({
+      if (east - west < MIN_FIT_SPAN_DEG) {
+        west -= MIN_FIT_SPAN_DEG / 2;
+        east += MIN_FIT_SPAN_DEG / 2;
+      }
+      if (north - south < MIN_FIT_SPAN_DEG) {
+        south -= MIN_FIT_SPAN_DEG / 2;
+        north += MIN_FIT_SPAN_DEG / 2;
+      }
+      send({
         bounds: [west, south, east, north],
         padding: options?.edgePadding,
+        bearing: 0,
+        pitch: 0,
         duration: options?.animated === false ? 0 : FIT_DURATION_MS,
         easing: 'ease',
       });
@@ -64,7 +87,7 @@ export function createMapLibreCameraHandle({ getCamera, getMap, getViewport, isR
       if (camera.zoom !== undefined) stop.zoom = googleZoomToMapLibre(camera.zoom);
       if (camera.heading !== undefined) stop.bearing = camera.heading;
       if (camera.pitch !== undefined) stop.pitch = camera.pitch;
-      void readyCamera()?.setStop({ ...stop, duration: options?.duration ?? 500, easing: 'ease' } as never);
+      send({ ...stop, duration: options?.duration ?? 500, easing: 'ease' });
     },
 
     async getCamera() {

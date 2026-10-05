@@ -29,7 +29,7 @@ describe('createMapLibreCameraHandle', () => {
   it('animateToRegion eases to the region centre with the requested duration', () => {
     const { handle, stops } = setup();
     handle.animateToRegion({ latitude: 25, longitude: 67, latitudeDelta: 0.002, longitudeDelta: 0.002 }, 260);
-    expect(stops[0]).toMatchObject({ center: [67, 25], duration: 260, easing: 'ease' });
+    expect(stops[0]).toMatchObject({ center: [67, 25], duration: 260, easing: 'ease', bearing: 0, pitch: 0 });
     expect(stops[0].zoom).toBeCloseTo(regionToMapLibreZoom({ longitudeDelta: 0.002 }, 400), 6);
   });
 
@@ -42,7 +42,7 @@ describe('createMapLibreCameraHandle', () => {
       ],
       { edgePadding: { top: 90, right: 64, bottom: 140, left: 64 }, animated: true },
     );
-    expect(stops[0]).toMatchObject({ bounds: [67.0, 25.0, 67.02, 25.01], padding: { top: 90, right: 64, bottom: 140, left: 64 }, easing: 'ease' });
+    expect(stops[0]).toMatchObject({ bounds: [67.0, 25.0, 67.02, 25.01], padding: { top: 90, right: 64, bottom: 140, left: 64 }, easing: 'ease', bearing: 0, pitch: 0 });
     expect(stops[0].duration).toBeLessThanOrEqual(700);
   });
 
@@ -89,5 +89,29 @@ describe('createMapLibreCameraHandle', () => {
     expect(map.project).not.toHaveBeenCalled();
     expect(map.getViewState).not.toHaveBeenCalled();
     expect(camera.setStop).not.toHaveBeenCalled();
+  });
+
+  // Google's newLatLngBounds/animateToRegion reset tilt and rotation; MapLibre keeps the current ones, so after Exit from
+  // the tilted navigation camera every place/route/venue move would stay tilted (touchPitch is off, the user can't undo it).
+  it('programmatic fits and region moves reset bearing and pitch to north-up, flat', () => {
+    const { handle, stops } = setup();
+    handle.animateToRegion({ latitude: 25, longitude: 67, latitudeDelta: 0.002, longitudeDelta: 0.002 });
+    handle.fitToCoordinates([{ latitude: 25, longitude: 67 }, { latitude: 25.01, longitude: 67.01 }]);
+    expect(stops.map((x) => [x.bearing, x.pitch])).toEqual([[0, 0], [0, 0]]);
+  });
+
+  it('a zero-extent fit (single point / identical points) still frames a small area instead of a degenerate bounds', () => {
+    const { handle, stops } = setup();
+    handle.fitToCoordinates([{ latitude: 25, longitude: 67 }, { latitude: 25, longitude: 67 }]);
+    const [west, south, east, north] = stops[0].bounds as number[];
+    expect(east - west).toBeGreaterThan(0);
+    expect(north - south).toBeGreaterThan(0);
+  });
+
+  it('swallows native rejections instead of leaving unhandled promise rejections', async () => {
+    const { handle, camera } = setup();
+    camera.setStop.mockRejectedValueOnce(new Error('native gone'));
+    expect(() => handle.animateCamera({ heading: 5 })).not.toThrow();
+    await Promise.resolve();
   });
 });

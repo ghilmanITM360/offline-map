@@ -112,4 +112,17 @@ describe('OfflineMapCanvas', () => {
     await mount({ gesturesEnabled: false });
     expect(mockLastMapProps).toMatchObject({ dragPan: false, touchZoom: false, touchRotate: false });
   });
+
+  it('ignores a region event without bounds/centre instead of throwing inside the native event handler', async () => {
+    const onRegionChangeComplete = jest.fn();
+    await mount({ onRegionChangeComplete });
+    await act(async () => { mockLastMapProps!.onRegionDidChange({ nativeEvent: {} }); });
+    expect(onRegionChangeComplete).not.toHaveBeenCalled();
+  });
+
+  it('a rejected feature query is swallowed, not an unhandled rejection', async () => {
+    mockQueryRenderedFeatures.mockRejectedValue(new Error('view gone'));
+    await mount({});
+    await act(async () => { await mockLastMapProps!.onPress({ nativeEvent: { lngLat: [67, 25], point: [1, 1] } }); });
+  });
 });

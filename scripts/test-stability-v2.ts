@@ -24,7 +24,7 @@ assert(downloadScreen.includes('showContinueFallback'), 'Download screen must ex
 assert(homeScreen.includes('onReady={handleMapReady}') && homeScreen.includes('setIsMapReady(true)'), 'Home must have a map-ready state instead of blank-map assumptions');
 // Navigation (v1 and v2 alike) shares Home's one map, so this single check already covers navigation rendering
 // without a Google key or internet: the only basemap source is the bundled local archive.
-assert(homeScreen.includes('archiveUri={basemap.uri}') && !homeScreen.includes('PROVIDER_GOOGLE'), 'Home map must render from the bundled archive without requesting Google tiles');
+assert(homeScreen.includes('archiveUri={basemapRejected ? null : basemap.uri}') && !homeScreen.includes('PROVIDER_GOOGLE'), 'Home map must render from the bundled archive without requesting Google tiles');
 assert(permissionScreen.includes('Choose start manually') || directionsScreen.includes("onOpenDirectory?.('start')"), 'Denied GPS must leave a manual routing path');
 assert(settingsScreen.includes("AppState.addEventListener('change'"), 'Settings permission state must refresh safely after Android settings return');
 assert(

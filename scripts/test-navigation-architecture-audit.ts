@@ -69,12 +69,12 @@ const base: MapModeInputs = {
   // NAVIGATION *and* ARRIVAL share the navigation scene, so the route/markers stay through arrival.
   assert(
     home.includes("if (mode === 'NAVIGATION' || mode === 'ARRIVAL') {") &&
-      home.includes('buildNavigationScene(navOverlay)') &&
-      home.includes('buildNavigationSceneV1(navOverlayV1)'),
+      home.includes('buildNavigationScene(navSceneInput)') &&
+      home.includes('buildNavigationSceneV1(navSceneInputV1)'),
     'Navigation map scenes (route/user marker, v2 and legacy v1) must stay mounted through MapMode.ARRIVAL',
   );
   assert(
-    /if \(mode === 'NAVIGATION' \|\| mode === 'ARRIVAL'\) \{\s*return \[/.test(home) && home.includes('const specs: OverlaySpec[] = [];'),
+    /if \(mode === 'NAVIGATION' \|\| mode === 'ARRIVAL'\) \{\s*return \[/.test(home) && home.includes('...browseVenueSpecs,'),
     'Non-navigation (detail) map layers must stay hidden through both NAVIGATION and ARRIVAL (the nav branch returns before the browse scene is built)',
   );
 

@@ -25,6 +25,7 @@ import { OfflineMapCanvas, type MapFeaturePress } from '../components/mapgl/Offl
 import { buildHomeVenueOverlay, buildMarkerOverlay, buildRouteOverlay, type OverlaySpec } from '../components/mapgl/overlaySpec';
 import { buildNavigationScene, buildNavigationSceneV1 } from '../components/mapgl/navigationScene';
 import { useBundledBasemap } from '../components/mapgl/useBundledBasemap';
+import { BASEMAP_COLORS } from '../components/mapgl/basemapStyle';
 import {
   Menu,
   WifiOff,
@@ -147,7 +148,6 @@ const BANNER_CONTROL_GAP = 8;
 // Time after onMapReady at which the camera manager is told the initial region should be applied, in case the first
 // region-complete never arrives (on a loaded emulator it arrived about 6 s after onMapReady; the manager re-runs
 // an early move again when it does).
-const STARTUP_REGION_SETTLE_BOUND_MS = 2500;
 
 export function HomeScreen() {
   const nav = useNavigation<HomeScreenNavigationProp>();
@@ -215,6 +215,8 @@ export function HomeScreen() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const basemap = useBundledBasemap();
+  // A style that fails to load (e.g. an unreadable archive) falls back to the plain canvas so the venue overlays still render.
+  const [basemapRejected, setBasemapRejected] = useState(false);
   const useV2Map = MapFeatureFlagsService.useIjtemaV2Map();
   const [outsideBannerDismissed, setOutsideBannerDismissed] = useState(false);
   // #222: set only when the Map opened on the Block 2 anchor because no usable location existed.
@@ -1312,12 +1314,11 @@ export function HomeScreen() {
   const handleMapReady = () => {
     mapReadyRef.current = true;
     setMapReadyState(true);
-    mapReadyRef.current = true;
-    setMapReadyState(true);
     cameraManager.notifyNativeMapReady();
-    if (!startupRegionSettledRef.current && !startupRegionTimerRef.current) {
-      startupRegionTimerRef.current = setTimeout(settleStartupRegion, STARTUP_REGION_SETTLE_BOUND_MS);
-    }
+    // MapLibre applies the initial camera synchronously when the Camera mounts (react-native-maps applied initialRegion
+    // shortly after ready and dropped earlier commands), so there is no initial region left to wait for: settle now
+    // instead of holding the startup camera for the 2.5 s fallback timer.
+    settleStartupRegion();
     handleMapRegionChangeComplete(effectiveInitialRegion);
     mapLabelOverlayRef.current?.requestProjection();
 
@@ -1348,6 +1349,57 @@ export function HomeScreen() {
   }, [collectTapCandidate]);
 
   // Everything drawn on top of the basemap, bottom → top. Navigation/arrival and browse/preview are exclusive scenes.
+  // The navigation overlay hooks return a fresh object every render, so the scenes depend on the specific fields they read
+  // (otherwise every GPS tick / drag / zoom would rebuild and re-serialise every GeoJSON source).
+  const navSceneInput = useMemo(
+    () => ({
+      route: navOverlay.route,
+      snappedLocation: navOverlay.snappedLocation,
+      arrived: navOverlay.arrived,
+      reroutePending: navOverlay.reroutePending,
+      mapLayers: navOverlay.mapLayers,
+      currentLocationSource: navOverlay.currentLocationSource,
+    }),
+    [navOverlay.route, navOverlay.snappedLocation, navOverlay.arrived, navOverlay.reroutePending, navOverlay.mapLayers, navOverlay.currentLocationSource],
+  );
+  const navSceneInputV1 = useMemo(
+    () => ({
+      route: navOverlayV1.route,
+      destination: navOverlayV1.destination,
+      snappedLocation: navOverlayV1.snappedLocation,
+      arrived: navOverlayV1.arrived,
+      reroutePending: navOverlayV1.reroutePending,
+      mapLayers: navOverlayV1.mapLayers,
+      currentLocationSource: navOverlayV1.currentLocationSource,
+    }),
+    [navOverlayV1.route, navOverlayV1.destination, navOverlayV1.snappedLocation, navOverlayV1.arrived, navOverlayV1.reroutePending, navOverlayV1.mapLayers, navOverlayV1.currentLocationSource],
+  );
+  // Venue context: no location dependencies, so a GPS tick never rebuilds it.
+  const browseVenueSpecs = useMemo<OverlaySpec[]>(
+    () => useV2Map
+      ? buildHomeVenueOverlay({
+          venueBoundary: v2MapLayers.venueBoundary,
+          blocks: showBlockPolygons ? previewVisibleBlocks : [],
+          rastas: previewVisibleRastas,
+          specialRoutes: previewVisibleSpecialRoutes,
+          gates: previewVisibleGateMarkers,
+          facilities: LANDMARK_PLACES,
+          selectedFacilityId: selectedPlace?.id,
+          activeMapFilter: v2MapLayers.activeMapFilter,
+        })
+      : [],
+    [previewVisibleBlocks, previewVisibleGateMarkers, previewVisibleRastas, previewVisibleSpecialRoutes, selectedPlace?.id, showBlockPolygons, useV2Map, v2MapLayers.activeMapFilter, v2MapLayers.venueBoundary],
+  );
+  const previewRouteSpecs = useMemo<OverlaySpec[]>(
+    () => activePreviewRoute && activePreviewRoute.coordinates.length > 1
+      ? buildRouteOverlay({
+          outside: previewOutsideLegCoordinates,
+          roadFollowing: activePreviewRoute.outsideRoute?.roadFollowing ?? false,
+          inside: previewInsideLegCoordinates,
+        })
+      : [],
+    [activePreviewRoute, previewInsideLegCoordinates, previewOutsideLegCoordinates],
+  );
   const mapOverlays = useMemo<OverlaySpec[]>(() => {
     const browseUser = markerOwnership.showBrowseUser && currentLocation
       ? buildMarkerOverlay({
@@ -1360,68 +1412,38 @@ export function HomeScreen() {
         })
       : [];
     if (mode === 'NAVIGATION' || mode === 'ARRIVAL') {
-      return [...buildNavigationScene(navOverlay), ...buildNavigationSceneV1(navOverlayV1), ...browseUser];
-    }
-    const specs: OverlaySpec[] = [];
-    if (useV2Map) {
-      specs.push(
-        ...buildHomeVenueOverlay({
-          venueBoundary: v2MapLayers.venueBoundary,
-          blocks: showBlockPolygons ? previewVisibleBlocks : [],
-          rastas: previewVisibleRastas,
-          specialRoutes: previewVisibleSpecialRoutes,
-          gates: previewVisibleGateMarkers,
-          facilities: LANDMARK_PLACES,
-          selectedFacilityId: selectedPlace?.id,
-          activeMapFilter: v2MapLayers.activeMapFilter,
-        }),
-      );
-    }
-    if (activePreviewRoute && activePreviewRoute.coordinates.length > 1) {
-      specs.push(
-        ...buildRouteOverlay({
-          outside: previewOutsideLegCoordinates,
-          roadFollowing: activePreviewRoute.outsideRoute?.roadFollowing ?? false,
-          inside: previewInsideLegCoordinates,
-        }),
-      );
+      return [...buildNavigationScene(navSceneInput), ...buildNavigationSceneV1(navSceneInputV1), ...browseUser];
     }
     const selectedPin = markerOwnership.showBrowseSelection && selectedPlace && selectedPlaceMarkerCoordinate && !activePreviewRoute
       ? selectedPlaceMarkerCoordinate
       : null;
-    specs.push(
+    return [
+      ...browseVenueSpecs,
+      ...previewRouteSpecs,
       ...buildMarkerOverlay({
         selectedPin,
         destination: activePreviewRoute ? previewDestinationCoordinate : null,
         start: showPreviewStartMarker ? previewStartCoordinate : null,
       }),
       ...browseUser,
-    );
-    return specs;
+    ];
   }, [
     activePreviewRoute,
+    browseVenueSpecs,
     cameraManager.mode,
     currentLocation,
     currentLocationSource,
     markerOwnership.showBrowseSelection,
     markerOwnership.showBrowseUser,
     mode,
-    navOverlay,
-    navOverlayV1,
+    navSceneInput,
+    navSceneInputV1,
     previewDestinationCoordinate,
-    previewInsideLegCoordinates,
-    previewOutsideLegCoordinates,
+    previewRouteSpecs,
     previewStartCoordinate,
-    previewVisibleBlocks,
-    previewVisibleGateMarkers,
-    previewVisibleRastas,
-    previewVisibleSpecialRoutes,
     selectedPlace,
     selectedPlaceMarkerCoordinate,
-    showBlockPolygons,
     showPreviewStartMarker,
-    useV2Map,
-    v2MapLayers,
   ]);
 
   const openLayerOptions = () => setLayersSheetVisible(true);
@@ -1462,51 +1484,59 @@ export function HomeScreen() {
       <View style={styles.container}>
         <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
 
-        <OfflineMapCanvas
-          testID="home-map-view"
-          ref={mapRef}
-          // Route preview, navigation and arrival are exclusive workflows: the map precedes the portal-hosted
-          // sheet in Android's accessibility tree, so TalkBack would walk the map before reaching the workflow.
-          // Place Details keeps the map reachable because feature selection is still a valid action there.
-          importantForAccessibility={
-            mode === 'ROUTE_PREVIEW' || mode === 'NAVIGATION' || mode === 'ARRIVAL' ? 'no-hide-descendants' : 'auto'
-          }
-          style={styles.map}
-          archiveUri={basemap.uri}
-          archiveZoom={provenance.zoom}
-          initialRegion={effectiveInitialRegion}
-          overlays={mapOverlays}
-          // The OSM attribution control is reserved the same sheet/nav-chrome-derived band the labels use (ATTR-001).
-          attributionBottomInset={mapLabelEdgeInsets.bottom + 8}
-          gesturesEnabled={!layersSheetVisible}
-          rotateEnabled={!settings.keepNorthFixed}
-          onLayout={(width, height) => cameraManager.notifyMapLayout(width, height)}
-          onReady={handleMapReady}
-          onRegionChange={() => {
-            // Continuous — fires on every camera-move tick including pure-rotation gestures, so label
-            // positions stay attached to the map while it is panned/zoomed/rotated. Internally
-            // rAF-coalesced, so calling this on every tick is safe.
-            mapLabelOverlayRef.current?.requestProjection();
-          }}
-          onRegionChangeComplete={(region) => {
-            settleStartupRegion();
-            setIsMapDragging(false);
-            handleMapRegionChangeComplete(region);
-            mapLabelOverlayRef.current?.requestProjection();
-          }}
-          onUserPan={() => {
-            invalidateStartupCameraIntent();
-            cameraManager.cancelEarlyReplay();
-            handleNavigationPan();
-            setIsMapDragging(true);
-          }}
-          onFeaturePress={handleFeaturePress}
-          onBackgroundPress={() => {
-            if (selectedPlace) {
-              closeSheet();
+        {/* The archive is installed from the APK in milliseconds (no network); until then a plain land-coloured surface
+            avoids mounting the style twice (placeholder style first, real style after) — a swap after ready would re-add
+            every source and flash the map. */}
+        {basemap.status === 'loading' ? (
+          <View testID="home-map-placeholder" style={[styles.map, { backgroundColor: BASEMAP_COLORS.land }]} />
+        ) : (
+          <OfflineMapCanvas
+            testID="home-map-view"
+            ref={mapRef}
+            // Route preview, navigation and arrival are exclusive workflows: the map precedes the portal-hosted
+            // sheet in Android's accessibility tree, so TalkBack would walk the map before reaching the workflow.
+            // Place Details keeps the map reachable because feature selection is still a valid action there.
+            importantForAccessibility={
+              mode === 'ROUTE_PREVIEW' || mode === 'NAVIGATION' || mode === 'ARRIVAL' ? 'no-hide-descendants' : 'auto'
             }
-          }}
-        />
+            style={styles.map}
+            archiveUri={basemapRejected ? null : basemap.uri}
+            onLoadFailed={() => setBasemapRejected(true)}
+            archiveZoom={provenance.zoom}
+            initialRegion={effectiveInitialRegion}
+            overlays={mapOverlays}
+            // The OSM attribution control is reserved the same sheet/nav-chrome-derived band the labels use (ATTR-001).
+            attributionBottomInset={mapLabelEdgeInsets.bottom + 8}
+            gesturesEnabled={!layersSheetVisible}
+            rotateEnabled={!settings.keepNorthFixed}
+            onLayout={(width, height) => cameraManager.notifyMapLayout(width, height)}
+            onReady={handleMapReady}
+            onRegionChange={() => {
+              // Continuous — fires on every camera-move tick including pure-rotation gestures, so label
+              // positions stay attached to the map while it is panned/zoomed/rotated. Internally
+              // rAF-coalesced, so calling this on every tick is safe.
+              mapLabelOverlayRef.current?.requestProjection();
+            }}
+            onRegionChangeComplete={(region) => {
+              settleStartupRegion();
+              setIsMapDragging(false);
+              handleMapRegionChangeComplete(region);
+              mapLabelOverlayRef.current?.requestProjection();
+            }}
+            onUserPan={() => {
+              invalidateStartupCameraIntent();
+              cameraManager.cancelEarlyReplay();
+              handleNavigationPan();
+              setIsMapDragging(true);
+            }}
+            onFeaturePress={handleFeaturePress}
+            onBackgroundPress={() => {
+              if (selectedPlace) {
+                closeSheet();
+              }
+            }}
+          />
+        )}
 
         <OsmAttribution
           visible={showOsmAttribution}

@@ -55,7 +55,7 @@ assert(
   'Offline tile failure must show the required fallback message',
 );
 assert(
-  homeScreenForTiles.includes('<OfflineMapCanvas') && homeScreenForTiles.includes('archiveUri={basemap.uri}') && !homeScreenForTiles.includes('PROVIDER_GOOGLE'),
+  homeScreenForTiles.includes('<OfflineMapCanvas') && homeScreenForTiles.includes('archiveUri={basemapRejected ? null : basemap.uri}') && !homeScreenForTiles.includes('PROVIDER_GOOGLE'),
   'Home map must render the bundled offline basemap, never Google live tiles',
 );
 assert(navigationMapLayersV2.includes('mapLayers.blocks'), 'V2 navigation graph-only map must render block context');

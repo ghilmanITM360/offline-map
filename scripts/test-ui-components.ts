@@ -61,7 +61,7 @@ assert(
   navigationVm.includes("(activeRoute as { sourceVersion?: string }).sourceVersion === 'v2'"),
   'Legacy (v1) navigation runtime must detect and reject v2-shaped active routes',
 );
-assert(home.includes('<OfflineMapCanvas') && home.includes('archiveUri={basemap.uri}') && !home.includes('PROVIDER_GOOGLE'), 'Home map must render only the bundled offline basemap, never Google tiles');
+assert(home.includes('<OfflineMapCanvas') && home.includes('archiveUri={basemapRejected ? null : basemap.uri}') && !home.includes('PROVIDER_GOOGLE'), 'Home map must render only the bundled offline basemap, never Google tiles');
 assert(navigation.includes('route.coordinates'), 'Navigation must render route polyline from active route coordinates');
 assert(navigation.includes('showNavigationStart'), 'Navigation must render a start marker');
 assert(navigation.includes('showNavigationDestination'), 'Navigation must render a destination marker');

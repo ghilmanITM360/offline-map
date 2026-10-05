@@ -92,7 +92,12 @@ export function OfflineMapCanvas(props: OfflineMapCanvasProps) {
   const handlePress = useCallback(
     async (event: NativeSyntheticEvent<{ lngLat: [number, number]; point: [number, number] }>) => {
       const { lngLat, point } = event.nativeEvent;
-      const features = (await mapRef.current?.queryRenderedFeatures(point, { layers: [...HIT_LAYER_IDS] })) ?? [];
+      let features: GeoJSON.Feature[] = [];
+      try {
+        features = (await mapRef.current?.queryRenderedFeatures(point, { layers: [...HIT_LAYER_IDS] })) ?? [];
+      } catch {
+        return; // the native view went away mid-query: nothing was tapped
+      }
       const hits = features.filter((f) => f.properties?.id && f.properties?.kind);
       if (hits.length === 0) {
         onBackgroundPress?.();
@@ -124,6 +129,7 @@ export function OfflineMapCanvas(props: OfflineMapCanvasProps) {
       dragPan={props.gesturesEnabled !== false}
       touchZoom={props.gesturesEnabled !== false}
       doubleTapZoom={props.gesturesEnabled !== false}
+      doubleTapHoldZoom={props.gesturesEnabled !== false}
       touchRotate={props.gesturesEnabled !== false && props.rotateEnabled !== false}
       touchPitch={false}
       onLayout={(e) => {
@@ -142,7 +148,11 @@ export function OfflineMapCanvas(props: OfflineMapCanvasProps) {
         if (e.nativeEvent.userInteraction) onUserPan?.();
       }}
       onRegionIsChanging={() => onRegionChange?.()}
-      onRegionDidChange={(e: NativeSyntheticEvent<ViewStateChangeEvent>) => onRegionChangeComplete?.(regionFromViewState(e.nativeEvent as never))}
+      onRegionDidChange={(e: NativeSyntheticEvent<ViewStateChangeEvent>) => {
+        // The native view state is empty when the map has no size/target yet — there is no region to report.
+        if (!e.nativeEvent?.center || !e.nativeEvent?.bounds) return;
+        onRegionChangeComplete?.(regionFromViewState(e.nativeEvent as never));
+      }}
     >
       <Camera ref={cameraRef} initialViewState={initialViewState} />
       <OverlayScene specs={overlays} />

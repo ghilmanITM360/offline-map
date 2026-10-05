@@ -247,7 +247,7 @@ assert(
   'Home must not depend on Google Maps configuration',
 );
 assert(
-  homeScreen.includes('<OfflineMapCanvas') && homeScreen.includes('archiveUri={basemap.uri}'),
+  homeScreen.includes('<OfflineMapCanvas') && homeScreen.includes('archiveUri={basemapRejected ? null : basemap.uri}'),
   'Home should render exactly one base map: the bundled offline archive',
 );
 assert(homeScreen.includes('venueBoundary'), 'Home should render venue boundary context');

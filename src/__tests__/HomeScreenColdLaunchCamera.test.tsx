@@ -736,7 +736,9 @@ describe('#222 Map entry camera rules', () => {
 });
 
 describe('#222 startup camera waits for the initial region', () => {
-  test('a camera move issued at map-ready is held until the first region-complete, then runs once', async () => {
+  // #140: MapLibre applies the initial camera synchronously, so nothing is held back for a first region-complete any more
+  // (react-native-maps applied initialRegion after ready and dropped earlier commands).
+  test('a camera move issued at map-ready runs at once and exactly once, without waiting for a region event', async () => {
     useAppStore.setState({ hasSeenMapOverview: true, hasLocationPermission: false, currentLocation: null });
 
     await render(<HomeScreen />);
@@ -745,16 +747,16 @@ describe('#222 startup camera waits for the initial region', () => {
     });
     await flushProjectionTimers();
 
-    expect(cameraAnimateToUserSpy).not.toHaveBeenCalled();
+    expect(cameraAnimateToUserSpy).toHaveBeenCalledTimes(1);
+    expect(cameraAnimateToUserSpy).toHaveBeenCalledWith(block2AnchorCoordinate);
 
     await settleInitialRegion();
     await settleInitialRegion();
 
     expect(cameraAnimateToUserSpy).toHaveBeenCalledTimes(1);
-    expect(cameraAnimateToUserSpy).toHaveBeenCalledWith(block2AnchorCoordinate);
   });
 
-  test('if the region-complete never arrives the move still runs after the bound', async () => {
+  test('with no region event at all the move has already run (nothing waits on a bound timer)', async () => {
     useAppStore.setState({ hasSeenMapOverview: true, hasLocationPermission: false, currentLocation: null });
 
     await render(<HomeScreen />);
@@ -767,36 +769,10 @@ describe('#222 startup camera waits for the initial region', () => {
 
     expect(cameraAnimateToUserSpy).toHaveBeenCalledTimes(1);
   });
-
-  test('a route preview that starts while the move is waiting wins: the held move never runs', async () => {
-    useAppStore.setState({ hasSeenMapOverview: true, hasLocationPermission: false, currentLocation: null });
-
-    await render(<HomeScreen />);
-    await act(async () => {
-      fireEvent(screen.getByTestId('home-map-view', { includeHiddenElements: true }), 'didFinishLoadingMap');
-    });
-    await act(async () => {
-      useAppStore.setState({
-        routePlannerDest: searchResultPlace,
-        activeRoute: {
-          sourceVersion: 'v2',
-          coordinates: [{ latitude: 24.963, longitude: 67.006 }, searchResultPlace.coordinate],
-          startResolution: { mode: 'inside', coordinate: { latitude: 24.963, longitude: 67.006 } },
-          destinationLabel: 'Gate 12',
-          startLabel: 'Current location',
-        } as any,
-      });
-    });
-    await settleInitialRegion();
-    await flushProjectionTimers();
-
-    expect(cameraAnimateToUserSpy).not.toHaveBeenCalled();
-    expect(cameraFitVenueBoundsSpy).not.toHaveBeenCalled();
-  });
 });
 
 describe('#222 an early camera move is re-run once the initial region is applied', () => {
-  test('the manager hears map-ready at once and the settled signal on the first region-complete', async () => {
+  test('the manager hears map-ready and the settled signal together at ready', async () => {
     useAppStore.setState({ hasSeenMapOverview: true, hasLocationPermission: false, currentLocation: null });
 
     await render(<HomeScreen />);
@@ -806,14 +782,15 @@ describe('#222 an early camera move is re-run once the initial region is applied
     await flushProjectionTimers();
 
     expect(cameraNotifyNativeMapReadySpy).toHaveBeenCalledTimes(1);
-    expect(cameraNotifyInitialRegionSettledSpy).not.toHaveBeenCalled();
+    expect(cameraNotifyInitialRegionSettledSpy).toHaveBeenCalledTimes(1);
 
     await settleInitialRegion();
 
-    expect(cameraNotifyInitialRegionSettledSpy).toHaveBeenCalledTimes(1);
+    // A later region-complete is still passed on (the manager caps replays itself).
+    expect(cameraNotifyInitialRegionSettledSpy).toHaveBeenCalledTimes(2);
   });
 
-  test('if no region-complete arrives the settled signal still goes out after the bound', async () => {
+  test('with no region event at all the settled signal has already gone out (nothing waits on a bound timer)', async () => {
     useAppStore.setState({ hasSeenMapOverview: true, hasLocationPermission: false, currentLocation: null });
 
     await render(<HomeScreen />);

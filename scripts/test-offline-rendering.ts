@@ -7,7 +7,7 @@ const home = readFileSync('src/views/screens/HomeScreen.tsx', 'utf8');
 const layersSheet = readFileSync('src/views/components/map/LayersSheet.tsx', 'utf8');
 const basemapStyle = readFileSync('src/views/components/mapgl/basemapStyle.ts', 'utf8');
 
-assert(home.includes('<OfflineMapCanvas') && home.includes('archiveUri={basemap.uri}'), 'Home must render the bundled offline basemap');
+assert(home.includes('<OfflineMapCanvas') && home.includes('archiveUri={basemapRejected ? null : basemap.uri}'), 'Home must render the bundled offline basemap');
 assert(!home.includes('LocalTile') && !home.includes('getTilePath'), 'Home must not use downloaded raster tiles');
 assert(!home.includes('Background map not downloaded') && !home.includes('Satellite unavailable offline'), 'Home must not show missing-map or satellite copy');
 assert(!layersSheet.includes('Satellite'), 'The layers sheet must not offer satellite imagery (it needs the internet)');

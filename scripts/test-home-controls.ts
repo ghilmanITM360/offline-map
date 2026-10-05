@@ -16,7 +16,7 @@ assert(home.includes('specialRoutes: previewVisibleSpecialRoutes') && overlaySpe
 assert(home.includes('gates: previewVisibleGateMarkers') && overlaySpec.includes('input.gates.map('), 'Home must render zoom-aware official gate markers with coordinates');
 assert(overlaySpec.includes('needsConnectorVerification'), 'Home must visibly distinguish disconnected gates');
 assert(home.includes('graphOnlyFallbackUsed'), 'Home must track graph-only fallback');
-assert(home.includes('<OfflineMapCanvas') && home.includes('archiveUri={basemap.uri}') && !home.includes('PROVIDER_GOOGLE'), 'Home must never request live tiles: the bundled archive is its only basemap');
+assert(home.includes('<OfflineMapCanvas') && home.includes('archiveUri={basemapRejected ? null : basemap.uri}') && !home.includes('PROVIDER_GOOGLE'), 'Home must never request live tiles: the bundled archive is its only basemap');
 
 assert(home.includes('handleZoomIn'), 'Zoom in control must call handler');
 assert(home.includes('handleZoomOut'), 'Zoom out control must call handler');

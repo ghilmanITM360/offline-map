@@ -1,3 +1,4 @@
+import { sceneSignature } from '../views/components/mapgl/OverlayScene';
 import {
   buildHomeVenueOverlay,
   buildMarkerOverlay,
@@ -108,6 +109,9 @@ describe('buildRouteOverlay', () => {
     const [inside] = buildRouteOverlay({ outside: [], roadFollowing: false, inside: pts, walked: pts.slice(0, 2), remaining: pts.slice(1), reroutePending: true });
     expect(inside.layers.map((l) => l.id)).toEqual(['route-casing', 'route-line']);
     expect(inside.layers[1].paint['line-dasharray']).toBeDefined();
+    // Round caps would extend every dash by half the line width and close the gaps, so dashes use butt caps and a solid casing.
+    expect(inside.layers[1].layout).not.toMatchObject({ 'line-cap': 'round' });
+    expect(inside.layers[0].paint['line-dasharray']).toBeUndefined();
   });
 
   it('outside leg is dashed unless it follows roads, and absent when too short', () => {
@@ -136,5 +140,15 @@ describe('buildMarkerOverlay', () => {
     const small = buildMarkerOverlay({ user: { coordinate: c(25, 67), accuracy: 150 } })[0].layers[0];
     expect(JSON.stringify(withBig.paint['circle-radius'])).toEqual(JSON.stringify(small.paint['circle-radius']));
     expect(buildMarkerOverlay({ user: { coordinate: c(25, 67) } })[0].layers.map((l) => l.id)).toEqual(['user-dot']);
+  });
+});
+
+describe('sceneSignature', () => {
+  it('is stable across data-only changes and changes when the source/layer structure changes', () => {
+    const a = buildRouteOverlay({ outside: [], roadFollowing: false, inside: [c(25, 67), c(25.1, 67)] });
+    const sameShapeNewData = buildRouteOverlay({ outside: [], roadFollowing: false, inside: [c(25, 67), c(25.2, 67.1)] });
+    const withProgress = buildRouteOverlay({ outside: [], roadFollowing: false, inside: [c(25, 67), c(25.1, 67)], walked: [c(25, 67), c(25.05, 67)], remaining: [c(25.05, 67), c(25.1, 67)] });
+    expect(sceneSignature(a)).toBe(sceneSignature(sameShapeNewData));
+    expect(sceneSignature(a)).not.toBe(sceneSignature(withProgress));
   });
 });

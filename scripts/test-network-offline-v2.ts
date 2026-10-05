@@ -60,7 +60,7 @@ assert(downloadViewModel.includes('continueWithVenueMapOnly'), 'Tile failure mus
 assert(appGuide.includes('Internal search and directions work from bundled Ijtema data'), 'User copy must explain that core navigation remains offline');
 assert(!directionsScreen.includes('MapView'), 'Directions start-selection flow must not depend on base map preview while offline');
 assert(
-  homeScreenForOffline.includes('archiveUri={basemap.uri}') && !homeScreenForOffline.includes('PROVIDER_GOOGLE'),
+  homeScreenForOffline.includes('archiveUri={basemapRejected ? null : basemap.uri}') && !homeScreenForOffline.includes('PROVIDER_GOOGLE'),
   'Home map must never request live tiles: its only source is the bundled archive',
 );
 
