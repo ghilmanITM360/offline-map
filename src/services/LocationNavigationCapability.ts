@@ -76,7 +76,7 @@ export function evaluateNavigationLocationCapability(
   return { canStart: true, message: '' };
 }
 
-export type StartActionKind = 'start' | 'use_location' | 'turn_on_location' | 'precise_location';
+export type StartActionKind = 'start' | 'use_location' | 'turn_on_location' | 'precise_location' | 'route_guide';
 
 export interface StartAction {
   kind: StartActionKind;
@@ -100,6 +100,11 @@ interface StartActionInput {
  * A planned/manual start is a route preview; live guidance still needs a fresh precise fix.
  */
 export function resolveStartAction(input: StartActionInput): StartAction {
+  // A start the user chose or saved is a route guide: location never gates route planning (#307). Live guidance
+  // stays one tap away and begins from a fresh fix, never from the planned place.
+  if (input.startSource !== 'live_gps') {
+    return { kind: 'route_guide', primaryLabel: 'Start route', secondaryLabel: 'Use my location for live guidance' };
+  }
   const capability = evaluateLocationCapability({
     permission: { granted: input.permission.granted, canAskAgain: true, precision: input.permission.precision },
     liveFix: input.liveFix,
@@ -111,8 +116,7 @@ export function resolveStartAction(input: StartActionInput): StartAction {
   if (capability.liveBlocker === 'approximate_only') {
     return { kind: 'precise_location', primaryLabel: 'Turn on precise location', secondaryLabel: 'View route' };
   }
-  // A manual / saved start is only a preview: live guidance begins from a fresh fix, never from the planned place.
-  if (input.startSource !== 'live_gps' || capability.fix !== 'usable') {
+  if (capability.fix !== 'usable') {
     return { kind: 'use_location', primaryLabel: 'Use my location & start', secondaryLabel: 'View route' };
   }
   return { kind: 'start', primaryLabel: 'Start Navigation', title: 'Ready to go' };

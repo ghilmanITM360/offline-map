@@ -26,6 +26,15 @@ import { freshLastKnownLocation, pruneRecentSearches } from '../utils/dataRetent
 import { UnfinishedJourney, createUnfinishedJourney, parseUnfinishedJourney } from '../utils/unfinishedJourney';
 
 export type RouteSelectionMode = 'idle' | 'selectingStart' | 'selectingDestination';
+
+/** One instruction the user reads in the Route Guide. */
+export interface RouteGuideStep { text: string; distanceM: number }
+/**
+ * Route Guide (#307): the honest manual mode. The user follows a chosen FROM -> TO route by reading steps.
+ * It is NOT a navigation session: no live position, progress, reroute or arrival, so it never sets
+ * isNavigating and is never persisted.
+ */
+export interface RouteGuideState { steps: RouteGuideStep[]; stepIndex: number }
 /** What the Directory is being opened to choose; null = plain browsing. */
 export type DirectoryPurpose = 'start' | 'destination';
 /** A Directory answer. Quick start options carry no place: the initiator already owns the location. */
@@ -151,6 +160,10 @@ interface AppState {
    * Navigation is a brand new session. Returns the place, or null when there is nothing valid.
    */
   beginRecovery: () => Place | null;
+  routeGuide: RouteGuideState | null;
+  startRouteGuide: (steps: RouteGuideStep[]) => void;
+  setRouteGuideStep: (index: number) => void;
+  endRouteGuide: () => void;
   activeRoute: RoutePreview | V2ActiveRoute | null;
   setActiveRoute: (route: RoutePreview | V2ActiveRoute | null) => void;
   routeInstructions: Array<NavigationInstruction | V2NavigationInstruction>;
@@ -413,6 +426,7 @@ export const useAppStore = create<AppState>()(
           activeRoute: route,
           routeInstructions: instructions,
           unfinishedJourney: createUnfinishedJourney(dest.id, Date.now()),
+          routeGuide: null, // live guidance supersedes the manual guide
         })),
       stopNavigation: () =>
         set({
@@ -422,6 +436,7 @@ export const useAppStore = create<AppState>()(
           routeInstructions: [],
           reroutePending: false,
           unfinishedJourney: null,
+          routeGuide: null,
         }),
       unfinishedJourney: null,
       clearUnfinishedJourney: () => set({ unfinishedJourney: null }),
@@ -435,6 +450,18 @@ export const useAppStore = create<AppState>()(
         set({ unfinishedJourney: null, ...(place ? { pendingDirectorySelection: place } : {}) });
         return place;
       },
+      routeGuide: null,
+      startRouteGuide: (steps) => {
+        if (steps.length === 0) return;
+        set({ routeGuide: { steps, stepIndex: 0 } });
+      },
+      setRouteGuideStep: (index) =>
+        set((state) => {
+          if (!state.routeGuide) return state;
+          const last = state.routeGuide.steps.length - 1;
+          return { routeGuide: { ...state.routeGuide, stepIndex: Math.max(0, Math.min(last, index)) } };
+        }),
+      endRouteGuide: () => set({ routeGuide: null }),
       activeRoute: null,
       setActiveRoute: (route) => set({ activeRoute: route }),
       routeInstructions: [],
@@ -467,6 +494,7 @@ export const useAppStore = create<AppState>()(
           selectedRouteIndex: 0,
           activeRoute: null,
           routeInstructions: [],
+          routeGuide: null,
         }),
       routeSelectionMode: 'idle',
       setRouteSelectionMode: (mode) => set({ routeSelectionMode: mode }),

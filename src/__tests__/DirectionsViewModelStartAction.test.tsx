@@ -37,13 +37,13 @@ describe('Start action for a chosen (manual) start', () => {
     const hook = await readyHook();
     expect(hook.result.current.route).not.toBeNull();
     expect(hook.result.current.canStartNavigation).toBe(false); // safety rule unchanged
-    expect(hook.result.current.startAction).toMatchObject({ kind: 'use_location', primaryLabel: 'Use my location & start' });
+    expect(hook.result.current.startAction).toMatchObject({ kind: 'route_guide', primaryLabel: 'Start route', secondaryLabel: 'Use my location for live guidance' });
   });
 
-  test('2: permission not granted offers "Turn on location & start"', async () => {
+  test('2: permission not granted never blocks a manual route: it is still a Start route', async () => {
     useAppStore.setState({ hasLocationPermission: false, locationPermissionPrecision: 'none' });
     const hook = await readyHook();
-    expect(hook.result.current.startAction?.kind).toBe('turn_on_location');
+    expect(hook.result.current.startAction?.kind).toBe('route_guide');
   });
 
   test('3/9: a fresh precise fix replaces the manual start, then navigation starts from the recomputed route', async () => {
@@ -101,7 +101,7 @@ describe('Start action for a chosen (manual) start', () => {
     expect(startNow).not.toHaveBeenCalled();
     expect(hook.result.current.startAttempt).toBe('failed');
     expect(hook.result.current.route).not.toBeNull();
-    expect(hook.result.current.startAction?.kind).toBe('use_location');
+    expect(hook.result.current.startAction?.kind).toBe('route_guide');
   });
 
   test('#307: device location services off is its own outcome and opens location settings, not app settings', async () => {
@@ -157,5 +157,29 @@ describe('Start action for a chosen (manual) start', () => {
     await new Promise((resolve) => setTimeout(resolve, 600));
     expect(useAppStore.getState().activeRoute).toBe(active);
     expect((useAppStore.getState().activeRoute as { origin?: unknown }).origin).toBeDefined();
+  });
+});
+
+
+describe('Route guide from a chosen FROM and TO (#307)', () => {
+  test('Start route opens the guide with readable steps and starts no navigation, marker or position', async () => {
+    const hook = await readyHook();
+    await act(async () => hook.result.current.startRouteGuide());
+    const state = useAppStore.getState();
+    expect(state.routeGuide?.stepIndex).toBe(0);
+    expect(state.routeGuide!.steps.length).toBeGreaterThan(0);
+    for (const step of state.routeGuide!.steps) expect(step.text).not.toMatch(/\b(?:NODE|node)[_-]?\d|undefined|null/);
+    expect(state.isNavigating).toBe(false);
+    expect(state.unfinishedJourney).toBeNull();
+    expect(state.currentLocation).toBeNull();
+  });
+
+  test('changing the start ends a guide that no longer matches the route', async () => {
+    const hook = await readyHook();
+    await act(async () => hook.result.current.startRouteGuide());
+    expect(useAppStore.getState().routeGuide).not.toBeNull();
+    await act(async () => hook.result.current.setManualStartPlace(V2PlaceAdapter.getPlaceById('B9')!));
+    await waitFor(() => expect(hook.result.current.loadState).toBe('ready'), { timeout: 8_000 });
+    expect(useAppStore.getState().routeGuide).toBeNull();
   });
 });

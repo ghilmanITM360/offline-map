@@ -138,17 +138,19 @@ describe('resolveStartAction (zero-thinking start CTA)', () => {
   const nearFix = { latitude: 24.96001, longitude: 67.01001, accuracy: 8, observedAtMs: nowMs };
   const base = { startSource: 'manual_place', permission: { granted: true, precision: 'fine' }, nowMs } as const;
 
-  it('1: manual start with no fix offers an enabled location action, not a disabled Start', () => {
-    expect(resolveStartAction({ ...base, liveFix: null })).toMatchObject({ kind: 'use_location', primaryLabel: 'Use my location & start' });
+  it('1: manual start with no fix offers an enabled Start route (route guide), live guidance as the secondary', () => {
+    expect(resolveStartAction({ ...base, liveFix: null })).toMatchObject({ kind: 'route_guide', primaryLabel: 'Start route', secondaryLabel: 'Use my location for live guidance' });
   });
 
-  it('2: permission not granted offers turn-on-location', () => {
-    expect(resolveStartAction({ ...base, liveFix: null, permission: { granted: false, precision: 'none' } }))
+  it('2: location denied never blocks a manual route; a live-location start offers turn-on-location', () => {
+    const denied = { granted: false, precision: 'none' } as const;
+    expect(resolveStartAction({ ...base, liveFix: null, permission: denied })).toMatchObject({ kind: 'route_guide', primaryLabel: 'Start route', secondaryLabel: 'Use my location for live guidance' });
+    expect(resolveStartAction({ ...base, startSource: 'live_gps', liveFix: null, permission: denied }))
       .toMatchObject({ kind: 'turn_on_location', primaryLabel: 'Turn on location & start' });
   });
 
-  it('3: a manual start is a preview even with a perfect fix: guidance starts from the fresh fix, never the planned place', () => {
-    expect(resolveStartAction({ ...base, liveFix: nearFix })).toMatchObject({ kind: 'use_location', primaryLabel: 'Use my location & start' });
+  it('3: a manual start stays a route guide even with a perfect fix: the FROM the user chose is respected, live guidance is one tap away', () => {
+    expect(resolveStartAction({ ...base, liveFix: nearFix })).toMatchObject({ kind: 'route_guide', primaryLabel: 'Start route', secondaryLabel: 'Use my location for live guidance' });
   });
 
   it('5: approximate permission never satisfies the precise gate, even with a good-looking fix', () => {
@@ -162,9 +164,9 @@ describe('resolveStartAction (zero-thinking start CTA)', () => {
     expect(resolveStartAction({ ...live, liveFix: { ...nearFix, observedAtMs: nowMs - 60_000 } }).kind).toBe('use_location');
   });
 
-  it('9: a remembered / last-known start never counts as live GPS', () => {
-    expect(resolveStartAction({ ...base, startSource: 'remembered_location', liveFix: nearFix }).kind).toBe('use_location');
-    expect(resolveStartAction({ ...base, startSource: 'device_last_known', liveFix: nearFix }).kind).toBe('use_location');
+  it('9: a remembered / last-known start never counts as live GPS: it is a route guide', () => {
+    expect(resolveStartAction({ ...base, startSource: 'remembered_location', liveFix: nearFix }).kind).toBe('route_guide');
+    expect(resolveStartAction({ ...base, startSource: 'device_last_known', liveFix: nearFix }).kind).toBe('route_guide');
   });
 
   it('a live GPS start with a valid fix keeps the plain Start Navigation', () => {
