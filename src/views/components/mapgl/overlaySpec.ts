@@ -10,7 +10,7 @@
 import type { Coordinate, Place } from '../../../models/types';
 import type { V2BlockLayer, V2GateLayer, V2PolylineLayer } from '../../../services/V2MapRenderingService';
 import { markerSizes, staticColors } from '../../../theme';
-import { FACILITY_ICON_SIZE_BY_ZOOM, MAP_COLORS, MAP_LINE_WIDTH, SPECIAL_ROUTE_DASH } from './mapDesign';
+import { FACILITY_ICON_SIZE_BY_ZOOM, MAP_COLORS, MAP_LINE_WIDTH, PULSE_COLOR, PULSE_PAINT, SPECIAL_ROUTE_DASH, type PulsePhase } from './mapDesign';
 
 export type LngLat = [number, number];
 export const toLngLat = (c: Coordinate): LngLat => [c.longitude, c.latitude];
@@ -338,6 +338,8 @@ export interface MarkersInput {
   destination?: Coordinate | null;
   start?: Coordinate | null;
   user?: { coordinate: Coordinate; accuracy?: number; remembered?: boolean; following?: boolean; heading?: number } | null;
+  /** Destination ring phase (see mapDesign PULSE_PAINT); omitted = invisible. */
+  pulse?: PulsePhase;
 }
 
 // Metres → pixels at the current zoom/latitude, as an expression: px = m * 2^zoom / (156543.03392 * cos(lat))
@@ -357,11 +359,24 @@ export function buildMarkerOverlay(input: MarkersInput): OverlaySpec[] {
   if (input.selectedPin) pins.push(point(input.selectedPin, { role: 'destination' }));
   if (input.destination) pins.push(point(input.destination, { role: 'destination' }));
   if (input.start) pins.push(point(input.start, { role: 'start' }));
+  const pulse = PULSE_PAINT[input.pulse ?? 'idle'];
   if (pins.length) {
     specs.push({
       id: 'markers-pins',
       data: fc(pins),
       layers: [
+        {
+          id: 'destination-pulse',
+          type: 'circle',
+          filter: ['==', ['get', 'role'], 'destination'],
+          paint: {
+            'circle-radius': pulse.radius,
+            'circle-opacity': pulse.opacity,
+            'circle-color': PULSE_COLOR,
+            'circle-radius-transition': { duration: pulse.transitionMs, delay: 0 },
+            'circle-opacity-transition': { duration: pulse.transitionMs, delay: 0 },
+          },
+        },
         {
           id: 'pin-icon',
           type: 'symbol',

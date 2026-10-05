@@ -143,6 +143,44 @@ describe('buildMarkerOverlay', () => {
   });
 });
 
+describe('destination pulse ring', () => {
+  const ring = (pulse?: 'idle' | 'start' | 'out' | 'static') =>
+    buildMarkerOverlay({ selectedPin: c(25, 67), pulse })[0].layers.find((l) => l.id === 'destination-pulse')!;
+
+  it('sits under the pin, only for the destination, and is invisible at rest', () => {
+    const layers = buildMarkerOverlay({ destination: c(25, 67), start: c(25.1, 67) })[0].layers;
+    expect(layers.map((l) => l.id)).toEqual(['destination-pulse', 'pin-icon']);
+    expect(JSON.stringify(layers[0].filter)).toContain('destination');
+    expect(ring().paint['circle-opacity']).toBe(0);
+    expect(ring('idle').paint['circle-opacity']).toBe(0);
+  });
+
+  it('runs one short outward cycle: start small and visible, end large and gone, 600-1000 ms, natively animated', () => {
+    const from = ring('start').paint;
+    const to = ring('out').paint;
+    expect(from['circle-opacity']).toBeGreaterThan(0);
+    expect(to['circle-opacity']).toBe(0);
+    expect(to['circle-radius']).toBeGreaterThan(from['circle-radius']);
+    const { duration } = to['circle-radius-transition'];
+    expect(duration).toBeGreaterThanOrEqual(600);
+    expect(duration).toBeLessThanOrEqual(1000);
+    expect(to['circle-opacity-transition'].duration).toBe(duration);
+  });
+
+  it('never animates when resting, restarting or under reduced motion (static emphasis only)', () => {
+    for (const phase of ['idle', 'start', 'static'] as const) {
+      expect(ring(phase).paint['circle-radius-transition'].duration).toBe(0);
+      expect(ring(phase).paint['circle-opacity-transition'].duration).toBe(0);
+    }
+    expect(ring('static').paint['circle-opacity']).toBeGreaterThan(0);
+  });
+
+  it('keeps the scene structure identical across phases, so a phase change is a paint update, not a remount', () => {
+    const sig = (pulse: 'idle' | 'start' | 'out' | 'static') => sceneSignature(buildMarkerOverlay({ selectedPin: c(25, 67), pulse }));
+    expect(new Set([sig('idle'), sig('start'), sig('out'), sig('static')]).size).toBe(1);
+  });
+});
+
 describe('sceneSignature', () => {
   it('is stable across data-only changes and changes when the source/layer structure changes', () => {
     const a = buildRouteOverlay({ outside: [], roadFollowing: false, inside: [c(25, 67), c(25.1, 67)] });

@@ -36,6 +36,15 @@ export interface MapLabelItem {
   accessibilityLabel?: string;
 }
 
+/** dp a pinned destination's own label hangs below the pin tip: half a block label pill, so the pill starts at the tip. */
+export const DESTINATION_PIN_LABEL_CLEARANCE = 26;
+
+/** The destination pin's tip marks the place, so the selected label sits under the tip instead of beneath the pin body. */
+export function hangSelectedLabelsBelowPin(items: MapLabelItem[], pinVisible: boolean): MapLabelItem[] {
+  if (!pinVisible) return items;
+  return items.map((item) => (item.isSelected ? { ...item, yOffset: DESTINATION_PIN_LABEL_CLEARANCE } : item));
+}
+
 export interface MapLabelOverlayHandle {
   /** Re-projects every item's lat/lng to a screen point. Safe to call as often as
    * needed (e.g. on every native onRegionChange tick) — internally coalesced. */

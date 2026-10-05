@@ -9,6 +9,7 @@ import { useSafeAreaFrame, useSafeAreaInsets } from 'react-native-safe-area-cont
 import { Coordinate } from '../models/types';
 import { NAV_TRANSITION_TIMINGS } from '../constants/navigationTransitions';
 import { OVERLAY_CONTROL_GAP } from './useOverlayInsets';
+import { useReducedMotion } from './useReducedMotion';
 
 export type CameraMode = 'IDLE' | 'EXPLORING' | 'FOLLOWING_USER' | 'ROUTE_PREVIEW' | 'NAVIGATION';
 
@@ -35,10 +36,19 @@ const PLACE_ZOOM_DELTA = 0.002;
 const DEFAULT_ROUTE_PADDING: EdgePadding = { top: 90, right: 64, bottom: 140, left: 64 };
 const DEFAULT_BOUNDS_PADDING: EdgePadding = { top: 48, right: 48, bottom: 48, left: 48 };
 
-// Google Maps pans quickly on POI selection, not the slower 1s used for recenter/follow —
-// exported so HomeViewModel can stagger the LocationSheet's own present() call to land
-// after the pan (see FIX 3: camera moves, then the sheet springs in over it).
-export const PLACE_SELECTION_CAMERA_DURATION_MS = 260;
+// Focusing a chosen place is a short, calm ease (500-700 ms) — long enough to read as intentional, short enough to
+// never feel like a fly-over. A target already close to the last focus gets a shorter ease, and reduced motion
+// moves the camera immediately. Exported so HomeViewModel can stagger the LocationSheet's own present() call to
+// land as the pan finishes (the camera moves, then the sheet springs in over it).
+export const PLACE_SELECTION_CAMERA_DURATION_MS = 600;
+export const PLACE_NEARBY_CAMERA_DURATION_MS = 350;
+const PLACE_NEARBY_DISTANCE_M = 80;
+
+function approxDistanceMeters(a: Coordinate, b: Coordinate): number {
+  const dLat = (b.latitude - a.latitude) * 111320;
+  const dLon = (b.longitude - a.longitude) * 111320 * Math.cos((a.latitude * Math.PI) / 180);
+  return Math.hypot(dLat, dLon);
+}
 
 // animateToPlace must keep the selected marker visible above whatever LocationSheet snap
 // height is about to cover the bottom of the screen — collapsed (15%), half (50%), or
@@ -61,6 +71,8 @@ function clamp(value: number, lo: number, hi: number): number {
  * the map surface is showing.
  */
 export function useCameraManager({ mapRef }: Params) {
+  const reducedMotion = useReducedMotion();
+  const lastPlaceFocusRef = useRef<Coordinate | null>(null);
   const [mode, setMode] = useState<CameraMode>('IDLE');
   const modeRef = useRef<CameraMode>('IDLE');
   const setCameraMode = useCallback((next: CameraMode) => {
@@ -166,10 +178,19 @@ export function useCameraManager({ mapRef }: Params) {
     (
       place: { coordinate?: Coordinate | null },
       sheetCoverageFraction = 0.5,
-      duration = PLACE_SELECTION_CAMERA_DURATION_MS,
-    ) => {
-      if (!place.coordinate) return;
+      requestedDuration?: number,
+    ): number => {
+      if (!place.coordinate) return 0;
       const coordinate = place.coordinate;
+      const last = lastPlaceFocusRef.current;
+      lastPlaceFocusRef.current = coordinate;
+      const duration =
+        requestedDuration ??
+        (reducedMotion
+          ? 0
+          : last && approxDistanceMeters(last, coordinate) <= PLACE_NEARBY_DISTANCE_M
+            ? PLACE_NEARBY_CAMERA_DURATION_MS
+            : PLACE_SELECTION_CAMERA_DURATION_MS);
       const windowHeight = frame.height || 1;
       const sheetHeightPx = clamp(sheetCoverageFraction, 0, 1) * windowHeight;
       // Top clearance mirrors the same OVERLAY_CONTROL_GAP used to keep floating controls
@@ -199,8 +220,9 @@ export function useCameraManager({ mapRef }: Params) {
         );
         setCameraMode('EXPLORING');
       });
+      return duration;
     },
-    [frame.height, insets.top, mapRef, runWhenReady, setCameraMode],
+    [frame.height, insets.top, mapRef, reducedMotion, runWhenReady, setCameraMode],
   );
 
   const fitVenueBounds = useCallback(

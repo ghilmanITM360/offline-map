@@ -20,7 +20,10 @@ import { IJTEMA_MAP_REGION } from '../data/ijtema';
 import { DEFAULT_MAP_ZOOM as DEFAULT_HOME_MAP_ZOOM, estimateZoomFromRegion } from '../utils/mapZoom';
 import { formatLastKnownAge } from '../utils/formatLastKnownAge';
 import { unavailableReasonCopy } from '../utils/unavailableReasonCopy';
-import { useCameraManager, CompassMode, PLACE_SELECTION_CAMERA_DURATION_MS } from './useCameraManager';
+import { useCameraManager, CompassMode } from './useCameraManager';
+
+// The sheet starts springing in as the camera ease is finishing, not after it, so selection feels like one motion.
+const SHEET_OVERLAP_FRACTION = 0.6;
 
 declare const __DEV__: boolean;
 
@@ -182,9 +185,9 @@ export function useHomeViewModel({ isFocused = true }: { isFocused?: boolean } =
     // reopen at (or keep, on re-selection) — see useCameraManager.animateToPlace.
     const snapPercent = parseFloat(snapPoints[nextSnapIndex] ?? '50%');
     const sheetCoverageFraction = (Number.isFinite(snapPercent) ? snapPercent : 50) / 100;
-    cameraManager.animateToPlace(place, sheetCoverageFraction);
+    const cameraDurationMs = cameraManager.animateToPlace(place, sheetCoverageFraction);
     // 3. Sheet springs in once the (short) camera pan has landed, instead of racing it.
-    sheetPresentTimerRef.current = setTimeout(openSheet, PLACE_SELECTION_CAMERA_DURATION_MS);
+    sheetPresentTimerRef.current = setTimeout(openSheet, Math.round(cameraDurationMs * SHEET_OVERLAP_FRACTION));
   };
 
   // Consumes a destination handed off by the Locations Directory screen (a RootStack

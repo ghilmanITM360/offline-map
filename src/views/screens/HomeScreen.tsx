@@ -76,13 +76,14 @@ import { destinationFromPlace } from '../../services/V2DirectionsService';
 import { MapLocalizationService } from '../../services/MapLocalizationService';
 import { V2PlaceAdapter } from '../../services/V2PlaceAdapter';
 import { IJTEMA_MAP_REGION } from '../../data/ijtema';
-import { MapLabelOverlay, MapLabelItem, MapLabelOverlayHandle } from '../components/map/MapLabelOverlay';
+import { MapLabelOverlay, MapLabelItem, MapLabelOverlayHandle, hangSelectedLabelsBelowPin } from '../components/map/MapLabelOverlay';
 import { MapControls, MapControlsRecenter } from '../components/map/MapControls';
 import { LayersSheet } from '../components/map/LayersSheet';
 import { useNavigationOverlayV2 } from '../../viewmodels/useNavigationOverlayV2';
 import { useNavigationOverlayV1 } from '../../viewmodels/useNavigationOverlayV1';
 import { useMapMode } from '../../viewmodels/useMapMode';
 import { useReducedMotion } from '../../viewmodels/useReducedMotion';
+import { useDestinationPulse } from '../../viewmodels/useDestinationPulse';
 import { NavigationChromeV2 } from '../components/navigation/NavigationChromeV2';
 import { NavigationChromeV1 } from '../components/navigation/NavigationChromeV1';
 import { LocationSheet } from '../components/map/LocationSheet';
@@ -1292,10 +1293,15 @@ export function HomeScreen() {
         ? currentLocation
         : null
     : null;
-  const allMapLabelItems = useMemo<MapLabelItem[]>(
-    () => rememberedLabelCoordinate
+  // The destination pin's tip marks the place, so its own label hangs below the tip instead of under the pin body.
+  const destinationPinVisible = Boolean(
+    activePreviewRoute ? previewDestinationCoordinate : markerOwnership.showBrowseSelection && selectedPlace && selectedPlaceMarkerCoordinate,
+  );
+  const allMapLabelItems = useMemo<MapLabelItem[]>(() => {
+    const items = hangSelectedLabelsBelowPin(mapLabelItems, destinationPinVisible);
+    return rememberedLabelCoordinate
       ? [
-          ...mapLabelItems,
+          ...items,
           {
             id: 'user_last_known',
             coordinate: rememberedLabelCoordinate,
@@ -1306,9 +1312,8 @@ export function HomeScreen() {
             accessibilityLabel: 'Your last known location',
           },
         ]
-      : mapLabelItems,
-    [mapLabelItems, rememberedLabelCoordinate],
-  );
+      : items;
+  }, [destinationPinVisible, mapLabelItems, rememberedLabelCoordinate]);
 
   // MapLibre has no onMapReady: the style + archive finishing loading is the point the camera can be commanded.
   const handleMapReady = () => {
@@ -1400,6 +1405,13 @@ export function HomeScreen() {
       : [],
     [activePreviewRoute, previewInsideLegCoordinates, previewOutsideLegCoordinates],
   );
+  // One ring pulse per chosen destination (a selected place, then the same place as the route-preview destination).
+  const pulseTarget = activePreviewRoute
+    ? previewDestinationCoordinate
+    : markerOwnership.showBrowseSelection && selectedPlace
+      ? selectedPlaceMarkerCoordinate
+      : null;
+  const destinationPulse = useDestinationPulse(pulseTarget ? `${pulseTarget.latitude},${pulseTarget.longitude}` : null, reducedMotion);
   const mapOverlays = useMemo<OverlaySpec[]>(() => {
     const browseUser = markerOwnership.showBrowseUser && currentLocation
       ? buildMarkerOverlay({
@@ -1425,6 +1437,7 @@ export function HomeScreen() {
         selectedPin,
         destination: activePreviewRoute ? previewDestinationCoordinate : null,
         start: showPreviewStartMarker ? previewStartCoordinate : null,
+        pulse: destinationPulse,
       }),
       ...browseUser,
     ];
@@ -1434,6 +1447,7 @@ export function HomeScreen() {
     cameraManager.mode,
     currentLocation,
     currentLocationSource,
+    destinationPulse,
     markerOwnership.showBrowseSelection,
     markerOwnership.showBrowseUser,
     mode,
