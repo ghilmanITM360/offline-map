@@ -6,7 +6,6 @@
 import { Linking, Platform } from 'react-native';
 import * as Location from 'expo-location';
 import { Coordinate, LocationSource } from '../models/types';
-import { OnboardingStatusService } from './OnboardingStatusService';
 
 const DEVICE_LAST_KNOWN_MAX_AGE_MS = 30_000;
 const DEVICE_LAST_KNOWN_REQUIRED_ACCURACY_M = 50;
@@ -58,9 +57,6 @@ export class LocationAccessService {
     const permission = await Location.getForegroundPermissionsAsync();
     const servicesState = await queryServicesState();
     const granted = permission.status === 'granted';
-    // A mere status check that finds permission already granted still supersedes a stale skip
-    // (e.g. Settings' re-request flow re-checks after the OS prompt closes).
-    await OnboardingStatusService.clearSkippedLocationPermissionOnGrant(granted);
     return {
       granted,
       canAskAgain: permission.canAskAgain,
@@ -88,11 +84,6 @@ export class LocationAccessService {
         servicesEnabled: servicesState === 'enabled',
         servicesState,
       };
-      // Covers both surfaces that route through here (Home/Recenter, Directions
-      // current-location) with a single call — whether this pass just prompted for and
-      // received a fresh grant, or found permission already granted from a prior launch.
-      await OnboardingStatusService.clearSkippedLocationPermissionOnGrant(permissionState.granted);
-
       if (!permissionState.granted) {
         return {
           ok: false,

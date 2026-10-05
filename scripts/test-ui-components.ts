@@ -13,7 +13,7 @@ const navigation = [navigationVm, navigationOverlayV1, navigationMapLayersV1, na
 const settings = readFileSync('src/views/screens/SettingsScreen.tsx', 'utf8');
 const guide = readFileSync('src/views/screens/AppGuideScreen.tsx', 'utf8');
 const drawer = readFileSync('src/views/components/CustomDrawer.tsx', 'utf8');
-const permission = readFileSync('src/views/screens/PermissionScreen.tsx', 'utf8');
+const welcome = readFileSync('src/views/screens/WelcomeScreen.tsx', 'utf8');
 // v2 live navigation chrome now renders in-place on Home (see docs/ARCHITECTURE.md) —
 // include it so the raw-ID leak check below still covers it.
 const navigationChromeV2 = readFileSync('src/views/components/navigation/NavigationChromeV2.tsx', 'utf8');
@@ -33,8 +33,8 @@ const visibleUserText = [
 
 assert(!rawIdPattern.test(visibleUserText), 'Normal user-facing screen text should not expose raw v2 graph IDs');
 
-assert(permission.includes('ScrollView'), 'Permission screen must scroll on short screens and large font settings');
-assert(permission.includes('contentContainerStyle={styles.contentContainer}'), 'Permission screen must use scroll content constraints');
+assert(welcome.includes('ScrollView'), 'Welcome screen must scroll on short screens and large font settings');
+assert(welcome.includes('contentContainerStyle={styles.contentContainer}'), 'Welcome screen must use scroll content constraints');
 
 assert(home.includes('handleZoomIn') && home.includes('handleZoomOut'), 'Home zoom controls must be wired to handlers');
 assert(home.includes('handleRecenter'), 'Home current-location/recenter control must be wired');

@@ -62,16 +62,10 @@ export function SplashScreen() {
           return { granted: false, precision: 'none' as const };
         });
 
-      const skippedLocationPermissionPromise = OnboardingStatusService.hasSkippedLocationPermission().catch((error) => {
-        console.error('[SplashScreen] Failed to read the skipped-location-permission preference — assuming not skipped.', error);
-        return false;
-      });
-
       // Run all checks in parallel
-      const [permission, hasSeenWelcome, skippedLocationPermission, , hydrationResult] = await Promise.all([
+      const [permission, hasSeenWelcome, , hydrationResult] = await Promise.all([
         permissionPromise,
         hasSeenWelcomePromise,
-        skippedLocationPermissionPromise,
         minVisibleMs,
         // Persisted-store hydration gate (pre-APK correction) — StartupManager/
         // MapStartupController must never see default (unhydrated) persisted values.
@@ -107,38 +101,8 @@ export function SplashScreen() {
       // #307: approximate-only is a launch-time fact, not something to discover on the first Recenter.
       setLocationPermissionPrecision(permission.precision);
 
-      // Real permission is confirmed granted — supersede any earlier "Continue Without
-      // Location" choice so a later revocation is treated as fresh, not a still-standing
-      // skip. Uses the same canonical helper as every other permission-entry surface
-      // (Permission screen, Settings, Home/Recenter, Directions). `effectiveSkippedLocationPermission`
-      // is already computed above and does not depend on this write landing, and this call
-      // is wrapped in its own try/catch (on top of the helper's own internal one) so a
-      // cleanup failure can never fall through and override StartupManager's route
-      // resolution — see the "permission-skip cleanup is isolated from route resolution"
-      // tests in SplashScreen.test.tsx.
-      const effectiveSkippedLocationPermission = permissionGranted ? false : skippedLocationPermission;
-      if (permissionGranted && skippedLocationPermission) {
-        try {
-          await OnboardingStatusService.clearSkippedLocationPermissionOnGrant(true);
-        } catch (cleanupError) {
-          console.error('[SplashScreen] Failed to clear the skipped-location-permission preference — continuing startup with the in-memory decision.', cleanupError);
-        }
-      }
-
-      const { route } = StartupManager.resolve({
-        hasSeenWelcome,
-        permissionGranted,
-        skippedLocationPermission: effectiveSkippedLocationPermission,
-      });
-      // StartupManager only routes Splash to 'Permission' when Welcome was already seen,
-      // permission is not granted, and the user never chose "Continue Without Location"
-      // (a skip bypasses this route). That covers a permission revoked outside the app,
-      // but also a first ask interrupted by closing the app on the Permission screen —
-      // so `revoked` selects PermissionScreen's hedged "may have been turned off" copy,
-      // not a definite revocation claim (#153 Finding 2).
-      if (route === 'Permission') {
-        navigation.replace(route, { revoked: true });
-      } else if (route === 'Welcome' && onboardingStatusReadFailed) {
+      const { route } = StartupManager.resolve({ hasSeenWelcome });
+      if (route === 'Welcome' && onboardingStatusReadFailed) {
         navigation.replace(route, { onboardingStatusReadFailed: true });
       } else {
         navigation.replace(route);
