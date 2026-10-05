@@ -349,6 +349,63 @@ assert.equal(
   // Bundled OSM already includes its connectors — the same displaced geometry must not be charged again.
   const osm = finalizeOne(providerCandidate('offline-osm', gateId, providerDistanceM, scenarios[3].coordinates, 'osm-both'));
   assert.equal(osm.startConnectorDistanceM, providerDistanceM, 'offline-osm distance already includes its connectors — no extra join charge');
+
+  // A direct guide's endpoints are exact by contract — displaced geometry is not charged either.
+  const direct = finalizeOne(providerCandidate('direct-guide', gateId, providerDistanceM, scenarios[3].coordinates, 'direct-both'));
+  assert.equal(direct.startConnectorDistanceM, providerDistanceM, 'direct-guide adds no join charge');
+
+  // Cost, geometry and reported metadata all describe the SAME winning candidate (B), not the provider-only leader (A).
+  const gateBTarget = gateTarget('GATE_15');
+  const bGeometry = [OUTSIDE_NORTH_EAST, gateBTarget];
+  assert.equal(selection.selectedOutsideCandidateId, 'g-B', 'selected candidate id is the complete-journey winner');
+  assert.deepEqual(selection.outsideRoute?.coordinates, bGeometry, 'outsideRoute carries the winner geometry');
+  assert.equal(selection.outsideRoute?.gateId, 'GATE_15', 'outsideRoute gate matches the selected gate');
+  near(selection.startConnectorDistanceM!, distanceB, 'reported outside distance is the winner provider distance (exact endpoints)');
+  near(selection.routeCostM!, distanceB + coreB, 'route cost is the winner composed cost, not the loser');
+  const boundary = selection.coordinates[selection.outsideLegCoordinateCount!]; // index of the gate boundary node
+  near(distanceMetersBetween(boundary, gateBTarget), 0, 'rendered boundary node is the winner gate, not the loser gate');
+
+  // Fail safe on unmeasurable joins: a Google candidate whose geometry is non-finite or missing is ignored
+  // (like a non-finite distanceM), never allowed to win with a NaN/zero join.
+  const goodG = providerCandidate('google', 'GATE_15', distanceB, bGeometry, 'g-good');
+  const nanGeometry = providerCandidate('google', 'GATE_20', 0, [{ latitude: Number.NaN, longitude: 67.01 }, target], 'g-nan');
+  const emptyGeometry = providerCandidate('google', 'GATE_20', 0, [], 'g-empty');
+  for (const bad of [nanGeometry, emptyGeometry]) {
+    const survived = RoutingServiceV2.finalizeOutsideRoutingPlan({
+      plan,
+      outsideCandidates: candidateSet([bad, goodG]),
+      walkingSpeedMs: 1.4,
+    });
+    assert.equal(survived?.selectedOutsideCandidateId, 'g-good', `${bad.candidateId}: unmeasurable join must not win`);
+    assert(Number.isFinite(survived!.routeCostM!) && Number.isFinite(survived!.totalDistance), `${bad.candidateId}: outputs stay finite`);
+    assert.equal(
+      RoutingServiceV2.finalizeOutsideRoutingPlan({ plan, outsideCandidates: candidateSet([bad]), walkingSpeedMs: 1.4 }),
+      null,
+      `${bad.candidateId}: sole unmeasurable candidate returns null so the caller retains its last valid route`,
+    );
+  }
+
+  // Units: selection cost is meters only — provider durationSeconds never enters it.
+  const slowShort = { ...providerCandidate('google', gateId, 100, [OUTSIDE_NORTH_EAST, target], 'dur-short'), durationSeconds: 99999 };
+  const fastLong = { ...providerCandidate('google', gateId, 200, [OUTSIDE_NORTH_EAST, target], 'dur-long'), durationSeconds: 1 };
+  const byDistance = RoutingServiceV2.finalizeOutsideRoutingPlan({
+    plan,
+    outsideCandidates: { ...candidateSet([]), provider: 'google', outcomes: [{ status: 'routed', gateId, routes: [fastLong, slowShort] }] },
+    walkingSpeedMs: 1.4,
+  });
+  assert.equal(byDistance?.selectedOutsideCandidateId, 'dur-short', 'selection compares meters, not provider seconds');
+
+  // Deterministic tie-break: equal complete cost on the same gate resolves by candidateId regardless of input order.
+  const tieA = providerCandidate('google', gateId, 150, [OUTSIDE_NORTH_EAST, target], 'tie-a');
+  const tieB = providerCandidate('google', gateId, 150, [OUTSIDE_NORTH_EAST, target], 'tie-b');
+  for (const routes of [[tieA, tieB], [tieB, tieA]]) {
+    const picked = RoutingServiceV2.finalizeOutsideRoutingPlan({
+      plan,
+      outsideCandidates: { ...candidateSet([]), provider: 'google', outcomes: [{ status: 'routed', gateId, routes }] },
+      walkingSpeedMs: 1.4,
+    });
+    assert.equal(picked?.selectedOutsideCandidateId, 'tie-a', 'equal-cost tie resolves deterministically by candidateId');
+  }
 }
 
 delete process.env.EXPO_PUBLIC_USE_IJTEMA_OUTSIDE_STREET_GRAPH;
