@@ -8,11 +8,19 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { ErrorBoundary } from './src/components/ErrorBoundary'; // fixed: protect the navigator tree with a render error boundary
 
+// #140 POC harness: isolated MapLibre offline-render proof, off unless enabled at bundle time.
+// Required lazily so tests and normal builds never load the MapLibre native module.
+const OfflineMapPoc =
+  process.env.EXPO_PUBLIC_OFFLINE_MAP_POC === '1'
+    ? (require('./src/poc/OfflineMapPoc') as typeof import('./src/poc/OfflineMapPoc')).OfflineMapPoc
+    : null;
+
 // BottomSheetModalProvider must wrap every screen that presents a BottomSheetModal
 // (HomeScreen's directions/place sheet) — it renders a portal host so sheet content
 // mounts in its own layer, guaranteed to paint above MapView's native Android
 // SurfaceView regardless of sibling zIndex/elevation values.
 export default function App() {
+  if (OfflineMapPoc) return <OfflineMapPoc />;
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
