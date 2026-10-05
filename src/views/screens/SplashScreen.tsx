@@ -11,6 +11,7 @@ import * as Location from 'expo-location';
 import { useAppStore, waitForStoreHydration, type HydrationWaitOutcome } from '../../store/useAppStore';
 import { OnboardingStatusService } from '../../services/OnboardingStatusService';
 import { StartupManager } from '../../services/StartupManager';
+import { derivePrecision } from '../../services/LocationAccessService';
 import { RootStackParamList } from '../../navigation/RootNavigator';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { staticColors } from '../../theme';
@@ -20,7 +21,7 @@ export const SPLASH_BACKGROUND_COLOR = staticColors.arrivalGreen;
 export function SplashScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const fadeAnim = useRef(new Animated.Value(0)).current;
-  const { setHasLocationPermission } = useAppStore();
+  const { setHasLocationPermission, setLocationPermissionPrecision } = useAppStore();
   const isMountedRef = useRef(true); // fixed: guard navigation and state writes after unmount
   const minVisibleTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null); // fixed: cancel the splash delay on unmount
   const hydrationAbortControllerRef = useRef<AbortController | null>(null);
@@ -54,11 +55,11 @@ export function SplashScreen() {
         return false;
       });
 
-      const permissionGrantedPromise = Location.getForegroundPermissionsAsync()
-        .then((result) => result.status === 'granted')
+      const permissionPromise = Location.getForegroundPermissionsAsync()
+        .then((result) => ({ granted: result.status === 'granted', precision: derivePrecision(result) }))
         .catch((error) => {
           console.error('[SplashScreen] Failed to read location permission status — assuming not granted.', error);
-          return false;
+          return { granted: false, precision: 'none' as const };
         });
 
       const skippedLocationPermissionPromise = OnboardingStatusService.hasSkippedLocationPermission().catch((error) => {
@@ -67,8 +68,8 @@ export function SplashScreen() {
       });
 
       // Run all checks in parallel
-      const [permissionGranted, hasSeenWelcome, skippedLocationPermission, , hydrationResult] = await Promise.all([
-        permissionGrantedPromise,
+      const [permission, hasSeenWelcome, skippedLocationPermission, , hydrationResult] = await Promise.all([
+        permissionPromise,
         hasSeenWelcomePromise,
         skippedLocationPermissionPromise,
         minVisibleMs,
@@ -101,7 +102,10 @@ export function SplashScreen() {
         console.warn(`[SplashScreen] Continuing startup with outcome="${hydrationResult.outcome}" persisted-state hydration — using in-memory defaults for any key not yet confirmed from storage.`);
       }
 
+      const permissionGranted = permission.granted;
       setHasLocationPermission(permissionGranted);
+      // #307: approximate-only is a launch-time fact, not something to discover on the first Recenter.
+      setLocationPermissionPrecision(permission.precision);
 
       // Real permission is confirmed granted — supersede any earlier "Continue Without
       // Location" choice so a later revocation is treated as fresh, not a still-standing
@@ -158,7 +162,7 @@ export function SplashScreen() {
       }
       hydrationAbortControllerRef.current?.abort(); // let waitForStoreHydration drop its listeners immediately instead of idling out the timeout
     };
-  }, [fadeAnim, navigation, setHasLocationPermission]);
+  }, [fadeAnim, navigation, setHasLocationPermission, setLocationPermissionPrecision]);
 
   return (
     <View style={styles.container}>

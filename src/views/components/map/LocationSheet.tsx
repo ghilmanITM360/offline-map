@@ -52,6 +52,7 @@ import { DirectionsHeader, OfflineInfo, RouteEndpointRows } from './DirectionsSh
 import { publishDirectionsFooter, useDirectionsFooterHeight } from './DirectionsSheetFooter';
 import { OutsideRouteStatusCard } from '../navigation/OutsideRouteStatusCard';
 import type { NormalizedOutsideCandidate } from '../../../models/outsideRouting';
+import { liveBlockerMessage } from '../../../services/LocationCapability';
 
 declare const __DEV__: boolean;
 
@@ -443,10 +444,12 @@ function RoutePreviewSection({
                     <Text style={styles.linkButtonText}>{startAction.secondaryLabel}</Text>
                   </Pressable>
                 ) : null}
-                {startAttempt === 'failed' || startAttempt === 'settings' ? (
+                {startAttempt === 'failed' || startAttempt === 'settings' || startAttempt === 'services_off' ? (
                   <Text accessibilityLiveRegion="polite" style={styles.footerReason}>
                     {startAttempt === 'settings'
                       ? 'Allow location in Settings, then try again.'
+                      : startAttempt === 'services_off'
+                      ? liveBlockerMessage('services_off')
                       : "Couldn't find your location. Try again, or change your start."}
                   </Text>
                 ) : null}

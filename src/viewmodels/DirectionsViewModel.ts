@@ -9,6 +9,7 @@ import { useAppStore } from '../store/useAppStore';
 import { RoutingService } from '../services/RoutingService';
 import { InstructionService, Instruction } from '../services/InstructionService';
 import { Place, RouteAlternative, RoutePreview } from '../models/types';
+import { evaluateLocationCapability } from '../services/LocationCapability';
 import { LocationAccessService } from '../services/LocationAccessService';
 import {
   evaluateNavigationLocationCapability,
@@ -83,7 +84,7 @@ export function useDirectionsViewModel(destination: Place | null) {
   const [routeRefreshing, setRouteRefreshing] = useState(false);
   // Outcome of the last "Use my location & start" press: 'failed' = no usable fix, 'settings' = the user must
   // allow (precise) location in system settings. Shown as one plain sentence under the primary action.
-  const [startAttempt, setStartAttempt] = useState<'idle' | 'working' | 'failed' | 'settings'>('idle');
+  const [startAttempt, setStartAttempt] = useState<'idle' | 'working' | 'failed' | 'settings' | 'services_off'>('idle');
   const routeRef = useRef<RoutePreview | null>(null);
   const routeDestinationIdRef = useRef<string | null>(null);
   const outsideRequestCoordinatorRef = useRef(new OutsideRouteRequestCoordinator());
@@ -591,12 +592,19 @@ export function useDirectionsViewModel(destination: Place | null) {
       const resolved = await LocationAccessService.resolveCurrentLocation(true);
       setHasLocationPermission(resolved.permissionState.granted);
       setLocationPermissionPrecision(resolved.permissionState.precision);
-      const needsSettings =
-        (!resolved.permissionState.granted && !resolved.permissionState.canAskAgain) ||
-        (resolved.permissionState.granted && resolved.permissionState.precision === 'coarse');
-      if (needsSettings) {
+      const { permissionState } = resolved;
+      const blocker = evaluateLocationCapability({
+        permission: { granted: permissionState.granted, canAskAgain: permissionState.canAskAgain, precision: permissionState.precision, servicesState: permissionState.servicesState },
+        liveFix: resolved.source === 'live' ? resolved.coordinate : null,
+      }).liveBlocker;
+      if (blocker === 'permission_blocked' || blocker === 'approximate_only') {
         await LocationAccessService.openAppSettings();
         setStartAttempt('settings');
+        return;
+      }
+      if (blocker === 'services_off') {
+        await LocationAccessService.openLocationSettings();
+        setStartAttempt('services_off');
         return;
       }
       if (!resolved.ok || resolved.source !== 'live' || !resolved.coordinate) {

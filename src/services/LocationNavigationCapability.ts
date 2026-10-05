@@ -5,6 +5,7 @@
 
 
 import type { Coordinate } from '../models/types';
+import { classifyLiveFix, evaluateLocationCapability } from './LocationCapability';
 
 export type NavigationStartSource = 'live_gps' | 'device_last_known' | 'remembered_location' | 'manual_place';
 
@@ -25,9 +26,6 @@ interface NavigationLocationCapability {
   canStart: boolean;
   message: string;
 }
-
-const MAX_LIVE_NAVIGATION_ACCURACY_M = 50;
-const MAX_LIVE_FIX_AGE_MS = 30_000;
 
 export function evaluateNavigationLocationCapability(
   input: NavigationLocationCapabilityInput,
@@ -53,31 +51,22 @@ export function evaluateNavigationLocationCapability(
     };
   }
 
-  if (!input.coordinate) {
+  const fix = classifyLiveFix(input.coordinate, input.nowMs ?? Date.now());
+  if (fix === 'none') {
     return {
       canStart: false,
       message: 'Searching for a current location. Route preview remains available.',
     };
   }
 
-  if ((input.coordinate.accuracy ?? Number.POSITIVE_INFINITY) > MAX_LIVE_NAVIGATION_ACCURACY_M) {
+  if (fix === 'unusable') {
     return {
       canStart: false,
       message: 'Precise location is required for live navigation. Route preview remains available.',
     };
   }
 
-  const nowMs = input.nowMs ?? Date.now();
-  const observedAtMs = input.coordinate.observedAtMs;
-  // A future or non-finite observation cannot establish freshness. Fail closed after
-  // clock rollback too; the next valid live fix can restore navigation eligibility.
-  if (
-    observedAtMs == null ||
-    !Number.isFinite(observedAtMs) ||
-    !Number.isFinite(nowMs) ||
-    observedAtMs > nowMs ||
-    nowMs - observedAtMs > MAX_LIVE_FIX_AGE_MS
-  ) {
+  if (fix === 'stale') {
     return {
       canStart: false,
       message: 'Current location is stale. Wait for a fresh fix before starting live navigation.',
@@ -111,22 +100,19 @@ interface StartActionInput {
  * A planned/manual start is a route preview; live guidance still needs a fresh precise fix.
  */
 export function resolveStartAction(input: StartActionInput): StartAction {
-  if (!input.permission.granted) {
+  const capability = evaluateLocationCapability({
+    permission: { granted: input.permission.granted, canAskAgain: true, precision: input.permission.precision },
+    liveFix: input.liveFix,
+    nowMs: input.nowMs,
+  });
+  if (capability.permission === 'denied') {
     return { kind: 'turn_on_location', primaryLabel: 'Turn on location & start', secondaryLabel: 'View route' };
   }
-  if (input.permission.precision === 'coarse') {
+  if (capability.liveBlocker === 'approximate_only') {
     return { kind: 'precise_location', primaryLabel: 'Turn on precise location', secondaryLabel: 'View route' };
   }
-  const fixUsable =
-    input.liveFix !== null &&
-    evaluateNavigationLocationCapability({
-      startSource: 'live_gps',
-      coordinate: input.liveFix,
-      precision: input.permission.precision,
-      nowMs: input.nowMs,
-    }).canStart;
   // A manual / saved start is only a preview: live guidance begins from a fresh fix, never from the planned place.
-  if (input.startSource !== 'live_gps' || !fixUsable) {
+  if (input.startSource !== 'live_gps' || capability.fix !== 'usable') {
     return { kind: 'use_location', primaryLabel: 'Use my location & start', secondaryLabel: 'View route' };
   }
   return { kind: 'start', primaryLabel: 'Start Navigation', title: 'Ready to go' };

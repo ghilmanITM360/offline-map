@@ -30,7 +30,7 @@ export interface LocationPermissionState {
   servicesState: LocationServicesState;
 }
 
-function derivePrecision(permission: Location.LocationPermissionResponse): LocationPermissionPrecision {
+export function derivePrecision(permission: Location.LocationPermissionResponse): LocationPermissionPrecision {
   if (permission.status !== 'granted') return 'none';
   const androidAccuracy = (permission as { android?: { accuracy?: LocationPermissionPrecision } }).android?.accuracy;
   return androidAccuracy ?? 'fine';

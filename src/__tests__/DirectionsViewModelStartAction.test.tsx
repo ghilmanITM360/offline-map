@@ -104,6 +104,22 @@ describe('Start action for a chosen (manual) start', () => {
     expect(hook.result.current.startAction?.kind).toBe('use_location');
   });
 
+  test('#307: device location services off is its own outcome and opens location settings, not app settings', async () => {
+    const hook = await readyHook();
+    const openApp = jest.spyOn(LocationAccessService, 'openAppSettings').mockResolvedValue(true);
+    const openLocation = jest.spyOn(LocationAccessService, 'openLocationSettings').mockResolvedValue(true);
+    jest.spyOn(LocationAccessService, 'resolveCurrentLocation').mockResolvedValue(
+      resolved({ ok: false, source: null, permissionState: { ...granted, servicesEnabled: false, servicesState: 'disabled' } as never }),
+    );
+    const startNow = jest.fn();
+    await act(async () => hook.result.current.runStartAction(startNow));
+    expect(startNow).not.toHaveBeenCalled();
+    expect(openLocation).toHaveBeenCalledTimes(1);
+    expect(openApp).not.toHaveBeenCalled();
+    expect(hook.result.current.startAttempt).toBe('services_off');
+    expect(hook.result.current.route).not.toBeNull(); // the route guide stays available
+  });
+
   test('a last-known (non-live) result is not accepted as a live fix', async () => {
     const hook = await readyHook();
     jest.spyOn(LocationAccessService, 'resolveCurrentLocation').mockResolvedValue(

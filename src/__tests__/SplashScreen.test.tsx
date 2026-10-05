@@ -506,3 +506,26 @@ describe('SplashScreen — unrelated dependency failures cannot bypass StartupMa
     errorSpy.mockRestore();
   });
 });
+
+describe('SplashScreen — records the Android permission precision at launch (#307)', () => {
+  const precisionAfterLaunch = async (response: Record<string, unknown>) => {
+    (Location.getForegroundPermissionsAsync as jest.Mock).mockResolvedValue({ canAskAgain: true, ...response });
+    await act(async () => {
+      render(<SplashScreen />);
+    });
+    await flush();
+    return useAppStore.getState().locationPermissionPrecision;
+  };
+
+  it('an approximate-only grant is recorded as coarse, not left at the unread default', async () => {
+    expect(await precisionAfterLaunch({ status: 'granted', android: { accuracy: 'coarse' } })).toBe('coarse');
+  });
+
+  it('a precise grant is recorded as fine', async () => {
+    expect(await precisionAfterLaunch({ status: 'granted', android: { accuracy: 'fine' } })).toBe('fine');
+  });
+
+  it('a denied permission records none', async () => {
+    expect(await precisionAfterLaunch({ status: 'denied' })).toBe('none');
+  });
+});

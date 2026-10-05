@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import { accuracyFacet } from '../../services/LocationCapability';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, Animated, BackHandler, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -126,7 +127,7 @@ export function LocationsDirectoryScreen() {
 
   // Start-only quick options, shown only when the location behind them is usable.
   const canUseCurrentLocation =
-    !!currentLocation && currentLocationSource === 'live' && locationPermissionPrecision !== 'coarse';
+    !!currentLocation && currentLocationSource === 'live' && accuracyFacet(true, locationPermissionPrecision) !== 'approximate';
   const canUseLastKnown = !!lastKnownLocation;
 
   const goToMap = useCallback(() => {
