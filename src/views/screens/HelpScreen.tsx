@@ -82,12 +82,12 @@ export function HelpScreen() {
           <Text style={styles.sectionTitle}>Common Questions</Text>
           <HelpItem
             icon={HelpCircle}
-            title="How to use offline maps?"
-            description="Learn what remains available without internet."
+            title="Does the map work without internet?"
+            description="Yes — the map is built into the app."
             onPress={() =>
               showFAQ(
                 'Offline Maps',
-                'The venue graph, outside walking router, route preview, progress, instructions, rerouting, and arrival logic are bundled and work without a route API.\n\nWhen offline, an existing licensed local background package is used if present; otherwise the app shows its graph-only venue map. Google background imagery requires internet.',
+                'The map, the venue routes, the outside walking router, route preview, progress, instructions, rerouting and arrival are all built into the app. They work without internet and there is nothing to download.\n\nSome optional extras, like a live walking-route service, may use the internet when it is available, but you never need it.',
               )
             }
           />

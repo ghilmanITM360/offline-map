@@ -11,7 +11,6 @@ import { HomeScreen } from '../views/screens/HomeScreen';
 import { SplashScreen } from '../views/screens/SplashScreen';
 import { WelcomeScreen } from '../views/screens/WelcomeScreen';
 import { PermissionScreen } from '../views/screens/PermissionScreen';
-import { DownloadMapScreen } from '../views/screens/DownloadMapScreen';
 import { LocationsDirectoryScreen } from '../views/screens/LocationsDirectoryScreen';
 import { SettingsScreen } from '../views/screens/SettingsScreen';
 import { HelpScreen } from '../views/screens/HelpScreen';
@@ -42,7 +41,6 @@ export type RootStackParamList = {
   // app — see PermissionScreen (#153 Finding 2). A genuine first-ask (via Welcome's
   // Continue) passes no params.
   Permission: { revoked?: boolean } | undefined;
-  DownloadMap: undefined;
   LocationsDirectory: undefined;
   Main: NavigatorScreenParams<DrawerParamList> | undefined;
   AppGuide: undefined;
@@ -97,7 +95,6 @@ export function RootNavigator() {
       <Stack.Screen name="Splash" component={SplashScreen} />
       <Stack.Screen name="Welcome" component={WelcomeScreen} />
       <Stack.Screen name="Permission" component={PermissionScreen} />
-      <Stack.Screen name="DownloadMap" component={DownloadMapScreen} />
       <Stack.Screen name="LocationsDirectory" component={LocationsDirectoryScreen} />
       <Stack.Screen name="Main" component={MainDrawer} />
       <Stack.Screen name="AppGuide" component={AppGuideScreen} />

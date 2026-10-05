@@ -29,10 +29,9 @@ the radius, their referenced nodes and geometry (`out body geom`). The
 pedestrian profile filters access/construction, preserves directional rules,
 simplifies the graph and emits columnar TypeScript. This is vector data
 extraction, not raster tile scraping. No public `tile.openstreetmap.org`
-requests are made by this generator. `OfflineMapService` has no hardcoded/default
-public OSM tile endpoint; its tile source is configured through
-`EXPO_PUBLIC_TILE_BASE_URL`, so any future configured source must be checked
-separately. These source facts do not certify unrelated historical/manual downloads.
+requests are made by this generator. The app has no tile-download code any more:
+the visual basemap is a project-generated archive built from OSM *data*
+(`scripts/offline-map/`, see `docs/OFFLINE_BASEMAP.md`) and bundled with the install.
 
 OSM-derived database content is © OpenStreetMap contributors, licensed under
 [ODbL 1.0](https://opendatacommons.org/licenses/odbl/1-0/).

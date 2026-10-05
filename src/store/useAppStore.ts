@@ -8,7 +8,6 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   UserSettings,
-  OfflineData,
   Place,
   Coordinate,
   RoutePreview,
@@ -17,10 +16,7 @@ import {
   RouteAlternative,
   NavigationInstruction,
   SearchResult,
-  DownloadState,
-  DEFAULT_DOWNLOAD_STATE,
   FavoritePlace,
-  OfflineMapStatus,
   LocationSource,
 } from '../models/types';
 import { MapFeatureFlagsService } from '../services/MapFeatureFlagsService';
@@ -67,9 +63,6 @@ function sanitizePersistedSettings(value: unknown, defaults: UserSettings): User
   if (!value || typeof value !== 'object' || Array.isArray(value)) return defaults;
   const persisted = value as Record<string, unknown>;
   const settings = { ...defaults };
-  if (persisted.mapMode === 'standard' || persisted.mapMode === 'satellite' || persisted.mapMode === 'hybrid') {
-    settings.mapMode = persisted.mapMode;
-  }
   if (persisted.distanceUnit === 'meters' || persisted.distanceUnit === 'feet') {
     settings.distanceUnit = persisted.distanceUnit;
   }
@@ -86,20 +79,6 @@ function sanitizePersistedSettings(value: unknown, defaults: UserSettings): User
 }
 
 interface AppState {
-  // --- Offline map ---
-  offlineData: OfflineData;
-  offlineMapStatus: OfflineMapStatus;
-  offlineMapStatusMessage: string | null;
-  setOfflineDownloaded: (val: boolean) => void;
-  setOfflineMapAvailable: (val: boolean) => void;
-  setOfflineMapStatus: (status: OfflineMapStatus, message?: string | null) => void;
-  updateOfflineData: (data: Partial<OfflineData & { version?: string; lastUpdated?: string }>) => void;
-
-  // --- Download flow ---
-  downloadState: DownloadState;
-  setDownloadState: (state: Partial<DownloadState>) => void;
-  resetDownloadState: () => void;
-
   // --- Settings (persisted) ---
   settings: UserSettings;
   updateSettings: (newSettings: Partial<UserSettings>) => void;
@@ -346,10 +325,6 @@ function partializeAppState(state: AppState) {
   const now = Date.now();
   const recents = pruneRecentSearches(sanitizePersistedPlaces(state.recentSearches), state.recentSearchTimes, now);
   return {
-    offlineData: state.offlineData,
-    offlineMapStatus: state.offlineMapStatus,
-    offlineMapStatusMessage: state.offlineMapStatusMessage,
-    downloadState: state.downloadState,
     settings: state.settings,
     ...recents,
     favorites: sanitizePersistedFavorites(state.favorites),
@@ -371,44 +346,8 @@ function partializeAppState(state: AppState) {
 export const useAppStore = create<AppState>()(
   persist(
     (set, get) => ({
-      // --- Offline map ---
-      offlineData: { isDownloaded: false },
-      offlineMapStatus: 'not_downloaded',
-      offlineMapStatusMessage: null,
-      setOfflineDownloaded: (val) =>
-        set((state) => ({
-          offlineData: {
-            ...state.offlineData,
-            isDownloaded: val,
-            downloadDate: val ? new Date().toISOString() : undefined,
-            sizeMB: val ? 24.5 : 0,
-          },
-          offlineMapStatus: val ? 'downloaded' : 'not_downloaded',
-          offlineMapStatusMessage: null,
-        })),
-      setOfflineMapAvailable: (val) =>
-        set((state) => ({
-          offlineData: { ...state.offlineData, isDownloaded: val },
-          offlineMapStatus: val ? 'downloaded' : 'not_downloaded',
-          offlineMapStatusMessage: null,
-        })),
-      setOfflineMapStatus: (status, message = null) =>
-        set(() => ({
-          offlineMapStatus: status,
-          offlineMapStatusMessage: message,
-        })),
-      updateOfflineData: (data) =>
-        set((state) => ({ offlineData: { ...state.offlineData, ...data } })),
-
-      // --- Download flow ---
-      downloadState: DEFAULT_DOWNLOAD_STATE,
-      setDownloadState: (partial) =>
-        set((state) => ({ downloadState: { ...state.downloadState, ...partial } })),
-      resetDownloadState: () => set({ downloadState: DEFAULT_DOWNLOAD_STATE }),
-
       // --- Settings ---
       settings: {
-        mapMode: 'standard',
         autoFollowLocation: false,
         keepNorthFixed: false,
         darkMode: false,

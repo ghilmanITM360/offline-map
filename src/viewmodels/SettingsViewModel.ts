@@ -9,7 +9,6 @@ import { Alert } from 'react-native';
 import * as Location from 'expo-location';
 import { UserSettings } from '../models/types';
 import { LocationAccessService, LocationPermissionState } from '../services/LocationAccessService';
-import { OfflineDataService } from '../services/OfflineDataService';
 
 export function useSettingsViewModel() {
   const {
@@ -46,27 +45,6 @@ export function useSettingsViewModel() {
       { text: 'Cancel', style: 'cancel' },
       { text: 'Clear', style: 'destructive', onPress: run },
     ]);
-  };
-
-  const handleRedownloadMap = async (navigateToDownload?: () => void) => {
-    try {
-      await OfflineDataService.deleteAllMapData();
-      navigateToDownload?.();
-    } catch (err) {
-      console.error(err);
-      Alert.alert('Could not update map', 'Map data could not be cleared. Please try again.');
-    }
-  };
-
-  const handleDeleteMap = async (navigateToDownload?: () => void) => {
-    try {
-      await OfflineDataService.deleteAllMapData();
-      Alert.alert('Map data deleted', 'Offline map data was removed from this device.');
-      navigateToDownload?.();
-    } catch (err) {
-      console.error(err);
-      Alert.alert('Could not delete map data', 'Offline map data could not be removed. Please try again.');
-    }
   };
 
   const refreshLocationPermissionState = useCallback(async () => {
@@ -123,9 +101,7 @@ export function useSettingsViewModel() {
     settings,
     handleToggle,
     updateSettingValue,
-    handleRedownloadMap,
     handleClearLocalData,
-    handleDeleteMap,
     handleReRequestPermission,
     locationPermissionState,
     refreshLocationPermissionState,

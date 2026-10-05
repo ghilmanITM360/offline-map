@@ -30,8 +30,8 @@ Evidence for each row: a screenshot or screen recording, plus the log excerpt fo
 | # | Step | Expected | Result | Evidence |
 |---|---|---|---|---|
 | 2.1 | Fresh install, cold launch, no dev server | Splash, then Welcome | NOT RUN | |
-| 2.2 | Continue, allow location "While using the app" (Precise) | Download Map screen | NOT RUN | |
-| 2.3 | Choose the venue-map-only option and confirm | Home map with the gate markers | NOT RUN | |
+| 2.2 | Continue, allow location "While using the app" (Precise) | Directory (no map-setup step; the offline map is already installed) | NOT RUN | |
+| 2.3 | Pick Block 1 | Map renders the bundled basemap with Block 1 focused, offline | NOT RUN | |
 | 2.4 | Force-stop and relaunch | Lands on the Directory, not onboarding | NOT RUN | |
 
 ## 3. Real GPS acquisition and freshness (#46 tier)

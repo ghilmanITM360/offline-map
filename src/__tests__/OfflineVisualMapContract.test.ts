@@ -3,10 +3,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-// #140: offline = venue core; third-party imagery is optional online context. No UI copy may promise
-// downloaded/offline imagery while release builds cannot download any (docs/OFFLINE_NAVIGATION_AND_ROUTING.md).
+// #140 (owner decision 2026-10-05): the visual map ships with the app and works with no internet. No UI copy may claim a
+// map must be downloaded or that imagery needs internet, and no download/setup screen may come back
+// (docs/OFFLINE_NAVIGATION_AND_ROUTING.md).
 
-import { readdirSync, readFileSync, statSync } from 'fs';
+import { existsSync, readdirSync, readFileSync, statSync } from 'fs';
 import { join } from 'path';
 
 const walk = (dir: string): string[] =>
@@ -15,17 +16,29 @@ const walk = (dir: string): string[] =>
     return statSync(p).isDirectory() ? walk(p) : /\.(tsx?)$/.test(name) ? [p] : [];
   });
 
-const OVERCLAIMS = [
-  /downloaded satellite tiles/i,
-  /offline satellite tiles/i,
+const STALE_CLAIMS = [
   /Download map data before/i,
   /'Use offline maps'/,
+  /Map isn.t downloaded/i,
+  /Background map not downloaded/i,
+  /Download background map/i,
+  /imagery needs internet/i,
+  /Satellite imagery requires internet/i,
+  /satellite background needs internet/i,
+  /Use Venue Map Only/i,
+  /Map setup/i,
 ];
 
-describe('#140 user-facing copy does not promise offline imagery', () => {
-  const files = ['views', 'viewmodels', 'navigation'].flatMap((d) => walk(join(__dirname, '..', d)));
+describe('#140 user-facing copy matches the bundled offline map', () => {
+  const files = ['views', 'viewmodels', 'navigation', 'utils'].flatMap((d) => walk(join(__dirname, '..', d)));
 
-  it.each(OVERCLAIMS.map((re) => [String(re), re] as const))('no UI source contains %s', (_label, re) => {
+  it.each(STALE_CLAIMS.map((re) => [String(re), re] as const))('no UI source contains %s', (_label, re) => {
     expect(files.filter((f) => re.test(readFileSync(f, 'utf8')))).toEqual([]);
+  });
+
+  it('the Download Map screen and its services are gone', () => {
+    for (const gone of ['views/screens/DownloadMapScreen.tsx', 'viewmodels/DownloadMapViewModel.ts', 'services/OfflineMapService.ts', 'services/OfflineMapStatusService.ts']) {
+      expect(existsSync(join(__dirname, '..', gone))).toBe(false);
+    }
   });
 });

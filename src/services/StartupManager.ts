@@ -3,12 +3,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { OfflineMapStatus } from '../models/types';
 import { RootStackParamList } from '../navigation/RootNavigator';
 
-export type SetupPhase = 'first_install' | 'incomplete_setup' | 'ready';
+export type SetupPhase = 'first_install' | 'ready';
 
-export type StartupRoute = Extract<keyof RootStackParamList, 'Welcome' | 'Permission' | 'DownloadMap' | 'LocationsDirectory'>;
+export type StartupRoute = Extract<keyof RootStackParamList, 'Welcome' | 'Permission' | 'LocationsDirectory'>;
 
 export interface StartupChecks {
   hasSeenWelcome: boolean;
@@ -18,10 +17,6 @@ export interface StartupChecks {
    * Permission route below so a returning user who already skipped isn't re-prompted
    * every launch. */
   skippedLocationPermission: boolean;
-  offlineMapStatus: OfflineMapStatus;
-  graphOnlyModeEnabled: boolean;
-  skippedOnlineModeEnabled: boolean;
-  isConnected: boolean;
 }
 
 export interface StartupResolution {
@@ -30,10 +25,8 @@ export interface StartupResolution {
 }
 
 /**
- * Single resolver for the Splash routing decision. Behavior is unchanged from the
- * previous inline if/else chain in SplashScreen — this only names the six branches so
- * they read as three flows (first install / incomplete setup / ready) instead of an
- * unlabeled sequence of early returns.
+ * Single resolver for the Splash routing decision. The venue basemap ships inside the app (#140), so there is no map
+ * download/setup step: a returning user goes straight to the Directory, a first-time user Welcome → Permission → Directory.
  */
 export class StartupManager {
   static resolve(checks: StartupChecks): StartupResolution {
@@ -45,29 +38,6 @@ export class StartupManager {
       return { phase: 'first_install', route: 'Permission' };
     }
 
-    if (checks.offlineMapStatus === 'downloaded') {
-      return { phase: 'ready', route: 'LocationsDirectory' };
-    }
-
-    if (checks.offlineMapStatus === 'corrupt' || checks.offlineMapStatus === 'needs_update') {
-      return { phase: 'incomplete_setup', route: 'DownloadMap' };
-    }
-
-    if (checks.graphOnlyModeEnabled && checks.offlineMapStatus === 'not_downloaded') {
-      return { phase: 'ready', route: 'LocationsDirectory' };
-    }
-
-    if (checks.skippedOnlineModeEnabled && checks.offlineMapStatus === 'not_downloaded') {
-      // User already chose "Use Online Mode" once — don't re-prompt every launch.
-      return { phase: 'ready', route: 'LocationsDirectory' };
-    }
-
-    if (!checks.isConnected && checks.offlineMapStatus === 'not_downloaded') {
-      // No internet AND no map — go to the directory in graph-only mode.
-      return { phase: 'ready', route: 'LocationsDirectory' };
-    }
-
-    // Have internet, no map yet, never chosen a mode before — go to download.
-    return { phase: 'incomplete_setup', route: 'DownloadMap' };
+    return { phase: 'ready', route: 'LocationsDirectory' };
   }
 }

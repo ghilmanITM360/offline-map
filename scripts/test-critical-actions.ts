@@ -16,8 +16,6 @@ const navScreen = [
   readFileSync('src/views/components/navigation/NavigationChromeV1.tsx', 'utf8'),
 ].join('\n');
 const homeScreen = readFileSync('src/views/screens/HomeScreen.tsx', 'utf8');
-const offlineMapService = readFileSync('src/services/OfflineMapService.ts', 'utf8');
-const offlineDataService = readFileSync('src/services/OfflineDataService.ts', 'utf8');
 const appStore = readFileSync('src/store/useAppStore.ts', 'utf8');
 const locationAccess = readFileSync('src/services/LocationAccessService.ts', 'utf8');
 const rootNavigator = readFileSync('src/navigation/RootNavigator.tsx', 'utf8');
@@ -102,22 +100,6 @@ assert(settingsScreen.includes('Distance Unit'), 'Settings should expose Distanc
 assert(settingsScreen.includes('Walking Speed'), 'Settings should expose Walking Speed selector');
 
 assert(
-  offlineDataService.includes('deleteAllMapData'),
-  'Offline data deletion should be centralized in OfflineDataService.deleteAllMapData',
-);
-assert(
-  offlineMapService.includes('runExclusive') || offlineMapService.includes('operationQueue'),
-  'Offline map DB operations should be serialized to avoid close/query races',
-);
-assert(
-  offlineMapService.includes('if (this.db)') && offlineMapService.includes('closeDatabase'),
-  'Delete Map Data should guard null/closed SQLite handles and close safely',
-);
-assert(
-  offlineDataService.includes("setOfflineMapStatus('not_downloaded'"),
-  'Delete Map Data should reset offline map status to not_downloaded',
-);
-assert(
   appStore.includes('lastKnownLocationUpdatedAt') && appStore.includes('currentLocationSource'),
   'Remembered location fallback should persist timestamp and source metadata',
 );
@@ -198,14 +180,9 @@ assert(
   navScreen.includes('onPress={requestNavigationExit}') && navScreen.includes('onPress={completeArrivalNavigation}'),
   'Navigation active Exit and arrival Done actions must use their canonical paths',
 );
-assert(
-  readFileSync('src/viewmodels/DownloadMapViewModel.ts', 'utf8').includes('downloadInProgressRef'),
-  'Download flow should guard against re-entrant resume/retry worker starts',
-);
-
 assert(rootNavigator.includes("name=\"AppGuide\""), 'App Guide route should be registered');
 assert(customDrawer.includes("label: 'Home'"), 'Drawer should include Home');
-assert(customDrawer.includes("label: 'Offline Maps'"), 'Drawer should include Offline Maps');
+assert(!customDrawer.includes("label: 'Offline Maps'"), 'Drawer must not offer Offline Maps: the map ships with the app (#140)');
 assert(customDrawer.includes("label: 'Settings'"), 'Drawer should include Settings');
 assert(customDrawer.includes("label: 'Help & Feedback'"), 'Drawer should include Help & Feedback');
 assert(customDrawer.includes("label: 'About Ijtema Map'"), 'Drawer should include About Ijtema Map');

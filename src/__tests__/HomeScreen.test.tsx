@@ -169,12 +169,10 @@ function useFakeHomeViewModel() {
       cancelEarlyReplay: jest.fn(),
       notifyMapLayout: jest.fn(),
     },
-    mapType: 'standard' as const,
     selectedPlace,
     snapPoints: ['15%', '50%', '92%'],
     initialRegion: { latitude: 24.9, longitude: 67.1, latitudeDelta: 0.01, longitudeDelta: 0.01 },
     isOffline: false,
-    offlineData: { isDownloaded: false },
     mapZoomLevel: 15.5,
     isInsideVenue: () => true,
     venueStatus: { insideVenue: false, insideBlock: null },
@@ -192,7 +190,6 @@ function useFakeHomeViewModel() {
     setSelectedPlace,
     updateSettings: jest.fn(),
     settings: {
-      mapMode: 'standard' as const,
       autoFollowLocation: true,
       keepNorthFixed: false,
       darkMode: false,
@@ -1070,11 +1067,7 @@ describe('HomeScreen — bundled offline basemap (#140)', () => {
   });
 });
 
-describe('HomeScreen — resolved base-map rendering', () => {
-  beforeEach(() => {
-    useAppStore.setState({ offlineMapStatus: 'downloaded' });
-  });
-
+describe('HomeScreen — map attribution band', () => {
   afterEach(() => {
     jest.restoreAllMocks();
   });

@@ -16,9 +16,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
-  Map as MapIcon,
   Navigation,
-  Download,
   Info,
   Shield,
   Trash2,
@@ -26,7 +24,6 @@ import {
   Volume2,
   Globe,
   Compass,
-  Calendar,
   Footprints,
   BookOpen,
   LucideIcon,
@@ -44,8 +41,6 @@ import { backChevron } from '../components/common/directionalIcons';
 import { useSettingsViewModel } from '../../viewmodels/SettingsViewModel';
 import { useTheme } from '../../services/useTheme';
 import { useAppStore } from '../../store/useAppStore';
-import { MapConfigService } from '../../services/MapConfigService';
-import { OfflineMapService } from '../../services/OfflineMapService';
 import { staticColors } from '../../theme';
 
 declare const __DEV__: boolean;
@@ -54,20 +49,14 @@ export function SettingsScreen() {
   const navigation = useNavigation<any>();
   const BackIcon = backChevron();
   const theme = useTheme();
-  const offlineData = useAppStore((s) => s.offlineData); // fixed: focused selector prevents every GPS store update from re-rendering SettingsScreen
-  const hasInternet = useAppStore((s) => s.hasInternet);
   const developerModeEnabled = useAppStore((s) => s.developerModeEnabled);
   const setDeveloperModeEnabled = useAppStore((s) => s.setDeveloperModeEnabled);
-  const hasGoogleMapsKey = MapConfigService.isGoogleMapsKeyConfigured();
-  const offlineTileDownloadAvailable = OfflineMapService.isOfflineTileDownloadAvailable();
   const [versionTapCount, setVersionTapCount] = useState(0);
   const {
     settings,
     handleToggle,
     updateSettingValue,
-    handleRedownloadMap,
     handleClearLocalData,
-    handleDeleteMap,
     handleReRequestPermission,
     locationPermissionState,
     refreshLocationPermissionState,
@@ -223,28 +212,6 @@ export function SettingsScreen() {
         <View style={[styles.section, { backgroundColor: theme.card, borderColor: theme.border }]}>
           <Text style={[styles.sectionTitle, { color: theme.primary }]}>Map Display</Text>
           <SettingItem
-            icon={MapIcon}
-            label="Map Style"
-            value={settings.mapMode === 'standard' ? 'Standard' : 'Satellite'}
-            type="text"
-            onPress={() => {
-              if (settings.mapMode === 'standard') {
-                if (!hasInternet) {
-                  Alert.alert('Satellite unavailable', 'Satellite imagery requires internet. Ijtema routes still work offline.');
-                  return;
-                }
-                if (!hasGoogleMapsKey) {
-                  Alert.alert('Satellite unavailable', MapConfigService.getMissingGoogleMapsMessage());
-                  return;
-                }
-                updateSettingValue('mapMode', 'satellite');
-                return;
-              }
-              updateSettingValue('mapMode', 'standard');
-            }}
-            description="Switch between road and satellite view"
-          />
-          <SettingItem
             icon={Navigation}
             label="Auto-follow Location"
             value={settings.autoFollowLocation}
@@ -317,78 +284,6 @@ export function SettingsScreen() {
             type="text"
             onPress={handleReRequestPermission}
             description={locationPermissionDescription}
-          />
-        </View>
-
-        <View style={[styles.section, { backgroundColor: theme.card, borderColor: theme.border }]}>
-          <Text style={[styles.sectionTitle, { color: theme.primary }]}>Offline Data</Text>
-          {offlineData.downloadDate && (
-            <SettingItem
-              icon={Calendar}
-              label="Download Date"
-              value={new Date(offlineData.downloadDate).toLocaleDateString()}
-              type="text"
-              description="When the map was last downloaded"
-            />
-          )}
-          {(offlineData.sizeMB ?? 0) > 0 && ( // fixed: bare number 0 wrapped in boolean guard so {0 && ...} never renders the number directly
-            <SettingItem
-              icon={Info}
-              label="Map Size"
-              value={`${offlineData.sizeMB} MB`}
-              type="text"
-              description="Storage used by offline tiles"
-            />
-          )}
-          {offlineTileDownloadAvailable ? (
-            <SettingItem
-              icon={Download}
-              label="Update Map"
-              value="Update"
-              type="text"
-              onPress={() => {
-                Alert.alert('Update Map', 'Delete existing map and download the latest version?', [
-                  { text: 'Cancel', style: 'cancel' },
-                  {
-                    text: 'Update',
-                    onPress: () =>
-                      handleRedownloadMap(() =>
-                        navigation.reset({ index: 0, routes: [{ name: 'DownloadMap' }] })
-                      ),
-                  },
-                ]);
-              }}
-              description="Download latest licensed offline map package"
-            />
-          ) : (
-            <SettingItem
-              icon={Download}
-              label="Offline Background"
-              value="Unavailable"
-              type="text"
-              description="Routing stays offline; a licensed background-map package is not configured"
-            />
-          )}
-          <SettingItem
-            icon={Trash2}
-            label="Delete Map Data"
-            value="Delete"
-            type="text"
-            danger
-            onPress={() => {
-              Alert.alert('Delete offline map data?', 'This removes downloaded tiles and resets map status. You can download again later.', [
-                { text: 'Cancel', style: 'cancel' },
-                {
-                  text: 'Delete',
-                  style: 'destructive',
-                  onPress: () =>
-                    handleDeleteMap(() =>
-                      navigation.reset({ index: 0, routes: [{ name: 'DownloadMap' }] })
-                    ),
-                },
-              ]);
-            }}
-            description="Free up device storage"
           />
         </View>
 

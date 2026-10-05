@@ -38,13 +38,17 @@ Confirmed official gate coordinates:
 - Gate 13: `24.963718, 67.006862`
 - Gate 14: `24.965516, 67.007675`
 
-## Offline visual-map contract (#140, owner decision 2026-10-05)
+## Offline visual-map contract (#140, owner decision 2026-10-05 — supersedes the earlier "imagery is optional" decision)
 
-"Offline" means the **venue core**: the bundled venue graph, gates/blocks/rastas/special routes, venue geometry and labels, internal and bundled-OSM outside routing, Directions, active navigation, reroute and arrival all work with no network, and no route calculation has a hidden network requirement.
+The whole Ijtema experience works with **zero internet**: launch, Directory, Place Details, the **visual map**, blocks/gates/paths/special routes, destination focus, Route Preview, Start, progress, reroute, arrival and process-death recovery. Internet is optional everywhere.
 
-Third-party street/satellite **background imagery is optional online context**. The app does not download, prefetch or bulk-store tiles from `tile.openstreetmap.org` or any other public tile server, and no offline imagery package is shipped. `OfflineMapService.isOfflineTileDownloadAvailable()` is `false` in every release build (dev/mock only), so the Download Map step only explains this and offers to continue; `HomeScreen` falls back to the graph-only venue map (`BaseMapModeResolver`) when imagery is unavailable. Existing validated local tiles, if any, still render. Adding a licensed offline imagery source later is a new decision, not part of this milestone.
+- **Renderer:** MapLibre Native (`@maplibre/maplibre-react-native`) on a **bundled vector archive** — see [ADR 0001](adr/0001-offline-visual-map-renderer.md) and [OFFLINE_BASEMAP.md](OFFLINE_BASEMAP.md). The archive ships inside the APK and is copied once into app-private storage on first launch (`BundledBasemap`); there is **no Download Map step, no map setup screen, no download banner and no remote tile/style/font/sprite request**.
+- **Data:** generated from OpenStreetMap *data* (ODbL, "© OpenStreetMap contributors" shown by the map's attribution control). The app never downloads or bulk-prefetches tiles from `tile.openstreetmap.org` / `vector.openstreetmap.org` (prohibited by the OSM Foundation) and nothing is derived from Google data.
+- **Routing:** internal and outside routing run on bundled graphs (no network). A live walking-route provider is an optional enhancement only (#123/#161).
+- **First launch:** Splash → Welcome → Permission → Directory. No map-setup step.
+- **Failure mode:** if the archive cannot be installed or read, the map falls back to a plain canvas with the venue overlays — never a download prompt.
 
-User-facing copy must not promise downloaded imagery; `OfflineVisualMapContract.test.ts` guards the known phrases.
+`OfflineVisualMapContract.test.ts` guards the user-facing copy, `npm run test:offline-basemap` the archive/provenance.
 
 ## v1 rollback path
 

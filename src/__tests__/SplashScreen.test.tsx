@@ -7,9 +7,6 @@ import React from 'react';
 import * as Location from 'expo-location';
 import { SplashScreen, SPLASH_BACKGROUND_COLOR } from '../views/screens/SplashScreen';
 import appConfig from '../../app.json';
-import { OfflineMapService } from '../services/OfflineMapService';
-import { OfflineMapStatusService } from '../services/OfflineMapStatusService';
-import { ConnectivityService } from '../services/ConnectivityService';
 import { OnboardingStatusService } from '../services/OnboardingStatusService';
 import { useAppStore } from '../store/useAppStore';
 import { act, render } from './test-utils';
@@ -17,22 +14,6 @@ import { act, render } from './test-utils';
 jest.mock('expo-location', () => ({
   getForegroundPermissionsAsync: jest.fn(),
   PermissionStatus: { GRANTED: 'granted', DENIED: 'denied', UNDETERMINED: 'undetermined' },
-}));
-
-jest.mock('../services/OfflineMapService', () => ({
-  OfflineMapService: { getMapStatus: jest.fn() },
-}));
-
-jest.mock('../services/OfflineMapStatusService', () => ({
-  OfflineMapStatusService: {
-    validateAtStartup: jest.fn(),
-    isGraphOnlyModeEnabled: jest.fn(),
-    isSkippedOnlineModeEnabled: jest.fn(),
-  },
-}));
-
-jest.mock('../services/ConnectivityService', () => ({
-  ConnectivityService: { isConnected: jest.fn() },
 }));
 
 jest.mock('../services/OnboardingStatusService', () => ({
@@ -92,11 +73,6 @@ beforeEach(() => {
   jest.clearAllMocks();
   useAppStore.setState(initialStoreState, true);
   (Location.getForegroundPermissionsAsync as jest.Mock).mockResolvedValue({ status: 'granted', canAskAgain: true });
-  (OfflineMapService.getMapStatus as jest.Mock).mockResolvedValue({ isDownloaded: true, downloadDate: null, sizeMB: 24.5 });
-  (OfflineMapStatusService.validateAtStartup as jest.Mock).mockResolvedValue({ status: 'downloaded', manifest: null });
-  (OfflineMapStatusService.isGraphOnlyModeEnabled as jest.Mock).mockResolvedValue(false);
-  (OfflineMapStatusService.isSkippedOnlineModeEnabled as jest.Mock).mockResolvedValue(false);
-  (ConnectivityService.isConnected as jest.Mock).mockResolvedValue(true);
   (OnboardingStatusService.hasSeenWelcome as jest.Mock).mockResolvedValue(true);
   (OnboardingStatusService.hasSkippedLocationPermission as jest.Mock).mockResolvedValue(false);
   (OnboardingStatusService.setSkippedLocationPermission as jest.Mock).mockResolvedValue(undefined);
@@ -241,8 +217,7 @@ describe('SplashScreen — permission-skip cleanup is isolated from route resolu
     expect(mockReplaceSpy).toHaveBeenCalledTimes(1);
   });
 
-  it('granted + stale skip + successful clear: still resolves the normal route for a downloaded map', async () => {
-    (OfflineMapStatusService.validateAtStartup as jest.Mock).mockResolvedValue({ status: 'downloaded', manifest: null });
+  it('granted + stale skip + successful clear: still resolves the normal route for a returning user', async () => {
 
     await renderAndResolveHydration();
 
@@ -250,10 +225,9 @@ describe('SplashScreen — permission-skip cleanup is isolated from route resolu
     expect(mockReplaceSpy).toHaveBeenCalledWith('LocationsDirectory');
   });
 
-  it('a rejected cleanup call does not fall through to the generic startup-failure route — a downloaded map still resolves to the Locations Directory', async () => {
+  it('a rejected cleanup call does not fall through to the generic startup-failure route — a returning user still resolves to the Locations Directory', async () => {
     const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
     (OnboardingStatusService.clearSkippedLocationPermissionOnGrant as jest.Mock).mockRejectedValue(new Error('disk full'));
-    (OfflineMapStatusService.validateAtStartup as jest.Mock).mockResolvedValue({ status: 'downloaded', manifest: null });
 
     await renderAndResolveHydration();
 
@@ -261,32 +235,6 @@ describe('SplashScreen — permission-skip cleanup is isolated from route resolu
     expect(mockReplaceSpy).toHaveBeenCalledWith('LocationsDirectory');
     // Proves the real startup-failure catch branch never ran — that branch always sets this
     // specific message and forces the map status back to not_downloaded.
-    expect(useAppStore.getState().offlineMapStatusMessage).not.toEqual(expect.stringContaining('Startup checks failed'));
-    expect(useAppStore.getState().offlineMapStatus).toBe('downloaded');
-    errorSpy.mockRestore();
-  });
-
-  it('a rejected cleanup call still lets a corrupt map status route to DownloadMap', async () => {
-    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
-    (OnboardingStatusService.clearSkippedLocationPermissionOnGrant as jest.Mock).mockRejectedValue(new Error('disk full'));
-    (OfflineMapStatusService.validateAtStartup as jest.Mock).mockResolvedValue({ status: 'corrupt', reason: 'checksum mismatch' });
-
-    await renderAndResolveHydration();
-
-    expect(mockReplaceSpy).toHaveBeenCalledTimes(1);
-    expect(mockReplaceSpy).toHaveBeenCalledWith('DownloadMap');
-    errorSpy.mockRestore();
-  });
-
-  it('a rejected cleanup call still lets a needs_update map status route to DownloadMap', async () => {
-    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
-    (OnboardingStatusService.clearSkippedLocationPermissionOnGrant as jest.Mock).mockRejectedValue(new Error('disk full'));
-    (OfflineMapStatusService.validateAtStartup as jest.Mock).mockResolvedValue({ status: 'needs_update', reason: 'newer version available' });
-
-    await renderAndResolveHydration();
-
-    expect(mockReplaceSpy).toHaveBeenCalledTimes(1);
-    expect(mockReplaceSpy).toHaveBeenCalledWith('DownloadMap');
     errorSpy.mockRestore();
   });
 
@@ -360,32 +308,6 @@ describe('SplashScreen — hydration degradation is route-safe', () => {
     expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('[SplashScreen]'));
     expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('outcome="timeout"'));
 
-    warnSpy.mockRestore();
-  });
-
-  it('a corrupt map status still routes to DownloadMap after a hydration failure, not the generic Main fallback', async () => {
-    (OfflineMapStatusService.validateAtStartup as jest.Mock).mockResolvedValue({ status: 'corrupt', reason: 'checksum mismatch' });
-    const controllable = controllableStorage();
-    useAppStore.persist.setOptions({ storage: controllable.storage });
-    const rehydratePromise = useAppStore.persist.rehydrate();
-    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
-    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
-
-    await act(async () => {
-      render(<SplashScreen />);
-    });
-    await act(async () => {
-      controllable.reject(new Error('AsyncStorage read failed'));
-      await rehydratePromise.catch(() => {});
-    });
-    await flush();
-
-    expect(mockReplaceSpy).toHaveBeenCalledTimes(1);
-    expect(mockReplaceSpy).toHaveBeenCalledWith('DownloadMap');
-    // Proves the real startup-failure catch branch (which always forces Main) never ran.
-    expect(useAppStore.getState().offlineMapStatusMessage).not.toEqual(expect.stringContaining('Startup checks failed'));
-
-    errorSpy.mockRestore();
     warnSpy.mockRestore();
   });
 
@@ -532,93 +454,11 @@ describe('SplashScreen — unrelated dependency failures cannot bypass StartupMa
     errorSpy.mockRestore();
   });
 
-  it('a map-status read failure does not assume a healthy downloaded map — still routes to DownloadMap when connected', async () => {
-    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
-    (OfflineMapStatusService.validateAtStartup as jest.Mock).mockRejectedValue(new Error('AsyncStorage read failed'));
-
-    await renderAndSettleHydration();
-
-    expect(mockReplaceSpy).toHaveBeenCalledTimes(1);
-    expect(mockReplaceSpy).toHaveBeenCalledWith('DownloadMap');
-    expect(useAppStore.getState().offlineMapStatus).toBe('not_downloaded');
-    expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('Failed to validate offline map status'), expect.any(Error));
-    errorSpy.mockRestore();
-  });
-
-  it('a map-status read failure combined with offline still lands on the graph-only Locations Directory, never a hardcoded fallback', async () => {
-    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
-    (OfflineMapStatusService.validateAtStartup as jest.Mock).mockRejectedValue(new Error('AsyncStorage read failed'));
-    (ConnectivityService.isConnected as jest.Mock).mockResolvedValue(false);
-
-    await renderAndSettleHydration();
-
-    expect(mockReplaceSpy).toHaveBeenCalledTimes(1);
-    expect(mockReplaceSpy).toHaveBeenCalledWith('LocationsDirectory');
-    // Proves this reached Main via StartupManager's graph-only/offline branch, not the
-    // deleted catch-all — that branch always set this exact message.
-    expect(useAppStore.getState().offlineMapStatusMessage).not.toEqual(expect.stringContaining('Startup checks failed'));
-    errorSpy.mockRestore();
-  });
-
-  it('a connectivity read failure preserves the existing conservative (offline) behavior', async () => {
-    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
-    (ConnectivityService.isConnected as jest.Mock).mockRejectedValue(new Error('network module crashed'));
-    (OfflineMapStatusService.validateAtStartup as jest.Mock).mockResolvedValue({ status: 'not_downloaded', manifest: null });
-
-    await renderAndSettleHydration();
-
-    expect(mockReplaceSpy).toHaveBeenCalledTimes(1);
-    expect(mockReplaceSpy).toHaveBeenCalledWith('LocationsDirectory'); // no internet + no map -> graph-only directory, same as a real disconnected read
-    expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('Failed to read connectivity status'), expect.any(Error));
-    errorSpy.mockRestore();
-  });
-
-  it('a corrupt map status still routes to DownloadMap even when an unrelated skipped-permission read also fails', async () => {
-    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
-    (OfflineMapStatusService.validateAtStartup as jest.Mock).mockResolvedValue({ status: 'corrupt', reason: 'checksum mismatch' });
-    (OnboardingStatusService.hasSkippedLocationPermission as jest.Mock).mockRejectedValue(new Error('disk full'));
-
-    await renderAndSettleHydration();
-
-    expect(mockReplaceSpy).toHaveBeenCalledTimes(1);
-    expect(mockReplaceSpy).toHaveBeenCalledWith('DownloadMap');
-    errorSpy.mockRestore();
-  });
-
-  it('a needs_update map status still routes to DownloadMap even when connectivity read fails', async () => {
-    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
-    (OfflineMapStatusService.validateAtStartup as jest.Mock).mockResolvedValue({ status: 'needs_update', reason: 'newer version available' });
-    (ConnectivityService.isConnected as jest.Mock).mockRejectedValue(new Error('network module crashed'));
-
-    await renderAndSettleHydration();
-
-    expect(mockReplaceSpy).toHaveBeenCalledTimes(1);
-    expect(mockReplaceSpy).toHaveBeenCalledWith('DownloadMap');
-    errorSpy.mockRestore();
-  });
-
-  it('graph-only mode still resolves to the Locations Directory when an unrelated permission-skip read fails', async () => {
-    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
-    (OfflineMapStatusService.validateAtStartup as jest.Mock).mockResolvedValue({ status: 'not_downloaded', manifest: null });
-    (OfflineMapStatusService.isGraphOnlyModeEnabled as jest.Mock).mockResolvedValue(true);
-    (OnboardingStatusService.hasSkippedLocationPermission as jest.Mock).mockRejectedValue(new Error('disk full'));
-
-    await renderAndSettleHydration();
-
-    expect(mockReplaceSpy).toHaveBeenCalledTimes(1);
-    expect(mockReplaceSpy).toHaveBeenCalledWith('LocationsDirectory');
-    errorSpy.mockRestore();
-  });
-
   it('every dependency failing at once still resolves exactly one route via StartupManager (Welcome wins precedence), never a hardcoded fallback', async () => {
     const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
     (OnboardingStatusService.hasSeenWelcome as jest.Mock).mockRejectedValue(new Error('a'));
     (Location.getForegroundPermissionsAsync as jest.Mock).mockRejectedValue(new Error('b'));
     (OnboardingStatusService.hasSkippedLocationPermission as jest.Mock).mockRejectedValue(new Error('c'));
-    (OfflineMapStatusService.validateAtStartup as jest.Mock).mockRejectedValue(new Error('d'));
-    (ConnectivityService.isConnected as jest.Mock).mockRejectedValue(new Error('e'));
-    (OfflineMapStatusService.isGraphOnlyModeEnabled as jest.Mock).mockRejectedValue(new Error('f'));
-    (OfflineMapStatusService.isSkippedOnlineModeEnabled as jest.Mock).mockRejectedValue(new Error('g'));
 
     await renderAndSettleHydration();
 

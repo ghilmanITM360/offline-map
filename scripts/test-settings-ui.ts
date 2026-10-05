@@ -7,7 +7,6 @@ const appStore = readFileSync('src/store/useAppStore.ts', 'utf8');
 
 const requiredFunctionalRows = [
   'Voice Language',
-  'Map Style',
   'Auto-follow Location',
   'North-up Map',
   'Voice Instructions',
@@ -15,8 +14,6 @@ const requiredFunctionalRows = [
   'Distance Unit',
   'Walking Speed',
   'Location Permission',
-  'Update Map',
-  'Delete Map Data',
   'App Guide',
 ];
 
@@ -30,12 +27,10 @@ assert(settings.includes("handleToggle('keepNorthFixed')"), 'North-up row must b
 assert(settings.includes("handleToggle('voiceInstructions')"), 'Voice instructions row must be functional');
 assert(settings.includes("handleToggle('autoReroute')"), 'Auto-reroute row must be functional');
 assert(settings.includes('handleReRequestPermission'), 'Location Permission row must be functional');
-assert(settings.includes('handleRedownloadMap'), 'Update Map row must be functional');
-assert(settings.includes('handleDeleteMap'), 'Delete Map row must be functional');
 assert(settings.includes("navigation.navigate('AppGuide')"), 'App Guide row must be functional');
 
 assert(settings.includes('disabled={!isToggle && !onPress}'), 'Info-only rows must not look or behave like active buttons');
-assert(settings.includes('Download Date') && settings.includes('Map Size'), 'Offline info rows must remain info-only');
+assert(!settings.includes('Update Map') && !settings.includes('Delete Map Data') && !settings.includes('Map Style'), 'Settings must not offer map download/delete or a map style: the offline map ships with the app (#140)');
 assert(settings.includes('Developer Mode') && settings.includes('__DEV__'), 'Developer Mode must be hidden outside development builds');
 assert(appStore.includes('persist') && appStore.includes('settings'), 'Settings must persist through app restarts');
 assert(settingsVm.includes('LocationAccessService.openAppSettings'), 'Permission management must open OS app settings when needed');

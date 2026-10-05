@@ -77,7 +77,7 @@ assert(
 
 assert(settings.includes('disabled={!isToggle && !onPress}'), 'Settings info-only rows must be disabled');
 assert(settings.includes('numberOfLines={1}') && settings.includes('ellipsizeMode="tail"'), 'Settings labels/values must constrain long text');
-assert(settings.includes('Alert.alert') && settings.includes('Delete offline map data?'), 'Settings delete-map action must require confirmation');
+assert(!settings.includes('Delete Map Data') && !settings.includes('Update Map'), 'Settings must not offer map download/delete: the map ships with the app (#140)');
 assert(settings.includes('App Guide') && settings.includes("navigation.navigate('AppGuide')"), 'Settings App Guide row must navigate');
 
 assert(guide.includes('ScrollView'), 'App Guide must be scrollable');

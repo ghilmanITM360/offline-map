@@ -9,7 +9,7 @@ import { NativeModules } from 'react-native';
  * #130 TTFD readiness. The returning-user harness is "fully usable" when the startup destination
  * is LocationsDirectory and that screen has finished transitioning in. Splash only routes there
  * after it has awaited persisted-store hydration and resolved setup (StartupManager), so reaching
- * the Directory already proves both. First-install setup screens (Welcome/Permission/DownloadMap)
+ * the Directory already proves both. First-install setup screens (Welcome/Permission)
  * block startup and are a different measurement: if one of them is the first destination, the
  * signal never fires, even if the Directory is reached later in that same journey.
  */
