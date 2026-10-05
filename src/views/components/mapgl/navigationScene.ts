@@ -9,9 +9,15 @@ import { resolveMapMarkerOwnership } from '../map/MapMarkerOwnership';
 import { IJTEMA_DATA } from '../../../constants/data';
 import { RoutePointService } from '../../../services/RoutePointService';
 import type { NavigationOverlayV1 } from '../../../viewmodels/useNavigationOverlayV1';
+import type { PulsePhase } from './mapDesign';
 import { buildMarkerOverlay, buildNavigationVenueOverlay, buildRouteOverlay, buildVenueBoundaryOverlay, type OverlaySpec } from './overlaySpec';
 
-type NavSceneInput = Pick<NavigationOverlayV2, 'route' | 'snappedLocation' | 'arrived' | 'reroutePending' | 'mapLayers' | 'currentLocationSource'>;
+type NavSceneInput = Pick<NavigationOverlayV2, 'route' | 'snappedLocation' | 'arrived' | 'reroutePending' | 'mapLayers' | 'currentLocationSource'> & {
+  /** Set only when the route was REPLACED (accepted reroute): the new route reveals and the old one fades. */
+  revealKey?: string;
+  /** Destination ring phase; arrival plays it once per journey. */
+  pulse?: PulsePhase;
+};
 
 /**
  * Everything the map shows during NAVIGATION / ARRIVAL, bottom → top: quiet venue context, the route
@@ -19,7 +25,7 @@ type NavSceneInput = Pick<NavigationOverlayV2, 'route' | 'snappedLocation' | 'ar
  * straight from the snapped location — nothing here animates or invents movement.
  */
 export function buildNavigationScene(overlay: NavSceneInput): OverlaySpec[] {
-  const { route, snappedLocation, arrived, reroutePending, mapLayers, currentLocationSource } = overlay;
+  const { route, snappedLocation, arrived, reroutePending, mapLayers, currentLocationSource, revealKey, pulse } = overlay;
   if (!route) return [];
 
   const { outside, inside } = V2MapRenderingService.splitOutsideInsideCoordinates(route.coordinates ?? [], route.outsideLegCoordinateCount);
@@ -28,23 +34,27 @@ export function buildNavigationScene(overlay: NavSceneInput): OverlaySpec[] {
 
   return [
     ...buildNavigationVenueOverlay({ blocks: mapLayers.blocks, rastas: mapLayers.rastas, specialRoutes: mapLayers.specialRoutes }),
-    ...buildRouteOverlay({ outside, roadFollowing: route.outsideRoute?.roadFollowing ?? false, inside, walked, remaining, reroutePending }),
+    ...buildRouteOverlay({ outside, roadFollowing: route.outsideRoute?.roadFollowing ?? false, inside, walked, remaining, reroutePending, revealKey }),
     ...buildMarkerOverlay({
       destination: ownership.showNavigationDestination ? route.destination.coordinate : null,
+      pulse,
       start: ownership.showNavigationStart ? route.origin.coordinate : null,
       user: ownership.showNavigationUser && snappedLocation ? { coordinate: snappedLocation, remembered: currentLocationSource === 'remembered' } : null,
     }),
   ];
 }
 
-type NavSceneInputV1 = Pick<NavigationOverlayV1, 'route' | 'destination' | 'snappedLocation' | 'arrived' | 'reroutePending' | 'mapLayers' | 'currentLocationSource'>;
+type NavSceneInputV1 = Pick<NavigationOverlayV1, 'route' | 'destination' | 'snappedLocation' | 'arrived' | 'reroutePending' | 'mapLayers' | 'currentLocationSource'> & {
+  revealKey?: string;
+  pulse?: PulsePhase;
+};
 
 /**
  * The legacy (v1) navigation scene — still used for facility destinations, whose routes come from the v1
  * graph. Same layering as the v2 scene: venue outline, quiet graph context, the route, then pins/user dot.
  */
 export function buildNavigationSceneV1(overlay: NavSceneInputV1): OverlaySpec[] {
-  const { route, destination, snappedLocation, arrived, reroutePending, mapLayers, currentLocationSource } = overlay;
+  const { route, destination, snappedLocation, arrived, reroutePending, mapLayers, currentLocationSource, revealKey, pulse } = overlay;
   if (!route) return [];
 
   const ownership = resolveMapMarkerOwnership(arrived ? 'ARRIVAL' : 'NAVIGATION', !!snappedLocation);
@@ -64,9 +74,10 @@ export function buildNavigationSceneV1(overlay: NavSceneInputV1): OverlaySpec[] 
   return [
     buildVenueBoundaryOverlay(mapLayers.venueBoundary),
     ...buildNavigationVenueOverlay({ blocks: blocks as never, rastas: edges as never, specialRoutes: [] }),
-    ...buildRouteOverlay({ outside: [], roadFollowing: false, inside: route.coordinates, reroutePending }),
+    ...buildRouteOverlay({ outside: [], roadFollowing: false, inside: route.coordinates, reroutePending, revealKey }),
     ...buildMarkerOverlay({
       destination: ownership.showNavigationDestination ? destinationCoordinate : null,
+      pulse,
       start: ownership.showNavigationStart ? route.coordinates[0] ?? null : null,
       user: ownership.showNavigationUser && snappedLocation ? { coordinate: snappedLocation, remembered: currentLocationSource === 'remembered' } : null,
     }),

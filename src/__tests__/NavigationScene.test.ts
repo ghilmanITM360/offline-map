@@ -1,4 +1,4 @@
-import { buildNavigationScene } from '../views/components/mapgl/navigationScene';
+import { buildNavigationScene, buildNavigationSceneV1 } from '../views/components/mapgl/navigationScene';
 
 const c = (latitude: number, longitude: number) => ({ latitude, longitude });
 const ROUTE_COORDS = [c(25, 67), c(25.001, 67), c(25.002, 67), c(25.003, 67)];
@@ -50,6 +50,20 @@ describe('buildNavigationScene', () => {
     expect(roles(buildNavigationScene(overlay({ arrived: true })))).toEqual(['destination']);
   });
 
+  it('reveals a rerouted route and not the route navigation started with', () => {
+    const plain = buildNavigationScene(overlay()).find((s) => s.id === 'route-inside')!;
+    expect(plain.reveal).toBeUndefined();
+    const rerouted = buildNavigationScene(overlay({ revealKey: 'reroute-1' })).find((s) => s.id === 'route-inside')!;
+    expect(rerouted.reveal!.key).toBe('reroute-1');
+  });
+
+  it('passes the arrival pulse to the destination marker and nowhere else', () => {
+    const ring = (specs: ReturnType<typeof buildNavigationScene>) =>
+      specs.find((s) => s.id === 'markers-pins')!.layers.find((l) => l.id === 'destination-pulse')!.paint['circle-opacity'];
+    expect(ring(buildNavigationScene(overlay({ arrived: true })))).toBe(0);
+    expect(ring(buildNavigationScene(overlay({ arrived: true, pulse: 'static' })))).toBeGreaterThan(0);
+  });
+
   it('keeps a user dot only when there is a snapped navigation location', () => {
     expect(ids(buildNavigationScene(overlay({ snappedLocation: null })))).not.toContain('markers-user');
   });
@@ -68,5 +82,26 @@ describe('buildNavigationScene', () => {
     };
     const specs = buildNavigationScene(withOutside);
     expect(ids(specs)).toContain('route-outside');
+  });
+});
+
+describe('buildNavigationSceneV1 (facility destinations)', () => {
+  const v1 = (over: Record<string, unknown> = {}) =>
+    ({
+      route: { coordinates: ROUTE_COORDS },
+      destination: { id: 'LM_X', coordinate: c(25.003, 67) },
+      snappedLocation: c(25.0015, 67),
+      arrived: true,
+      reroutePending: false,
+      mapLayers: { edges: [], blocks: [], venueBoundary: [] },
+      currentLocationSource: 'live',
+      ...over,
+    }) as never;
+
+  it('takes the same reroute reveal and arrival pulse as the v2 scene', () => {
+    const specs = buildNavigationSceneV1(v1({ revealKey: 'reroute-1', pulse: 'static' }));
+    expect(specs.find((s) => s.id === 'route-inside')!.reveal!.key).toBe('reroute-1');
+    const ring = specs.find((s) => s.id === 'markers-pins')?.layers.find((l) => l.id === 'destination-pulse');
+    expect(ring?.paint['circle-opacity']).toBeGreaterThan(0);
   });
 });

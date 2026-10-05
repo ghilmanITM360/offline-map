@@ -140,10 +140,16 @@ describe('route reveal timeline', () => {
   const out = [c(25, 67), c(25.003, 67)];
   const inn = [c(25.003, 67), c(25.004, 67)];
 
-  it('marks nothing for reveal unless asked, and never during live progress', () => {
+  it('marks nothing for reveal unless a key is given (live progress alone never animates)', () => {
     expect(buildRouteOverlay({ outside: out, roadFollowing: true, inside: inn }).every((s) => s.reveal === undefined)).toBe(true);
-    const nav = buildRouteOverlay({ outside: out, roadFollowing: true, inside: inn, walked: [inn[0]], remaining: inn, revealKey: 'k' });
+    const nav = buildRouteOverlay({ outside: out, roadFollowing: true, inside: inn, walked: [inn[0]], remaining: inn });
     expect(nav.every((s) => s.reveal === undefined)).toBe(true);
+  });
+
+  it('reveals a rerouted route during navigation: progress parts grow with the same key', () => {
+    const [outside, inside] = buildRouteOverlay({ outside: out, roadFollowing: true, inside: inn, walked: [], remaining: inn, revealKey: 'reroute-1' });
+    expect(outside.reveal!.key).toBe('reroute-1');
+    expect(inside.reveal!.key).toBe('reroute-1');
   });
 
   it('draws the outside leg first, then the inside leg, in proportion to their lengths, under one key', () => {
