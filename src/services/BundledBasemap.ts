@@ -7,6 +7,7 @@ import { Asset } from 'expo-asset';
 import { Directory, File, Paths } from 'expo-file-system';
 import provenance from '../../assets/offline-map/BASEMAP_PROVENANCE.json';
 import { BasemapFs, BasemapInstallResult, installBundledBasemap } from './BundledBasemapService';
+import { sha256Hex } from '../utils/sha256';
 
 const ARCHIVE_MODULE = require('../../assets/offline-map/ijtema-basemap.pmtiles');
 
@@ -18,6 +19,10 @@ const expoFs: BasemapFs = {
   sizeOf: (path) => {
     const f = new File(path);
     return f.exists ? f.size : null;
+  },
+  sha256: async (path) => {
+    const f = new File(path);
+    return f.exists ? sha256Hex(await f.bytes()) : null;
   },
   copy: (from, to) => new File(from).copy(new File(to)),
   move: (from, to) => new File(from).move(new File(to)),
