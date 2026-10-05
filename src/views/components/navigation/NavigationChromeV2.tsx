@@ -304,7 +304,8 @@ export function NavigationChromeV2({ overlay, hasBaseMap }: { overlay: Navigatio
         onRequestClose={completeArrivalNavigation}
       >
         <View style={styles.arrivedOverlay} accessibilityViewIsModal>
-          <View style={styles.arrivedCard}>
+          {/* The Modal window is full-screen (under the system nav bar), so the buttons must clear the bottom inset (#301). */}
+          <View testID="nav-arrived-card" style={[styles.arrivedCard, { paddingBottom: Math.max(36, insets.bottom + 24) }]}>
             <MapPin size={52} color={staticColors.arrivalGreen} />
             <Text style={styles.arrivedTitle}>You've Arrived!</Text>
             <Text style={styles.arrivedUrdu}>منزل پر پہنچ گئے</Text>

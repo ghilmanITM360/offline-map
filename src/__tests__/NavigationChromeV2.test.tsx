@@ -4,7 +4,7 @@
  */
 
 import React from 'react';
-import { AccessibilityInfo, Animated } from 'react-native';
+import { AccessibilityInfo, Animated, StyleSheet } from 'react-native';
 import { act, render, screen, userEvent, within } from './test-utils';
 
 import { NavigationChromeV2 } from '../views/components/navigation/NavigationChromeV2';
@@ -443,6 +443,14 @@ describe('NavigationChromeV2 — arrival sheet', () => {
     expect(screen.getByText("You've Arrived!")).toBeOnTheScreen();
     expect(screen.getByTestId('nav-arrived-recenter-button')).toBeOnTheScreen();
     expect(screen.getByTestId('nav-arrived-done-button')).toBeOnTheScreen();
+  });
+
+  test('#301: the arrival card keeps its buttons above the system navigation bar', async () => {
+    await render(<NavigationChromeV2 overlay={baseOverlay({ arrived: true })} hasBaseMap />);
+
+    const card = StyleSheet.flatten(screen.getByTestId('nav-arrived-card').props.style);
+    // test-utils provides a 34 dp bottom inset; the Modal window is full-screen, so the card pads past it.
+    expect(card.paddingBottom).toBeGreaterThanOrEqual(34 + 16);
   });
 
   test('pressing Recenter in the arrival sheet invokes setIsAutoFollowing(true)', async () => {
