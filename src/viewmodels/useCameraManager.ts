@@ -4,7 +4,7 @@
  */
 
 import { useCallback, useMemo, useRef, useState } from 'react';
-import MapView, { Camera } from 'react-native-maps';
+import type { MapCameraHandle } from '../views/components/mapgl/MapCameraHandle';
 import { useSafeAreaFrame, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Coordinate } from '../models/types';
 import { NAV_TRANSITION_TIMINGS } from '../constants/navigationTransitions';
@@ -24,7 +24,7 @@ interface EdgePadding {
 }
 
 interface Params {
-  mapRef: React.RefObject<MapView | null>;
+  mapRef: React.RefObject<MapCameraHandle | null>;
 }
 
 const USER_ZOOM_DELTA = 0.005;
@@ -245,7 +245,7 @@ export function useCameraManager({ mapRef }: Params) {
           zoom: opts?.zoom ?? 18,
           heading: opts?.heading ?? coord.heading ?? 0,
           pitch: opts?.pitch ?? 30,
-        } as Camera,
+        },
         { duration: opts?.duration ?? NAV_TRANSITION_TIMINGS.cameraEnterMs },
       );
       setCameraMode('NAVIGATION');
