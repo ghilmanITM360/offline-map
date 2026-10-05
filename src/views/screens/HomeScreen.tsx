@@ -112,6 +112,11 @@ const VENUE_BOUNDARY = [
 ];
 
 const ROUTE_FIT_BOTTOM_PADDING = 32;
+const routeRevealKey = (coordinates: Coordinate[]) => {
+  const first = coordinates[0];
+  const last = coordinates[coordinates.length - 1];
+  return `${first.latitude},${first.longitude}>${last.latitude},${last.longitude}#${coordinates.length}`;
+};
 // Get Directions pins its CTA footer (~155 dp) under a ~97 dp header, so the shared
 // 50% detent (~252 dp on a 914 dp window) leaves no scroll area and hides both cards.
 // 79% (~398 dp) shows the header, the Going to card through its whole destination row, and
@@ -1413,6 +1418,8 @@ export function HomeScreen() {
           outside: previewOutsideLegCoordinates,
           roadFollowing: activePreviewRoute.outsideRoute?.roadFollowing ?? false,
           inside: previewInsideLegCoordinates,
+          // Same geometry = same route: a re-fetch or re-render never replays the reveal, a new start or destination does.
+          revealKey: routeRevealKey(activePreviewRoute.coordinates),
         })
       : [],
     [activePreviewRoute, previewInsideLegCoordinates, previewOutsideLegCoordinates],
