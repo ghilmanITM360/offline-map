@@ -66,7 +66,7 @@ describe('Ijtema map design system', () => {
 
 describe('marker images', () => {
   it('registers every image the overlay layers can reference, as PNG data URIs at 3x', () => {
-    const wanted = ['pin-destination', 'pin-start', 'user-heading'];
+    const wanted = ['pin-destination', 'pin-start', 'user-heading', 'gate-badge', 'gate-badge-warning', 'route-chevron'];
     for (const p of LANDMARK_PLACES) {
       wanted.push(`facility-${facilityIconKey(p)}`);
     }
@@ -83,6 +83,8 @@ describe('marker images', () => {
     expect(tokens.start).toBe(staticColors.startMarker);
     expect(tokens.facility).toBe(staticColors.facilityAccent);
     expect(tokens.user).toBe(staticColors.userLocation);
+    expect(tokens.gate).toBe(staticColors.gateMarkerDot);
+    expect(tokens.gateWarning).toBe(staticColors.gateMarkerWarning);
   });
 
   it('keeps the walking-path palette semi-transparent so the active route outranks it', () => {

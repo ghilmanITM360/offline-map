@@ -58,6 +58,24 @@ const polygon = (coords: readonly Coordinate[], properties: GeoJSON.GeoJsonPrope
   geometry: { type: 'Polygon', coordinates: [ring(coords)] },
 });
 
+/** Small chevrons along a route line, pointing the way of travel (the image faces right; line placement rotates it). */
+const routeChevrons = (id: string, filter?: unknown[]): LayerSpec => ({
+  id,
+  type: 'symbol',
+  minzoom: 15,
+  layout: {
+    'symbol-placement': 'line',
+    'symbol-spacing': 72,
+    'icon-image': 'route-chevron',
+    'icon-size': ['interpolate', ['linear'], ['zoom'], 15, 0.8, 18, 1.15],
+    'icon-rotation-alignment': 'map',
+    'icon-allow-overlap': true,
+    'icon-ignore-placement': true,
+  },
+  paint: {},
+  ...(filter ? { filter } : {}),
+});
+
 const state = (selected: boolean, focused: boolean) => (selected ? 'selected' : focused ? 'focused' : 'normal');
 const byState = (selected: unknown, focused: unknown, normal: unknown) => ['match', ['get', 'state'], 'selected', selected, 'focused', focused, normal];
 
@@ -200,15 +218,23 @@ export function buildHomeVenueOverlay(input: HomeVenueInput): OverlaySpec[] {
         ),
       ),
       layers: [
+        // A door badge (not an anonymous dot); the gate number is its label. Orange = connector still needs field verification.
         {
-          id: 'gates-dot',
+          id: 'gates-selected-ring',
           type: 'circle',
-          paint: {
-            'circle-radius': byState(markerSizes.gate / 2 + 2, markerSizes.gate / 2 + 1, markerSizes.gate / 2),
-            'circle-color': ['case', ['==', ['get', 'warning'], 1], staticColors.gateMarkerWarning, staticColors.gateMarkerDot],
-            'circle-stroke-width': 1.5,
-            'circle-stroke-color': '#FFFFFF',
+          filter: ['!=', ['get', 'state'], 'normal'],
+          paint: { 'circle-radius': 19, 'circle-color': 'rgba(255,215,0,0.18)', 'circle-stroke-color': '#FFD700', 'circle-stroke-width': 3 },
+        },
+        {
+          id: 'gates-icon',
+          type: 'symbol',
+          layout: {
+            'icon-image': ['case', ['==', ['get', 'warning'], 1], 'gate-badge-warning', 'gate-badge'],
+            'icon-size': byState(1.2, 1.1, 1),
+            'icon-allow-overlap': true,
+            'icon-ignore-placement': true,
           },
+          paint: {},
         },
         { id: 'hit-gates', type: 'circle', paint: { 'circle-radius': 22, 'circle-color': 'rgba(0,0,0,0.01)' } },
       ],
@@ -319,6 +345,8 @@ export function buildRouteOverlay(input: RouteInput): OverlaySpec[] {
           layout: input.roadFollowing ? round : { 'line-join': 'round' },
           paint: { 'line-color': staticColors.routeOutside, 'line-width': 5, ...(input.roadFollowing ? {} : { 'line-dasharray': [1.6, 1.2] }) },
         },
+        // Direction is only worth drawing on a real road-following leg; a dashed direct guide is already approximate.
+        ...(input.roadFollowing && !input.reroutePending ? [routeChevrons('route-outside-chevrons')] : []),
       ],
     });
   }
@@ -331,12 +359,15 @@ export function buildRouteOverlay(input: RouteInput): OverlaySpec[] {
     ];
     if (!showProgress) {
       layers.push({ id: 'route-line', type: 'line', layout: lineLayout, paint: { 'line-color': staticColors.routeInside, 'line-width': MAP_LINE_WIDTH.activeRoute, ...dash }, filter: part('full') });
+      if (!input.reroutePending) layers.push(routeChevrons('route-chevrons', part('full')));
     } else {
       if (input.walked && input.walked.length > 1) features.push(line(input.walked, { part: 'walked' }));
       if (input.remaining && input.remaining.length > 1) features.push(line(input.remaining, { part: 'remaining' }));
       layers.push(
         { id: 'route-walked', type: 'line', layout: round, paint: { 'line-color': staticColors.routeWalked, 'line-width': MAP_LINE_WIDTH.walkedRoute }, filter: part('walked') },
         { id: 'route-remaining', type: 'line', layout: round, paint: { 'line-color': staticColors.routeInside, 'line-width': MAP_LINE_WIDTH.activeRoute }, filter: part('remaining') },
+        // Only the part still ahead points the way; the walked part is behind the user.
+        routeChevrons('route-chevrons', part('remaining')),
       );
     }
     specs.push({ id: 'route-inside', data: fc(features), layers, ...(reveals ? { reveal: { key: input.revealKey!, from: outsideM > 0 ? split : 0, to: 1 } } : {}) });
