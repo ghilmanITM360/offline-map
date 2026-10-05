@@ -35,6 +35,12 @@ export interface RouteGuideStep { text: string; distanceM: number }
  * isNavigating and is never persisted.
  */
 export interface RouteGuideState { steps: RouteGuideStep[]; stepIndex: number }
+
+/**
+ * A journey the Directory hands to Home (#307): "take me to `destination`". `live` starts from the user's real
+ * location; `guide` is a route guide from the chosen `start`. Runtime only; Home consumes and clears it.
+ */
+export interface PendingJourney { destination: Place; start: Place | null; mode: 'live' | 'guide' }
 /** What the Directory is being opened to choose; null = plain browsing. */
 export type DirectoryPurpose = 'start' | 'destination';
 /** A Directory answer. Quick start options carry no place: the initiator already owns the location. */
@@ -184,6 +190,8 @@ interface AppState {
   // directory screen may set this before HomeScreen has even mounted.
   pendingDirectorySelection: Place | null;
   setPendingDirectorySelection: (place: Place | null) => void;
+  pendingJourney: PendingJourney | null;
+  setPendingJourney: (journey: PendingJourney | null) => void;
   // The Directory is the one place chooser. An initiator (Get Directions) sets the purpose before opening it, the
   // Directory shows that question and, instead of browsing, stores the chosen place in directoryChoice and returns;
   // the initiator consumes (and clears) the choice. Both are ephemeral and never persisted.
@@ -476,6 +484,8 @@ export const useAppStore = create<AppState>()(
       // --- Locations directory hand-off ---
       pendingDirectorySelection: null,
       setPendingDirectorySelection: (place) => set({ pendingDirectorySelection: place }),
+      pendingJourney: null,
+      setPendingJourney: (journey) => set({ pendingJourney: journey }),
       directoryPurpose: null,
       setDirectoryPurpose: (purpose) => set({ directoryPurpose: purpose }),
       directoryChoice: null,
