@@ -183,7 +183,7 @@ function FadeContent({ transitionKey, children }: { transitionKey: string; child
 
 /** Hint under the start name; a resolved start needs none (its name already says it). */
 function startSourceHelper(source: StartSource, unresolved: boolean): string | undefined {
-  if (unresolved) return 'Choose where you are starting from';
+  if (unresolved) return undefined; // the row's own name ("Choose where to start") already asks
   return source === 'device_last_known' || source === 'remembered_location' ? 'Saved location, not live' : undefined;
 }
 
@@ -299,7 +299,9 @@ function RoutePreviewSection({
   const destinationCannotBeRouted =
     destination.isRoutable === false ||
     (destination.routingStatus !== undefined && destination.routingStatus !== 'routable');
-  const showStartHint = !showLoading && !showError && !showRouteReady;
+  // Only what the FROM row can't say: an outside start, or a saved (not live) start. "Start ready" said nothing new.
+  const savedStart = startSource === 'remembered_location' || startSource === 'device_last_known';
+  const showStartHint = !showLoading && !showError && !showRouteReady && (outsideStart || savedStart);
   const retryRoute = () => {
     if (retryInFlightRef.current) return;
     retryInFlightRef.current = true;
@@ -526,7 +528,7 @@ function RoutePreviewSection({
           {showStartHint && (
             <Card variant={outsideStart ? 'warning' : 'neutral'} style={styles.statusCard}>
               <Text style={[styles.statusTitle, outsideStart && styles.statusTitleWarning]}>
-                {outsideStart ? 'Outside Ijtema' : 'Start ready'}
+                {outsideStart ? 'Outside Ijtema' : 'Saved location'}
               </Text>
               <Text style={styles.statusText}>
                 {routeStatusMessage}

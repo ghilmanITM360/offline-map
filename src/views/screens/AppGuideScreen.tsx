@@ -70,7 +70,7 @@ const GUIDE_SECTIONS: GuideSection[] = [
     title: '5. Choose Start Source',
     urduTitle: '۵۔ آغاز کا مقام',
     body:
-      'Tap Change Start to open the place list. Use My Current Location = live GPS now. Use Last Known Location = your last saved location, not live. Or pick a gate, block or rasta yourself. If you start outside Ijtema, routes enter from the nearest connected official gate.',
+      'Tap the FROM row to open the place list. Use My Current Location = live GPS now. Use Last Known Location = your last saved location, not live. Or pick a gate, block or rasta yourself. If you start outside Ijtema, routes enter from the nearest connected official gate.',
   },
   {
     key: 'directions',
@@ -78,7 +78,7 @@ const GUIDE_SECTIONS: GuideSection[] = [
     title: '6. Directions Screen',
     urduTitle: '۶۔ ڈائریکشن اسکرین',
     body:
-      'Directions shows where you are going and where you are starting from. Tap Change Start to pick current location, last known location, or a place. When route is ready, tap Show route on map to see blue line, distance, and ETA on Home.',
+      'Directions shows FROM and TO. Tap either row to change it. When the route is ready, tap Use my location & start, or View route to see the blue line, distance, and time on the map.',
   },
   {
     key: 'navigation',
