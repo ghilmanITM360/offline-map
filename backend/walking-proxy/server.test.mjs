@@ -44,6 +44,11 @@ test('rate bound prevents repeated provider billing and health stays independent
  assert.equal((await post(url)).status,200);assert.equal((await post(url)).status,429);assert.equal((await fetch(url+'/healthz')).status,200);assert.equal(calls,1);
  });
 });
+test('provider 429 is not retried (bounded billing) and maps to a redacted gateway error',async()=>{
+ let calls=0;await withServer({apiKey:'test',fetchImpl:async()=>{calls++;return Response.json({error:'quota-secret'},{status:429});}},async url=>{
+  const r=await post(url);assert.equal(r.status,502);assert(!await r.text().then(t=>t.includes('secret')));assert.equal(calls,1);
+ });
+});
 test('provider deadline aborts and returns redacted gateway error',async()=>withServer({apiKey:'test',timeoutMs:20,fetchImpl:(_url,{signal})=>new Promise((_resolve,reject)=>signal.addEventListener('abort',()=>reject(new Error('secret')),{once:true}))},async url=>{
  const r=await post(url);assert.equal(r.status,502);assert(!await r.text().then(t=>t.includes('secret')));
 }));
