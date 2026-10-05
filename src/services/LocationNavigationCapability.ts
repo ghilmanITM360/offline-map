@@ -3,10 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { getDistance } from 'geolib';
 
 import type { Coordinate } from '../models/types';
-import { RerouteService } from './RerouteService';
 
 export type NavigationStartSource = 'live_gps' | 'device_last_known' | 'remembered_location' | 'manual_place';
 
@@ -89,17 +87,7 @@ export function evaluateNavigationLocationCapability(
   return { canStart: true, message: '' };
 }
 
-/**
- * How close a live fix must be to the route's planned start (its first point: the graph point a manual place snaps
- * to, or the outside start) to count as "there". This is a different question from fix quality
- * (MAX_LIVE_NAVIGATION_ACCURACY_M / freshness above), so it does not reuse that constant. It reuses the tolerance
- * live guidance already applies when deciding a fix is on the planned route, which grows with fix uncertainty and
- * is capped: a fix that passes here will not be treated as off-route the moment navigation begins.
- */
-export const startMatchToleranceM = (fixAccuracyM = 0): number =>
-  RerouteService.getDynamicOffRouteThresholdMeters(fixAccuracyM);
-
-export type StartActionKind = 'start' | 'use_location' | 'turn_on_location' | 'precise_location' | 'not_near';
+export type StartActionKind = 'start' | 'use_location' | 'turn_on_location' | 'precise_location';
 
 export interface StartAction {
   kind: StartActionKind;
@@ -112,9 +100,6 @@ export interface StartAction {
 
 interface StartActionInput {
   startSource: NavigationStartSource;
-  /** Where the route begins (its first point); a live fix is compared against it. */
-  plannedStart: Coordinate | null;
-  plannedStartName: string;
   /** Only a genuinely live fix; remembered / last-known / manual positions must not be passed here. */
   liveFix: Coordinate | null;
   permission: { granted: boolean; precision: 'fine' | 'coarse' | 'none' };
@@ -140,16 +125,9 @@ export function resolveStartAction(input: StartActionInput): StartAction {
       precision: input.permission.precision,
       nowMs: input.nowMs,
     }).canStart;
-  if (!fixUsable || !input.liveFix) {
+  // A manual / saved start is only a preview: live guidance begins from a fresh fix, never from the planned place.
+  if (input.startSource !== 'live_gps' || !fixUsable) {
     return { kind: 'use_location', primaryLabel: 'Use my location & start', secondaryLabel: 'View route' };
-  }
-  if (input.plannedStart && getDistance(input.liveFix, input.plannedStart) > startMatchToleranceM(input.liveFix.accuracy)) {
-    return {
-      kind: 'not_near',
-      title: `You're not near ${input.plannedStartName}`,
-      primaryLabel: 'Start from my location',
-      secondaryLabel: 'Change start',
-    };
   }
   return { kind: 'start', primaryLabel: 'Start Navigation', title: 'Ready to go' };
 }
