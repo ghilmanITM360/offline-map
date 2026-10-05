@@ -10,7 +10,7 @@ Android backup exclusions are already in place.
 |---|---|---|---|---|
 | Movement history / GPS trail / route samples | never persisted | - | none | n/a |
 | Active route, progress, snapped/current position | memory only | transient | process lifetime | n/a |
-| Last known location (one fix, `lastKnownLocation*`) | `ijtema-app-store` | sensitive | **24 h**, then dropped on write and on read | Settings > Privacy > Clear Saved Location |
+| Last known location (one fix, `lastKnownLocation*`) | `ijtema-app-store` | sensitive | **24 h**, then dropped on write and on read | Settings > Privacy > Clear Saved Location (a live GPS fix saves a new one afterwards) |
 | Recent searches (<=10, `recentSearches`, `recentSearchTimes`) | `ijtema-app-store` | search history | **30 days per entry** | Settings > Privacy > Clear Recent Searches |
 | Unfinished-journey marker (destination id + time, no coordinates) | `ijtema-app-store` | recovery marker | **2 h** | Settings > Privacy > Clear Navigation Recovery |
 | Favorites, settings, map-layer toggles, tutorial flags | `ijtema-app-store` | user preference | until user changes/uninstall | not wiped by any clear |

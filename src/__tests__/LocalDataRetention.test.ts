@@ -85,7 +85,7 @@ describe('#145 last known location: one latest fix, 24 h cutoff', () => {
     useAppStore.getState().setCurrentLocation(fix, 'live');
     useAppStore.getState().setCurrentLocation({ latitude: 24.97, longitude: 67.012 }, 'live');
     const written = JSON.stringify(rec.lastWrite().state);
-    expect(written).toContain('24.97');
+    expect(written).toContain('"latitude":24.97,');
     expect(written).not.toContain('24.9762');
   });
 });
@@ -107,9 +107,21 @@ describe('#145 recent searches: bounded list, 30 day retention', () => {
     expect(s.recentSearchTimes).toEqual({ NEW: NOW - 1000 });
   });
 
-  it('drops future-dated stamps', async () => {
+  it('clamps a future-dated stamp to now (clock moved back) instead of wiping the list', async () => {
     const s = await relaunchWith({ recentSearches: [place('F')], recentSearchTimes: { F: NOW + DAY } });
+    expect(s.recentSearches.map((p) => p.id)).toEqual(['F']);
+    expect(s.recentSearchTimes).toEqual({ F: NOW });
+  });
+
+  it('drops a non-numeric stamp', async () => {
+    const s = await relaunchWith({ recentSearches: [place('X')], recentSearchTimes: { X: 'soon' } });
     expect(s.recentSearches).toEqual([]);
+  });
+
+  it('a partial blob cannot leak raw stamps into state', async () => {
+    const s = await relaunchWith({ recentSearchTimes: 'x', lastKnownLocationUpdatedAt: 'x' });
+    expect(s.recentSearchTimes).toEqual({});
+    expect(s.lastKnownLocationUpdatedAt).toBeNull();
   });
 
   it('migrates a legacy blob without stamps: entries are kept and start their 30 day clock now', async () => {
@@ -160,6 +172,13 @@ describe('#145 targeted clear actions', () => {
     expect(s.recentSearches.map((p) => p.id)).toEqual(['B1']);
   });
 
+  it('a live fix after clearing saves a new single fix (documented behaviour)', () => {
+    seed();
+    useAppStore.getState().clearSavedLocation();
+    useAppStore.getState().setCurrentLocation({ latitude: 24.98, longitude: 67.02 }, 'live');
+    expect(useAppStore.getState().lastKnownLocation).toEqual({ latitude: 24.98, longitude: 67.02 });
+  });
+
   it('clearSavedLocation keeps a live fix', () => {
     seed();
     useAppStore.setState({ currentLocationSource: 'live' });
@@ -170,6 +189,7 @@ describe('#145 targeted clear actions', () => {
   it('clearing never touches favorites, settings, setup flags or offline data', () => {
     seed();
     const before = useAppStore.getState();
+    expect(before.favorites).toHaveLength(1);
     before.clearRecentSearches();
     before.clearSavedLocation();
     before.clearUnfinishedJourney();
@@ -207,9 +227,9 @@ describe('#145 persisted payload and schema safety', () => {
   });
 
   it('a future-version blob with unknown keys is whitelisted, not trusted', async () => {
-    const s = await relaunchWith({ locationHistory: [fix, fix], activeRoute: { x: 1 }, settings: 'garbage', recentSearches: 'nope' }, 99);
+    const s = await relaunchWith({ locationHistory: [fix, fix], currentLocation: fix, settings: 'garbage', recentSearches: 'nope' }, 99);
     expect((s as unknown as Record<string, unknown>).locationHistory).toBeUndefined();
-    expect(s.activeRoute).toBeNull();
+    expect(s.currentLocation).toBeNull();
     expect(s.recentSearches).toEqual([]);
     expect(s.settings.mapMode).toBe(initialStoreState.settings.mapMode);
   });

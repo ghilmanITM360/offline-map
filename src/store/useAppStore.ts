@@ -641,13 +641,14 @@ export const useAppStore = create<AppState>()(
         return {
           ...currentState,
           ...allowedState,
+          // Paired keys are always overridden so a partial blob can never leak a raw stamp into state.
           ...(hasLastKnown
             ? freshLastKnownLocation(persisted.lastKnownLocation as Coordinate | null, persisted.lastKnownLocationUpdatedAt, now)
-            : {}),
+            : { lastKnownLocation: currentState.lastKnownLocation, lastKnownLocationUpdatedAt: currentState.lastKnownLocationUpdatedAt }),
           settings: sanitizePersistedSettings(persisted.settings, currentState.settings),
           ...(Object.prototype.hasOwnProperty.call(persisted, 'recentSearches')
             ? pruneRecentSearches(sanitizePersistedPlaces(persisted.recentSearches), persisted.recentSearchTimes, now)
-            : {}),
+            : { recentSearches: currentState.recentSearches, recentSearchTimes: currentState.recentSearchTimes }),
           favorites: Object.prototype.hasOwnProperty.call(persisted, 'favorites')
             ? sanitizePersistedFavorites(persisted.favorites) : currentState.favorites,
           // Fails closed (unknown version, extra keys, expired, future-dated -> null). The expired or

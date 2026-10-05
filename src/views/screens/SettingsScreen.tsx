@@ -408,7 +408,7 @@ export function SettingsScreen() {
             value="Clear"
             type="text"
             onPress={() => handleClearLocalData('savedLocation')}
-            description="Last known position, kept on this device for up to 24 hours"
+            description="Last known position, kept up to 24 hours. A new one is saved while location is on"
           />
           <SettingItem
             icon={Trash2}

@@ -37,7 +37,7 @@ export function useSettingsViewModel() {
   // #145: targeted, confirmed clears. Favorites, settings and offline venue data are never touched here.
   const LOCAL_DATA_CLEARS = {
     recentSearches: { title: 'Clear recent searches?', message: 'Your recent search list will be emptied.', run: clearRecentSearches },
-    savedLocation: { title: 'Clear saved location?', message: 'The last known position stored on this device will be forgotten.', run: clearSavedLocation },
+    savedLocation: { title: 'Clear saved location?', message: 'The last known position stored on this device will be forgotten. While location is on, your next position is saved again.', run: clearSavedLocation },
     navigationRecovery: { title: 'Clear navigation recovery?', message: 'The reminder about an unfinished trip will be removed.', run: clearUnfinishedJourney },
   } as const;
   const handleClearLocalData = (kind: keyof typeof LOCAL_DATA_CLEARS) => {

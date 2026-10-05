@@ -32,7 +32,7 @@ export function freshLastKnownLocation<C>(location: C | null, updatedAt: unknown
 
 /**
  * Keeps entries searched within 30 days (max 10), newest first as given. `times` maps place id -> epoch ms.
- * An entry with no stamp (blob written before #145) starts its clock now; a bad or future stamp drops it.
+ * An entry with no stamp (blob written before #145) starts its clock now; a non-numeric stamp drops it, a future stamp is clamped to now.
  */
 export function pruneRecentSearches<P extends { id: string }>(places: P[], times: unknown, nowMs: number):
   { recentSearches: P[]; recentSearchTimes: Record<string, number> } {
@@ -43,10 +43,12 @@ export function pruneRecentSearches<P extends { id: string }>(places: P[], times
     if (recentSearches.length >= MAX_RECENT_SEARCHES) break;
     const stamp = Object.prototype.hasOwnProperty.call(stamps, place.id) ? stamps[place.id] : nowMs;
     if (typeof stamp !== 'number' || !Number.isFinite(stamp)) continue;
-    const age = nowMs - stamp;
-    if (age < 0 || age > RECENT_SEARCH_MAX_AGE_MS) continue;
+    // A stamp from the future means the device clock moved back: keep the entry and restart its clock
+    // rather than wiping the list (unlike a saved location, a search is not sensitive enough to fail closed on).
+    const kept = Math.min(stamp, nowMs);
+    if (nowMs - kept > RECENT_SEARCH_MAX_AGE_MS) continue;
     recentSearches.push(place);
-    recentSearchTimes[place.id] = stamp;
+    recentSearchTimes[place.id] = kept;
   }
   return { recentSearches, recentSearchTimes };
 }
