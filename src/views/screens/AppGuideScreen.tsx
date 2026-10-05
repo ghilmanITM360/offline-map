@@ -47,7 +47,7 @@ const GUIDE_SECTIONS: GuideSection[] = [
     title: '2. Offline Maps',
     urduTitle: '۲۔ آف لائن نقشہ',
     body:
-      'Ijtema search, directions and navigation work without internet from data bundled in the app. Street and satellite background imagery needs internet; without it you still see the venue map and routes.',
+      'Internal search and directions work from bundled Ijtema data, without internet. Street and satellite background imagery needs internet; without it you still see the venue map and routes.',
   },
   {
     key: 'search',
