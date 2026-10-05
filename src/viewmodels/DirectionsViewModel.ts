@@ -23,6 +23,7 @@ import {
   type V2DirectionsPreviewResult,
 } from '../services/V2DirectionsService';
 import { V2NavigationAdapter } from '../services/V2NavigationAdapter';
+import type { RoutePreviewV2 } from '../services/RoutingServiceV2';
 import { EntryGateRoutingService } from '../services/EntryGateRoutingService';
 import { RoutePointService } from '../services/RoutePointService';
 import { getRoutableOfficialGates } from '../data/ijtema/entryPolicy';
@@ -629,6 +630,31 @@ export function useDirectionsViewModel(destination: Place | null) {
     }
   };
 
+  // Route guide (#307): follow the chosen FROM -> TO by reading steps. No session, no live position, no marker.
+  // Steps come from the same adapter live navigation uses, so a later upgrade to live guidance reads the same text.
+  const routeGuideRouteRef = useRef<RoutePreview | null>(null);
+  const routeGuideActive = useAppStore((s) => s.routeGuide !== null);
+  const startRouteGuide = () => {
+    if (!destination || !route) return;
+    let steps: { text: string; distanceM: number }[];
+    try {
+      steps = V2NavigationAdapter.fromPreview({
+        previewRoute: route as unknown as RoutePreviewV2,
+        destination,
+        startPlace: manualStart,
+        currentLocation: null,
+      }).instructions.map((step) => ({ text: step.text, distanceM: step.distanceM }));
+    } catch {
+      steps = instructions.map((step) => ({ text: step.text, distanceM: step.distance }));
+    }
+    routeGuideRouteRef.current = route;
+    useAppStore.getState().startRouteGuide(steps);
+  };
+  // A guide belongs to the route it started from: a changed start, destination or recomputed route ends it.
+  useEffect(() => {
+    if (routeGuideActive && route !== routeGuideRouteRef.current) useAppStore.getState().endRouteGuide();
+  }, [route, routeGuideActive]);
+
   // Legacy (v1) destinations only — v2 destinations start navigation through
   // HomeScreen's route-preview card (handleStartPreviewNavigation), which
   // reuses this same store action for the v2-shaped route instead.
@@ -677,6 +703,7 @@ export function useDirectionsViewModel(destination: Place | null) {
     startAction: v2NavigationStartCheck.canStart ? startAction : null,
     startAttempt,
     runStartAction,
+    startRouteGuide,
     showRememberedStartAction: rememberedLocationAvailable,
     // Editing mode only. `startSource === 'manual_place'` records where the start came from; it
     // must not keep the picker open after a place is chosen (#222 / #131).

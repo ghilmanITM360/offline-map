@@ -12,13 +12,13 @@ jest.mock('../services/OnboardingStatusService', () => ({
 }));
 
 describe('useWelcomeViewModel (#159 WEL-007)', () => {
-  test('continueFromWelcome records hasSeenWelcome and replaces onto Permission', async () => {
+  test('continueFromWelcome records hasSeenWelcome and replaces onto the Directory (no permission step, #307)', async () => {
     const navigation = { replace: jest.fn() };
     const { result } = await renderHook(() => useWelcomeViewModel());
 
     await result.current.continueFromWelcome(navigation);
 
     expect(OnboardingStatusService.setHasSeenWelcome).toHaveBeenCalledWith(true);
-    expect(navigation.replace).toHaveBeenCalledWith('Permission');
+    expect(navigation.replace).toHaveBeenCalledWith('LocationsDirectory');
   });
 });

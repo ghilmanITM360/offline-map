@@ -10,7 +10,6 @@ import { createDrawerNavigator } from '@react-navigation/drawer';
 import { HomeScreen } from '../views/screens/HomeScreen';
 import { SplashScreen } from '../views/screens/SplashScreen';
 import { WelcomeScreen } from '../views/screens/WelcomeScreen';
-import { PermissionScreen } from '../views/screens/PermissionScreen';
 import { LocationsDirectoryScreen } from '../views/screens/LocationsDirectoryScreen';
 import { SettingsScreen } from '../views/screens/SettingsScreen';
 import { HelpScreen } from '../views/screens/HelpScreen';
@@ -36,11 +35,6 @@ export type RootStackParamList = {
   // SplashScreen (#153 Finding 3) — so Welcome can say why it's reappearing instead of
   // silently repeating with no explanation.
   Welcome: { onboardingStatusReadFailed?: boolean } | undefined;
-  // `revoked` is set only when Splash routes a returning, already-onboarded user back
-  // here because permission was granted before and has since been revoked outside the
-  // app — see PermissionScreen (#153 Finding 2). A genuine first-ask (via Welcome's
-  // Continue) passes no params.
-  Permission: { revoked?: boolean } | undefined;
   LocationsDirectory: undefined;
   Main: NavigatorScreenParams<DrawerParamList> | undefined;
   AppGuide: undefined;
@@ -94,7 +88,6 @@ export function RootNavigator() {
     >
       <Stack.Screen name="Splash" component={SplashScreen} />
       <Stack.Screen name="Welcome" component={WelcomeScreen} />
-      <Stack.Screen name="Permission" component={PermissionScreen} />
       <Stack.Screen name="LocationsDirectory" component={LocationsDirectoryScreen} />
       <Stack.Screen name="Main" component={MainDrawer} />
       <Stack.Screen name="AppGuide" component={AppGuideScreen} />

@@ -1024,19 +1024,25 @@ export function HomeScreen() {
   // The MapLibre camera has no native base padding, so the route fit reserves the sheet-covered band itself:
   // mapLabelEdgeInsets.bottom (the same obstruction the labels and attribution already avoid) plus a small margin.
   // Scheduled for the next rendered frame so the sheet has settled at its new snap before the fit is measured.
+  const fitPreviewRoute = useCallback(() => {
+    if (!activePreviewRoute || activePreviewRoute.coordinates.length < 2) return;
+    invalidateStartupCameraIntent();
+    cameraManager.fitRoute(activePreviewRoute.coordinates, {
+      top: Math.max(mapLabelEdgeInsets.top, 90),
+      right: Math.max(mapLabelEdgeInsets.right, 64),
+      bottom: mapLabelEdgeInsets.bottom + ROUTE_FIT_BOTTOM_PADDING,
+      left: 64,
+    });
+  }, [activePreviewRoute, cameraManager, invalidateStartupCameraIntent, mapLabelEdgeInsets]);
   useEffect(() => {
     if (!activePreviewRoute || activePreviewRoute.coordinates.length < 2) return;
-    const frame = requestAnimationFrame(() => {
-      invalidateStartupCameraIntent();
-      cameraManager.fitRoute(activePreviewRoute.coordinates, {
-        top: Math.max(mapLabelEdgeInsets.top, 90),
-        right: Math.max(mapLabelEdgeInsets.right, 64),
-        bottom: mapLabelEdgeInsets.bottom + ROUTE_FIT_BOTTOM_PADDING,
-        left: 64,
-      });
-    });
+    const frame = requestAnimationFrame(fitPreviewRoute);
     return () => cancelAnimationFrame(frame);
-  }, [activePreviewRoute, cameraManager, invalidateStartupCameraIntent, mapLabelEdgeInsets]);
+  }, [activePreviewRoute, fitPreviewRoute]);
+  // Starting the route guide re-frames the whole route once the sheet has settled (#307).
+  const handleRouteGuideStarted = useCallback(() => {
+    requestAnimationFrame(fitPreviewRoute);
+  }, [fitPreviewRoute]);
   // @gorhom/bottom-sheet computes EVERY snap point — the declared 15/50/92% ones, not
   // just content-driven dynamic sizing — as a percentage of its own containerHeight.
   // On this app's real window heights, the plain 92% snap alone already leaves less than
@@ -1823,6 +1829,7 @@ export function HomeScreen() {
               onClose={directionsDestination ? handleCloseDirections : handleClearPreviewRoute}
               onStartNavigation={handleStartPreviewNavigation}
               onViewRoute={() => bottomSheetRef.current?.snapToIndex(0)}
+              onRouteGuideStarted={handleRouteGuideStarted}
               onCancelRoute={activePreviewRoute ? handleClearPreviewRoute : undefined}
               onChangeDestination={handleChangeDestination}
               onOpenDirectory={handleOpenDirectoryFor}

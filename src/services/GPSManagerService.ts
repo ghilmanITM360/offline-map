@@ -7,7 +7,6 @@ import * as Location from 'expo-location';
 import { AppState, AppStateStatus } from 'react-native';
 import { Coordinate } from '../models/types';
 import { NAVIGATION_WATCH_TIME_INTERVAL_MS } from '../constants/navigation';
-import { OnboardingStatusService } from './OnboardingStatusService';
 import { isValidCoordinate } from '../utils/isValidCoordinate';
 
 type LocationCallback = (coord: Coordinate) => void;
@@ -118,9 +117,6 @@ class GPSManager {
     // off. Each dismissal counts as an app resume, which re-runs reconcileSubscription() and calls
     // start() again — an unbounded dialog-reappears-on-dismiss loop. Bail out before the native call.
     if (!(await Location.hasServicesEnabledAsync()) || !isCurrentWatch()) return;
-    // Fire-and-forget: clearSkippedLocationPermissionOnGrant never throws (errors are logged
-    // and swallowed internally) and starting the actual GPS watch below must not wait on it.
-    void OnboardingStatusService.clearSkippedLocationPermissionOnGrant(true);
 
     const nextSubscription = await Location.watchPositionAsync(
       this.getWatchOptions(mode),
@@ -184,7 +180,6 @@ class GPSManager {
     const isCurrentRequest = () => generation === this.lifecycleGeneration && this.appState === 'active';
     const { status } = await Location.getForegroundPermissionsAsync();
     if (status !== 'granted' || !isCurrentRequest()) return null;
-    void OnboardingStatusService.clearSkippedLocationPermissionOnGrant(true);
     try {
       const location = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
       if (!isCurrentRequest()) return null;

@@ -53,6 +53,7 @@ import { publishDirectionsFooter, useDirectionsFooterHeight } from './Directions
 import { OutsideRouteStatusCard } from '../navigation/OutsideRouteStatusCard';
 import type { NormalizedOutsideCandidate } from '../../../models/outsideRouting';
 import { liveBlockerMessage } from '../../../services/LocationCapability';
+import { RouteGuideCard } from './RouteGuideCard';
 
 declare const __DEV__: boolean;
 
@@ -118,6 +119,7 @@ export type LocationSheetProps =
       onChangeDestination?: (place: Place) => void;
       /** "View route": tucks the sheet down so the whole route is visible on the map. */
       onViewRoute?: () => void;
+      onRouteGuideStarted?: () => void;
       /** Opens the Directory, the one place chooser, to pick a start (or destination); the choice comes
        * back through the store's directoryChoice. */
       onOpenDirectory?: (purpose: DirectoryPurpose) => void;
@@ -151,6 +153,7 @@ export function LocationSheet(props: LocationSheetProps) {
         onClose={props.onClose}
         onStartNavigation={props.onStartNavigation}
         onViewRoute={props.onViewRoute}
+        onRouteGuideStarted={props.onRouteGuideStarted}
         onCancelRoute={props.onCancelRoute}
         onChangeDestination={props.onChangeDestination}
         onOpenDirectory={props.onOpenDirectory}
@@ -196,12 +199,15 @@ function RoutePreviewSection({
   onChangeDestination,
   onOpenDirectory,
   onViewRoute,
+  onRouteGuideStarted,
   basemapOffline,
 }: {
   destination: Place;
   onClose: () => void;
   onStartNavigation?: () => void;
   onViewRoute?: () => void;
+  /** Called once the route guide opens so the map can frame the whole route. */
+  onRouteGuideStarted?: () => void;
   onCancelRoute?: () => void;
   onChangeDestination?: (place: Place) => void;
   onOpenDirectory?: (purpose: DirectoryPurpose) => void;
@@ -246,7 +252,12 @@ function RoutePreviewSection({
     startAction,
     startAttempt,
     runStartAction,
+    startRouteGuide,
   } = useDirectionsViewModel(destination);
+  const routeGuide = useAppStore((s) => s.routeGuide);
+  const setRouteGuideStep = useAppStore((s) => s.setRouteGuideStep);
+  const endRouteGuide = useAppStore((s) => s.endRouteGuide);
+  const isRouteGuideStart = startAction?.kind === 'route_guide';
 
   // The Directory is the only start chooser: Change Start always opens it in start mode. Current / last-known
   // are quick options there; it returns them through the store and the VM applies them like a picked place.
@@ -400,14 +411,25 @@ function RoutePreviewSection({
                 />
               ))}
 
-            {showRouteReady && (
+            {showRouteReady && routeGuide && (
+              <RouteGuideCard
+                guide={routeGuide}
+                onPrevious={() => setRouteGuideStep(routeGuide.stepIndex - 1)}
+                onNext={() => setRouteGuideStep(routeGuide.stepIndex + 1)}
+                onLive={() => void runStartAction(() => startNowRef.current())}
+                onEnd={endRouteGuide}
+                liveBusy={startAttempt === 'working'}
+              />
+            )}
+
+            {showRouteReady && !routeGuide && (
               <>
                 {!compactFooter && routeSummary}
                 <Button
                   variant="brand"
                   style={styles.cta}
                   label={
-                    startAttempt === 'working'
+                    startAttempt === 'working' && !isRouteGuideStart
                       ? 'Finding your location…'
                       : startAction && startAction.kind !== 'start'
                       ? startAction.primaryLabel
@@ -421,27 +443,33 @@ function RoutePreviewSection({
                       : undefined
                   }
                   icon={
-                    startAction && startAction.kind !== 'start' ? (
+                    startAction && startAction.kind !== 'start' && !isRouteGuideStart ? (
                       <LocateFixed size={20} color={directionsSheetColors.brandText} />
                     ) : (
                       <Navigation size={20} color={directionsSheetColors.brandText} />
                     )
                   }
                   trailingIcon={<ChevronEnd size={20} color={directionsSheetColors.brandText} />}
-                  disabled={startAttempt === 'working' || (!startAction && !canStartNavigation)}
+                  disabled={(startAttempt === 'working' && !isRouteGuideStart) || (!startAction && !canStartNavigation)}
                   onPress={() => {
-                    if (startAction) void runStartAction(() => startNowRef.current());
+                    if (isRouteGuideStart) {
+                      startRouteGuide();
+                      onRouteGuideStarted?.();
+                    } else if (startAction) void runStartAction(() => startNowRef.current());
                     else startNow();
                   }}
                 />
                 {startAction?.secondaryLabel ? (
                   <Pressable
                     style={styles.linkButton}
-                    onPress={onViewRoute}
+                    onPress={isRouteGuideStart ? () => void runStartAction(() => startNowRef.current()) : onViewRoute}
+                    disabled={isRouteGuideStart && startAttempt === 'working'}
                     accessibilityRole="button"
                     accessibilityLabel={startAction.secondaryLabel}
                   >
-                    <Text style={styles.linkButtonText}>{startAction.secondaryLabel}</Text>
+                    <Text style={styles.linkButtonText}>
+                      {isRouteGuideStart && startAttempt === 'working' ? 'Finding your location…' : startAction.secondaryLabel}
+                    </Text>
                   </Pressable>
                 ) : null}
                 {startAttempt === 'failed' || startAttempt === 'settings' || startAttempt === 'services_off' ? (
