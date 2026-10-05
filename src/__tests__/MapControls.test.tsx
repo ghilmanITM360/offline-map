@@ -25,14 +25,41 @@ function baseProps(overrides: Partial<React.ComponentProps<typeof MapControls>> 
 }
 
 describe('MapControls — Batch A accessibility', () => {
-  test('the north-up/compass helper badge is hidden from TalkBack, since it only repeats the compass button label', async () => {
+  test('normal state foregrounds only direction, recenter and one "More map controls" button', async () => {
+    await render(<MapControls {...baseProps({ recenter: { state: 'idle', onPress: jest.fn() } })} />);
+
+    expect(screen.getByLabelText('More map controls')).toBeOnTheScreen();
+    expect(screen.getByLabelText(/Follow direction is off/)).toBeOnTheScreen();
+    expect(screen.getByLabelText('Center map on my current location')).toBeOnTheScreen();
+    expect(screen.queryByLabelText('Zoom in')).toBeNull();
+    expect(screen.queryByLabelText('Zoom out')).toBeNull();
+    expect(screen.queryByLabelText('Map layers and filters')).toBeNull();
+    // The orientation control itself carries the state; there is no separate North-up pill.
+    expect(screen.queryByText('North-up', { includeHiddenElements: true })).toBeNull();
+  });
+
+  test('More map controls reveals Layers and accessible Zoom in/out, and collapses again', async () => {
+    const user = userEvent.setup();
     await render(<MapControls {...baseProps()} />);
 
-    // includeHiddenElements: the suppression itself removes the badge from the default
-    // (visible-only) query tree — the same effect it has on TalkBack — so it has to be
-    // opted back in here to inspect the underlying prop.
-    const badge = screen.getByText('North-up', { includeHiddenElements: true });
-    expect(badge.parent?.props.importantForAccessibility).toBe('no-hide-descendants');
+    await user.press(screen.getByLabelText('More map controls'));
+    expect(screen.getByLabelText('More map controls').props.accessibilityState).toMatchObject({ expanded: true });
+    expect(screen.getByLabelText('Zoom in')).toBeOnTheScreen();
+    expect(screen.getByLabelText('Zoom out')).toBeOnTheScreen();
+    expect(screen.getByLabelText('Map layers and filters')).toBeOnTheScreen();
+
+    await user.press(screen.getByLabelText('More map controls'));
+    expect(screen.queryByLabelText('Zoom in')).toBeNull();
+  });
+
+  test('opening Layers closes the extras', async () => {
+    const user = userEvent.setup();
+    const onLayers = jest.fn();
+    await render(<MapControls {...baseProps({ onLayers })} />);
+    await user.press(screen.getByLabelText('More map controls'));
+    await user.press(screen.getByLabelText('Map layers and filters'));
+    expect(onLayers).toHaveBeenCalledTimes(1);
+    expect(screen.queryByLabelText('Zoom in')).toBeNull();
   });
 
   test('compass button label changes with heading-follow state', async () => {
@@ -52,11 +79,13 @@ describe('MapControls — Batch A accessibility', () => {
     expect(screen.queryByText('Compass', { includeHiddenElements: true })).toBeNull();
   });
 
-  test('nav variant omits the Layers button and the helper badge', async () => {
+  test('nav variant never offers Layers, even under More map controls', async () => {
+    const user = userEvent.setup();
     await render(<MapControls {...baseProps({ variant: 'nav' })} />);
+    await user.press(screen.getByLabelText('More map controls'));
 
     expect(screen.queryByLabelText('Map layers and filters')).toBeNull();
-    expect(screen.queryByText('North-up')).toBeNull();
+    expect(screen.getByLabelText('Zoom in')).toBeOnTheScreen();
   });
 
   test('pressing zoom in/out and compass toggle invokes the right callbacks', async () => {
@@ -66,6 +95,7 @@ describe('MapControls — Batch A accessibility', () => {
     const onCompassToggle = jest.fn();
     await render(<MapControls {...baseProps({ onZoomIn, onZoomOut, onCompassToggle })} />);
 
+    await user.press(screen.getByLabelText('More map controls'));
     await user.press(screen.getByLabelText('Zoom in'));
     await user.press(screen.getByLabelText('Zoom out'));
     await user.press(screen.getByLabelText(/Follow direction is off/));

@@ -17,7 +17,7 @@ assert(layersSheet.includes('Map Layers'), 'Layers sheet should be titled Map La
 assert(!home.includes("Alert.alert('Map Layers'"), 'Layers control should be a bottom sheet, not a native Alert action sheet');
 assert(!home.includes('Voice Search'), 'Home should hide voice-search action until it is fully implemented');
 assert(home.includes('handleCompassToggle'), 'Home compass control should call compass toggle handler');
-assert(mapControls.includes('North-up') && mapControls.includes('Compass'), 'Home should explain compass state (north-up vs heading-follow)');
+assert(mapControls.includes('north-up') && mapControls.includes('Compass') && mapControls.includes('Navigation'), 'The orientation control must carry its own state (compass = north-up, arrow = following) with a spoken label');
 assert(home.includes('[HomeControl] pressed='), 'Home controls should emit dev diagnostics logs');
 assert(home.includes('__DEV__ && developerModeEnabled'), 'Developer controls must be gated behind __DEV__ and developer mode');
 assert(home.includes('marginRight: 76'), 'Outside-area warning should leave room for right-side map controls');

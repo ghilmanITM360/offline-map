@@ -13,15 +13,15 @@ const mapControlStyles = readFileSync('src/views/components/map/mapControlStyles
 // Shared component, not two independent copies.
 assert(mapControls.includes('export function MapControls'), 'MapControls component must exist and be exported');
 assert(mapControls.includes("variant: 'browse' | 'nav'"), 'MapControls must accept a browse/nav variant');
-assert(mapControls.includes("variant === 'browse'"), "MapControls must gate the Layers button + north-up badge to browse mode");
+assert(mapControls.includes("variant === 'browse'"), "MapControls must gate the Layers button to browse mode");
 assert((home.match(/<MapControls/g) ?? []).length === 2, 'HomeScreen must render MapControls exactly twice: browse and nav-overlay');
 assert(home.includes('variant="browse"') && home.includes('variant="nav"'), 'HomeScreen must pass both variants to MapControls');
 
 // The old duplicated inline button styles must be gone from HomeScreen — they now live in mapControlStyles.ts.
-for (const deadStyleKey of ['controlButton: {', 'controlButtonActive: {', 'controlHelperBadge: {', 'controlHelperText: {', 'zoomControls: {', 'zoomButton: {', 'zoomDivider: {']) {
+for (const deadStyleKey of ['controlButton: {', 'controlButtonActive: {', 'zoomControls: {', 'zoomButton: {', 'zoomDivider: {']) {
   assert(!home.includes(deadStyleKey), `HomeScreen must not redefine ${deadStyleKey.replace(': {', '')} locally anymore — it moved to mapControlStyles.ts`);
 }
-for (const styleKey of ['controlButton:', 'controlButtonActive:', 'controlHelperBadge:', 'controlHelperText:', 'zoomControls:', 'zoomButton:', 'zoomDivider:']) {
+for (const styleKey of ['controlButton:', 'controlButtonActive:', 'moreButtonOpen:', 'zoomControls:', 'zoomButton:', 'zoomDivider:']) {
   assert(mapControlStyles.includes(styleKey), `mapControlStyles.ts must define ${styleKey.replace(':', '')}`);
 }
 
@@ -89,14 +89,14 @@ assert(
 );
 
 // #66 (revised by #140): there is no basemap/provider degradation state any more — the basemap ships in the app — so the
-// only passive status is the Offline pill. It renders in one slot and the old map-warning banner is gone for good.
+// only status left is route/gate context. Offline is the normal mode, so it gets no permanent pill either.
 assert(
   !home.includes('showMapWarningBanner'),
   'The map-warning banner must be gone: the offline basemap is bundled, so there is no missing-map state to warn about',
 );
 assert(
-  home.includes('{isOffline ? ('),
-  'isOffline must render exactly one passive status slot',
+  !home.includes('isOffline') && !home.includes('offlineIndicator'),
+  'Home must not show a permanent Offline badge: offline is the normal supported mode',
 );
 
 console.log('Map controls v2 checks passed.');
