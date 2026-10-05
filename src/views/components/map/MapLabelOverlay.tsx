@@ -5,7 +5,7 @@
 
 import React, { useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { LayoutChangeEvent, Pressable, StyleSheet, Text, View, ViewStyle } from 'react-native';
-import MapView, { Point } from 'react-native-maps';
+import type { MapCameraHandle } from '../mapgl/MapCameraHandle';
 
 import { mapLayerStyles as styles } from './mapLayerStyles';
 
@@ -48,7 +48,7 @@ export interface MapLabelOverlayEdgeInsets {
 }
 
 export interface MapLabelOverlayProps {
-  mapRef: React.RefObject<MapView | null>;
+  mapRef: React.RefObject<MapCameraHandle | null>;
   items: MapLabelItem[];
   /** Disables label tap targets while true (e.g. during an active map drag, when the
    * last resolved projection may be one throttle-frame stale). */
@@ -162,7 +162,7 @@ function getLabelStyles(item: MapLabelItem): { container: ViewStyle[]; text: any
 export const MapLabelOverlay = React.forwardRef<MapLabelOverlayHandle, MapLabelOverlayProps>(
   function MapLabelOverlay({ mapRef, items, disableTouch, edgeInsets }, ref) {
     const [containerSize, setContainerSize] = useState<Size>({ width: 0, height: 0 });
-    const [points, setPoints] = useState<Record<string, Point>>({});
+    const [points, setPoints] = useState<Record<string, { x: number; y: number }>>({});
     const [measuredSizes, setMeasuredSizes] = useState<Record<string, Size>>({});
     const inFlightRef = useRef(false);
     const pendingRef = useRef(false);
@@ -210,7 +210,7 @@ export const MapLabelOverlay = React.forwardRef<MapLabelOverlayHandle, MapLabelO
         )
           .then((resolved) => {
             if (!mountedRef.current) return;
-            const next: Record<string, Point> = {};
+            const next: Record<string, { x: number; y: number }> = {};
             resolved.forEach((entry) => {
               if (entry) next[entry[0]] = entry[1];
             });
