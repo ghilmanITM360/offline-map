@@ -19,9 +19,6 @@ jest.mock('expo-location', () => ({
 jest.mock('../services/OnboardingStatusService', () => ({
   OnboardingStatusService: {
     hasSeenWelcome: jest.fn(),
-    hasSkippedLocationPermission: jest.fn(),
-    setSkippedLocationPermission: jest.fn(),
-    clearSkippedLocationPermissionOnGrant: jest.fn(),
   },
 }));
 
@@ -74,9 +71,6 @@ beforeEach(() => {
   useAppStore.setState(initialStoreState, true);
   (Location.getForegroundPermissionsAsync as jest.Mock).mockResolvedValue({ status: 'granted', canAskAgain: true });
   (OnboardingStatusService.hasSeenWelcome as jest.Mock).mockResolvedValue(true);
-  (OnboardingStatusService.hasSkippedLocationPermission as jest.Mock).mockResolvedValue(false);
-  (OnboardingStatusService.setSkippedLocationPermission as jest.Mock).mockResolvedValue(undefined);
-  (OnboardingStatusService.clearSkippedLocationPermissionOnGrant as jest.Mock).mockResolvedValue(undefined);
 });
 
 afterEach(() => {
@@ -186,69 +180,6 @@ describe('SplashScreen — persisted-store hydration gate', () => {
     await flush();
 
     expect(mockReplaceSpy).toHaveBeenCalledTimes(1);
-  });
-});
-
-describe('SplashScreen — permission-skip cleanup is isolated from route resolution', () => {
-  async function renderAndResolveHydration() {
-    const controllable = controllableStorage();
-    useAppStore.persist.setOptions({ storage: controllable.storage });
-    const rehydratePromise = useAppStore.persist.rehydrate();
-
-    await act(async () => {
-      render(<SplashScreen />);
-    });
-    await act(async () => {
-      controllable.resolve(null);
-      await rehydratePromise;
-    });
-    await flush();
-  }
-
-  beforeEach(() => {
-    (OnboardingStatusService.hasSkippedLocationPermission as jest.Mock).mockResolvedValue(true);
-  });
-
-  it('calls the canonical clear helper exactly once when permission is granted and a skip was previously recorded', async () => {
-    await renderAndResolveHydration();
-
-    expect(OnboardingStatusService.clearSkippedLocationPermissionOnGrant).toHaveBeenCalledTimes(1);
-    expect(OnboardingStatusService.clearSkippedLocationPermissionOnGrant).toHaveBeenCalledWith(true);
-    expect(mockReplaceSpy).toHaveBeenCalledTimes(1);
-  });
-
-  it('granted + stale skip + successful clear: still resolves the normal route for a returning user', async () => {
-
-    await renderAndResolveHydration();
-
-    expect(mockReplaceSpy).toHaveBeenCalledTimes(1);
-    expect(mockReplaceSpy).toHaveBeenCalledWith('LocationsDirectory');
-  });
-
-  it('a rejected cleanup call does not fall through to the generic startup-failure route — a returning user still resolves to the Locations Directory', async () => {
-    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
-    (OnboardingStatusService.clearSkippedLocationPermissionOnGrant as jest.Mock).mockRejectedValue(new Error('disk full'));
-
-    await renderAndResolveHydration();
-
-    expect(mockReplaceSpy).toHaveBeenCalledTimes(1);
-    expect(mockReplaceSpy).toHaveBeenCalledWith('LocationsDirectory');
-    // Proves the real startup-failure catch branch never ran — that branch always sets this
-    // specific message and forces the map status back to not_downloaded.
-    errorSpy.mockRestore();
-  });
-
-  it('never navigates more than once even when the cleanup call rejects', async () => {
-    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
-    (OnboardingStatusService.clearSkippedLocationPermissionOnGrant as jest.Mock).mockRejectedValue(new Error('disk full'));
-
-    await renderAndResolveHydration();
-
-    expect(mockReplaceSpy).toHaveBeenCalledTimes(1);
-    // The cleanup failure was logged through SplashScreen's own dedicated log line, not the
-    // generic "Startup checks failed" catch-all.
-    expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('Failed to clear the skipped-location-permission preference'), expect.any(Error));
-    errorSpy.mockRestore();
   });
 });
 
@@ -428,37 +359,32 @@ describe('SplashScreen — unrelated dependency failures cannot bypass StartupMa
     errorSpy.mockRestore();
   });
 
-  it('a permission read failure does not assume granted — still routes to Permission', async () => {
+  it('a permission read failure never blocks a returning user: they still reach the Directory', async () => {
     const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
     (Location.getForegroundPermissionsAsync as jest.Mock).mockRejectedValue(new Error('native module crashed'));
 
     await renderAndSettleHydration();
 
     expect(mockReplaceSpy).toHaveBeenCalledTimes(1);
-    // #153 Finding 2: Splash always routes to Permission via the returning-user path.
-    expect(mockReplaceSpy).toHaveBeenCalledWith('Permission', { revoked: true });
+    expect(mockReplaceSpy).toHaveBeenCalledWith('LocationsDirectory');
     expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('Failed to read location permission status'), expect.any(Error));
     errorSpy.mockRestore();
   });
 
-  it('a skipped-permission read failure does not assume skipped — still routes to Permission when not granted', async () => {
-    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+  it('#307 a returning user whose location is denied or was revoked goes straight to the Directory: no Permission screen, no nagging', async () => {
     (Location.getForegroundPermissionsAsync as jest.Mock).mockResolvedValue({ status: 'denied', canAskAgain: true });
-    (OnboardingStatusService.hasSkippedLocationPermission as jest.Mock).mockRejectedValue(new Error('disk full'));
 
     await renderAndSettleHydration();
 
     expect(mockReplaceSpy).toHaveBeenCalledTimes(1);
-    expect(mockReplaceSpy).toHaveBeenCalledWith('Permission', { revoked: true });
-    expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('Failed to read the skipped-location-permission preference'), expect.any(Error));
-    errorSpy.mockRestore();
+    expect(mockReplaceSpy).toHaveBeenCalledWith('LocationsDirectory');
+    expect(useAppStore.getState().hasLocationPermission).toBe(false);
   });
 
   it('every dependency failing at once still resolves exactly one route via StartupManager (Welcome wins precedence), never a hardcoded fallback', async () => {
     const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
     (OnboardingStatusService.hasSeenWelcome as jest.Mock).mockRejectedValue(new Error('a'));
     (Location.getForegroundPermissionsAsync as jest.Mock).mockRejectedValue(new Error('b'));
-    (OnboardingStatusService.hasSkippedLocationPermission as jest.Mock).mockRejectedValue(new Error('c'));
 
     await renderAndSettleHydration();
 

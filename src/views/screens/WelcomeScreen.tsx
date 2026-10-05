@@ -48,6 +48,10 @@ export function WelcomeScreen() {
             ))}
           </View>
 
+          <Text style={styles.optionalNote}>
+            Location is optional. You can allow it later to follow your walk live.
+          </Text>
+
           <Pressable
             style={styles.button}
             onPress={() => continueFromWelcome(navigation)}
@@ -113,7 +117,14 @@ const styles = StyleSheet.create({
   },
   featureList: {
     width: '100%',
-    marginBottom: 36,
+    marginBottom: 20,
+  },
+  optionalNote: {
+    fontSize: 14,
+    lineHeight: 20,
+    color: '#555',
+    textAlign: 'center',
+    marginBottom: 20,
   },
   featureItem: {
     flexDirection: 'row',
