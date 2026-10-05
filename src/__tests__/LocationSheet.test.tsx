@@ -165,7 +165,7 @@ describe('LocationSheet (routePreview) — start option selection', () => {
     await renderWithFooter(<LocationSheet mode="routePreview" destination={destination} onClose={onCloseSpy} />);
 
     expect(screen.getByText('My current location')).toBeOnTheScreen();
-    expect(screen.getByText('Change Start')).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: /Change start\./ })).toBeOnTheScreen();
     expect(screen.queryByText('Where are you starting from?')).not.toBeOnTheScreen();
     expect(screen.queryByText('Use last known location')).not.toBeOnTheScreen();
     expect(screen.queryByText('Choose start manually')).not.toBeOnTheScreen();
@@ -179,7 +179,7 @@ describe('LocationSheet (routePreview) — start option selection', () => {
       <LocationSheet mode="routePreview" destination={destination} onClose={onCloseSpy} onOpenDirectory={onOpenDirectory} />,
     );
 
-    await user.press(screen.getByText('Change Start'));
+    await user.press(screen.getByRole('button', { name: /Change start\./ }));
 
     expect(onOpenDirectory).toHaveBeenCalledWith('start');
     expect(screen.queryByText('Choose start manually')).not.toBeOnTheScreen();
@@ -231,7 +231,7 @@ describe('LocationSheet (routePreview) — start option selection', () => {
 
     expect(screen.getByText('Current location is unavailable. Choose start manually.')).toBeOnTheScreen();
     const user = userEvent.setup();
-    await user.press(screen.getByText('Change Start'));
+    await user.press(screen.getByRole('button', { name: /Change start\./ }));
 
     expect(onOpenDirectory).toHaveBeenCalledWith('start');
   });
@@ -262,7 +262,7 @@ describe('LocationSheet (routePreview) — start option selection', () => {
 
     expect(screen.getByText('Device last known location')).toBeOnTheScreen();
     expect(screen.getByText('Using device last known location because live GPS is unavailable.')).toBeOnTheScreen();
-    await user.press(screen.getByText('Change Start'));
+    await user.press(screen.getByRole('button', { name: /Change start\./ }));
     expect(screen.queryByRole('button', { name: /Use my current location/ })).not.toBeOnTheScreen();
   });
 });
@@ -309,7 +309,7 @@ describe('LocationSheet (routePreview) — change destination', () => {
       />,
     );
 
-    await user.press(screen.getByText('Change destination'));
+    await user.press(screen.getByRole('button', { name: /Change destination\./ }));
 
     expect(onOpenDirectory).toHaveBeenCalledWith('destination');
     expect(onCloseSpy).not.toHaveBeenCalled();
@@ -345,7 +345,7 @@ describe('LocationSheet (routePreview) — change destination', () => {
     const user = userEvent.setup();
     await renderWithFooter(<LocationSheet mode="routePreview" destination={destination} onClose={onCloseSpy} />);
 
-    await user.press(screen.getByText('Change destination'));
+    await user.press(screen.getByRole('button', { name: /Change destination\./ }));
 
     expect(onCloseSpy).toHaveBeenCalledTimes(1);
   });
