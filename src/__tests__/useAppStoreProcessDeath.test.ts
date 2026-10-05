@@ -34,7 +34,8 @@ const RUNTIME_KEYS = [
 const PERSISTED_KEYS = [
   'developerModeEnabled', 'downloadState', 'favorites', 'hasSeenLocationTutorial', 'hasSeenMapOverview',
   'lastKnownLocation', 'lastKnownLocationUpdatedAt', 'offlineData', 'offlineMapStatus',
-  'offlineMapStatusMessage', 'recentSearches', 'settings', 'showBlockPolygons', 'showGatesLayer',
+  // #145: per-entry search stamps (30 day expiry); schema stays version 2, legacy blobs are stamped on read.
+  'offlineMapStatusMessage', 'recentSearchTimes', 'recentSearches', 'settings', 'showBlockPolygons', 'showGatesLayer',
   'showGraphNodes', 'showRastaNames', 'showRastasLayer', 'showRouteDiagnostics', 'showSpecialRoutesLayer',
   // #139 Option B: coordinate-free unfinished-journey marker (see UnfinishedJourneyMarker.test.ts for the privacy guard).
   'unfinishedJourney',
