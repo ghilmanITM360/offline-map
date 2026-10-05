@@ -89,7 +89,7 @@ describe('HomeScreen returning live location venue banner', () => {
 
     await render(<HomeScreen />);
     await act(async () => {
-      fireEvent(screen.getByTestId('home-map-view'), 'mapReady');
+      fireEvent(screen.getByTestId('home-map-view'), 'didFinishLoadingMap');
       await Promise.resolve();
       await Promise.resolve();
       await jest.advanceTimersByTimeAsync(200);
@@ -113,7 +113,7 @@ describe('HomeScreen returning live location venue banner', () => {
 
     await render(<HomeScreen />);
     await act(async () => {
-      fireEvent(screen.getByTestId('home-map-view'), 'mapReady');
+      fireEvent(screen.getByTestId('home-map-view'), 'didFinishLoadingMap');
       await Promise.resolve();
       await Promise.resolve();
       await jest.advanceTimersByTimeAsync(200);
@@ -137,7 +137,7 @@ describe('HomeScreen returning live location venue banner', () => {
 
     await render(<HomeScreen />);
     await act(async () => {
-      fireEvent(screen.getByTestId('home-map-view'), 'mapReady');
+      fireEvent(screen.getByTestId('home-map-view'), 'didFinishLoadingMap');
       await Promise.resolve();
       await Promise.resolve();
       await jest.advanceTimersByTimeAsync(200);

@@ -33,8 +33,10 @@ export interface BasemapStyle {
   layers: Record<string, unknown>[];
 }
 
-export function buildBasemapStyle(archiveFileUri: string, zoom: { min: number; max: number }): BasemapStyle {
+/** `archiveFileUri` null (install failed): a plain land-coloured canvas — venue overlays still render. */
+export function buildBasemapStyle(archiveFileUri: string | null, zoom: { min: number; max: number }): BasemapStyle {
   const c = BASEMAP_COLORS;
+  if (archiveFileUri === null) return { version: 8, sources: {}, layers: [{ id: 'bg', type: 'background', paint: { 'background-color': c.land } }] };
   const src = BASEMAP_SOURCE_ID;
   const roads = (cls: string) => ['==', ['get', 'class'], cls];
   return {

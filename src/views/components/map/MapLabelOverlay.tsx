@@ -9,7 +9,7 @@ import type { MapCameraHandle } from '../mapgl/MapCameraHandle';
 
 import { mapLayerStyles as styles } from './mapLayerStyles';
 
-export type MapLabelKind = 'gate' | 'block' | 'rasta' | 'route';
+export type MapLabelKind = 'gate' | 'block' | 'rasta' | 'route' | 'user';
 export type MapLabelVariant = 'full' | 'compact' | 'number';
 
 export interface MapLabelItem {
@@ -29,6 +29,8 @@ export interface MapLabelItem {
   /** Paint order — mirrors the zIndex values the old Marker-based labels used, so
    * cross-layer stacking (e.g. a selected gate label over a block label) is unchanged. */
   zPriority: number;
+  /** Shifts the label down from its projected point (dp) — used to hang a caption under a dot. */
+  yOffset?: number;
   onPress?: () => void;
   /** Spoken name when `text` is an abbreviated LOD form (e.g. gate "12" -> "Gate 12"). */
   accessibilityLabel?: string;
@@ -91,8 +93,18 @@ function estimateSize(item: MapLabelItem): Size {
   return estimateTextSize(item.text);
 }
 
+// Caption under the user's dot when the position is a remembered one rather than a live fix.
+const userLabelStyles = StyleSheet.create({
+  pill: { backgroundColor: 'rgba(26,115,232,0.92)', borderRadius: 7, paddingHorizontal: 6, paddingVertical: 2 },
+  text: { color: '#FFFFFF', fontSize: 10, fontWeight: '700' },
+});
+
 function getLabelStyles(item: MapLabelItem): { container: ViewStyle[]; text: any[]; secondary?: any } {
   const { kind, variant, isSelected, focused, needsConnectorVerification, navPreview } = item;
+
+  if (kind === 'user') {
+    return { container: [userLabelStyles.pill], text: [userLabelStyles.text] };
+  }
 
   if (kind === 'gate') {
     if (navPreview) {
@@ -282,7 +294,7 @@ export const MapLabelOverlay = React.forwardRef<MapLabelOverlayHandle, MapLabelO
           const wrapperStyle = {
             position: 'absolute' as const,
             left: point.x - size.width / 2,
-            top: point.y - size.height / 2,
+            top: point.y - size.height / 2 + (item.yOffset ?? 0),
             zIndex: item.zPriority,
           };
 

@@ -12,8 +12,6 @@ function baseProps(overrides: Partial<React.ComponentProps<typeof LayersSheet>> 
   return {
     visible: true,
     onClose: jest.fn(),
-    mapType: 'standard' as const,
-    onMapTypeChange: jest.fn(),
     showBlockPolygons: true,
     onToggleBlocks: jest.fn(),
     showGatesLayer: true,
@@ -26,24 +24,14 @@ function baseProps(overrides: Partial<React.ComponentProps<typeof LayersSheet>> 
   };
 }
 
-describe('LayersSheet — map type control', () => {
-  test('#65: exposes Standard/Satellite as accessible, selectable buttons', async () => {
-    await render(<LayersSheet {...baseProps({ mapType: 'standard' })} />);
+describe('LayersSheet — no imagery options (#140)', () => {
+  test('offers only the venue overlay toggles: there is no map-type / satellite choice', async () => {
+    await render(<LayersSheet {...baseProps()} />);
 
-    const standard = screen.getByRole('button', { name: 'Standard map type' });
-    const satellite = screen.getByRole('button', { name: 'Satellite map type' });
-    expect(standard.props.accessibilityState).toMatchObject({ selected: true });
-    expect(satellite.props.accessibilityState).toMatchObject({ selected: false });
-  });
-
-  test('#65: pressing "Satellite map type" invokes onMapTypeChange', async () => {
-    const onMapTypeChange = jest.fn();
-    const user = userEvent.setup();
-    await render(<LayersSheet {...baseProps({ onMapTypeChange })} />);
-
-    await user.press(screen.getByRole('button', { name: 'Satellite map type' }));
-
-    expect(onMapTypeChange).toHaveBeenCalledWith('satellite');
+    expect(screen.queryByRole('button', { name: 'Satellite map type' })).not.toBeOnTheScreen();
+    expect(screen.queryByRole('button', { name: 'Standard map type' })).not.toBeOnTheScreen();
+    expect(screen.queryByText('Map Type')).not.toBeOnTheScreen();
+    expect(screen.getByRole('switch', { name: 'Blocks' })).toBeOnTheScreen();
   });
 });
 

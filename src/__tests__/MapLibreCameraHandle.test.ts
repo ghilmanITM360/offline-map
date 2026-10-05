@@ -2,14 +2,14 @@ import { createMapLibreCameraHandle, googleZoomToMapLibre, mapLibreZoomToGoogle,
 
 // Fakes record what the adapter asks MapLibre to do, so the contract with useCameraManager is pinned
 // without a native map.
-function setup(viewport = { width: 400, height: 800 }) {
+function setup(viewport = { width: 400, height: 800 }, ready = true) {
   const stops: Record<string, unknown>[] = [];
   const camera = { setStop: jest.fn(async (s: Record<string, unknown>) => void stops.push(s)) };
   const map = {
     getViewState: jest.fn(async () => ({ center: [67.0, 25.0] as [number, number], zoom: 16, bearing: 30, pitch: 10, bounds: [66.99, 24.99, 67.01, 25.01] })),
     project: jest.fn(async (lngLat: [number, number]) => [lngLat[0] * 10, lngLat[1] * 10] as [number, number]),
   };
-  const handle = createMapLibreCameraHandle({ getCamera: () => camera as never, getMap: () => map as never, getViewport: () => viewport });
+  const handle = createMapLibreCameraHandle({ getCamera: () => camera as never, getMap: () => map as never, getViewport: () => viewport, isReady: () => ready });
   return { handle, stops, camera, map };
 }
 
@@ -72,8 +72,22 @@ describe('createMapLibreCameraHandle', () => {
   });
 
   it('is a no-op (never throws) before the native refs exist', async () => {
-    const handle = createMapLibreCameraHandle({ getCamera: () => null, getMap: () => null, getViewport: () => ({ width: 0, height: 0 }) });
+    const handle = createMapLibreCameraHandle({ getCamera: () => null, getMap: () => null, getViewport: () => ({ width: 0, height: 0 }), isReady: () => true });
     expect(() => handle.animateToRegion({ latitude: 1, longitude: 1, latitudeDelta: 1, longitudeDelta: 1 })).not.toThrow();
     await expect(handle.getCamera()).rejects.toThrow(/not ready/i);
+  });
+
+  // MLRNMapView.project() dereferences the native MapLibreMap, which only exists once the map has loaded; calling it
+  // earlier threw an NPE on the main thread and tore down the whole React host (MapLabelOverlay projects on mount).
+  it('never touches the native map before it is ready', async () => {
+    const { handle, map, camera } = setup({ width: 400, height: 800 }, false);
+    await expect(handle.pointForCoordinate({ latitude: 25, longitude: 67 })).rejects.toThrow(/not ready/i);
+    await expect(handle.getCamera()).rejects.toThrow(/not ready/i);
+    handle.animateToRegion({ latitude: 25, longitude: 67, latitudeDelta: 0.01, longitudeDelta: 0.01 });
+    handle.animateCamera({ heading: 10 });
+    handle.fitToCoordinates([{ latitude: 25, longitude: 67 }]);
+    expect(map.project).not.toHaveBeenCalled();
+    expect(map.getViewState).not.toHaveBeenCalled();
+    expect(camera.setStop).not.toHaveBeenCalled();
   });
 });

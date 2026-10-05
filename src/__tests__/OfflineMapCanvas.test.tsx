@@ -39,6 +39,12 @@ describe('buildBasemapStyle', () => {
     expect(JSON.stringify(style)).not.toMatch(/https?:\/\//);
   });
 
+  it('falls back to a plain land canvas (no source) when the archive is unavailable', () => {
+    const plain = buildBasemapStyle(null, { min: 12, max: 16 });
+    expect(plain.sources).toEqual({});
+    expect(plain.layers.map((l) => l.id)).toEqual(['bg']);
+  });
+
   it('references only layers the archive pipeline produces', () => {
     const used = new Set(style.layers.map((l) => l['source-layer']).filter(Boolean));
     expect([...used].sort()).toEqual(['buildings', 'landuse', 'roads', 'water']);

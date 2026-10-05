@@ -5,7 +5,8 @@
 
 import { useState, useRef, useMemo, useEffect, useCallback } from 'react';
 import { Alert } from 'react-native';
-import MapView, { Region } from 'react-native-maps';
+import type { Region } from 'react-native-maps';
+import type { MapCameraHandle } from '../views/components/mapgl/MapCameraHandle';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
 import { useAppStore } from '../store/useAppStore';
 import { Place } from '../models/types';
@@ -46,7 +47,7 @@ function getHomeSnappedCoordinate(coord: { latitude: number; longitude: number }
 }
 
 export function useHomeViewModel({ isFocused = true }: { isFocused?: boolean } = {}) {
-  const mapRef = useRef<MapView>(null);
+  const mapRef = useRef<MapCameraHandle>(null);
   const bottomSheetRef = useRef<BottomSheetModal>(null);
   // Mirrors HomeScreen's sheetIndex state (-1 = closed) so handlePlaceSelect can decide
   // whether to preserve the current snap height on re-selection — see handlePlaceSelect.

@@ -21,8 +21,8 @@ export interface MapFeaturePress {
 }
 
 export interface OfflineMapCanvasProps {
-  /** `file://` URI of the installed basemap archive (see BundledBasemap). */
-  archiveUri: string;
+  /** `file://` URI of the installed basemap archive (see BundledBasemap); null renders a plain canvas. */
+  archiveUri: string | null;
   archiveZoom: { min: number; max: number };
   initialRegion: Region;
   /** Draw order bottom → top, on top of the basemap. */
@@ -30,6 +30,8 @@ export interface OfflineMapCanvasProps {
   style?: StyleProp<ViewStyle>;
   testID?: string;
   importantForAccessibility?: 'auto' | 'yes' | 'no' | 'no-hide-descendants';
+  /** Keeps the OSM attribution control (bottom-left, away from the right-hand control stack) clear of sheets and the nav bar: offset from the bottom edge, dp. */
+  attributionBottomInset?: number;
   gesturesEnabled?: boolean;
   rotateEnabled?: boolean;
   onLayout?: (width: number, height: number) => void;
@@ -69,6 +71,7 @@ export function OfflineMapCanvas(props: OfflineMapCanvasProps) {
         getCamera: () => cameraRef.current,
         getMap: () => mapRef.current,
         getViewport: () => viewportRef.current,
+        isReady: () => readyRef.current,
       }),
     [],
   );
@@ -116,6 +119,7 @@ export function OfflineMapCanvas(props: OfflineMapCanvasProps) {
       importantForAccessibility={props.importantForAccessibility}
       logo={false}
       attribution
+      attributionPosition={{ bottom: props.attributionBottomInset ?? 8, left: 8 }}
       compass={false}
       dragPan={props.gesturesEnabled !== false}
       touchZoom={props.gesturesEnabled !== false}

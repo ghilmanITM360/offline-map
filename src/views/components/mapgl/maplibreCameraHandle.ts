@@ -24,12 +24,16 @@ interface Deps {
   getCamera: () => CameraRef | null;
   getMap: () => MapRef | null;
   getViewport: () => { width: number; height: number };
+  /** True once the native map has loaded. Before that its native methods dereference a missing MapLibreMap. */
+  isReady: () => boolean;
 }
 
-export function createMapLibreCameraHandle({ getCamera, getMap, getViewport }: Deps): MapCameraHandle {
+export function createMapLibreCameraHandle({ getCamera, getMap, getViewport, isReady }: Deps): MapCameraHandle {
+  const readyCamera = () => (isReady() ? getCamera() : null);
+  const readyMap = () => (isReady() ? getMap() : null);
   return {
     animateToRegion(region, duration = 500) {
-      void getCamera()?.setStop({
+      void readyCamera()?.setStop({
         center: [region.longitude, region.latitude],
         zoom: regionToMapLibreZoom(region, getViewport().width),
         duration,
@@ -46,7 +50,7 @@ export function createMapLibreCameraHandle({ getCamera, getMap, getViewport }: D
         south = Math.min(south, c.latitude);
         north = Math.max(north, c.latitude);
       }
-      void getCamera()?.setStop({
+      void readyCamera()?.setStop({
         bounds: [west, south, east, north],
         padding: options?.edgePadding,
         duration: options?.animated === false ? 0 : FIT_DURATION_MS,
@@ -60,13 +64,13 @@ export function createMapLibreCameraHandle({ getCamera, getMap, getViewport }: D
       if (camera.zoom !== undefined) stop.zoom = googleZoomToMapLibre(camera.zoom);
       if (camera.heading !== undefined) stop.bearing = camera.heading;
       if (camera.pitch !== undefined) stop.pitch = camera.pitch;
-      void getCamera()?.setStop({ ...stop, duration: options?.duration ?? 500, easing: 'ease' } as never);
+      void readyCamera()?.setStop({ ...stop, duration: options?.duration ?? 500, easing: 'ease' } as never);
     },
 
     async getCamera() {
-      const map = getMap();
-      if (!map) throw new Error('Map not ready');
-      const view = await map.getViewState();
+      const m = readyMap();
+      if (!m) throw new Error('Map not ready');
+      const view = await m.getViewState();
       return {
         center: { latitude: view.center[1], longitude: view.center[0] },
         zoom: mapLibreZoomToGoogle(view.zoom),
@@ -76,9 +80,9 @@ export function createMapLibreCameraHandle({ getCamera, getMap, getViewport }: D
     },
 
     async pointForCoordinate(coordinate) {
-      const map = getMap();
-      if (!map) throw new Error('Map not ready');
-      const [x, y] = await map.project([coordinate.longitude, coordinate.latitude]);
+      const m = readyMap();
+      if (!m) throw new Error('Map not ready');
+      const [x, y] = await m.project([coordinate.longitude, coordinate.latitude]);
       return { x, y };
     },
   };

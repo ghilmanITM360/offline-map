@@ -56,6 +56,18 @@ const polygon = (coords: readonly Coordinate[], properties: GeoJSON.GeoJsonPrope
 const state = (selected: boolean, focused: boolean) => (selected ? 'selected' : focused ? 'focused' : 'normal');
 const byState = (selected: unknown, focused: unknown, normal: unknown) => ['match', ['get', 'state'], 'selected', selected, 'focused', focused, normal];
 
+/** The faint venue outline, shared by browse and the legacy navigation scene. */
+export function buildVenueBoundaryOverlay(boundary: readonly Coordinate[]): OverlaySpec {
+  return {
+    id: 'venue-boundary',
+    data: fc(boundary.length > 2 ? [polygon(boundary)] : []),
+    layers: [
+      { id: 'venue-boundary-fill', type: 'fill', paint: { 'fill-color': 'rgba(232,245,233,0.06)' } },
+      { id: 'venue-boundary-line', type: 'line', paint: { 'line-color': 'rgba(46,125,50,0.48)', 'line-width': 2 } },
+    ],
+  };
+}
+
 export interface HomeVenueInput {
   venueBoundary: Coordinate[];
   blocks: V2BlockLayer[];
@@ -72,14 +84,7 @@ export function buildHomeVenueOverlay(input: HomeVenueInput): OverlaySpec[] {
   const { activeMapFilter: filter } = input;
   const focusedOn = (name: string) => filter === name;
   return [
-    {
-      id: 'venue-boundary',
-      data: fc(input.venueBoundary.length > 2 ? [polygon(input.venueBoundary)] : []),
-      layers: [
-        { id: 'venue-boundary-fill', type: 'fill', paint: { 'fill-color': 'rgba(232,245,233,0.06)' } },
-        { id: 'venue-boundary-line', type: 'line', paint: { 'line-color': 'rgba(46,125,50,0.48)', 'line-width': 2 } },
-      ],
-    },
+    buildVenueBoundaryOverlay(input.venueBoundary),
     {
       id: 'venue-blocks',
       data: fc(input.blocks.map((b) => polygon(b.polygon, { id: b.id, kind: 'block', label: b.label, state: state(b.isSelected, focusedOn('blocks')) }))),
