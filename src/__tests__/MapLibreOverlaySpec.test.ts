@@ -55,6 +55,15 @@ describe('buildHomeVenueOverlay', () => {
     expect(byId(home({ activeMapFilter: 'rastas' }), 'venue-rastas').data.features[0].properties!.state).toBe('focused');
   });
 
+  it('gates are door badges (orange when unverified), not anonymous dots, with a ring when selected or focused', () => {
+    const gates = byId(home(), 'venue-gates');
+    const icon = gates.layers.find((l) => l.id === 'gates-icon')!;
+    expect(icon.type).toBe('symbol');
+    expect(JSON.stringify(icon.layout!['icon-image'])).toContain('gate-badge-warning');
+    expect(gates.layers.some((l) => l.type === 'circle' && l.id === 'gates-dot')).toBe(false);
+    expect(gates.layers.find((l) => l.id === 'gates-selected-ring')!.filter).toEqual(['!=', ['get', 'state'], 'normal']);
+  });
+
   it('carries id, kind and label so a tap can be resolved back to a place', () => {
     const f = byId(home(), 'venue-gates').data.features[1].properties!;
     expect(f).toMatchObject({ id: 'G2', kind: 'gate', label: 'G2', warning: 1 });
@@ -97,12 +106,12 @@ describe('buildRouteOverlay', () => {
 
   it('preview: one casing + one line, no walked/remaining split', () => {
     const [inside] = buildRouteOverlay({ outside: [], roadFollowing: false, inside: pts });
-    expect(inside.layers.map((l) => l.id)).toEqual(['route-casing', 'route-line']);
+    expect(inside.layers.map((l) => l.id)).toEqual(['route-casing', 'route-line', 'route-chevrons']);
   });
 
   it('navigation: muted walked part under an emphasised remaining part', () => {
     const [inside] = buildRouteOverlay({ outside: [], roadFollowing: false, inside: pts, walked: pts.slice(0, 2), remaining: pts.slice(1) });
-    expect(inside.layers.map((l) => l.id)).toEqual(['route-casing', 'route-walked', 'route-remaining']);
+    expect(inside.layers.map((l) => l.id)).toEqual(['route-casing', 'route-walked', 'route-remaining', 'route-chevrons']);
     expect(inside.data.features.map((f) => f.properties!.part)).toEqual(['full', 'walked', 'remaining']);
   });
 
@@ -113,6 +122,27 @@ describe('buildRouteOverlay', () => {
     // Round caps would extend every dash by half the line width and close the gaps, so dashes use butt caps and a solid casing.
     expect(inside.layers[1].layout).not.toMatchObject({ 'line-cap': 'round' });
     expect(inside.layers[0].paint['line-dasharray']).toBeUndefined();
+  });
+
+  it('direction chevrons ride the line that is still ahead, never the walked part, and drop out while rerouting', () => {
+    const [preview] = buildRouteOverlay({ outside: [], roadFollowing: false, inside: pts });
+    const chev = preview.layers.find((l) => l.id === 'route-chevrons')!;
+    expect(chev.type).toBe('symbol');
+    expect(chev.layout).toMatchObject({ 'symbol-placement': 'line', 'icon-image': 'route-chevron', 'icon-allow-overlap': true });
+    expect(chev.minzoom).toBe(15);
+
+    const [nav] = buildRouteOverlay({ outside: [], roadFollowing: false, inside: pts, walked: pts.slice(0, 2), remaining: pts.slice(1) });
+    expect(nav.layers.find((l) => l.id === 'route-chevrons')!.filter).toEqual(['==', ['get', 'part'], 'remaining']);
+
+    const [rerouting] = buildRouteOverlay({ outside: [], roadFollowing: false, inside: pts, walked: pts.slice(0, 2), remaining: pts.slice(1), reroutePending: true });
+    expect(rerouting.layers.map((l) => l.id)).not.toContain('route-chevrons');
+  });
+
+  it('a road-following outside leg shows direction; a dashed direct guide does not', () => {
+    const solid = buildRouteOverlay({ outside: pts, roadFollowing: true, inside: [] })[0];
+    const dashed = buildRouteOverlay({ outside: pts, roadFollowing: false, inside: [] })[0];
+    expect(solid.layers.map((l) => l.id)).toContain('route-outside-chevrons');
+    expect(dashed.layers.map((l) => l.id)).not.toContain('route-outside-chevrons');
   });
 
   it('outside leg is dashed unless it follows roads, and absent when too short', () => {

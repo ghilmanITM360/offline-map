@@ -1,4 +1,4 @@
-// Renders the map marker images (destination pin, start badge, user heading cone, facility badges) to PNG data URIs.
+// Renders the map marker images (destination pin, start badge, user heading cone, gate badges, route chevron, facility badges) to PNG data URIs.
 // Run after changing marker tokens or glyphs:  node scripts/offline-map/build-marker-images.mjs
 // Dev-only (needs @resvg/resvg-js); the output is committed so builds and CI need no rasteriser.
 // Glyphs are Lucide icons (ISC licence) read from node_modules/lucide-react-native.
@@ -44,6 +44,12 @@ images['pin-destination'] = svg(36, 48, `<path d="M18 2C9.2 2 2 9.2 2 18c0 11.6 
 images['pin-start'] = svg(28, 28, `<circle cx="14" cy="14" r="12" fill="${tokens.start}" stroke="#fff" stroke-width="2.5"/>${glyphSvg('navigation', 7.5, 7.5, 13, '#fff')}`);
 // User heading cone: wedge pointing up from the centre of a transparent square, so the symbol can rotate about the dot.
 images['user-heading'] = svg(88, 88, `<defs><radialGradient id="g" cx="44" cy="44" r="44" gradientUnits="userSpaceOnUse"><stop offset="0.18" stop-color="${tokens.user}" stop-opacity="0.6"/><stop offset="1" stop-color="${tokens.user}" stop-opacity="0"/></radialGradient></defs><path d="M44 44 L23 5.5 A44 44 0 0 1 65 5.5 Z" fill="url(#g)"/>`);
+// Gate: badge with a door glyph (orange when its connector still needs field verification). The gate number is its label.
+for (const [name, fill] of [['gate-badge', tokens.gate], ['gate-badge-warning', tokens.gateWarning]]) {
+  images[name] = svg(32, 32, `<circle cx="16" cy="16" r="12.5" fill="${fill}" stroke="#fff" stroke-width="2.5"/>${glyphSvg('door-open', 9, 9, 14, '#fff')}`);
+}
+// Route direction: a small chevron pointing along the line (symbol-placement: line rotates it to the travel direction).
+images['route-chevron'] = svg(16, 16, `<path d="M5 3.5 L11 8 L5 12.5" fill="none" stroke="#0B3D91" stroke-opacity="0.55" stroke-width="4.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M5 3.5 L11 8 L5 12.5" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>`);
 // Facility badges. The selected state is a ring LAYER drawn under the badge, not a second image per glyph: every image
 // registered at map load delays the map becoming ready (16 images cost ~1.7 s on the emulator, 8 are deferred until after ready).
 for (const [key, file] of Object.entries(FACILITY_GLYPHS)) {
