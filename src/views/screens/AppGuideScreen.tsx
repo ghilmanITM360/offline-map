@@ -94,7 +94,7 @@ const GUIDE_SECTIONS: GuideSection[] = [
     title: '8. Map Controls',
     urduTitle: '۸۔ نقشہ کنٹرولز',
     body:
-      'Layer button changes map style. Follow direction button turns the map to face the way you are moving; tap it again for north-up. Zoom buttons change level. Recenter button jumps back to your position.',
+      'Follow direction turns the map to face the way you are moving; tap it again for north-up. Recenter jumps back to your position. More map controls holds Layers and Zoom in / Zoom out. You can also pinch to zoom.',
   },
   {
     key: 'settings',

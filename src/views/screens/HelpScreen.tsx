@@ -98,7 +98,7 @@ export function HelpScreen() {
             onPress={() =>
               showFAQ(
                 'Finding Your Block',
-                'Each block is labelled B1–B24 on the map.\n\n• Tap the search bar and type your block number (e.g. "Block 7" or "7").\n• Tap the block polygon on the map for entrance options.\n• Use "Take Me There" to start turn-by-turn navigation to the nearest gate.\n\nUrdu names are also searchable (e.g. بلاک ۷).',
+                'Each block is labelled B1–B24 on the map.\n\n• Open the menu, tap Find a place and type your block number (e.g. "Block 7" or "7").\n• Tap the block polygon on the map for entrance options.\n• Use "Take Me There" to start turn-by-turn navigation to the nearest gate.\n\nUrdu names are also searchable (e.g. بلاک ۷).',
               )
             }
           />
