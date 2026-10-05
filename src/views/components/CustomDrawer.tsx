@@ -16,6 +16,7 @@ import {
   Map as MapIcon
 } from 'lucide-react-native';
 import { useAppStore } from '../../store/useAppStore';
+import { OfflineMapService } from '../../services/OfflineMapService';
 import { RootStackParamList } from '../../navigation/RootNavigator'; // fixed: type parent stack navigation for drawer-to-stack transitions
 import { useTheme } from '../../services/useTheme'; // fixed: use theme-safe colors for icons and badges
 import { staticColors } from '../../theme';
@@ -31,7 +32,7 @@ export function CustomDrawer(props: DrawerContentComponentProps) {
 
   const menuItems = [
     { label: 'Home', icon: Home, route: 'Home' },
-    { label: 'Offline Maps', icon: Download, route: 'DownloadMap', badge: offlineData.isDownloaded ? 'Downloaded' : 'Not Downloaded' },
+    { label: 'Offline Maps', icon: Download, route: 'DownloadMap', badge: offlineData.isDownloaded ? 'Downloaded' : OfflineMapService.isOfflineTileDownloadAvailable() ? 'Not Downloaded' : undefined },
     { label: 'Settings', icon: Settings, route: 'Settings' },
   ];
 

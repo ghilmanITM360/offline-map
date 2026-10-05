@@ -38,6 +38,14 @@ Confirmed official gate coordinates:
 - Gate 13: `24.963718, 67.006862`
 - Gate 14: `24.965516, 67.007675`
 
+## Offline visual-map contract (#140, owner decision 2026-10-05)
+
+"Offline" means the **venue core**: the bundled venue graph, gates/blocks/rastas/special routes, venue geometry and labels, internal and bundled-OSM outside routing, Directions, active navigation, reroute and arrival all work with no network, and no route calculation has a hidden network requirement.
+
+Third-party street/satellite **background imagery is optional online context**. The app does not download, prefetch or bulk-store tiles from `tile.openstreetmap.org` or any other public tile server, and no offline imagery package is shipped. `OfflineMapService.isOfflineTileDownloadAvailable()` is `false` in every release build (dev/mock only), so the Download Map step only explains this and offers to continue; `HomeScreen` falls back to the graph-only venue map (`BaseMapModeResolver`) when imagery is unavailable. Existing validated local tiles, if any, still render. Adding a licensed offline imagery source later is a new decision, not part of this milestone.
+
+User-facing copy must not promise downloaded imagery; `OfflineVisualMapContract.test.ts` guards the known phrases.
+
 ## v1 rollback path
 
 The v1 graph (`T*`/`S*`/`P*`/`C*` node IDs, plain A* over `src/constants/data.ts`) exists only as a rollback path behind feature flags — it is not the active runtime and should not be extended.

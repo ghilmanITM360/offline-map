@@ -229,7 +229,7 @@ export function SettingsScreen() {
             onPress={() => {
               if (settings.mapMode === 'standard') {
                 if (!hasInternet) {
-                  Alert.alert('Satellite unavailable', 'Satellite requires internet or offline satellite tiles.');
+                  Alert.alert('Satellite unavailable', 'Satellite imagery requires internet. Ijtema routes still work offline.');
                   return;
                 }
                 if (!hasGoogleMapsKey) {

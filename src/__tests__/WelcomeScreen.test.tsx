@@ -31,7 +31,7 @@ describe('WelcomeScreen (#159 WEL-007)', () => {
     expect(screen.getByText('اجتماع میپ میں خوش آمدید')).toBeOnTheScreen();
     expect(screen.getByText('See where you are')).toBeOnTheScreen();
     expect(screen.getByText('Navigate to blocks and gates')).toBeOnTheScreen();
-    expect(screen.getByText('Use offline maps')).toBeOnTheScreen();
+    expect(screen.getByText('Venue routes work offline')).toBeOnTheScreen();
     expect(screen.getByText('Get walking directions')).toBeOnTheScreen();
   });
 
