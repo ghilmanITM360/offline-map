@@ -79,6 +79,22 @@ describe('V2 arrival requires final-leg progress (#95)', () => {
   });
 });
 
+describe('V2 arrival is a latched, finite-fix-only signal (#95)', () => {
+  test('arrival stays reported when GPS noise later drifts outside 20m', async () => {
+    const hook = await renderHook(() => useNavigationViewModelV2());
+    await publish({ latitude: 24.966, longitude: 67.00405 });
+    expect(hook.result.current.arrived).toBe(true);
+    await publish({ latitude: 24.966, longitude: 67.0045 });
+    expect(hook.result.current.arrived).toBe(true);
+  });
+
+  test('a non-finite fix never reports arrival', async () => {
+    const hook = await renderHook(() => useNavigationViewModelV2());
+    await publish({ latitude: Number.NaN, longitude: Number.NaN });
+    expect(hook.result.current.arrived).toBe(false);
+  });
+});
+
 // Production keeps a final edge instruction and a zero-distance arrival marker
 // at the same endpoint. Reaching the final edge is sufficient for the 20m rule.
 test('production-shaped final edge accepts proximity before the terminal arrival marker', async () => {
