@@ -1067,6 +1067,9 @@ export class RoutingServiceV2 {
         if (!gate) continue;
 
         const joinM = providerEndpointJoinM(outside, plan.userCoordinate, gate.coordinate!);
+        // Same fail-safe as the distanceM guard: a join that cannot be measured (non-finite or missing
+        // provider geometry) must not win with a NaN/zero cost — NaN would never lose a `<` comparison.
+        if (!Number.isFinite(joinM) || (outside.provider === 'google' && outside.coordinates.length === 0)) continue;
         const totalCostM =
           outside.distanceM +
           joinM +
