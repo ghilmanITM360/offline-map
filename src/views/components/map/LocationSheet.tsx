@@ -364,6 +364,9 @@ function RoutePreviewSection({
     }
     onClose();
   };
+  // A start that waits for a recomputed route must run the handler of the render that holds that route.
+  const startNowRef = useRef(startNow);
+  startNowRef.current = startNow;
 
   const footerNode = footerVisible ? (
     <>
@@ -399,9 +402,6 @@ function RoutePreviewSection({
             {showRouteReady && (
               <>
                 {!compactFooter && routeSummary}
-                {startAction && startAction.kind === 'not_near' && startAction.title ? (
-                  <Text accessibilityLiveRegion="polite" style={styles.footerTitle}>{startAction.title}</Text>
-                ) : null}
                 <Button
                   variant="brand"
                   style={styles.cta}
@@ -429,14 +429,14 @@ function RoutePreviewSection({
                   trailingIcon={<ChevronEnd size={20} color={directionsSheetColors.brandText} />}
                   disabled={startAttempt === 'working' || (!startAction && !canStartNavigation)}
                   onPress={() => {
-                    if (startAction) void runStartAction(startNow);
+                    if (startAction) void runStartAction(() => startNowRef.current());
                     else startNow();
                   }}
                 />
                 {startAction?.secondaryLabel ? (
                   <Pressable
                     style={styles.linkButton}
-                    onPress={startAction.kind === 'not_near' ? () => onOpenDirectory?.('start') : onViewRoute}
+                    onPress={onViewRoute}
                     accessibilityRole="button"
                     accessibilityLabel={startAction.secondaryLabel}
                   >
@@ -892,13 +892,6 @@ const styles = StyleSheet.create({
   },
   readyBody: {
     gap: 10,
-  },
-  // Compact on purpose: the pinned footer shares the small visible area at the 50% snap.
-  footerTitle: {
-    fontSize: 16,
-    lineHeight: 22,
-    fontWeight: '700',
-    color: directionsSheetColors.headingText,
   },
   footerReason: {
     fontSize: 13,

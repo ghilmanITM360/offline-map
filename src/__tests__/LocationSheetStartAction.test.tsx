@@ -79,18 +79,7 @@ describe('Route-ready start action (no dead Start button)', () => {
     expect(screen.getByRole('button', { name: 'Turn on location & start' })).toBeEnabled();
   });
 
-  test('far from the chosen start: says so, starts from the real position, offers Change start', async () => {
-    mockedVm.mockReturnValue(vm({ kind: 'not_near', title: "You're not near Block 27", primaryLabel: 'Start from my location', secondaryLabel: 'Change start' }));
-    const user = userEvent.setup();
-    await renderSheet();
-
-    expect(screen.getByText("You're not near Block 27")).toBeOnTheScreen();
-    expect(screen.getByRole('button', { name: 'Start from my location' })).toBeEnabled();
-    await user.press(screen.getByRole('button', { name: 'Change start' }));
-    expect(onOpenDirectory).toHaveBeenCalledWith('start');
-  });
-
-  test('near the chosen start: "Ready to go" with a plain Start Navigation that begins navigation and closes the sheet', async () => {
+  test('live start with a fresh fix: "Ready to go" with a plain Start Navigation that begins navigation and closes the sheet', async () => {
     runStartAction.mockImplementation((startNow: () => void) => startNow());
     mockedVm.mockReturnValue(vm({ kind: 'start', primaryLabel: 'Start Navigation', title: 'Ready to go' }, { canStartNavigation: true, startNavigationDisabledReason: '' }));
     const user = userEvent.setup();

@@ -135,10 +135,8 @@ describe('evaluateNavigationLocationCapability', () => {
 });
 
 describe('resolveStartAction (zero-thinking start CTA)', () => {
-  const planned = { latitude: 24.96, longitude: 67.01 };
   const nearFix = { latitude: 24.96001, longitude: 67.01001, accuracy: 8, observedAtMs: nowMs };
-  const farFix = { latitude: 24.97, longitude: 67.02, accuracy: 8, observedAtMs: nowMs };
-  const base = { startSource: 'manual_place', plannedStart: planned, plannedStartName: 'Block 27', permission: { granted: true, precision: 'fine' }, nowMs } as const;
+  const base = { startSource: 'manual_place', permission: { granted: true, precision: 'fine' }, nowMs } as const;
 
   it('1: manual start with no fix offers an enabled location action, not a disabled Start', () => {
     expect(resolveStartAction({ ...base, liveFix: null })).toMatchObject({ kind: 'use_location', primaryLabel: 'Use my location & start' });
@@ -149,57 +147,37 @@ describe('resolveStartAction (zero-thinking start CTA)', () => {
       .toMatchObject({ kind: 'turn_on_location', primaryLabel: 'Turn on location & start' });
   });
 
-  it('3: fresh fine fix near the chosen start is ready to go', () => {
-    expect(resolveStartAction({ ...base, liveFix: nearFix })).toMatchObject({ kind: 'start', primaryLabel: 'Start Navigation' });
-  });
-
-  it('4: fresh fix far from the chosen start says so and offers start-from-here', () => {
-    expect(resolveStartAction({ ...base, liveFix: farFix })).toMatchObject({
-      kind: 'not_near',
-      title: "You're not near Block 27",
-      primaryLabel: 'Start from my location',
-      secondaryLabel: 'Change start',
-    });
-  });
-
-  // Fix quality (accuracy/freshness) and "is the user at the planned start" are separate gates. The second reuses
-  // the route's own on-route tolerance (30 m floor, 1.5 x accuracy, 80 m cap), so a less certain fix gets more slack.
-  it('3b: the start-match tolerance follows fix uncertainty, not the 50 m accuracy gate', () => {
-    const at35m = { latitude: 24.96032, longitude: 67.01 };
-    expect(resolveStartAction({ ...base, liveFix: { ...at35m, accuracy: 8, observedAtMs: nowMs } }).kind).toBe('not_near');
-    expect(resolveStartAction({ ...base, liveFix: { ...at35m, accuracy: 40, observedAtMs: nowMs } }).kind).toBe('start');
-  });
-
-  it('3c: a fix inside the 30 m floor is at the start; the 80 m cap still applies to a poor-but-usable fix', () => {
-    expect(resolveStartAction({ ...base, liveFix: { latitude: 24.96025, longitude: 67.01, accuracy: 8, observedAtMs: nowMs } }).kind).toBe('start');
-    const at100m = { latitude: 24.9609, longitude: 67.01, accuracy: 50, observedAtMs: nowMs };
-    expect(resolveStartAction({ ...base, liveFix: at100m }).kind).toBe('not_near');
+  it('3: a manual start is a preview even with a perfect fix: guidance starts from the fresh fix, never the planned place', () => {
+    expect(resolveStartAction({ ...base, liveFix: nearFix })).toMatchObject({ kind: 'use_location', primaryLabel: 'Use my location & start' });
   });
 
   it('5: approximate permission never satisfies the precise gate, even with a good-looking fix', () => {
-    expect(resolveStartAction({ ...base, liveFix: nearFix, permission: { granted: true, precision: 'coarse' } }))
+    expect(resolveStartAction({ ...base, startSource: 'live_gps', liveFix: nearFix, permission: { granted: true, precision: 'coarse' } }))
       .toMatchObject({ kind: 'precise_location', primaryLabel: 'Turn on precise location' });
   });
 
-  it('5b: an inaccurate or stale fix is retried rather than trusted', () => {
-    expect(resolveStartAction({ ...base, liveFix: { ...nearFix, accuracy: 500 } }).kind).toBe('use_location');
-    expect(resolveStartAction({ ...base, liveFix: { ...nearFix, observedAtMs: nowMs - 60_000 } }).kind).toBe('use_location');
+  it('5b: an inaccurate or stale live fix is retried rather than trusted', () => {
+    const live = { ...base, startSource: 'live_gps' } as const;
+    expect(resolveStartAction({ ...live, liveFix: { ...nearFix, accuracy: 500 } }).kind).toBe('use_location');
+    expect(resolveStartAction({ ...live, liveFix: { ...nearFix, observedAtMs: nowMs - 60_000 } }).kind).toBe('use_location');
   });
 
   it('9: a remembered / last-known start never counts as live GPS', () => {
-    expect(resolveStartAction({ ...base, startSource: 'remembered_location', liveFix: null }).kind).toBe('use_location');
-    expect(resolveStartAction({ ...base, startSource: 'device_last_known', liveFix: null }).kind).toBe('use_location');
+    expect(resolveStartAction({ ...base, startSource: 'remembered_location', liveFix: nearFix }).kind).toBe('use_location');
+    expect(resolveStartAction({ ...base, startSource: 'device_last_known', liveFix: nearFix }).kind).toBe('use_location');
   });
 
-  it('live GPS start with a valid fix keeps the plain Start Navigation', () => {
-    expect(resolveStartAction({ ...base, startSource: 'live_gps', plannedStart: nearFix, liveFix: nearFix }).kind).toBe('start');
+  it('a live GPS start with a valid fix keeps the plain Start Navigation', () => {
+    expect(resolveStartAction({ ...base, startSource: 'live_gps', liveFix: nearFix })).toMatchObject({ kind: 'start', primaryLabel: 'Start Navigation' });
   });
 
   it('every state keeps the primary enabled and never mentions technical wording', () => {
-    for (const liveFix of [null, nearFix, farFix]) {
-      const action = resolveStartAction({ ...base, liveFix });
-      expect(action.primaryLabel.length).toBeGreaterThan(0);
-      expect(JSON.stringify(action)).not.toMatch(/precise location is required|manual_place|capability|preview remains/i);
+    for (const startSource of ['manual_place', 'live_gps'] as const) {
+      for (const liveFix of [null, nearFix]) {
+        const action = resolveStartAction({ ...base, startSource, liveFix });
+        expect(action.primaryLabel.length).toBeGreaterThan(0);
+        expect(JSON.stringify(action)).not.toMatch(/precise location is required|manual_place|capability|preview remains|not near/i);
+      }
     }
   });
 });

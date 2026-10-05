@@ -45,40 +45,33 @@ describe('Start action for a chosen (manual) start', () => {
     expect(hook.result.current.startAction?.kind).toBe('turn_on_location');
   });
 
-  test('3: a fresh precise fix at the chosen start starts navigation automatically', async () => {
+  test('3/9: a fresh precise fix replaces the manual start, then navigation starts from the recomputed route', async () => {
     const hook = await readyHook();
-    const first = (hook.result.current.route as { coordinates: { latitude: number; longitude: number }[] }).coordinates[0];
-    jest.spyOn(LocationAccessService, 'resolveCurrentLocation').mockResolvedValue(
-      resolved({ coordinate: { ...first, accuracy: 8, observedAtMs: Date.now() } }),
-    );
-    const startNow = jest.fn();
-    await act(async () => hook.result.current.runStartAction(startNow));
-    expect(startNow).toHaveBeenCalledTimes(1);
-  });
-
-  test('4/9: a fresh fix far from the chosen start does NOT start; the sheet switches to "not near"', async () => {
-    const hook = await readyHook();
-    jest.spyOn(LocationAccessService, 'resolveCurrentLocation').mockResolvedValue(
-      resolved({ coordinate: { latitude: 24.99, longitude: 67.05, accuracy: 8, observedAtMs: Date.now() } }),
-    );
-    const startNow = jest.fn();
-    await act(async () => hook.result.current.runStartAction(startNow));
-    expect(startNow).not.toHaveBeenCalled();
-    expect(useAppStore.getState().isNavigating).toBe(false);
-    await waitFor(() => expect(hook.result.current.startAction).toMatchObject({ kind: 'not_near', primaryLabel: 'Start from my location' }));
-    expect(hook.result.current.startAction?.title).toContain("You're not near");
-  });
-
-  test('"Start from my location" recalculates from the real position instead of mutating the old start', async () => {
-    const hook = await readyHook();
-    await act(async () => useAppStore.setState({ currentLocation: { latitude: 24.9636, longitude: 67.0063, accuracy: 8, observedAtMs: Date.now() }, currentLocationSource: 'live' }));
-    await waitFor(() => expect(hook.result.current.startAction?.kind).toBe('not_near'));
+    const staleRoute = hook.result.current.route;
     jest.spyOn(LocationAccessService, 'resolveCurrentLocation').mockResolvedValue(
       resolved({ coordinate: { latitude: 24.9636, longitude: 67.0063, accuracy: 8, observedAtMs: Date.now() } }),
     );
-    await act(async () => hook.result.current.runStartAction(jest.fn()));
-    await waitFor(() => expect(hook.result.current.startSource).toBe('live_gps'));
+    const startNow = jest.fn();
+    await act(async () => hook.result.current.runStartAction(startNow));
+    // The planned Block 27 start is never used as if it were live GPS: the start is now the fix itself.
+    expect(hook.result.current.startSource).toBe('live_gps');
     expect(hook.result.current.manualStart).toBeNull();
+    await waitFor(() => expect(startNow).toHaveBeenCalledTimes(1), { timeout: 8_000 });
+    expect(hook.result.current.route).not.toBe(staleRoute);
+  });
+
+  test('once the start is the live fix, the button is a plain Start Navigation that starts directly', async () => {
+    const hook = await readyHook();
+    jest.spyOn(LocationAccessService, 'resolveCurrentLocation').mockResolvedValue(
+      resolved({ coordinate: { latitude: 24.9636, longitude: 67.0063, accuracy: 8, observedAtMs: Date.now() } }),
+    );
+    const first = jest.fn();
+    await act(async () => hook.result.current.runStartAction(first));
+    await waitFor(() => expect(first).toHaveBeenCalledTimes(1), { timeout: 8_000 });
+    await waitFor(() => expect(hook.result.current.startAction?.kind).toBe('start'));
+    const second = jest.fn();
+    await act(async () => hook.result.current.runStartAction(second));
+    expect(second).toHaveBeenCalledTimes(1);
   });
 
   test('5: approximate-only permission never starts, even when a fix looks accurate', async () => {

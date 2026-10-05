@@ -8,7 +8,7 @@ import { getDistance } from 'geolib';
 import { useAppStore } from '../store/useAppStore';
 import { RoutingService } from '../services/RoutingService';
 import { InstructionService, Instruction } from '../services/InstructionService';
-import { Coordinate, Place, RouteAlternative, RoutePreview } from '../models/types';
+import { Place, RouteAlternative, RoutePreview } from '../models/types';
 import { LocationAccessService } from '../services/LocationAccessService';
 import {
   evaluateNavigationLocationCapability,
@@ -202,8 +202,6 @@ export function useDirectionsViewModel(destination: Place | null) {
   const liveFix = currentLocationSource === 'live' ? currentLocation : null;
   const startAction = resolveStartAction({
     startSource,
-    plannedStart: (route as { coordinates?: Coordinate[] } | null)?.coordinates?.[0] ?? startCoordinateForOutsideCheck,
-    plannedStartName: startSourceLabel,
     liveFix,
     permission: { granted: hasLocationPermission || liveFix !== null, precision: locationPermissionPrecision },
   });
@@ -473,9 +471,10 @@ export function useDirectionsViewModel(destination: Place | null) {
     setIsEditingManualStart(false);
   };
 
-  const chooseCurrentLocation = async (): Promise<boolean> => {
+  type ResolvedLocation = Awaited<ReturnType<typeof LocationAccessService.resolveCurrentLocation>>;
+  const chooseCurrentLocationWith = async (resolve: () => Promise<ResolvedLocation>): Promise<boolean> => {
     try {
-      const resolved = await LocationAccessService.resolveCurrentLocation(true);
+      const resolved = await resolve();
       setHasLocationPermission(resolved.permissionState.granted);
       setLocationPermissionPrecision(resolved.permissionState.precision);
 
@@ -521,6 +520,8 @@ export function useDirectionsViewModel(destination: Place | null) {
       return false;
     }
   };
+  const chooseCurrentLocation = async (): Promise<boolean> =>
+    chooseCurrentLocationWith(() => LocationAccessService.resolveCurrentLocation(true));
 
   const chooseRememberedLocation = (): boolean => {
     if (!lastKnownLocation || (!isV2Destination && !RoutingService.isInsideVenue(lastKnownLocation))) {
@@ -556,14 +557,29 @@ export function useDirectionsViewModel(destination: Place | null) {
 
   const clearManualGateSelection = () => setManualGateId(null);
 
-  /** Primary footer action. `startNow` begins navigation; every other state first gets a fresh live fix. */
+  /**
+   * Navigation start the user asked for that is waiting on a route recomputed from their live fix: `route` is the
+   * stale route at press time, so only a different (recomputed) route may release it. Held in a ref: no render needed.
+   */
+  const pendingStartRef = useRef<{ go: () => void; staleRoute: unknown } | null>(null);
+  useEffect(() => {
+    const pending = pendingStartRef.current;
+    if (!pending) return;
+    if (loadState === 'error' || loadState === 'needs_origin') {
+      pendingStartRef.current = null;
+    } else if (loadState === 'ready' && route !== pending.staleRoute && startAction?.kind === 'start') {
+      pendingStartRef.current = null;
+      pending.go();
+    }
+  }, [loadState, route, startAction?.kind]);
+
+  /**
+   * Primary footer action. `startNow` begins navigation. A planned/manual start only previews, so every other state
+   * first gets a fresh live fix; a manual or saved start then switches to that fix (the FROM row says so) and
+   * navigation begins from the recomputed route.
+   */
   const runStartAction = async (startNow: () => void) => {
     if (startAction.kind === 'start') return startNow();
-    if (startAction.kind === 'not_near') {
-      setStartAttempt('idle');
-      await chooseCurrentLocation();
-      return;
-    }
     setStartAttempt('working');
     try {
       const resolved = await LocationAccessService.resolveCurrentLocation(true);
@@ -581,16 +597,18 @@ export function useDirectionsViewModel(destination: Place | null) {
         setStartAttempt('failed');
         return;
       }
-      setCurrentLocation(resolved.coordinate, 'live');
       setStartAttempt('idle');
+      if (startSource !== 'live_gps') {
+        pendingStartRef.current = { go: startNow, staleRoute: route };
+        await chooseCurrentLocationWith(async () => resolved);
+        return;
+      }
+      setCurrentLocation(resolved.coordinate, 'live');
       const next = resolveStartAction({
         startSource,
-        plannedStart: (route as { coordinates?: Coordinate[] } | null)?.coordinates?.[0] ?? startCoordinateForOutsideCheck,
-        plannedStartName: startSourceLabel,
         liveFix: resolved.coordinate,
         permission: { granted: true, precision: resolved.permissionState.precision },
       });
-      // Only a fix that matches the planned start begins navigation; otherwise the sheet now says so.
       if (next.kind === 'start') startNow();
     } catch {
       setStartAttempt('failed');
