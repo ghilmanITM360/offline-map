@@ -13,7 +13,7 @@ import { RoutePointService } from '../services/RoutePointService';
 import { VoiceService } from '../services/VoiceService';
 import { RerouteService } from '../services/RerouteService';
 import { GPSManagerService } from '../services/GPSManagerService';
-import { getDistance } from 'geolib';
+import { getDistance, getPathLength } from 'geolib';
 import { Coordinate, RoutePreview } from '../models/types';
 import { ARRIVAL_THRESHOLD_METERS as ARRIVAL_THRESHOLD_M } from '../constants/navigation';
 import { GPS_LOST_TIMEOUT_MS, STALE_FIX_CLOCK_TOLERANCE_MS } from '../constants/navigation';
@@ -256,9 +256,10 @@ export function useNavigationViewModel() {
         // entry node, not necessarily at the destination point, so allow that gap on top of the
         // threshold: a straight final approach inside the threshold always satisfies this bound
         // (remaining route <= distance to the route end <= threshold + end-to-destination gap).
+        // Measured on the polyline: progress is geometric, while declared edge lengths can exceed it.
         const routeEnd = currentRoute?.coordinates[currentRoute.coordinates.length - 1];
         const reachedRouteEnd = !currentRoute || !routeEnd || currentRoute.coordinates.length < 2 ||
-          currentRoute.totalDistance - progressMetersRef.current <=
+          getPathLength(currentRoute.coordinates) - progressMetersRef.current <=
             ARRIVAL_THRESHOLD_M + getDistance(routeEnd, destinationCoordinate);
         if (distToDest < ARRIVAL_THRESHOLD_M && reachedRouteEnd) {
           arrivedRef.current = true;

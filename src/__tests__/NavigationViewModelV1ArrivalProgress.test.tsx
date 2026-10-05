@@ -71,4 +71,14 @@ describe('V1 arrival requires route progress (#95)', () => {
     await act(async () => publish({ latitude: 24.966, longitude: 67.00405 }));
     expect(hook.result.current.arrived).toBe(true);
   });
+
+  test('declared totalDistance larger than the polyline length cannot make arrival impossible', async () => {
+    // Graph edges can declare more length than their node-to-node geometry; progress is measured on the geometry.
+    useAppStore.getState().startNavigation(destination, { ...route, totalDistance: totalDistance + 45 }, []);
+    const hook = await renderHook(() => useNavigationViewModel());
+    for (const c of coordinates.slice(1)) {
+      await act(async () => publish(c));
+    }
+    expect(hook.result.current.arrived).toBe(true);
+  });
 });
