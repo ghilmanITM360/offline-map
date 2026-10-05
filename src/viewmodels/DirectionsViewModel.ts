@@ -315,8 +315,12 @@ export function useDirectionsViewModel(destination: Place | null) {
       setRoute(preview.route);
       routeDestinationIdRef.current = destination.id;
       setInstructions(preview.instructions);
-      setActiveRoute(preview.route);
-      setRouteInstructions(preview.instructions);
+      // #301: once Start has run, the navigation session owns activeRoute/routeInstructions. A recompute that
+      // finishes later (live fix still moving while the sheet unmounts) must not swap in a preview without `origin`.
+      if (!useAppStore.getState().isNavigating) {
+        setActiveRoute(preview.route);
+        setRouteInstructions(preview.instructions);
+      }
       setRoutePlannerDest(destination);
       setRoutePlannerOrigin(startSource === 'manual_place' ? manualStart : null);
       setLoadState('ready');
@@ -433,8 +437,10 @@ export function useDirectionsViewModel(destination: Place | null) {
       setSelectedRouteIndex(0);
       setRoute(best);
       setInstructions(generated);
-      setActiveRoute(best);
-      setRouteInstructions(generated);
+      if (!useAppStore.getState().isNavigating) { // #301, see the v2 branch above
+        setActiveRoute(best);
+        setRouteInstructions(generated);
+      }
       setRoutePlannerDest(destination);
       setRoutePlannerOrigin(startSource === 'manual_place' ? manualStart : null);
       setLoadState('ready');

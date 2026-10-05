@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import { V2NavigationAdapter } from '../services/V2NavigationAdapter';
 import { V2PlaceAdapter } from '../services/V2PlaceAdapter';
 import { LocationAccessService, type LocationResolveResult } from '../services/LocationAccessService';
 import { useAppStore } from '../store/useAppStore';
@@ -123,5 +124,22 @@ describe('Start action for a chosen (manual) start', () => {
     await act(async () => hook.result.current.runStartAction(jest.fn()));
     expect(open).toHaveBeenCalledTimes(1);
     expect(hook.result.current.startAttempt).toBe('settings');
+  });
+
+  test('#301: a recompute that finishes after navigation started never replaces the active route', async () => {
+    const hook = await readyHook();
+    const preview = hook.result.current.route as never;
+    const active = V2NavigationAdapter.fromPreview({
+      previewRoute: preview,
+      destination,
+      startPlace: null,
+      currentLocation: (preview as { coordinates: never[] }).coordinates[0],
+    });
+    await act(async () => useAppStore.getState().startNavigation(destination, active, active.instructions));
+    // The live fix keeps moving while the sheet is still unmounting: the origin changes and the route recomputes.
+    await act(async () => hook.result.current.setManualStartPlace(V2PlaceAdapter.getPlaceById('B28')!));
+    await new Promise((resolve) => setTimeout(resolve, 600));
+    expect(useAppStore.getState().activeRoute).toBe(active);
+    expect((useAppStore.getState().activeRoute as { origin?: unknown }).origin).toBeDefined();
   });
 });
