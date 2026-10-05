@@ -65,7 +65,7 @@ A PR does one thing. Don't bundle an unrelated cleanup, dependency bump, or driv
 ## Security and verification boundaries
 
 - Mobile may contain only proxy base URL configuration. Never place Google Routes web-service credentials, proxy signing secrets, or privileged bearer tokens in mobile code or `EXPO_PUBLIC_*` variables.
-- Google Maps SDK keys are separate client-visible rendering credentials. Restrict them by platform/application; never reuse them for Google Routes.
+- The map is MapLibre on a bundled offline basemap: the app holds no Google Maps SDK key. Never add one, and never reuse any client-visible key for Google Routes.
 - Never commit `.env`, signing credentials, keystores, local properties, tokens, or secret-bearing logs.
 - Ignore old APK/build outputs. After integration, build a fresh release APK from the intended final commit and record its commit, build command, timestamp, and checksum before device testing.
 

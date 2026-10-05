@@ -58,7 +58,7 @@ The APK file lives outside git (local build output). Rebuild it from the commit 
 - #46 — Physical Ijtima walking acceptance test (FIELD REQUIRED)
 - #139 — Active journey lost after Android process death (product decision + physical device)
 - #48 — Production signing / Play App Signing (owner action, Future Deployment)
-- #49 — Google Maps production restrictions verification (owner action, Future Deployment; also has a live-risk component — historical exposed key)
+- #49 — historical exposed Google Maps key (the app no longer uses any Maps key; owner may delete the old key in Google Cloud Console)
 - #93 — Nearest-node snapping continuity/hysteresis (root cause confirmed, fix deferred pending #46 field data)
 - #115 — NEW-02/03/06 audit: all three resolved (NEW-06 fixed in source by #171, NEW-03 by #162, NEW-02 superseded; EV-028–030 updated). Remaining acceptance is the owner's retire-vs-keep decision on `main`
 - #124 — "Direct guide" despite a valid OSM route: not reproduced on the baseline (fixed by #107/#108); needs a physical-device re-run before closing

@@ -2,11 +2,6 @@ import Expo
 import React
 import ReactAppDependencyProvider
 
-// @generated begin react-native-maps-import - expo prebuild (DO NOT MODIFY) sync-bee50fec513f89284e0fa3f5d935afdde33af98f
-#if canImport(GoogleMaps)
-import GoogleMaps
-#endif
-// @generated end react-native-maps-import
 @UIApplicationMain
 public class AppDelegate: ExpoAppDelegate {
   var window: UIWindow?
@@ -34,11 +29,6 @@ public class AppDelegate: ExpoAppDelegate {
       launchOptions: launchOptions)
 #endif
 
-// @generated begin react-native-maps-init - expo prebuild (DO NOT MODIFY) sync-8f24d3e05fe6c472fe4c862c8f96d32cced05271
-#if canImport(GoogleMaps)
-GMSServices.provideAPIKey("your_ios_maps_key_here")
-#endif
-// @generated end react-native-maps-init
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
 
