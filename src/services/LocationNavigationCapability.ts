@@ -3,6 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import { getDistance } from 'geolib';
+
 import type { Coordinate } from '../models/types';
 
 export type NavigationStartSource = 'live_gps' | 'device_last_known' | 'remembered_location' | 'manual_place';
@@ -84,4 +86,65 @@ export function evaluateNavigationLocationCapability(
   }
 
   return { canStart: true, message: '' };
+}
+
+/**
+ * A live fix this close to the route's planned start counts as "there". Reuses the 50 m figure the live-navigation
+ * gate already accepts for fix quality, so no new tolerance is introduced.
+ */
+export const NEAR_PLANNED_START_M = MAX_LIVE_NAVIGATION_ACCURACY_M;
+
+export type StartActionKind = 'start' | 'use_location' | 'turn_on_location' | 'precise_location' | 'not_near';
+
+export interface StartAction {
+  kind: StartActionKind;
+  /** Always enabled: the user is never left on a dead primary button. */
+  primaryLabel: string;
+  /** Short plain-language headline shown above the primary action, when the state needs one. */
+  title?: string;
+  secondaryLabel?: string;
+}
+
+interface StartActionInput {
+  startSource: NavigationStartSource;
+  /** Where the route begins (its first point); a live fix is compared against it. */
+  plannedStart: Coordinate | null;
+  plannedStartName: string;
+  /** Only a genuinely live fix; remembered / last-known / manual positions must not be passed here. */
+  liveFix: Coordinate | null;
+  permission: { granted: boolean; precision: 'fine' | 'coarse' | 'none' };
+  nowMs?: number;
+}
+
+/**
+ * Turns the (unchanged) live-navigation safety gate into one actionable primary button.
+ * A planned/manual start is a route preview; live guidance still needs a fresh precise fix.
+ */
+export function resolveStartAction(input: StartActionInput): StartAction {
+  if (!input.permission.granted) {
+    return { kind: 'turn_on_location', primaryLabel: 'Turn on location & start', secondaryLabel: 'View route' };
+  }
+  if (input.permission.precision === 'coarse') {
+    return { kind: 'precise_location', primaryLabel: 'Turn on precise location', secondaryLabel: 'View route' };
+  }
+  const fixUsable =
+    input.liveFix !== null &&
+    evaluateNavigationLocationCapability({
+      startSource: 'live_gps',
+      coordinate: input.liveFix,
+      precision: input.permission.precision,
+      nowMs: input.nowMs,
+    }).canStart;
+  if (!fixUsable || !input.liveFix) {
+    return { kind: 'use_location', primaryLabel: 'Use my location & start', secondaryLabel: 'View route' };
+  }
+  if (input.plannedStart && getDistance(input.liveFix, input.plannedStart) > NEAR_PLANNED_START_M) {
+    return {
+      kind: 'not_near',
+      title: `You're not near ${input.plannedStartName}`,
+      primaryLabel: 'Start from my location',
+      secondaryLabel: 'Change start',
+    };
+  }
+  return { kind: 'start', primaryLabel: 'Start Navigation', title: 'Ready to go' };
 }

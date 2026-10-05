@@ -1895,6 +1895,7 @@ export function HomeScreen() {
               destination={routePreviewSheetDestination}
               onClose={directionsDestination ? handleCloseDirections : handleClearPreviewRoute}
               onStartNavigation={handleStartPreviewNavigation}
+              onViewRoute={() => bottomSheetRef.current?.snapToIndex(0)}
               onCancelRoute={activePreviewRoute ? handleClearPreviewRoute : undefined}
               onChangeDestination={handleChangeDestination}
               onOpenDirectory={handleOpenDirectoryFor}
