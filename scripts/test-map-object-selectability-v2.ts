@@ -10,8 +10,7 @@ import { readFileSync } from 'node:fs';
 // screen on selection, gate info is richer, and re-selecting a different object preserves
 // the sheet's current snap height instead of collapsing it.
 
-const rastaLayer = readFileSync('src/views/components/map/RastaLayer.tsx', 'utf8');
-const specialRouteLayer = readFileSync('src/views/components/map/SpecialRouteLayer.tsx', 'utf8');
+const overlaySpec = readFileSync('src/views/components/mapgl/overlaySpec.ts', 'utf8');
 const homeScreen = readFileSync('src/views/screens/HomeScreen.tsx', 'utf8');
 const cameraManager = readFileSync('src/viewmodels/useCameraManager.ts', 'utf8');
 const placeAdapter = readFileSync('src/services/V2PlaceAdapter.ts', 'utf8');
@@ -20,40 +19,25 @@ const homeViewModel = readFileSync('src/viewmodels/HomeViewModel.ts', 'utf8');
 const gateMeta = readFileSync('src/data/ijtema/gateMeta.ts', 'utf8');
 const mapRenderingService = readFileSync('src/services/V2MapRenderingService.ts', 'utf8');
 
-// --- P0 Fix 1: Rasta polylines are tappable ---------------------------------
+// --- P0 Fix 1+2: Rasta and Shahr-e-Pindal polylines are tappable ---------------
+// (MapLibre: a wide, near-invisible hit line over each polyline is the touch target; the tap is resolved through
+// queryRenderedFeatures in OfflineMapCanvas and forwarded per feature with its id/kind.)
 
 assert(
-  rastaLayer.includes('onPressRasta?: (rastaId: string, coordinate?: Coordinate) => void'),
-  'RastaLayer must accept an onPressRasta callback (now also passing the press coordinate through for tap disambiguation).',
+  /id: 'hit-rastas', type: 'line'/.test(overlaySpec) && /id: 'hit-special', type: 'line'/.test(overlaySpec),
+  'Rasta and special-route polylines must each have a widened hit layer so the visible line is the touch target.',
 );
 assert(
-  /tappable\s*\n(?:\s*accessibilityLabel=\{[^}]*\}\s*\n)?\s*onPress=\{\(e\) => onPressRasta\(rasta\.sourceId \?\? rasta\.id, e\.nativeEvent\.coordinate\)\}/.test(rastaLayer),
-  'RastaLayer must render a tappable Polyline wired to the logical Rasta family — every branched segment is a touch target without exposing a segment-only ID.',
+  /id: r\.sourceId \?\? r\.id, kind: 'rasta'/.test(overlaySpec),
+  'Rasta features must carry the logical Rasta family id (every branched segment is a touch target without exposing a segment-only ID).',
 );
 assert(
-  homeScreen.includes('onPressRasta={(rastaId, coordinate) => {') &&
-    /onPressRasta=\{\(rastaId, coordinate\) => \{\s*\n\s*const place = V2PlaceAdapter\.getPlaceById\(rastaId\);/.test(homeScreen),
-  'HomeScreen must wire RastaLayer onPressRasta through V2PlaceAdapter.getPlaceById into the shared tap-disambiguation collector, matching the Block/Gate selection chain.',
+  /id: r\.id, kind: 'route'/.test(overlaySpec),
+  'Special-route features must carry their route id and kind.',
 );
 assert(
-  /onPressRasta=\{\(rastaId, coordinate\) => \{[\s\S]*?collectTapCandidate\(\{ id: rastaId, kind: 'rasta', coordinate, payload: place \}\);/.test(homeScreen),
-  'RastaLayer selection must flow through collectTapCandidate (TapDisambiguationService), not call handlePlaceSelect directly — a tap can fire onPress on more than one overlapping shape.',
-);
-
-// --- P0 Fix 2: SpecialRoute (Pindal) polylines are tappable -----------------
-
-assert(
-  specialRouteLayer.includes('onPressRoute?: (routeId: string, coordinate?: Coordinate) => void'),
-  'SpecialRouteLayer must accept an onPressRoute callback (now also passing the press coordinate through for tap disambiguation).',
-);
-assert(
-  /tappable\s*\n(?:\s*accessibilityLabel=\{[^}]*\}\s*\n)?\s*onPress=\{\(e\) => onPressRoute\(route\.id, e\.nativeEvent\.coordinate\)\}/.test(specialRouteLayer),
-  'SpecialRouteLayer must render a tappable Polyline wired to onPressRoute.',
-);
-assert(
-  homeScreen.includes('onPressRoute={(routeId, coordinate) => {') &&
-    /onPressRoute=\{\(routeId, coordinate\) => \{\s*\n\s*const place = V2PlaceAdapter\.getPlaceById\(routeId\);/.test(homeScreen),
-  'HomeScreen must wire SpecialRouteLayer onPressRoute through V2PlaceAdapter.getPlaceById into the shared tap-disambiguation collector.',
+  /const handleFeaturePress = useCallback\(\(\{ id, kind, coordinate \}: MapFeaturePress\) => \{[\s\S]*?V2PlaceAdapter\.getPlaceById\(id\)[\s\S]*?collectTapCandidate\(\{ id, kind, coordinate, payload: place \}\);/.test(homeScreen),
+  'HomeScreen must resolve a pressed feature through V2PlaceAdapter.getPlaceById into the shared tap-disambiguation collector, matching the Block/Gate selection chain — not call handlePlaceSelect directly (a tap can hit overlapping shapes).',
 );
 
 // --- P0 Fix 3: camera compensates for the LocationSheet on selection --------

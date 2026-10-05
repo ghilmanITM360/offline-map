@@ -43,10 +43,10 @@ assert(activeRoute.coordinates.length >= 2, 'Offline active navigation must keep
 
 const downloadScreen = readFileSync('src/views/screens/DownloadMapScreen.tsx', 'utf8');
 const downloadViewModel = readFileSync('src/viewmodels/DownloadMapViewModel.ts', 'utf8');
-// v1 and v2 live navigation both now render in-place on HomeScreen's persistent MapView
-// (NavigationMapLayersV1/V2), not on a separate NavigationScreen — see docs/ARCHITECTURE.md.
+// v1 and v2 live navigation both render in-place on HomeScreen's persistent map (mapgl navigation scenes),
+// not on a separate NavigationScreen — see docs/ARCHITECTURE.md.
 const homeScreenForTiles = readFileSync('src/views/screens/HomeScreen.tsx', 'utf8');
-const navigationMapLayersV2 = readFileSync('src/views/components/navigation/NavigationMapLayersV2.tsx', 'utf8');
+const navigationMapLayersV2 = readFileSync('src/views/components/mapgl/navigationScene.ts', 'utf8');
 const offlineMapService = readFileSync('src/services/OfflineMapService.ts', 'utf8');
 assert(downloadScreen.includes('Use Venue Map Only'), 'Offline tile failure must allow venue-map-only mode');
 assert(
@@ -54,13 +54,13 @@ assert(
     downloadViewModel.includes('Background map unavailable. Ijtema routes still work.'),
   'Offline tile failure must show the required fallback message',
 );
-assert(homeScreenForTiles.includes("baseMapMode === 'LOCAL_TILES'") && homeScreenForTiles.includes("mapType={baseMapMode === 'GOOGLE_BASEMAP' ? mapType : 'none'}"), 'Home map must resolve local tiles separately from Google live tiles');
+assert(
+  homeScreenForTiles.includes('<OfflineMapCanvas') && homeScreenForTiles.includes('archiveUri={basemap.uri}') && !homeScreenForTiles.includes('PROVIDER_GOOGLE'),
+  'Home map must render the bundled offline basemap, never Google live tiles',
+);
 assert(navigationMapLayersV2.includes('mapLayers.blocks'), 'V2 navigation graph-only map must render block context');
 assert(navigationMapLayersV2.includes('mapLayers.rastas'), 'V2 navigation graph-only map must render rasta lines');
-// Phase 8 (docs/OFFLINE_NAVIGATION_AND_ROUTING.md): route.coordinates was moved
-// into a useMemo above the `!route` early return (Rules of Hooks), so the
-// reference is now optional-chained (`route?.coordinates`).
-assert(navigationMapLayersV2.includes('route?.coordinates'), 'V2 navigation graph-only map must render active route');
+assert(navigationMapLayersV2.includes('route.coordinates'), 'V2 navigation graph-only map must render active route');
 assert(!offlineMapService.includes("import { IJTEMA_DATA }"), 'Offline saved map payload must not import legacy IJTEMA_DATA');
 assert(offlineMapService.includes('IJTEMA_BLOCKS'), 'Offline saved map payload must include v2 blocks');
 assert(offlineMapService.includes('IJTEMA_GATES'), 'Offline saved map payload must include v2 gates');

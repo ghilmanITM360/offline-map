@@ -118,8 +118,8 @@ assert(
     homeScreen.includes('previewVisibleSpecialRoutes'),
   'HomeScreen route-preview declutter arrays feed all four map layers',
 );
-assert(homeScreen.includes('blocks={showBlockPolygons ? previewVisibleBlocks : []}'), 'HomeScreen BlockLayer consumes route-preview-declutter-aware blocks');
-assert(homeScreen.includes('gates={previewVisibleGateMarkers}'), 'HomeScreen GateLayer consumes route-preview-declutter-aware gates');
+assert(homeScreen.includes('blocks: showBlockPolygons ? previewVisibleBlocks : []'), 'HomeScreen block layer consumes route-preview-declutter-aware blocks');
+assert(homeScreen.includes('gates: previewVisibleGateMarkers'), 'HomeScreen gate layer consumes route-preview-declutter-aware gates');
 assert(navOverlay.includes('getNavigationCorridorLayers'), 'Active-navigation overlay applies the route-corridor declutter filter');
 
 console.log(`\n${passed} passed, ${failed} failed`);

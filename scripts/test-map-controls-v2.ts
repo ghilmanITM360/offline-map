@@ -29,7 +29,7 @@ for (const styleKey of ['controlButton:', 'controlButtonActive:', 'controlHelper
 // overlay height, not a chain of hardcoded per-banner guesses.
 assert(home.includes('onLayout={(e) => setTopOverlayHeight(e.nativeEvent.layout.height)}'), 'Top overlay height must be measured via onLayout');
 assert(home.includes('topOverlayHeight > 0 ? topOverlayHeight + 8'), 'bannerStackTop must derive from the measured top-overlay height');
-for (const deadOffsetGuess of ['isOffline ? 42', 'showMapWarningBanner ? 56', 'showOutsideBanner ? 60']) {
+for (const deadOffsetGuess of ['isOffline ? 42', 'showMapWarningBanner ? 56', 'showOutsideBanner ? 60']) { // eslint-disable-line
   assert(!home.includes(deadOffsetGuess), `Hardcoded banner-height guess "${deadOffsetGuess}" must be gone`);
 }
 
@@ -88,21 +88,15 @@ assert(
   'The pulse effect must re-run when the OS reduce-motion setting changes, so it stops if the setting flips on mid-session',
 );
 
-// #66: basemap/provider degradation (showMapWarningBanner) and passive offline status
-// (isOffline) must never stack as two separate banners — they must share one status slot,
-// with basemap/provider degradation taking priority (its own copy already covers the offline
-// case). Route/gate context (showOutsideBanner) stays a separate, non-competing slot.
+// #66 (revised by #140): there is no basemap/provider degradation state any more — the basemap ships in the app — so the
+// only passive status is the Offline pill. It renders in one slot and the old map-warning banner is gone for good.
 assert(
-  !/\{isOffline && \(\s*<View style=\{\[styles\.offlineIndicator/.test(home),
-  'isOffline must not render its own independent banner block — it must be folded into the single-status ternary with showMapWarningBanner',
+  !home.includes('showMapWarningBanner'),
+  'The map-warning banner must be gone: the offline basemap is bundled, so there is no missing-map state to warn about',
 );
 assert(
-  home.includes('{showMapWarningBanner ? ('),
-  'showMapWarningBanner must drive a ternary (single status slot), not an independent && block',
-);
-assert(
-  home.includes(') : isOffline ? ('),
-  'isOffline must be the ternary fallback after showMapWarningBanner, so the two statuses never stack',
+  home.includes('{isOffline ? ('),
+  'isOffline must render exactly one passive status slot',
 );
 
 console.log('Map controls v2 checks passed.');

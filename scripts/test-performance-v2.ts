@@ -32,9 +32,11 @@ assert(
   !navigationV2Source.includes('V2MapRenderingService.getHomeLayers'),
   'Route progress updates must not rebuild full V2 map layers inside the navigation viewmodel',
 );
+// Markers/labels are GeoJSON layers now (no native marker views to track); what matters is that the scene is memoized
+// so GPS ticks and unrelated renders do not rebuild every GeoJSON source.
 assert(
-  homeScreenSource.includes('tracksViewChanges={false}'),
-  'Static custom map labels/markers must disable marker view tracking where possible',
+  homeScreenSource.includes('const mapOverlays = useMemo<OverlaySpec[]>('),
+  'Map overlay scenes must be memoized instead of rebuilt on every Home render',
 );
 
 const queries = [

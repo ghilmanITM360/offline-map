@@ -40,9 +40,9 @@ assert(navVm.includes('projectProgressMetersOnRoute'), 'Navigation should projec
 assert(navVm.includes('holdRouteForWeakGps'), 'Navigation should hold route stable when GPS accuracy is poor');
 assert(navVm.includes('continuing current route'), 'Navigation should preserve current route when candidate reroute fails');
 assert(navChrome.includes('Weak GPS signal detected'), 'Navigation UI should show weak GPS warning');
-// Navigation now runs on HomeScreen's single persistent MapView, so the "map still loading"
-// state is HomeScreen's own cold-start overlay, not a nav-specific one.
-assert(homeScreenSource.includes('Loading map...'), 'Home map should show a loading state instead of a blank map');
+// Navigation runs on HomeScreen's single persistent map. The basemap is installed locally (no download, no network), and
+// even a failed install degrades to a plain canvas with the venue overlays — never a spinner that waits on the network.
+assert(homeScreenSource.includes('useBundledBasemap()') && !homeScreenSource.includes('Loading map...'), 'Home map must not show a network-style loading state');
 
 const c2BoundaryPoint = {
   latitude: IJTEMA_DATA.nodes.C2.lat,

@@ -21,10 +21,10 @@ const directionsScreen = readFileSync('src/views/components/map/LocationSheet.ts
 assert(splash.includes("setDownloadState({ phase: 'idle' })"), 'Cold start must clear stale in-memory downloading state');
 assert(downloadViewModel.includes('STALE') || downloadViewModel.includes('downloadInProgressRef'), 'Download flow must guard duplicate/stuck workers');
 assert(downloadScreen.includes('showContinueFallback'), 'Download screen must expose a fallback instead of an infinite redirect wait');
-assert(homeScreen.includes('onMapReady={() =>') && homeScreen.includes('setIsMapReady(true)'), 'Home must have a map-ready state instead of blank-map assumptions');
-// Navigation (v1 and v2 alike) shares Home's one MapView now, so this single check already
-// covers navigation rendering without a Google key or internet.
-assert(homeScreen.includes("mapType={baseMapMode === 'GOOGLE_BASEMAP' ? mapType : 'none'}"), 'Home map must render graph-only or local fallback without requesting Google tiles');
+assert(homeScreen.includes('onReady={handleMapReady}') && homeScreen.includes('setIsMapReady(true)'), 'Home must have a map-ready state instead of blank-map assumptions');
+// Navigation (v1 and v2 alike) shares Home's one map, so this single check already covers navigation rendering
+// without a Google key or internet: the only basemap source is the bundled local archive.
+assert(homeScreen.includes('archiveUri={basemap.uri}') && !homeScreen.includes('PROVIDER_GOOGLE'), 'Home map must render from the bundled archive without requesting Google tiles');
 assert(permissionScreen.includes('Choose start manually') || directionsScreen.includes("onOpenDirectory?.('start')"), 'Denied GPS must leave a manual routing path');
 assert(settingsScreen.includes("AppState.addEventListener('change'"), 'Settings permission state must refresh safely after Android settings return');
 assert(

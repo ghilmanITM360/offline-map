@@ -1572,9 +1572,7 @@ export function HomeScreen() {
 
         {mode !== 'NAVIGATION' && (isOffline || showOutsideBanner || showFallbackNotice) && (
           <View style={[styles.bannerStack, { top: bannerStackTop }]}>
-            {/* Basemap/provider degradation outranks passive offline status — the two never
-                stack (showMapWarningBanner's own copy already covers the offline case).
-                Route/gate context (showOutsideBanner) stays a separate, non-competing slot. */}
+            {/* Passive offline status. Route/gate context (showOutsideBanner) stays a separate, non-competing slot. */}
             {isOffline ? (
               <View style={[styles.offlineIndicator, styles.bannerStackItem]} accessibilityLiveRegion="polite">
                 <WifiOff size={14} color="#FFFFFF" />

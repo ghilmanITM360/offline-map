@@ -4,6 +4,7 @@ import { staticColors } from '../src/theme';
 
 const home = readFileSync('src/views/screens/HomeScreen.tsx', 'utf8');
 const homeVm = readFileSync('src/viewmodels/HomeViewModel.ts', 'utf8');
+const overlaySpec = readFileSync('src/views/components/mapgl/overlaySpec.ts', 'utf8');
 
 assert(!homeVm.includes('masjids...'), 'Search placeholder must not show ellipsis dots under text.');
 assert(!homeVm.includes('places...'), 'Fallback search placeholder must not show ellipsis dots under text.');
@@ -11,15 +12,15 @@ assert(
   home.includes('const showOutsideBanner =') && home.includes('!activePreviewRoute;'),
   'Outside banner must hide during route preview.',
 );
+// The route is drawn by the MapLibre overlay builders (overlaySpec.buildRouteOverlay), which Home feeds from the preview.
 assert(
-  home.includes('strokeColor={staticColors.routeCasing}') &&
-    home.includes('strokeWidth={11}') &&
+  home.includes('buildRouteOverlay(') &&
+    /'line-color': staticColors\.routeCasing, 'line-width': 11/.test(overlaySpec) &&
     staticColors.routeCasing === 'rgba(255,255,255,0.95)',
   'Route preview line must have high-contrast white outline.',
 );
 assert(
-  home.includes('strokeColor={staticColors.routeInside}') &&
-    home.includes('strokeWidth={7}') &&
+  /'line-color': staticColors\.routeInside, 'line-width': 7/.test(overlaySpec) &&
     staticColors.routeInside === '#1A73E8',
   'Route preview line must use thicker visible blue inner stroke.',
 );

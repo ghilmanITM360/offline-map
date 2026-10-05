@@ -1,27 +1,17 @@
 import { strict as assert } from 'node:assert';
 import { readFileSync } from 'node:fs';
 
+// #140: the visual map is bundled with the app and renders with no network. There is no tile download, LocalTile layer,
+// satellite imagery or "map not downloaded" state any more — these guards keep that true.
 const home = readFileSync('src/views/screens/HomeScreen.tsx', 'utf8');
-const offlineMapService = readFileSync('src/services/OfflineMapService.ts', 'utf8');
-const statusService = readFileSync('src/services/OfflineMapStatusService.ts', 'utf8');
 const layersSheet = readFileSync('src/views/components/map/LayersSheet.tsx', 'utf8');
+const basemapStyle = readFileSync('src/views/components/mapgl/basemapStyle.ts', 'utf8');
 
-// Navigation (v1 and v2 alike) renders on HomeScreen's single shared MapView now, not a
-// separate NavigationScreen with its own LocalTile — so Home's one LocalTile covers it.
-assert(home.includes('LocalTile pathTemplate={getTilePath()}'), 'Home should render LocalTile when offline tiles exist');
-assert(
-  home.includes('Background map not downloaded. Ijtema routes still work.'),
-  'Home should explain that missing background tiles do not block Ijtema routing',
-);
-assert(
-  home.includes('Satellite unavailable offline') && layersSheet.includes('Satellite'),
-  'Satellite mode should be disabled or warned when unavailable offline',
-);
-assert(statusService.includes('[14, 15, 16, 17, 18]'), 'Offline tile strategy should include zoom levels 17 and 18');
-assert(
-  home.includes('tiles/{z}_{x}_{y}.png') &&
-    offlineMapService.includes('new File(getTileDir(), `${z}_${x}_${y}.png`)'),
-  'Downloaded tile filenames should match the LocalTile z/x/y path template',
-);
+assert(home.includes('<OfflineMapCanvas') && home.includes('archiveUri={basemap.uri}'), 'Home must render the bundled offline basemap');
+assert(!home.includes('LocalTile') && !home.includes('getTilePath'), 'Home must not use downloaded raster tiles');
+assert(!home.includes('Background map not downloaded') && !home.includes('Satellite unavailable offline'), 'Home must not show missing-map or satellite copy');
+assert(!layersSheet.includes('Satellite'), 'The layers sheet must not offer satellite imagery (it needs the internet)');
+assert(!/https?:\/\//.test(basemapStyle.replace(/\/\/.*$/gm, '')), 'The basemap style must contain no remote URL');
+assert(basemapStyle.includes('pmtiles://'), 'The basemap style must read the local PMTiles archive');
 
 console.log('Offline rendering checks passed.');

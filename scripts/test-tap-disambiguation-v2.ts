@@ -56,22 +56,25 @@ import { resolveTapCandidate, TapCandidate } from '../src/services/TapDisambigua
   assert(winner?.id === 'a' || winner?.id === 'b', 'Coordinate-less candidates must still resolve to a deterministic winner, not throw.');
 }
 
-// --- Wiring: every v2 tappable map layer routes through the shared collector ---
+// --- Wiring: every tappable map object kind routes through the shared collector ---
 const homeScreen = readFileSync('src/views/screens/HomeScreen.tsx', 'utf8');
-const gateLayer = readFileSync('src/views/components/map/GateLayer.tsx', 'utf8');
-const facilityLayer = readFileSync('src/views/components/map/FacilityLayer.tsx', 'utf8');
-const blockLayer = readFileSync('src/views/components/map/BlockLayer.tsx', 'utf8');
+const canvas = readFileSync('src/views/components/mapgl/OfflineMapCanvas.tsx', 'utf8');
+const overlaySpec = readFileSync('src/views/components/mapgl/overlaySpec.ts', 'utf8');
 
 assert(homeScreen.includes('resolveTapCandidate') && homeScreen.includes('TapDisambiguationService'), 'HomeScreen must import and use TapDisambiguationService.');
 assert(homeScreen.includes('const collectTapCandidate = useCallback('), 'HomeScreen must define a single shared collectTapCandidate entry point.');
 assert(
-  (homeScreen.match(/collectTapCandidate\(\{ id: /g) ?? []).length >= 5,
-  'All five tappable v2 map object kinds (rasta, route, block, gate, facility) must route through collectTapCandidate.',
+  (homeScreen.match(/collectTapCandidate\(\{ id, kind, coordinate, payload: place \}\)/g) ?? []).length === 1,
+  'All tappable map object kinds must route through the one collectTapCandidate call in handleFeaturePress.',
+);
+assert(
+  /export type FeatureKind = 'block' \| 'gate' \| 'rasta' \| 'route' \| 'facility'/.test(overlaySpec),
+  'The five tappable v2 map object kinds (rasta, route, block, gate, facility) must all be feature kinds.',
 );
 assert(homeScreen.includes("requestAnimationFrame(() => {"), 'collectTapCandidate must batch same-gesture candidates within one animation frame before resolving a winner.');
-
-assert(gateLayer.includes('onPress={(e) => onPressGate?.(gate.id, e.nativeEvent.coordinate)}'), 'GateLayer must forward the native press coordinate for disambiguation.');
-assert(facilityLayer.includes('onPress={(e) => onPressFacility(place, e.nativeEvent.coordinate)}'), 'FacilityLayer must forward the native press coordinate for disambiguation.');
-assert(blockLayer.includes('onPress={(e) => onPressBlock?.(block.id, e.nativeEvent.coordinate)}'), 'BlockLayer must forward the native press coordinate for disambiguation.');
+assert(
+  canvas.includes('onFeaturePress?.({ id: String(f.properties!.id), kind: f.properties!.kind as FeatureKind, coordinate })') && canvas.includes('queryRenderedFeatures'),
+  'The canvas must report one press per distinct feature under the tap, with the tap coordinate, for disambiguation.',
+);
 
 console.log('Tap disambiguation v2 checks passed.');

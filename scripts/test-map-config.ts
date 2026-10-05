@@ -240,22 +240,17 @@ assert.equal(
   'Map background did not load. Ijtema routes still work.',
   'Map-failed warning message must match product copy',
 );
+// #140: Home no longer depends on a Google key at all — the basemap is the bundled offline archive, so there is no
+// missing-key / map-failed warning logic left to keep honest.
 assert(
-  homeScreen.includes('MapConfigService.getMissingGoogleMapsMessage()') &&
-    homeScreen.includes('MapConfigService.getMapLoadFailedMessage()') &&
-    homeScreen.includes('hasGoogleMapsKey && mapLoadFailed'),
-  'Home warning logic should show missing-key text only when key is missing, and map-failed text when key exists but map fails',
+  !homeScreen.includes('MapConfigService') && !homeScreen.includes('PROVIDER_GOOGLE') && !homeScreen.includes('hasGoogleMapsKey'),
+  'Home must not depend on Google Maps configuration',
 );
 assert(
-  homeScreen.includes("provider={Platform.OS === 'android' && baseMapMode === 'GOOGLE_BASEMAP' ? PROVIDER_GOOGLE : undefined}"),
-  'Home should keep MapView renderable without a Google key by disabling the Google provider',
+  homeScreen.includes('<OfflineMapCanvas') && homeScreen.includes('archiveUri={basemap.uri}'),
+  'Home should render exactly one base map: the bundled offline archive',
 );
-assert(
-  homeScreen.includes("mapType={baseMapMode === 'GOOGLE_BASEMAP' ? mapType : 'none'}") &&
-    homeScreen.includes("baseMapMode === 'LOCAL_TILES'"),
-  'Home should render exactly one resolved Google, local-tile, or graph-only base-map mode',
-);
-assert(homeScreen.includes('venueBoundary'), 'Home graph-only fallback should render venue boundary context');
+assert(homeScreen.includes('venueBoundary'), 'Home should render venue boundary context');
 assert(
   !homeScreen.includes('<Text style={styles.mapFallbackTitle}>Map unavailable</Text>'),
   'Home should not replace the venue graph with a Map unavailable placeholder when Google key is missing',

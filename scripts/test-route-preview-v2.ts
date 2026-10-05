@@ -16,7 +16,7 @@ assert(
   'Home screen must read preview destination state.',
 );
 assert(
-  homeScreenSource.includes('strokeColor={staticColors.routeInside}') && staticColors.routeInside === '#1A73E8',
+  homeScreenSource.includes('buildRouteOverlay(') && staticColors.routeInside === '#1A73E8',
   'Home screen must render blue route preview line.',
 );
 // P0-2 (Google Maps routing parity fix): route preview is a single surface — LocationSheet's
