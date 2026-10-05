@@ -46,6 +46,10 @@ beforeEach(() => {
   });
 });
 
+// Before a route is ready the start card has a "Change Start" button; once ready, the FROM row itself is the control.
+const changeStart = () =>
+  screen.queryByText('Change Start') ?? screen.getByRole('button', { name: /^From .*\. Change start\.$/ });
+
 describe('manual start selection (viewmodel)', () => {
   test('choosing manual opens the editor; selecting a place closes it and keeps the start', async () => {
     const hook = await renderHook(() => useDirectionsViewModel(destination));
@@ -98,7 +102,7 @@ describe('Directory is the single start chooser (Get Directions sheet)', () => {
     const user = userEvent.setup();
     await mount();
 
-    await user.press(screen.getByText('Change Start'));
+    await user.press(changeStart());
 
     expect(onOpenDirectory).toHaveBeenCalledTimes(1);
     expect(onOpenDirectory).toHaveBeenLastCalledWith('start');
@@ -111,7 +115,7 @@ describe('Directory is the single start chooser (Get Directions sheet)', () => {
     await choose({ purpose: 'start', place: gate13 });
     expect(screen.getByText('Gate 13')).toBeOnTheScreen();
 
-    await user.press(screen.getByText('Change Start'));
+    await user.press(changeStart());
 
     expect(onOpenDirectory).toHaveBeenLastCalledWith('start');
     expectNoChooser();
@@ -122,7 +126,7 @@ describe('Directory is the single start chooser (Get Directions sheet)', () => {
     await mount();
     expect(screen.getByText('My current location')).toBeOnTheScreen();
 
-    await user.press(screen.getByText('Change Start'));
+    await user.press(changeStart());
 
     expect(onOpenDirectory).toHaveBeenLastCalledWith('start');
     expectNoChooser();
@@ -133,7 +137,7 @@ describe('Directory is the single start chooser (Get Directions sheet)', () => {
     await mount();
     await waitFor(() => expect(screen.getByText('Route ready')).toBeOnTheScreen(), { timeout: 5_000 });
 
-    await user.press(screen.getByText('Change Start'));
+    await user.press(changeStart());
 
     expect(onOpenDirectory).toHaveBeenLastCalledWith('start');
     expectNoChooser();
@@ -188,7 +192,7 @@ describe('Directory is the single start chooser (Get Directions sheet)', () => {
     const user = userEvent.setup();
     await mount(onClose);
     await choose({ purpose: 'start', place: gate13 });
-    await user.press(screen.getByText('Change Start'));
+    await user.press(changeStart());
 
     // Cancel leaves no choice behind: nothing changes.
     expect(useAppStore.getState().directoryChoice).toBeNull();
@@ -212,7 +216,7 @@ describe('Directory is the single start chooser (Get Directions sheet)', () => {
     const user = userEvent.setup();
     await mount();
 
-    await user.press(screen.getByText('Change Start'));
+    await user.press(changeStart());
 
     expect(onOpenDirectory).toHaveBeenLastCalledWith('start');
     expectNoChooser();
@@ -233,7 +237,7 @@ describe('Directory is the single start chooser (Get Directions sheet)', () => {
     await waitFor(() => expect(screen.getByText('Tap Change Start to continue.')).toBeOnTheScreen());
     expectNoChooser();
 
-    await user.press(screen.getByText('Change Start'));
+    await user.press(changeStart());
     expect(onOpenDirectory).toHaveBeenLastCalledWith('start');
   });
 });

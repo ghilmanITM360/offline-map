@@ -158,10 +158,10 @@ describe('Get Directions redesign — structure and semantics', () => {
     }
   });
 
-  test('Starting from helper reads "Using GPS" only for a live GPS start', async () => {
+  test('a live start needs no technical helper line', async () => {
     mockedVm.mockReturnValue(vm());
     await renderSheet();
-    expect(screen.getByText('Using GPS')).toBeOnTheScreen();
+    expect(screen.queryByText('Using GPS')).not.toBeOnTheScreen();
   });
 
   test('Starting from helper follows a remembered start instead of claiming GPS', async () => {
@@ -170,7 +170,7 @@ describe('Get Directions redesign — structure and semantics', () => {
     );
     await renderSheet();
     expect(screen.queryByText('Using GPS')).not.toBeOnTheScreen();
-    expect(screen.getByText('Using your saved location')).toBeOnTheScreen();
+    expect(screen.getByText('Saved location, not live')).toBeOnTheScreen();
   });
 
   test('Change Start opens the Directory in start mode and the summary stays put', async () => {

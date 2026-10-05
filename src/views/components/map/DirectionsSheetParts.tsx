@@ -64,7 +64,7 @@ export function RouteEndpointCard({
   children,
 }: {
   label: string;
-  helper: string;
+  helper?: string;
   headerIcon: React.ReactNode;
   icon: React.ReactNode;
   name: string;
@@ -83,7 +83,7 @@ export function RouteEndpointCard({
           <Text accessibilityRole="header" style={styles.cardLabel}>
             {label}
           </Text>
-          <Text style={styles.cardHelper}>{helper}</Text>
+          {helper ? <Text style={styles.cardHelper}>{helper}</Text> : null}
         </View>
       </View>
       {/* Whole row is a touch shortcut for the labelled action below; it is not its own screen-reader
@@ -139,34 +139,29 @@ export type EndpointRow = {
   name: string;
   detail?: string;
   icon: React.ReactNode;
-  actionLabel: string;
+  /** Full spoken name of the row, including its action ("From Block 27. Change start."). */
   actionAccessibilityLabel: string;
   onAction: () => void;
 };
 
+/** The whole row is the "change" control: one tap target, one TalkBack stop, a chevron as the affordance. */
 function EndpointRowView({ row }: { row: EndpointRow }) {
+  const ForwardIcon = I18nManager.isRTL ? ChevronLeft : ChevronRight;
   return (
-    <View style={styles.endpointRow}>
+    <Pressable
+      style={({ pressed }) => [styles.endpointRow, pressed && styles.actionPressed]}
+      onPress={row.onAction}
+      accessibilityRole="button"
+      accessibilityLabel={row.actionAccessibilityLabel}
+    >
       <View style={styles.innerDisc}>{row.icon}</View>
-      <View
-        style={styles.flex}
-        accessible
-        accessibilityLabel={[row.label, row.name, row.detail].filter(Boolean).join(', ')}
-      >
+      <View style={styles.flex}>
         <Text style={styles.endpointLabel}>{row.label}</Text>
         <Text style={styles.innerName}>{row.name}</Text>
         {row.detail ? <Text style={styles.innerDetail}>{row.detail}</Text> : null}
       </View>
-      <Pressable
-        style={({ pressed }) => [styles.endpointAction, pressed && styles.actionPressed]}
-        hitSlop={{ top: 2, bottom: 2 }}
-        onPress={row.onAction}
-        accessibilityRole="button"
-        accessibilityLabel={row.actionAccessibilityLabel}
-      >
-        <Text style={styles.actionText}>{row.actionLabel}</Text>
-      </Pressable>
-    </View>
+      <ForwardIcon size={20} color={c.secondaryText} />
+    </Pressable>
   );
 }
 

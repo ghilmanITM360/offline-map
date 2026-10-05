@@ -182,19 +182,10 @@ function FadeContent({ transitionKey, children }: { transitionKey: string; child
   return <Animated.View style={{ opacity }}>{children}</Animated.View>;
 }
 
-/** One-line provenance under "Starting from", derived from the real start source. */
-function startSourceHelper(source: StartSource, unresolved: boolean): string {
+/** Hint under the start name; a resolved start needs none (its name already says it). */
+function startSourceHelper(source: StartSource, unresolved: boolean): string | undefined {
   if (unresolved) return 'Choose where you are starting from';
-  switch (source) {
-    case 'live_gps':
-      return 'Using GPS';
-    case 'device_last_known':
-      return 'Using your device’s last known location';
-    case 'remembered_location':
-      return 'Using your saved location';
-    default:
-      return 'Chosen by you';
-  }
+  return source === 'device_last_known' || source === 'remembered_location' ? 'Saved location, not live' : undefined;
 }
 
 function RoutePreviewSection({
@@ -296,13 +287,12 @@ function RoutePreviewSection({
     ? `${startSourceSupportingCopy} We'll enter through best eligible official gate.`
     : startSourceSupportingCopy;
 
+  // Only what the FROM/TO rows don't already say: which gate the route enters through, or that the start was snapped.
   const routeEntrySummary = entryGateName
     ? `Enter through ${entryGateName}`
     : routeMeta?.startResolution?.startType === 'internal_snap'
     ? 'Starting from nearest path inside Ijtema.'
-    : routeMeta?.startLabel
-    ? `Starting from ${routeMeta.startLabel}`
-    : 'Offline route ready.';
+    : null;
 
   const showRouteReady = loadState === 'ready' && !!route;
   const showLoading = loadState === 'loading';
@@ -327,7 +317,7 @@ function RoutePreviewSection({
   // calculation, not on every re-render while the state holds steady.
   useEffect(() => {
     if (loadState === 'ready' && route) {
-      AccessibilityInfo.announceForAccessibility(`Route ready. ${routeEntrySummary}. ${routeDistance}.`);
+      AccessibilityInfo.announceForAccessibility(['Route ready', routeEntrySummary, routeDistance].filter(Boolean).join('. ') + '.');
     } else if (loadState === 'error' && errorMessage) {
       AccessibilityInfo.announceForAccessibility(`Route problem. ${errorMessage}`);
     }
@@ -536,8 +526,7 @@ function RoutePreviewSection({
                     (startSource === 'live_gps' && !currentLocation) || (startSource === 'manual_place' && !manualStart),
                   ),
                   icon: startIcon,
-                  actionLabel: 'Change Start',
-                  actionAccessibilityLabel: 'Change starting point',
+                  actionAccessibilityLabel: `From ${startSourceLabel}. Change start.`,
                   onAction: handleChangeStart,
                 }}
                 to={{
@@ -545,8 +534,7 @@ function RoutePreviewSection({
                   name: destination.name,
                   detail: placeCategoryLabel(destination.category),
                   icon: <MapPin size={24} color={directionsSheetColors.brand} />,
-                  actionLabel: 'Change destination',
-                  actionAccessibilityLabel: 'Change destination',
+                  actionAccessibilityLabel: `To ${destination.name}. Change destination.`,
                   onAction: onChangeDestination && onOpenDirectory ? () => onOpenDirectory('destination') : onClose,
                 }}
               >
@@ -611,7 +599,7 @@ function RoutePreviewSection({
           {showRouteReady && (
             <View style={styles.readyBody}>
               {compactFooter && routeSummary}
-              <Text style={styles.statusText}>{routeEntrySummary}</Text>
+              {routeEntrySummary ? <Text style={styles.statusText}>{routeEntrySummary}</Text> : null}
 
               {outsideRoute && (
                 <OutsideRouteStatusCard
@@ -662,7 +650,7 @@ function RoutePreviewSection({
                   accessibilityRole="button"
                   accessibilityLabel="Cancel route"
                 >
-                  <Text style={styles.linkButtonText}>Cancel Route</Text>
+                  <Text style={styles.cancelRouteText}>Cancel Route</Text>
                 </Pressable>
               )}
             </View>
@@ -992,6 +980,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '800',
     color: directionsSheetColors.brand,
+  },
+  // Cancelling is secondary and destructive: quiet red text, never styled like the primary action.
+  cancelRouteText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: staticColors.dangerText,
   },
   // Same AA-passing muted token DestinationRow (#96/#146) uses for unroutable places.
   statusRow: {
