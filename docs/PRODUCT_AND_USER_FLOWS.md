@@ -15,7 +15,7 @@ All on the one persistent map (see `docs/ARCHITECTURE.md` for why this is map-fi
 1. Tap a marker (venue block, gate, facility) → `LocationSheet` opens showing distance/ETA.
 2. Tap Directions → `LocationSheet` switches to its `routePreview` mode showing the route.
 3. Tap Start Navigation → map enters navigation mode; `LocationSheet` closes, navigation chrome/overlays take over.
-4. Arrival uses proximity to the destination entry coordinate (within 20m), not venue-boundary crossing. V2 also requires progress to reach the final guidance segment so an earlier leg passing near the destination does not end the trip. Arrival shows the completion overlay; Done returns to the resting map.
+4. Arrival uses proximity to the destination entry coordinate (within 20m), not venue-boundary crossing. Both navigation versions also require route progress to reach the end of the route (V2: the final guidance segment; legacy V1: remaining route distance within the threshold plus the route-end-to-destination gap) so an earlier leg passing near the destination does not end the trip. Once reported, arrival stays latched for the trip, so GPS noise at the threshold cannot flip the UI out of the completion overlay. Arrival shows the completion overlay; Done returns to the resting map.
 
 Start-source (GPS, search, map tap, remembered state) never changes routing policy — every outside coordinate goes through the same `prepareOutsideRoutingPlan` → provider fallback → `finalizeOutsideRoutingPlan` pipeline described in `docs/OFFLINE_NAVIGATION_AND_ROUTING.md`.
 

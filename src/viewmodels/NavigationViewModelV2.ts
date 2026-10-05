@@ -512,7 +512,9 @@ export function useNavigationViewModelV2() {
 
     const guidance = calculateLiveManeuverDistanceV2({ route, currentStepIndex, progressMeters: progress.progressMeters });
     const nextIndex = guidance.stepIndex;
-    setArrived(isArrived(route, currentLocation, nextIndex));
+    // #95: latched for the session (reset on trip start/exit) — a later noisy fix just outside the
+    // threshold must not un-report arrival and flip the UI back out of the completion overlay.
+    if (isArrived(route, currentLocation, nextIndex)) setArrived(true);
     if (nextIndex !== currentStepIndex) {
       setCurrentStepIndex(nextIndex);
     }
