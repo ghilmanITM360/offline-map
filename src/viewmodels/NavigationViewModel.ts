@@ -246,7 +246,13 @@ export function useNavigationViewModel() {
       }
 
       // --- Arrival detection ---
-      if (dest && !arrivedRef.current) {
+      // #305: HomeScreen mounts both engines and ORs their `arrived`. A V2 journey belongs to
+      // NavigationViewModelV2; this engine owns no route then, so its #95 progress guard has
+      // nothing to measure and bare proximity would end the V2 trip early.
+      // `dest` exists only inside a started session (stopNavigation clears it), so a V2-shaped
+      // activeRoute alongside it is a V2 session.
+      const ownedByV2 = (useAppStore.getState().activeRoute as { sourceVersion?: string } | null)?.sourceVersion === 'v2';
+      if (dest && !arrivedRef.current && !ownedByV2) {
         const destinationCoordinate = RoutePointService.getDestinationCoordinate(dest);
         if (!destinationCoordinate) return;
         const distToDest = getDistance(
