@@ -2,17 +2,13 @@
 
 ## Secrets boundary
 
-Mobile code may hold only proxy base-URL configuration. Google Routes web-service credentials, proxy signing secrets, and privileged bearer tokens must never be in mobile code or `EXPO_PUBLIC_*` variables. Google Maps SDK keys are separate, inherently client-visible rendering credentials — restrict them in Google Cloud Console by package name + release SHA-1 + API allowlist; key secrecy is not the security boundary, Console restriction is. Never commit `.env`, keystores, `android/keystore.properties`, or secret-bearing logs (all gitignored — verified current).
+Mobile code may hold only proxy base-URL configuration. Google Routes web-service credentials, proxy signing secrets, and privileged bearer tokens must never be in mobile code or `EXPO_PUBLIC_*` variables. The map renders offline (MapLibre, bundled basemap), so the app holds no Google Maps SDK key at all. Never commit `.env`, keystores, `android/keystore.properties`, or secret-bearing logs (all gitignored — verified current).
 
-## Android Google Maps key
+## Google Maps key (removed)
 
-`AndroidManifest.xml` uses the `${googleMapsApiKey}` placeholder, kept durable across `expo prebuild --clean` by a custom plugin (`plugins/withAndroidManifestGradlePlaceholder.js`, verified present) rather than a hand-edit that would get silently clobbered by Expo's built-in Maps plugin. The gradle placeholder resolves the real value from `.env`/`.env.local` at build time (`android/app/build.gradle`).
+The Google Maps SDK and `react-native-maps` are gone (#140): no `com.google.android.geo.API_KEY` manifest entry, no `manifestPlaceholders`, no `GMSApiKey`, no `EXPO_PUBLIC_GOOGLE_MAPS_*` variables. Play Services *location* (fused location via `expo-location`) is separate and stays; it does not need the network.
 
-**Owner action still required:** whether the Android key value itself was regenerated in Google Cloud Console after its earlier historical exposure is not verifiable from this repo — that's tracked as #49 (Google Maps production restrictions).
-
-## iOS Google Maps key
-
-`ios/KarachiIjtemaOfflineNav/Info.plist`'s `GMSApiKey` is still the literal placeholder string `your_ios_maps_key_here` (verified current) — there is no config-plugin injection path for iOS equivalent to Android's. iOS has never been fully runtime-verified. Do not ship an iOS build without setting a real key and restricting it in Console first.
+**Owner action (optional hygiene):** the Maps key that was exposed historically (#49) is no longer used by the app. It can be deleted in Google Cloud Console; nothing in this repo depends on it. This repo cannot verify its Console state.
 
 ## Release signing
 

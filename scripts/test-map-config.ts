@@ -3,14 +3,8 @@ import { strict as assert } from 'node:assert';
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
-import {
-  getGoogleMapsRuntimeStatusFromInputs,
-  GOOGLE_MAPS_KEY_NOT_CONFIGURED_MESSAGE,
-  GOOGLE_MAPS_LOAD_FAILED_MESSAGE,
-} from '../src/services/MapConfigResolver';
 
 const appConfig = readFileSync('app.config.js', 'utf8');
-const androidBuildGradle = readFileSync('android/app/build.gradle', 'utf8');
 const appJson = JSON.parse(readFileSync('app.json', 'utf8')) as {
   expo?: { android?: { permissions?: string[] } };
 };
@@ -188,58 +182,6 @@ function assertMapConfigSecretScanUnitCases(): void {
   assert.equal(isExcludedFromSecretScan('.git/config'), true, '.git must be excluded from scan');
 }
 
-const statusWithEnv = getGoogleMapsRuntimeStatusFromInputs({
-  platform: 'android',
-  expoConfig: null,
-  env: {
-    EXPO_PUBLIC_GOOGLE_MAPS_ANDROID_API_KEY: 'TEST_ANDROID_1234567890',
-  },
-});
-assert.equal(statusWithEnv.keyPresent, true, 'Map config should report keyPresent=true when EXPO_PUBLIC_GOOGLE_MAPS_ANDROID_API_KEY is set');
-assert.equal(statusWithEnv.source, 'env', 'Map config should report env as source when only env key is provided');
-
-const statusWithExpoExtra = getGoogleMapsRuntimeStatusFromInputs({
-  platform: 'android',
-  expoConfig: {
-    android: {
-      package: 'com.aicrafted.karachiijtema',
-    },
-    extra: {
-      googleMapsAndroidApiKey: 'TEST_ANDROID_1234567890',
-      hasAndroidGoogleMapsKey: true,
-    },
-  } as any,
-  env: {},
-});
-assert.equal(
-  statusWithExpoExtra.keyPresent,
-  true,
-  'Map config should report keyPresent=true when Expo embedded config extra contains Android key',
-);
-assert.equal(
-  statusWithExpoExtra.source,
-  'expo_config',
-  'Map config should report expo_config as source when Expo embedded config extra contains Android key',
-);
-
-const statusWithoutEnv = getGoogleMapsRuntimeStatusFromInputs({
-  platform: 'android',
-  expoConfig: null,
-  env: {},
-});
-assert.equal(statusWithoutEnv.keyPresent, false, 'Map config should report keyPresent=false when Android env key is missing');
-assert.equal(statusWithoutEnv.source, 'none', 'Map config should report none source when no key is configured');
-
-assert.equal(
-  GOOGLE_MAPS_KEY_NOT_CONFIGURED_MESSAGE,
-  'Map background is unavailable. Ijtema routes still work.',
-  'Missing-key warning message must match product copy',
-);
-assert.equal(
-  GOOGLE_MAPS_LOAD_FAILED_MESSAGE,
-  'Map background did not load. Ijtema routes still work.',
-  'Map-failed warning message must match product copy',
-);
 // #140: Home no longer depends on a Google key at all — the basemap is the bundled offline archive, so there is no
 // missing-key / map-failed warning logic left to keep honest.
 assert(
@@ -257,20 +199,15 @@ assert(
 );
 
 assert(
-  appConfig.includes('process.env.EXPO_PUBLIC_GOOGLE_MAPS_ANDROID_API_KEY'),
-  'app.config.js must use process.env.EXPO_PUBLIC_GOOGLE_MAPS_ANDROID_API_KEY',
-);
-assert(
   (appConfig.includes(".env.local") || appConfig.includes('.env.local')) &&
     (appConfig.includes(".env'") || appConfig.includes('.env"') || appConfig.includes('.env,')) &&
     (appConfig.includes('readFileSync') || appConfig.includes('existsSync')),
   'app.config.js must load local .env and .env.local values for direct Gradle release builds',
 );
+// #140: the map is offline MapLibre — no Google Maps SDK key anywhere in the Expo/Android config.
 assert(
-  androidBuildGradle.includes('EXPO_PUBLIC_GOOGLE_MAPS_ANDROID_API_KEY') &&
-    androidBuildGradle.includes('.env') &&
-    androidBuildGradle.includes('.env.local'),
-  'android/app/build.gradle must resolve EXPO_PUBLIC_GOOGLE_MAPS_ANDROID_API_KEY from local .env files for direct Gradle release builds',
+  !/googleMaps|GOOGLE_MAPS|geo\.API_KEY/i.test(appConfig + readFileSync('android/app/build.gradle', 'utf8') + readFileSync('android/app/src/main/AndroidManifest.xml', 'utf8') + readFileSync('app.json', 'utf8')),
+  'No Google Maps SDK key may be configured: the map renders offline',
 );
 assert(
   appConfig.includes("package: androidPackageName") && appConfig.includes("const androidPackageName = 'com.aicrafted.karachiijtema';"),
@@ -283,11 +220,7 @@ assert(
   'app.json android.permissions must include INTERNET and ACCESS_NETWORK_STATE',
 );
 
-assert(
-  envExample.includes('EXPO_PUBLIC_GOOGLE_MAPS_ANDROID_API_KEY=your_android_maps_key_here') &&
-    envExample.includes('EXPO_PUBLIC_GOOGLE_MAPS_IOS_API_KEY=your_ios_maps_key_here'),
-  '.env.example must contain placeholder values only',
-);
+assert(!/GOOGLE_MAPS/.test(envExample), '.env.example must not define a Google Maps SDK key');
 assert(!disallowedKeyPattern.test(envExample), '.env.example must not contain a real Google API key');
 
 assert(gitignore.includes('.env'), '.gitignore must ignore .env');

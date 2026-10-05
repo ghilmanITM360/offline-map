@@ -26,7 +26,7 @@
 |---|---|---|
 | #47 | Privacy / Terms / Support links | Legal content must be owner-provided, never agent-drafted |
 | #48 | Production signing / Play App Signing | Requires owner's Play Console access and real keystore custody |
-| #49 | Google Maps production restrictions | Requires owner's Google Cloud Console access |
+| #49 | Historical exposed Google Maps key | App no longer uses any Maps key; owner may delete the old key in Google Cloud Console (optional hygiene) |
 
 ## UI/UX owner decisions still open
 

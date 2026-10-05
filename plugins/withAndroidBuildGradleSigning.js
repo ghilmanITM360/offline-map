@@ -7,20 +7,15 @@ const { withAppBuildGradle } = require('@expo/config-plugins');
 
 /**
  * `expo prebuild --clean` fully regenerates `android/app/build.gradle` from Expo's default
- * template, discarding all hand-written logic in that file — unlike the Google Maps API key
- * manifest placeholder (see withAndroidManifestGradlePlaceholder.js), Expo has no equivalent
- * built-in mechanism for build.gradle content, so anything hand-edited there is silently wiped
- * on every `--clean` prebuild. This plugin restores it after prebuild by patching the
- * freshly-generated file, the same way withAndroidManifestGradlePlaceholder.js restores the
- * manifest placeholder.
+ * template, discarding all hand-written logic in that file — Expo has no built-in mechanism for
+ * build.gradle content, so anything hand-edited there is silently wiped on every `--clean`
+ * prebuild. This plugin restores it after prebuild by patching the freshly-generated file.
  *
- * Three things are restored, all previously hand-written directly in build.gradle:
- *   1. Google Maps API key resolution (System.getenv -> Gradle property -> .env/.env.local
- *      parser) feeding `manifestPlaceholders = [googleMapsApiKey: ...]`.
- *   2. Release-signing resolution (android/keystore.properties -> ANDROID_RELEASE_* env vars)
+ * Two things are restored, all previously hand-written directly in build.gradle:
+ *   1. Release-signing resolution (android/keystore.properties -> ANDROID_RELEASE_* env vars)
  *      feeding a conditional `signingConfigs.release` block and the release buildType's
  *      signingConfig selection.
- *   3. A hard-fail gate (gradle.taskGraph.whenReady) that refuses to run assembleRelease /
+ *   2. A hard-fail gate (gradle.taskGraph.whenReady) that refuses to run assembleRelease /
  *      bundleRelease without a configured production keystore, unless explicitly overridden
  *      with -PallowInsecureReleaseSigning=true / ALLOW_INSECURE_RELEASE_SIGNING=true.
  *
@@ -28,11 +23,10 @@ const { withAppBuildGradle } = require('@expo/config-plugins');
  *
  * Implementation notes:
  *   - Uses `withAppBuildGradle`, the config-plugins mod that hands back build.gradle's raw
- *     text (`config.modResults.contents`) for string patching — the same category of API
- *     `withAndroidManifestGradlePlaceholder.js` uses for the manifest, just for build.gradle.
+ *     text (`config.modResults.contents`) for string patching.
  *   - Anchors on stable, boilerplate lines Expo's default template always emits (verified by
  *     running `expo prebuild --clean` against a disposable worktree and diffing the output):
- *     `apply plugin: "com.facebook.react"`, `defaultConfig {`, the stock debug signingConfig
+ *     `apply plugin: "com.facebook.react"`, the stock debug signingConfig
  *     block, and `buildTypes {`. These are RN/Expo template scaffolding, not project-specific
  *     content, so they're expected to remain stable across ordinary dependency bumps.
  *   - Idempotent: the injected block is wrapped in a marker comment; if the marker is already
@@ -44,54 +38,13 @@ const { withAppBuildGradle } = require('@expo/config-plugins');
  *     template happens to name things upstream.
  */
 
-const MARKER_START = '// >>> karachi-ijtema release signing + Maps key (auto-injected by plugins/withAndroidBuildGradleSigning.js — do not hand-edit; edit that file instead) >>>';
-const MARKER_END = '// <<< karachi-ijtema release signing + Maps key <<<';
+const MARKER_START = '// >>> karachi-ijtema release signing (auto-injected by plugins/withAndroidBuildGradleSigning.js — do not hand-edit; edit that file instead) >>>';
+const MARKER_END = '// <<< karachi-ijtema release signing <<<';
 
 const APPLY_REACT_PLUGIN_ANCHOR = 'apply plugin: "com.facebook.react"';
 
 const INJECTED_TOP_BLOCK = `
 ${MARKER_START}
-def karachiIjtemaProjectRootDir = rootDir.getAbsoluteFile().getParentFile()
-
-def karachiIjtemaReadLocalEnvValue = { String envKey ->
-    [".env.local", ".env"].findResult { fileName ->
-        def envFile = new File(karachiIjtemaProjectRootDir, fileName)
-        if (!envFile.exists()) return null
-
-        envFile.readLines().findResult { rawLine ->
-            def line = rawLine.trim()
-            if (!line || line.startsWith("#")) return null
-            if (line.startsWith("export ")) {
-                line = line.substring(7).trim()
-            }
-
-            def separatorIndex = line.indexOf("=")
-            if (separatorIndex <= 0) return null
-
-            def key = line.substring(0, separatorIndex).trim()
-            if (key != envKey) return null
-
-            def value = line.substring(separatorIndex + 1).trim()
-            if (
-                (value.startsWith("\\"") && value.endsWith("\\"")) ||
-                (value.startsWith("'") && value.endsWith("'"))
-            ) {
-                value = value.substring(1, value.length() - 1)
-            }
-            return value
-        }
-    }
-}
-
-def karachiIjtemaGoogleMapsApiKey = (
-    System.getenv("EXPO_PUBLIC_GOOGLE_MAPS_ANDROID_API_KEY")
-        ?: (findProperty("EXPO_PUBLIC_GOOGLE_MAPS_ANDROID_API_KEY") ?: "")
-)?.trim()
-
-if (!karachiIjtemaGoogleMapsApiKey) {
-    karachiIjtemaGoogleMapsApiKey = (karachiIjtemaReadLocalEnvValue("EXPO_PUBLIC_GOOGLE_MAPS_ANDROID_API_KEY") ?: "").trim()
-}
-
 /**
  * Production (release) signing configuration.
  *
@@ -180,10 +133,6 @@ gradle.taskGraph.whenReady { taskGraph ->
 ${MARKER_END}
 `;
 
-const DEFAULT_CONFIG_ANCHOR = 'defaultConfig {';
-const DEFAULT_CONFIG_INJECTION = `defaultConfig {
-        manifestPlaceholders = [googleMapsApiKey: karachiIjtemaGoogleMapsApiKey]`;
-
 // The stock debug signingConfig block Expo's default build.gradle template emits. Used both as
 // an anchor (to find where to inject the conditional release signingConfig) and, implicitly, as
 // a canary — if this text isn't found, the template shape changed and we fail loudly rather than
@@ -226,7 +175,7 @@ function patchAndroidBuildGradle(contents) {
     return contents;
   }
 
-  // 1. Inject Maps-key / release-signing resolution + the hard-fail gate near the top of the
+  // 1. Inject release-signing resolution + the hard-fail gate near the top of the
   // file, right after the React Native/Facebook plugin is applied.
   const reactPluginIndex = contents.indexOf(APPLY_REACT_PLUGIN_ANCHOR);
   assertFound(reactPluginIndex !== -1, `the anchor line \`${APPLY_REACT_PLUGIN_ANCHOR}\``);
@@ -236,15 +185,7 @@ function patchAndroidBuildGradle(contents) {
     INJECTED_TOP_BLOCK +
     contents.slice(afterReactPluginLineIndex);
 
-  // 2. Feed the resolved key into manifestPlaceholders inside defaultConfig.
-  const defaultConfigIndex = contents.indexOf(DEFAULT_CONFIG_ANCHOR);
-  assertFound(defaultConfigIndex !== -1, `the anchor \`${DEFAULT_CONFIG_ANCHOR}\` block`);
-  contents =
-    contents.slice(0, defaultConfigIndex) +
-    DEFAULT_CONFIG_INJECTION +
-    contents.slice(defaultConfigIndex + DEFAULT_CONFIG_ANCHOR.length);
-
-  // 3. Add the conditional signingConfigs.release block right after the stock debug block,
+  // 2. Add the conditional signingConfigs.release block right after the stock debug block,
   // still inside signingConfigs { ... }.
   const debugSigningBlockIndex = contents.indexOf(SIGNING_CONFIGS_DEBUG_BLOCK);
   assertFound(debugSigningBlockIndex !== -1, 'the stock `signingConfigs { debug { ... } }` block');
@@ -254,7 +195,7 @@ function patchAndroidBuildGradle(contents) {
     SIGNING_CONFIGS_RELEASE_INJECTION +
     contents.slice(afterDebugSigningBlockIndex);
 
-  // 4. Point buildTypes.release at the real signingConfig when available. `buildTypes {` is
+  // 3. Point buildTypes.release at the real signingConfig when available. `buildTypes {` is
   // unique in the file; within it, "signingConfig signingConfigs.debug" appears twice (debug
   // buildType, then release buildType) — we want the second occurrence.
   const buildTypesIndex = contents.indexOf(BUILD_TYPES_ANCHOR);

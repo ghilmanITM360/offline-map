@@ -6,7 +6,7 @@
 const { withAndroidManifest } = require('@expo/config-plugins');
 
 // Without these, Android destroys and recreates MainActivity when the user changes the system font size or
-// display size, and the Google Maps native view then fails with "Trying to resolve view with tag N which doesn't
+// display size, and the native map view then fails with "Trying to resolve view with tag N which doesn't
 // exist" (#259). React Native applies the new metrics itself when the activity is kept alive.
 const REQUIRED_CONFIG_CHANGES = ['fontScale', 'smallestScreenSize', 'density'];
 

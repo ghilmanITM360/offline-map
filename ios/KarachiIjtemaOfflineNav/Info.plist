@@ -33,8 +33,6 @@
     </array>
     <key>CFBundleVersion</key>
     <string>1</string>
-    <key>GMSApiKey</key>
-    <string>your_ios_maps_key_here</string>
     <key>LSMinimumSystemVersion</key>
     <string>12.0</string>
     <key>LSRequiresIPhoneOS</key>
