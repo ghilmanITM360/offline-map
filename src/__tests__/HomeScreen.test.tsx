@@ -810,7 +810,7 @@ describe('HomeScreen — canonical bottom-sheet dismissal', () => {
     // Deliberately do not settle here — Open Directions' own native echo is still
     // "in flight" when Change Destination fires next, same as a user tapping through
     // before the previous transition's round-trip has confirmed.
-    await user.press(await screen.findByLabelText('Change destination'));
+    await user.press(await screen.findByLabelText(/Change destination\./));
     // What the Directory does when the visitor taps Gate 08 for "Where do you want to go?".
     const gate08 = SearchService.search('Gate 8').find((place) => place.name === 'Gate 08');
     expect(gate08).toBeDefined();

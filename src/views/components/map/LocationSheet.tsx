@@ -22,7 +22,6 @@ import { BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   Clock,
-  Flag,
   LocateFixed,
   MapPin,
   Navigation,
@@ -49,7 +48,7 @@ import { directionsSheetColors, radii, staticColors } from '../../../theme';
 import { placeCategoryLabel } from '../../../utils/placeCategoryLabel';
 import { unavailableReasonCopy } from '../../../utils/unavailableReasonCopy';
 import { directionsOfflineCaption } from '../../../utils/directionsOfflineCopy';
-import { DirectionsHeader, OfflineInfo, RouteEndpointCard, RouteEndpointRows } from './DirectionsSheetParts';
+import { DirectionsHeader, OfflineInfo, RouteEndpointRows } from './DirectionsSheetParts';
 import { publishDirectionsFooter, useDirectionsFooterHeight } from './DirectionsSheetFooter';
 import { OutsideRouteStatusCard } from '../navigation/OutsideRouteStatusCard';
 import type { NormalizedOutsideCandidate } from '../../../models/outsideRouting';
@@ -490,82 +489,37 @@ function RoutePreviewSection({
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"
         >
-          {!showRouteReady && (
-            <FadeContent transitionKey="destSummary">
-              <RouteEndpointCard
-                label="Going to"
-                helper="Your destination inside Ijtema"
-                headerIcon={<Flag size={16} color={directionsSheetColors.brand} />}
-                icon={<MapPin size={24} color={directionsSheetColors.brand} />}
-                name={destination.name}
-                detail={placeCategoryLabel(destination.category)}
-                actionLabel="Change destination"
-                actionAccessibilityLabel="Change destination"
-                onAction={onChangeDestination && onOpenDirectory ? () => onOpenDirectory('destination') : onClose}
-              >
-                {(destination.verificationWarning || destination.unavailableReason) && (
-                  <Card variant="warning" style={styles.statusCard}>
-                    <Text style={[styles.statusTitle, styles.statusTitleWarning]}>Heads up</Text>
-                    <Text style={styles.statusText}>
-                      {destination.verificationWarning ?? unavailableReasonCopy(destination.unavailableReason)}
-                    </Text>
-                  </Card>
-                )}
-              </RouteEndpointCard>
-            </FadeContent>
-          )}
-
-          {showRouteReady && (
-            <FadeContent transitionKey="routeEnds">
-              <RouteEndpointRows
-                from={{
-                  label: 'From',
-                  name: startSourceLabel,
-                  detail: startSourceHelper(
-                    startSource,
-                    (startSource === 'live_gps' && !currentLocation) || (startSource === 'manual_place' && !manualStart),
-                  ),
-                  icon: startIcon,
-                  actionAccessibilityLabel: `From ${startSourceLabel}. Change start.`,
-                  onAction: handleChangeStart,
-                }}
-                to={{
-                  label: 'To',
-                  name: destination.name,
-                  detail: placeCategoryLabel(destination.category),
-                  icon: <MapPin size={24} color={directionsSheetColors.brand} />,
-                  actionAccessibilityLabel: `To ${destination.name}. Change destination.`,
-                  onAction: onChangeDestination && onOpenDirectory ? () => onOpenDirectory('destination') : onClose,
-                }}
-              >
-                {(destination.verificationWarning || destination.unavailableReason) && (
-                  <Card variant="warning" style={styles.statusCard}>
-                    <Text style={[styles.statusTitle, styles.statusTitleWarning]}>Heads up</Text>
-                    <Text style={styles.statusText}>
-                      {destination.verificationWarning ?? unavailableReasonCopy(destination.unavailableReason)}
-                    </Text>
-                  </Card>
-                )}
-              </RouteEndpointRows>
-            </FadeContent>
-          )}
-
-          <FadeContent transitionKey="summary">
-          {showRouteReady ? null : (
-            <RouteEndpointCard
-              label="Starting from"
-              helper={startSourceHelper(
-                startSource,
-                (startSource === 'live_gps' && !currentLocation) || (startSource === 'manual_place' && !manualStart),
+          <FadeContent transitionKey="routeEnds">
+            <RouteEndpointRows
+              from={{
+                label: 'From',
+                name: startSourceLabel,
+                detail: startSourceHelper(
+                  startSource,
+                  (startSource === 'live_gps' && !currentLocation) || (startSource === 'manual_place' && !manualStart),
+                ),
+                icon: startIcon,
+                actionAccessibilityLabel: `From ${startSourceLabel}. Change start.`,
+                onAction: handleChangeStart,
+              }}
+              to={{
+                label: 'To',
+                name: destination.name,
+                detail: placeCategoryLabel(destination.category),
+                icon: <MapPin size={24} color={directionsSheetColors.brand} />,
+                actionAccessibilityLabel: `To ${destination.name}. Change destination.`,
+                onAction: onChangeDestination && onOpenDirectory ? () => onOpenDirectory('destination') : onClose,
+              }}
+            >
+              {(destination.verificationWarning || destination.unavailableReason) && (
+                <Card variant="warning" style={styles.statusCard}>
+                  <Text style={[styles.statusTitle, styles.statusTitleWarning]}>Heads up</Text>
+                  <Text style={styles.statusText}>
+                    {destination.verificationWarning ?? unavailableReasonCopy(destination.unavailableReason)}
+                  </Text>
+                </Card>
               )}
-              headerIcon={<LocateFixed size={16} color={directionsSheetColors.brand} />}
-              icon={startIcon}
-              name={startSourceLabel}
-              actionLabel="Change Start"
-              actionAccessibilityLabel="Change starting point"
-              onAction={handleChangeStart}
-            />
-          )}
+            </RouteEndpointRows>
           </FadeContent>
 
           <FadeContent transitionKey={loadState}>

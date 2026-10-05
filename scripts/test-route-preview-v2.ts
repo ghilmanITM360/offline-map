@@ -32,8 +32,8 @@ assert(
   'LocationSheet routePreview mode must expose Cancel Route action (confirm-gated destructive action, via onCancelRoute).',
 );
 assert(
-  directionsScreenSource.includes('Change Start'),
-  'LocationSheet routePreview mode must expose Change Start action.',
+  directionsScreenSource.includes('Change start.'),
+  'LocationSheet routePreview mode must expose the tappable start row.',
 );
 assert(
   directionsScreenSource.includes('Enter through'),

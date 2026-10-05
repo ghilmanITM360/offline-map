@@ -24,16 +24,12 @@ assert(
   'LocationSheet must not call LayoutAnimation — it can conflict with BottomSheetModal internals',
 );
 assert(
-  source.includes('<FadeContent transitionKey="summary">'),
-  'The start-source section (summary <-> options/search) must be wrapped in FadeContent',
-);
-assert(
   source.includes('<FadeContent transitionKey={loadState}>'),
   'The route status section (loading/error/ready/hint) must be wrapped in FadeContent keyed on loadState',
 );
 assert(
-  source.includes('<FadeContent transitionKey="destSummary">'),
-  'The "Going to" destination section must be wrapped in FadeContent, matching the start-source section',
+  source.includes('<FadeContent transitionKey="routeEnds">'),
+  'The FROM/TO rows must be wrapped in FadeContent',
 );
 
 console.log('LocationSheet transition checks passed.');
