@@ -66,6 +66,7 @@ export function SettingsScreen() {
     handleToggle,
     updateSettingValue,
     handleRedownloadMap,
+    handleClearLocalData,
     handleDeleteMap,
     handleReRequestPermission,
     locationPermissionState,
@@ -388,6 +389,34 @@ export function SettingsScreen() {
               ]);
             }}
             description="Free up device storage"
+          />
+        </View>
+
+        <View style={[styles.section, { backgroundColor: theme.card, borderColor: theme.border }]}>
+          <Text style={[styles.sectionTitle, { color: theme.primary }]}>Privacy</Text>
+          <SettingItem
+            icon={Trash2}
+            label="Clear Recent Searches"
+            value="Clear"
+            type="text"
+            onPress={() => handleClearLocalData('recentSearches')}
+            description="Kept on this device for up to 30 days"
+          />
+          <SettingItem
+            icon={Trash2}
+            label="Clear Saved Location"
+            value="Clear"
+            type="text"
+            onPress={() => handleClearLocalData('savedLocation')}
+            description="Last known position, kept up to 24 hours. A new one is saved while location is on"
+          />
+          <SettingItem
+            icon={Trash2}
+            label="Clear Navigation Recovery"
+            value="Clear"
+            type="text"
+            onPress={() => handleClearLocalData('navigationRecovery')}
+            description="Unfinished-trip reminder, kept for up to 2 hours"
           />
         </View>
 
