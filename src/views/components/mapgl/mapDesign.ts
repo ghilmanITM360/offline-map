@@ -26,6 +26,8 @@ export type MapVisualLayer = (typeof MAP_VISUAL_PRIORITY)[number];
 export const MAP_LINE_WIDTH = {
   activeRoute: 7,
   activeRouteCasing: 11,
+  /** Already-walked part of the active route: clearly secondary to the remaining part. */
+  walkedRoute: 4.5,
   rastaLine: 4,
   rastaCasing: 6.5,
   rastaSelected: 6,
@@ -71,3 +73,6 @@ export const PULSE_PAINT: Record<PulsePhase, { radius: number; opacity: number; 
   out: { radius: 44, opacity: 0, transitionMs: PULSE_DURATION_MS },
   static: { radius: 24, opacity: 0.3, transitionMs: 0 },
 };
+
+/** Route reveal (start -> destination) when a route becomes ready; presentation only, 600-900 ms. */
+export const ROUTE_REVEAL_MS = 750;

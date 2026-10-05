@@ -6,6 +6,8 @@
 import React from 'react';
 import { GeoJSONSource, Layer } from '@maplibre/maplibre-react-native';
 import type { OverlaySpec } from './overlaySpec';
+import { revealSpecData } from './routeReveal';
+import { useRouteReveal } from './useRouteReveal';
 
 /** Identity of the scene's structure (sources + layer ids, in order) — deliberately ignores feature data. */
 export const sceneSignature = (specs: OverlaySpec[]) => specs.map((s) => `${s.id}:${s.layers.map((l) => l.id).join(',')}`).join('|');
@@ -19,13 +21,15 @@ export const sceneSignature = (specs: OverlaySpec[]) => specs.map((s) => `${s.id
  * ticks, progress) keep every key and update in place.
  */
 export const OverlayScene = React.memo(function OverlayScene({ specs }: { specs: OverlaySpec[] }) {
+  // Route reveal is local to the scene (one timer here), so Home does not re-render per animation frame.
+  const progress = useRouteReveal(specs.find((s) => s.reveal)?.reveal?.key);
   let prefix = '';
   return (
     <>
       {specs.map((spec) => {
         prefix += `${spec.id}:${spec.layers.map((l) => l.id).join(',')}|`;
         return (
-          <GeoJSONSource key={prefix} id={spec.id} data={spec.data}>
+          <GeoJSONSource key={prefix} id={spec.id} data={revealSpecData(spec, progress)}>
             {spec.layers.map((layer) => (
               <Layer key={layer.id} id={layer.id} type={layer.type} paint={layer.paint as never} layout={layer.layout as never} filter={layer.filter as never} minzoom={layer.minzoom} />
             ))}

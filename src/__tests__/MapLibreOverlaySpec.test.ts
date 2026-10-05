@@ -1,3 +1,4 @@
+import { MAP_LINE_WIDTH } from '../views/components/mapgl/mapDesign';
 import { sceneSignature } from '../views/components/mapgl/OverlayScene';
 import {
   buildHomeVenueOverlay,
@@ -120,6 +121,50 @@ describe('buildRouteOverlay', () => {
     expect(dashed.layers[1].paint['line-dasharray']).toBeDefined();
     expect(solid.layers[1].paint['line-dasharray']).toBeUndefined();
     expect(buildRouteOverlay({ outside: [pts[0]], roadFollowing: true, inside: [pts[0]] })).toHaveLength(0);
+  });
+});
+
+describe('live progress emphasis', () => {
+  it('draws the walked part thinner and fainter than the remaining part, which keeps the full active-route weight', () => {
+    const inside = [c(25, 67), c(25.001, 67), c(25.002, 67)];
+    const [spec] = buildRouteOverlay({ outside: [], roadFollowing: false, inside, walked: inside.slice(0, 2), remaining: inside.slice(1) });
+    const walked = spec.layers.find((l) => l.id === 'route-walked')!.paint;
+    const remaining = spec.layers.find((l) => l.id === 'route-remaining')!.paint;
+    expect(walked['line-width']).toBeLessThan(remaining['line-width']);
+    expect(remaining['line-width']).toBe(MAP_LINE_WIDTH.activeRoute);
+    expect(walked['line-color']).not.toBe(remaining['line-color']);
+  });
+});
+
+describe('route reveal timeline', () => {
+  const out = [c(25, 67), c(25.003, 67)];
+  const inn = [c(25.003, 67), c(25.004, 67)];
+
+  it('marks nothing for reveal unless asked, and never during live progress', () => {
+    expect(buildRouteOverlay({ outside: out, roadFollowing: true, inside: inn }).every((s) => s.reveal === undefined)).toBe(true);
+    const nav = buildRouteOverlay({ outside: out, roadFollowing: true, inside: inn, walked: [inn[0]], remaining: inn, revealKey: 'k' });
+    expect(nav.every((s) => s.reveal === undefined)).toBe(true);
+  });
+
+  it('draws the outside leg first, then the inside leg, in proportion to their lengths, under one key', () => {
+    const [outside, inside] = buildRouteOverlay({ outside: out, roadFollowing: true, inside: inn, revealKey: 'k' });
+    expect(outside.reveal!.key).toBe('k');
+    expect(inside.reveal!.key).toBe('k');
+    expect(outside.reveal!.from).toBe(0);
+    expect(outside.reveal!.to).toBeCloseTo(0.75, 1);
+    expect(inside.reveal!.from).toBe(outside.reveal!.to);
+    expect(inside.reveal!.to).toBe(1);
+  });
+
+  it('an inside-only route reveals over the whole timeline', () => {
+    const [inside] = buildRouteOverlay({ outside: [], roadFollowing: false, inside: inn, revealKey: 'k' });
+    expect(inside.reveal).toEqual({ key: 'k', from: 0, to: 1 });
+  });
+
+  it('keeps the scene structure identical with and without reveal (no remount)', () => {
+    const a = buildRouteOverlay({ outside: out, roadFollowing: true, inside: inn });
+    const b = buildRouteOverlay({ outside: out, roadFollowing: true, inside: inn, revealKey: 'k' });
+    expect(sceneSignature(a)).toBe(sceneSignature(b));
   });
 });
 

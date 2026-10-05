@@ -10,6 +10,7 @@
 import type { Coordinate, Place } from '../../../models/types';
 import type { V2BlockLayer, V2GateLayer, V2PolylineLayer } from '../../../services/V2MapRenderingService';
 import { markerSizes, staticColors } from '../../../theme';
+import { lineLengthMeters } from './routeReveal';
 import { FACILITY_ICON_SIZE_BY_ZOOM, MAP_COLORS, MAP_LINE_WIDTH, PULSE_COLOR, PULSE_PAINT, SPECIAL_ROUTE_DASH, type PulsePhase } from './mapDesign';
 
 export type LngLat = [number, number];
@@ -27,6 +28,8 @@ export interface OverlaySpec {
   id: string;
   data: GeoJSON.FeatureCollection;
   layers: LayerSpec[];
+  /** Part of the route-reveal timeline this spec's lines grow over (0..1 of the whole route, in drawing order). */
+  reveal?: { key: string; from: number; to: number };
 }
 
 export type FeatureKind = 'block' | 'gate' | 'rasta' | 'route' | 'facility';
@@ -286,6 +289,8 @@ export interface RouteInput {
   walked?: readonly Coordinate[];
   remaining?: readonly Coordinate[];
   reroutePending?: boolean;
+  /** Preview only: identifies this route so it reveals (start -> destination) once when it appears. Ignored during live progress. */
+  revealKey?: string;
 }
 
 /** Route lines. Casing under fills; walked is muted, remaining carries the emphasis; reroute dashes the line. */
@@ -296,9 +301,15 @@ export function buildRouteOverlay(input: RouteInput): OverlaySpec[] {
   const round = { 'line-cap': 'round', 'line-join': 'round' };
   const lineLayout = input.reroutePending ? { 'line-cap': 'butt', 'line-join': 'round' } : round;
   const specs: OverlaySpec[] = [];
+  // Reveal order is drawing order: the outside leg, then the inside leg, each taking its share of the timeline by length.
+  const reveals = input.revealKey !== undefined && input.walked === undefined && input.remaining === undefined;
+  const outsideM = input.outside.length > 1 ? lineLengthMeters(input.outside.map(toLngLat)) : 0;
+  const insideM = input.inside.length > 1 ? lineLengthMeters(input.inside.map(toLngLat)) : 0;
+  const split = outsideM + insideM === 0 ? 0 : outsideM / (outsideM + insideM);
   if (input.outside.length > 1) {
     specs.push({
       id: 'route-outside',
+      ...(reveals ? { reveal: { key: input.revealKey!, from: 0, to: insideM > 0 ? split : 1 } } : {}),
       data: fc([line(input.outside)]),
       layers: [
         { id: 'route-outside-casing', type: 'line', layout: round, paint: { 'line-color': staticColors.routeCasing, 'line-width': 9 } },
@@ -324,11 +335,11 @@ export function buildRouteOverlay(input: RouteInput): OverlaySpec[] {
       if (input.walked && input.walked.length > 1) features.push(line(input.walked, { part: 'walked' }));
       if (input.remaining && input.remaining.length > 1) features.push(line(input.remaining, { part: 'remaining' }));
       layers.push(
-        { id: 'route-walked', type: 'line', layout: round, paint: { 'line-color': staticColors.routeWalked, 'line-width': 7 }, filter: part('walked') },
-        { id: 'route-remaining', type: 'line', layout: round, paint: { 'line-color': staticColors.routeInside, 'line-width': 7 }, filter: part('remaining') },
+        { id: 'route-walked', type: 'line', layout: round, paint: { 'line-color': staticColors.routeWalked, 'line-width': MAP_LINE_WIDTH.walkedRoute }, filter: part('walked') },
+        { id: 'route-remaining', type: 'line', layout: round, paint: { 'line-color': staticColors.routeInside, 'line-width': MAP_LINE_WIDTH.activeRoute }, filter: part('remaining') },
       );
     }
-    specs.push({ id: 'route-inside', data: fc(features), layers });
+    specs.push({ id: 'route-inside', data: fc(features), layers, ...(reveals ? { reveal: { key: input.revealKey!, from: outsideM > 0 ? split : 0, to: 1 } } : {}) });
   }
   return specs;
 }

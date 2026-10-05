@@ -51,3 +51,8 @@ The venue overlay is styled from one token set, so the map reads the same everyw
 - **Motion** — a place focus eases 600 ms (350 ms when the target is within 80 m of the last focus); it jumps (0 ms) under OS reduce-motion and whenever the map is not ready yet (nobody can watch an ease on an unpainted map). The Directory hand-off jumps while the Directory is still closing and the focus-time selection then does not animate again. A user gesture still cancels the early-replay (`cancelEarlyReplay`).
 - **Pulse** — one outward ring per destination (`useDestinationPulse`): hold 400 ms while the camera settles, then a native 800 ms paint transition (`destination-pulse` layer), then idle. Reduced motion: a static ring.
 - **Label** — the selected label hangs below the pin tip (`hangSelectedLabelsBelowPin`).
+
+## Route reveal and live progress (PR H)
+
+- **Reveal** — a preview route draws start → destination over 750 ms (`ROUTE_REVEAL_MS`, 600–900 ms target). It is presentation only: the route spec carries `reveal: {key, from, to}` (outside leg first, then inside, split by length) and `OverlayScene` runs one local timer (`useRouteReveal`, ~30 fps) that slices the line features (`revealSpecData`). Routing readiness, Start Navigation and Home's render do not wait on it. The same route geometry never replays (`routeRevealKey`); a new start or destination does. OS reduce-motion, or live progress, draws the whole route at once.
+- **Progress** — during active navigation the walked part is thinner (`walkedRoute` 4.5) and faint, the remaining part keeps the full active-route weight (7 over an 11 casing). Both are layers of one source updated in place from real route progress; nothing is recreated per GPS tick.
