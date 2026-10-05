@@ -2,12 +2,16 @@
 
 Current snapshot only. This file is replaced on each update, not appended to — history lives in git and the issue tracker, not here.
 
-**Last updated:** 2026-09-29
+**Last updated:** 2026-10-05
 **Canonical branch:** `integration/ijtema-clean-baseline`
 **Verified code baseline:** `28e98dc1c99be0e75b8396b736085cf7a7669fef` (merge of PR #170), the last commit that changed source. This documentation update is applied on top of it by PR #167; the final merged canonical HEAD is reported in that PR, not here, because a document cannot name its own commit. Commits that only change documentation are not re-measured; anything that changes source or `android/` requires re-running the baseline below.
 **Current milestone:** **Android APK Acceptance** — a fully tested, stable Android APK. Store/Play publishing, production signing, and legal/store submission are explicitly out of this milestone (tracked separately, see "Future Deployment" below).
 
 Full ticket-by-requirement coverage: [`docs/audit/MASTER_TICKET_MATRIX.md`](audit/MASTER_TICKET_MATRIX.md).
+
+## Offline visual map (2026-10-05, #140)
+
+The map is **fully offline**: MapLibre renders a project-generated OSM-data PMTiles basemap bundled in the app (ADR 0001); the Google Maps SDK, `react-native-maps` and the Maps key are removed (fused location and the optional Google Routes proxy remain, and core navigation needs neither). PRs #277–#289 merged (canonical `a42f8f8` at the time of writing). Acceptance evidence, with levels and the findings that remain: [`OFFLINE_MAP_ACCEPTANCE.md`](OFFLINE_MAP_ACCEPTANCE.md). EMULATOR VERIFIED only — PHYSICAL DEVICE and FIELD are still outstanding under #135.
 
 ## Integration record (2026-09-29)
 
@@ -24,8 +28,8 @@ Ten PRs were merged with merge commits, in two batches. Batch 1: #165 (`b7473b0`
 
 - `npm run typecheck` — clean
 - `npm run lint` — clean
-- `npm run test:components` (Jest, `--runInBand`) — **83 suites / 712 tests, all passing**
-- `npm test` (110-step script chain, includes the v2 structural-validation step) — passes
+- `npm run test:components` (Jest, `--runInBand`) — **116 suites / 1112 tests, all passing** (2026-10-05, `a42f8f8`; was 83 / 712 on 2026-09-29)
+- `npm test` (98-step script chain after the offline-map cleanup, includes the v2 structural-validation step) — passes
 - `test:all-gates-v2`, `test:outside-street-gate-selection-cost-v2`, `test:core-provider-routing-contract-v2`, `test:reroute-v2` — pass
 - `git diff --check` — clean
 
