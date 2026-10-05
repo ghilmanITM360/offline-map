@@ -60,7 +60,7 @@ import { SHEET_CORNER_RADIUS } from '../components/common/SheetHeader';
 import { markerColors, markerSizes, shadows, staticColors } from '../../theme';
 import { getDistance } from 'geolib';
 import { GRAPH_VALIDATION, IJTEMA_DATA, LANDMARK_PLACES, MAP_BOUNDS } from '../../constants/data';
-import { Coordinate, Place, RoutePreview } from '../../models/types';
+import { Coordinate, Place } from '../../models/types';
 import { PlaceDetailService } from '../../services/PlaceDetailService';
 import { FavoriteService } from '../../services/FavoriteService';
 import { useAppStore, type DirectoryPurpose } from '../../store/useAppStore';
@@ -1406,6 +1406,7 @@ export function HomeScreen() {
           user: {
             coordinate: currentLocation,
             accuracy: currentLocation.accuracy,
+            heading: currentLocation.heading,
             remembered: currentLocationSource === 'remembered',
             following: cameraManager.mode === 'FOLLOWING_USER',
           },

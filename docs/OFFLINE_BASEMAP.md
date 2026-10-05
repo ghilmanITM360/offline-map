@@ -33,3 +33,14 @@ The archive is reproducible in content, not bit-for-bit (tippecanoe/pmtiles embe
 
 Archive size is recorded in provenance and capped at 5 MiB by the test. Grow bounds, zoom range or layers only with a stated need; each layer's reason is in `build-basemap.mjs`.
 Baseline APK (all ABIs, before MapLibre): 87,972,032 bytes. Total APK impact is reported in the renderer-migration PR.
+
+## Map design system (PR F)
+
+The venue overlay is styled from one token set, so the map reads the same everywhere and a restyle is a token change, not a hunt through layers.
+
+- **Priority** — `MAP_VISUAL_PRIORITY` in `src/views/components/mapgl/mapDesign.ts` lists what must win visually: user, active route, destination, start, blocks, gates, major walking routes, secondary routes, special route (Shahr-e-Pindal), facilities, surroundings. Layer order and widths follow it (`MAP_LINE_WIDTH`, `MAP_COLORS`); static paths are always lighter than the active route.
+- **Special route** — dashed (`SPECIAL_ROUTE_DASH`), solid only when selected, so it never reads as the active route.
+- **Markers** — destination/start pins, the heading cone and eight facility badges are PNGs generated from Lucide glyphs by `scripts/offline-map/build-marker-images.mjs` (tokens in `src/theme/mapMarkerTokens.json`, output `markerImages.generated.ts`, ~51 KB). They are bundled in JS; no sprite URL and no network.
+- **Image load order** — the core images register with the map; facility badges mount only after `onDidFinishLoadingMap`, because every image registered up front delays map-ready (16 images ≈ 1.7 s on the emulator).
+- **Surface** — the map renders on a `TextureView` (`androidView="texture"`). With the default `SurfaceView` roughly one in five fresh-install offline launches came up blank or lost a late data update; with `TextureView` 8/8 emulator runs rendered (EMULATOR level, release build, airplane mode).
+- **Taps** — map features are layers, not TalkBack nodes. The Directory is the accessible place chooser.

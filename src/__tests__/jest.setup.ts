@@ -92,7 +92,9 @@ jest.mock('@maplibre/maplibre-react-native', () => {
     ReactActual.createElement(RNView, { testID: `source-${props.id}`, data: props.data }, props.children);
   const Layer = (props: any) => ReactActual.createElement(RNView, { testID: `layer-${props.id}`, ...props });
 
-  return { __esModule: true, Map, Camera, GeoJSONSource, Layer };
+  const Images = () => null;
+
+  return { __esModule: true, Map, Camera, GeoJSONSource, Layer, Images };
 });
 
 // The bundled basemap installer touches the APK asset + app storage; tests get an instantly "installed" archive.

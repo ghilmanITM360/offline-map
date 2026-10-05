@@ -1,0 +1,8 @@
+{
+  "_comment": "Colours baked into the generated marker images (scripts/offline-map/build-marker-images.mjs). Must equal the matching staticColors tokens — guarded by MapDesign.test.ts.",
+  "destination": "#EA4335",
+  "start": "#0B8043",
+  "facility": "#00897B",
+  "facilitySelectedRing": "#FFD700",
+  "user": "#1A73E8"
+}

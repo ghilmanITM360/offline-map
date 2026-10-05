@@ -10,16 +10,18 @@
 import type { Coordinate, Place } from '../../../models/types';
 import type { V2BlockLayer, V2GateLayer, V2PolylineLayer } from '../../../services/V2MapRenderingService';
 import { markerSizes, staticColors } from '../../../theme';
+import { FACILITY_ICON_SIZE_BY_ZOOM, MAP_COLORS, MAP_LINE_WIDTH, SPECIAL_ROUTE_DASH } from './mapDesign';
 
 export type LngLat = [number, number];
 export const toLngLat = (c: Coordinate): LngLat => [c.longitude, c.latitude];
 
 export interface LayerSpec {
   id: string;
-  type: 'fill' | 'line' | 'circle';
+  type: 'fill' | 'line' | 'circle' | 'symbol';
   paint: Record<string, unknown>;
   layout?: Record<string, unknown>;
   filter?: unknown[];
+  minzoom?: number;
 }
 export interface OverlaySpec {
   id: string;
@@ -68,6 +70,19 @@ export function buildVenueBoundaryOverlay(boundary: readonly Coordinate[]): Over
   };
 }
 
+/** Which glyph badge a facility gets — the same mapping the old marker layer used. Keys match markerImages. */
+export function facilityIconKey(place: Pick<Place, 'id' | 'category'>): string {
+  if (place.category === 'Masjid') return 'landmark';
+  if (place.id.startsWith('LM_FOOD')) return 'food';
+  if (place.id.startsWith('LM_WATER')) return 'water';
+  if (place.id.startsWith('LM_MEDICAL')) return 'medical';
+  if (place.id.startsWith('LM_PARKING')) return 'parking';
+  if (place.id.startsWith('LM_BUS')) return 'bus';
+  if (place.id.startsWith('LM_LOST_FOUND')) return 'lostfound';
+  if (place.id.startsWith('LM_VOLUNTEER')) return 'volunteer';
+  return 'landmark';
+}
+
 export interface HomeVenueInput {
   venueBoundary: Coordinate[];
   blocks: V2BlockLayer[];
@@ -92,14 +107,14 @@ export function buildHomeVenueOverlay(input: HomeVenueInput): OverlaySpec[] {
         {
           id: 'blocks-fill',
           type: 'fill',
-          paint: { 'fill-color': byState('rgba(26,115,232,0.42)', 'rgba(46,125,50,0.30)', 'rgba(46,125,50,0.14)') },
+          paint: { 'fill-color': byState(MAP_COLORS.blockFillSelected, MAP_COLORS.blockFillFocused, MAP_COLORS.blockFill) },
         },
         {
           id: 'blocks-line',
           type: 'line',
           paint: {
             'line-color': byState(staticColors.selectedBlock, staticColors.focusedBlock, staticColors.normalBlock),
-            'line-width': byState(3, 2, 1.2),
+            'line-width': byState(MAP_LINE_WIDTH.blockStrokeSelected, MAP_LINE_WIDTH.blockStrokeFocused, MAP_LINE_WIDTH.blockStroke),
           },
         },
         { id: 'hit-blocks', type: 'fill', paint: { 'fill-color': 'rgba(0,0,0,0.01)' } },
@@ -114,15 +129,15 @@ export function buildHomeVenueOverlay(input: HomeVenueInput): OverlaySpec[] {
           type: 'line',
           layout: { 'line-cap': 'round', 'line-join': 'round' },
           paint: {
-            'line-color': byState('rgba(26,115,232,0.55)', 'rgba(32,33,36,0.55)', 'rgba(60,64,67,0.44)'),
-            'line-width': byState(11, 12, 7),
+            'line-color': byState(MAP_COLORS.rastaCasingSelected, MAP_COLORS.rastaCasingFocused, MAP_COLORS.rastaCasing),
+            'line-width': byState(MAP_LINE_WIDTH.rastaSelectedCasing, MAP_LINE_WIDTH.rastaSelectedCasing + 1, MAP_LINE_WIDTH.rastaCasing),
           },
         },
         {
           id: 'rastas-line',
           type: 'line',
           layout: { 'line-cap': 'round', 'line-join': 'round' },
-          paint: { 'line-color': byState('#1A73E8', '#202124', 'rgba(255,255,255,0.9)'), 'line-width': byState(6, 7, 4) },
+          paint: { 'line-color': byState('#1A73E8', '#202124', 'rgba(255,255,255,0.95)'), 'line-width': byState(MAP_LINE_WIDTH.rastaSelected, MAP_LINE_WIDTH.rastaSelected + 1, MAP_LINE_WIDTH.rastaLine) },
         },
         { id: 'hit-rastas', type: 'line', paint: { 'line-color': 'rgba(0,0,0,0.01)', 'line-width': 16 } },
       ],
@@ -156,11 +171,20 @@ export function buildHomeVenueOverlay(input: HomeVenueInput): OverlaySpec[] {
         {
           id: 'special-line',
           type: 'line',
-          layout: { 'line-cap': 'round', 'line-join': 'round' },
+          layout: { 'line-join': 'round' },
           paint: {
-            'line-color': byState('#6A0DAD', 'rgba(106,13,173,0.65)', 'rgba(142,36,170,0.55)'),
-            'line-width': byState(7, 8, 3),
+            'line-color': byState(MAP_COLORS.specialSelected, MAP_COLORS.specialFocused, MAP_COLORS.special),
+            'line-width': byState(MAP_LINE_WIDTH.specialRouteSelected, MAP_LINE_WIDTH.specialRouteFocused, MAP_LINE_WIDTH.specialRoute),
+            // Pattern, not just colour, tells Shahr-e-Pindal apart from the walking paths; selected routes go solid.
+            'line-dasharray': SPECIAL_ROUTE_DASH,
           },
+        },
+        {
+          id: 'special-selected-solid',
+          type: 'line',
+          layout: { 'line-cap': 'round', 'line-join': 'round' },
+          filter: ['==', ['get', 'state'], 'selected'],
+          paint: { 'line-color': MAP_COLORS.specialSelected, 'line-width': MAP_LINE_WIDTH.specialRouteSelected },
         },
         { id: 'hit-special', type: 'line', paint: { 'line-color': 'rgba(0,0,0,0.01)', 'line-width': 18 } },
       ],
@@ -189,18 +213,24 @@ export function buildHomeVenueOverlay(input: HomeVenueInput): OverlaySpec[] {
     {
       id: 'venue-facilities',
       data: fc(
-        input.facilities.map((p) => point(p.coordinate, { id: p.id, kind: 'facility', label: p.name, state: state(p.id === input.selectedFacilityId, false) })),
+        input.facilities.map((p) => {
+          const selected = p.id === input.selectedFacilityId;
+          return point(p.coordinate, { id: p.id, kind: 'facility', label: p.name, state: state(selected, false), icon: `facility-${facilityIconKey(p)}` });
+        }),
       ),
       layers: [
+        // Selection is a gold ring under the badge (see build-marker-images.mjs for why it is not a second image).
         {
-          id: 'facilities-dot',
+          id: 'facilities-selected-ring',
           type: 'circle',
-          paint: {
-            'circle-radius': markerSizes.facility / 2,
-            'circle-color': staticColors.facilityAccent,
-            'circle-stroke-width': byState(2.5, 1.5, 1.5),
-            'circle-stroke-color': byState('#FFD700', '#FFFFFF', '#FFFFFF'),
-          },
+          filter: ['==', ['get', 'state'], 'selected'],
+          paint: { 'circle-radius': 16, 'circle-color': 'rgba(255,215,0,0.18)', 'circle-stroke-color': '#FFD700', 'circle-stroke-width': 3 },
+        },
+        {
+          id: 'facilities-icon',
+          type: 'symbol',
+          layout: { 'icon-image': ['get', 'icon'], 'icon-size': FACILITY_ICON_SIZE_BY_ZOOM, 'icon-allow-overlap': true, 'icon-ignore-placement': true },
+          paint: {},
         },
         { id: 'hit-facilities', type: 'circle', paint: { 'circle-radius': 22, 'circle-color': 'rgba(0,0,0,0.01)' } },
       ],
@@ -286,10 +316,10 @@ export function buildRouteOverlay(input: RouteInput): OverlaySpec[] {
     const showProgress = (input.walked !== undefined || input.remaining !== undefined) && !input.reroutePending;
     const features: GeoJSON.Feature[] = [line(input.inside, { part: 'full' })];
     const layers: LayerSpec[] = [
-      { id: 'route-casing', type: 'line', layout: round, paint: { 'line-color': staticColors.routeCasing, 'line-width': 11 }, filter: part('full') },
+      { id: 'route-casing', type: 'line', layout: round, paint: { 'line-color': staticColors.routeCasing, 'line-width': MAP_LINE_WIDTH.activeRouteCasing }, filter: part('full') },
     ];
     if (!showProgress) {
-      layers.push({ id: 'route-line', type: 'line', layout: lineLayout, paint: { 'line-color': staticColors.routeInside, 'line-width': 7, ...dash }, filter: part('full') });
+      layers.push({ id: 'route-line', type: 'line', layout: lineLayout, paint: { 'line-color': staticColors.routeInside, 'line-width': MAP_LINE_WIDTH.activeRoute, ...dash }, filter: part('full') });
     } else {
       if (input.walked && input.walked.length > 1) features.push(line(input.walked, { part: 'walked' }));
       if (input.remaining && input.remaining.length > 1) features.push(line(input.remaining, { part: 'remaining' }));
@@ -307,7 +337,7 @@ export interface MarkersInput {
   selectedPin?: Coordinate | null;
   destination?: Coordinate | null;
   start?: Coordinate | null;
-  user?: { coordinate: Coordinate; accuracy?: number; remembered?: boolean; following?: boolean } | null;
+  user?: { coordinate: Coordinate; accuracy?: number; remembered?: boolean; following?: boolean; heading?: number } | null;
 }
 
 // Metres → pixels at the current zoom/latitude, as an expression: px = m * 2^zoom / (156543.03392 * cos(lat))
@@ -333,14 +363,16 @@ export function buildMarkerOverlay(input: MarkersInput): OverlaySpec[] {
       data: fc(pins),
       layers: [
         {
-          id: 'pin-dot',
-          type: 'circle',
-          paint: {
-            'circle-radius': ['match', ['get', 'role'], 'destination', markerSizes.destination / 2.4, 8],
-            'circle-color': ['match', ['get', 'role'], 'destination', staticColors.gateAccent, staticColors.startMarker],
-            'circle-stroke-width': 3,
-            'circle-stroke-color': '#FFFFFF',
+          id: 'pin-icon',
+          type: 'symbol',
+          layout: {
+            'icon-image': ['match', ['get', 'role'], 'destination', 'pin-destination', 'pin-start'],
+            // The pin's tip marks the place; the start badge is centred on it.
+            'icon-anchor': ['match', ['get', 'role'], 'destination', 'bottom', 'center'],
+            'icon-allow-overlap': true,
+            'icon-ignore-placement': true,
           },
+          paint: {},
         },
       ],
     });
@@ -362,6 +394,16 @@ export function buildMarkerOverlay(input: MarkersInput): OverlaySpec[] {
         },
       });
     }
+    // Heading cone sits under the dot and rotates with the (valid) compass heading; it is drawn only when one is known.
+    const heading = typeof u.heading === 'number' && Number.isFinite(u.heading) && u.heading >= 0 ? u.heading : null;
+    if (heading !== null && !u.remembered) {
+      layers.push({
+        id: 'user-heading',
+        type: 'symbol',
+        layout: { 'icon-image': 'user-heading', 'icon-rotate': ['get', 'heading'], 'icon-rotation-alignment': 'map', 'icon-allow-overlap': true, 'icon-ignore-placement': true },
+        paint: {},
+      });
+    }
     layers.push({
       id: 'user-dot',
       type: 'circle',
@@ -373,7 +415,7 @@ export function buildMarkerOverlay(input: MarkersInput): OverlaySpec[] {
         'circle-opacity': u.remembered ? 0.6 : 1,
       },
     });
-    specs.push({ id: 'markers-user', data: fc([point(u.coordinate, { remembered: u.remembered ? 1 : 0 })]), layers });
+    specs.push({ id: 'markers-user', data: fc([point(u.coordinate, { remembered: u.remembered ? 1 : 0, ...(heading !== null ? { heading } : {}) })]), layers });
   }
   return specs;
 }
