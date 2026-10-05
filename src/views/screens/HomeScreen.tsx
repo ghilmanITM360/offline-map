@@ -84,6 +84,7 @@ import { useNavigationOverlayV1 } from '../../viewmodels/useNavigationOverlayV1'
 import { useMapMode } from '../../viewmodels/useMapMode';
 import { useReducedMotion } from '../../viewmodels/useReducedMotion';
 import { useDestinationPulse } from '../../viewmodels/useDestinationPulse';
+import { useRerouteRevealKey } from '../components/mapgl/useRerouteRevealKey';
 import { placeFocusRegion } from '../../viewmodels/useCameraManager';
 import { NavigationChromeV2 } from '../components/navigation/NavigationChromeV2';
 import { NavigationChromeV1 } from '../components/navigation/NavigationChromeV1';
@@ -1373,8 +1374,17 @@ export function HomeScreen() {
   // Everything drawn on top of the basemap, bottom → top. Navigation/arrival and browse/preview are exclusive scenes.
   // The navigation overlay hooks return a fresh object every render, so the scenes depend on the specific fields they read
   // (otherwise every GPS tick / drag / zoom would rebuild and re-serialise every GeoJSON source).
+  // A replaced route (accepted reroute) reveals and the old one fades; the route navigation starts with does not.
+  // Arrival plays one destination ring per journey (the `arrived` latch keeps ARRIVAL mode until navigation resets).
+  const inNavigationScene = mode === 'NAVIGATION' || mode === 'ARRIVAL';
+  const navRouteCoordinates = navOverlay.route?.coordinates ?? navOverlayV1.route?.coordinates ?? null;
+  const navRouteKey = inNavigationScene && navRouteCoordinates && navRouteCoordinates.length > 0 ? routeRevealKey(navRouteCoordinates) : null;
+  const rerouteRevealKey = useRerouteRevealKey(navRouteKey);
+  const arrivalPulse = useDestinationPulse(mode === 'ARRIVAL' && navRouteKey ? `arrival:${navRouteKey}` : null, reducedMotion);
   const navSceneInput = useMemo(
     () => ({
+      revealKey: rerouteRevealKey,
+      pulse: arrivalPulse,
       route: navOverlay.route,
       snappedLocation: navOverlay.snappedLocation,
       arrived: navOverlay.arrived,
@@ -1382,10 +1392,12 @@ export function HomeScreen() {
       mapLayers: navOverlay.mapLayers,
       currentLocationSource: navOverlay.currentLocationSource,
     }),
-    [navOverlay.route, navOverlay.snappedLocation, navOverlay.arrived, navOverlay.reroutePending, navOverlay.mapLayers, navOverlay.currentLocationSource],
+    [rerouteRevealKey, arrivalPulse, navOverlay.route, navOverlay.snappedLocation, navOverlay.arrived, navOverlay.reroutePending, navOverlay.mapLayers, navOverlay.currentLocationSource],
   );
   const navSceneInputV1 = useMemo(
     () => ({
+      revealKey: rerouteRevealKey,
+      pulse: arrivalPulse,
       route: navOverlayV1.route,
       destination: navOverlayV1.destination,
       snappedLocation: navOverlayV1.snappedLocation,
@@ -1394,7 +1406,7 @@ export function HomeScreen() {
       mapLayers: navOverlayV1.mapLayers,
       currentLocationSource: navOverlayV1.currentLocationSource,
     }),
-    [navOverlayV1.route, navOverlayV1.destination, navOverlayV1.snappedLocation, navOverlayV1.arrived, navOverlayV1.reroutePending, navOverlayV1.mapLayers, navOverlayV1.currentLocationSource],
+    [rerouteRevealKey, arrivalPulse, navOverlayV1.route, navOverlayV1.destination, navOverlayV1.snappedLocation, navOverlayV1.arrived, navOverlayV1.reroutePending, navOverlayV1.mapLayers, navOverlayV1.currentLocationSource],
   );
   // Venue context: no location dependencies, so a GPS tick never rebuilds it.
   const browseVenueSpecs = useMemo<OverlaySpec[]>(

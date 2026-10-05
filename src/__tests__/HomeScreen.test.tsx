@@ -964,6 +964,48 @@ describe('HomeScreen — canonical navigation pan ownership', () => {
   });
 });
 
+describe('HomeScreen — arrival motion', () => {
+  test('plays one destination ring on arrival, then rests — GPS noise never replays it', async () => {
+    const overlaySpy = jest.spyOn(NavigationOverlayV1Module, 'useNavigationOverlayV1').mockReturnValue({
+      active: true,
+      route: v1Route,
+      destination: v1Destination,
+      instructions: [],
+      currentStepIndex: 0,
+      isMuted: false,
+      setIsMuted: jest.fn(),
+      remainingDistance: 0,
+      arrived: true,
+      reroutePending: false,
+      isWeakGps: false,
+      rerouteStatusMessage: null,
+      snappedLocation: v1Destination.coordinate,
+      mapLayers: { venueBoundary: [], blocks: [], edges: [] },
+      userPulseAnim: new Animated.Value(0),
+      settings: useAppStore.getState().settings,
+      graphOnlyFallbackUsed: false,
+      requestNavigationExit: jest.fn(),
+      completeArrivalNavigation: jest.fn(),
+      setIsAutoFollowing: jest.fn(),
+      bottomBarHeight: 0,
+      setBottomBarHeight: jest.fn(),
+    } as unknown as ReturnType<typeof NavigationOverlayV1Module.useNavigationOverlayV1>);
+
+    await render(<HomeScreen />);
+    const ringOpacity = () => screen.getByTestId('layer-destination-pulse', { includeHiddenElements: true }).props.paint['circle-opacity'];
+    expect(ringOpacity()).toBeGreaterThan(0);
+
+    await act(async () => { jest.advanceTimersByTime(5000); });
+    expect(ringOpacity()).toBe(0);
+
+    await act(async () => { useAppStore.getState().setCurrentLocation({ latitude: 24.9021, longitude: 67.1021, accuracy: 12 }, 'gps'); });
+    await act(async () => { jest.advanceTimersByTime(5000); });
+    expect(ringOpacity()).toBe(0);
+
+    overlaySpy.mockRestore();
+  });
+});
+
 describe('HomeScreen — v1 Arrival marker fallback', () => {
   test('renders one browse user fallback with accuracy and one v1 destination when snapped location is unavailable', async () => {
     useAppStore.getState().setCurrentLocation({ latitude: 24.902, longitude: 67.102, accuracy: 12 }, 'gps');

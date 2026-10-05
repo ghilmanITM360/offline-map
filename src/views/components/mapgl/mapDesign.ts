@@ -76,3 +76,6 @@ export const PULSE_PAINT: Record<PulsePhase, { radius: number; opacity: number; 
 
 /** Route reveal (start -> destination) when a route becomes ready; presentation only, 600-900 ms. */
 export const ROUTE_REVEAL_MS = 750;
+
+/** The replaced route fades out over this long while the new one reveals (reroute). */
+export const ROUTE_FADE_MS = 300;

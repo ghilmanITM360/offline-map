@@ -289,7 +289,7 @@ export interface RouteInput {
   walked?: readonly Coordinate[];
   remaining?: readonly Coordinate[];
   reroutePending?: boolean;
-  /** Preview only: identifies this route so it reveals (start -> destination) once when it appears. Ignored during live progress. */
+  /** Identifies this route so it reveals (start -> destination) once when it appears: a new preview, or a rerouted navigation route. Omit for a route that simply continues. */
   revealKey?: string;
 }
 
@@ -302,7 +302,7 @@ export function buildRouteOverlay(input: RouteInput): OverlaySpec[] {
   const lineLayout = input.reroutePending ? { 'line-cap': 'butt', 'line-join': 'round' } : round;
   const specs: OverlaySpec[] = [];
   // Reveal order is drawing order: the outside leg, then the inside leg, each taking its share of the timeline by length.
-  const reveals = input.revealKey !== undefined && input.walked === undefined && input.remaining === undefined;
+  const reveals = input.revealKey !== undefined;
   const outsideM = input.outside.length > 1 ? lineLengthMeters(input.outside.map(toLngLat)) : 0;
   const insideM = input.inside.length > 1 ? lineLengthMeters(input.inside.map(toLngLat)) : 0;
   const split = outsideM + insideM === 0 ? 0 : outsideM / (outsideM + insideM);

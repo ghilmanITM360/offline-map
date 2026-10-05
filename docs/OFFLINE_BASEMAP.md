@@ -56,3 +56,9 @@ The venue overlay is styled from one token set, so the map reads the same everyw
 
 - **Reveal** — a preview route draws start → destination over 750 ms (`ROUTE_REVEAL_MS`, 600–900 ms target). It is presentation only: the route spec carries `reveal: {key, from, to}` (outside leg first, then inside, split by length) and `OverlayScene` runs one local timer (`useRouteReveal`, ~30 fps) that slices the line features (`revealSpecData`). Routing readiness, Start Navigation and Home's render do not wait on it. The same route geometry never replays (`routeRevealKey`); a new start or destination does. OS reduce-motion, or live progress, draws the whole route at once.
 - **Progress** — during active navigation the walked part is thinner (`walkedRoute` 4.5) and faint, the remaining part keeps the full active-route weight (7 over an 11 casing). Both are layers of one source updated in place from real route progress; nothing is recreated per GPS tick.
+
+## Reroute and arrival motion (PR I)
+
+- **Reroute** — when an accepted reroute REPLACES the navigation route (`useRerouteRevealKey`: the route a trip starts with never reveals, each replacement does), the new route reveals start → destination (same 750 ms timeline as the preview) and the old one stays as a ghost line (`<id>-ghost`, mounted last so it never reorders the scene) that fades out over 300 ms with a native opacity transition, then is removed. Two equally active routes are never on screen: the ghost is at 45% opacity and fading. The camera is not recentred by the reroute.
+- **Arrival** — the existing `arrived` latch (set once per trip, reset when navigation starts) drives ARRIVAL mode; the destination ring (`useDestinationPulse` keyed on the route) plays once while in that mode, then rests, so GPS noise cannot replay it. Reduced motion shows the static ring.
+- Both apply to the v2 scene and to the legacy v1 scene used for facility destinations.
