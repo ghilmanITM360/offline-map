@@ -129,7 +129,9 @@ interface AppState {
   // its chrome). Direct reads of this raw field are sanctioned ONLY where a consumer genuinely
   // needs the primitive session-active signal ahead of/independent from MapMode — currently
   // HomeViewModel.ts (camera-follow/compass gating, which must keep working even if MapMode's
-  // NAVIGATION chrome is flag-suppressed) and HomeScreen.tsx's activePreviewRoute memo (MapMode
+  // NAVIGATION chrome is flag-suppressed), DirectionsViewModel.ts (a route recompute that finishes after
+  // Start must not publish a preview over the active route, #302; it runs while the sheet unmounts, so no
+  // MapMode is available there) and HomeScreen.tsx's activePreviewRoute memo (MapMode
   // itself depends on activePreviewRoute, so that one consumer, structurally, cannot read mode
   // without a circular dependency). See scripts/test-navigation-architecture-audit.ts Finding 6
   // for the regression guard enforcing this closed list — add a new direct reader there too.
