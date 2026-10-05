@@ -1,0 +1,140 @@
+import {
+  buildHomeVenueOverlay,
+  buildMarkerOverlay,
+  buildNavigationVenueOverlay,
+  buildRouteOverlay,
+  HIT_LAYER_IDS,
+} from '../views/components/mapgl/overlaySpec';
+import type { V2BlockLayer, V2GateLayer, V2PolylineLayer } from '../services/V2MapRenderingService';
+import type { Place } from '../models/types';
+
+const c = (latitude: number, longitude: number) => ({ latitude, longitude });
+const name = { en: 'x', ur: 'x' } as never;
+const block = (id: string, isSelected = false): V2BlockLayer => ({
+  id, label: `Block ${id}`, name, center: c(25, 67), isSelected, pulse: false,
+  polygon: [c(25, 67), c(25, 67.001), c(25.001, 67.001)], // open ring on purpose
+});
+const poly = (id: string, isSelected = false): V2PolylineLayer => ({
+  id, label: id, name, polyline: [c(25, 67), c(25.001, 67.001)], labelCoordinate: c(25, 67), isSelected,
+});
+const gate = (id: string, warn = false, isSelected = false): V2GateLayer => ({
+  id, label: id, name, coordinate: c(25, 67.002), isRoutable: true, isStartRoutable: true, needsConnectorVerification: warn, isSelected,
+});
+const facility = { id: 'LM_FOOD_1', name: 'Food', coordinate: c(25, 67.003) } as unknown as Place;
+
+const home = (over = {}) =>
+  buildHomeVenueOverlay({
+    venueBoundary: [c(25, 67), c(25, 67.01), c(25.01, 67.01)],
+    blocks: [block('B1'), block('B2', true)],
+    rastas: [poly('R1')],
+    specialRoutes: [poly('S1')],
+    gates: [gate('G1'), gate('G2', true)],
+    facilities: [facility],
+    activeMapFilter: 'none',
+    ...over,
+  });
+const byId = (specs: ReturnType<typeof home>, id: string) => specs.find((s) => s.id === id)!;
+
+describe('buildHomeVenueOverlay', () => {
+  it('emits GeoJSON in [lng, lat] order and closes open polygon rings', () => {
+    const blocks = byId(home(), 'venue-blocks').data.features;
+    const g = blocks[0].geometry as GeoJSON.Polygon;
+    expect(g.coordinates[0][0]).toEqual([67, 25]);
+    expect(g.coordinates[0][0]).toEqual(g.coordinates[0][g.coordinates[0].length - 1]);
+  });
+
+  it('draws bottom→top: boundary, blocks, rastas, special routes, gates, facilities', () => {
+    expect(home().map((s) => s.id)).toEqual(['venue-boundary', 'venue-blocks', 'venue-rastas', 'venue-rasta-ends', 'venue-special', 'venue-gates', 'venue-facilities']);
+  });
+
+  it('marks selected and filter-focused features through a state property the styles key off', () => {
+    const states = (spec: string) => byId(home({ activeMapFilter: 'blocks' }), spec).data.features.map((f) => f.properties!.state);
+    expect(states('venue-blocks')).toEqual(['focused', 'selected']);
+    expect(byId(home({ activeMapFilter: 'rastas' }), 'venue-rastas').data.features[0].properties!.state).toBe('focused');
+  });
+
+  it('carries id, kind and label so a tap can be resolved back to a place', () => {
+    const f = byId(home(), 'venue-gates').data.features[1].properties!;
+    expect(f).toMatchObject({ id: 'G2', kind: 'gate', label: 'G2', warning: 1 });
+    expect(byId(home(), 'venue-rastas').data.features[0].properties).toMatchObject({ id: 'R1', kind: 'rasta' });
+    expect(byId(home(), 'venue-special').data.features[0].properties).toMatchObject({ id: 'S1', kind: 'route' });
+    expect(byId(home(), 'venue-facilities').data.features[0].properties).toMatchObject({ id: 'LM_FOOD_1', kind: 'facility' });
+  });
+
+  it('rasta tap identity prefers sourceId when one rasta is surveyed as several segments', () => {
+    const r = { ...poly('R1_seg2'), sourceId: 'R1' };
+    expect(byId(home({ rastas: [r] }), 'venue-rastas').data.features[0].properties!.id).toBe('R1');
+  });
+
+  it('every tappable hit layer exists exactly once and none are missing from the spec', () => {
+    const ids = home().flatMap((s) => s.layers.map((l) => l.id));
+    for (const hit of HIT_LAYER_IDS) expect(ids.filter((i) => i === hit)).toHaveLength(1);
+  });
+
+  it('adds two endpoint dots per rasta and nothing for degenerate polylines', () => {
+    expect(byId(home(), 'venue-rasta-ends').data.features).toHaveLength(2);
+    expect(byId(home({ rastas: [{ ...poly('R'), polyline: [] }] }), 'venue-rasta-ends').data.features).toHaveLength(0);
+  });
+
+  it('skips a boundary that cannot form a polygon', () => {
+    expect(byId(home({ venueBoundary: [c(1, 1)] }), 'venue-boundary').data.features).toHaveLength(0);
+  });
+});
+
+describe('buildNavigationVenueOverlay', () => {
+  it('is read-only: no hit layers', () => {
+    const specs = buildNavigationVenueOverlay({ blocks: [block('B1')], rastas: [poly('R')], specialRoutes: [poly('S')] });
+    const ids = specs.flatMap((s) => s.layers.map((l) => l.id));
+    expect(ids.some((i) => i.startsWith('hit-'))).toBe(false);
+    expect(ids).toEqual(expect.arrayContaining(['nav-blocks-fill', 'nav-rastas-line', 'nav-special-line']));
+  });
+});
+
+describe('buildRouteOverlay', () => {
+  const pts = [c(25, 67), c(25.001, 67), c(25.002, 67)];
+
+  it('preview: one casing + one line, no walked/remaining split', () => {
+    const [inside] = buildRouteOverlay({ outside: [], roadFollowing: false, inside: pts });
+    expect(inside.layers.map((l) => l.id)).toEqual(['route-casing', 'route-line']);
+  });
+
+  it('navigation: muted walked part under an emphasised remaining part', () => {
+    const [inside] = buildRouteOverlay({ outside: [], roadFollowing: false, inside: pts, walked: pts.slice(0, 2), remaining: pts.slice(1) });
+    expect(inside.layers.map((l) => l.id)).toEqual(['route-casing', 'route-walked', 'route-remaining']);
+    expect(inside.data.features.map((f) => f.properties!.part)).toEqual(['full', 'walked', 'remaining']);
+  });
+
+  it('reroute pending: a single dashed route, never two equally active lines', () => {
+    const [inside] = buildRouteOverlay({ outside: [], roadFollowing: false, inside: pts, walked: pts.slice(0, 2), remaining: pts.slice(1), reroutePending: true });
+    expect(inside.layers.map((l) => l.id)).toEqual(['route-casing', 'route-line']);
+    expect(inside.layers[1].paint['line-dasharray']).toBeDefined();
+  });
+
+  it('outside leg is dashed unless it follows roads, and absent when too short', () => {
+    const dashed = buildRouteOverlay({ outside: pts, roadFollowing: false, inside: [] })[0];
+    const solid = buildRouteOverlay({ outside: pts, roadFollowing: true, inside: [] })[0];
+    expect(dashed.layers[1].paint['line-dasharray']).toBeDefined();
+    expect(solid.layers[1].paint['line-dasharray']).toBeUndefined();
+    expect(buildRouteOverlay({ outside: [pts[0]], roadFollowing: true, inside: [pts[0]] })).toHaveLength(0);
+  });
+});
+
+describe('buildMarkerOverlay', () => {
+  it('renders nothing without markers', () => {
+    expect(buildMarkerOverlay({})).toEqual([]);
+  });
+
+  it('puts destination/start pins and the user dot in separate sources, user last (on top)', () => {
+    const specs = buildMarkerOverlay({ destination: c(25, 67), start: c(25.1, 67), user: { coordinate: c(25, 67), accuracy: 20 } });
+    expect(specs.map((s) => s.id)).toEqual(['markers-pins', 'markers-user']);
+    expect(specs[0].data.features.map((f) => f.properties!.role)).toEqual(['destination', 'start']);
+    expect(specs[1].layers.map((l) => l.id)).toEqual(['user-accuracy', 'user-dot']);
+  });
+
+  it('caps the accuracy circle at 150 m and skips it for missing/zero accuracy', () => {
+    const withBig = buildMarkerOverlay({ user: { coordinate: c(25, 67), accuracy: 900 } })[0].layers[0];
+    const small = buildMarkerOverlay({ user: { coordinate: c(25, 67), accuracy: 150 } })[0].layers[0];
+    expect(JSON.stringify(withBig.paint['circle-radius'])).toEqual(JSON.stringify(small.paint['circle-radius']));
+    expect(buildMarkerOverlay({ user: { coordinate: c(25, 67) } })[0].layers.map((l) => l.id)).toEqual(['user-dot']);
+  });
+});
