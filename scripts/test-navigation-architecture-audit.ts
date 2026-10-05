@@ -199,6 +199,7 @@ const base: MapModeInputs = {
   // useAppStore.ts for why each of these needs the raw primitive instead of MapMode. Adding a
   // new direct reader anywhere else must update this list deliberately, not by accident.
   const sanctionedDirectReaders = [
+    'src/viewmodels/DirectionsViewModel.ts',
     'src/viewmodels/HomeViewModel.ts',
     'src/viewmodels/NavigationViewModelV2.ts',
     'src/views/screens/HomeScreen.tsx',
