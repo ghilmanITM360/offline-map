@@ -32,7 +32,7 @@ const USER_ZOOM_DELTA = 0.005;
 // How many times a camera move issued before the map's initial region was applied is re-run (the first region-complete
 // and the time bound, whichever order they arrive in).
 const INITIAL_REGION_SETTLE_REPLAYS = 2;
-const PLACE_ZOOM_DELTA = 0.002;
+export const PLACE_ZOOM_DELTA = 0.002;
 const DEFAULT_ROUTE_PADDING: EdgePadding = { top: 90, right: 64, bottom: 140, left: 64 };
 const DEFAULT_BOUNDS_PADDING: EdgePadding = { top: 48, right: 48, bottom: 48, left: 48 };
 
@@ -58,6 +58,17 @@ function approxDistanceMeters(a: Coordinate, b: Coordinate): number {
 // when the sheet is barely covering anything (MAX) — Google Maps always biases "upper".
 const MARKER_SCREEN_FRACTION_MIN = 0.14;
 const MARKER_SCREEN_FRACTION_MAX = 0.42;
+
+/** Region that frames `coordinate` at the focus zoom with the marker `markerScreenFraction` of the way down the screen
+ * (0.5 = dead centre; smaller = further up, so the centre shifts south of the marker in this northern hemisphere). */
+export function placeFocusRegion(coordinate: Coordinate, markerScreenFraction: number) {
+  return {
+    latitude: coordinate.latitude + PLACE_ZOOM_DELTA * (markerScreenFraction - 0.5),
+    longitude: coordinate.longitude,
+    latitudeDelta: PLACE_ZOOM_DELTA,
+    longitudeDelta: PLACE_ZOOM_DELTA,
+  };
+}
 
 function clamp(value: number, lo: number, hi: number): number {
   return Math.min(hi, Math.max(lo, value));
@@ -186,7 +197,8 @@ export function useCameraManager({ mapRef }: Params) {
       lastPlaceFocusRef.current = coordinate;
       const duration =
         requestedDuration ??
-        (reducedMotion
+        // A move queued until the map is ready runs on a map nobody has seen yet: jump, never ease from the overview.
+        (reducedMotion || !isCameraReady()
           ? 0
           : last && approxDistanceMeters(last, coordinate) <= PLACE_NEARBY_DISTANCE_M
             ? PLACE_NEARBY_CAMERA_DURATION_MS
@@ -206,23 +218,12 @@ export function useCameraManager({ mapRef }: Params) {
         MARKER_SCREEN_FRACTION_MAX,
       );
       runWhenReady(() => {
-        mapRef.current?.animateToRegion(
-          {
-            // Screen fraction 0.5 (dead center) needs no shift; below 0.5 (marker pushed
-            // toward the top) needs the region center shifted south of the marker
-            // (northern-hemisphere latitudes here) so the marker renders further up-screen.
-            latitude: coordinate.latitude + PLACE_ZOOM_DELTA * (markerScreenFraction - 0.5),
-            longitude: coordinate.longitude,
-            latitudeDelta: PLACE_ZOOM_DELTA,
-            longitudeDelta: PLACE_ZOOM_DELTA,
-          },
-          duration,
-        );
+        mapRef.current?.animateToRegion(placeFocusRegion(coordinate, markerScreenFraction), duration);
         setCameraMode('EXPLORING');
       });
       return duration;
     },
-    [frame.height, insets.top, mapRef, reducedMotion, runWhenReady, setCameraMode],
+    [frame.height, insets.top, isCameraReady, mapRef, reducedMotion, runWhenReady, setCameraMode],
   );
 
   const fitVenueBounds = useCallback(

@@ -67,8 +67,8 @@ assert(
 // --- FIX 3: highlight -> camera -> sheet transition ordering ---------------
 
 const handlePlaceSelectBody = homeViewModel.slice(
-  homeViewModel.indexOf('const handlePlaceSelect = (place: Place) => {'),
-  homeViewModel.indexOf('\n  };', homeViewModel.indexOf('const handlePlaceSelect = (place: Place) => {')),
+  homeViewModel.indexOf('const handlePlaceSelect = (place: Place, opts?: { cameraAlreadyThere?: boolean }) => {'),
+  homeViewModel.indexOf('\n  };', homeViewModel.indexOf('const handlePlaceSelect = (place: Place, opts?: { cameraAlreadyThere?: boolean }) => {')),
 );
 assert(handlePlaceSelectBody.length > 0, 'handlePlaceSelect must exist in HomeViewModel.');
 const highlightIdx = handlePlaceSelectBody.indexOf('setSelectedPlace(place);');

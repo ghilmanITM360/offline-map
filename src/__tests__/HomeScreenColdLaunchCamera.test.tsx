@@ -260,6 +260,11 @@ const invalidatingInteractions: Array<[string, () => Promise<void> | void]> = [
     await pressMapFeature('facility', 'LM_MASJID_MAIN');
     await jest.advanceTimersByTimeAsync(100);
   }],
+  // A destination picked in the Directory outranks the launch camera (destination > user > Block 2).
+  ['Directory hand-off', async () => {
+    useAppStore.setState({ pendingDirectorySelection: searchResultPlace as any });
+    await jest.advanceTimersByTimeAsync(100);
+  }],
 ];
 
 describe('HomeScreen - launch camera (Google Maps principles, adapted for a venue)', () => {
@@ -729,6 +734,28 @@ describe('#222 Map entry camera rules', () => {
     expect(cameraAnimateToUserSpy).not.toHaveBeenCalled();
     expect(cameraFitVenueBoundsSpy).not.toHaveBeenCalled();
     expect(screen.queryByText('Location unavailable. Showing Block 2.')).toBeNull();
+  });
+});
+
+describe('Directory destination outranks the launch camera on the first painted frame', () => {
+  const startState = () => screen.getByTestId('map-camera', { includeHiddenElements: true }).props.initialViewState as {
+    center: [number, number];
+    zoom: number;
+  };
+
+  test('a destination already handed off when the map mounts is where the map starts, not the venue overview', async () => {
+    useAppStore.setState({ hasSeenMapOverview: true, hasLocationPermission: false, currentLocation: null, pendingDirectorySelection: null });
+    await render(<HomeScreen />);
+    const overview = startState();
+    await screen.unmount();
+
+    useAppStore.setState({ pendingDirectorySelection: searchResultPlace as any });
+    await render(<HomeScreen />);
+    const withDestination = startState();
+
+    expect(withDestination.center[0]).toBeCloseTo(searchResultPlace.coordinate!.longitude, 4);
+    expect(withDestination.center[1]).toBeCloseTo(searchResultPlace.coordinate!.latitude, 3);
+    expect(withDestination.zoom).toBeGreaterThan(overview.zoom + 1);
   });
 });
 

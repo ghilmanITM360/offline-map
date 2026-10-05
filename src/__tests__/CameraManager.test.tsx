@@ -5,7 +5,7 @@
 
 import { AccessibilityInfo } from 'react-native';
 import { renderHook, act } from './test-utils';
-import { useCameraManager } from '../viewmodels/useCameraManager';
+import { useCameraManager, placeFocusRegion, PLACE_ZOOM_DELTA } from '../viewmodels/useCameraManager';
 
 function makeFakeMapRef() {
   return {
@@ -36,6 +36,14 @@ function markCameraReady(result: { current: ReturnType<typeof useCameraManager> 
   result.current.notifyNativeMapReady();
   result.current.notifyMapLayout(390, 844);
 }
+
+describe('placeFocusRegion', () => {
+  test('centres on the place at the focus zoom; a marker fraction above 0.5 shifts the centre south so the marker sits up-screen', () => {
+    const centred = placeFocusRegion(PLACE.coordinate, 0.5);
+    expect(centred).toEqual({ latitude: PLACE.coordinate.latitude, longitude: PLACE.coordinate.longitude, latitudeDelta: PLACE_ZOOM_DELTA, longitudeDelta: PLACE_ZOOM_DELTA });
+    expect(placeFocusRegion(PLACE.coordinate, 0.3).latitude).toBeLessThan(PLACE.coordinate.latitude);
+  });
+});
 
 describe('useCameraManager', () => {
   test('current location button flow (followUser) calls animateToUser and enters FOLLOWING_USER', async () => {
@@ -138,6 +146,21 @@ describe('useCameraManager', () => {
 
     expect(mapRef.current.animateToRegion.mock.calls[0][1]).toBe(0);
     expect(returned).toBe(0);
+  });
+
+  test('animateToPlace issued before the map is ready jumps instead of easing: nobody can watch an ease on a map that has not painted', async () => {
+    const mapRef = makeFakeMapRef();
+    const { result } = await renderHook(() => useCameraManager({ mapRef }));
+
+    let returned: number | undefined;
+    await act(() => {
+      returned = result.current.animateToPlace(PLACE);
+    });
+    expect(returned).toBe(0);
+    await act(() => markCameraReady(result));
+
+    expect(mapRef.current.animateToRegion).toHaveBeenCalledTimes(1);
+    expect(mapRef.current.animateToRegion.mock.calls[0][1]).toBe(0);
   });
 
   test('animateToPlace shifts the camera further north the more the sheet covers (bottom edge > center > top)', async () => {

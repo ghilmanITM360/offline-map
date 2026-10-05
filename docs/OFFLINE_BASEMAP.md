@@ -44,3 +44,10 @@ The venue overlay is styled from one token set, so the map reads the same everyw
 - **Image load order** — the core images register with the map; facility badges mount only after `onDidFinishLoadingMap`, because every image registered up front delays map-ready (16 images ≈ 1.7 s on the emulator).
 - **Surface** — the map renders on a `TextureView` (`androidView="texture"`). With the default `SurfaceView` roughly one in five fresh-install offline launches came up blank or lost a late data update; with `TextureView` 8/8 emulator runs rendered (EMULATOR level, release build, airplane mode).
 - **Taps** — map features are layers, not TalkBack nodes. The Directory is the accessible place chooser.
+
+## Destination focus (PR G)
+
+- **Priority** — active navigation > destination > valid user location > Block 2 fallback. A destination handed off by the Directory invalidates the launch camera (`invalidateStartupCameraIntent`), and a pending hand-off at mount is the map's *initial* region, so the first painted frame is the destination, never the venue overview.
+- **Motion** — a place focus eases 600 ms (350 ms when the target is within 80 m of the last focus); it jumps (0 ms) under OS reduce-motion and whenever the map is not ready yet (nobody can watch an ease on an unpainted map). The Directory hand-off jumps while the Directory is still closing and the focus-time selection then does not animate again. A user gesture still cancels the early-replay (`cancelEarlyReplay`).
+- **Pulse** — one outward ring per destination (`useDestinationPulse`): hold 400 ms while the camera settles, then a native 800 ms paint transition (`destination-pulse` layer), then idle. Reduced motion: a static ring.
+- **Label** — the selected label hangs below the pin tip (`hangSelectedLabelsBelowPin`).

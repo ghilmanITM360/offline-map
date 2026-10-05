@@ -84,6 +84,7 @@ import { useNavigationOverlayV1 } from '../../viewmodels/useNavigationOverlayV1'
 import { useMapMode } from '../../viewmodels/useMapMode';
 import { useReducedMotion } from '../../viewmodels/useReducedMotion';
 import { useDestinationPulse } from '../../viewmodels/useDestinationPulse';
+import { placeFocusRegion } from '../../viewmodels/useCameraManager';
 import { NavigationChromeV2 } from '../components/navigation/NavigationChromeV2';
 import { NavigationChromeV1 } from '../components/navigation/NavigationChromeV1';
 import { LocationSheet } from '../components/map/LocationSheet';
@@ -286,6 +287,12 @@ export function HomeScreen() {
       releaseStartupMapReady();
     }
   }, [releaseStartupMapReady]);
+
+  // Camera priority: a destination picked in the Directory outranks the launch camera (user location / Block 2).
+  const pendingDirectorySelection = useAppStore((s) => s.pendingDirectorySelection);
+  useEffect(() => {
+    if (pendingDirectorySelection) invalidateStartupCameraIntent();
+  }, [pendingDirectorySelection, invalidateStartupCameraIntent]);
 
   const settleStartupRegion = useCallback(() => {
     // A region-complete that arrives before onMapReady is ignored; the bound timer covers that case.
@@ -876,13 +883,18 @@ export function HomeScreen() {
     previewVisibleBlocks,
   ]);
 
+  // Camera priority: a destination already handed off by the Directory when the map mounts is where the map STARTS,
+  // so the first painted frame is the destination, never the venue overview. (Marker 30% down: clear of the sheet.)
+  const initialDestinationRef = useRef<Coordinate | null>(useAppStore.getState().pendingDirectorySelection?.coordinate ?? null);
   const effectiveInitialRegion = useV2Map
-    ? {
-        latitude: IJTEMA_MAP_REGION.latitude,
-        longitude: IJTEMA_MAP_REGION.longitude,
-        latitudeDelta: IJTEMA_MAP_REGION.latitudeDelta + 0.002,
-        longitudeDelta: IJTEMA_MAP_REGION.longitudeDelta + 0.002,
-      }
+    ? initialDestinationRef.current
+      ? placeFocusRegion(initialDestinationRef.current, 0.3)
+      : {
+          latitude: IJTEMA_MAP_REGION.latitude,
+          longitude: IJTEMA_MAP_REGION.longitude,
+          latitudeDelta: IJTEMA_MAP_REGION.latitudeDelta + 0.002,
+          longitudeDelta: IJTEMA_MAP_REGION.longitudeDelta + 0.002,
+        }
     : initialRegion;
 
   const walkingTimeMin = (selectedPlace && currentLocation && selectedPlace.sourceVersion !== 'v2')
