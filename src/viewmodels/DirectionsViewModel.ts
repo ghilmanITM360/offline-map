@@ -8,10 +8,11 @@ import { getDistance } from 'geolib';
 import { useAppStore } from '../store/useAppStore';
 import { RoutingService } from '../services/RoutingService';
 import { InstructionService, Instruction } from '../services/InstructionService';
-import { Place, RouteAlternative, RoutePreview } from '../models/types';
+import { Coordinate, Place, RouteAlternative, RoutePreview } from '../models/types';
 import { LocationAccessService } from '../services/LocationAccessService';
 import {
   evaluateNavigationLocationCapability,
+  resolveStartAction,
   type NavigationStartSource,
 } from '../services/LocationNavigationCapability';
 import { MapFeatureFlagsService } from '../services/MapFeatureFlagsService';
@@ -53,6 +54,7 @@ export function useDirectionsViewModel(destination: Place | null) {
   const setCurrentLocation = useAppStore((s) => s.setCurrentLocation);
   const setHasLocationPermission = useAppStore((s) => s.setHasLocationPermission);
   const locationPermissionPrecision = useAppStore((s) => s.locationPermissionPrecision);
+  const hasLocationPermission = useAppStore((s) => s.hasLocationPermission);
   const setLocationPermissionPrecision = useAppStore((s) => s.setLocationPermissionPrecision);
   const settings = useAppStore((s) => s.settings);
   const {
@@ -79,6 +81,9 @@ export function useDirectionsViewModel(destination: Place | null) {
   const [isEditingManualStart, setIsEditingManualStart] = useState(false);
   const [manualGateId, setManualGateId] = useState<string | null>(null);
   const [routeRefreshing, setRouteRefreshing] = useState(false);
+  // Outcome of the last "Use my location & start" press: 'failed' = no usable fix, 'settings' = the user must
+  // allow (precise) location in system settings. Shown as one plain sentence under the primary action.
+  const [startAttempt, setStartAttempt] = useState<'idle' | 'working' | 'failed' | 'settings'>('idle');
   const routeRef = useRef<RoutePreview | null>(null);
   const routeDestinationIdRef = useRef<string | null>(null);
   const outsideRequestCoordinatorRef = useRef(new OutsideRouteRequestCoordinator());
@@ -191,6 +196,17 @@ export function useDirectionsViewModel(destination: Place | null) {
       ? `Starting from ${manualStart.name}.`
       : 'Where are you starting from?';
   const isCurrentLocationStartActive = startSource === 'live_gps';
+
+  // A planned/manual start only previews; live guidance needs a fresh precise fix. This turns that rule into
+  // one enabled primary action so the user is never left on a dead Start button.
+  const liveFix = currentLocationSource === 'live' ? currentLocation : null;
+  const startAction = resolveStartAction({
+    startSource,
+    plannedStart: (route as { coordinates?: Coordinate[] } | null)?.coordinates?.[0] ?? startCoordinateForOutsideCheck,
+    plannedStartName: startSourceLabel,
+    liveFix,
+    permission: { granted: hasLocationPermission || liveFix !== null, precision: locationPermissionPrecision },
+  });
 
   const calculateRoute = useCallback(async () => {
     if (!destination) {
@@ -540,6 +556,47 @@ export function useDirectionsViewModel(destination: Place | null) {
 
   const clearManualGateSelection = () => setManualGateId(null);
 
+  /** Primary footer action. `startNow` begins navigation; every other state first gets a fresh live fix. */
+  const runStartAction = async (startNow: () => void) => {
+    if (startAction.kind === 'start') return startNow();
+    if (startAction.kind === 'not_near') {
+      setStartAttempt('idle');
+      await chooseCurrentLocation();
+      return;
+    }
+    setStartAttempt('working');
+    try {
+      const resolved = await LocationAccessService.resolveCurrentLocation(true);
+      setHasLocationPermission(resolved.permissionState.granted);
+      setLocationPermissionPrecision(resolved.permissionState.precision);
+      const needsSettings =
+        (!resolved.permissionState.granted && !resolved.permissionState.canAskAgain) ||
+        (resolved.permissionState.granted && resolved.permissionState.precision === 'coarse');
+      if (needsSettings) {
+        await LocationAccessService.openAppSettings();
+        setStartAttempt('settings');
+        return;
+      }
+      if (!resolved.ok || resolved.source !== 'live' || !resolved.coordinate) {
+        setStartAttempt('failed');
+        return;
+      }
+      setCurrentLocation(resolved.coordinate, 'live');
+      setStartAttempt('idle');
+      const next = resolveStartAction({
+        startSource,
+        plannedStart: (route as { coordinates?: Coordinate[] } | null)?.coordinates?.[0] ?? startCoordinateForOutsideCheck,
+        plannedStartName: startSourceLabel,
+        liveFix: resolved.coordinate,
+        permission: { granted: true, precision: resolved.permissionState.precision },
+      });
+      // Only a fix that matches the planned start begins navigation; otherwise the sheet now says so.
+      if (next.kind === 'start') startNow();
+    } catch {
+      setStartAttempt('failed');
+    }
+  };
+
   // Legacy (v1) destinations only — v2 destinations start navigation through
   // HomeScreen's route-preview card (handleStartPreviewNavigation), which
   // reuses this same store action for the v2-shaped route instead.
@@ -585,6 +642,9 @@ export function useDirectionsViewModel(destination: Place | null) {
     clearManualGateSelection,
     routeRefreshing,
     handleStartNavigation,
+    startAction: v2NavigationStartCheck.canStart ? startAction : null,
+    startAttempt,
+    runStartAction,
     showRememberedStartAction: rememberedLocationAvailable,
     // Editing mode only. `startSource === 'manual_place'` records where the start came from; it
     // must not keep the picker open after a place is chosen (#222 / #131).

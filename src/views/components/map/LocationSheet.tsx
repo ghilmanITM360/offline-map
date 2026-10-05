@@ -116,6 +116,8 @@ export type LocationSheetProps =
        * not anything this component does directly. Omitted falls back to the old onClose
        * behavior for callers that haven't wired it up. */
       onChangeDestination?: (place: Place) => void;
+      /** "View route": tucks the sheet down so the whole route is visible on the map. */
+      onViewRoute?: () => void;
       /** Opens the Directory, the one place chooser, to pick a start (or destination); the choice comes
        * back through the store's directoryChoice. */
       onOpenDirectory?: (purpose: DirectoryPurpose) => void;
@@ -148,6 +150,7 @@ export function LocationSheet(props: LocationSheetProps) {
         destination={props.destination}
         onClose={props.onClose}
         onStartNavigation={props.onStartNavigation}
+        onViewRoute={props.onViewRoute}
         onCancelRoute={props.onCancelRoute}
         onChangeDestination={props.onChangeDestination}
         onOpenDirectory={props.onOpenDirectory}
@@ -201,11 +204,13 @@ function RoutePreviewSection({
   onCancelRoute,
   onChangeDestination,
   onOpenDirectory,
+  onViewRoute,
   basemapOffline,
 }: {
   destination: Place;
   onClose: () => void;
   onStartNavigation?: () => void;
+  onViewRoute?: () => void;
   onCancelRoute?: () => void;
   onChangeDestination?: (place: Place) => void;
   onOpenDirectory?: (purpose: DirectoryPurpose) => void;
@@ -247,6 +252,9 @@ function RoutePreviewSection({
     handleStartNavigation,
     canStartNavigation,
     startNavigationDisabledReason,
+    startAction,
+    startAttempt,
+    runStartAction,
   } = useDirectionsViewModel(destination);
 
   // The Directory is the only start chooser: Change Start always opens it in start mode. Current / last-known
@@ -332,14 +340,15 @@ function RoutePreviewSection({
   const compactFooter = fontScale >= 1.5;
 
   // One TalkBack stop ("Route ready, 13 min, 1.1 km") instead of three that Android sorts apart.
+  const readyHeadline = startAction?.kind === 'start' ? 'Ready to go' : 'Route ready';
   const routeSummaryLabel = [
-    'Route ready',
+    readyHeadline,
     outsideRoute?.durationSeconds !== null ? routeEta : null,
     routeDistance,
   ].filter(Boolean).join(', ');
   const routeSummary = showRouteReady ? (
     <View style={styles.summary} accessible accessibilityLabel={routeSummaryLabel}>
-      <Text style={styles.summaryLabel}>Route ready</Text>
+      <Text style={styles.summaryLabel}>{readyHeadline}</Text>
       <View style={styles.routeHeroRow}>
         {outsideRoute?.durationSeconds !== null && (
           <Text style={styles.routeHeroDuration}>{routeEta}</Text>
@@ -352,6 +361,18 @@ function RoutePreviewSection({
   const footerVisible = showLoading || showError || showRouteReady;
   // The caption scrolls with the content: the pinned footer only has room for the route summary,
   // the action and its disabled reason (gorhom's visible area at the 50% snap is small).
+
+  const startNow = () => {
+    if (destinationFromPlace(destination)) {
+      // Built from the resolved preview route already sitting in the store (see
+      // HomeScreen.handleStartPreviewNavigation) — starts NavigationOverlayV2 in place, then reveals the map.
+      onStartNavigation?.();
+    } else {
+      // v1: starts the in-place NavigationOverlayV1 via the store; no screen navigation either way.
+      handleStartNavigation();
+    }
+    onClose();
+  };
 
   const footerNode = footerVisible ? (
     <>
@@ -387,34 +408,58 @@ function RoutePreviewSection({
             {showRouteReady && (
               <>
                 {!compactFooter && routeSummary}
+                {startAction && startAction.kind === 'not_near' && startAction.title ? (
+                  <Text accessibilityLiveRegion="polite" style={styles.footerTitle}>{startAction.title}</Text>
+                ) : null}
                 <Button
                   variant="brand"
                   style={styles.cta}
-                  label={directGuide ? 'Start Direct Guide' : 'Start Navigation'}
+                  label={
+                    startAttempt === 'working'
+                      ? 'Finding your location…'
+                      : startAction && startAction.kind !== 'start'
+                      ? startAction.primaryLabel
+                      : directGuide
+                      ? 'Start Direct Guide'
+                      : 'Start Navigation'
+                  }
                   accessibilityLabel={
-                    !canStartNavigation && startNavigationDisabledReason
+                    !startAction && !canStartNavigation && startNavigationDisabledReason
                       ? `${directGuide ? 'Start Direct Guide' : 'Start Navigation'}. ${startNavigationDisabledReason}`
                       : undefined
                   }
-                  icon={<Navigation size={20} color={directionsSheetColors.brandText} />}
+                  icon={
+                    startAction && startAction.kind !== 'start' ? (
+                      <LocateFixed size={20} color={directionsSheetColors.brandText} />
+                    ) : (
+                      <Navigation size={20} color={directionsSheetColors.brandText} />
+                    )
+                  }
                   trailingIcon={<ChevronEnd size={20} color={directionsSheetColors.brandText} />}
-                  disabled={!canStartNavigation}
+                  disabled={startAttempt === 'working' || (!startAction && !canStartNavigation)}
                   onPress={() => {
-                    if (destinationFromPlace(destination)) {
-                      // Built from the resolved preview route already sitting in the store
-                      // (see HomeScreen.handleStartPreviewNavigation) — starts NavigationOverlayV2
-                      // in place, then reveals the map the same way v1 does below.
-                      onStartNavigation?.();
-                      onClose();
-                      return;
-                    }
-                    // v1: starts the in-place NavigationOverlayV1 (via the store), then
-                    // reveals the map the same way v2 does — no screen navigation either way.
-                    handleStartNavigation();
-                    onClose();
+                    if (startAction) void runStartAction(startNow);
+                    else startNow();
                   }}
                 />
-                {!canStartNavigation && startNavigationDisabledReason ? (
+                {startAction?.secondaryLabel ? (
+                  <Pressable
+                    style={styles.linkButton}
+                    onPress={startAction.kind === 'not_near' ? () => onOpenDirectory?.('start') : onViewRoute}
+                    accessibilityRole="button"
+                    accessibilityLabel={startAction.secondaryLabel}
+                  >
+                    <Text style={styles.linkButtonText}>{startAction.secondaryLabel}</Text>
+                  </Pressable>
+                ) : null}
+                {startAttempt === 'failed' || startAttempt === 'settings' ? (
+                  <Text accessibilityLiveRegion="polite" style={styles.footerReason}>
+                    {startAttempt === 'settings'
+                      ? 'Allow location in Settings, then try again.'
+                      : "Couldn't find your location. Try again, or change your start."}
+                  </Text>
+                ) : null}
+                {!startAction && !canStartNavigation && startNavigationDisabledReason ? (
                   <Text style={styles.footerReason}>{startNavigationDisabledReason}</Text>
                 ) : null}
               </>
@@ -905,6 +950,12 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   // Compact on purpose: the pinned footer shares the small visible area at the 50% snap.
+  footerTitle: {
+    fontSize: 16,
+    lineHeight: 22,
+    fontWeight: '700',
+    color: directionsSheetColors.headingText,
+  },
   footerReason: {
     fontSize: 13,
     lineHeight: 18,
