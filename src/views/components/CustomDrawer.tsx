@@ -6,33 +6,23 @@
 import React from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { DrawerContentComponentProps, DrawerContentScrollView } from '@react-navigation/drawer';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { 
   Home, 
   Settings, 
-  Download, 
   HelpCircle, 
   Info, 
   Map as MapIcon
 } from 'lucide-react-native';
-import { useAppStore } from '../../store/useAppStore';
-import { OfflineMapService } from '../../services/OfflineMapService';
-import { RootStackParamList } from '../../navigation/RootNavigator'; // fixed: type parent stack navigation for drawer-to-stack transitions
 import { useTheme } from '../../services/useTheme'; // fixed: use theme-safe colors for icons and badges
 import { staticColors } from '../../theme';
 
 const DRAWER_ICON_COLOR_KEY = 'subtext'; // fixed: centralize drawer icon color selection for future theming changes
-const DRAWER_BADGE_SUCCESS_KEY = 'primary'; // fixed: centralize badge success color selection
-const DRAWER_BADGE_ERROR_KEY = 'danger'; // fixed: centralize badge error color selection
 
 export function CustomDrawer(props: DrawerContentComponentProps) {
-  const { offlineData } = useAppStore();
   const theme = useTheme(); // fixed: source icon and badge colors from the active theme
-  const parentNavigation = props.navigation.getParent<NativeStackNavigationProp<RootStackParamList>>(); // fixed: access the parent stack for DownloadMap navigation
 
   const menuItems = [
     { label: 'Home', icon: Home, route: 'Home' },
-    { label: 'Offline Maps', icon: Download, route: 'DownloadMap', badge: offlineData.isDownloaded ? 'Downloaded' : OfflineMapService.isOfflineTileDownloadAvailable() ? 'Not Downloaded' : undefined },
     { label: 'Settings', icon: Settings, route: 'Settings' },
   ];
 
@@ -59,28 +49,13 @@ export function CustomDrawer(props: DrawerContentComponentProps) {
             <Pressable 
               key={index} 
               style={styles.menuItem}
-              onPress={() => {
-                if (item.route === 'DownloadMap') {
-                  props.navigation.closeDrawer(); // fixed: close the drawer before jumping to the stack screen
-                  parentNavigation?.navigate('DownloadMap'); // fixed: navigate to the root-stack DownloadMap screen without an unhandled drawer action
-                  return;
-                }
-                props.navigation.navigate(item.route as never); // fixed: keep drawer-native navigation for actual drawer routes
-              }}
+              onPress={() => props.navigation.navigate(item.route as never)} // fixed: keep drawer-native navigation for actual drawer routes
               accessibilityRole="button" // fixed: expose drawer menu items correctly to assistive technologies
               accessibilityLabel={item.label} // fixed: use the menu label as the accessible action name
             >
               <item.icon size={22} color={theme[DRAWER_ICON_COLOR_KEY]} />
               <View style={styles.menuItemTextContainer}>
                 <Text style={styles.menuItemLabel}>{item.label}</Text>
-                {item.badge && (
-                  <Text style={[
-                    styles.badge, 
-                    { color: item.badge === 'Downloaded' ? theme[DRAWER_BADGE_SUCCESS_KEY] : theme[DRAWER_BADGE_ERROR_KEY] } // fixed: replace hardcoded badge colors with theme-safe values
-                  ]}>
-                    {item.badge}
-                  </Text>
-                )}
               </View>
             </Pressable>
           ))}

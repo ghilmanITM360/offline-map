@@ -119,8 +119,7 @@ export type LocationSheetProps =
       /** Opens the Directory, the one place chooser, to pick a start (or destination); the choice comes
        * back through the store's directoryChoice. */
       onOpenDirectory?: (purpose: DirectoryPurpose) => void;
-      /** True when the map shows venue geometry only (no background imagery) — drives the
-       * truthful offline caption. Display-only; no connectivity logic lives here. */
+      /** Legacy flag (the basemap now ships with the app, so Home always passes false). Display-only. */
       basemapOffline?: boolean;
     }
   | {

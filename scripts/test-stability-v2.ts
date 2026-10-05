@@ -9,18 +9,12 @@ process.env.EXPO_PUBLIC_USE_IJTEMA_V2_MAP = 'true';
 process.env.EXPO_PUBLIC_USE_IJTEMA_V2_ROUTING = 'true';
 process.env.EXPO_PUBLIC_USE_IJTEMA_V2_NAVIGATION = 'true';
 
-const splash = readFileSync('src/views/screens/SplashScreen.tsx', 'utf8');
-const downloadScreen = readFileSync('src/views/screens/DownloadMapScreen.tsx', 'utf8');
-const downloadViewModel = readFileSync('src/viewmodels/DownloadMapViewModel.ts', 'utf8');
 const homeScreen = readFileSync('src/views/screens/HomeScreen.tsx', 'utf8');
 const navigationViewModelV1 = readFileSync('src/viewmodels/NavigationViewModel.ts', 'utf8');
 const permissionScreen = readFileSync('src/views/screens/PermissionScreen.tsx', 'utf8');
 const settingsScreen = readFileSync('src/views/screens/SettingsScreen.tsx', 'utf8');
 const directionsScreen = readFileSync('src/views/components/map/LocationSheet.tsx', 'utf8');
 
-assert(splash.includes("setDownloadState({ phase: 'idle' })"), 'Cold start must clear stale in-memory downloading state');
-assert(downloadViewModel.includes('STALE') || downloadViewModel.includes('downloadInProgressRef'), 'Download flow must guard duplicate/stuck workers');
-assert(downloadScreen.includes('showContinueFallback'), 'Download screen must expose a fallback instead of an infinite redirect wait');
 assert(homeScreen.includes('onReady={handleMapReady}') && homeScreen.includes('setIsMapReady(true)'), 'Home must have a map-ready state instead of blank-map assumptions');
 // Navigation (v1 and v2 alike) shares Home's one map, so this single check already covers navigation rendering
 // without a Google key or internet: the only basemap source is the bundled local archive.

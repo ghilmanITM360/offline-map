@@ -27,7 +27,7 @@ describe('startup readiness tracker (#130)', () => {
     expect(report).not.toHaveBeenCalled();
   });
 
-  test.each(['Welcome', 'Permission', 'DownloadMap'])('setup screen %s blocking startup never reports', (screen) => {
+  test.each(['Welcome', 'Permission'])('setup screen %s blocking startup never reports', (screen) => {
     const report = jest.fn();
     const tracker = load().createStartupReadiness(report);
     tracker.focus('Splash');
@@ -42,7 +42,6 @@ describe('startup readiness tracker (#130)', () => {
     tracker.focus('Splash');
     tracker.focus('Welcome');
     tracker.focus('Permission');
-    tracker.focus('DownloadMap');
     tracker.focus('LocationsDirectory');
     tracker.transitionEnd('LocationsDirectory');
     expect(report).not.toHaveBeenCalled();

@@ -71,7 +71,6 @@ export function useHomeViewModel({ isFocused = true }: { isFocused?: boolean } =
   const lastKnownLocationUpdatedAt = useAppStore((s) => s.lastKnownLocationUpdatedAt);
   const hasLocationPermission = useAppStore((s) => s.hasLocationPermission);
   const settings = useAppStore((s) => s.settings);
-  const offlineData = useAppStore((s) => s.offlineData);
   const hasInternet = useAppStore((s) => s.hasInternet);
   const selectedPlace = useAppStore((s) => s.selectedPlace);
   // Deliberately the raw store primitive, not MapMode — camera-follow/compass gating below
@@ -335,10 +334,6 @@ export function useHomeViewModel({ isFocused = true }: { isFocused?: boolean } =
     setMapZoomLevel(estimateZoomFromRegion(region));
   }, []);
 
-  const toggleMapType = () => {
-    updateSettings({ mapMode: settings.mapMode === 'standard' ? 'satellite' : 'standard' });
-  };
-
   // Defensive reset of leftover search-store state (searchQuery/searchResults have no
   // UI surface on Home anymore — LocationsDirectoryScreen owns discovery — but the
   // store fields remain, so anything still holding a stale query/results gets cleared).
@@ -361,12 +356,10 @@ export function useHomeViewModel({ isFocused = true }: { isFocused?: boolean } =
     bottomSheetRef,
     cameraManager,
     currentLocation,
-    mapType: settings.mapMode,
     selectedPlace,
     isMapReady,
     snapPoints,
     initialRegion,
-    offlineData,
     isOffline,
     settings,
     mapZoomLevel,
@@ -384,7 +377,6 @@ export function useHomeViewModel({ isFocused = true }: { isFocused?: boolean } =
     handleZoomIn,
     handleZoomOut,
     handleMapRegionChangeComplete,
-    toggleMapType,
     clearSearch,
     setSelectedPlace,
   };

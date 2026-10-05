@@ -7,7 +7,6 @@ import React from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
-  Download,
   Search,
   Navigation,
   LocateFixed,
@@ -43,11 +42,11 @@ const GUIDE_SECTIONS: GuideSection[] = [
   },
   {
     key: 'offline',
-    icon: Download,
+    icon: WifiOff,
     title: '2. Offline Maps',
     urduTitle: '۲۔ آف لائن نقشہ',
     body:
-      'Internal search and directions work from bundled Ijtema data, without internet. Street and satellite background imagery needs internet; without it you still see the venue map and routes.',
+      'The map is built into the app. Search, the map, directions and navigation all work without internet — there is nothing to download.',
   },
   {
     key: 'search',
@@ -127,7 +126,7 @@ const GUIDE_SECTIONS: GuideSection[] = [
     title: '12. Troubleshooting',
     urduTitle: '۱۲۔ مسئلہ حل',
     body:
-      'Map not visible: use venue map only. Route not calculating: retry or tap Change Start. GPS not working: tap Change Start and pick a place, or use your last known location. If a gate needs connector verification or is not ready for navigation, choose another connected official gate.',
+      'Map looks empty: close and reopen the app. Route not calculating: retry or tap Change Start. GPS not working: tap Change Start and pick a place, or use your last known location. If a gate needs connector verification or is not ready for navigation, choose another connected official gate.',
   },
 ];
 
@@ -201,7 +200,7 @@ export function AppGuideScreen() {
         <View style={styles.footerCard}>
           <WifiOff size={16} color="#7C4A03" />
           <Text style={styles.footerText}>
-            Background map unavailable? Ijtema routes can still work using internal venue data.
+            No internet? Everything here still works — the map and all routes are built into the app.
           </Text>
         </View>
       </ScrollView>

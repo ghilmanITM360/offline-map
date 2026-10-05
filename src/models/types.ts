@@ -20,7 +20,6 @@ export type LocationSource = 'live' | 'device_last_known' | 'remembered' | 'manu
 // Renamed from `MapMode` (Phase 8A.5 task 3) — collided in name with the unrelated
 // navigation-mode state machine `MapMode` in viewmodels/useMapMode.ts (HOME/SEARCH/
 // NAVIGATION/...). This one is strictly the Google Maps render/mapType setting.
-export type MapDisplayType = 'standard' | 'satellite' | 'hybrid';
 
 export interface Node {
   id: string;
@@ -147,7 +146,6 @@ export interface V2Place extends PlaceCommon {
 export type Place = V1Place | V2Place;
 
 export interface UserSettings {
-  mapMode: MapDisplayType;
   autoFollowLocation: boolean;
   keepNorthFixed: boolean;
   darkMode: boolean;
@@ -158,59 +156,6 @@ export interface UserSettings {
   language: 'en' | 'ur';
   mapSize?: number;
 }
-
-export interface OfflineData {
-  isDownloaded: boolean;
-  downloadDate?: string;
-  sizeMB?: number;
-}
-
-export type OfflineMapStatus =
-  | 'not_downloaded'
-  | 'downloading'
-  | 'downloaded'
-  | 'corrupt'
-  | 'needs_update';
-
-export interface OfflineMapManifest {
-  version: number;
-  mapId: string;
-  zoomLevels: number[];
-  tileCountExpected: number;
-  tileCountSaved: number;
-  completedAt?: string;
-  status: Exclude<OfflineMapStatus, 'not_downloaded'>;
-  bounds: {
-    minLat: number;
-    maxLat: number;
-    minLng: number;
-    maxLng: number;
-  };
-  checksum?: string;
-  updatedAt: string;
-  errorMessage?: string;
-}
-
-/** Granular state for the map download flow */
-export type DownloadPhase = 'idle' | 'connecting' | 'downloading' | 'paused' | 'error' | 'complete';
-
-export interface DownloadState {
-  phase: DownloadPhase;
-  progress: number;          // 0 – 1
-  downloadedTiles: number;
-  totalTiles: number;
-  errorMessage: string | null;
-  resumable: boolean;        // can we continue where we left off?
-}
-
-export const DEFAULT_DOWNLOAD_STATE: DownloadState = {
-  phase: 'idle',
-  progress: 0,
-  downloadedTiles: 0,
-  totalTiles: 0,
-  errorMessage: null,
-  resumable: false,
-};
 
 /** Labeled route alternative returned by RoutingService.calculateRoutes */
 export interface RouteAlternative {

@@ -36,7 +36,8 @@ describe('persisted settings validation', () => {
   });
 
   it('rejects invalid fields without losing valid preferences', async () => {
-    const settings = await hydrate({ mapMode: 'invalid', walkingSpeed: -1, mapSize: 0,
+    // `mapMode` is a legacy (pre-#140 satellite toggle) key: it must be ignored, not carried into settings.
+    const settings = await hydrate({ mapMode: 'satellite', walkingSpeed: -1, mapSize: 0,
       distanceUnit: 'miles', language: 'invalid', autoFollowLocation: 'yes', darkMode: true,
       unknownField: true });
     expect(settings).toEqual({ ...initial.settings, darkMode: true });

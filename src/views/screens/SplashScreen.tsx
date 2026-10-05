@@ -9,9 +9,6 @@ import { Map as MapIcon } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
 import * as Location from 'expo-location';
 import { useAppStore, waitForStoreHydration, type HydrationWaitOutcome } from '../../store/useAppStore';
-import { ConnectivityService } from '../../services/ConnectivityService';
-import { OfflineMapService } from '../../services/OfflineMapService';
-import { OfflineMapStatusService } from '../../services/OfflineMapStatusService';
 import { OnboardingStatusService } from '../../services/OnboardingStatusService';
 import { StartupManager } from '../../services/StartupManager';
 import { RootStackParamList } from '../../navigation/RootNavigator';
@@ -23,7 +20,7 @@ export const SPLASH_BACKGROUND_COLOR = staticColors.arrivalGreen;
 export function SplashScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const fadeAnim = useRef(new Animated.Value(0)).current;
-  const { updateOfflineData, setHasLocationPermission, setOfflineMapStatus } = useAppStore();
+  const { setHasLocationPermission } = useAppStore();
   const isMountedRef = useRef(true); // fixed: guard navigation and state writes after unmount
   const minVisibleTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null); // fixed: cancel the splash delay on unmount
   const hydrationAbortControllerRef = useRef<AbortController | null>(null);
@@ -69,34 +66,9 @@ export function SplashScreen() {
         return false;
       });
 
-      const startupStatusPromise = OfflineMapStatusService.validateAtStartup().catch((error) => {
-        console.error('[SplashScreen] Failed to validate offline map status — assuming the map is not downloaded.', error);
-        return { status: 'not_downloaded' as const, manifest: null, reason: 'Map status check failed' };
-      });
-
-      const isConnectedPromise = ConnectivityService.isConnected().catch((error) => {
-        console.error('[SplashScreen] Failed to read connectivity status — assuming offline.', error);
-        return false;
-      });
-
-      const graphOnlyModeEnabledPromise = OfflineMapStatusService.isGraphOnlyModeEnabled().catch((error) => {
-        console.error('[SplashScreen] Failed to read the graph-only-mode preference — assuming disabled.', error);
-        return false;
-      });
-
-      const skippedOnlineModeEnabledPromise = OfflineMapStatusService.isSkippedOnlineModeEnabled().catch((error) => {
-        console.error('[SplashScreen] Failed to read the skipped-online-mode preference — assuming disabled.', error);
-        return false;
-      });
-
       // Run all checks in parallel
-      const [mapStatus, startupStatus, permissionGranted, isConnected, graphOnlyModeEnabled, skippedOnlineModeEnabled, hasSeenWelcome, skippedLocationPermission, , hydrationResult] = await Promise.all([
-        OfflineMapService.getMapStatus(),
-        startupStatusPromise,
+      const [permissionGranted, hasSeenWelcome, skippedLocationPermission, , hydrationResult] = await Promise.all([
         permissionGrantedPromise,
-        isConnectedPromise,
-        graphOnlyModeEnabledPromise,
-        skippedOnlineModeEnabledPromise,
         hasSeenWelcomePromise,
         skippedLocationPermissionPromise,
         minVisibleMs,
@@ -129,21 +101,6 @@ export function SplashScreen() {
         console.warn(`[SplashScreen] Continuing startup with outcome="${hydrationResult.outcome}" persisted-state hydration — using in-memory defaults for any key not yet confirmed from storage.`);
       }
 
-      const { downloadState, setDownloadState } = useAppStore.getState(); // fixed: reconcile persisted download progress with actual disk state on cold start
-      if (downloadState.phase === 'downloading' || downloadState.phase === 'connecting') {
-        setDownloadState({ phase: 'idle' }); // fixed: clear stale in-memory downloading state after cold start
-      }
-
-      // Sync real map status into persisted Zustand state
-      if (mapStatus.isDownloaded) {
-        updateOfflineData({
-          isDownloaded: true,
-          downloadDate: mapStatus.downloadDate ?? undefined,
-          sizeMB: mapStatus.sizeMB,
-        });
-      }
-      setOfflineMapStatus(startupStatus.status, startupStatus.reason ?? null);
-
       setHasLocationPermission(permissionGranted);
 
       // Real permission is confirmed granted — supersede any earlier "Continue Without
@@ -168,10 +125,6 @@ export function SplashScreen() {
         hasSeenWelcome,
         permissionGranted,
         skippedLocationPermission: effectiveSkippedLocationPermission,
-        offlineMapStatus: startupStatus.status,
-        graphOnlyModeEnabled,
-        skippedOnlineModeEnabled,
-        isConnected,
       });
       // StartupManager only routes Splash to 'Permission' when Welcome was already seen,
       // permission is not granted, and the user never chose "Continue Without Location"
@@ -205,7 +158,7 @@ export function SplashScreen() {
       }
       hydrationAbortControllerRef.current?.abort(); // let waitForStoreHydration drop its listeners immediately instead of idling out the timeout
     };
-  }, [fadeAnim, navigation, setHasLocationPermission, updateOfflineData]);
+  }, [fadeAnim, navigation, setHasLocationPermission]);
 
   return (
     <View style={styles.container}>

@@ -7,13 +7,10 @@ import { useEffect, useRef, useState } from 'react';
 import { Alert, Linking } from 'react-native';
 import * as Location from 'expo-location';
 import { useAppStore } from '../store/useAppStore';
-import { OfflineMapService } from '../services/OfflineMapService';
-import { ConnectivityService } from '../services/ConnectivityService';
-import { OfflineMapStatusService } from '../services/OfflineMapStatusService';
 import { OnboardingStatusService } from '../services/OnboardingStatusService';
 
 export function usePermissionViewModel() {
-  const { setHasLocationPermission, setOfflineMapStatus } = useAppStore();
+  const { setHasLocationPermission } = useAppStore();
   const [loading, setLoading] = useState(false);
   // A ref, not state, so a second confirmation fired before the first's setLoading(true) has
   // committed still sees the in-flight latch synchronously (React state updates are async).
@@ -33,27 +30,12 @@ export function usePermissionViewModel() {
     };
   }, []);
 
-  // `isStillCurrent` defaults to always-true for requestPermission's call site below, which is
-  // out of this guard's scope — only confirmSkipPermission passes its own isCurrentAttempt
-  // check, since navigateNext's own Promise.all is itself an await this attempt must survive
-  // before it's still safe to write store state or navigate.
+  // `isStillCurrent` guards confirmSkipPermission: if the screen unmounted (or a newer attempt took over) while an await
+  // was pending, it must not navigate on behalf of a screen the user is no longer looking at.
   const navigateNext = async (navigation: any, isStillCurrent: () => boolean = () => true) => {
-    const [mapStatus, statusValidation, isConnected] = await Promise.all([
-      OfflineMapService.getMapStatus(),
-      OfflineMapStatusService.validateAtStartup(),
-      ConnectivityService.isConnected(),
-    ]);
-
     if (!isStillCurrent()) return;
-
-    setOfflineMapStatus(statusValidation.status, statusValidation.reason ?? null);
-
-    if (statusValidation.status === 'downloaded' || mapStatus.isDownloaded || !isConnected) {
-      navigation.replace('LocationsDirectory'); // #153: same first screen as a returning launch (StartupManager 'ready')
-      return;
-    }
-
-    navigation.replace('DownloadMap');
+    // #140: the venue basemap ships with the app — there is no map-download step after permission.
+    navigation.replace('LocationsDirectory'); // #153: same first screen as a returning launch (StartupManager 'ready')
   };
 
   const requestPermission = async (navigation: any) => {
@@ -112,7 +94,7 @@ export function usePermissionViewModel() {
       await navigateNext(navigation, isCurrentAttempt);
     } catch (error) {
       if (!isCurrentAttempt()) return;
-      // Persistence (or the map-status checks navigateNext depends on) failed — stay on this
+      // Persistence failed — stay on this
       // screen and say so rather than navigating on as if the skip choice had been saved.
       console.error('[usePermissionViewModel] Failed to save the "Continue Without Location" choice.', error);
       Alert.alert(

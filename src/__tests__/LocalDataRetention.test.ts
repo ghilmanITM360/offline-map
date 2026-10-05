@@ -149,7 +149,7 @@ describe('#145 targeted clear actions', () => {
       unfinishedJourney: { version: 1, unfinishedNavigation: true, createdAt: NOW, destinationId: 'B1' },
     });
     s.updateSettings({ darkMode: true });
-    useAppStore.setState({ offlineData: { isDownloaded: true } as never, hasSeenMapOverview: true });
+    useAppStore.setState({ hasSeenMapOverview: true });
   };
 
   it('clearRecentSearches removes list and stamps, nothing else', () => {
@@ -197,7 +197,6 @@ describe('#145 targeted clear actions', () => {
     expect(s.favorites).toEqual(before.favorites);
     expect(s.settings.darkMode).toBe(true);
     expect(s.hasSeenMapOverview).toBe(true);
-    expect(s.offlineData.isDownloaded).toBe(true);
     expect(s.unfinishedJourney).toBeNull();
   });
 
@@ -231,7 +230,7 @@ describe('#145 persisted payload and schema safety', () => {
     expect((s as unknown as Record<string, unknown>).locationHistory).toBeUndefined();
     expect(s.currentLocation).toBeNull();
     expect(s.recentSearches).toEqual([]);
-    expect(s.settings.mapMode).toBe(initialStoreState.settings.mapMode);
+    expect(s.settings).toEqual(initialStoreState.settings);
   });
 
   it('expired recovery marker is dropped on rehydrate (2 h rule unchanged)', async () => {

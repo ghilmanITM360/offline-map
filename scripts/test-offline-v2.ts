@@ -41,19 +41,10 @@ const activeRoute = V2NavigationAdapter.fromPreview({
 assert.equal(activeRoute.sourceVersion, 'v2', 'Offline active navigation must use v2 route shape');
 assert(activeRoute.coordinates.length >= 2, 'Offline active navigation must keep route coordinates');
 
-const downloadScreen = readFileSync('src/views/screens/DownloadMapScreen.tsx', 'utf8');
-const downloadViewModel = readFileSync('src/viewmodels/DownloadMapViewModel.ts', 'utf8');
 // v1 and v2 live navigation both render in-place on HomeScreen's persistent map (mapgl navigation scenes),
 // not on a separate NavigationScreen — see docs/ARCHITECTURE.md.
 const homeScreenForTiles = readFileSync('src/views/screens/HomeScreen.tsx', 'utf8');
 const navigationMapLayersV2 = readFileSync('src/views/components/mapgl/navigationScene.ts', 'utf8');
-const offlineMapService = readFileSync('src/services/OfflineMapService.ts', 'utf8');
-assert(downloadScreen.includes('Use Venue Map Only'), 'Offline tile failure must allow venue-map-only mode');
-assert(
-  downloadScreen.includes('Background map unavailable. Ijtema routes still work.') ||
-    downloadViewModel.includes('Background map unavailable. Ijtema routes still work.'),
-  'Offline tile failure must show the required fallback message',
-);
 assert(
   homeScreenForTiles.includes('<OfflineMapCanvas') && homeScreenForTiles.includes('archiveUri={basemapRejected ? null : basemap.uri}') && !homeScreenForTiles.includes('PROVIDER_GOOGLE'),
   'Home map must render the bundled offline basemap, never Google live tiles',
@@ -61,10 +52,5 @@ assert(
 assert(navigationMapLayersV2.includes('mapLayers.blocks'), 'V2 navigation graph-only map must render block context');
 assert(navigationMapLayersV2.includes('mapLayers.rastas'), 'V2 navigation graph-only map must render rasta lines');
 assert(navigationMapLayersV2.includes('route.coordinates'), 'V2 navigation graph-only map must render active route');
-assert(!offlineMapService.includes("import { IJTEMA_DATA }"), 'Offline saved map payload must not import legacy IJTEMA_DATA');
-assert(offlineMapService.includes('IJTEMA_BLOCKS'), 'Offline saved map payload must include v2 blocks');
-assert(offlineMapService.includes('IJTEMA_GATES'), 'Offline saved map payload must include v2 gates');
-assert(offlineMapService.includes('IJTEMA_RASTAS'), 'Offline saved map payload must include v2 rastas');
-assert(offlineMapService.includes('IJTEMA_SPECIAL_ROUTES'), 'Offline saved map payload must include v2 special routes');
 
 console.log('Offline v2 checks passed.');

@@ -9,7 +9,7 @@ import { useReducedMotion } from './useReducedMotion';
 
 /** Native adaptation of a subtle press/selection-feedback micro-interaction — spring-
  * scales down on press, back up on release. Mirrors the pattern already used in
- * PermissionScreen/DownloadMapScreen's primary buttons; pulled out here so
+ * PermissionScreen's primary buttons; pulled out here so
  * LocationsDirectoryScreen's several pressables (rows, tiles, chips) share one
  * implementation instead of re-deriving it. Respects the OS reduce-motion setting. */
 export function usePressScale(scaleTo = 0.96) {

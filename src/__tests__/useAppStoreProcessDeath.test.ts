@@ -32,10 +32,10 @@ const RUNTIME_KEYS = [
 
 // Any addition here forces an explicit privacy decision (#145) in the PR that makes it.
 const PERSISTED_KEYS = [
-  'developerModeEnabled', 'downloadState', 'favorites', 'hasSeenLocationTutorial', 'hasSeenMapOverview',
-  'lastKnownLocation', 'lastKnownLocationUpdatedAt', 'offlineData', 'offlineMapStatus',
+  'developerModeEnabled', 'favorites', 'hasSeenLocationTutorial', 'hasSeenMapOverview',
+  'lastKnownLocation', 'lastKnownLocationUpdatedAt',
   // #145: per-entry search stamps (30 day expiry); schema stays version 2, legacy blobs are stamped on read.
-  'offlineMapStatusMessage', 'recentSearchTimes', 'recentSearches', 'settings', 'showBlockPolygons', 'showGatesLayer',
+  'recentSearchTimes', 'recentSearches', 'settings', 'showBlockPolygons', 'showGatesLayer',
   'showGraphNodes', 'showRastaNames', 'showRastasLayer', 'showRouteDiagnostics', 'showSpecialRoutesLayer',
   // #139 Option B: coordinate-free unfinished-journey marker (see UnfinishedJourneyMarker.test.ts for the privacy guard).
   'unfinishedJourney',

@@ -47,17 +47,19 @@ try {
 }
 
 const splash = readFileSync('src/views/screens/SplashScreen.tsx', 'utf8');
-const offlineMapService = readFileSync('src/services/OfflineMapService.ts', 'utf8');
-const downloadViewModel = readFileSync('src/viewmodels/DownloadMapViewModel.ts', 'utf8');
 const appGuide = readFileSync('src/views/screens/AppGuideScreen.tsx', 'utf8');
 const directionsScreen = readFileSync('src/views/components/map/LocationSheet.tsx', 'utf8');
 // Navigation (v1 and v2 alike) renders on HomeScreen's single shared map, whose only tile source is the bundled archive.
 const homeScreenForOffline = readFileSync('src/views/screens/HomeScreen.tsx', 'utf8');
 
 assert(!splash.includes('runNetworkDiagnostics'), 'Startup must not block on network diagnostics');
-assert(offlineMapService.includes('fetch(') || offlineMapService.includes('downloadFileAsync'), 'Network usage must be isolated to optional tile download/diagnostics');
-assert(downloadViewModel.includes('continueWithVenueMapOnly'), 'Tile failure must keep graph-only navigation available');
-assert(appGuide.includes('Internal search and directions work from bundled Ijtema data'), 'User copy must explain that core navigation remains offline');
+// #140: nothing on the map/navigation render path may reach for the network — the basemap is a local archive.
+for (const f of ['OfflineMapCanvas.tsx', 'basemapStyle.ts', 'overlaySpec.ts', 'navigationScene.ts', 'useBundledBasemap.ts', 'maplibreCameraHandle.ts']) {
+  const src = readFileSync(`src/views/components/mapgl/${f}`, 'utf8');
+  assert(!/\bfetch\(|XMLHttpRequest|WebSocket|downloadFileAsync/.test(src), `${f} must not use the network`);
+}
+assert(!readFileSync('src/services/BundledBasemap.ts', 'utf8').match(/\bfetch\(|XMLHttpRequest|downloadFileAsync/), 'The basemap installer must copy locally, never download');
+assert(appGuide.includes('The map is built into the app') && appGuide.includes('without internet'), 'User copy must explain that the map and core navigation remain offline');
 assert(!directionsScreen.includes('MapView'), 'Directions start-selection flow must not depend on base map preview while offline');
 assert(
   homeScreenForOffline.includes('archiveUri={basemapRejected ? null : basemap.uri}') && !homeScreenForOffline.includes('PROVIDER_GOOGLE'),

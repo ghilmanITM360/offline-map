@@ -6,9 +6,6 @@
 import { Alert, Linking } from 'react-native';
 import * as Location from 'expo-location';
 import { usePermissionViewModel } from '../viewmodels/PermissionViewModel';
-import { OfflineMapService } from '../services/OfflineMapService';
-import { OfflineMapStatusService } from '../services/OfflineMapStatusService';
-import { ConnectivityService } from '../services/ConnectivityService';
 import { OnboardingStatusService } from '../services/OnboardingStatusService';
 import { useAppStore } from '../store/useAppStore';
 import { act, renderHook } from './test-utils';
@@ -17,18 +14,6 @@ jest.mock('expo-location', () => ({
   requestForegroundPermissionsAsync: jest.fn(),
   getForegroundPermissionsAsync: jest.fn(),
   PermissionStatus: { GRANTED: 'granted', DENIED: 'denied', UNDETERMINED: 'undetermined' },
-}));
-
-jest.mock('../services/OfflineMapService', () => ({
-  OfflineMapService: { getMapStatus: jest.fn() },
-}));
-
-jest.mock('../services/OfflineMapStatusService', () => ({
-  OfflineMapStatusService: { validateAtStartup: jest.fn() },
-}));
-
-jest.mock('../services/ConnectivityService', () => ({
-  ConnectivityService: { isConnected: jest.fn() },
 }));
 
 jest.mock('../services/OnboardingStatusService', () => ({
@@ -51,9 +36,6 @@ function pressAlertButton(text: string) {
 beforeEach(() => {
   jest.clearAllMocks();
   useAppStore.setState(initialStoreState, true);
-  (OfflineMapService.getMapStatus as jest.Mock).mockResolvedValue({ isDownloaded: true });
-  (OfflineMapStatusService.validateAtStartup as jest.Mock).mockResolvedValue({ status: 'downloaded' });
-  (ConnectivityService.isConnected as jest.Mock).mockResolvedValue(true);
   jest.spyOn(Alert, 'alert').mockImplementation(() => {});
 });
 
@@ -343,32 +325,6 @@ describe('usePermissionViewModel — Continue Without Location confirmation is g
     expect(mockNavigation.replace).not.toHaveBeenCalled();
 
     errorSpy.mockRestore();
-  });
-
-  it('3. unmounting while navigateNext\'s own checks are still pending suppresses the late navigation', async () => {
-    (OnboardingStatusService.setSkippedLocationPermission as jest.Mock).mockResolvedValue(undefined);
-    let resolveMapStatus!: (value: { isDownloaded: boolean }) => void;
-    (OfflineMapService.getMapStatus as jest.Mock).mockImplementation(
-      () => new Promise((resolve) => { resolveMapStatus = resolve; }),
-    );
-    const { result, unmount } = await renderHook(() => usePermissionViewModel());
-
-    await confirmViaAlert(result);
-    // setSkippedLocationPermission already resolved; navigateNext's own Promise.all is now the
-    // thing still in flight (getMapStatus never resolved yet).
-
-    await act(async () => {
-      await unmount();
-    });
-
-    await act(async () => {
-      resolveMapStatus({ isDownloaded: true });
-      await Promise.resolve();
-      await Promise.resolve();
-      await Promise.resolve();
-    });
-
-    expect(mockNavigation.replace).not.toHaveBeenCalled();
   });
 
   it('4. an old failed request completing after a newer (remounted) retry begins does not affect the newer attempt', async () => {
