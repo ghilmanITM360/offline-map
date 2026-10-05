@@ -120,6 +120,7 @@ export type LocationSheetProps =
       /** "View route": tucks the sheet down so the whole route is visible on the map. */
       onViewRoute?: () => void;
       onRouteGuideStarted?: () => void;
+      journey?: { mode: 'live' | 'guide'; start: Place | null } | null;
       /** Opens the Directory, the one place chooser, to pick a start (or destination); the choice comes
        * back through the store's directoryChoice. */
       onOpenDirectory?: (purpose: DirectoryPurpose) => void;
@@ -154,6 +155,7 @@ export function LocationSheet(props: LocationSheetProps) {
         onStartNavigation={props.onStartNavigation}
         onViewRoute={props.onViewRoute}
         onRouteGuideStarted={props.onRouteGuideStarted}
+        journey={props.journey}
         onCancelRoute={props.onCancelRoute}
         onChangeDestination={props.onChangeDestination}
         onOpenDirectory={props.onOpenDirectory}
@@ -200,6 +202,7 @@ function RoutePreviewSection({
   onOpenDirectory,
   onViewRoute,
   onRouteGuideStarted,
+  journey,
   basemapOffline,
 }: {
   destination: Place;
@@ -208,6 +211,8 @@ function RoutePreviewSection({
   onViewRoute?: () => void;
   /** Called once the route guide opens so the map can frame the whole route. */
   onRouteGuideStarted?: () => void;
+  /** The journey the Directory handed over (#307): the sheet applies its start and starts it by itself. */
+  journey?: { mode: 'live' | 'guide'; start: Place | null } | null;
   onCancelRoute?: () => void;
   onChangeDestination?: (place: Place) => void;
   onOpenDirectory?: (purpose: DirectoryPurpose) => void;
@@ -379,6 +384,42 @@ function RoutePreviewSection({
   // A start that waits for a recomputed route must run the handler of the render that holds that route.
   const startNowRef = useRef(startNow);
   startNowRef.current = startNow;
+
+  // #307 journey auto-start. A destination tapped in the Directory means "take me here", so the sheet applies the
+  // chosen start and starts the journey once, without the Details -> Directions -> Route Ready -> Start taps.
+  // Live navigation still begins only from a fresh fix; if none can be found the usual manual-start UI stays.
+  const journeyStartAppliedRef = useRef(false);
+  useEffect(() => {
+    if (!journey?.start || journeyStartAppliedRef.current) return;
+    journeyStartAppliedRef.current = true;
+    setManualStartPlace(journey.start);
+  }, [journey, setManualStartPlace]);
+  const journeyDoneRef = useRef(false);
+  const journeyLocateRef = useRef(false);
+  useEffect(() => {
+    if (!journey || journeyDoneRef.current) return;
+    if (journey.mode === 'guide') {
+      if (loadState === 'ready' && startAction?.kind === 'route_guide') {
+        journeyDoneRef.current = true;
+        startRouteGuide();
+        onRouteGuideStarted?.();
+      }
+      return;
+    }
+    if (startAttempt === 'working') return;
+    if (loadState === 'needs_origin' && !journeyLocateRef.current) {
+      journeyLocateRef.current = true;
+      void chooseCurrentLocation().then((found) => {
+        if (!found) journeyDoneRef.current = true;
+      });
+      return;
+    }
+    if (loadState !== 'ready' || !startAction) return;
+    journeyDoneRef.current = true;
+    if (startAction.kind === 'start') startNowRef.current();
+    else if (startAction.kind === 'use_location') void runStartAction(() => startNowRef.current());
+    // Anything else (permission, precision, services) is shown as its button; never auto-bounce to Settings.
+  }, [journey, loadState, startAction, startAttempt, startRouteGuide, onRouteGuideStarted, chooseCurrentLocation, runStartAction]);
 
   const footerNode = footerVisible ? (
     <>

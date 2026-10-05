@@ -1696,3 +1696,36 @@ describe('HomeScreen — recenter follow mode (Google Maps parity)', () => {
     expect(await screen.findByLabelText('Center map on my current location')).toBeOnTheScreen();
   });
 });
+
+describe('HomeScreen — a journey handed over by the Directory (#307)', () => {
+  const idleDirectionsVm = () => ({
+    route: null, startSource: 'live_gps', rememberedLocationAgeLabel: '', rememberedLocationAvailable: false,
+    rememberedLocationInsideVenue: false, currentRouteOriginInsideVenue: true, loadState: 'idle', errorMessage: null,
+    manualStart: null, chooseManualStart: jest.fn(), setIsEditingManualStart: jest.fn(), setManualStartPlace: jest.fn(),
+    chooseCurrentLocation: jest.fn(async () => true), chooseRememberedLocation: jest.fn(() => true),
+    calculateRoute: jest.fn(async () => {}), showManualStartSearch: false, canStartNavigation: true, startNavigationDisabledReason: '',
+  });
+
+  test('consumes the journey, opens Directions for its destination and remembers it as a recent place', async () => {
+    mockedUseDirectionsViewModel.mockReturnValue(idleDirectionsVm());
+    useAppStore.setState({ pendingJourney: { destination: gateResult, start: null, mode: 'live' } });
+
+    await render(<HomeScreen />);
+
+    expect(await screen.findByText('Get Directions')).toBeOnTheScreen();
+    expect(useAppStore.getState().pendingJourney).toBeNull();
+    expect(mockedUseDirectionsViewModel).toHaveBeenCalledWith(expect.objectContaining({ id: gateResult.id }));
+    expect(useAppStore.getState().recentSearches.map((p) => p.id)).toContain(gateResult.id);
+  });
+
+  test('while a journey is already being navigated it falls back to showing the place, never silently replacing the trip', async () => {
+    mockedUseDirectionsViewModel.mockReturnValue(idleDirectionsVm());
+    useAppStore.setState({ isNavigating: true, pendingJourney: { destination: gateResult, start: null, mode: 'live' } });
+
+    await render(<HomeScreen />);
+
+    expect(useAppStore.getState().pendingJourney).toBeNull();
+    expect(useAppStore.getState().pendingDirectorySelection).toEqual(gateResult);
+    expect(screen.queryByText('Get Directions')).not.toBeOnTheScreen();
+  });
+});

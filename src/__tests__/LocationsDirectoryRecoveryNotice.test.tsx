@@ -100,9 +100,10 @@ describe('#139 recovery notice - visibility', () => {
 });
 
 describe('#139 recovery notice - actions', () => {
-  test('Get new route hands the destination to the normal flow once and never resumes the old journey', async () => {
+  test('Get new route plans the journey like a destination tap: live from the user\'s location, never resuming the old one', async () => {
     seedMarker(firstBlock.id);
     const navigation = mockNav(true);
+    useAppStore.setState({ hasLocationPermission: true, locationPermissionPrecision: 'fine' });
     const realBeginRecovery = useAppStore.getState().beginRecovery;
     const beginRecovery = jest.fn(realBeginRecovery);
     useAppStore.setState({ beginRecovery });
@@ -115,22 +116,27 @@ describe('#139 recovery notice - actions', () => {
     expect(beginRecovery).toHaveBeenCalledTimes(1);
     expect(navigation.goBack).toHaveBeenCalledTimes(1);
     const state = useAppStore.getState();
-    expect(state.pendingDirectorySelection?.id).toBe(firstBlock.id);
+    expect(state.pendingJourney).toMatchObject({ destination: { id: firstBlock.id }, start: null, mode: 'live' });
+    expect(state.pendingDirectorySelection).toBeNull();
     expect(state.isNavigating).toBe(false);
     expect(state.activeRoute).toBeNull();
     expect(state.unfinishedJourney).toBeNull();
   });
 
-  test('Get new route reaches the map at launch too (nothing to go back to)', async () => {
+  test('Get new route with no location asks where the user is starting from instead of guessing a start', async () => {
     seedMarker(firstBlock.id);
-    const navigation = mockNav(false);
+    const navigation = mockNav(true);
+    useAppStore.setState({ hasLocationPermission: false });
     await render(<LocationsDirectoryScreen />);
 
     await act(async () => {
       fireEvent.press(screen.getByRole('button', { name: 'Get new route' }));
     });
 
-    expect(navigation.replace).toHaveBeenCalledWith('Main');
+    expect(screen.getByText(`To ${firstBlock.name}`)).toBeOnTheScreen();
+    expect(navigation.goBack).not.toHaveBeenCalled();
+    expect(useAppStore.getState().unfinishedJourney).toBeNull();
+    expect(useAppStore.getState().pendingJourney).toBeNull();
   });
 
   test('Get new route with an unresolvable destination still opens the map without a selection', async () => {
@@ -188,7 +194,7 @@ describe('#139 recovery notice - actions', () => {
     expect(screen.queryByLabelText(/resume/i)).not.toBeOnTheScreen();
   });
 
-  test('normal selection from the Directory is unchanged while the notice is showing', async () => {
+  test('a normal destination tap still works while the notice is showing (it asks where to start)', async () => {
     seedMarker('ZZ_UNKNOWN_DESTINATION_999');
     const navigation = mockNav(true);
     await render(<LocationsDirectoryScreen />);
@@ -200,8 +206,8 @@ describe('#139 recovery notice - actions', () => {
       fireEvent.press(await screen.findByLabelText('Block 24, Block'));
     });
 
-    expect(useAppStore.getState().pendingDirectorySelection?.name).toBe('Block 24');
-    expect(navigation.goBack).toHaveBeenCalledTimes(1);
+    expect(screen.getByText('To Block 24')).toBeOnTheScreen();
+    expect(navigation.goBack).not.toHaveBeenCalled();
   });
 });
 
