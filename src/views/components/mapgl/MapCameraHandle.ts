@@ -3,8 +3,15 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import type { Region } from 'react-native-maps';
 import type { Coordinate } from '../../../models/types';
+
+/** A map rectangle: its centre and the latitude/longitude it spans. */
+export interface Region {
+  latitude: number;
+  longitude: number;
+  latitudeDelta: number;
+  longitudeDelta: number;
+}
 
 export interface EdgePadding {
   top: number;
@@ -22,9 +29,8 @@ export interface CameraState {
 }
 
 /**
- * The slice of a map's imperative API that `useCameraManager` and `MapLabelOverlay` need. Both
- * react-native-maps' `MapView` (structurally) and the MapLibre adapter satisfy it, so the camera logic
- * is renderer-agnostic while the renderer is being migrated (#140).
+ * The slice of a map's imperative API that `useCameraManager` and `MapLabelOverlay` need. The MapLibre adapter
+ * (`maplibreCameraHandle`) implements it, so the camera logic stays independent of the renderer (#140).
  */
 export interface MapCameraHandle {
   animateToRegion(region: Region, duration?: number): void;

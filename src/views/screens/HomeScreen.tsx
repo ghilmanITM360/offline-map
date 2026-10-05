@@ -339,8 +339,8 @@ export function HomeScreen() {
     bottomSheetRef.current?.snapToIndex(1);
   }, [bottomSheetRef]);
 
-  // Tap disambiguation: react-native-maps dispatches one onPress per native shape
-  // that a tap actually hits, independently per layer — a tap landing where a
+  // Tap disambiguation: a map press reports one feature per hit layer (queryRenderedFeatures),
+  // independently per layer — a tap landing where a
   // widened gate hit-area overlaps a rasta hit-corridor can fire both in the same
   // gesture. Candidates are collected for one animation frame (imperceptible delay,
   // well under the 100ms Google-Maps-parity target) and resolved to a single winner

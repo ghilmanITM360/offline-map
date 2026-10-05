@@ -13,31 +13,20 @@ import { readFileSync } from 'node:fs';
 const overlay = readFileSync('src/views/components/map/MapLabelOverlay.tsx', 'utf8');
 const home = readFileSync('src/views/screens/HomeScreen.tsx', 'utf8');
 
-const layerFiles = [
-  'src/views/components/map/GateLayer.tsx',
-  'src/views/components/map/BlockLayer.tsx',
-  'src/views/components/map/RastaLayer.tsx',
-  'src/views/components/map/SpecialRouteLayer.tsx',
-];
+const overlaySpec = readFileSync('src/views/components/mapgl/overlaySpec.ts', 'utf8');
 
-// --- no layer file renders a label (Marker wrapping a Text) anymore ---------
-
-for (const file of layerFiles) {
-  const source = readFileSync(file, 'utf8');
-  const markerWithTextBlocks = source.match(/<Marker[\s\S]*?<\/Marker>/g) ?? [];
-  for (const block of markerWithTextBlocks) {
-    assert(
-      !/<Text[\s>]/.test(block),
-      `${file} must not render a <Text> label inside a <Marker> — label text moved to MapLabelOverlay.`,
-    );
-  }
-}
-
-// --- MapLabelOverlay never imports Marker from react-native-maps -----------
+// --- no map layer renders label text: labels are only the shared overlay -----
 
 assert(
-  !/import\s*\{[^}]*\bMarker\b[^}]*\}\s*from\s*['"]react-native-maps['"]/.test(overlay),
-  'MapLabelOverlay.tsx must not import Marker — it renders plain Views positioned via pointForCoordinate, not Marker snapshots.',
+  !overlaySpec.includes('text-field'),
+  'overlaySpec must not render label text in map layers — label text lives in MapLabelOverlay.',
+);
+
+// --- MapLabelOverlay is plain Views, not a map-SDK marker --------------------
+
+assert(
+  !/react-native-maps/.test(overlay),
+  'MapLabelOverlay.tsx must not depend on a map-SDK Marker — it renders plain Views positioned via pointForCoordinate.',
 );
 
 // --- MapLabelOverlay projects via pointForCoordinate, not Marker anchoring --

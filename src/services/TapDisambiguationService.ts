@@ -21,8 +21,8 @@ export interface TapCandidate<T = unknown> {
 /**
  * Resolves which map object should win when a single tap fires native onPress on
  * more than one overlapping shape (e.g. a rasta hit-corridor overlapping a gate's
- * widened touch target). react-native-maps' hit-testing is a black box — JS only
- * ever learns which shapes DID fire onPress, never "nearest shape to a miss" — so
+ * widened touch target). Hit-testing reports only the features that WERE hit, never
+ * "nearest shape to a miss" — so
  * this only disambiguates among candidates that actually fired, it cannot invent a
  * winner when nothing fired.
  *

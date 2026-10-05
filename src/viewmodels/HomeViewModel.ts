@@ -5,8 +5,7 @@
 
 import { useState, useRef, useMemo, useEffect, useCallback } from 'react';
 import { Alert } from 'react-native';
-import type { Region } from 'react-native-maps';
-import type { MapCameraHandle } from '../views/components/mapgl/MapCameraHandle';
+import type { MapCameraHandle, Region } from '../views/components/mapgl/MapCameraHandle';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
 import { useAppStore } from '../store/useAppStore';
 import { Place } from '../models/types';

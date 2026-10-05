@@ -1,70 +1,9 @@
 /**
  * Jest setup for RNTL component tests (src/__tests__/**).
  *
- * jest-expo mocks native bridges (NativeModules for AIRMap*, RNSVG*, RNGestureHandlerModule,
- * ReanimatedModule, etc — see node_modules/jest-expo/src/preset/moduleMocks/thirdPartyModules.js)
- * but does NOT mock the react-native-maps JS component tree. MapView/Marker/etc still try to
- * render native host components via requireNativeComponent, which works but produces deeply
- * nested opaque native views that are painful (and unrealistic) to assert against in tests.
- * We replace them with plain View-based stand-ins that forward props/children so screens using
- * react-native-maps can render and be queried like normal RN views.
+ * jest-expo mocks native bridges (NativeModules for RNSVG*, RNGestureHandlerModule, ReanimatedModule, etc — see
+ * node_modules/jest-expo/src/preset/moduleMocks/thirdPartyModules.js). The map is MapLibre, stood in for below.
  */
-jest.mock('react-native-maps', () => {
-  const ReactActual = require('react');
-  const { View: RNView } = require('react-native');
-
-  const makeMock = (name: string) => {
-    const Component = ReactActual.forwardRef((props: any, ref: any) =>
-      ReactActual.createElement(RNView, { ...props, ref }, props.children),
-    );
-    Component.displayName = name;
-    return Component;
-  };
-
-  // Screens call imperative methods on the MapView ref (animateToRegion, animateCamera,
-  // fitToCoordinates, getCamera, ...) outside of any native layout pass. Expose no-op/resolved
-  // stand-ins via useImperativeHandle so those calls don't throw under test.
-  const MapView = ReactActual.forwardRef((props: any, ref: any) => {
-    ReactActual.useImperativeHandle(ref, () => ({
-      animateToRegion: jest.fn(),
-      animateCamera: jest.fn(),
-      fitToCoordinates: jest.fn(),
-      getCamera: jest.fn(() => Promise.resolve({ zoom: 16, center: { latitude: 0, longitude: 0 }, heading: 0, pitch: 0 })),
-      setCamera: jest.fn(),
-      getMapBoundaries: jest.fn(() =>
-        Promise.resolve({
-          northEast: { latitude: 0, longitude: 0 },
-          southWest: { latitude: 0, longitude: 0 },
-        }),
-      ),
-      // Deterministic linear stand-in — NOT a real Mercator/bearing projection, only
-      // meant to give MapLabelOverlay a stable, distinct {x,y} per input coordinate
-      // so tests can assert positioning/off-screen behavior without real native layout.
-      pointForCoordinate: jest.fn((coordinate: { latitude: number; longitude: number }) =>
-        Promise.resolve({
-          x: Math.round((coordinate.longitude + 180) * 2),
-          y: Math.round((90 - coordinate.latitude) * 2),
-        }),
-      ),
-    }));
-    return ReactActual.createElement(RNView, props, props.children);
-  });
-  MapView.displayName = 'MapView';
-
-  return {
-    __esModule: true,
-    default: MapView,
-    Marker: makeMock('Marker'),
-    Circle: makeMock('Circle'),
-    Polygon: makeMock('Polygon'),
-    Polyline: makeMock('Polyline'),
-    Callout: makeMock('Callout'),
-    LocalTile: makeMock('LocalTile'),
-    UrlTile: makeMock('UrlTile'),
-    PROVIDER_GOOGLE: 'google',
-    PROVIDER_DEFAULT: 'default',
-  };
-});
 
 // MapLibre (#140): the native map cannot run under Jest. Stand in with Views that forward props and
 // children so screens render and tests can fire the map's event props (onDidFinishLoadingMap,
