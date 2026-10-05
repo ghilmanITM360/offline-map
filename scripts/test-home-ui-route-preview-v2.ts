@@ -1,6 +1,7 @@
 import { strict as assert } from 'node:assert';
 import { readFileSync } from 'node:fs';
 import { staticColors } from '../src/theme';
+import { MAP_LINE_WIDTH } from '../src/views/components/mapgl/mapDesign';
 
 const home = readFileSync('src/views/screens/HomeScreen.tsx', 'utf8');
 const homeVm = readFileSync('src/viewmodels/HomeViewModel.ts', 'utf8');
@@ -15,12 +16,14 @@ assert(
 // The route is drawn by the MapLibre overlay builders (overlaySpec.buildRouteOverlay), which Home feeds from the preview.
 assert(
   home.includes('buildRouteOverlay(') &&
-    /'line-color': staticColors\.routeCasing, 'line-width': 11/.test(overlaySpec) &&
+    /'line-color': staticColors\.routeCasing, 'line-width': MAP_LINE_WIDTH\.activeRouteCasing/.test(overlaySpec) &&
+    MAP_LINE_WIDTH.activeRouteCasing === 11 &&
     staticColors.routeCasing === 'rgba(255,255,255,0.95)',
   'Route preview line must have high-contrast white outline.',
 );
 assert(
-  /'line-color': staticColors\.routeInside, 'line-width': 7/.test(overlaySpec) &&
+  /'line-color': staticColors\.routeInside, 'line-width': MAP_LINE_WIDTH\.activeRoute\b/.test(overlaySpec) &&
+    MAP_LINE_WIDTH.activeRoute === 7 &&
     staticColors.routeInside === '#1A73E8',
   'Route preview line must use thicker visible blue inner stroke.',
 );

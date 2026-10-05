@@ -3,9 +3,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useCallback, useImperativeHandle, useMemo, useRef } from 'react';
+import React, { useCallback, useImperativeHandle, useMemo, useRef, useState } from 'react';
 import { type NativeSyntheticEvent, type StyleProp, type ViewStyle, useWindowDimensions } from 'react-native';
-import { Camera, Map, type CameraRef, type MapRef, type ViewStateChangeEvent } from '@maplibre/maplibre-react-native';
+import { Camera, Images, Map, type CameraRef, type MapRef, type ViewStateChangeEvent } from '@maplibre/maplibre-react-native';
 import type { Region } from 'react-native-maps';
 import type { Coordinate } from '../../../models/types';
 import { buildBasemapStyle } from './basemapStyle';
@@ -13,6 +13,13 @@ import { createMapLibreCameraHandle, regionToMapLibreZoom } from './maplibreCame
 import type { MapCameraHandle } from './MapCameraHandle';
 import { HIT_LAYER_IDS, type FeatureKind, type OverlaySpec } from './overlaySpec';
 import { OverlayScene } from './OverlayScene';
+import { MARKER_IMAGES } from './markerImages.generated';
+
+// Every image registered at map load delays the map becoming ready, so only the few that matter at first paint (pins, the
+// user's heading cone) are registered up front; the facility badges are secondary context and are registered once the map is ready.
+const IMAGE_ENTRIES = Object.entries(MARKER_IMAGES);
+const CORE_IMAGES = Object.fromEntries(IMAGE_ENTRIES.filter(([name]) => !name.startsWith('facility-')));
+const DEFERRED_IMAGES = Object.fromEntries(IMAGE_ENTRIES.filter(([name]) => name.startsWith('facility-')));
 
 export interface MapFeaturePress {
   id: string;
@@ -63,6 +70,7 @@ export function OfflineMapCanvas(props: OfflineMapCanvasProps) {
   const cameraRef = useRef<CameraRef>(null);
   const viewportRef = useRef({ width: 0, height: 0 });
   const readyRef = useRef(false);
+  const [secondaryImagesEnabled, setSecondaryImagesEnabled] = useState(false);
   const { width: windowWidth } = useWindowDimensions();
 
   const handle = useMemo(
@@ -122,6 +130,7 @@ export function OfflineMapCanvas(props: OfflineMapCanvasProps) {
       style={props.style}
       mapStyle={mapStyle as never}
       importantForAccessibility={props.importantForAccessibility}
+      androidView="texture"
       logo={false}
       attribution
       attributionPosition={{ bottom: props.attributionBottomInset ?? 8, left: 8 }}
@@ -140,6 +149,7 @@ export function OfflineMapCanvas(props: OfflineMapCanvasProps) {
       onDidFinishLoadingMap={() => {
         if (readyRef.current) return;
         readyRef.current = true;
+        setSecondaryImagesEnabled(true);
         onReady?.();
       }}
       onDidFailLoadingMap={() => onLoadFailed?.()}
@@ -155,6 +165,8 @@ export function OfflineMapCanvas(props: OfflineMapCanvasProps) {
       }}
     >
       <Camera ref={cameraRef} initialViewState={initialViewState} />
+      <Images images={CORE_IMAGES as never} />
+      {secondaryImagesEnabled && <Images images={DEFERRED_IMAGES as never} />}
       <OverlayScene specs={overlays} />
     </Map>
   );

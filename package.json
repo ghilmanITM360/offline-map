@@ -171,6 +171,7 @@
   },
   "devDependencies": {
     "@babel/core": "^7.20.0",
+    "@resvg/resvg-js": "2.6.2",
     "@testing-library/react-native": "^14.0.1",
     "@types/jest": "^29.5.14",
     "@types/node": "^25.9.1",

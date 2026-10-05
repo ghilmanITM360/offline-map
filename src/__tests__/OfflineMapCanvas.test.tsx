@@ -6,6 +6,7 @@ import { regionFromViewState } from '../views/components/mapgl/OfflineMapCanvas'
 type MapProps = Record<string, (...args: unknown[]) => unknown> & { mapStyle: unknown };
 let mockLastMapProps: MapProps | undefined;
 const mockQueryRenderedFeatures = jest.fn();
+const mockImageSets: string[][] = [];
 
 jest.mock('@maplibre/maplibre-react-native', () => {
   const React = require('react');
@@ -15,7 +16,8 @@ jest.mock('@maplibre/maplibre-react-native', () => {
     return React.createElement('MockMap', null, props.children);
   };
   const Noop = () => null;
-  return { Map, Camera: Noop, GeoJSONSource: Noop, Layer: Noop };
+  const Images = (props: any) => { mockImageSets.push(Object.keys(props.images)); return null; };
+  return { Map, Camera: Noop, GeoJSONSource: Noop, Layer: Noop, Images };
 });
 
 import { OfflineMapCanvas } from '../views/components/mapgl/OfflineMapCanvas';
@@ -62,6 +64,7 @@ describe('regionFromViewState', () => {
 describe('OfflineMapCanvas', () => {
   beforeEach(() => {
     mockQueryRenderedFeatures.mockReset();
+    mockImageSets.length = 0;
     mockLastMapProps = undefined;
   });
 
@@ -124,5 +127,17 @@ describe('OfflineMapCanvas', () => {
     mockQueryRenderedFeatures.mockRejectedValue(new Error('view gone'));
     await mount({});
     await act(async () => { await mockLastMapProps!.onPress({ nativeEvent: { lngLat: [67, 25], point: [1, 1] } }); });
+  });
+
+  // Registering images at load delayed the map becoming ready (16 facility images ≈ 1.7 s on the emulator), so only the
+  // few needed at first paint are registered up front.
+  it('registers the facility badges only after the map is ready', async () => {
+    await mount({});
+    const upfront = mockImageSets.flat();
+    expect(upfront).toEqual(expect.arrayContaining(['pin-destination', 'pin-start', 'user-heading']));
+    expect(upfront.some((n) => n.startsWith('facility-'))).toBe(false);
+
+    await act(async () => { mockLastMapProps!.onDidFinishLoadingMap(null); });
+    expect(mockImageSets.flat().filter((n) => n.startsWith('facility-')).length).toBeGreaterThanOrEqual(8);
   });
 });
