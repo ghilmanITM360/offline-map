@@ -179,16 +179,17 @@ assert(
   navScreen.includes('InstructionService.formatDistance') && directionsScreen.includes('InstructionService.formatDistance'),
   'Distance unit setting should affect both navigation and route preview distance text',
 );
-const userLocationMarkerSrc = readFileSync('src/views/components/map/UserLocationMarker.tsx', 'utf8');
+// The current-location dot is a MapLibre circle layer fed by buildMarkerOverlay (the animated pulse returns with the
+// Ijtema visual system, which will carry its own test).
 assert(
-  navScreen.includes('userMarkerPulse') && homeScreen.includes('<UserLocationMarker') && userLocationMarkerSrc.includes('pulse'),
-  'Current user marker should have lightweight pulse styling',
+  homeScreen.includes('buildMarkerOverlay(') && homeScreen.includes('markerOwnership.showBrowseUser'),
+  'Current user marker must render as the shared user dot',
 );
 assert(
   homeScreen.includes('warningAnim'),
   'Home should include the outside-area warning banner animation',
 );
-assert(homeScreen.includes("rotateEnabled={!layersSheetVisible && !settings.keepNorthFixed}"), 'Home map should honor North-up behavior');
+assert(homeScreen.includes("rotateEnabled={!settings.keepNorthFixed}") && homeScreen.includes('gesturesEnabled={!layersSheetVisible}'), 'Home map should honor North-up behavior (rotation off) and lock all gestures while the layers sheet is open');
 assert(
   navScreen.includes('setIsMuted(!isMuted)'),
   'Navigation mute button must toggle mute state',

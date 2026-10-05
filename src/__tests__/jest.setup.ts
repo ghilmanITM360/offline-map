@@ -66,6 +66,40 @@ jest.mock('react-native-maps', () => {
   };
 });
 
+// MapLibre (#140): the native map cannot run under Jest. Stand in with Views that forward props and
+// children so screens render and tests can fire the map's event props (onDidFinishLoadingMap,
+// onRegionDidChange, onPress, ...) and inspect the GeoJSON sources/layers that were mounted.
+jest.mock('@maplibre/maplibre-react-native', () => {
+  const ReactActual = require('react');
+  const { View: RNView } = require('react-native');
+
+  const Map = (props: any) => {
+    ReactActual.useImperativeHandle(props.ref, () => ({
+      // Tests choose what a tap hits via globalThis.__mockMapHits (reset to [] by the helper in tests).
+      queryRenderedFeatures: jest.fn(() => Promise.resolve((globalThis as any).__mockMapHits ?? [])),
+      getViewState: jest.fn(() =>
+        Promise.resolve({ center: [67, 25], zoom: 16, bearing: 0, pitch: 0, bounds: [66.99, 24.99, 67.01, 25.01] }),
+      ),
+      project: jest.fn((lngLat: [number, number]) => Promise.resolve([Math.round((lngLat[0] + 180) * 2), Math.round((90 - lngLat[1]) * 2)])),
+    }));
+    return ReactActual.createElement(RNView, props, props.children);
+  };
+  const Camera = (props: any) => {
+    ReactActual.useImperativeHandle(props.ref, () => ({ setStop: jest.fn(() => Promise.resolve()), jumpTo: jest.fn() }));
+    return null;
+  };
+  const GeoJSONSource = (props: any) =>
+    ReactActual.createElement(RNView, { testID: `source-${props.id}`, data: props.data }, props.children);
+  const Layer = (props: any) => ReactActual.createElement(RNView, { testID: `layer-${props.id}`, ...props });
+
+  return { __esModule: true, Map, Camera, GeoJSONSource, Layer };
+});
+
+// The bundled basemap installer touches the APK asset + app storage; tests get an instantly "installed" archive.
+jest.mock('../services/BundledBasemap', () => ({
+  getBundledBasemap: jest.fn(() => Promise.resolve({ uri: 'file:///mock/map/ijtema-basemap.pmtiles', reused: true })),
+}));
+
 // @gorhom/bottom-sheet pulls in reanimated worklets + gesture-handler pan responders that
 // don't do anything useful under a Jest/jsdom-less test renderer. Stand in with plain Views so
 // screens that render a BottomSheet can still be queried/interacted with for their content.

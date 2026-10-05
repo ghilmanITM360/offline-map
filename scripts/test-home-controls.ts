@@ -4,23 +4,19 @@ import { readFileSync } from 'node:fs';
 const home = readFileSync('src/views/screens/HomeScreen.tsx', 'utf8');
 const homeVm = readFileSync('src/viewmodels/HomeViewModel.ts', 'utf8');
 const rendering = readFileSync('src/services/V2MapRenderingService.ts', 'utf8');
-// The block/rasta/special-route/gate Polygon/Marker/Polyline JSX moved out of HomeScreen.tsx
-// into shared layer components (src/views/components/map/*) — see docs/ARCHITECTURE.md.
-const blockLayer = readFileSync('src/views/components/map/BlockLayer.tsx', 'utf8');
-const rastaLayer = readFileSync('src/views/components/map/RastaLayer.tsx', 'utf8');
-const specialRouteLayer = readFileSync('src/views/components/map/SpecialRouteLayer.tsx', 'utf8');
-const gateLayer = readFileSync('src/views/components/map/GateLayer.tsx', 'utf8');
+// Blocks/rastas/special routes/gates are drawn as MapLibre GeoJSON layers built by the shared overlay builders.
+const overlaySpec = readFileSync('src/views/components/mapgl/overlaySpec.ts', 'utf8');
 const mapControlsSource = readFileSync('src/views/components/map/MapControls.tsx', 'utf8');
 
-assert(home.includes('MapView'), 'Home must render a map surface');
+assert(home.includes('OfflineMapCanvas'), 'Home must render a map surface');
 assert(home.includes('V2MapRenderingService.getHomeLayers'), 'Home must source production layers from v2 rendering service');
-assert(home.includes('blocks={showBlockPolygons ? previewVisibleBlocks : []}') && blockLayer.includes('blocks.map('), 'Home must render zoom-aware v2 block polygons');
-assert(home.includes('rastas={previewVisibleRastas}') && rastaLayer.includes('rastas.map('), 'Home must render zoom-aware v2 rasta lines');
-assert(home.includes('routes={previewVisibleSpecialRoutes}') && specialRouteLayer.includes('routes.map('), 'Home must render Shahr-e-Pindal routes');
-assert(home.includes('gates={previewVisibleGateMarkers}') && gateLayer.includes('gates.map('), 'Home must render zoom-aware official gate markers with coordinates');
-assert(gateLayer.includes('gate.needsConnectorVerification'), 'Home must visibly distinguish disconnected gates');
+assert(home.includes('blocks: showBlockPolygons ? previewVisibleBlocks : []') && overlaySpec.includes('input.blocks.map('), 'Home must render zoom-aware v2 block polygons');
+assert(home.includes('rastas: previewVisibleRastas') && overlaySpec.includes('input.rastas.map('), 'Home must render zoom-aware v2 rasta lines');
+assert(home.includes('specialRoutes: previewVisibleSpecialRoutes') && overlaySpec.includes('input.specialRoutes.map('), 'Home must render Shahr-e-Pindal routes');
+assert(home.includes('gates: previewVisibleGateMarkers') && overlaySpec.includes('input.gates.map('), 'Home must render zoom-aware official gate markers with coordinates');
+assert(overlaySpec.includes('needsConnectorVerification'), 'Home must visibly distinguish disconnected gates');
 assert(home.includes('graphOnlyFallbackUsed'), 'Home must track graph-only fallback');
-assert(home.includes("mapType={baseMapMode === 'GOOGLE_BASEMAP' ? mapType : 'none'}"), 'Home must not request live tiles outside resolved Google-basemap mode');
+assert(home.includes('<OfflineMapCanvas') && home.includes('archiveUri={basemapRejected ? null : basemap.uri}') && !home.includes('PROVIDER_GOOGLE'), 'Home must never request live tiles: the bundled archive is its only basemap');
 
 assert(home.includes('handleZoomIn'), 'Zoom in control must call handler');
 assert(home.includes('handleZoomOut'), 'Zoom out control must call handler');

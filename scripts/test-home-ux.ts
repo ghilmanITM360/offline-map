@@ -28,16 +28,14 @@ assert(
   'Home outside-area banner should explain nearest-gate offline routing',
 );
 assert(
-  home.includes('Background map not downloaded. Ijtema routes still work.'),
-  'Home screen should explain that missing background tiles do not block Ijtema routing',
+  !home.includes('Background map not downloaded') && !home.includes('Download background map'),
+  'Home screen must not claim a background map is missing: the offline basemap ships with the app (#140)',
 );
 // Category browsing moved to LocationsDirectoryScreen (PublicDestinationsService.getCategories(),
 // itself data-driven, not hardcoded) — Home keeps a single chip that opens it.
 assert(home.includes("nav.navigate('LocationsDirectory')"), 'Home chip should open the data-driven Locations Directory, not hardcoded category chips');
 assert(locationSheet.includes('Member Masjid Gates'), 'Block detail sheet should show Member Masjid gates');
-const userLocationMarker = readFileSync('src/views/components/map/UserLocationMarker.tsx', 'utf8');
-assert(home.includes('<UserLocationMarker'), 'Home should render the shared UserLocationMarker component');
-assert(userLocationMarker.includes('pulse'), 'User location marker should render a pulsing dot');
+assert(home.includes('buildMarkerOverlay('), 'Home should render the user dot through the shared marker overlay');
 assert(searchService.includes("{ id: 'gates', label: 'Gates' }"), 'Search categories should include Gates');
 assert(searchService.includes("{ id: 'masjids', label: 'Masjids' }"), 'Search categories should include Masjids');
 assert(searchService.includes("{ id: 'terminals', label: 'Terminals' }"), 'Search categories should include Terminals');

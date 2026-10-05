@@ -275,13 +275,16 @@ export function useCameraManager({ mapRef }: Params) {
 
   const nudgeZoom = useCallback(
     (delta: number, onZoom?: (zoom: number) => void) => {
-      mapRef.current?.getCamera().then((camera) => {
-        if (camera.zoom !== undefined) {
-          camera.zoom += delta;
-          mapRef.current?.animateCamera(camera);
-          onZoom?.(camera.zoom);
-        }
-      });
+      mapRef.current
+        ?.getCamera()
+        .then((camera) => {
+          if (camera.zoom !== undefined) {
+            camera.zoom += delta;
+            mapRef.current?.animateCamera(camera);
+            onZoom?.(camera.zoom);
+          }
+        })
+        .catch(() => undefined); // map not ready / torn down: nothing to zoom
     },
     [mapRef],
   );

@@ -65,17 +65,17 @@ const base: MapModeInputs = {
     home.includes("(mode === 'NAVIGATION' || mode === 'ARRIVAL') && <NavigationChromeV1"),
     'NavigationChromeV1 must stay mounted through MapMode.ARRIVAL, not just MapMode.NAVIGATION',
   );
+  // The navigation scenes (route + user/destination markers) are chosen by mode in the single mapOverlays memo:
+  // NAVIGATION *and* ARRIVAL share the navigation scene, so the route/markers stay through arrival.
   assert(
-    home.includes("(mode === 'NAVIGATION' || mode === 'ARRIVAL') && <NavigationMapLayersV2"),
-    'NavigationMapLayersV2 (route/user marker) must stay mounted through MapMode.ARRIVAL',
+    home.includes("if (mode === 'NAVIGATION' || mode === 'ARRIVAL') {") &&
+      home.includes('buildNavigationScene(navSceneInput)') &&
+      home.includes('buildNavigationSceneV1(navSceneInputV1)'),
+    'Navigation map scenes (route/user marker, v2 and legacy v1) must stay mounted through MapMode.ARRIVAL',
   );
   assert(
-    home.includes("(mode === 'NAVIGATION' || mode === 'ARRIVAL') && <NavigationMapLayersV1"),
-    'NavigationMapLayersV1 (route/user marker) must stay mounted through MapMode.ARRIVAL',
-  );
-  assert(
-    home.includes("mode !== 'NAVIGATION' && mode !== 'ARRIVAL' && (useV2Map"),
-    'Non-navigation (detail) map layers must stay hidden through both NAVIGATION and ARRIVAL',
+    /if \(mode === 'NAVIGATION' \|\| mode === 'ARRIVAL'\) \{\s*return \[/.test(home) && home.includes('...browseVenueSpecs,'),
+    'Non-navigation (detail) map layers must stay hidden through both NAVIGATION and ARRIVAL (the nav branch returns before the browse scene is built)',
   );
 
   // Confirm the other 5 modes never satisfy either half of that OR — mode is a single derived
@@ -99,8 +99,8 @@ const base: MapModeInputs = {
   const filesToCheck = [
     'src/views/components/navigation/NavigationChromeV1.tsx',
     'src/views/components/navigation/NavigationChromeV2.tsx',
-    'src/views/components/navigation/NavigationMapLayersV1.tsx',
-    'src/views/components/navigation/NavigationMapLayersV2.tsx',
+    'src/views/components/mapgl/navigationScene.ts',
+    'src/views/components/mapgl/OfflineMapCanvas.tsx',
     'src/viewmodels/useNavigationOverlayV1.ts',
     'src/viewmodels/useNavigationOverlayV2.ts',
     'src/viewmodels/HomeViewModel.ts',

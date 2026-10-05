@@ -5,7 +5,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Animated } from 'react-native';
-import MapView from 'react-native-maps';
+import type { MapCameraHandle } from '../views/components/mapgl/MapCameraHandle';
 import { useAppStore } from '../store/useAppStore';
 import { RoutingService } from '../services/RoutingService';
 import { IJTEMA_DATA, MAP_BOUNDS } from '../constants/data';
@@ -14,7 +14,7 @@ import { CameraManager } from './useCameraManager';
 import { useNavigationExitConfirmation } from './useNavigationExitConfirmation';
 
 interface Params {
-  mapRef: React.RefObject<MapView | null>;
+  mapRef: React.RefObject<MapCameraHandle | null>;
   mapReady: boolean;
   hasBaseMap: boolean;
   /** Reuse Home's existing current-location pulse animation instead of starting a second loop. */

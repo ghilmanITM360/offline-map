@@ -4,17 +4,17 @@
  */
 
 import React from 'react';
-import { Alert, Animated, DeviceEventEmitter, Dimensions, StyleSheet } from 'react-native';
+import { Alert, Animated, DeviceEventEmitter, Dimensions } from 'react-native';
 import { getAnimatedStyle } from 'react-native-reanimated';
 import { act, fireEvent, render, screen, userEvent, waitFor } from './test-utils';
 
 import { DrawerStatusContext } from '@react-navigation/drawer';
 import { HomeScreen } from '../views/screens/HomeScreen';
+import { facilityIds, hasSource, pinRoles, pressMapFeature, sourceFeatures, userDot } from './mapTestUtils';
 import { MIN_BOTTOM_FLOOR, MIN_TOP_VISIBLE_MAP_FOR_ATTRIBUTION, OVERLAY_CONTROL_GAP } from '../viewmodels/useOverlayInsets';
 import { useHomeViewModel } from '../viewmodels/HomeViewModel';
 import { useDirectionsViewModel } from '../viewmodels/DirectionsViewModel';
 import { useAppStore } from '../store/useAppStore';
-import { MapConfigService } from '../services/MapConfigService';
 import { SearchService } from '../services/SearchService';
 import * as NavigationOverlayV1Module from '../viewmodels/useNavigationOverlayV1';
 import {
@@ -219,21 +219,6 @@ beforeEach(() => {
   mockedUseHomeViewModel.mockImplementation(useFakeHomeViewModel);
 });
 
-/** `title` of the Marker that wraps the element with this testID. Android's Google Maps SDK names a marker for
- * TalkBack from its title and ignores accessibilityLabel (react-native-maps#3500). */
-function markerTitleOf(testID: string): string | undefined {
-  let found: string | undefined;
-  const walk = (node: any, markerTitle?: string) => {
-    if (!node || typeof node === 'string') return;
-    if (Array.isArray(node)) return node.forEach((n) => walk(n, markerTitle));
-    const title = node.props?.title ?? markerTitle;
-    if (node.props?.testID === testID) found = markerTitle;
-    walk(node.children, title);
-  };
-  walk(screen.toJSON());
-  return found;
-}
-
 // #190 — Home's sheet is portal-hosted above the whole navigator, so it must be suppressed
 // (hidden from touch and the accessibility tree, state preserved) whenever another screen or
 // the drawer owns the foreground, and Home's hardware-back handler must stand down with it.
@@ -246,9 +231,8 @@ describe('HomeScreen — foreground workflow exclusivity (#190)', () => {
   const suppressed = () => sheetProps().containerStyle?.display === 'none';
 
   async function openPlaceSheet() {
-    const user = userEvent.setup();
     await render(<HomeScreen />);
-    await user.press(screen.getByTestId('facility_marker_LM_GATE_MAIN_NORTH'));
+    await pressMapFeature('facility', 'LM_GATE_MAIN_NORTH');
     expect(await screen.findByText('Official entry / exit gate')).toBeOnTheScreen();
   }
 
@@ -273,13 +257,12 @@ describe('HomeScreen — foreground workflow exclusivity (#190)', () => {
   });
 
   test('sheet is suppressed while the drawer is open', async () => {
-    const user = userEvent.setup();
     await render(
       <DrawerStatusContext.Provider value="open">
         <HomeScreen />
       </DrawerStatusContext.Provider>,
     );
-    await user.press(screen.getByTestId('facility_marker_LM_GATE_MAIN_NORTH'));
+    await pressMapFeature('facility', 'LM_GATE_MAIN_NORTH');
     expect(suppressed()).toBe(true);
   });
 
@@ -333,17 +316,11 @@ describe('HomeScreen — accessibility tree ownership (#128)', () => {
     });
   }
 
-  test("the map's Google toolbar (open in Maps / directions) is off (#128 C)", async () => {
-    await render(<HomeScreen />);
-    expect(screen.getByTestId('home-map-view', { includeHiddenElements: true }).props.toolbarEnabled).toBe(false);
-  });
-
   test('map stays reachable while exploring and on Place Details', async () => {
-    const user = userEvent.setup();
     await render(<HomeScreen />);
     expect(mapA11y()).toBe('auto');
 
-    await user.press(screen.getByTestId('facility_marker_LM_GATE_MAIN_NORTH'));
+    await pressMapFeature('facility', 'LM_GATE_MAIN_NORTH');
     expect(await screen.findByText('Official entry / exit gate')).toBeOnTheScreen();
     expect(mapA11y()).toBe('auto');
   });
@@ -353,7 +330,7 @@ describe('HomeScreen — accessibility tree ownership (#128)', () => {
     const user = userEvent.setup();
     await render(<HomeScreen />);
 
-    await user.press(screen.getByTestId('facility_marker_LM_GATE_MAIN_NORTH'));
+    await pressMapFeature('facility', 'LM_GATE_MAIN_NORTH');
     await user.press(await screen.findByText('Directions'));
     expect(await screen.findByText('Get Directions')).toBeOnTheScreen();
     expect(mapA11y()).toBe('no-hide-descendants');
@@ -366,9 +343,8 @@ describe('HomeScreen — accessibility tree ownership (#128)', () => {
   });
 
   test('sheet container is not itself an accessibility stop that swallows its text', async () => {
-    const user = userEvent.setup();
     await render(<HomeScreen />);
-    await user.press(screen.getByTestId('facility_marker_LM_GATE_MAIN_NORTH'));
+    await pressMapFeature('facility', 'LM_GATE_MAIN_NORTH');
 
     expect(sheetProps().accessible).toBe(false);
     expect(sheetProps().accessibilityLabel).toBeNull();
@@ -376,9 +352,8 @@ describe('HomeScreen — accessibility tree ownership (#128)', () => {
   });
 
   test('sheet background is decorative, not a labelled "Bottom Sheet" stop', async () => {
-    const user = userEvent.setup();
     await render(<HomeScreen />);
-    await user.press(screen.getByTestId('facility_marker_LM_GATE_MAIN_NORTH'));
+    await pressMapFeature('facility', 'LM_GATE_MAIN_NORTH');
     const { backgroundComponent: Background } = __getLastBottomSheetModalProps() as unknown as {
       backgroundComponent?: React.ComponentType<{ pointerEvents: 'none'; style: object }>;
     };
@@ -399,7 +374,7 @@ describe('HomeScreen — accessibility tree ownership (#128)', () => {
     mockRoutePreviewDirections();
     const user = userEvent.setup();
     await render(<HomeScreen />);
-    await user.press(screen.getByTestId('facility_marker_LM_GATE_MAIN_NORTH'));
+    await pressMapFeature('facility', 'LM_GATE_MAIN_NORTH');
     await user.press(await screen.findByText('Directions'));
 
     expect(await screen.findByRole('header', { name: 'Get Directions' })).toBeOnTheScreen();
@@ -417,9 +392,8 @@ describe('HomeScreen — accessibility tree ownership (#128)', () => {
 // BackHandler.addEventListener actually subscribes to on Android).
 describe('HomeScreen — map-control stack follows the measured sheet top (#208 F1)', () => {
   test('the sheet exposes its measured position and the stack stays reachable while it rests', async () => {
-    const user = userEvent.setup();
     await render(<HomeScreen />);
-    await user.press(screen.getByTestId('facility_marker_LM_GATE_MAIN_NORTH'));
+    await pressMapFeature('facility', 'LM_GATE_MAIN_NORTH');
 
     const props = __getLastBottomSheetModalProps() as unknown as { animatedPosition?: { value: number } };
     expect(props.animatedPosition).toBeDefined();
@@ -438,10 +412,9 @@ describe('HomeScreen — hardware back button (mode-aware, Google Maps parity)',
   }
 
   test('hardware back press in PLACE_SELECTED mode closes the sheet back to EXPLORE', async () => {
-    const user = userEvent.setup();
     await render(<HomeScreen />);
 
-    await user.press(screen.getByTestId('facility_marker_LM_GATE_MAIN_NORTH'));
+    await pressMapFeature('facility', 'LM_GATE_MAIN_NORTH');
     expect(await screen.findByText('Main North Gate')).toBeOnTheScreen();
 
     await pressHardwareBack();
@@ -478,7 +451,7 @@ describe('HomeScreen — hardware back button (mode-aware, Google Maps parity)',
     const user = userEvent.setup();
     await render(<HomeScreen />);
 
-    await user.press(screen.getByTestId('facility_marker_LM_GATE_MAIN_NORTH'));
+    await pressMapFeature('facility', 'LM_GATE_MAIN_NORTH');
     await user.press(await screen.findByText('Directions'));
     expect(await screen.findByText('Get Directions')).toBeOnTheScreen();
 
@@ -517,7 +490,7 @@ describe('HomeScreen — Get Directions sheet detents (#177)', () => {
     const user = userEvent.setup();
     await render(<HomeScreen />);
 
-    await user.press(screen.getByTestId('facility_marker_LM_GATE_MAIN_NORTH'));
+    await pressMapFeature('facility', 'LM_GATE_MAIN_NORTH');
     // Place preview keeps the 15/50/92 contract; only the middle snap is lifted by the device's bottom
     // system inset (see insetAwareSnapPoints), so the CTA is not left behind the navigation bar. The snaps
     // are pixel heights of the sheet's container (window minus the reserved top band), not percentages:
@@ -551,13 +524,12 @@ describe('HomeScreen — Get Directions sheet detents (#177)', () => {
 // must update the same sheet in place, not close-then-reopen (flicker).
 describe('HomeScreen — selection switching (Google Maps parity, no flicker)', () => {
   test('switching selected place while the sheet is open updates content directly, with no intermediate close', async () => {
-    const user = userEvent.setup();
     await render(<HomeScreen />);
 
-    await user.press(screen.getByTestId('facility_marker_LM_GATE_MAIN_NORTH'));
+    await pressMapFeature('facility', 'LM_GATE_MAIN_NORTH');
     expect(await screen.findByText('Main North Gate')).toBeOnTheScreen();
 
-    await user.press(screen.getByTestId('facility_marker_LM_MASJID_MAIN'));
+    await pressMapFeature('facility', 'LM_MASJID_MAIN');
 
     expect(await screen.findByText('Main Masjid')).toBeOnTheScreen();
     // "Main North Gate" itself is a poor absence check — GateLayer/MapLabelOverlay render it
@@ -576,7 +548,7 @@ describe('HomeScreen — canonical bottom-sheet dismissal', () => {
   // owns discovery now), via a facility marker (always tappable, no map-projection needed).
   async function selectGate() {
     const user = userEvent.setup();
-    await user.press(screen.getByTestId('facility_marker_LM_GATE_MAIN_NORTH'));
+    await pressMapFeature('facility', 'LM_GATE_MAIN_NORTH');
     return user;
   }
 
@@ -602,14 +574,6 @@ describe('HomeScreen — canonical bottom-sheet dismissal', () => {
     });
   }
 
-  test('#157: the selected-place pin carries the place name as its native title so TalkBack does not say "Map Marker"', async () => {
-    await render(<HomeScreen />);
-    await selectGate();
-    await settleSheet();
-
-    expect(markerTitleOf('selected-place-marker')).toBe('Main North Gate');
-  });
-
   test('#208 F1: the control stack sits above the sheet\'s measured top edge, whatever the declared snaps say', async () => {
     await render(<HomeScreen />);
     await selectGate();
@@ -634,14 +598,14 @@ describe('HomeScreen — canonical bottom-sheet dismissal', () => {
     await render(<HomeScreen />);
     await selectGate();
     await settleSheet();
-    expect(screen.getByTestId('selected-place-marker')).toBeOnTheScreen();
+    expect(pinRoles()).toEqual(['destination']);
 
     await dismissSheet();
 
     expect(setSelectedPlaceSpy).toHaveBeenCalledWith(null);
     expect(cancelPendingSheetPresentationSpy).toHaveBeenCalled();
     await waitFor(() => {
-      expect(screen.queryByTestId('selected-place-marker')).not.toBeOnTheScreen();
+      expect(pinRoles()).toEqual([]);
     });
   });
 
@@ -749,12 +713,12 @@ describe('HomeScreen — canonical bottom-sheet dismissal', () => {
 
   test('stale dismissal from a previous selection does not clear rapid replacement', async () => {
     await render(<HomeScreen />);
-    const user = await selectGate();
+    await selectGate();
     const selectionASheetProps = __getLastBottomSheetModalProps();
     await act(async () => {
       selectionASheetProps.onChange(-1);
     });
-    await user.press(screen.getByTestId('facility_marker_LM_MASJID_MAIN'));
+    await pressMapFeature('facility', 'LM_MASJID_MAIN');
     expect(await screen.findByText('Main Masjid')).toBeOnTheScreen();
 
     await act(async () => {
@@ -762,7 +726,7 @@ describe('HomeScreen — canonical bottom-sheet dismissal', () => {
     });
 
     expect(screen.getByText('Main Masjid')).toBeOnTheScreen();
-    expect(screen.getByTestId('selected-place-marker')).toBeOnTheScreen();
+    expect(pinRoles()).toEqual(['destination']);
   });
 
   test('repeated onDismiss calls are idempotent', async () => {
@@ -862,13 +826,13 @@ describe('HomeScreen — canonical bottom-sheet dismissal', () => {
 
   test('P0-3: late dismiss echo arriving after a rapid reselection has already committed does not clear the newer selection', async () => {
     await render(<HomeScreen />);
-    const user = await selectGate();
+    await selectGate();
     const sheetProps = __getLastBottomSheetModalProps();
     // No settle and no onChange(-1) yet — Gate 5's own native echo has not arrived at
     // all when the user immediately taps a different object (unlike the existing
     // "stale dismissal from a previous selection" test above, which fires onChange(-1)
     // *before* the reselection and was already safe under the old mechanism).
-    await user.press(screen.getByTestId('facility_marker_LM_MASJID_MAIN'));
+    await pressMapFeature('facility', 'LM_MASJID_MAIN');
     expect(await screen.findByText('Main Masjid')).toBeOnTheScreen();
 
     await act(async () => {
@@ -877,7 +841,7 @@ describe('HomeScreen — canonical bottom-sheet dismissal', () => {
     });
 
     expect(screen.getByText('Main Masjid')).toBeOnTheScreen();
-    expect(screen.getByTestId('selected-place-marker')).toBeOnTheScreen();
+    expect(pinRoles()).toEqual(['destination']);
     expect(setSelectedPlaceSpy).not.toHaveBeenCalledWith(null);
   });
 
@@ -900,22 +864,21 @@ describe('HomeScreen — canonical bottom-sheet dismissal', () => {
       sheetProps.onDismiss();
     });
 
-    expect(screen.getByTestId('selected-place-marker')).toBeOnTheScreen();
+    expect(pinRoles()).toEqual(['destination']);
     expect(setSelectedPlaceSpy).not.toHaveBeenCalledWith(null);
   });
 });
 
 describe('HomeScreen — navigation completion cleanup', () => {
   test('ending navigation clears selected-place state before Explore can revive its marker', async () => {
-    const user = userEvent.setup();
     await render(<HomeScreen />);
-    await user.press(screen.getByTestId('facility_marker_LM_GATE_MAIN_NORTH'));
-    expect(screen.getByTestId('selected-place-marker')).toBeOnTheScreen();
+    await pressMapFeature('facility', 'LM_GATE_MAIN_NORTH');
+    expect(pinRoles()).toEqual(['destination']);
 
     await act(async () => useAppStore.setState({ isNavigating: true }));
     await act(async () => useAppStore.getState().stopNavigation());
 
-    expect(screen.queryByTestId('selected-place-marker')).not.toBeOnTheScreen();
+    expect(pinRoles()).toEqual([]);
     expect(setSelectedPlaceSpy).toHaveBeenCalledWith(null);
   });
 
@@ -924,17 +887,16 @@ describe('HomeScreen — navigation completion cleanup', () => {
     const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
     useAppStore.getState().setCurrentLocation({ ...v1Route.coordinates[0], accuracy: 12 }, 'gps');
     await render(<HomeScreen />);
-    await user.press(screen.getByTestId('facility_marker_LM_GATE_MAIN_NORTH'));
+    await pressMapFeature('facility', 'LM_GATE_MAIN_NORTH');
 
     await act(async () => {
       useAppStore.getState().startNavigation(v1Destination, v1Route as any, []);
     });
-    expect(await screen.findByTestId('navigation-user-location-marker', { includeHiddenElements: true })).toBeOnTheScreen();
-    expect(screen.getAllByTestId('navigation-start-marker', { includeHiddenElements: true })).toHaveLength(1);
-    expect(screen.getAllByTestId('navigation-destination-marker', { includeHiddenElements: true })).toHaveLength(1);
-    expect(screen.queryByTestId('browse-user-location-marker', { includeHiddenElements: true })).not.toBeOnTheScreen();
-    expect(screen.queryByTestId('browse-user-accuracy-circle', { includeHiddenElements: true })).not.toBeOnTheScreen();
-    expect(screen.queryByTestId('selected-place-marker')).not.toBeOnTheScreen();
+    await waitFor(() => expect(userDot()).not.toBeNull());
+    // Navigation owns the pins (start + destination) and the single user dot; no browse selection pin or accuracy circle.
+    expect([...pinRoles()].sort()).toEqual(['destination', 'start']);
+    expect(sourceFeatures('markers-user')).toHaveLength(1);
+    expect(screen.queryByTestId('layer-user-accuracy', { includeHiddenElements: true })).not.toBeOnTheScreen();
 
     await user.press(screen.getByTestId('nav-exit-button'));
     const confirmExit = (alertSpy.mock.calls.at(-1)?.[2] as Array<{ text: string; onPress?: () => void }>).find(
@@ -942,12 +904,10 @@ describe('HomeScreen — navigation completion cleanup', () => {
     )?.onPress;
     await act(async () => confirmExit?.());
 
-    await waitFor(() => expect(screen.queryByTestId('navigation-user-location-marker', { includeHiddenElements: true })).not.toBeOnTheScreen());
-    expect(screen.queryByTestId('navigation-start-marker', { includeHiddenElements: true })).not.toBeOnTheScreen();
-    expect(screen.queryByTestId('navigation-destination-marker', { includeHiddenElements: true })).not.toBeOnTheScreen();
-    expect(screen.getAllByTestId('browse-user-location-marker', { includeHiddenElements: true })).toHaveLength(1);
-    expect(screen.getAllByTestId('browse-user-accuracy-circle', { includeHiddenElements: true })).toHaveLength(1);
-    expect(screen.queryByTestId('selected-place-marker')).not.toBeOnTheScreen();
+    await waitFor(() => expect(pinRoles()).toEqual([]));
+    // Back in Explore: one clean browse user dot with its accuracy circle, and no leftover navigation or selection pins.
+    expect(sourceFeatures('markers-user')).toHaveLength(1);
+    expect(screen.getByTestId('layer-user-accuracy', { includeHiddenElements: true })).toBeOnTheScreen();
     alertSpy.mockRestore();
   });
 
@@ -1000,7 +960,7 @@ describe('HomeScreen — canonical navigation pan ownership', () => {
     } as unknown as ReturnType<typeof NavigationOverlayV1Module.useNavigationOverlayV1>);
     await render(<HomeScreen />);
 
-    await fireEvent(screen.getByTestId('home-map-view', { includeHiddenElements: true }), 'panDrag');
+    await fireEvent(screen.getByTestId('home-map-view', { includeHiddenElements: true }), 'regionWillChange', { nativeEvent: { userInteraction: true } });
 
     expect(setIsAutoFollowing).toHaveBeenCalledWith(false);
     overlaySpy.mockRestore();
@@ -1051,63 +1011,66 @@ describe('HomeScreen — v1 Arrival marker fallback', () => {
 
     await render(<HomeScreen />);
 
-    expect(screen.getAllByTestId('browse-user-location-marker', { includeHiddenElements: true })).toHaveLength(1);
-    expect(screen.getAllByTestId('browse-user-accuracy-circle', { includeHiddenElements: true })).toHaveLength(1);
-    expect(screen.queryByTestId('navigation-user-location-marker', { includeHiddenElements: true })).not.toBeOnTheScreen();
-    expect(screen.queryByTestId('navigation-start-marker', { includeHiddenElements: true })).not.toBeOnTheScreen();
-    expect(screen.getAllByTestId('navigation-destination-marker', { includeHiddenElements: true })).toHaveLength(1);
-    expect(screen.queryByTestId('selected-place-marker')).not.toBeOnTheScreen();
+    expect(sourceFeatures('markers-user')).toHaveLength(1);
+    expect(screen.getByTestId('layer-user-accuracy', { includeHiddenElements: true })).toBeOnTheScreen();
+    // Fallback to the browse dot (no snapped fix): only the destination pin, no start pin.
+    expect(pinRoles()).toEqual(['destination']);
 
     overlaySpy.mockRestore();
   });
 });
 
-describe('HomeScreen — status banners are announced (#128)', () => {
+describe('HomeScreen — bundled offline basemap (#140)', () => {
   afterEach(() => {
     jest.restoreAllMocks();
   });
 
-  test('the offline map-warning banner is a polite live region so a connectivity drop is announced', async () => {
-    mockedUseHomeViewModel.mockImplementation(() => ({ ...useFakeHomeViewModel(), isOffline: true, offlineData: { isDownloaded: false } }));
-    useAppStore.setState({ hasInternet: false, offlineMapStatus: 'not_downloaded' });
-    await render(<HomeScreen />);
+  const MISSING_MAP_COPY = [
+    'Loading map...',
+    'Map background is unavailable. Ijtema routes still work.',
+    'Map background did not load. Ijtema routes still work.',
+    'Background map not downloaded. Ijtema routes still work.',
+    'Download background map',
+    'No internet. Ijtema routes still work.',
+  ];
 
-    const banner = screen.getByText('No internet. Ijtema routes still work.').parent;
-    expect(banner?.props.accessibilityLiveRegion).toBe('polite');
+  test('renders the map from the bundled local archive, never a remote source', async () => {
+    await render(<HomeScreen />);
+    const map = screen.getByTestId('home-map-view', { includeHiddenElements: true });
+    await waitFor(() => {
+      const style = screen.getByTestId('home-map-view', { includeHiddenElements: true }).props.mapStyle;
+      expect(Object.values(style.sources).map((src: any) => src.url)).toEqual(['pmtiles://file:///mock/map/ijtema-basemap.pmtiles']);
+    });
+    expect(JSON.stringify(map.props.mapStyle)).not.toMatch(/https?:\/\//);
   });
 
-  // The map-warning banner is full width, so its right end ran under the Layers button of the control stack
-  // when the sheet sat high (#208 F1 follow-up). It now ends before the stack's measured left edge.
-  test('#208: the map-warning banner stops short of the control stack\'s measured width', async () => {
-    mockedUseHomeViewModel.mockImplementation(() => ({ ...useFakeHomeViewModel(), isOffline: true, offlineData: { isDownloaded: false } }));
-    useAppStore.setState({ hasInternet: false, offlineMapStatus: 'not_downloaded' });
+  test('offline: shows only the passive Offline pill — the map itself never claims to be missing', async () => {
+    mockedUseHomeViewModel.mockImplementation(() => ({ ...useFakeHomeViewModel(), isOffline: true }));
+    useAppStore.setState({ hasInternet: false });
     await render(<HomeScreen />);
 
-    const stack = screen.getByTestId('map-control-stack', { includeHiddenElements: true });
-    await fireEvent(stack, 'layout', { nativeEvent: { layout: { x: 0, y: 0, width: 48, height: 300 } } });
-
-    const banner = screen.getByText('No internet. Ijtema routes still work.').parent;
-    // 12 dp stack right offset + 48 dp measured stack width + 8 dp gap.
-    expect(StyleSheet.flatten(banner?.props.style).marginRight).toBe(68);
+    expect(screen.getByText('Offline')).toBeOnTheScreen();
+    for (const copy of MISSING_MAP_COPY) expect(screen.queryByText(copy)).not.toBeOnTheScreen();
   });
 
-  // Offline with no downloaded map showed the banner AND a bottom card saying the same thing in other words;
-  // the card was also clipped behind the zoom buttons (#128 E: one message per state).
-  test('offline without a downloaded map says it once, in the banner', async () => {
-    mockedUseHomeViewModel.mockImplementation(() => ({ ...useFakeHomeViewModel(), isOffline: true, offlineData: { isDownloaded: false } }));
-    useAppStore.setState({ hasInternet: false, offlineMapStatus: 'not_downloaded' });
+  test('online or offline, no loading spinner, download card or satellite option appears', async () => {
+    await render(<HomeScreen />);
+    for (const copy of MISSING_MAP_COPY) expect(screen.queryByText(copy)).not.toBeOnTheScreen();
+    expect(screen.queryByText('Satellite')).not.toBeOnTheScreen();
+  });
+
+  test('a failed basemap install degrades to a plain canvas (venue overlays still render), not an error screen', async () => {
+    const { getBundledBasemap } = jest.requireMock('../services/BundledBasemap') as { getBundledBasemap: jest.Mock };
+    getBundledBasemap.mockRejectedValueOnce(new Error('disk full'));
     await render(<HomeScreen />);
 
-    expect(screen.getByText('No internet. Ijtema routes still work.')).toBeOnTheScreen();
-    expect(screen.queryByText('Background map not downloaded. Ijtema routes still work.')).not.toBeOnTheScreen();
+    await waitFor(() => expect(screen.getByTestId('home-map-view', { includeHiddenElements: true }).props.mapStyle.sources).toEqual({}));
+    expect(hasSource('venue-boundary')).toBe(true);
+    for (const copy of MISSING_MAP_COPY) expect(screen.queryByText(copy)).not.toBeOnTheScreen();
   });
 });
 
 describe('HomeScreen — resolved base-map rendering', () => {
-  function useDownloadedTilesViewModel() {
-    return { ...useFakeHomeViewModel(), isOffline: false, offlineData: { isDownloaded: true } };
-  }
-
   beforeEach(() => {
     useAppStore.setState({ offlineMapStatus: 'downloaded' });
   });
@@ -1116,26 +1079,17 @@ describe('HomeScreen — resolved base-map rendering', () => {
     jest.restoreAllMocks();
   });
 
-  test('online missing-key state renders one LocalTile fallback', async () => {
-    mockedUseHomeViewModel.mockImplementation(useDownloadedTilesViewModel);
-    await render(<HomeScreen />);
-
-    expect(screen.getAllByTestId('local-base-map-tiles', { includeHiddenElements: true })).toHaveLength(1);
-    expect(screen.getByTestId('home-map-view', { includeHiddenElements: true }).props.mapType).toBe('none');
-  });
-
   test('map padding bottom inset is just the safe area with no sheet open', async () => {
     await render(<HomeScreen />);
-    expect(screen.getByTestId('home-map-view', { includeHiddenElements: true }).props.mapPadding.bottom).toBe(34);
+    expect(screen.getByTestId('home-map-view', { includeHiddenElements: true }).props.attributionPosition.bottom - 8).toBe(34);
   });
 
-  test('map padding grows past the safe area to clear the sheet once a place is selected, so Google attribution stays visible (ATTR-001)', async () => {
-    const user = userEvent.setup();
+  test('map padding grows past the safe area to clear the sheet once a place is selected, so the map attribution stays visible (ATTR-001)', async () => {
     await render(<HomeScreen />);
-    await user.press(screen.getByTestId('facility_marker_LM_MASJID_MAIN'));
+    await pressMapFeature('facility', 'LM_MASJID_MAIN');
     await screen.findByText('Main Masjid');
 
-    expect(screen.getByTestId('home-map-view', { includeHiddenElements: true }).props.mapPadding.bottom).toBeGreaterThan(0);
+    expect(screen.getByTestId('home-map-view', { includeHiddenElements: true }).props.attributionPosition.bottom - 8).toBeGreaterThan(0);
   });
 
   // ATTR-001 follow-up: on-device, dragging Route Preview to its plain, always-declared
@@ -1149,7 +1103,7 @@ describe('HomeScreen — resolved base-map rendering', () => {
   // the reserved band (see HomeScreen's sheetSnapPoints), so 92% of it can never reach into
   // that band. `maxDynamicContentSize` remains a backstop for the one thing the snaps don't
   // cover: content so tall its dynamic-sizing detent would still exceed that container.
-  test('Route Preview always leaves room for the Google logo, even at the plain 92% snap (ATTR-001 follow-up)', async () => {
+  test('Route Preview always leaves room for the map attribution, even at the plain 92% snap (ATTR-001 follow-up)', async () => {
     mockedUseDirectionsViewModel.mockReturnValue({
       route: null,
       startSource: 'live_gps',
@@ -1173,7 +1127,7 @@ describe('HomeScreen — resolved base-map rendering', () => {
     const user = userEvent.setup();
     await render(<HomeScreen />);
 
-    await user.press(screen.getByTestId('facility_marker_LM_MASJID_MAIN'));
+    await pressMapFeature('facility', 'LM_MASJID_MAIN');
     await user.press(await screen.findByText('Directions'));
     expect(await screen.findByText('Get Directions')).toBeOnTheScreen();
 
@@ -1194,7 +1148,7 @@ describe('HomeScreen — resolved base-map rendering', () => {
       sheetProps.onChange(2);
     });
 
-    const mapPaddingBottom = screen.getByTestId('home-map-view', { includeHiddenElements: true }).props.mapPadding.bottom;
+    const mapPaddingBottom = screen.getByTestId('home-map-view', { includeHiddenElements: true }).props.attributionPosition.bottom - 8;
     expect(sheetProps.maxDynamicContentSize).toBeGreaterThan(0);
     // The dynamic-content ceiling can never actually render taller than mapPadding
     // assumed it might — same shared formula (computeMaxSheetOcclusionForAttribution)
@@ -1202,7 +1156,7 @@ describe('HomeScreen — resolved base-map rendering', () => {
     expect(sheetProps.maxDynamicContentSize).toBe(mapPaddingBottom);
   });
 
-  test('Route Preview camera fit does not duplicate map padding at the maximum sheet snap', async () => {
+  test('Route Preview camera fit reserves the sheet-covered band itself at the maximum sheet snap', async () => {
     const previewRoute = {
       sourceVersion: 'v2' as const,
       coordinates: [
@@ -1257,158 +1211,21 @@ describe('HomeScreen — resolved base-map rendering', () => {
       sheetProps.onChange(2);
     });
 
-    // Runtime regression: fitting in the same React commit as mapPadding changes lets
-    // Android execute fitToCoordinates against the previous native base padding. After
-    // maximum -> normal, one endpoint then stays behind the sheet. Defer the camera
-    // command until the next rendered frame, after the native padding prop is applied.
+    // The sheet moves between snaps; the fit is deferred to the next rendered frame so it measures the settled
+    // sheet band rather than the previous one.
     expect(cameraFitRouteSpy).not.toHaveBeenCalled();
     await act(async () => {
       scheduledFrames.splice(0).forEach((callback) => callback(performance.now()));
     });
 
-    const mapPaddingBottom = screen.getByTestId('home-map-view', { includeHiddenElements: true }).props.mapPadding.bottom;
+    const sheetBand = screen.getByTestId('home-map-view', { includeHiddenElements: true }).props.attributionPosition.bottom - 8;
     const [, edgeInsets] = cameraFitRouteSpy.mock.calls.at(-1) as [unknown, { top: number; bottom: number }];
-    // react-native-maps adds fitToCoordinates edgePadding to MapView mapPadding on
-    // Android. Reusing the sheet inset here double-counts the occluded area and can
-    // push an endpoint out of the remaining Route Preview viewport.
-    expect(mapPaddingBottom).toBeGreaterThan(edgeInsets.bottom);
-    expect(edgeInsets.bottom).toBe(32);
+    // MapLibre has no native base padding, so the fit must keep both route endpoints above the sheet itself:
+    // the sheet-covered band (the same inset labels and attribution avoid) plus the small inner margin.
+    expect(sheetBand).toBeGreaterThan(0);
+    expect(edgeInsets.bottom).toBe(sheetBand + 32);
     expect(edgeInsets.top).toBeGreaterThanOrEqual(90);
     requestAnimationFrameSpy.mockRestore();
-  });
-
-  test('online Google map renders without LocalTile conflict', async () => {
-    jest.spyOn(MapConfigService, 'getRuntimeStatus').mockReturnValue({
-      keyPresent: true,
-      keyPreview: null,
-      packageName: 'com.test',
-      platform: 'android',
-      source: 'env',
-    });
-    mockedUseHomeViewModel.mockImplementation(useDownloadedTilesViewModel);
-    await render(<HomeScreen />);
-
-    expect(screen.queryByTestId('local-base-map-tiles', { includeHiddenElements: true })).not.toBeOnTheScreen();
-    expect(screen.getByTestId('home-map-view', { includeHiddenElements: true }).props.mapType).toBe('standard');
-    expect(screen.getByTestId('home-map-view', { includeHiddenElements: true }).props.provider).toBe('google');
-  });
-
-  // #128 loading + error states for the map itself: a cold start shows "Loading map..." (no blank
-  // map), and a Google load that never completes swaps it for the one polite imagery-failed banner.
-  describe('map load states (#128)', () => {
-    const withGoogleKey = () =>
-      jest.spyOn(MapConfigService, 'getRuntimeStatus').mockReturnValue({
-        keyPresent: true,
-        keyPreview: null,
-        packageName: 'com.test',
-        platform: 'android',
-        source: 'env',
-      });
-
-    test('shows "Loading map..." until Google reports the map loaded', async () => {
-      withGoogleKey();
-      await render(<HomeScreen />);
-      expect(screen.getByText('Loading map...')).toBeOnTheScreen();
-
-      await act(async () => {
-        screen.getByTestId('home-map-view', { includeHiddenElements: true }).props.onMapLoaded();
-      });
-      expect(screen.queryByText('Loading map...')).not.toBeOnTheScreen();
-    });
-
-    test('a map that never loads swaps the spinner for one polite "imagery failed" banner', async () => {
-      withGoogleKey();
-      await render(<HomeScreen />);
-
-      await act(async () => {
-        jest.advanceTimersByTime(7_100);
-      });
-
-      expect(screen.queryByText('Loading map...')).not.toBeOnTheScreen();
-      const banner = screen.getByText(MapConfigService.getMapLoadFailedMessage()).parent;
-      expect(banner?.props.accessibilityLiveRegion).toBe('polite');
-    });
-  });
-
-  test('Google load watchdog switches once to one LocalTile fallback', async () => {
-    jest.spyOn(MapConfigService, 'getRuntimeStatus').mockReturnValue({
-      keyPresent: true,
-      keyPreview: null,
-      packageName: 'com.test',
-      platform: 'android',
-      source: 'env',
-    });
-    mockedUseHomeViewModel.mockImplementation(useDownloadedTilesViewModel);
-    await render(<HomeScreen />);
-
-    await act(async () => {
-      jest.advanceTimersByTime(7_100);
-    });
-
-    expect(screen.getAllByTestId('local-base-map-tiles', { includeHiddenElements: true })).toHaveLength(1);
-    expect(screen.getByTestId('home-map-view', { includeHiddenElements: true }).props.mapType).toBe('none');
-  });
-
-  // MAPLOAD-04 (#28): a Google map that loads successfully AFTER the 7s watchdog fires
-  // (slow/software-rendered device, not a real failure) must recover instead of staying
-  // stuck on the LocalTile fallback for the rest of the session — see MapLoadWatchdog.ts.
-  test('late Google map-loaded event recovers from watchdog LocalTile fallback', async () => {
-    jest.spyOn(MapConfigService, 'getRuntimeStatus').mockReturnValue({
-      keyPresent: true,
-      keyPreview: null,
-      packageName: 'com.test',
-      platform: 'android',
-      source: 'env',
-    });
-    mockedUseHomeViewModel.mockImplementation(useDownloadedTilesViewModel);
-    await render(<HomeScreen />);
-
-    await act(async () => {
-      jest.advanceTimersByTime(7_100);
-    });
-    const map = screen.getByTestId('home-map-view', { includeHiddenElements: true });
-    expect(screen.getAllByTestId('local-base-map-tiles', { includeHiddenElements: true })).toHaveLength(1);
-    expect(map.props.mapType).toBe('none');
-
-    await act(async () => {
-      map.props.onMapLoaded();
-    });
-
-    expect(screen.queryByTestId('local-base-map-tiles', { includeHiddenElements: true })).not.toBeOnTheScreen();
-    expect(screen.getByTestId('home-map-view', { includeHiddenElements: true }).props.mapType).toBe('standard');
-  });
-
-  // MAPLOAD-05/07 (#28): once the app has genuinely left Google mode (offline / no key —
-  // MapLoadWatchdog's INACTIVE state), a stray late onMapLoaded from an old attempt must not
-  // pull the UI back into Google mode.
-  test('late Google map-loaded event cannot override an offline switch away from Google', async () => {
-    jest.spyOn(MapConfigService, 'getRuntimeStatus').mockReturnValue({
-      keyPresent: true,
-      keyPreview: null,
-      packageName: 'com.test',
-      platform: 'android',
-      source: 'env',
-    });
-    useAppStore.setState({ hasInternet: true });
-    mockedUseHomeViewModel.mockImplementation(() => {
-      const home = useFakeHomeViewModel();
-      const hasInternet = useAppStore((state) => state.hasInternet);
-      return { ...home, isOffline: !hasInternet, offlineData: { isDownloaded: true } };
-    });
-    await render(<HomeScreen />);
-    const map = screen.getByTestId('home-map-view', { includeHiddenElements: true });
-
-    await act(async () => {
-      useAppStore.setState({ hasInternet: false });
-    });
-    expect(screen.getAllByTestId('local-base-map-tiles', { includeHiddenElements: true })).toHaveLength(1);
-
-    await act(async () => {
-      map.props.onMapLoaded();
-    });
-
-    expect(screen.getAllByTestId('local-base-map-tiles', { includeHiddenElements: true })).toHaveLength(1);
-    expect(screen.getByTestId('home-map-view', { includeHiddenElements: true }).props.mapType).toBe('none');
   });
 
   // MAPLOAD-08 (#28): unmounting mid-watchdog must not throw or leak the timer. The watchdog
@@ -1420,65 +1237,6 @@ describe('HomeScreen — resolved base-map rendering', () => {
   // dropped: it fought RTL's own auto-cleanup and corrupted `screen` for later tests, testing
   // the harness rather than the watchdog. MapLoadWatchdog.test.ts's stale-generation tests
   // cover the defense-in-depth case where a callback fires anyway.
-
-  // MAPLOAD-09 (#28): basemap fallback/recovery is purely visual — it must never touch the
-  // active route.
-  test('watchdog fallback and recovery preserve the active route', async () => {
-    jest.spyOn(MapConfigService, 'getRuntimeStatus').mockReturnValue({
-      keyPresent: true,
-      keyPreview: null,
-      packageName: 'com.test',
-      platform: 'android',
-      source: 'env',
-    });
-    mockedUseHomeViewModel.mockImplementation(useDownloadedTilesViewModel);
-    useAppStore.setState({ routePlannerDest: gateResult, activeRoute: v1Route as any });
-    await render(<HomeScreen />);
-    const map = screen.getByTestId('home-map-view', { includeHiddenElements: true });
-
-    await act(async () => {
-      jest.advanceTimersByTime(7_100);
-    });
-    await act(async () => {
-      map.props.onMapLoaded();
-    });
-
-    expect(useAppStore.getState().activeRoute).toEqual(v1Route);
-  });
-
-  test.each(['corrupt', 'needs_update'] as const)('%s tiles stay graph-only', async (offlineMapStatus) => {
-    useAppStore.setState({ offlineMapStatus });
-    mockedUseHomeViewModel.mockImplementation(useDownloadedTilesViewModel);
-    await render(<HomeScreen />);
-
-    expect(screen.queryByTestId('local-base-map-tiles', { includeHiddenElements: true })).not.toBeOnTheScreen();
-    expect(screen.getByText(MapConfigService.getMissingGoogleMapsMessage())).toBeOnTheScreen();
-  });
-
-  test('returning online replaces LocalTile with Google without duplicate rendering', async () => {
-    jest.spyOn(MapConfigService, 'getRuntimeStatus').mockReturnValue({
-      keyPresent: true,
-      keyPreview: null,
-      packageName: 'com.test',
-      platform: 'android',
-      source: 'env',
-    });
-    useAppStore.setState({ hasInternet: false });
-    mockedUseHomeViewModel.mockImplementation(() => {
-      const home = useFakeHomeViewModel();
-      const hasInternet = useAppStore((state) => state.hasInternet);
-      return { ...home, isOffline: !hasInternet, offlineData: { isDownloaded: true } };
-    });
-    await render(<HomeScreen />);
-    expect(screen.getAllByTestId('local-base-map-tiles', { includeHiddenElements: true })).toHaveLength(1);
-
-    await act(async () => {
-      useAppStore.setState({ hasInternet: true });
-    });
-
-    expect(screen.queryByTestId('local-base-map-tiles', { includeHiddenElements: true })).not.toBeOnTheScreen();
-    expect(screen.getByTestId('home-map-view', { includeHiddenElements: true }).props.mapType).toBe('standard');
-  });
 });
 
 describe('HomeScreen — facility markers (Google Maps POI parity)', () => {
@@ -1488,14 +1246,13 @@ describe('HomeScreen — facility markers (Google Maps POI parity)', () => {
   test('a known facility (Main Masjid) renders as a tappable map marker', async () => {
     await render(<HomeScreen />);
 
-    expect(screen.getByTestId('facility_marker_LM_MASJID_MAIN')).toBeOnTheScreen();
+    expect(facilityIds()).toContain('LM_MASJID_MAIN');
   });
 
   test('tapping a facility marker selects it and opens LocationSheet', async () => {
-    const user = userEvent.setup();
     await render(<HomeScreen />);
 
-    await user.press(screen.getByTestId('facility_marker_LM_MASJID_MAIN'));
+    await pressMapFeature('facility', 'LM_MASJID_MAIN');
 
     expect(handlePlaceSelectSpy).toHaveBeenCalledWith(
       expect.objectContaining({ id: 'LM_MASJID_MAIN', name: 'Main Masjid' }),
@@ -1529,7 +1286,7 @@ describe('HomeScreen — facility markers (Google Maps POI parity)', () => {
     const user = userEvent.setup();
     await render(<HomeScreen />);
 
-    await user.press(screen.getByTestId('facility_marker_LM_MASJID_MAIN'));
+    await pressMapFeature('facility', 'LM_MASJID_MAIN');
     await user.press(await screen.findByText('Directions'));
 
     expect(await screen.findByText('Get Directions')).toBeOnTheScreen();
@@ -1775,77 +1532,6 @@ describe('HomeScreen — route preview is a single surface (P0-2 consolidation)'
     expect(screen.queryByText('Share')).not.toBeOnTheScreen();
   });
 
-  test('#157: route-preview start and destination pins carry a native title so TalkBack does not say "Map Marker"', async () => {
-    const destination: Place = {
-      id: 'LM_MASJID_MAIN',
-      name: 'Main Masjid',
-      category: 'Masjid',
-      description: 'Central prayer hall for the Ijtema ground.',
-      coordinate: { latitude: 24.9682, longitude: 67.003 },
-      sourceVersion: 'v1',
-    };
-    const previewRoute = {
-      id: 'v2_route_P3_P6',
-      sourceVersion: 'v2' as const,
-      nodes: ['P3', 'P6'],
-      coordinates: [
-        { latitude: 24.97, longitude: 67.0025 },
-        { latitude: 24.9682, longitude: 67.003 },
-      ],
-      totalDistance: 200,
-      estimatedTimeMin: 3,
-      segments: [{ fromId: 'P3', toId: 'P6', distance: 200, isRasta: true }],
-      startLabel: 'Gate 5',
-      destinationLabel: destination.name,
-      destinationEntryNodeId: 'P6',
-      startResolution: { mode: 'inside' as const, coordinate: { latitude: 24.97, longitude: 67.0025 } },
-      instructions: [],
-    };
-    mockedUseHomeViewModel.mockImplementation(() => ({ ...useFakeHomeViewModel(), selectedPlace: destination }));
-    mockedUseDirectionsViewModel.mockReturnValue({
-      route: previewRoute,
-      startSource: 'live_gps',
-      startSourceLabel: 'My current location',
-      rememberedLocationAgeLabel: '',
-      rememberedLocationAvailable: false,
-      rememberedLocationInsideVenue: false,
-      currentRouteOriginInsideVenue: true,
-      loadState: 'ready',
-      errorMessage: null,
-      manualStart: null,
-      chooseManualStart: jest.fn(),
-      setIsEditingManualStart: jest.fn(),
-      setManualStartPlace: jest.fn(),
-      chooseCurrentLocation: jest.fn(async () => true),
-      chooseRememberedLocation: jest.fn(() => true),
-      calculateRoute: jest.fn(async () => {}),
-      showManualStartSearch: false,
-      canStartNavigation: true,
-      startNavigationDisabledReason: '',
-    });
-    useAppStore.setState({
-      routePlannerDest: destination,
-      routePlannerOrigin: {
-        id: 'GATE_05',
-        name: 'Gate 5',
-        category: 'Gate',
-        description: 'Official Gate 5.',
-        coordinate: { latitude: 24.97, longitude: 67.0025 },
-        sourceVersion: 'v2',
-        sourceKind: 'gate',
-      } as Place,
-      activeRoute: previewRoute,
-      currentLocation: previewRoute.coordinates[0],
-    });
-
-    await render(<HomeScreen />);
-
-    // The map subtree is hidden from accessibility services during route preview, so read the tree directly.
-    await screen.findByText('Start Navigation');
-    expect(markerTitleOf('preview-destination-marker')).toBe('Main Masjid');
-    expect(markerTitleOf('preview-start-marker')).toBe('Gate 5');
-  });
-
   test('destination selected -> Directions tap -> route preview appears once -> Start Navigation works', async () => {
     const destination: Place = {
       id: 'GATE_09',
@@ -1960,7 +1646,7 @@ describe('HomeScreen — recenter follow mode (Google Maps parity)', () => {
     await pressRecenterAndSettle(user);
     expect(await screen.findByLabelText('Following my current location. Tap to re-center.')).toBeOnTheScreen();
 
-    await fireEvent(screen.getByTestId('home-map-view', { includeHiddenElements: true }), 'panDrag');
+    await fireEvent(screen.getByTestId('home-map-view', { includeHiddenElements: true }), 'regionWillChange', { nativeEvent: { userInteraction: true } });
 
     expect(cameraStopFollowingSpy).toHaveBeenCalled();
     expect(await screen.findByLabelText('Center map on my current location')).toBeOnTheScreen();

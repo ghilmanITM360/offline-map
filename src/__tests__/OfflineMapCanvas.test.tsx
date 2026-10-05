@@ -39,6 +39,12 @@ describe('buildBasemapStyle', () => {
     expect(JSON.stringify(style)).not.toMatch(/https?:\/\//);
   });
 
+  it('falls back to a plain land canvas (no source) when the archive is unavailable', () => {
+    const plain = buildBasemapStyle(null, { min: 12, max: 16 });
+    expect(plain.sources).toEqual({});
+    expect(plain.layers.map((l) => l.id)).toEqual(['bg']);
+  });
+
   it('references only layers the archive pipeline produces', () => {
     const used = new Set(style.layers.map((l) => l['source-layer']).filter(Boolean));
     expect([...used].sort()).toEqual(['buildings', 'landuse', 'roads', 'water']);
@@ -105,5 +111,18 @@ describe('OfflineMapCanvas', () => {
   it('disables gestures together (scroll, zoom, rotate) when the host asks', async () => {
     await mount({ gesturesEnabled: false });
     expect(mockLastMapProps).toMatchObject({ dragPan: false, touchZoom: false, touchRotate: false });
+  });
+
+  it('ignores a region event without bounds/centre instead of throwing inside the native event handler', async () => {
+    const onRegionChangeComplete = jest.fn();
+    await mount({ onRegionChangeComplete });
+    await act(async () => { mockLastMapProps!.onRegionDidChange({ nativeEvent: {} }); });
+    expect(onRegionChangeComplete).not.toHaveBeenCalled();
+  });
+
+  it('a rejected feature query is swallowed, not an unhandled rejection', async () => {
+    mockQueryRenderedFeatures.mockRejectedValue(new Error('view gone'));
+    await mount({});
+    await act(async () => { await mockLastMapProps!.onPress({ nativeEvent: { lngLat: [67, 25], point: [1, 1] } }); });
   });
 });

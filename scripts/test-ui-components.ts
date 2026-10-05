@@ -7,7 +7,7 @@ const directions = readFileSync('src/views/components/map/LocationSheet.tsx', 'u
 // across a viewmodel, an overlay hook, and map-layers/chrome components, mirroring v2's shape.
 const navigationVm = readFileSync('src/viewmodels/NavigationViewModel.ts', 'utf8');
 const navigationOverlayV1 = readFileSync('src/viewmodels/useNavigationOverlayV1.ts', 'utf8');
-const navigationMapLayersV1 = readFileSync('src/views/components/navigation/NavigationMapLayersV1.tsx', 'utf8');
+const navigationMapLayersV1 = readFileSync('src/views/components/mapgl/navigationScene.ts', 'utf8');
 const navigationChromeV1 = readFileSync('src/views/components/navigation/NavigationChromeV1.tsx', 'utf8');
 const navigation = [navigationVm, navigationOverlayV1, navigationMapLayersV1, navigationChromeV1].join('\n');
 const settings = readFileSync('src/views/screens/SettingsScreen.tsx', 'utf8');
@@ -61,11 +61,11 @@ assert(
   navigationVm.includes("(activeRoute as { sourceVersion?: string }).sourceVersion === 'v2'"),
   'Legacy (v1) navigation runtime must detect and reject v2-shaped active routes',
 );
-assert(home.includes("mapType={baseMapMode === 'GOOGLE_BASEMAP' ? mapType : 'none'}"), 'Home map must render Google tiles only in resolved Google-basemap mode');
+assert(home.includes('<OfflineMapCanvas') && home.includes('archiveUri={basemapRejected ? null : basemap.uri}') && !home.includes('PROVIDER_GOOGLE'), 'Home map must render only the bundled offline basemap, never Google tiles');
 assert(navigation.includes('route.coordinates'), 'Navigation must render route polyline from active route coordinates');
-assert(navigation.includes('title="Start"'), 'Navigation must render a start marker');
-assert(navigation.includes('destinationMarker'), 'Navigation must render a destination marker');
-assert(navigation.includes('userMarker'), 'Navigation must render current/user marker');
+assert(navigation.includes('showNavigationStart'), 'Navigation must render a start marker');
+assert(navigation.includes('showNavigationDestination'), 'Navigation must render a destination marker');
+assert(navigation.includes('showNavigationUser'), 'Navigation must render current/user marker');
 assert(navigation.includes('onPress={requestNavigationExit}'), 'Navigation active Exit must use confirmation owner');
 assert(navigation.includes('onPress={completeArrivalNavigation}'), 'Navigation arrival Done must exit immediately');
 assert(navigation.includes('styles.tripTextWrap'), 'Navigation bottom trip text must be constrained separately from Exit button');

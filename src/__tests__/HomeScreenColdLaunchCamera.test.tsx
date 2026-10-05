@@ -7,6 +7,7 @@ import React from 'react';
 import { act, fireEvent, render, screen } from './test-utils';
 
 import { HomeScreen } from '../views/screens/HomeScreen';
+import { pressMapFeature, userDot } from './mapTestUtils';
 import { useHomeViewModel } from '../viewmodels/HomeViewModel';
 import { useDirectionsViewModel } from '../viewmodels/DirectionsViewModel';
 import { useAppStore } from '../store/useAppStore';
@@ -214,18 +215,32 @@ async function flushLaunchMicrotasks() {
 
 const initialRegionEvent = { latitude: 24.9694, longitude: 67.0064, latitudeDelta: 0.026, longitudeDelta: 0.016 };
 
+// MapLibre reports centre + bounds; HomeScreen turns them back into a Region.
+const regionDidChangeEvent = (r: typeof initialRegionEvent, userInteraction = false) => ({
+  nativeEvent: {
+    center: [r.longitude, r.latitude],
+    zoom: 16,
+    bearing: 0,
+    pitch: 0,
+    animated: false,
+    userInteraction,
+    bounds: [r.longitude - r.longitudeDelta / 2, r.latitude - r.latitudeDelta / 2, r.longitude + r.longitudeDelta / 2, r.latitude + r.latitudeDelta / 2],
+  },
+});
+const userPanEvent = { nativeEvent: { userInteraction: true } };
+
 // The native map applies its initial region shortly after onMapReady and reports it as the first
 // region-complete; startup camera moves wait for that event (or a short bound).
 async function settleInitialRegion() {
   await act(async () => {
-    fireEvent(screen.getByTestId('home-map-view', { includeHiddenElements: true }), 'regionChangeComplete', initialRegionEvent);
+    fireEvent(screen.getByTestId('home-map-view', { includeHiddenElements: true }), 'regionDidChange', regionDidChangeEvent(initialRegionEvent));
   });
 }
 
 async function renderAndMapReady() {
   const rendered = await render(<HomeScreen />);
   await act(async () => {
-    fireEvent(screen.getByTestId('home-map-view', { includeHiddenElements: true }), 'mapReady');
+    fireEvent(screen.getByTestId('home-map-view', { includeHiddenElements: true }), 'didFinishLoadingMap');
   });
   await settleInitialRegion();
   return rendered;
@@ -239,13 +254,13 @@ function expectNoLaunchMutationOrCamera() {
 }
 
 const invalidatingInteractions: Array<[string, () => Promise<void> | void]> = [
-  ['user pan', () => fireEvent(screen.getByTestId('home-map-view', { includeHiddenElements: true }), 'panDrag')],
+  ['user pan', () => fireEvent(screen.getByTestId('home-map-view', { includeHiddenElements: true }), 'regionWillChange', userPanEvent)],
   ['Recenter', async () => {
     fireEvent.press(screen.getByLabelText('Center map on my current location'));
     await jest.advanceTimersByTimeAsync(1300);
   }],
   ['facility selection', async () => {
-    fireEvent.press(screen.getByTestId('facility_marker_LM_MASJID_MAIN'));
+    await pressMapFeature('facility', 'LM_MASJID_MAIN');
     await jest.advanceTimersByTimeAsync(100);
   }],
 ];
@@ -279,21 +294,6 @@ describe('HomeScreen - launch camera (Google Maps principles, adapted for a venu
     expect(screen.getByText('Location unavailable. Showing Block 2.')).toBeOnTheScreen();
     expect(useAppStore.getState().currentLocation).toBeNull();
     expect(useAppStore.getState().hasSeenMapOverview).toBe(true);
-  });
-
-  test('Google mapLoaded before app mapReady does not start a startup resolver or camera decision', async () => {
-    useAppStore.setState({ hasSeenMapOverview: true, hasLocationPermission: true, currentLocation: null });
-
-    await render(<HomeScreen />);
-    await act(async () => {
-      fireEvent(screen.getByTestId('home-map-view', { includeHiddenElements: true }), 'mapLoaded');
-    });
-    await flushProjectionTimers();
-
-    expect(mockedResolveCurrentLocation).not.toHaveBeenCalled();
-    expect(cameraAnimateToUserSpy).not.toHaveBeenCalled();
-    expect(cameraFitVenueBoundsSpy).not.toHaveBeenCalled();
-    expect(setIsMapReadySpy).not.toHaveBeenCalled();
   });
 
   test('returning user with persisted lastKnownLocation only: asks for fresh GPS and does not auto-focus the remembered coordinate', async () => {
@@ -333,23 +333,8 @@ describe('HomeScreen - launch camera (Google Maps principles, adapted for a venu
     expect(mockedResolveCurrentLocation).toHaveBeenCalledTimes(1);
     expect(useAppStore.getState().currentLocation).toEqual(liveCoordinate);
     expect(useAppStore.getState().currentLocationSource).toBe('live');
-    expect(screen.getByTestId('browse-user-location-marker').props.coordinate).toEqual(liveCoordinate);
+    expect(userDot()).toEqual([liveCoordinate.longitude, liveCoordinate.latitude]);
     // #222: a valid location inside the Ijtema shows the grounds overview, not a zoom onto the dot.
-    expect(cameraFitVenueBoundsSpy).toHaveBeenCalledTimes(1);
-    expect(cameraAnimateToUserSpy).not.toHaveBeenCalled();
-  });
-
-  test('Google mapLoaded after returning launch commit does not start a second resolver or camera decision', async () => {
-    useAppStore.setState({ hasSeenMapOverview: true, hasLocationPermission: true, currentLocation: null });
-
-    await renderAndMapReady();
-    await flushLaunchMicrotasks();
-    await act(async () => {
-      fireEvent(screen.getByTestId('home-map-view', { includeHiddenElements: true }), 'mapLoaded');
-    });
-    await flushProjectionTimers();
-
-    expect(mockedResolveCurrentLocation).toHaveBeenCalledTimes(1);
     expect(cameraFitVenueBoundsSpy).toHaveBeenCalledTimes(1);
     expect(cameraAnimateToUserSpy).not.toHaveBeenCalled();
   });
@@ -583,10 +568,10 @@ describe('HomeScreen - launch camera (Google Maps principles, adapted for a venu
     await render(<HomeScreen />);
     const map = screen.getByTestId('home-map-view', { includeHiddenElements: true });
     await act(async () => {
-      fireEvent(map, 'mapReady');
+      fireEvent(map, 'didFinishLoadingMap');
     });
     await act(async () => {
-      fireEvent(map, 'mapReady');
+      fireEvent(map, 'didFinishLoadingMap');
     });
     await settleInitialRegion();
     await flushLaunchMicrotasks();
@@ -751,30 +736,32 @@ describe('#222 Map entry camera rules', () => {
 });
 
 describe('#222 startup camera waits for the initial region', () => {
-  test('a camera move issued at map-ready is held until the first region-complete, then runs once', async () => {
+  // #140: MapLibre applies the initial camera synchronously, so nothing is held back for a first region-complete any more
+  // (react-native-maps applied initialRegion after ready and dropped earlier commands).
+  test('a camera move issued at map-ready runs at once and exactly once, without waiting for a region event', async () => {
     useAppStore.setState({ hasSeenMapOverview: true, hasLocationPermission: false, currentLocation: null });
 
     await render(<HomeScreen />);
     await act(async () => {
-      fireEvent(screen.getByTestId('home-map-view', { includeHiddenElements: true }), 'mapReady');
+      fireEvent(screen.getByTestId('home-map-view', { includeHiddenElements: true }), 'didFinishLoadingMap');
     });
     await flushProjectionTimers();
 
-    expect(cameraAnimateToUserSpy).not.toHaveBeenCalled();
+    expect(cameraAnimateToUserSpy).toHaveBeenCalledTimes(1);
+    expect(cameraAnimateToUserSpy).toHaveBeenCalledWith(block2AnchorCoordinate);
 
     await settleInitialRegion();
     await settleInitialRegion();
 
     expect(cameraAnimateToUserSpy).toHaveBeenCalledTimes(1);
-    expect(cameraAnimateToUserSpy).toHaveBeenCalledWith(block2AnchorCoordinate);
   });
 
-  test('if the region-complete never arrives the move still runs after the bound', async () => {
+  test('with no region event at all the move has already run (nothing waits on a bound timer)', async () => {
     useAppStore.setState({ hasSeenMapOverview: true, hasLocationPermission: false, currentLocation: null });
 
     await render(<HomeScreen />);
     await act(async () => {
-      fireEvent(screen.getByTestId('home-map-view', { includeHiddenElements: true }), 'mapReady');
+      fireEvent(screen.getByTestId('home-map-view', { includeHiddenElements: true }), 'didFinishLoadingMap');
     });
     await act(async () => {
       await jest.advanceTimersByTimeAsync(9000);
@@ -782,58 +769,33 @@ describe('#222 startup camera waits for the initial region', () => {
 
     expect(cameraAnimateToUserSpy).toHaveBeenCalledTimes(1);
   });
-
-  test('a route preview that starts while the move is waiting wins: the held move never runs', async () => {
-    useAppStore.setState({ hasSeenMapOverview: true, hasLocationPermission: false, currentLocation: null });
-
-    await render(<HomeScreen />);
-    await act(async () => {
-      fireEvent(screen.getByTestId('home-map-view', { includeHiddenElements: true }), 'mapReady');
-    });
-    await act(async () => {
-      useAppStore.setState({
-        routePlannerDest: searchResultPlace,
-        activeRoute: {
-          sourceVersion: 'v2',
-          coordinates: [{ latitude: 24.963, longitude: 67.006 }, searchResultPlace.coordinate],
-          startResolution: { mode: 'inside', coordinate: { latitude: 24.963, longitude: 67.006 } },
-          destinationLabel: 'Gate 12',
-          startLabel: 'Current location',
-        } as any,
-      });
-    });
-    await settleInitialRegion();
-    await flushProjectionTimers();
-
-    expect(cameraAnimateToUserSpy).not.toHaveBeenCalled();
-    expect(cameraFitVenueBoundsSpy).not.toHaveBeenCalled();
-  });
 });
 
 describe('#222 an early camera move is re-run once the initial region is applied', () => {
-  test('the manager hears map-ready at once and the settled signal on the first region-complete', async () => {
+  test('the manager hears map-ready and the settled signal together at ready', async () => {
     useAppStore.setState({ hasSeenMapOverview: true, hasLocationPermission: false, currentLocation: null });
 
     await render(<HomeScreen />);
     await act(async () => {
-      fireEvent(screen.getByTestId('home-map-view', { includeHiddenElements: true }), 'mapReady');
+      fireEvent(screen.getByTestId('home-map-view', { includeHiddenElements: true }), 'didFinishLoadingMap');
     });
     await flushProjectionTimers();
 
     expect(cameraNotifyNativeMapReadySpy).toHaveBeenCalledTimes(1);
-    expect(cameraNotifyInitialRegionSettledSpy).not.toHaveBeenCalled();
+    expect(cameraNotifyInitialRegionSettledSpy).toHaveBeenCalledTimes(1);
 
     await settleInitialRegion();
 
-    expect(cameraNotifyInitialRegionSettledSpy).toHaveBeenCalledTimes(1);
+    // A later region-complete is still passed on (the manager caps replays itself).
+    expect(cameraNotifyInitialRegionSettledSpy).toHaveBeenCalledTimes(2);
   });
 
-  test('if no region-complete arrives the settled signal still goes out after the bound', async () => {
+  test('with no region event at all the settled signal has already gone out (nothing waits on a bound timer)', async () => {
     useAppStore.setState({ hasSeenMapOverview: true, hasLocationPermission: false, currentLocation: null });
 
     await render(<HomeScreen />);
     await act(async () => {
-      fireEvent(screen.getByTestId('home-map-view', { includeHiddenElements: true }), 'mapReady');
+      fireEvent(screen.getByTestId('home-map-view', { includeHiddenElements: true }), 'didFinishLoadingMap');
     });
     await act(async () => {
       await jest.advanceTimersByTimeAsync(3000);
@@ -847,7 +809,7 @@ describe('#222 an early camera move is re-run once the initial region is applied
 
     await render(<HomeScreen />);
     await act(async () => {
-      fireEvent(screen.getByTestId('home-map-view', { includeHiddenElements: true }), 'mapReady');
+      fireEvent(screen.getByTestId('home-map-view', { includeHiddenElements: true }), 'didFinishLoadingMap');
     });
     await act(async () => {
       await jest.advanceTimersByTimeAsync(3000);
@@ -938,7 +900,7 @@ describe('#222 the first camera intent does not fight the user', () => {
     await renderAndMapReady();
     cameraCancelEarlyReplaySpy.mockClear();
 
-    fireEvent(screen.getByTestId('home-map-view', { includeHiddenElements: true }), 'panDrag');
+    fireEvent(screen.getByTestId('home-map-view', { includeHiddenElements: true }), 'regionWillChange', userPanEvent);
 
     expect(cameraCancelEarlyReplaySpy).toHaveBeenCalledTimes(1);
   });

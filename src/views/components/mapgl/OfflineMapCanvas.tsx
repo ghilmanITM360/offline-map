@@ -21,8 +21,8 @@ export interface MapFeaturePress {
 }
 
 export interface OfflineMapCanvasProps {
-  /** `file://` URI of the installed basemap archive (see BundledBasemap). */
-  archiveUri: string;
+  /** `file://` URI of the installed basemap archive (see BundledBasemap); null renders a plain canvas. */
+  archiveUri: string | null;
   archiveZoom: { min: number; max: number };
   initialRegion: Region;
   /** Draw order bottom → top, on top of the basemap. */
@@ -30,6 +30,8 @@ export interface OfflineMapCanvasProps {
   style?: StyleProp<ViewStyle>;
   testID?: string;
   importantForAccessibility?: 'auto' | 'yes' | 'no' | 'no-hide-descendants';
+  /** Keeps the OSM attribution control (bottom-left, away from the right-hand control stack) clear of sheets and the nav bar: offset from the bottom edge, dp. */
+  attributionBottomInset?: number;
   gesturesEnabled?: boolean;
   rotateEnabled?: boolean;
   onLayout?: (width: number, height: number) => void;
@@ -69,6 +71,7 @@ export function OfflineMapCanvas(props: OfflineMapCanvasProps) {
         getCamera: () => cameraRef.current,
         getMap: () => mapRef.current,
         getViewport: () => viewportRef.current,
+        isReady: () => readyRef.current,
       }),
     [],
   );
@@ -89,7 +92,12 @@ export function OfflineMapCanvas(props: OfflineMapCanvasProps) {
   const handlePress = useCallback(
     async (event: NativeSyntheticEvent<{ lngLat: [number, number]; point: [number, number] }>) => {
       const { lngLat, point } = event.nativeEvent;
-      const features = (await mapRef.current?.queryRenderedFeatures(point, { layers: [...HIT_LAYER_IDS] })) ?? [];
+      let features: GeoJSON.Feature[] = [];
+      try {
+        features = (await mapRef.current?.queryRenderedFeatures(point, { layers: [...HIT_LAYER_IDS] })) ?? [];
+      } catch {
+        return; // the native view went away mid-query: nothing was tapped
+      }
       const hits = features.filter((f) => f.properties?.id && f.properties?.kind);
       if (hits.length === 0) {
         onBackgroundPress?.();
@@ -116,10 +124,12 @@ export function OfflineMapCanvas(props: OfflineMapCanvasProps) {
       importantForAccessibility={props.importantForAccessibility}
       logo={false}
       attribution
+      attributionPosition={{ bottom: props.attributionBottomInset ?? 8, left: 8 }}
       compass={false}
       dragPan={props.gesturesEnabled !== false}
       touchZoom={props.gesturesEnabled !== false}
       doubleTapZoom={props.gesturesEnabled !== false}
+      doubleTapHoldZoom={props.gesturesEnabled !== false}
       touchRotate={props.gesturesEnabled !== false && props.rotateEnabled !== false}
       touchPitch={false}
       onLayout={(e) => {
@@ -138,7 +148,11 @@ export function OfflineMapCanvas(props: OfflineMapCanvasProps) {
         if (e.nativeEvent.userInteraction) onUserPan?.();
       }}
       onRegionIsChanging={() => onRegionChange?.()}
-      onRegionDidChange={(e: NativeSyntheticEvent<ViewStateChangeEvent>) => onRegionChangeComplete?.(regionFromViewState(e.nativeEvent as never))}
+      onRegionDidChange={(e: NativeSyntheticEvent<ViewStateChangeEvent>) => {
+        // The native view state is empty when the map has no size/target yet — there is no region to report.
+        if (!e.nativeEvent?.center || !e.nativeEvent?.bounds) return;
+        onRegionChangeComplete?.(regionFromViewState(e.nativeEvent as never));
+      }}
     >
       <Camera ref={cameraRef} initialViewState={initialViewState} />
       <OverlayScene specs={overlays} />

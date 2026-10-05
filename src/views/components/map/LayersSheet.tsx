@@ -6,7 +6,7 @@
 import React from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Layers, Satellite, Map as MapIcon } from 'lucide-react-native';
+import { Layers } from 'lucide-react-native';
 
 import { SheetHandle } from '../common/SheetHandle';
 import { SheetHeader, SHEET_CORNER_RADIUS } from '../common/SheetHeader';
@@ -15,8 +15,6 @@ import { radii, shadows, spacing, staticColors } from '../../../theme';
 interface LayersSheetProps {
   visible: boolean;
   onClose: () => void;
-  mapType: 'standard' | 'satellite' | 'hybrid';
-  onMapTypeChange: (mapType: 'standard' | 'satellite') => void;
   showBlockPolygons: boolean;
   onToggleBlocks: (val: boolean) => void;
   showGatesLayer: boolean;
@@ -54,8 +52,6 @@ function OverlayRow({ label, value, onChange }: { label: string; value: boolean;
 export function LayersSheet({
   visible,
   onClose,
-  mapType,
-  onMapTypeChange,
   showBlockPolygons,
   onToggleBlocks,
   showGatesLayer,
@@ -79,30 +75,6 @@ export function LayersSheet({
         <SheetHeader title="Map Layers" icon={<Layers size={18} color="#202124" />} onClose={onClose} />
 
         <ScrollView bounces={false}>
-          <Text style={styles.sectionLabel}>Map Type</Text>
-          <View style={styles.segmentedControl}>
-            <Pressable
-              style={[styles.segment, mapType === 'standard' && styles.segmentActive]}
-              onPress={() => onMapTypeChange('standard')}
-              accessibilityRole="button"
-              accessibilityLabel="Standard map type"
-              accessibilityState={{ selected: mapType === 'standard' }}
-            >
-              <MapIcon size={16} color={mapType === 'standard' ? staticColors.info : staticColors.iconMuted} />
-              <Text style={[styles.segmentText, mapType === 'standard' && styles.segmentTextActive]}>Standard</Text>
-            </Pressable>
-            <Pressable
-              style={[styles.segment, mapType === 'satellite' && styles.segmentActive]}
-              onPress={() => onMapTypeChange('satellite')}
-              accessibilityRole="button"
-              accessibilityLabel="Satellite map type"
-              accessibilityState={{ selected: mapType === 'satellite' }}
-            >
-              <Satellite size={16} color={mapType === 'satellite' ? staticColors.info : staticColors.iconMuted} />
-              <Text style={[styles.segmentText, mapType === 'satellite' && styles.segmentTextActive]}>Satellite</Text>
-            </Pressable>
-          </View>
-
           <Text style={styles.sectionLabel}>Show on Map</Text>
           <View style={styles.overlayGroup}>
             <OverlayRow label="Blocks" value={showBlockPolygons} onChange={onToggleBlocks} />

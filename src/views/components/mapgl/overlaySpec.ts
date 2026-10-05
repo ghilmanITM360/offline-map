@@ -56,6 +56,18 @@ const polygon = (coords: readonly Coordinate[], properties: GeoJSON.GeoJsonPrope
 const state = (selected: boolean, focused: boolean) => (selected ? 'selected' : focused ? 'focused' : 'normal');
 const byState = (selected: unknown, focused: unknown, normal: unknown) => ['match', ['get', 'state'], 'selected', selected, 'focused', focused, normal];
 
+/** The faint venue outline, shared by browse and the legacy navigation scene. */
+export function buildVenueBoundaryOverlay(boundary: readonly Coordinate[]): OverlaySpec {
+  return {
+    id: 'venue-boundary',
+    data: fc(boundary.length > 2 ? [polygon(boundary)] : []),
+    layers: [
+      { id: 'venue-boundary-fill', type: 'fill', paint: { 'fill-color': 'rgba(232,245,233,0.06)' } },
+      { id: 'venue-boundary-line', type: 'line', paint: { 'line-color': 'rgba(46,125,50,0.48)', 'line-width': 2 } },
+    ],
+  };
+}
+
 export interface HomeVenueInput {
   venueBoundary: Coordinate[];
   blocks: V2BlockLayer[];
@@ -72,14 +84,7 @@ export function buildHomeVenueOverlay(input: HomeVenueInput): OverlaySpec[] {
   const { activeMapFilter: filter } = input;
   const focusedOn = (name: string) => filter === name;
   return [
-    {
-      id: 'venue-boundary',
-      data: fc(input.venueBoundary.length > 2 ? [polygon(input.venueBoundary)] : []),
-      layers: [
-        { id: 'venue-boundary-fill', type: 'fill', paint: { 'fill-color': 'rgba(232,245,233,0.06)' } },
-        { id: 'venue-boundary-line', type: 'line', paint: { 'line-color': 'rgba(46,125,50,0.48)', 'line-width': 2 } },
-      ],
-    },
+    buildVenueBoundaryOverlay(input.venueBoundary),
     {
       id: 'venue-blocks',
       data: fc(input.blocks.map((b) => polygon(b.polygon, { id: b.id, kind: 'block', label: b.label, state: state(b.isSelected, focusedOn('blocks')) }))),
@@ -255,8 +260,11 @@ export interface RouteInput {
 
 /** Route lines. Casing under fills; walked is muted, remaining carries the emphasis; reroute dashes the line. */
 export function buildRouteOverlay(input: RouteInput): OverlaySpec[] {
-  const dash = input.reroutePending ? { 'line-dasharray': [1.4, 0.7] } : {};
+  // Reroute pending: dash the route line (butt caps — round caps extend each dash by half the width and close the gaps)
+  // over a solid casing, so the cue is visible and the two never drift out of phase.
+  const dash = input.reroutePending ? { 'line-dasharray': [2, 1.6] } : {};
   const round = { 'line-cap': 'round', 'line-join': 'round' };
+  const lineLayout = input.reroutePending ? { 'line-cap': 'butt', 'line-join': 'round' } : round;
   const specs: OverlaySpec[] = [];
   if (input.outside.length > 1) {
     specs.push({
@@ -278,10 +286,10 @@ export function buildRouteOverlay(input: RouteInput): OverlaySpec[] {
     const showProgress = (input.walked !== undefined || input.remaining !== undefined) && !input.reroutePending;
     const features: GeoJSON.Feature[] = [line(input.inside, { part: 'full' })];
     const layers: LayerSpec[] = [
-      { id: 'route-casing', type: 'line', layout: round, paint: { 'line-color': staticColors.routeCasing, 'line-width': 11, ...dash }, filter: part('full') },
+      { id: 'route-casing', type: 'line', layout: round, paint: { 'line-color': staticColors.routeCasing, 'line-width': 11 }, filter: part('full') },
     ];
     if (!showProgress) {
-      layers.push({ id: 'route-line', type: 'line', layout: round, paint: { 'line-color': staticColors.routeInside, 'line-width': 7, ...dash }, filter: part('full') });
+      layers.push({ id: 'route-line', type: 'line', layout: lineLayout, paint: { 'line-color': staticColors.routeInside, 'line-width': 7, ...dash }, filter: part('full') });
     } else {
       if (input.walked && input.walked.length > 1) features.push(line(input.walked, { part: 'walked' }));
       if (input.remaining && input.remaining.length > 1) features.push(line(input.remaining, { part: 'remaining' }));
@@ -346,7 +354,8 @@ export function buildMarkerOverlay(input: MarkersInput): OverlaySpec[] {
         id: 'user-accuracy',
         type: 'circle',
         paint: {
-          'circle-radius': metersToPixels(accuracy, u.coordinate.latitude),
+          // Rounded latitude: the paint expression must not change on every GPS tick (the venue spans ~0.01°).
+          'circle-radius': metersToPixels(accuracy, Math.round(u.coordinate.latitude * 10) / 10),
           'circle-color': staticColors.userAccuracyFill,
           'circle-stroke-width': 1,
           'circle-stroke-color': staticColors.userAccuracyStroke,

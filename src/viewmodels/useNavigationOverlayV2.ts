@@ -5,7 +5,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Animated } from 'react-native';
-import MapView from 'react-native-maps';
+import type { MapCameraHandle } from '../views/components/mapgl/MapCameraHandle';
 import { useAppStore } from '../store/useAppStore';
 import { V2MapRenderingService } from '../services/V2MapRenderingService';
 import { useNavigationViewModelV2 } from './NavigationViewModelV2';
@@ -15,7 +15,7 @@ import { useNavigationExitConfirmation } from './useNavigationExitConfirmation';
 declare const __DEV__: boolean;
 
 interface Params {
-  mapRef: React.RefObject<MapView | null>;
+  mapRef: React.RefObject<MapCameraHandle | null>;
   mapReady: boolean;
   mapZoomLevel: number;
   hasBaseMap: boolean;

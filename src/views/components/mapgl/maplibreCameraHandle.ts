@@ -24,14 +24,31 @@ interface Deps {
   getCamera: () => CameraRef | null;
   getMap: () => MapRef | null;
   getViewport: () => { width: number; height: number };
+  /** True once the native map has loaded. Before that its native methods dereference a missing MapLibreMap. */
+  isReady: () => boolean;
 }
 
-export function createMapLibreCameraHandle({ getCamera, getMap, getViewport }: Deps): MapCameraHandle {
+// Smallest area a fit may frame (≈ 110 m). A single point, or a route whose points coincide, would otherwise give a
+// zero-extent bounds.
+const MIN_FIT_SPAN_DEG = 0.001;
+
+export function createMapLibreCameraHandle({ getCamera, getMap, getViewport, isReady }: Deps): MapCameraHandle {
+  const readyCamera = () => (isReady() ? getCamera() : null);
+  // Camera commands are fire-and-forget for the app; a native rejection (view torn down mid-flight) must never become
+  // an unhandled promise rejection.
+  const send = (stop: Record<string, unknown>) => {
+    void readyCamera()?.setStop(stop as never)?.catch(() => undefined);
+  };
+  const readyMap = () => (isReady() ? getMap() : null);
   return {
     animateToRegion(region, duration = 500) {
-      void getCamera()?.setStop({
+      // Region/bounds moves are north-up and flat (Google's behaviour); MapLibre would keep the tilted, rotated
+      // navigation camera after Exit, and the user cannot undo tilt by gesture.
+      send({
         center: [region.longitude, region.latitude],
         zoom: regionToMapLibreZoom(region, getViewport().width),
+        bearing: 0,
+        pitch: 0,
         duration,
         easing: 'ease',
       });
@@ -46,9 +63,19 @@ export function createMapLibreCameraHandle({ getCamera, getMap, getViewport }: D
         south = Math.min(south, c.latitude);
         north = Math.max(north, c.latitude);
       }
-      void getCamera()?.setStop({
+      if (east - west < MIN_FIT_SPAN_DEG) {
+        west -= MIN_FIT_SPAN_DEG / 2;
+        east += MIN_FIT_SPAN_DEG / 2;
+      }
+      if (north - south < MIN_FIT_SPAN_DEG) {
+        south -= MIN_FIT_SPAN_DEG / 2;
+        north += MIN_FIT_SPAN_DEG / 2;
+      }
+      send({
         bounds: [west, south, east, north],
         padding: options?.edgePadding,
+        bearing: 0,
+        pitch: 0,
         duration: options?.animated === false ? 0 : FIT_DURATION_MS,
         easing: 'ease',
       });
@@ -60,13 +87,13 @@ export function createMapLibreCameraHandle({ getCamera, getMap, getViewport }: D
       if (camera.zoom !== undefined) stop.zoom = googleZoomToMapLibre(camera.zoom);
       if (camera.heading !== undefined) stop.bearing = camera.heading;
       if (camera.pitch !== undefined) stop.pitch = camera.pitch;
-      void getCamera()?.setStop({ ...stop, duration: options?.duration ?? 500, easing: 'ease' } as never);
+      send({ ...stop, duration: options?.duration ?? 500, easing: 'ease' });
     },
 
     async getCamera() {
-      const map = getMap();
-      if (!map) throw new Error('Map not ready');
-      const view = await map.getViewState();
+      const m = readyMap();
+      if (!m) throw new Error('Map not ready');
+      const view = await m.getViewState();
       return {
         center: { latitude: view.center[1], longitude: view.center[0] },
         zoom: mapLibreZoomToGoogle(view.zoom),
@@ -76,9 +103,9 @@ export function createMapLibreCameraHandle({ getCamera, getMap, getViewport }: D
     },
 
     async pointForCoordinate(coordinate) {
-      const map = getMap();
-      if (!map) throw new Error('Map not ready');
-      const [x, y] = await map.project([coordinate.longitude, coordinate.latitude]);
+      const m = readyMap();
+      if (!m) throw new Error('Map not ready');
+      const [x, y] = await m.project([coordinate.longitude, coordinate.latitude]);
       return { x, y };
     },
   };

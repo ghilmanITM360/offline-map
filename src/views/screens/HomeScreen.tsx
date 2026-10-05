@@ -17,17 +17,17 @@ import {
   Alert,
   BackHandler,
   Animated,
-  ActivityIndicator,
   useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import MapView, { Marker, Polygon, Polyline, PROVIDER_GOOGLE, LocalTile } from 'react-native-maps';
-import { SvgMarker } from '../components/map/useMarkerPaintWindow';
-import { NoInfoWindow } from '../components/map/NoInfoWindow';
+import provenance from '../../../assets/offline-map/BASEMAP_PROVENANCE.json';
+import { OfflineMapCanvas, type MapFeaturePress } from '../components/mapgl/OfflineMapCanvas';
+import { buildHomeVenueOverlay, buildMarkerOverlay, buildRouteOverlay, type OverlaySpec } from '../components/mapgl/overlaySpec';
+import { buildNavigationScene, buildNavigationSceneV1 } from '../components/mapgl/navigationScene';
+import { useBundledBasemap } from '../components/mapgl/useBundledBasemap';
+import { BASEMAP_COLORS } from '../components/mapgl/basemapStyle';
 import {
   Menu,
-  Navigation,
-  MapPin,
   WifiOff,
   X,
   LayoutGrid,
@@ -61,23 +61,11 @@ import { markerColors, markerSizes, shadows, staticColors } from '../../theme';
 import { getDistance } from 'geolib';
 import { GRAPH_VALIDATION, IJTEMA_DATA, LANDMARK_PLACES, MAP_BOUNDS } from '../../constants/data';
 import { Coordinate, Place, RoutePreview } from '../../models/types';
-import { OfflineMapService } from '../../services/OfflineMapService';
 import { PlaceDetailService } from '../../services/PlaceDetailService';
 import { FavoriteService } from '../../services/FavoriteService';
 import { useAppStore, type DirectoryPurpose } from '../../store/useAppStore';
 import { RoutePointService } from '../../services/RoutePointService';
-import { Paths } from 'expo-file-system';
 import { DrawerParamList, RootStackParamList } from '../../navigation/RootNavigator';
-import { MapConfigService } from '../../services/MapConfigService';
-import { resolveBaseMapMode } from '../../services/BaseMapModeResolver';
-import {
-  applyMapLoaded,
-  applyWatchdogTimeout,
-  beginMapLoadAttempt,
-  createInactiveWatchdogState,
-  MAP_LOAD_WATCHDOG_TIMEOUT_MS,
-  MapLoadWatchdogState,
-} from '../../services/MapLoadWatchdog';
 import { MapFeatureFlagsService } from '../../services/MapFeatureFlagsService';
 import { MapStartupController, type EntryCameraPlan } from '../../services/MapStartupController';
 import { LocationAccessService } from '../../services/LocationAccessService';
@@ -87,14 +75,7 @@ import type { RoutePreviewV2 } from '../../viewmodels/NavigationViewModelV2';
 import { destinationFromPlace } from '../../services/V2DirectionsService';
 import { MapLocalizationService } from '../../services/MapLocalizationService';
 import { V2PlaceAdapter } from '../../services/V2PlaceAdapter';
-import { IJTEMA_MAP_BOUNDS, IJTEMA_MAP_REGION } from '../../data/ijtema';
-import { VenueBoundary } from '../components/map/VenueBoundary';
-import { SatelliteDimOverlay } from '../components/map/SatelliteDimOverlay';
-import { RastaLayer } from '../components/map/RastaLayer';
-import { SpecialRouteLayer } from '../components/map/SpecialRouteLayer';
-import { BlockLayer } from '../components/map/BlockLayer';
-import { GateLayer } from '../components/map/GateLayer';
-import { FacilityLayer } from '../components/map/FacilityLayer';
+import { IJTEMA_MAP_REGION } from '../../data/ijtema';
 import { MapLabelOverlay, MapLabelItem, MapLabelOverlayHandle } from '../components/map/MapLabelOverlay';
 import { MapControls, MapControlsRecenter } from '../components/map/MapControls';
 import { LayersSheet } from '../components/map/LayersSheet';
@@ -102,14 +83,10 @@ import { useNavigationOverlayV2 } from '../../viewmodels/useNavigationOverlayV2'
 import { useNavigationOverlayV1 } from '../../viewmodels/useNavigationOverlayV1';
 import { useMapMode } from '../../viewmodels/useMapMode';
 import { useReducedMotion } from '../../viewmodels/useReducedMotion';
-import { NavigationMapLayersV2 } from '../components/navigation/NavigationMapLayersV2';
-import { OutsideRoutePolyline } from '../components/navigation/OutsideRoutePolyline';
 import { NavigationChromeV2 } from '../components/navigation/NavigationChromeV2';
-import { NavigationMapLayersV1 } from '../components/navigation/NavigationMapLayersV1';
 import { NavigationChromeV1 } from '../components/navigation/NavigationChromeV1';
 import { LocationSheet } from '../components/map/LocationSheet';
 import { DirectionsSheetFooter } from '../components/map/DirectionsSheetFooter';
-import { UserLocationMarker } from '../components/map/UserLocationMarker';
 import { resolveMapMarkerOwnership } from '../components/map/MapMarkerOwnership';
 import { LocationTutorialTooltip } from '../components/map/LocationTutorialTooltip';
 import { OsmAttribution } from '../components/map/OsmAttribution';
@@ -123,8 +100,6 @@ type HomeScreenNavigationProp = CompositeNavigationProp<
   NativeStackNavigationProp<RootStackParamList>
 >;
 
-const getTilePath = (): string => `${Paths.document.uri}tiles/{z}_{x}_{y}.png`;
-
 // Static — derived only from the fixed MAP_BOUNDS constant, so it never needs to be
 // recomputed per render.
 const VENUE_BOUNDARY = [
@@ -134,10 +109,6 @@ const VENUE_BOUNDARY = [
   { latitude: MAP_BOUNDS.maxLat, longitude: MAP_BOUNDS.minLng },
 ];
 
-// Phase 11 (task #38): padded 50% beyond the venue bounds so the satellite dim scrim also
-// covers the approach streets/gates just outside the venue, not only the interior.
-const SATELLITE_DIM_LAT_PAD = (IJTEMA_MAP_BOUNDS.maxLat - IJTEMA_MAP_BOUNDS.minLat) * 0.5;
-const SATELLITE_DIM_LNG_PAD = (IJTEMA_MAP_BOUNDS.maxLng - IJTEMA_MAP_BOUNDS.minLng) * 0.5;
 const ROUTE_FIT_BOTTOM_PADDING = 32;
 // Get Directions pins its CTA footer (~155 dp) under a ~97 dp header, so the shared
 // 50% detent (~252 dp on a 914 dp window) leaves no scroll area and hides both cards.
@@ -145,13 +116,6 @@ const ROUTE_FIT_BOTTOM_PADDING = 32;
 // the footer (76% clipped that row by ~11 dp on the 914 dp emulator window), while the map
 // keeps ~42% of the window. Same three-detent index contract.
 const ROUTE_PREVIEW_SNAP_POINTS = ['15%', '79%', '92%'];
-const SATELLITE_DIM_BOUNDARY = [
-  { latitude: IJTEMA_MAP_BOUNDS.minLat - SATELLITE_DIM_LAT_PAD, longitude: IJTEMA_MAP_BOUNDS.minLng - SATELLITE_DIM_LNG_PAD },
-  { latitude: IJTEMA_MAP_BOUNDS.minLat - SATELLITE_DIM_LAT_PAD, longitude: IJTEMA_MAP_BOUNDS.maxLng + SATELLITE_DIM_LNG_PAD },
-  { latitude: IJTEMA_MAP_BOUNDS.maxLat + SATELLITE_DIM_LAT_PAD, longitude: IJTEMA_MAP_BOUNDS.maxLng + SATELLITE_DIM_LNG_PAD },
-  { latitude: IJTEMA_MAP_BOUNDS.maxLat + SATELLITE_DIM_LAT_PAD, longitude: IJTEMA_MAP_BOUNDS.minLng - SATELLITE_DIM_LNG_PAD },
-];
-
 type V2PreviewRoute = RoutePreviewV2;
 
 // gorhom's default sheet background is itself an accessible, "adjustable" View labelled "Bottom Sheet"
@@ -184,7 +148,6 @@ const BANNER_CONTROL_GAP = 8;
 // Time after onMapReady at which the camera manager is told the initial region should be applied, in case the first
 // region-complete never arrives (on a loaded emulator it arrived about 6 s after onMapReady; the manager re-runs
 // an early move again when it does).
-const STARTUP_REGION_SETTLE_BOUND_MS = 2500;
 
 export function HomeScreen() {
   const nav = useNavigation<HomeScreenNavigationProp>();
@@ -204,7 +167,6 @@ export function HomeScreen() {
   const hasSeenLocationTutorial = useAppStore((s) => s.hasSeenLocationTutorial);
   const setHasSeenLocationTutorial = useAppStore((s) => s.setHasSeenLocationTutorial);
   const activeRoute = useAppStore((s) => s.activeRoute);
-  const offlineMapStatus = useAppStore((s) => s.offlineMapStatus);
   const clearRoutePlanner = useAppStore((s) => s.clearRoutePlanner);
   const favorites = useAppStore((s) => s.favorites);
   // Deliberately the raw store primitive, not `mode` — used only below to null out
@@ -250,28 +212,17 @@ export function HomeScreen() {
   const startupMapReadyReleasedRef = useRef(false);
   const mapReadyRef = useRef(false);
   const mountedRef = useRef(true);
-  // #28: current load-attempt id for MapLoadWatchdog — bumped each time a fresh Google load
-  // attempt is armed, so a stale timeout from a superseded attempt is ignored instead of
-  // firing OFFLINE_FALLBACK on top of newer state (see the watchdog effect below).
-  const mapLoadGenerationRef = useRef(0);
   const theme = useTheme();
   const insets = useSafeAreaInsets();
-  const mapRuntimeStatus = MapConfigService.getRuntimeStatus();
-  const hasGoogleMapsKey = mapRuntimeStatus.keyPresent;
+  const basemap = useBundledBasemap();
+  // A style that fails to load (e.g. an unreadable archive) falls back to the plain canvas so the venue overlays still render.
+  const [basemapRejected, setBasemapRejected] = useState(false);
   const useV2Map = MapFeatureFlagsService.useIjtemaV2Map();
   const [outsideBannerDismissed, setOutsideBannerDismissed] = useState(false);
   // #222: set only when the Map opened on the Block 2 anchor because no usable location existed.
   const [fallbackNotice, setFallbackNotice] = useState<string | null>(null);
   const [layersSheetVisible, setLayersSheetVisible] = useState(false);
   const [mapReady, setMapReadyState] = useState(false);
-  // #28: single source of truth for Google-basemap load health — see MapLoadWatchdog.ts.
-  // googleBaseMapLoaded/mapLoadFailed below are derived, kept as named booleans because the
-  // rest of this component (and resolveBaseMapMode) reads them as such.
-  const [mapLoadWatchdog, setMapLoadWatchdog] = useState<MapLoadWatchdogState>(() =>
-    createInactiveWatchdogState(mapLoadGenerationRef.current),
-  );
-  const googleBaseMapLoaded = mapLoadWatchdog.state === 'GOOGLE_READY' || mapLoadWatchdog.state === 'GOOGLE_RECOVERED';
-  const mapLoadFailed = mapLoadWatchdog.state === 'OFFLINE_FALLBACK';
   const [topOverlayHeight, setTopOverlayHeight] = useState(0);
   const [isMapDragging, setIsMapDragging] = useState(false);
   const [recenterState, setRecenterState] = useState<'idle' | 'loading' | 'success' | 'failure'>('idle');
@@ -300,12 +251,10 @@ export function HomeScreen() {
     mapRef,
     bottomSheetRef,
     cameraManager,
-    mapType,
     selectedPlace,
     snapPoints: baseSnapPoints,
     initialRegion,
     isOffline,
-    offlineData,
     mapZoomLevel,
     venueStatus,
     isInsideVenue,
@@ -321,7 +270,6 @@ export function HomeScreen() {
     handleMapRegionChangeComplete,
     clearSearch,
     setSelectedPlace,
-    updateSettings,
     settings,
   } = useHomeViewModel({ isFocused: isHomeFocused });
 
@@ -362,15 +310,10 @@ export function HomeScreen() {
     };
   }, []);
 
-  const baseMapMode = resolveBaseMapMode({
-    hasGoogleMapsKey,
-    hasInternet: !isOffline,
-    googleMapLoadFailed: mapLoadFailed,
-    offlineDataDownloaded: offlineData.isDownloaded,
-    offlineMapStatus,
-  });
-  const graphOnlyFallbackUsed = baseMapMode === 'GRAPH_ONLY';
-  const hasBaseMap = baseMapMode !== 'GRAPH_ONLY';
+  // #140: the venue basemap ships inside the app, so a base map is always present — there is no
+  // download step, Google mode, or graph-only fallback any more.
+  const graphOnlyFallbackUsed = false;
+  const hasBaseMap = true;
 
   const showDetails = useCallback(() => {
     setDetailsExpanded(true);
@@ -522,8 +465,7 @@ export function HomeScreen() {
     },
   }), [navOverlayV1, nav]);
 
-  const showOsmAttribution =
-    baseMapMode === 'LOCAL_TILES' || outsideRouteProvider(activePreviewRoute ?? activeRoute) === 'offline-osm';
+  const showOsmAttribution = outsideRouteProvider(activePreviewRoute ?? activeRoute) === 'offline-osm';
   // Single source of truth for "what is the map surface showing right now" — every
   // render/behavior gate below reads `mode`, never the raw arrived/etc inputs directly,
   // so nothing can drift out of sync with the priority chain in deriveMapMode.
@@ -963,7 +905,6 @@ export function HomeScreen() {
   const outsideBannerAccessibilityLabel = nearestEntryGate
     ? `Outside Ijtema. Suggested entry through ${nearestEntryGate.name.en}. Final entry gate is confirmed when route preview is calculated.`
     : 'Outside Ijtema. Suggested entry unavailable. Final entry gate is confirmed when route preview is calculated.';
-  const showMapWarningBanner = baseMapMode === 'GRAPH_ONLY';
   // The Block 2 opening view is a fallback, so the notice goes away as soon as a live location exists or the user moves on.
   const showFallbackNotice = !!fallbackNotice && !(currentLocation && currentLocationSource === 'live') && mode === 'EXPLORE';
   const topInsetBase = Math.max(insets.top, Platform.OS === 'android' ? StatusBar.currentHeight ?? 0 : 0);
@@ -1066,12 +1007,9 @@ export function HomeScreen() {
     }),
     [activeNavBottomBarHeight, insets.bottom, layoutSnapPoints, mode, sheetIndex, topOverlayHeight, windowHeight],
   );
-  // MapView mapPadding already reserves the sheet-covered area. react-native-maps adds
-  // fitToCoordinates edgePadding on top of that base padding on Android, so repeating
-  // mapLabelEdgeInsets.bottom here double-counts the sheet and can clip a route endpoint.
-  // Keep only a small inner margin inside the already-unobscured viewport. Schedule the
-  // camera command for the next rendered frame so Android applies the new mapPadding prop
-  // before fitToCoordinates reads react-native-maps' native base-padding fields.
+  // The MapLibre camera has no native base padding, so the route fit reserves the sheet-covered band itself:
+  // mapLabelEdgeInsets.bottom (the same obstruction the labels and attribution already avoid) plus a small margin.
+  // Scheduled for the next rendered frame so the sheet has settled at its new snap before the fit is measured.
   useEffect(() => {
     if (!activePreviewRoute || activePreviewRoute.coordinates.length < 2) return;
     const frame = requestAnimationFrame(() => {
@@ -1079,7 +1017,7 @@ export function HomeScreen() {
       cameraManager.fitRoute(activePreviewRoute.coordinates, {
         top: Math.max(mapLabelEdgeInsets.top, 90),
         right: Math.max(mapLabelEdgeInsets.right, 64),
-        bottom: ROUTE_FIT_BOTTOM_PADDING,
+        bottom: mapLabelEdgeInsets.bottom + ROUTE_FIT_BOTTOM_PADDING,
         left: 64,
       });
     });
@@ -1162,33 +1100,6 @@ export function HomeScreen() {
     setShowLocationTutorial(true);
     setHasSeenLocationTutorial(true);
   }, [cameraManager.mode, currentLocation, hasSeenLocationTutorial, setHasSeenLocationTutorial]);
-
-  useEffect(() => {
-    if (!hasGoogleMapsKey || isOffline) {
-      // Functional updater + state-check preserves referential equality (React bails out of
-      // the re-render) when already INACTIVE, matching the old plain-boolean early return.
-      setMapLoadWatchdog((prev) => (prev.state === 'INACTIVE' ? prev : createInactiveWatchdogState(mapLoadGenerationRef.current)));
-      return;
-    }
-    if (googleBaseMapLoaded) return;
-    const generation = mapLoadGenerationRef.current + 1;
-    mapLoadGenerationRef.current = generation;
-    setMapLoadWatchdog(beginMapLoadAttempt(generation));
-    const timeout = setTimeout(() => {
-      setMapLoadWatchdog((prev) => applyWatchdogTimeout(prev, generation));
-    }, MAP_LOAD_WATCHDOG_TIMEOUT_MS);
-    return () => clearTimeout(timeout);
-  }, [googleBaseMapLoaded, hasGoogleMapsKey, isOffline]);
-
-  const wasOfflineRef = useRef(isOffline);
-  useEffect(() => {
-    const wasOffline = wasOfflineRef.current;
-    wasOfflineRef.current = isOffline;
-    if (!wasOffline || isOffline || !hasGoogleMapsKey) return;
-    // A connectivity recovery is the one explicit retry boundary. The previous
-    // watchdog latch stays stable otherwise, preventing Google/local switching loops.
-    setMapLoadWatchdog((prev) => (prev.state === 'INACTIVE' ? prev : createInactiveWatchdogState(mapLoadGenerationRef.current)));
-  }, [hasGoogleMapsKey, isOffline]);
 
   useEffect(() => {
     if (venueStatus.insideVenue) {
@@ -1373,15 +1284,169 @@ export function HomeScreen() {
     return () => handler.remove();
   }, [sheetSuppressed, mode, closeDetails, directionsDestination, handleCloseDirections, handleClearPreviewRoute, closeSheet]);
 
-  const openLayerOptions = () => setLayersSheetVisible(true);
+  // A remembered (not live) position stays visibly remembered: the dot is dimmed and captioned "last known".
+  const rememberedLabelCoordinate = currentLocationSource === 'remembered'
+    ? showNavOverlay
+      ? navOverlay.snappedLocation
+      : markerOwnership.showBrowseUser
+        ? currentLocation
+        : null
+    : null;
+  const allMapLabelItems = useMemo<MapLabelItem[]>(
+    () => rememberedLabelCoordinate
+      ? [
+          ...mapLabelItems,
+          {
+            id: 'user_last_known',
+            coordinate: rememberedLabelCoordinate,
+            text: 'last known',
+            kind: 'user',
+            zPriority: 40,
+            yOffset: 26,
+            accessibilityLabel: 'Your last known location',
+          },
+        ]
+      : mapLabelItems,
+    [mapLabelItems, rememberedLabelCoordinate],
+  );
 
-  const handleMapTypeChange = (nextMapType: 'standard' | 'satellite') => {
-    if (nextMapType === 'satellite' && baseMapMode !== 'GOOGLE_BASEMAP') {
-      Alert.alert('Satellite unavailable offline', 'Satellite imagery requires internet. Ijtema routes still work offline.');
-      return;
+  // MapLibre has no onMapReady: the style + archive finishing loading is the point the camera can be commanded.
+  const handleMapReady = () => {
+    mapReadyRef.current = true;
+    setMapReadyState(true);
+    cameraManager.notifyNativeMapReady();
+    // MapLibre applies the initial camera synchronously when the Camera mounts (react-native-maps applied initialRegion
+    // shortly after ready and dropped earlier commands), so there is no initial region left to wait for: settle now
+    // instead of holding the startup camera for the 2.5 s fallback timer.
+    settleStartupRegion();
+    handleMapRegionChangeComplete(effectiveInitialRegion);
+    mapLabelOverlayRef.current?.requestProjection();
+
+    // Startup camera decision — MapStartupController owns the "what should
+    // happen" logic. HomeScreen owns the one-shot guard, stale-result checks,
+    // canonical live-location write, and the actual CameraManager calls.
+    if (!startupCameraRequestStartedRef.current) {
+      const venueBoundary = useV2Map ? v2MapLayers.venueBoundary : VENUE_BOUNDARY;
+      beginStartupCameraDecision(venueBoundary);
     }
-    updateSettings({ mapMode: nextMapType });
+
+    if (__DEV__) {
+      console.log('[Home][Render]', {
+        mapReady: true,
+        graphOverlayReady: true,
+        selectedMarkerReady: !!selectedPlaceMarkerCoordinate,
+        userMarkerReady: !!currentLocation,
+        graphOnlyFallbackUsed,
+      });
+    }
+
   };
+
+  const handleFeaturePress = useCallback(({ id, kind, coordinate }: MapFeaturePress) => {
+    const place = kind === 'facility' ? LANDMARK_PLACES.find((p) => p.id === id) : V2PlaceAdapter.getPlaceById(id);
+    if (!place) return;
+    collectTapCandidate({ id, kind, coordinate, payload: place });
+  }, [collectTapCandidate]);
+
+  // Everything drawn on top of the basemap, bottom → top. Navigation/arrival and browse/preview are exclusive scenes.
+  // The navigation overlay hooks return a fresh object every render, so the scenes depend on the specific fields they read
+  // (otherwise every GPS tick / drag / zoom would rebuild and re-serialise every GeoJSON source).
+  const navSceneInput = useMemo(
+    () => ({
+      route: navOverlay.route,
+      snappedLocation: navOverlay.snappedLocation,
+      arrived: navOverlay.arrived,
+      reroutePending: navOverlay.reroutePending,
+      mapLayers: navOverlay.mapLayers,
+      currentLocationSource: navOverlay.currentLocationSource,
+    }),
+    [navOverlay.route, navOverlay.snappedLocation, navOverlay.arrived, navOverlay.reroutePending, navOverlay.mapLayers, navOverlay.currentLocationSource],
+  );
+  const navSceneInputV1 = useMemo(
+    () => ({
+      route: navOverlayV1.route,
+      destination: navOverlayV1.destination,
+      snappedLocation: navOverlayV1.snappedLocation,
+      arrived: navOverlayV1.arrived,
+      reroutePending: navOverlayV1.reroutePending,
+      mapLayers: navOverlayV1.mapLayers,
+      currentLocationSource: navOverlayV1.currentLocationSource,
+    }),
+    [navOverlayV1.route, navOverlayV1.destination, navOverlayV1.snappedLocation, navOverlayV1.arrived, navOverlayV1.reroutePending, navOverlayV1.mapLayers, navOverlayV1.currentLocationSource],
+  );
+  // Venue context: no location dependencies, so a GPS tick never rebuilds it.
+  const browseVenueSpecs = useMemo<OverlaySpec[]>(
+    () => useV2Map
+      ? buildHomeVenueOverlay({
+          venueBoundary: v2MapLayers.venueBoundary,
+          blocks: showBlockPolygons ? previewVisibleBlocks : [],
+          rastas: previewVisibleRastas,
+          specialRoutes: previewVisibleSpecialRoutes,
+          gates: previewVisibleGateMarkers,
+          facilities: LANDMARK_PLACES,
+          selectedFacilityId: selectedPlace?.id,
+          activeMapFilter: v2MapLayers.activeMapFilter,
+        })
+      : [],
+    [previewVisibleBlocks, previewVisibleGateMarkers, previewVisibleRastas, previewVisibleSpecialRoutes, selectedPlace?.id, showBlockPolygons, useV2Map, v2MapLayers.activeMapFilter, v2MapLayers.venueBoundary],
+  );
+  const previewRouteSpecs = useMemo<OverlaySpec[]>(
+    () => activePreviewRoute && activePreviewRoute.coordinates.length > 1
+      ? buildRouteOverlay({
+          outside: previewOutsideLegCoordinates,
+          roadFollowing: activePreviewRoute.outsideRoute?.roadFollowing ?? false,
+          inside: previewInsideLegCoordinates,
+        })
+      : [],
+    [activePreviewRoute, previewInsideLegCoordinates, previewOutsideLegCoordinates],
+  );
+  const mapOverlays = useMemo<OverlaySpec[]>(() => {
+    const browseUser = markerOwnership.showBrowseUser && currentLocation
+      ? buildMarkerOverlay({
+          user: {
+            coordinate: currentLocation,
+            accuracy: currentLocation.accuracy,
+            remembered: currentLocationSource === 'remembered',
+            following: cameraManager.mode === 'FOLLOWING_USER',
+          },
+        })
+      : [];
+    if (mode === 'NAVIGATION' || mode === 'ARRIVAL') {
+      return [...buildNavigationScene(navSceneInput), ...buildNavigationSceneV1(navSceneInputV1), ...browseUser];
+    }
+    const selectedPin = markerOwnership.showBrowseSelection && selectedPlace && selectedPlaceMarkerCoordinate && !activePreviewRoute
+      ? selectedPlaceMarkerCoordinate
+      : null;
+    return [
+      ...browseVenueSpecs,
+      ...previewRouteSpecs,
+      ...buildMarkerOverlay({
+        selectedPin,
+        destination: activePreviewRoute ? previewDestinationCoordinate : null,
+        start: showPreviewStartMarker ? previewStartCoordinate : null,
+      }),
+      ...browseUser,
+    ];
+  }, [
+    activePreviewRoute,
+    browseVenueSpecs,
+    cameraManager.mode,
+    currentLocation,
+    currentLocationSource,
+    markerOwnership.showBrowseSelection,
+    markerOwnership.showBrowseUser,
+    mode,
+    navSceneInput,
+    navSceneInputV1,
+    previewDestinationCoordinate,
+    previewRouteSpecs,
+    previewStartCoordinate,
+    selectedPlace,
+    selectedPlaceMarkerCoordinate,
+    showPreviewStartMarker,
+  ]);
+
+  const openLayerOptions = () => setLayersSheetVisible(true);
 
   const renderChips = () => {
     return (
@@ -1419,79 +1484,37 @@ export function HomeScreen() {
       <View style={styles.container}>
         <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
 
-        <MapView
+        {/* The archive is installed from the APK in milliseconds (no network); until then a plain land-coloured surface
+            avoids mounting the style twice (placeholder style first, real style after) — a swap after ready would re-add
+            every source and flash the map. */}
+        {basemap.status === 'loading' ? (
+          <View testID="home-map-placeholder" style={[styles.map, { backgroundColor: BASEMAP_COLORS.land }]} />
+        ) : (
+          <OfflineMapCanvas
             testID="home-map-view"
             ref={mapRef}
-            // Route preview, navigation and arrival are exclusive workflows: the map (and every marker
-            // in it) precedes the portal-hosted sheet in Android's accessibility tree, so TalkBack
-            // would walk ~30 irrelevant stops before reaching the workflow. Place Details keeps the
-            // map reachable because marker selection is still a valid action there.
+            // Route preview, navigation and arrival are exclusive workflows: the map precedes the portal-hosted
+            // sheet in Android's accessibility tree, so TalkBack would walk the map before reaching the workflow.
+            // Place Details keeps the map reachable because feature selection is still a valid action there.
             importantForAccessibility={
               mode === 'ROUTE_PREVIEW' || mode === 'NAVIGATION' || mode === 'ARRIVAL' ? 'no-hide-descendants' : 'auto'
             }
             style={styles.map}
-            provider={Platform.OS === 'android' && baseMapMode === 'GOOGLE_BASEMAP' ? PROVIDER_GOOGLE : undefined}
-            // Google attribution/legal text renders relative to the padded map region —
-            // reuse mapLabelEdgeInsets (the same sheet/nav-chrome-derived obstruction
-            // already trusted for label placement) so the logo is never covered by
-            // app-owned bottom/top chrome (ATTR-001).
-            mapPadding={mapLabelEdgeInsets}
+            archiveUri={basemapRejected ? null : basemap.uri}
+            onLoadFailed={() => setBasemapRejected(true)}
+            archiveZoom={provenance.zoom}
             initialRegion={effectiveInitialRegion}
-            mapType={baseMapMode === 'GOOGLE_BASEMAP' ? mapType : 'none'}
-            showsUserLocation={false}
-            showsMyLocationButton={false}
-            showsCompass={false}
-            // Google's marker toolbar (open in Maps / directions) leaves the app and needs internet.
-            toolbarEnabled={false}
-            scrollEnabled={!layersSheetVisible}
-            zoomEnabled={!layersSheetVisible}
-            rotateEnabled={!layersSheetVisible && !settings.keepNorthFixed}
-            onLayout={(e) => {
-              const { width, height } = e.nativeEvent.layout;
-              cameraManager.notifyMapLayout(width, height);
-            }}
-            onMapReady={() => {
-              mapReadyRef.current = true;
-              setMapReadyState(true);
-              cameraManager.notifyNativeMapReady();
-              if (!startupRegionSettledRef.current && !startupRegionTimerRef.current) {
-                startupRegionTimerRef.current = setTimeout(settleStartupRegion, STARTUP_REGION_SETTLE_BOUND_MS);
-              }
-              handleMapRegionChangeComplete(effectiveInitialRegion);
-              mapLabelOverlayRef.current?.requestProjection();
-
-              // Startup camera decision — MapStartupController owns the "what should
-              // happen" logic. HomeScreen owns the one-shot guard, stale-result checks,
-              // canonical live-location write, and the actual CameraManager calls.
-              if (!startupCameraRequestStartedRef.current) {
-                const venueBoundary = useV2Map ? v2MapLayers.venueBoundary : VENUE_BOUNDARY;
-                beginStartupCameraDecision(venueBoundary);
-              }
-
-              if (__DEV__) {
-                console.log('[Home][Render]', {
-                  mapReady: true,
-                  graphOverlayReady: true,
-                  selectedMarkerReady: !!selectedPlaceMarkerCoordinate,
-                  userMarkerReady: !!currentLocation,
-                  graphOnlyFallbackUsed,
-                });
-              }
-            }}
-            onMapLoaded={() => {
-              setMapReadyState(true);
-              // #28: no longer gated on baseMapMode — a late success (state OFFLINE_FALLBACK)
-              // now recovers to GOOGLE_RECOVERED instead of being discarded. applyMapLoaded
-              // is itself a no-op while INACTIVE (offline / no key), so this can't pull the
-              // UI back into Google mode when the user has genuinely switched away from it.
-              setMapLoadWatchdog((prev) => applyMapLoaded(prev, mapLoadGenerationRef.current));
-              mapLabelOverlayRef.current?.requestProjection();
-            }}
+            overlays={mapOverlays}
+            // The OSM attribution control is reserved the same sheet/nav-chrome-derived band the labels use (ATTR-001).
+            attributionBottomInset={mapLabelEdgeInsets.bottom + 8}
+            gesturesEnabled={!layersSheetVisible}
+            rotateEnabled={!settings.keepNorthFixed}
+            onLayout={(width, height) => cameraManager.notifyMapLayout(width, height)}
+            onReady={handleMapReady}
             onRegionChange={() => {
-              // Continuous — fires on every camera-move tick including pure-rotation
-              // gestures, so label positions stay attached to the map while it's
-              // being panned/zoomed/rotated. Internally rAF-coalesced, so calling
-              // this on every tick is safe.
+              // Continuous — fires on every camera-move tick including pure-rotation gestures, so label
+              // positions stay attached to the map while it is panned/zoomed/rotated. Internally
+              // rAF-coalesced, so calling this on every tick is safe.
               mapLabelOverlayRef.current?.requestProjection();
             }}
             onRegionChangeComplete={(region) => {
@@ -1500,248 +1523,20 @@ export function HomeScreen() {
               handleMapRegionChangeComplete(region);
               mapLabelOverlayRef.current?.requestProjection();
             }}
-            onPanDrag={() => {
+            onUserPan={() => {
               invalidateStartupCameraIntent();
               cameraManager.cancelEarlyReplay();
               handleNavigationPan();
               setIsMapDragging(true);
             }}
-            onPress={() => {
+            onFeaturePress={handleFeaturePress}
+            onBackgroundPress={() => {
               if (selectedPlace) {
                 closeSheet();
               }
             }}
-          >
-          {baseMapMode === 'LOCAL_TILES' && (
-            <LocalTile pathTemplate={getTilePath()} testID="local-base-map-tiles" tileSize={256} zIndex={-1} />
-          )}
-
-          {mapType === 'satellite' && baseMapMode === 'GOOGLE_BASEMAP' && <SatelliteDimOverlay bounds={SATELLITE_DIM_BOUNDARY} />}
-
-          <VenueBoundary coordinates={useV2Map ? v2MapLayers.venueBoundary : VENUE_BOUNDARY} />
-
-          {/* ARRIVAL must stay on the nav map layers/chrome — arrived is the highest-priority
-              mode input (outranks NAVIGATION itself), so gating on 'NAVIGATION' alone would
-              unmount the route/user marker and the arrival sheet the instant GPS detects
-              arrival. */}
-          {(mode === 'NAVIGATION' || mode === 'ARRIVAL') && <NavigationMapLayersV2 overlay={navOverlay} />}
-          {(mode === 'NAVIGATION' || mode === 'ARRIVAL') && <NavigationMapLayersV1 overlay={navOverlayV1} />}
-
-          {mode !== 'NAVIGATION' && mode !== 'ARRIVAL' && (useV2Map ? (
-            <React.Fragment key={`v2_layers_${v2MapLayers.activeMapFilter}`}>
-              <RastaLayer
-                rastas={previewVisibleRastas}
-                variant="home"
-                focused={v2MapLayers.activeMapFilter === 'rastas'}
-                keyPrefix="v2_rasta"
-                onPressRasta={(rastaId, coordinate) => {
-                  const place = V2PlaceAdapter.getPlaceById(rastaId);
-                  if (!place) return;
-                  collectTapCandidate({ id: rastaId, kind: 'rasta', coordinate, payload: place });
-                }}
-              />
-
-              <SpecialRouteLayer
-                routes={previewVisibleSpecialRoutes}
-                variant="home"
-                focused={v2MapLayers.activeMapFilter === 'special_routes'}
-                keyPrefix="v2_special"
-                onPressRoute={(routeId, coordinate) => {
-                  const place = V2PlaceAdapter.getPlaceById(routeId);
-                  if (!place) return;
-                  collectTapCandidate({ id: routeId, kind: 'route', coordinate, payload: place });
-                }}
-              />
-
-              <BlockLayer
-                blocks={showBlockPolygons ? previewVisibleBlocks : []}
-                variant="home"
-                focused={v2MapLayers.activeMapFilter === 'blocks'}
-                keyPrefix="v2_block"
-                onPressBlock={(blockId, coordinate) => {
-                  const place = V2PlaceAdapter.getPlaceById(blockId);
-                  if (!place) return;
-                  collectTapCandidate({ id: blockId, kind: 'block', coordinate, payload: place });
-                }}
-              />
-
-              <GateLayer
-                gates={previewVisibleGateMarkers}
-                focused={v2MapLayers.activeMapFilter === 'gates'}
-                keyPrefix="v2_gate"
-                onPressGate={(gateId, coordinate) => {
-                  const place = V2PlaceAdapter.getPlaceById(gateId);
-                  if (!place) return;
-                  collectTapCandidate({ id: gateId, kind: 'gate', coordinate, payload: place });
-                }}
-              />
-
-              {activePreviewRoute && activePreviewRoute.coordinates.length > 1 && (
-                <>
-                  {previewOutsideLegCoordinates.length > 1 && (
-                    <OutsideRoutePolyline
-                      coordinates={previewOutsideLegCoordinates}
-                      roadFollowing={activePreviewRoute.outsideRoute?.roadFollowing ?? false}
-                      zIndex={14}
-                    />
-                  )}
-                  <Polyline coordinates={previewInsideLegCoordinates} strokeColor={staticColors.routeCasing} strokeWidth={11} zIndex={16} />
-                  <Polyline
-                    coordinates={previewInsideLegCoordinates}
-                    strokeColor={staticColors.routeInside}
-                    strokeWidth={7}
-                    zIndex={17}
-                  />
-                </>
-              )}
-
-              {__DEV__ && developerModeEnabled && v2MapLayers.developerLabels.map((label) => (
-                <Marker key={`v2_dev_${label.id}`} coordinate={label.coordinate} anchor={{ x: 0.5, y: 0.5 }} tracksViewChanges={false}>
-                  <View style={styles.debugNode}>
-                    <Text style={styles.debugNodeText}>{label.text}</Text>
-                  </View>
-                </Marker>
-              ))}
-            </React.Fragment>
-          ) : IJTEMA_DATA.edges.map((edge, idx) => {
-            const from = IJTEMA_DATA.nodes[edge.from];
-            const to = IJTEMA_DATA.nodes[edge.to];
-            if (!from || !to) return null;
-            const coordinates = [
-              { latitude: from.lat, longitude: from.lng },
-              { latitude: to.lat, longitude: to.lng },
-            ];
-            const isBoundary = edge.type === 'boundary';
-            return (
-              <React.Fragment key={`edge_${edge.from}_${edge.to}_${idx}`}>
-                <Polyline
-                  coordinates={coordinates}
-                  strokeColor={isBoundary ? 'rgba(60,64,67,0.45)' : 'rgba(60,64,67,0.55)'}
-                  strokeWidth={isBoundary ? 7 : 9}
-                  zIndex={1}
-                />
-                <Polyline
-                  coordinates={coordinates}
-                  strokeColor={isBoundary ? 'rgba(255,255,255,0.72)' : 'rgba(255,255,255,0.92)'}
-                  strokeWidth={isBoundary ? 4 : 6}
-                  zIndex={2}
-                />
-              </React.Fragment>
-            );
-          }))}
-
-          {mode !== 'NAVIGATION' && !useV2Map && showBlockPolygons && Object.entries(IJTEMA_DATA.blocks).map(([id, block]) => {
-            const isSelected = selectedPlace?.id === id;
-            return block.corners ? (
-              <Polygon
-                key={id}
-                coordinates={block.corners}
-                fillColor={isSelected ? 'rgba(26, 115, 232, 0.35)' : 'rgba(46, 125, 50, 0.15)'}
-                strokeColor={isSelected ? staticColors.selectedBlock : staticColors.normalBlock}
-                strokeWidth={isSelected ? 3 : 1.5}
-                tappable
-                onPress={() => {
-                  handlePlaceSelectWithCameraIntent({
-                    id: block.id,
-                    name: block.name,
-                    urduName: block.urduName,
-                    category: 'Block',
-                    coordinate: block.center,
-                    description: `${block.name} of the Karachi Ijtema ground.`,
-                    sourceVersion: 'v1',
-                  });
-                }}
-              />
-            ) : null;
-          })}
-
-          {mode !== 'NAVIGATION' && !useV2Map && showGraphNodes && __DEV__ && developerModeEnabled && Object.entries(IJTEMA_DATA.nodes).map(([nodeId, node]) => {
-            const color = nodeId.startsWith('P') ? '#D32F2F' : nodeId.startsWith('S') ? '#00ACC1' : '#616161';
-            return (
-              <Marker
-                key={`node_${nodeId}`}
-                coordinate={{ latitude: node.lat, longitude: node.lng }}
-                anchor={{ x: 0.5, y: 0.5 }}
-                tracksViewChanges={false}
-              >
-                <View style={[styles.debugNode, { backgroundColor: color }]}>
-                  <Text style={styles.debugNodeText}>{nodeId}</Text>
-                </View>
-              </Marker>
-            );
-          })}
-
-          {mode !== 'NAVIGATION' && !useV2Map && showRastaNames && __DEV__ && developerModeEnabled && Array.from(new Map(
-            IJTEMA_DATA.edges
-              .filter((edge) => !!edge.name)
-              .map((edge) => [edge.name!, edge]),
-          ).values()).map((edge) => {
-            const from = IJTEMA_DATA.nodes[edge.from];
-            const to = IJTEMA_DATA.nodes[edge.to];
-            if (!from || !to || !edge.name) return null;
-            const mid = { latitude: (from.lat + to.lat) / 2, longitude: (from.lng + to.lng) / 2 };
-            return (
-              <Marker key={`rasta_${edge.name}`} coordinate={mid} anchor={{ x: 0.5, y: 0.5 }} tracksViewChanges={false}>
-                <View style={styles.rastaLabel}>
-                  <Text style={styles.rastaLabelText}>{edge.name}</Text>
-                </View>
-              </Marker>
-            );
-          })}
-
-          {mode !== 'NAVIGATION' && mode !== 'ARRIVAL' && (
-            <FacilityLayer
-              places={LANDMARK_PLACES}
-              selectedPlaceId={selectedPlace?.id}
-              onPressFacility={(place, coordinate) => {
-                collectTapCandidate({ id: place.id, kind: 'facility', coordinate, payload: place });
-              }}
-            />
-          )}
-
-
-          {/* Selected place pin — hidden during route preview to avoid duplicate destination marker */}
-          {markerOwnership.showBrowseSelection && selectedPlace && selectedPlaceMarkerCoordinate && !activePreviewRoute && (
-            // Android's Google Maps SDK names a marker for TalkBack from its title and ignores accessibilityLabel
-            // (react-native-maps#3500); an empty tooltip callout stops the title popping a default info window.
-            <SvgMarker coordinate={selectedPlaceMarkerCoordinate} title={selectedPlace.name}>
-              <View testID="selected-place-marker" style={styles.selectedMarker}>
-                <MapPin size={markerSizes.destination} color={staticColors.gateAccent} fill={staticColors.gateAccent} />
-              </View>
-              <NoInfoWindow />
-            </SvgMarker>
-          )}
-
-          {/* Route preview destination pin — shown when route is active. */}
-          {previewDestinationCoordinate && activePreviewRoute && (
-            <SvgMarker coordinate={previewDestinationCoordinate} title={previewDestination?.name ?? activePreviewRoute.destinationLabel}>
-              <View testID="preview-destination-marker" style={styles.selectedMarker}>
-                <MapPin size={markerSizes.destination} color={staticColors.gateAccent} fill={staticColors.gateAccent} />
-              </View>
-              <NoInfoWindow />
-            </SvgMarker>
-          )}
-
-          {markerOwnership.showBrowseUser && currentLocation && (
-            <UserLocationMarker
-              coordinate={currentLocation}
-              accuracy={currentLocation.accuracy}
-              heading={currentLocation.heading}
-              isFollowing={cameraManager.mode === 'FOLLOWING_USER'}
-              pulseAnim={userPulseAnim}
-              isRemembered={currentLocationSource === 'remembered'}
-            />
-          )}
-
-          {showPreviewStartMarker && previewStartCoordinate && (
-            <SvgMarker coordinate={previewStartCoordinate} anchor={{ x: 0.5, y: 1 }} title={routePlannerOrigin?.name ?? activePreviewRoute?.startLabel}>
-              <View testID="preview-start-marker" style={styles.previewStartMarker}>
-                <Navigation size={13} color={staticColors.white} />
-              </View>
-              <NoInfoWindow />
-            </SvgMarker>
-          )}
-          </MapView>
+          />
+        )}
 
         <OsmAttribution
           visible={showOsmAttribution}
@@ -1753,19 +1548,10 @@ export function HomeScreen() {
         <MapLabelOverlay
           ref={mapLabelOverlayRef}
           mapRef={mapRef}
-          items={mapLabelItems}
+          items={allMapLabelItems}
           disableTouch={isMapDragging}
           edgeInsets={mapLabelEdgeInsets}
         />
-
-        {/* Cold-start: avoid a blank map while MapView mounts/renders its first
-            frame. mapLoadFailed's 7s-timeout banner takes over if it never loads. */}
-        {baseMapMode === 'GOOGLE_BASEMAP' && !googleBaseMapLoaded && !mapLoadFailed && (
-          <View style={styles.mapLoadingOverlay} pointerEvents="none">
-            <ActivityIndicator size="small" color={staticColors.recenterBlue} />
-            <Text style={styles.mapLoadingText}>Loading map...</Text>
-          </View>
-        )}
 
         {/* ARRIVAL outranks NAVIGATION in deriveMapMode and still shows the navigation chrome, so the
             search bar/chips must hide for both or they draw over the maneuver banner. */}
@@ -1814,30 +1600,10 @@ export function HomeScreen() {
         </SafeAreaView>
         )}
 
-        {mode !== 'NAVIGATION' && (isOffline || showMapWarningBanner || showOutsideBanner || showFallbackNotice) && (
+        {mode !== 'NAVIGATION' && (isOffline || showOutsideBanner || showFallbackNotice) && (
           <View style={[styles.bannerStack, { top: bannerStackTop }]}>
-            {/* Basemap/provider degradation outranks passive offline status — the two never
-                stack (showMapWarningBanner's own copy already covers the offline case).
-                Route/gate context (showOutsideBanner) stays a separate, non-competing slot. */}
-            {showMapWarningBanner ? (
-              <View
-                style={[
-                  styles.mapWarningBanner,
-                  styles.bannerStackItem,
-                  // Full width would run under the Layers button when the sheet sits high.
-                  controlStackWidth > 0 && { marginRight: CONTROL_STACK_RIGHT + controlStackWidth + BANNER_CONTROL_GAP },
-                ]}
-                accessibilityLiveRegion="polite"
-              >
-                <Text style={styles.mapWarningText}>
-                  {hasGoogleMapsKey && mapLoadFailed
-                    ? MapConfigService.getMapLoadFailedMessage()
-                    : isOffline
-                      ? 'No internet. Ijtema routes still work.'
-                      : MapConfigService.getMissingGoogleMapsMessage()}
-                </Text>
-              </View>
-            ) : isOffline ? (
+            {/* Passive offline status. Route/gate context (showOutsideBanner) stays a separate, non-competing slot. */}
+            {isOffline ? (
               <View style={[styles.offlineIndicator, styles.bannerStackItem]} accessibilityLiveRegion="polite">
                 <WifiOff size={14} color="#FFFFFF" />
                 <Text style={styles.offlineText}>Offline</Text>
@@ -1916,27 +1682,6 @@ export function HomeScreen() {
             <Text style={styles.diagnosticsText} numberOfLines={1}>
               {getHomeRouteDiagnostics().map((r) => `${r.from}->${r.to}:${r.success ? 'OK' : 'FAIL'}`).join(' | ')}
             </Text>
-          </View>
-        )}
-
-        {/* One message per state: when the banner above already explains that the background map is missing,
-            this card only appears to carry the download action, without repeating the explanation. */}
-        {mode !== 'NAVIGATION' && isOffline && !offlineData.isDownloaded
-          && (!showMapWarningBanner || OfflineMapService.isOfflineTileDownloadAvailable()) && (
-          <View style={styles.emptyOfflineState}>
-            {!showMapWarningBanner && (
-              <Text style={styles.emptyOfflineTitle}>Background map not downloaded. Ijtema routes still work.</Text>
-            )}
-            {OfflineMapService.isOfflineTileDownloadAvailable() && (
-              <Pressable
-                style={styles.emptyOfflineButton}
-                onPress={() => nav.navigate('DownloadMap')}
-                accessibilityRole="button"
-                accessibilityLabel="Download background map"
-              >
-                <Text style={styles.emptyOfflineButtonText}>Download background map</Text>
-              </Pressable>
-            )}
           </View>
         )}
 
@@ -2155,8 +1900,6 @@ export function HomeScreen() {
         <LayersSheet
           visible={layersSheetVisible}
           onClose={() => setLayersSheetVisible(false)}
-          mapType={mapType}
-          onMapTypeChange={handleMapTypeChange}
           showBlockPolygons={showBlockPolygons}
           onToggleBlocks={setShowBlockPolygons}
           showGatesLayer={showGatesLayer}
