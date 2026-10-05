@@ -31,7 +31,7 @@ for (const section of requiredSections) {
 assert(guide.includes('ایپ گائیڈ') || guide.includes('آف لائن نقشہ'), 'Guide should include Urdu text');
 assert(guide.includes('Use My Current Location'), 'Guide should explain live GPS start source');
 assert(guide.includes('Use Last Known Location'), 'Guide should explain last-known start source');
-assert(guide.includes('Change Start'), 'Guide should explain how to pick a start place');
+assert(guide.includes('FROM row'), 'Guide should explain how to pick a start place');
 assert(guide.includes('Quick Marker Legend'), 'Guide should include marker legend visuals');
 
 console.log('Settings guide checks passed.');

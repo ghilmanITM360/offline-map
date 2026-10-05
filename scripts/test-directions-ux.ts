@@ -7,7 +7,7 @@ const navigationCapability = readFileSync('src/services/LocationNavigationCapabi
 
 assert(screen.includes('Get Directions'), 'Directions screen must use layman-friendly heading');
 assert(screen.includes('Change destination.'), 'Directions screen must show a tappable destination row');
-assert(screen.includes('Choose where you are starting from'), 'Directions screen must focus on start selection');
+assert(vm.includes("'Choose where to start'"), 'The FROM row must focus on start selection');
 const directoryScreen = readFileSync('src/views/screens/LocationsDirectoryScreen.tsx', 'utf8');
 assert(directoryScreen.includes('Use my current location'), 'Directory must include current-location action');
 assert(directoryScreen.includes('Use last known location'), 'Directory should use clear last-known location labeling');

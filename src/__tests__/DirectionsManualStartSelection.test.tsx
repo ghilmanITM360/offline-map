@@ -226,15 +226,17 @@ describe('Directory is the single start chooser (Get Directions sheet)', () => {
     jest.spyOn(LocationAccessService, 'resolveCurrentLocation').mockResolvedValue({
       ok: false,
       coordinate: null,
-      message: 'Location unavailable. Tap Change Start to pick where you are.',
+      message: 'Location unavailable. Choose where you are starting from.',
       permissionState: { granted: true, canAskAgain: true, status: 'granted', precision: 'fine' },
     } as never);
     const user = userEvent.setup();
     await mount();
 
     await choose({ purpose: 'start', quick: 'current_location' });
-    // The failed pick leaves the sheet in needs_origin; it says so and offers no chooser of its own.
-    await waitFor(() => expect(screen.getByText('Tap Change Start to continue.')).toBeOnTheScreen());
+    // The failed pick leaves the sheet in needs_origin; the FROM row asks for a start and the sheet offers no chooser of its own.
+    await waitFor(() => expect(screen.getByText('Choose where to start')).toBeOnTheScreen());
+    expect(screen.queryByText('Tap Change Start to continue.')).not.toBeOnTheScreen();
+    expect(screen.queryByText('Start ready')).not.toBeOnTheScreen();
     expectNoChooser();
 
     await user.press(changeStart());

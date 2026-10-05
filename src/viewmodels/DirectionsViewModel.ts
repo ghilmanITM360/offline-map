@@ -218,7 +218,7 @@ export function useDirectionsViewModel(destination: Place | null) {
     const originCoord = resolveActiveOriginCoordinate();
     if (!originCoord && !(isV2Destination && startSource === 'manual_place' && manualStart)) {
       setLoadState('needs_origin');
-      setErrorMessage('Tap Change Start to continue.');
+      setErrorMessage(null); // the FROM row already says "Choose where to start"
       setRoute(null);
       setAlternatives([]);
       setInstructions([]);
@@ -329,7 +329,7 @@ export function useDirectionsViewModel(destination: Place | null) {
 
     if (!originCoord) {
       setLoadState('needs_origin');
-      setErrorMessage('Tap Change Start to continue.');
+      setErrorMessage(null); // the FROM row already says "Choose where to start"
       setRoute(null);
       setAlternatives([]);
       setInstructions([]);
@@ -490,7 +490,7 @@ export function useDirectionsViewModel(destination: Place | null) {
         setStartSource('manual_place');
         setIsEditingManualStart(true);
         setLoadState('needs_origin');
-        setErrorMessage(blockedMessage ?? resolved.message ?? 'Location unavailable. Tap Change Start to pick where you are.');
+        setErrorMessage(blockedMessage ?? resolved.message ?? 'Location unavailable. Choose where you are starting from.');
         return false;
       }
 
