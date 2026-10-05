@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { findNearestGraphNode } from '../data/ijtema/graphBuilder';
+import { findNearestGraphNode, GRAPH_SNAP_SWITCH_MARGIN_M } from '../data/ijtema/graphBuilder';
 import { IJTEMA_NAVIGATION_GRAPH_V2 } from '../data/ijtema/navigationGraph';
 import { Coordinate, V2ActiveRoute } from '../models/types';
 import { RerouteService } from './RerouteService';
@@ -93,14 +93,30 @@ const PLAUSIBLE_FORWARD_SPEED_FACTOR = 3;
 const GPS_JITTER_ALLOWANCE_M = 25;
 
 export function calculateNavigationProgressV2(input: NavigationProgressV2Input): NavigationProgressV2 {
-  const projection = RerouteService.projectProgressMetersOnRoute(input.coordinate, input.route);
-
   let maxForwardMeters: number | undefined;
   const observedAtMs = input.coordinate.observedAtMs;
   if (observedAtMs != null && input.previousObservedAtMs != null) {
     const elapsedSeconds = Math.max(1, (observedAtMs - input.previousObservedAtMs) / 1000);
     maxForwardMeters = input.walkingSpeedMs * PLAUSIBLE_FORWARD_SPEED_FACTOR * elapsedSeconds + GPS_JITTER_ALLOWANCE_M;
   }
+
+  // #93: the same elapsed-time bound that caps a fix's forward jump also defines which route
+  // segments are reachable from the previous progress; the off-route tolerance decides how far
+  // from that corridor the walker may drift before the global nearest segment applies again.
+  const projection = RerouteService.projectProgressMetersOnRoute(
+    input.coordinate,
+    input.route,
+    maxForwardMeters == null
+      ? undefined
+      : {
+          previousProgressMeters: input.previousProgressMeters,
+          maxForwardMeters,
+          acceptDistanceM: RerouteService.getDynamicOffRouteThresholdMeters(input.coordinate.accuracy ?? 0),
+          // Stay on the current corridor unless another is clearly closer: one reported GPS accuracy
+          // (floored at the graph-snap margin from #212) of extra distance is within normal noise.
+          switchMarginM: Math.max(GRAPH_SNAP_SWITCH_MARGIN_M, input.coordinate.accuracy ?? 0),
+        },
+  );
 
   const progressMeters = RerouteService.clampMonotonicProgress(
     input.previousProgressMeters,
