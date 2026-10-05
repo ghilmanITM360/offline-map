@@ -11,6 +11,8 @@ export interface BasemapFs {
   ensureDir(dir: string): void;
   /** Byte length of the file, or null if it does not exist. */
   sizeOf(path: string): number | null;
+  /** Lowercase hex SHA-256 of the file's content, or null if it does not exist. May throw if unreadable. */
+  sha256(path: string): Promise<string | null>;
   copy(from: string, to: string): void;
   move(from: string, to: string): void;
   remove(path: string): void;
@@ -36,25 +38,54 @@ const PREFIX = 'ijtema-basemap-';
 export async function installBundledBasemap({ fs, dir, expected, resolveAssetUri }: BasemapInstallDeps): Promise<BasemapInstallResult> {
   const name = `${PREFIX}${expected.sha256.slice(0, 12)}.pmtiles`;
   const target = `${dir}/${name}`;
+  const partial = `${target}.partial`;
   fs.ensureDir(dir);
 
-  if (fs.sizeOf(target) === expected.bytes) return { uri: target, reused: true };
-
-  // A wrong-sized leftover is a truncated/interrupted copy: never trust it.
-  fs.remove(target);
-  const partial = `${target}.partial`;
+  // A leftover .partial is an interrupted copy: never trusted, never resumed.
   fs.remove(partial);
-  fs.copy(await resolveAssetUri(), partial);
-  const copied = fs.sizeOf(partial);
-  if (copied !== expected.bytes) {
-    fs.remove(partial);
-    throw new Error(`Bundled basemap size mismatch: expected ${expected.bytes} bytes, got ${copied ?? 'none'}`);
+
+  // Same size is not same content (#306): the archive is trusted only when its bytes hash to the
+  // manifest SHA-256. This runs once per install call (app start / first map mount), never per render.
+  if (await matchesManifest(fs, target, expected)) {
+    pruneOlderArchives(fs, dir, target);
+    return { uri: target, reused: true };
   }
-  fs.move(partial, target);
+
+  fs.remove(target);
+  try {
+    fs.copy(await resolveAssetUri(), partial);
+    const copied = fs.sizeOf(partial);
+    if (copied !== expected.bytes) {
+      throw new Error(`Bundled basemap size mismatch: expected ${expected.bytes} bytes, got ${copied ?? 'none'}`);
+    }
+    if (!(await hashMatches(fs, partial, expected.sha256))) {
+      throw new Error('Bundled basemap checksum mismatch: the copied archive does not match the bundled manifest');
+    }
+    fs.move(partial, target);
+  } catch (error) {
+    fs.remove(partial);
+    throw error;
+  }
 
   // Archives from older app versions are dead weight once the current one is in place.
-  for (const path of fs.list(dir)) {
-    if (path !== target && path.slice(dir.length + 1).startsWith(PREFIX)) fs.remove(path);
-  }
+  pruneOlderArchives(fs, dir, target);
   return { uri: target, reused: false };
+}
+
+async function hashMatches(fs: BasemapFs, path: string, sha256: string): Promise<boolean> {
+  try {
+    return (await fs.sha256(path))?.toLowerCase() === sha256.toLowerCase();
+  } catch {
+    return false; // unreadable content is not valid content
+  }
+}
+
+async function matchesManifest(fs: BasemapFs, path: string, expected: BasemapInstallDeps['expected']): Promise<boolean> {
+  return fs.sizeOf(path) === expected.bytes && (await hashMatches(fs, path, expected.sha256));
+}
+
+function pruneOlderArchives(fs: BasemapFs, dir: string, keep: string): void {
+  for (const path of fs.list(dir)) {
+    if (path !== keep && path !== `${keep}.partial` && path.slice(dir.length + 1).startsWith(PREFIX)) fs.remove(path);
+  }
 }
