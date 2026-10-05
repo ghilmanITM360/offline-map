@@ -3,9 +3,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useEffect, useRef } from 'react';
-import { ActivityIndicator, Animated, Pressable, Text, View } from 'react-native';
-import { AlertTriangle, Check, Compass, Layers, LocateFixed, Minus, Plus } from 'lucide-react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, Animated, Pressable, View } from 'react-native';
+import { AlertTriangle, Check, Compass, Ellipsis, Layers, LocateFixed, Minus, Navigation, Plus, X } from 'lucide-react-native';
 
 import { mapControlStyles as styles } from './mapControlStyles';
 import { staticColors } from '../../../theme';
@@ -21,7 +21,7 @@ export interface MapControlsRecenter {
 }
 
 interface MapControlsProps {
-  /** 'browse' shows the Layers button + north-up/free-rotate helper badge; 'nav' omits both
+  /** 'browse' also offers Layers under "More map controls"; 'nav' omits it
    * (no layer switching while actively navigating, per Phase 2's control-stack scoping). */
   variant: 'browse' | 'nav';
   /** NORTH_UP (resting, neutral icon) vs FOLLOW_HEADING (bearing tracks device compass,
@@ -65,18 +65,55 @@ export function MapControls({ variant, compassMode, onLayers, onCompassToggle, o
     Animated.spring(successScale, { toValue: 1, useNativeDriver: true, friction: 4, tension: 140 }).start();
   }, [recenter?.state, reducedMotion, successScale]);
 
+  // Only what people use constantly stays in view: direction and recenter. Layers and zoom (pinch also zooms) live
+  // behind one "More map controls" button, and stay real buttons so TalkBack / keyboard users can zoom.
+  const [moreOpen, setMoreOpen] = useState(false);
+
   return (
     <>
-      {variant === 'browse' && (
+      {moreOpen && variant === 'browse' && (
         <Pressable
           style={styles.controlButton}
-          onPress={onLayers}
+          onPress={() => {
+            setMoreOpen(false);
+            onLayers?.();
+          }}
           accessibilityRole="button"
           accessibilityLabel="Map layers and filters"
         >
           <Layers size={22} color={staticColors.iconMuted} />
         </Pressable>
       )}
+      {moreOpen && (
+        <View style={styles.zoomControls}>
+          <Pressable
+            style={styles.zoomButton}
+            onPress={onZoomIn}
+            accessibilityRole="button"
+            accessibilityLabel="Zoom in"
+          >
+            <Plus size={22} color={staticColors.iconMuted} />
+          </Pressable>
+          <View style={styles.zoomDivider} />
+          <Pressable
+            style={styles.zoomButton}
+            onPress={onZoomOut}
+            accessibilityRole="button"
+            accessibilityLabel="Zoom out"
+          >
+            <Minus size={22} color={staticColors.iconMuted} />
+          </Pressable>
+        </View>
+      )}
+      <Pressable
+        style={[styles.controlButton, moreOpen && styles.moreButtonOpen]}
+        onPress={() => setMoreOpen((open) => !open)}
+        accessibilityRole="button"
+        accessibilityLabel="More map controls"
+        accessibilityState={{ expanded: moreOpen }}
+      >
+        {moreOpen ? <X size={22} color={staticColors.iconMuted} /> : <Ellipsis size={22} color={staticColors.iconMuted} />}
+      </Pressable>
       <Pressable
         style={[styles.controlButton, isHeadingFollow && styles.controlButtonActive]}
         onPress={onCompassToggle}
@@ -87,35 +124,13 @@ export function MapControls({ variant, compassMode, onLayers, onCompassToggle, o
             : 'Follow direction is off. Tap to turn the map to face the way you are moving.'
         }
       >
-        <Compass size={22} color={isHeadingFollow ? staticColors.info : staticColors.iconMuted} />
+        {/* The icon carries the state (arrow = following, compass = north-up), not only its colour. */}
+        {isHeadingFollow ? (
+          <Navigation size={22} color={staticColors.info} />
+        ) : (
+          <Compass size={22} color={staticColors.iconMuted} />
+        )}
       </Pressable>
-      {variant === 'browse' && (
-        // Sighted-only label repeating the compass button's own accessibilityLabel above —
-        // without this, TalkBack stops on it as a second, redundant announcement right after
-        // the button itself (same class of bug already fixed for LayersSheet's OverlayRow).
-        <View style={styles.controlHelperBadge} importantForAccessibility="no-hide-descendants">
-          <Text style={styles.controlHelperText}>{isHeadingFollow ? 'Following' : 'North-up'}</Text>
-        </View>
-      )}
-      <View style={styles.zoomControls}>
-        <Pressable
-          style={styles.zoomButton}
-          onPress={onZoomIn}
-          accessibilityRole="button"
-          accessibilityLabel="Zoom in"
-        >
-          <Plus size={22} color={staticColors.iconMuted} />
-        </Pressable>
-        <View style={styles.zoomDivider} />
-        <Pressable
-          style={styles.zoomButton}
-          onPress={onZoomOut}
-          accessibilityRole="button"
-          accessibilityLabel="Zoom out"
-        >
-          <Minus size={22} color={staticColors.iconMuted} />
-        </Pressable>
-      </View>
       {recenter && (
         <View style={styles.recenterButtonWrap}>
           <Pressable

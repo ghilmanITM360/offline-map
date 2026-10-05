@@ -29,20 +29,9 @@ export const mapControlStyles = StyleSheet.create({
     borderColor: staticColors.info,
     backgroundColor: staticColors.infoBackground,
   },
-  controlHelperBadge: {
-    backgroundColor: 'rgba(255,255,255,0.95)',
-    borderRadius: radii.md,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 4,
-    marginBottom: 10,
-    alignSelf: 'center',
-    elevation: 2,
-    zIndex: Z.mapControls,
-  },
-  controlHelperText: {
-    color: staticColors.iconMuted,
-    fontSize: 10,
-    fontWeight: '700',
+  moreButtonOpen: {
+    borderWidth: 1,
+    borderColor: staticColors.border,
   },
   zoomControls: {
     backgroundColor: staticColors.white,

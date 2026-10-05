@@ -27,7 +27,6 @@ import { useBundledBasemap } from '../components/mapgl/useBundledBasemap';
 import { BASEMAP_COLORS } from '../components/mapgl/basemapStyle';
 import {
   Menu,
-  WifiOff,
   X,
 } from 'lucide-react-native';
 import {
@@ -258,7 +257,6 @@ export function HomeScreen() {
     selectedPlace,
     snapPoints: baseSnapPoints,
     initialRegion,
-    isOffline,
     mapZoomLevel,
     venueStatus,
     isInsideVenue,
@@ -1581,16 +1579,9 @@ export function HomeScreen() {
         </SafeAreaView>
         )}
 
-        {mode !== 'NAVIGATION' && (isOffline || showOutsideBanner || showFallbackNotice) && (
+        {mode !== 'NAVIGATION' && (showOutsideBanner || showFallbackNotice) && (
           <View style={[styles.bannerStack, { top: bannerStackTop }]}>
-            {/* Passive offline status. Route/gate context (showOutsideBanner) stays a separate, non-competing slot. */}
-            {isOffline ? (
-              <View style={[styles.offlineIndicator, styles.bannerStackItem]} accessibilityLiveRegion="polite">
-                <WifiOff size={14} color="#FFFFFF" />
-                <Text style={styles.offlineText}>Offline</Text>
-              </View>
-            ) : null}
-
+            {/* Offline is the normal supported mode, so it gets no badge; route/gate context stays its own slot. */}
             {showFallbackNotice && (
               <View
                 style={[
@@ -1940,17 +1931,6 @@ const styles = StyleSheet.create({
   controlStack: { position: 'absolute', right: CONTROL_STACK_RIGHT, zIndex: Z.mapControls },
   bannerStack: { position: 'absolute', left: 0, right: 0, zIndex: Z.mapControls },
   bannerStackItem: { marginBottom: 8 },
-  offlineIndicator: {
-    alignSelf: 'flex-start',
-    marginLeft: 12,
-    backgroundColor: 'rgba(32, 33, 36, 0.9)',
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 16,
-  },
-  offlineText: { color: '#FFFFFF', fontSize: 12, fontWeight: '600', marginLeft: 6 },
   mapWarningBanner: {
     marginHorizontal: 12,
     backgroundColor: '#FFF3CD',

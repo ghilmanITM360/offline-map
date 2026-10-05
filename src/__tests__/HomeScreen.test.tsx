@@ -404,8 +404,9 @@ describe('HomeScreen — map-control stack follows the measured sheet top (#208 
     expect(props.animatedPosition).toBeDefined();
     expect(typeof props.animatedPosition?.value).toBe('number');
 
-    const layers = screen.getByLabelText('Map layers and filters');
-    expect(layers).toBeOnTheScreen();
+    // The stack stays reachable; Layers now lives under the single "More map controls" button.
+    expect(screen.getByLabelText('More map controls')).toBeOnTheScreen();
+    expect(screen.getByLabelText('Center map on my current location')).toBeOnTheScreen();
   });
 });
 
@@ -1091,12 +1092,12 @@ describe('HomeScreen — bundled offline basemap (#140)', () => {
     expect(JSON.stringify(map.props.mapStyle)).not.toMatch(/https?:\/\//);
   });
 
-  test('offline: shows only the passive Offline pill — the map itself never claims to be missing', async () => {
+  test('offline is the normal mode: no Offline badge, and the map never claims to be missing', async () => {
     mockedUseHomeViewModel.mockImplementation(() => ({ ...useFakeHomeViewModel(), isOffline: true }));
     useAppStore.setState({ hasInternet: false });
     await render(<HomeScreen />);
 
-    expect(screen.getByText('Offline')).toBeOnTheScreen();
+    expect(screen.queryByText('Offline')).not.toBeOnTheScreen();
     for (const copy of MISSING_MAP_COPY) expect(screen.queryByText(copy)).not.toBeOnTheScreen();
   });
 
