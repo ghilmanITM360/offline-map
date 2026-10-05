@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { findNearestGraphNode } from '../data/ijtema/graphBuilder';
+import { findNearestGraphNode, GRAPH_SNAP_SWITCH_MARGIN_M } from '../data/ijtema/graphBuilder';
 import { IJTEMA_NAVIGATION_GRAPH_V2 } from '../data/ijtema/navigationGraph';
 import { Coordinate, V2ActiveRoute } from '../models/types';
 import { RerouteService } from './RerouteService';
@@ -112,6 +112,9 @@ export function calculateNavigationProgressV2(input: NavigationProgressV2Input):
           previousProgressMeters: input.previousProgressMeters,
           maxForwardMeters,
           acceptDistanceM: RerouteService.getDynamicOffRouteThresholdMeters(input.coordinate.accuracy ?? 0),
+          // Stay on the current corridor unless another is clearly closer: one reported GPS accuracy
+          // (floored at the graph-snap margin from #212) of extra distance is within normal noise.
+          switchMarginM: Math.max(GRAPH_SNAP_SWITCH_MARGIN_M, input.coordinate.accuracy ?? 0),
         },
   );
 

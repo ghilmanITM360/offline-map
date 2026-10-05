@@ -91,6 +91,15 @@ describe('#93 live progress keeps continuity across parallel corridors', () => {
     expect(result.progressMeters).toBeGreaterThan(300);
   });
 
+  test('a clearly closer segment outside the window beats a marginally acceptable segment inside it', () => {
+    // Progress has run ahead of the walker (203 m) while the walker is truly at ~187 m on corridor A
+    // (9 m off it). Corridor A there is outside the 15 m backtrack allowance; the only in-window
+    // segment is the connector/corridor B far from the fix. Being merely inside the tolerance must not
+    // outrank a segment that is much closer: continuity is hysteresis, not a lock.
+    const { result } = step({ progress: 203, at: T0 }, fix(187, -9, T0 + 1000, 5)); // 5 m accuracy: ~16 m vs 9 m is not noise
+    expect(result.distanceToRouteMeters).toBeLessThan(12);
+  });
+
   test('a giant jump is still bounded by the plausible-forward cap', () => {
     const { result } = step({ progress: 100, at: T0 }, fix(102, 45, T0 + 1000));
     expect(result.progressMeters).toBeLessThan(100 + 1.4 * 3 + 25 + 1);
@@ -111,12 +120,13 @@ describe('#93 live progress keeps continuity across parallel corridors', () => {
       previousProgressMeters: Number.NaN,
       maxForwardMeters: 29,
       acceptDistanceM: 30,
+      switchMarginM: 10,
     });
     expect(bad.progressMeters).toBeGreaterThan(300);
     const nan = RerouteService.projectProgressMetersOnRoute(
       { latitude: Number.NaN, longitude: Number.NaN } as Coordinate,
       route as never,
-      { previousProgressMeters: 100, maxForwardMeters: 29, acceptDistanceM: 30 },
+      { previousProgressMeters: 100, maxForwardMeters: 29, acceptDistanceM: 30, switchMarginM: 10 },
     );
     expect(Number.isFinite(nan.progressMeters)).toBe(true);
   });

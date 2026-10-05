@@ -57,7 +57,8 @@ export class RerouteService {
   /**
    * Closest point on the route. With `continuity` (#93), a segment whose progress lies inside
    * [previous - maxBacktrack, previous + maxForward] wins as long as it is within `acceptDistanceM`
-   * (the off-route tolerance). A route that doubles back beside itself therefore cannot pull progress
+   * (the off-route tolerance) and no more than `switchMarginM` farther than the global nearest segment
+   * (GPS-noise-sized hysteresis: a clearly closer segment still wins). A route that doubles back beside itself therefore cannot pull progress
    * onto the far corridor just because one noisy fix lands closer to it; once the walker is beyond the
    * tolerance of the window, or no segment is in it, the global nearest segment applies again.
    */
@@ -65,6 +66,7 @@ export class RerouteService {
     previousProgressMeters: number;
     maxForwardMeters: number;
     acceptDistanceM: number;
+    switchMarginM: number;
     maxBacktrackMeters?: number;
   }): {
     progressMeters: number;
@@ -89,7 +91,8 @@ export class RerouteService {
     const windowActive = continuity != null &&
       Number.isFinite(continuity.previousProgressMeters) &&
       Number.isFinite(continuity.maxForwardMeters) &&
-      Number.isFinite(continuity.acceptDistanceM);
+      Number.isFinite(continuity.acceptDistanceM) &&
+      Number.isFinite(continuity.switchMarginM);
     const windowMin = windowActive ? continuity.previousProgressMeters - (continuity.maxBacktrackMeters ?? 15) : 0;
     const windowMax = windowActive ? continuity.previousProgressMeters + continuity.maxForwardMeters : 0;
     let bestInWindow = best;
@@ -127,7 +130,10 @@ export class RerouteService {
       cumulativeMeters += segmentMeters;
     }
 
-    return windowActive && bestInWindow.distanceToRouteMeters <= continuity.acceptDistanceM ? bestInWindow : best;
+    return windowActive &&
+      bestInWindow.distanceToRouteMeters <= Math.min(continuity.acceptDistanceM, best.distanceToRouteMeters + continuity.switchMarginM)
+      ? bestInWindow
+      : best;
   }
 
   /**
