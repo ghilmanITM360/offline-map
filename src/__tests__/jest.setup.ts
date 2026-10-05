@@ -86,7 +86,8 @@ jest.mock('@maplibre/maplibre-react-native', () => {
   };
   const Camera = (props: any) => {
     ReactActual.useImperativeHandle(props.ref, () => ({ setStop: jest.fn(() => Promise.resolve()), jumpTo: jest.fn() }));
-    return null;
+    // Exposed so tests can assert where the map STARTS (the first painted frame).
+    return ReactActual.createElement(RNView, { testID: 'map-camera', initialViewState: props.initialViewState });
   };
   const GeoJSONSource = (props: any) =>
     ReactActual.createElement(RNView, { testID: `source-${props.id}`, data: props.data }, props.children);

@@ -64,6 +64,36 @@ describe('HomeViewModel pending directory selection', () => {
     expect(useAppStore.getState().pendingDirectorySelection).toBeNull();
   });
 
+  test('moves the camera onto a handed-off place while the Directory is still closing, so the map is revealed on it', async () => {
+    const hook = await renderHook(
+      (props: { isFocused: boolean }) => useHomeViewModel({ isFocused: props.isFocused }),
+      { initialProps: { isFocused: false } },
+    );
+    const animateToRegion = jest.fn();
+    (hook.result.current.mapRef as { current: unknown }).current = { animateToRegion, animateCamera: jest.fn(), fitToCoordinates: jest.fn() };
+    await act(() => {
+      hook.result.current.cameraManager.notifyNativeMapReady();
+      hook.result.current.cameraManager.notifyMapLayout(390, 844);
+    });
+
+    await act(() => {
+      useAppStore.getState().setPendingDirectorySelection(directoryPlace);
+    });
+
+    // An instant jump (the Directory covers the map), not an ease the user would watch after the reveal.
+    expect(animateToRegion).toHaveBeenCalledTimes(1);
+    const [region, duration] = animateToRegion.mock.calls[0];
+    expect(duration).toBe(0);
+    expect(region.longitude).toBeCloseTo(directoryPlace.coordinate!.longitude, 5);
+    // Selection (and the sheet) still wait for focus.
+    expect(hook.result.current.selectedPlace).toBeNull();
+
+    await hook.rerender({ isFocused: true });
+    expect(hook.result.current.selectedPlace).toEqual(directoryPlace);
+    // The camera is already there: the focus-time selection must not queue a second, visible ease over the jump.
+    expect(animateToRegion.mock.calls.every(([, ms]) => ms === 0)).toBe(true);
+  });
+
   test('does nothing when no destination is pending', async () => {
     const hook = await renderHook(() => useHomeViewModel());
 

@@ -41,7 +41,7 @@ assert(
 const durationMatch = cameraManager.match(/export const PLACE_SELECTION_CAMERA_DURATION_MS = (\d+);/);
 assert(durationMatch, 'useCameraManager must export a place-selection camera duration constant.');
 const durationMs = Number(durationMatch![1]);
-assert(durationMs >= 150 && durationMs <= 300, `Place-selection camera duration must be 150-300ms (Google Maps style), got ${durationMs}.`);
+assert(durationMs >= 500 && durationMs <= 700, `Place-selection camera duration must be 500-700ms (calm ease), got ${durationMs}.`);
 
 assert(
   cameraManagerTest.includes('bottom edge > center > top'),
@@ -67,8 +67,8 @@ assert(
 // --- FIX 3: highlight -> camera -> sheet transition ordering ---------------
 
 const handlePlaceSelectBody = homeViewModel.slice(
-  homeViewModel.indexOf('const handlePlaceSelect = (place: Place) => {'),
-  homeViewModel.indexOf('\n  };', homeViewModel.indexOf('const handlePlaceSelect = (place: Place) => {')),
+  homeViewModel.indexOf('const handlePlaceSelect = (place: Place, opts?: { cameraAlreadyThere?: boolean }) => {'),
+  homeViewModel.indexOf('\n  };', homeViewModel.indexOf('const handlePlaceSelect = (place: Place, opts?: { cameraAlreadyThere?: boolean }) => {')),
 );
 assert(handlePlaceSelectBody.length > 0, 'handlePlaceSelect must exist in HomeViewModel.');
 const highlightIdx = handlePlaceSelectBody.indexOf('setSelectedPlace(place);');
@@ -77,12 +77,13 @@ const sheetTimerIdx = handlePlaceSelectBody.indexOf('sheetPresentTimerRef.curren
 assert(highlightIdx !== -1 && cameraIdx !== -1 && sheetTimerIdx !== -1, 'handlePlaceSelect must set the highlight, pan the camera, and schedule the sheet, in that order.');
 assert(highlightIdx < cameraIdx && cameraIdx < sheetTimerIdx, 'Selection highlight must be set before the camera pans, which must start before the sheet is scheduled to open — not all in the same tick.');
 assert(
-  homeViewModel.includes('setTimeout(openSheet, PLACE_SELECTION_CAMERA_DURATION_MS)'),
-  'The sheet must open after the camera\'s own (short, 150-300ms) pan duration, not race it.',
+  homeViewModel.includes('const cameraDurationMs = cameraManager.animateToPlace(') &&
+    homeViewModel.includes('setTimeout(openSheet, Math.round(cameraDurationMs * SHEET_OVERLAP_FRACTION))'),
+  'The sheet must open on the duration the camera manager actually used (0 under reduced motion), not a second hardcoded number.',
 );
 assert(
-  homeViewModel.includes("import { useCameraManager, CompassMode, PLACE_SELECTION_CAMERA_DURATION_MS } from './useCameraManager';"),
-  'HomeViewModel must reuse the camera hook\'s own duration constant rather than a second hardcoded number.',
+  !homeViewModel.includes('PLACE_SELECTION_CAMERA_DURATION_MS'),
+  'HomeViewModel must take the duration from animateToPlace rather than a second hardcoded number.',
 );
 assert(!handlePlaceSelectBody.includes('bottomSheetRef.current?.close()'), 'handlePlaceSelect must never close the sheet — closing-then-reopening on re-selection would flicker.');
 

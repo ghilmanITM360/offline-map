@@ -76,13 +76,15 @@ import { destinationFromPlace } from '../../services/V2DirectionsService';
 import { MapLocalizationService } from '../../services/MapLocalizationService';
 import { V2PlaceAdapter } from '../../services/V2PlaceAdapter';
 import { IJTEMA_MAP_REGION } from '../../data/ijtema';
-import { MapLabelOverlay, MapLabelItem, MapLabelOverlayHandle } from '../components/map/MapLabelOverlay';
+import { MapLabelOverlay, MapLabelItem, MapLabelOverlayHandle, hangSelectedLabelsBelowPin } from '../components/map/MapLabelOverlay';
 import { MapControls, MapControlsRecenter } from '../components/map/MapControls';
 import { LayersSheet } from '../components/map/LayersSheet';
 import { useNavigationOverlayV2 } from '../../viewmodels/useNavigationOverlayV2';
 import { useNavigationOverlayV1 } from '../../viewmodels/useNavigationOverlayV1';
 import { useMapMode } from '../../viewmodels/useMapMode';
 import { useReducedMotion } from '../../viewmodels/useReducedMotion';
+import { useDestinationPulse } from '../../viewmodels/useDestinationPulse';
+import { placeFocusRegion } from '../../viewmodels/useCameraManager';
 import { NavigationChromeV2 } from '../components/navigation/NavigationChromeV2';
 import { NavigationChromeV1 } from '../components/navigation/NavigationChromeV1';
 import { LocationSheet } from '../components/map/LocationSheet';
@@ -285,6 +287,12 @@ export function HomeScreen() {
       releaseStartupMapReady();
     }
   }, [releaseStartupMapReady]);
+
+  // Camera priority: a destination picked in the Directory outranks the launch camera (user location / Block 2).
+  const pendingDirectorySelection = useAppStore((s) => s.pendingDirectorySelection);
+  useEffect(() => {
+    if (pendingDirectorySelection) invalidateStartupCameraIntent();
+  }, [pendingDirectorySelection, invalidateStartupCameraIntent]);
 
   const settleStartupRegion = useCallback(() => {
     // A region-complete that arrives before onMapReady is ignored; the bound timer covers that case.
@@ -875,13 +883,18 @@ export function HomeScreen() {
     previewVisibleBlocks,
   ]);
 
+  // Camera priority: a destination already handed off by the Directory when the map mounts is where the map STARTS,
+  // so the first painted frame is the destination, never the venue overview. (Marker 30% down: clear of the sheet.)
+  const initialDestinationRef = useRef<Coordinate | null>(useAppStore.getState().pendingDirectorySelection?.coordinate ?? null);
   const effectiveInitialRegion = useV2Map
-    ? {
-        latitude: IJTEMA_MAP_REGION.latitude,
-        longitude: IJTEMA_MAP_REGION.longitude,
-        latitudeDelta: IJTEMA_MAP_REGION.latitudeDelta + 0.002,
-        longitudeDelta: IJTEMA_MAP_REGION.longitudeDelta + 0.002,
-      }
+    ? initialDestinationRef.current
+      ? placeFocusRegion(initialDestinationRef.current, 0.3)
+      : {
+          latitude: IJTEMA_MAP_REGION.latitude,
+          longitude: IJTEMA_MAP_REGION.longitude,
+          latitudeDelta: IJTEMA_MAP_REGION.latitudeDelta + 0.002,
+          longitudeDelta: IJTEMA_MAP_REGION.longitudeDelta + 0.002,
+        }
     : initialRegion;
 
   const walkingTimeMin = (selectedPlace && currentLocation && selectedPlace.sourceVersion !== 'v2')
@@ -1292,10 +1305,15 @@ export function HomeScreen() {
         ? currentLocation
         : null
     : null;
-  const allMapLabelItems = useMemo<MapLabelItem[]>(
-    () => rememberedLabelCoordinate
+  // The destination pin's tip marks the place, so its own label hangs below the tip instead of under the pin body.
+  const destinationPinVisible = Boolean(
+    activePreviewRoute ? previewDestinationCoordinate : markerOwnership.showBrowseSelection && selectedPlace && selectedPlaceMarkerCoordinate,
+  );
+  const allMapLabelItems = useMemo<MapLabelItem[]>(() => {
+    const items = hangSelectedLabelsBelowPin(mapLabelItems, destinationPinVisible);
+    return rememberedLabelCoordinate
       ? [
-          ...mapLabelItems,
+          ...items,
           {
             id: 'user_last_known',
             coordinate: rememberedLabelCoordinate,
@@ -1306,9 +1324,8 @@ export function HomeScreen() {
             accessibilityLabel: 'Your last known location',
           },
         ]
-      : mapLabelItems,
-    [mapLabelItems, rememberedLabelCoordinate],
-  );
+      : items;
+  }, [destinationPinVisible, mapLabelItems, rememberedLabelCoordinate]);
 
   // MapLibre has no onMapReady: the style + archive finishing loading is the point the camera can be commanded.
   const handleMapReady = () => {
@@ -1400,6 +1417,13 @@ export function HomeScreen() {
       : [],
     [activePreviewRoute, previewInsideLegCoordinates, previewOutsideLegCoordinates],
   );
+  // One ring pulse per chosen destination (a selected place, then the same place as the route-preview destination).
+  const pulseTarget = activePreviewRoute
+    ? previewDestinationCoordinate
+    : markerOwnership.showBrowseSelection && selectedPlace
+      ? selectedPlaceMarkerCoordinate
+      : null;
+  const destinationPulse = useDestinationPulse(pulseTarget ? `${pulseTarget.latitude},${pulseTarget.longitude}` : null, reducedMotion);
   const mapOverlays = useMemo<OverlaySpec[]>(() => {
     const browseUser = markerOwnership.showBrowseUser && currentLocation
       ? buildMarkerOverlay({
@@ -1425,6 +1449,7 @@ export function HomeScreen() {
         selectedPin,
         destination: activePreviewRoute ? previewDestinationCoordinate : null,
         start: showPreviewStartMarker ? previewStartCoordinate : null,
+        pulse: destinationPulse,
       }),
       ...browseUser,
     ];
@@ -1434,6 +1459,7 @@ export function HomeScreen() {
     cameraManager.mode,
     currentLocation,
     currentLocationSource,
+    destinationPulse,
     markerOwnership.showBrowseSelection,
     markerOwnership.showBrowseUser,
     mode,

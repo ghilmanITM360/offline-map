@@ -55,3 +55,19 @@ export const SPECIAL_ROUTE_DASH = [3, 1.6];
 
 /** Facility badges are secondary context: smaller at the venue overview, full size once the user is close. */
 export const FACILITY_ICON_SIZE_BY_ZOOM = ['interpolate', ['linear'], ['zoom'], 14, 0.55, 16.5, 0.9];
+
+/**
+ * Destination pulse: ONE outward ring when a destination is chosen, then nothing. Phases are paint states of a
+ * single layer, so the animation is MapLibre's own paint transition (no per-frame JS, no layer remount).
+ * 'start' parks the ring small and visible without animating, 'out' expands and fades it, 'static' is the
+ * reduced-motion emphasis, 'idle' is invisible.
+ */
+export type PulsePhase = 'idle' | 'start' | 'out' | 'static';
+export const PULSE_DURATION_MS = 800;
+export const PULSE_COLOR = '#1A73E8';
+export const PULSE_PAINT: Record<PulsePhase, { radius: number; opacity: number; transitionMs: number }> = {
+  idle: { radius: 10, opacity: 0, transitionMs: 0 },
+  start: { radius: 10, opacity: 0.55, transitionMs: 0 },
+  out: { radius: 44, opacity: 0, transitionMs: PULSE_DURATION_MS },
+  static: { radius: 24, opacity: 0.3, transitionMs: 0 },
+};

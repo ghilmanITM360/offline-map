@@ -20,7 +20,10 @@ import { IJTEMA_MAP_REGION } from '../data/ijtema';
 import { DEFAULT_MAP_ZOOM as DEFAULT_HOME_MAP_ZOOM, estimateZoomFromRegion } from '../utils/mapZoom';
 import { formatLastKnownAge } from '../utils/formatLastKnownAge';
 import { unavailableReasonCopy } from '../utils/unavailableReasonCopy';
-import { useCameraManager, CompassMode, PLACE_SELECTION_CAMERA_DURATION_MS } from './useCameraManager';
+import { useCameraManager, CompassMode } from './useCameraManager';
+
+// The sheet starts springing in as the camera ease is finishing, not after it, so selection feels like one motion.
+const SHEET_OVERLAP_FRACTION = 0.6;
 
 declare const __DEV__: boolean;
 
@@ -156,7 +159,7 @@ export function useHomeViewModel({ isFocused = true }: { isFocused?: boolean } =
   // HomeScreen's BottomSheetModal onChange is the only writer and handlePlaceSelect
   // itself must read the pre-selection value synchronously.
   const isSheetOpenForReselection = Boolean(selectedPlace) && lastSheetIndexRef.current >= 1;
-  const handlePlaceSelect = (place: Place) => {
+  const handlePlaceSelect = (place: Place, opts?: { cameraAlreadyThere?: boolean }) => {
     const nextSnapIndex = isSheetOpenForReselection ? lastSheetIndexRef.current : 1;
     // 1. Selection highlight — set synchronously, before camera/sheet move, so the tapped
     // object's isSelected styling (RastaLayer/SpecialRouteLayer/BlockLayer/GateLayer) updates
@@ -182,9 +185,9 @@ export function useHomeViewModel({ isFocused = true }: { isFocused?: boolean } =
     // reopen at (or keep, on re-selection) — see useCameraManager.animateToPlace.
     const snapPercent = parseFloat(snapPoints[nextSnapIndex] ?? '50%');
     const sheetCoverageFraction = (Number.isFinite(snapPercent) ? snapPercent : 50) / 100;
-    cameraManager.animateToPlace(place, sheetCoverageFraction);
+    const cameraDurationMs = cameraManager.animateToPlace(place, sheetCoverageFraction, opts?.cameraAlreadyThere ? 0 : undefined);
     // 3. Sheet springs in once the (short) camera pan has landed, instead of racing it.
-    sheetPresentTimerRef.current = setTimeout(openSheet, PLACE_SELECTION_CAMERA_DURATION_MS);
+    sheetPresentTimerRef.current = setTimeout(openSheet, Math.round(cameraDurationMs * SHEET_OVERLAP_FRACTION));
   };
 
   // Consumes a destination handed off by the Locations Directory screen (a RootStack
@@ -193,11 +196,21 @@ export function useHomeViewModel({ isFocused = true }: { isFocused?: boolean } =
   // cleared the instant it's consumed so it never re-fires on a later unrelated render.
   // Held until Home is focused again, i.e. after the Directory has finished popping, so the
   // sheet never presents over the screen that is still on top (#190).
+  const earlyFocusedRef = useRef<Place | null>(null);
   useEffect(() => {
+    // Destination outranks every other camera intent: while the Directory is still closing over the map, jump
+    // (the map is not visible yet) so the reveal lands on the place instead of the venue overview. The sheet and
+    // the selection still wait for focus, below.
+    if (pendingDirectorySelection?.coordinate && !isFocused && earlyFocusedRef.current !== pendingDirectorySelection) {
+      earlyFocusedRef.current = pendingDirectorySelection;
+      cameraManager.animateToPlace(pendingDirectorySelection, 0.5, 0);
+    }
     if (!pendingDirectorySelection || !isFocused) return;
-    handlePlaceSelect(pendingDirectorySelection);
+    const jumpedEarly = earlyFocusedRef.current === pendingDirectorySelection;
+    earlyFocusedRef.current = null;
+    handlePlaceSelect(pendingDirectorySelection, { cameraAlreadyThere: jumpedEarly });
     setPendingDirectorySelection(null);
-  }, [pendingDirectorySelection, isFocused, handlePlaceSelect, setPendingDirectorySelection]);
+  }, [pendingDirectorySelection, isFocused, handlePlaceSelect, setPendingDirectorySelection, cameraManager]);
 
   const handleRecenter = useCallback(async (): Promise<boolean> => {
     const recenterTo = (location: typeof currentLocation) => {

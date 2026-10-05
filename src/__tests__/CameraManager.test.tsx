@@ -3,8 +3,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import { AccessibilityInfo } from 'react-native';
 import { renderHook, act } from './test-utils';
-import { useCameraManager } from '../viewmodels/useCameraManager';
+import { useCameraManager, placeFocusRegion, PLACE_ZOOM_DELTA } from '../viewmodels/useCameraManager';
 
 function makeFakeMapRef() {
   return {
@@ -35,6 +36,14 @@ function markCameraReady(result: { current: ReturnType<typeof useCameraManager> 
   result.current.notifyNativeMapReady();
   result.current.notifyMapLayout(390, 844);
 }
+
+describe('placeFocusRegion', () => {
+  test('centres on the place at the focus zoom; a marker fraction above 0.5 shifts the centre south so the marker sits up-screen', () => {
+    const centred = placeFocusRegion(PLACE.coordinate, 0.5);
+    expect(centred).toEqual({ latitude: PLACE.coordinate.latitude, longitude: PLACE.coordinate.longitude, latitudeDelta: PLACE_ZOOM_DELTA, longitudeDelta: PLACE_ZOOM_DELTA });
+    expect(placeFocusRegion(PLACE.coordinate, 0.3).latitude).toBeLessThan(PLACE.coordinate.latitude);
+  });
+});
 
 describe('useCameraManager', () => {
   test('current location button flow (followUser) calls animateToUser and enters FOLLOWING_USER', async () => {
@@ -90,18 +99,68 @@ describe('useCameraManager', () => {
     expect(region.latitude).toBeLessThan(PLACE.coordinate.latitude);
   });
 
-  test('animateToPlace uses a short (150-300ms) pan by default, not the slower 1s used elsewhere', async () => {
+  test('animateToPlace eases for 500-700ms by default, not the old 260ms snap or a dramatic multi-second fly', async () => {
     const mapRef = makeFakeMapRef();
     const { result } = await renderHook(() => useCameraManager({ mapRef }));
+
+    let returned: number | undefined;
+    await act(() => {
+      markCameraReady(result);
+      returned = result.current.animateToPlace(PLACE);
+    });
+
+    const [, duration] = mapRef.current.animateToRegion.mock.calls[0];
+    expect(duration).toBeGreaterThanOrEqual(500);
+    expect(duration).toBeLessThanOrEqual(700);
+    expect(returned).toBe(duration);
+  });
+
+  test('animateToPlace uses a shorter ease when the target is already nearby', async () => {
+    const mapRef = makeFakeMapRef();
+    const { result } = await renderHook(() => useCameraManager({ mapRef }));
+    const near = { coordinate: { latitude: PLACE.coordinate.latitude + 0.0002, longitude: PLACE.coordinate.longitude } }; // ~22 m
 
     await act(() => {
       markCameraReady(result);
       result.current.animateToPlace(PLACE);
+      result.current.animateToPlace(near);
     });
 
-    const [, duration] = mapRef.current.animateToRegion.mock.calls[0];
-    expect(duration).toBeGreaterThanOrEqual(150);
-    expect(duration).toBeLessThanOrEqual(300);
+    const [, first] = mapRef.current.animateToRegion.mock.calls[0];
+    const [, second] = mapRef.current.animateToRegion.mock.calls[1];
+    expect(second).toBeLessThan(first);
+    expect(second).toBeGreaterThan(0);
+  });
+
+  test('animateToPlace moves immediately when the OS asks to reduce motion', async () => {
+    (AccessibilityInfo.isReduceMotionEnabled as jest.Mock).mockResolvedValueOnce(true);
+    const mapRef = makeFakeMapRef();
+    const { result } = await renderHook(() => useCameraManager({ mapRef }));
+    await act(async () => {});
+
+    let returned: number | undefined;
+    await act(() => {
+      markCameraReady(result);
+      returned = result.current.animateToPlace(PLACE);
+    });
+
+    expect(mapRef.current.animateToRegion.mock.calls[0][1]).toBe(0);
+    expect(returned).toBe(0);
+  });
+
+  test('animateToPlace issued before the map is ready jumps instead of easing: nobody can watch an ease on a map that has not painted', async () => {
+    const mapRef = makeFakeMapRef();
+    const { result } = await renderHook(() => useCameraManager({ mapRef }));
+
+    let returned: number | undefined;
+    await act(() => {
+      returned = result.current.animateToPlace(PLACE);
+    });
+    expect(returned).toBe(0);
+    await act(() => markCameraReady(result));
+
+    expect(mapRef.current.animateToRegion).toHaveBeenCalledTimes(1);
+    expect(mapRef.current.animateToRegion.mock.calls[0][1]).toBe(0);
   });
 
   test('animateToPlace shifts the camera further north the more the sheet covers (bottom edge > center > top)', async () => {
