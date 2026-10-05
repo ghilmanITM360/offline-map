@@ -6,7 +6,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Location from 'expo-location';
 import { LocationAccessService } from '../services/LocationAccessService';
-import { OnboardingStatusService } from '../services/OnboardingStatusService';
 
 jest.mock('expo-location', () => ({
   getForegroundPermissionsAsync: jest.fn(),
@@ -69,31 +68,20 @@ describe('LocationAccessService.getPermissionState — permission precision', ()
   });
 });
 
-describe('LocationAccessService.getPermissionState — Settings permission-skip clearing', () => {
-  it('clears a stale skip when a status check finds permission already granted', async () => {
-    await OnboardingStatusService.setSkippedLocationPermission(true);
-    (Location.getForegroundPermissionsAsync as jest.Mock).mockResolvedValue({ status: 'granted', canAskAgain: true });
-
-    const state = await LocationAccessService.getPermissionState();
-
-    expect(state.granted).toBe(true);
-    expect(await OnboardingStatusService.hasSkippedLocationPermission()).toBe(false);
-  });
-
-  it('leaves the skip flag alone when the status check finds permission not granted', async () => {
-    await OnboardingStatusService.setSkippedLocationPermission(true);
+// #307: location is asked in context. A background resolution (e.g. the Map's startup camera) never prompts;
+// only a user-initiated request (Use my location, Recenter, live guidance) may show the system dialog.
+describe('LocationAccessService.resolveCurrentLocation — permission is requested only in context', () => {
+  it('never prompts when the caller does not allow it (startup camera) and permission is not granted', async () => {
     (Location.getForegroundPermissionsAsync as jest.Mock).mockResolvedValue({ status: 'denied', canAskAgain: true });
 
-    await LocationAccessService.getPermissionState();
+    const resolved = await LocationAccessService.resolveCurrentLocation(false);
 
-    expect(await OnboardingStatusService.hasSkippedLocationPermission()).toBe(true);
+    expect(Location.requestForegroundPermissionsAsync).not.toHaveBeenCalled();
+    expect(resolved.ok).toBe(false);
+    expect(resolved.permissionState.granted).toBe(false);
   });
-});
 
-// Home/Recenter and Directions "current location" both route through resolveCurrentLocation().
-describe('LocationAccessService.resolveCurrentLocation — Home/Recenter + Directions permission-skip clearing', () => {
-  it('clears a stale skip once a fresh prompt confirms grant', async () => {
-    await OnboardingStatusService.setSkippedLocationPermission(true);
+  it('prompts exactly once when a user-initiated request is allowed to, and uses the grant', async () => {
     (Location.getForegroundPermissionsAsync as jest.Mock).mockResolvedValue({ status: 'denied', canAskAgain: true });
     (Location.requestForegroundPermissionsAsync as jest.Mock).mockResolvedValue({ status: 'granted', canAskAgain: true });
     (Location.getCurrentPositionAsync as jest.Mock).mockResolvedValue({
@@ -102,13 +90,11 @@ describe('LocationAccessService.resolveCurrentLocation — Home/Recenter + Direc
 
     const resolved = await LocationAccessService.resolveCurrentLocation(true);
 
+    expect(Location.requestForegroundPermissionsAsync).toHaveBeenCalledTimes(1);
     expect(resolved.ok).toBe(true);
-    expect(resolved.permissionState.granted).toBe(true);
-    expect(await OnboardingStatusService.hasSkippedLocationPermission()).toBe(false);
   });
 
-  it('also clears the skip when permission was already granted before this call (no re-prompt needed)', async () => {
-    await OnboardingStatusService.setSkippedLocationPermission(true);
+  it('does not prompt again when permission is already granted', async () => {
     (Location.getForegroundPermissionsAsync as jest.Mock).mockResolvedValue({ status: 'granted', canAskAgain: true });
     (Location.getCurrentPositionAsync as jest.Mock).mockResolvedValue({
       coords: { latitude: 1, longitude: 2, heading: null, accuracy: 5 },
@@ -117,39 +103,6 @@ describe('LocationAccessService.resolveCurrentLocation — Home/Recenter + Direc
     await LocationAccessService.resolveCurrentLocation(true);
 
     expect(Location.requestForegroundPermissionsAsync).not.toHaveBeenCalled();
-    expect(await OnboardingStatusService.hasSkippedLocationPermission()).toBe(false);
-  });
-
-  it('does not clear the skip flag when the prompt is denied', async () => {
-    await OnboardingStatusService.setSkippedLocationPermission(true);
-    (Location.getForegroundPermissionsAsync as jest.Mock).mockResolvedValue({ status: 'denied', canAskAgain: true });
-    (Location.requestForegroundPermissionsAsync as jest.Mock).mockResolvedValue({ status: 'denied', canAskAgain: true });
-
-    const resolved = await LocationAccessService.resolveCurrentLocation(true);
-
-    expect(resolved.ok).toBe(false);
-    expect(resolved.permissionState.granted).toBe(false);
-    expect(await OnboardingStatusService.hasSkippedLocationPermission()).toBe(true);
-  });
-
-  it('does not clear the skip flag when the prompt is cancelled/dismissed (still undetermined afterward)', async () => {
-    await OnboardingStatusService.setSkippedLocationPermission(true);
-    (Location.getForegroundPermissionsAsync as jest.Mock).mockResolvedValue({ status: 'undetermined', canAskAgain: true });
-    (Location.requestForegroundPermissionsAsync as jest.Mock).mockResolvedValue({ status: 'undetermined', canAskAgain: true });
-
-    await LocationAccessService.resolveCurrentLocation(true);
-
-    expect(await OnboardingStatusService.hasSkippedLocationPermission()).toBe(true);
-  });
-
-  it('does not clear the skip flag when not prompting at all (allowPrompt=false) and permission is not granted', async () => {
-    await OnboardingStatusService.setSkippedLocationPermission(true);
-    (Location.getForegroundPermissionsAsync as jest.Mock).mockResolvedValue({ status: 'denied', canAskAgain: true });
-
-    await LocationAccessService.resolveCurrentLocation(false);
-
-    expect(Location.requestForegroundPermissionsAsync).not.toHaveBeenCalled();
-    expect(await OnboardingStatusService.hasSkippedLocationPermission()).toBe(true);
   });
 });
 

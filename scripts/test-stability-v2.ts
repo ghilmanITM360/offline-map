@@ -11,7 +11,6 @@ process.env.EXPO_PUBLIC_USE_IJTEMA_V2_NAVIGATION = 'true';
 
 const homeScreen = readFileSync('src/views/screens/HomeScreen.tsx', 'utf8');
 const navigationViewModelV1 = readFileSync('src/viewmodels/NavigationViewModel.ts', 'utf8');
-const permissionScreen = readFileSync('src/views/screens/PermissionScreen.tsx', 'utf8');
 const settingsScreen = readFileSync('src/views/screens/SettingsScreen.tsx', 'utf8');
 const directionsScreen = readFileSync('src/views/components/map/LocationSheet.tsx', 'utf8');
 
@@ -19,7 +18,7 @@ assert(homeScreen.includes('onReady={handleMapReady}') && homeScreen.includes('s
 // Navigation (v1 and v2 alike) shares Home's one map, so this single check already covers navigation rendering
 // without a Google key or internet: the only basemap source is the bundled local archive.
 assert(homeScreen.includes('archiveUri={basemapRejected ? null : basemap.uri}') && !homeScreen.includes('PROVIDER_GOOGLE'), 'Home map must render from the bundled archive without requesting Google tiles');
-assert(permissionScreen.includes('Choose start manually') || directionsScreen.includes("onOpenDirectory?.('start')"), 'Denied GPS must leave a manual routing path');
+assert(directionsScreen.includes("onOpenDirectory?.('start')"), 'Denied GPS must leave a manual routing path');
 assert(settingsScreen.includes("AppState.addEventListener('change'"), 'Settings permission state must refresh safely after Android settings return');
 assert(
   navigationViewModelV1.includes("(activeRoute as { sourceVersion?: string }).sourceVersion === 'v2'"),

@@ -35,20 +35,21 @@ describe('WelcomeScreen (#159 WEL-007)', () => {
     expect(screen.getByText('Get walking directions')).toBeOnTheScreen();
   });
 
-  test('WEL-006: no benefit repeats the Permission screen heading one tap later', async () => {
+  test('#307: says plainly that location is optional and is asked for later, when it helps', async () => {
     await render(<WelcomeScreen />);
 
+    expect(screen.getByText('Location is optional. You can allow it later to follow your walk live.')).toBeOnTheScreen();
     expect(screen.queryByText('Find your location')).not.toBeOnTheScreen();
   });
 
-  test('pressing Continue replaces onto Permission', async () => {
+  test('pressing Continue goes straight to the Directory (no permission step)', async () => {
     await render(<WelcomeScreen />);
 
     await act(async () => {
       fireEvent.press(screen.getByText('Continue'));
     });
 
-    expect(mockNavigation.replace).toHaveBeenCalledWith('Permission');
+    expect(mockNavigation.replace).toHaveBeenCalledWith('LocationsDirectory');
   });
 
   // The primary CTA of the first onboarding screen had no accessibilityRole/Label — a
