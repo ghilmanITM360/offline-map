@@ -1,0 +1,22 @@
+diff --git a/node_modules/react-native-maps/android/src/main/java/com/rnmaps/maps/ViewChangesTracker.java b/node_modules/react-native-maps/android/src/main/java/com/rnmaps/maps/ViewChangesTracker.java
+index 238fcb5..e36d7fe 100644
+--- a/node_modules/react-native-maps/android/src/main/java/com/rnmaps/maps/ViewChangesTracker.java
++++ b/node_modules/react-native-maps/android/src/main/java/com/rnmaps/maps/ViewChangesTracker.java
+@@ -3,6 +3,7 @@ package com.rnmaps.maps;
+ import android.os.Handler;
+ import android.os.Looper;
+ 
++import java.util.ArrayList;
+ import java.util.LinkedList;
+ 
+ public class ViewChangesTracker {
+@@ -60,7 +61,8 @@ public class ViewChangesTracker {
+   private final LinkedList<MapMarker> markersToRemove = new LinkedList<>();
+ 
+   public void update() {
+-    for (MapMarker marker : markers) {
++    // #268: iterate a snapshot; a marker added/removed during the loop must not throw CME.
++    for (MapMarker marker : new ArrayList<>(markers)) {
+       if (!marker.updateCustomForTracking()) {
+         markersToRemove.add(marker);
+       }

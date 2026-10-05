@@ -1,0 +1,2 @@
+# patch-package output keeps context lines with a leading space, which diff --check reads as trailing whitespace.
+patches/*.patch -whitespace
