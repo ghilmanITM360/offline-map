@@ -2,7 +2,7 @@
 
 ## Onboarding
 
-Welcome → Permission → Download Map. Each step's choice persists independently and does not re-prompt on its own:
+Welcome → Permission → Map setup (Download Map; in release builds it only explains that background imagery needs internet, #140). Each step's choice persists independently and does not re-prompt on its own:
 
 - `hasSeenWelcome` — set once, never re-shown.
 - `graphOnlyMode` / `skippedOnlineMode` — persisted user choice about offline-only operation.

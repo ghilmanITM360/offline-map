@@ -47,7 +47,7 @@ const GUIDE_SECTIONS: GuideSection[] = [
     title: '2. Offline Maps',
     urduTitle: '۲۔ آف لائن نقشہ',
     body:
-      'Download map data before entering the crowded area. Internal search and directions work from bundled Ijtema data, so if tile download fails, internal venue routing can still work in venue-only mode.',
+      'Internal search and directions work from bundled Ijtema data, without internet. Street and satellite background imagery needs internet; without it you still see the venue map and routes.',
   },
   {
     key: 'search',

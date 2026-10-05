@@ -1377,7 +1377,7 @@ export function HomeScreen() {
 
   const handleMapTypeChange = (nextMapType: 'standard' | 'satellite') => {
     if (nextMapType === 'satellite' && baseMapMode !== 'GOOGLE_BASEMAP') {
-      Alert.alert('Satellite unavailable offline', 'Satellite requires internet or downloaded satellite tiles.');
+      Alert.alert('Satellite unavailable offline', 'Satellite imagery requires internet. Ijtema routes still work offline.');
       return;
     }
     updateSettings({ mapMode: nextMapType });

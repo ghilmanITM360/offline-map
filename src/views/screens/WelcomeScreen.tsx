@@ -13,7 +13,7 @@ import { useWelcomeViewModel } from '../../viewmodels/WelcomeViewModel';
 const BENEFITS = [
   { icon: MapPin, text: 'See where you are' },
   { icon: Navigation, text: 'Navigate to blocks and gates' },
-  { icon: WifiOff, text: 'Use offline maps' },
+  { icon: WifiOff, text: 'Venue routes work offline' },
   { icon: Footprints, text: 'Get walking directions' },
 ];
 
