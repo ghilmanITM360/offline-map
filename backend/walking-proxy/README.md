@@ -54,6 +54,21 @@ gcloud services enable routes.googleapis.com run.googleapis.com cloudbuild.googl
 gcloud run deploy ijtema-walking-proxy-staging --project map-app-496712 --region asia-south1 --source backend/walking-proxy --no-allow-unauthenticated --service-account ROUTES_RUNTIME_SERVICE_ACCOUNT --set-secrets GOOGLE_ROUTES_API_KEY=ROUTES_SECRET_NAME:SECRET_VERSION --min-instances 0 --max-instances 1 --concurrency 1 --memory 256Mi --timeout 5s
 ```
 
+Rollback / teardown (names only; run only after a deploy exists):
+
+```bash
+gcloud run services update-traffic ijtema-walking-proxy-staging --project map-app-496712 --region asia-south1 --to-revisions PREVIOUS_REVISION=100
+gcloud run services delete ijtema-walking-proxy-staging --project map-app-496712 --region asia-south1   # full teardown
+gcloud secrets versions disable SECRET_VERSION --secret ROUTES_SECRET_NAME --project map-app-496712     # revoke key use
+```
+
+Deployment acceptance record (post on #123/#161; never paste the key): service URL, revision,
+deployed SHA, invoker IAM members, secret *name*, Routes key API restriction, `/healthz` status,
+and latency of a few bounded WALK requests.
+
+**Status: READY_TO_DEPLOY — OWNER BILLING/AUTH BLOCKER** (Routes/Cloud Run/Secret Manager not
+enabled; staging choice A/B/C, Routes credential and coordinate disclosure pending owner).
+
 `ROUTES_RUNTIME_SERVICE_ACCOUNT`, `ROUTES_SECRET_NAME`, `SECRET_VERSION` are
 names/placeholders, not credentials. Grant run.invoker only to intended staging
 operators/trusted gateway; audit IAM after deployment. Real health/WALK request
