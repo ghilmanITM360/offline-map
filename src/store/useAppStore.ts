@@ -26,6 +26,7 @@ import {
 import { MapFeatureFlagsService } from '../services/MapFeatureFlagsService';
 import { V2PlaceAdapter } from '../services/V2PlaceAdapter';
 import { isValidCoordinate } from '../utils/isValidCoordinate';
+import { freshLastKnownLocation, pruneRecentSearches } from '../utils/dataRetention';
 import { UnfinishedJourney, createUnfinishedJourney, parseUnfinishedJourney } from '../utils/unfinishedJourney';
 
 export type RouteSelectionMode = 'idle' | 'selectingStart' | 'selectingDestination';
@@ -110,6 +111,8 @@ interface AppState {
   lastKnownLocation: Coordinate | null;
   lastKnownLocationUpdatedAt: string | null;
   setLastKnownLocation: (loc: Coordinate | null) => void;
+  /** #145: forget the saved fix (and a remembered in-memory position derived from it). Live fixes stay. */
+  clearSavedLocation: () => void;
   snappedLocation: Coordinate | null;
   setSnappedLocation: (loc: Coordinate | null) => void;
 
@@ -216,6 +219,8 @@ interface AppState {
   searchResults: SearchResult[];
   setSearchResults: (results: SearchResult[]) => void;
   recentSearches: Place[];
+  /** #145: place id -> epoch ms when it was searched; drives the 30 day expiry. */
+  recentSearchTimes: Record<string, number>;
   addRecentSearch: (place: Place) => void;
   clearRecentSearches: () => void;
 
@@ -338,16 +343,17 @@ export const selectHasUnfinishedJourney = (state: Pick<AppState, 'unfinishedJour
   selectUnfinishedJourney(state, nowMs) !== null;
 
 function partializeAppState(state: AppState) {
+  const now = Date.now();
+  const recents = pruneRecentSearches(sanitizePersistedPlaces(state.recentSearches), state.recentSearchTimes, now);
   return {
     offlineData: state.offlineData,
     offlineMapStatus: state.offlineMapStatus,
     offlineMapStatusMessage: state.offlineMapStatusMessage,
     downloadState: state.downloadState,
     settings: state.settings,
-    recentSearches: sanitizePersistedPlaces(state.recentSearches),
+    ...recents,
     favorites: sanitizePersistedFavorites(state.favorites),
-    lastKnownLocation: state.lastKnownLocation,
-    lastKnownLocationUpdatedAt: state.lastKnownLocationUpdatedAt,
+    ...freshLastKnownLocation(state.lastKnownLocation, state.lastKnownLocationUpdatedAt, now),
     unfinishedJourney: state.unfinishedJourney,
     hasSeenMapOverview: state.hasSeenMapOverview,
     hasSeenLocationTutorial: state.hasSeenLocationTutorial,
@@ -422,7 +428,7 @@ export const useAppStore = create<AppState>()(
       setCurrentLocation: (loc, source = 'live') => {
         // #147: a NaN/Infinity/out-of-range fix must never reach progress, reroute, arrival or snapping.
         if (loc && !isValidCoordinate(loc)) return;
-        const now = new Date().toISOString();
+        const now = new Date(Date.now()).toISOString();
         set({ currentLocation: loc, currentLocationSource: loc ? source : null });
         if (loc && source !== 'remembered' && source !== 'manual') {
           set({ lastKnownLocation: loc, lastKnownLocationUpdatedAt: now });
@@ -430,7 +436,13 @@ export const useAppStore = create<AppState>()(
       },
       lastKnownLocation: null,
       lastKnownLocationUpdatedAt: null,
-      setLastKnownLocation: (loc) => set({ lastKnownLocation: loc, lastKnownLocationUpdatedAt: loc ? new Date().toISOString() : null }),
+      setLastKnownLocation: (loc) => set({ lastKnownLocation: loc, lastKnownLocationUpdatedAt: loc ? new Date(Date.now()).toISOString() : null }),
+      clearSavedLocation: () =>
+        set((state) => ({
+          lastKnownLocation: null,
+          lastKnownLocationUpdatedAt: null,
+          ...(state.currentLocationSource === 'remembered' ? { currentLocation: null, currentLocationSource: null } : {}),
+        })),
       snappedLocation: null,
       setSnappedLocation: (loc) => set({ snappedLocation: loc }),
 
@@ -530,12 +542,14 @@ export const useAppStore = create<AppState>()(
       searchResults: [],
       setSearchResults: (results) => set({ searchResults: results }),
       recentSearches: [],
+      recentSearchTimes: {},
       addRecentSearch: (place) =>
         set((state) => {
           const filtered = state.recentSearches.filter((p) => p.id !== place.id);
-          return { recentSearches: [place, ...filtered].slice(0, 10) };
+          const now = Date.now();
+          return pruneRecentSearches([place, ...filtered], { ...state.recentSearchTimes, [place.id]: now }, now);
         }),
-      clearRecentSearches: () => set({ recentSearches: [] }),
+      clearRecentSearches: () => set({ recentSearches: [], recentSearchTimes: {} }),
 
       // --- Favorites ---
       favorites: [],
@@ -622,12 +636,19 @@ export const useAppStore = create<AppState>()(
           allowedKeys.filter((key) => Object.prototype.hasOwnProperty.call(persisted, key))
             .map((key) => [key, persisted[key]])
         );
+        const now = Date.now();
+        const hasLastKnown = Object.prototype.hasOwnProperty.call(persisted, 'lastKnownLocation');
         return {
           ...currentState,
           ...allowedState,
+          // Paired keys are always overridden so a partial blob can never leak a raw stamp into state.
+          ...(hasLastKnown
+            ? freshLastKnownLocation(persisted.lastKnownLocation as Coordinate | null, persisted.lastKnownLocationUpdatedAt, now)
+            : { lastKnownLocation: currentState.lastKnownLocation, lastKnownLocationUpdatedAt: currentState.lastKnownLocationUpdatedAt }),
           settings: sanitizePersistedSettings(persisted.settings, currentState.settings),
-          recentSearches: Object.prototype.hasOwnProperty.call(persisted, 'recentSearches')
-            ? sanitizePersistedPlaces(persisted.recentSearches) : currentState.recentSearches,
+          ...(Object.prototype.hasOwnProperty.call(persisted, 'recentSearches')
+            ? pruneRecentSearches(sanitizePersistedPlaces(persisted.recentSearches), persisted.recentSearchTimes, now)
+            : { recentSearches: currentState.recentSearches, recentSearchTimes: currentState.recentSearchTimes }),
           favorites: Object.prototype.hasOwnProperty.call(persisted, 'favorites')
             ? sanitizePersistedFavorites(persisted.favorites) : currentState.favorites,
           // Fails closed (unknown version, extra keys, expired, future-dated -> null). The expired or
