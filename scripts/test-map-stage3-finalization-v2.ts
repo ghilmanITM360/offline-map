@@ -9,8 +9,7 @@ import { readFileSync } from 'node:fs';
 
 const cameraManager = readFileSync('src/viewmodels/useCameraManager.ts', 'utf8');
 const homeViewModel = readFileSync('src/viewmodels/HomeViewModel.ts', 'utf8');
-const rastaLayer = readFileSync('src/views/components/map/RastaLayer.tsx', 'utf8');
-const specialRouteLayer = readFileSync('src/views/components/map/SpecialRouteLayer.tsx', 'utf8');
+const overlaySpecSource = readFileSync('src/views/components/mapgl/overlaySpec.ts', 'utf8');
 const locationSheet = readFileSync('src/views/components/map/LocationSheet.tsx', 'utf8');
 const placeAdapter = readFileSync('src/services/V2PlaceAdapter.ts', 'utf8');
 const types = readFileSync('src/models/types.ts', 'utf8');
@@ -57,11 +56,18 @@ assert(
 
 // --- FIX 2: tuned Rasta/Pindal hit widths -----------------------------------
 
-assert(rastaLayer.includes('strokeWidth={16}') && rastaLayer.includes('tappable'), 'RastaLayer hit target must be tuned to 16 (down from an untuned 20) to reduce adjacent-line crosstalk.');
-assert(specialRouteLayer.includes('strokeWidth={18}') && specialRouteLayer.includes('tappable'), 'SpecialRouteLayer hit target must be explicitly tuned/documented.');
+const canvasSource = readFileSync('src/views/components/mapgl/OfflineMapCanvas.tsx', 'utf8');
 assert(
-  rastaLayer.includes('onPressRasta(rasta.sourceId ?? rasta.id,') && specialRouteLayer.includes('onPressRoute(route.id,'),
-  'Both hit targets must resolve to their logical object identity (Rasta family or special-route id) plus the press coordinate for overlap disambiguation.',
+  /id: 'hit-rastas'[^}]*'line-width': 16/.test(overlaySpecSource),
+  'The rasta hit layer must be tuned to 16 (down from an untuned 20) to reduce adjacent-line crosstalk.',
+);
+assert(
+  /id: 'hit-special'[^}]*'line-width': 18/.test(overlaySpecSource),
+  'The special-route hit layer must be explicitly tuned/documented (18).',
+);
+assert(
+  overlaySpecSource.includes('id: r.sourceId ?? r.id') && canvasSource.includes('coordinate: Coordinate'),
+  'Hit targets must resolve to their logical object identity (Rasta family or special-route id) plus the press coordinate for overlap disambiguation.',
 );
 
 // --- FIX 3: highlight -> camera -> sheet transition ordering ---------------
@@ -117,7 +123,7 @@ assert(
 assert(locationSheet.includes('function facilityTypeLabel(place: Place)'), 'LocationSheet must derive a facility type label for Masjid/Landmark places.');
 assert(
   locationSheet.includes("if (place.id.startsWith('LM_FOOD')) return 'Food & refreshments point';"),
-  'Facility type label must reuse FacilityLayer\'s existing id-prefix categorization, not invent a new one.',
+  'Facility type label must use the LM_FOOD id-prefix categorization, not invent a new one.',
 );
 
 console.log('Map Stage 3 finalization checks passed.');

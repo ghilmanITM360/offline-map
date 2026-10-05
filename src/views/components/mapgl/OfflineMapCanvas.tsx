@@ -6,7 +6,7 @@
 import React, { useCallback, useImperativeHandle, useMemo, useRef, useState } from 'react';
 import { type NativeSyntheticEvent, type StyleProp, type ViewStyle, useWindowDimensions } from 'react-native';
 import { Camera, Images, Map, type CameraRef, type MapRef, type ViewStateChangeEvent } from '@maplibre/maplibre-react-native';
-import type { Region } from 'react-native-maps';
+import type { Region } from './MapCameraHandle';
 import type { Coordinate } from '../../../models/types';
 import { buildBasemapStyle } from './basemapStyle';
 import { createMapLibreCameraHandle, regionToMapLibreZoom } from './maplibreCameraHandle';

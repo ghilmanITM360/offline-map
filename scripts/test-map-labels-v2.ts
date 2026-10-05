@@ -8,7 +8,7 @@ process.env.EXPO_PUBLIC_USE_IJTEMA_V2_MAP = 'true';
 const homeScreenSource = readFileSync('src/views/screens/HomeScreen.tsx', 'utf8');
 const homeViewModelSource = readFileSync('src/viewmodels/HomeViewModel.ts', 'utf8');
 const renderServiceSource = readFileSync('src/services/V2MapRenderingService.ts', 'utf8');
-const gateLayerSource = readFileSync('src/views/components/map/GateLayer.tsx', 'utf8');
+const overlaySpecSource = readFileSync('src/views/components/mapgl/overlaySpec.ts', 'utf8');
 
 assert(
   renderServiceSource.includes('zoomLevel'),
@@ -23,12 +23,12 @@ assert(
   'Home map must forward region changes into zoom-aware label visibility.',
 );
 assert(
-  !gateLayerSource.includes("gate.label.replace('Gate ', 'G')"),
-  'GateLayer must not render label text itself (moved to MapLabelOverlay to fix clipping) — see HomeScreen.tsx mapLabelItems.',
+  !overlaySpecSource.includes('text-field') && !overlaySpecSource.includes("gate.label.replace('Gate ', 'G')"),
+  'Map layers must not render label text themselves (labels are the shared MapLabelOverlay) — see HomeScreen.tsx mapLabelItems.',
 );
 assert(
-  !/<Marker[\s\S]*?<Text[\s\S]*?<\/Marker>/.test(gateLayerSource),
-  'GateLayer must not render a Text label inside a Marker — that snapshot pipeline is what clipped gate labels.',
+  homeScreenSource.includes("kind: 'gate' as const") && homeScreenSource.includes("text: gate.label.replace('Gate ', 'G')"),
+  'Gate labels must be built into HomeScreen mapLabelItems for the shared overlay.',
 );
 
 const lowZoomLayers = V2MapRenderingService.getHomeLayers({

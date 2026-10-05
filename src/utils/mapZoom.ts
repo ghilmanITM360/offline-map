@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { Region } from 'react-native-maps';
+import type { Region } from '../views/components/mapgl/MapCameraHandle';
 
 export const DEFAULT_MAP_ZOOM = 15.5;
 

@@ -56,9 +56,9 @@ assert(homeScreenSource.includes('v2MapLayers.visibleRastas'), 'Home must render
 
 const navOverlaySource = require('node:fs').readFileSync('src/viewmodels/useNavigationOverlayV2.ts', 'utf8');
 assert(navOverlaySource.includes('getHomeLayers'), 'Nav overlay must share the same rendering service as Home');
-const navLayersSource = require('node:fs').readFileSync('src/views/components/navigation/NavigationMapLayersV2.tsx', 'utf8');
+const navSceneSource = require('node:fs').readFileSync('src/views/components/mapgl/navigationScene.ts', 'utf8');
 assert(
-  navLayersSource.includes('mapLayers.blocks') && navLayersSource.includes('mapLayers.rastas'),
+  navSceneSource.includes('blocks: mapLayers.blocks') && navSceneSource.includes('rastas: mapLayers.rastas'),
   'Nav mode must keep consuming the unfiltered blocks/rastas fields, not the Home-only zoom-gated ones',
 );
 

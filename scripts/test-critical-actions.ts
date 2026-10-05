@@ -12,7 +12,6 @@ const directionsScreen = readFileSync('src/views/components/map/LocationSheet.ts
 const navScreen = [
   readFileSync('src/viewmodels/NavigationViewModel.ts', 'utf8'),
   readFileSync('src/viewmodels/useNavigationOverlayV1.ts', 'utf8'),
-  readFileSync('src/views/components/navigation/NavigationMapLayersV1.tsx', 'utf8'),
   readFileSync('src/views/components/navigation/NavigationChromeV1.tsx', 'utf8'),
 ].join('\n');
 const homeScreen = readFileSync('src/views/screens/HomeScreen.tsx', 'utf8');
@@ -119,8 +118,9 @@ assert(
   'Directions should use layman-friendly start-selection flow',
 );
 
+// The destination pin is a generated image whose colour comes from the marker tokens; it must stay the gate-accent red.
 assert(
-  navScreen.includes('staticColors.gateAccent') && staticColors.gateAccent === '#EA4335',
+  staticColors.gateAccent === '#EA4335' && JSON.parse(readFileSync('src/theme/mapMarkerTokens.json', 'utf8')).destination === staticColors.gateAccent,
   'Navigation destination marker should be red',
 );
 assert(
@@ -138,7 +138,7 @@ assert(
   'Navigation should fit route/venue bounds',
 );
 assert(
-  navScreen.includes('title="Start"'),
+  readFileSync('src/views/components/mapgl/navigationScene.ts', 'utf8').includes('start: ownership.showNavigationStart ? route.origin.coordinate : null'),
   'Navigation should render a start marker when route exists',
 );
 assert(
