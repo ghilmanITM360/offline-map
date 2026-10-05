@@ -7,12 +7,9 @@
 // PMTiles archive with the network off. Enabled only when EXPO_PUBLIC_OFFLINE_MAP_POC=1.
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { Asset } from 'expo-asset';
-import { Directory, File, Paths } from 'expo-file-system';
 import { Camera, GeoJSONSource, Layer, Map, type CameraRef } from '@maplibre/maplibre-react-native';
 import type { StyleSpecification } from '@maplibre/maplibre-gl-style-spec';
-
-const ARCHIVE = require('../../assets/offline-map/ijtema-basemap.pmtiles');
+import { getBundledBasemap } from '../services/BundledBasemap';
 
 // Confirmed official gate coordinates (AGENTS.md).
 const GATE_12: [number, number] = [67.006339, 24.963676];
@@ -60,16 +57,9 @@ export function OfflineMapPoc() {
   useEffect(() => {
     (async () => {
       try {
-        const dir = new Directory(Paths.document, 'map');
-        if (!dir.exists) dir.create();
-        const dest = new File(dir, 'ijtema-basemap.pmtiles');
-        if (!dest.exists) {
-          const asset = await Asset.fromModule(ARCHIVE).downloadAsync();
-          if (!asset.localUri) throw new Error('asset has no localUri');
-          new File(asset.localUri).copy(dest);
-        }
-        setStatus(`archive ready (${dest.size} bytes)`);
-        setArchiveUri(dest.uri);
+        const { uri, reused } = await getBundledBasemap();
+        setStatus(`archive ${reused ? 'reused' : 'installed'}`);
+        setArchiveUri(uri);
       } catch (e) {
         setStatus(`ARCHIVE ERROR: ${String(e)}`);
       }
