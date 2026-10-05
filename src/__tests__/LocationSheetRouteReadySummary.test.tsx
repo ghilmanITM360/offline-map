@@ -128,7 +128,7 @@ describe('Route ready — FROM / TO at a glance', () => {
     mockedVm.mockReturnValue(readyVm({ startSource: 'remembered_location', startSourceLabel: 'Last known location' }));
     await renderSheet();
 
-    expect(screen.getByText('Using your saved location')).toBeOnTheScreen();
+    expect(screen.getByText('Saved location, not live')).toBeOnTheScreen();
     expect(screen.queryByPlaceholderText(/search/i)).not.toBeOnTheScreen();
     expect(screen.queryByRole('button', { name: /Use my current location/ })).not.toBeOnTheScreen();
   });
@@ -143,16 +143,26 @@ describe('Route ready — FROM / TO at a glance', () => {
     expect(screen.getByText('Waiting for a precise location.')).toBeOnTheScreen();
   });
 
-  test('Change Start and Change destination both open the Directory; Back closes', async () => {
+  test('no duplicate or technical copy: no "Starting from X", "Chosen by you" or "Using GPS" under the rows', async () => {
+    mockedVm.mockReturnValue(readyVm({ startSource: 'manual_place', startSourceLabel: 'Block 27', startSourceSupportingCopy: 'Starting from Block 27.' }));
+    await renderSheet();
+
+    expect(screen.queryByText(/Starting from Block 27/)).not.toBeOnTheScreen();
+    expect(screen.queryByText('Chosen by you')).not.toBeOnTheScreen();
+    expect(screen.queryByText('Using GPS')).not.toBeOnTheScreen();
+    expect(screen.queryByText('Offline route ready.')).not.toBeOnTheScreen();
+  });
+
+  test('the FROM and TO rows themselves are the change controls; Back closes', async () => {
     mockedVm.mockReturnValue(readyVm());
     const onOpenDirectory = jest.fn();
     const user = userEvent.setup();
     await renderSheet({ onOpenDirectory, onChangeDestination: jest.fn() });
 
-    await user.press(screen.getByRole('button', { name: 'Change destination' }));
+    await user.press(screen.getByRole('button', { name: 'To Block 1. Change destination.' }));
     expect(onOpenDirectory).toHaveBeenCalledWith('destination');
 
-    await user.press(screen.getByRole('button', { name: 'Change starting point' }));
+    await user.press(screen.getByRole('button', { name: 'From Gate 13. Change start.' }));
     expect(onOpenDirectory).toHaveBeenLastCalledWith('start');
     expect(screen.getByText('Gate 13')).toBeOnTheScreen();
 
@@ -160,21 +170,18 @@ describe('Route ready — FROM / TO at a glance', () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
-  test('each of FROM and TO is one TalkBack stop, not label + name + detail', async () => {
+  test('each of FROM and TO is one TalkBack stop that names its own action', async () => {
     mockedVm.mockReturnValue(readyVm());
     await renderSheet();
 
-    const from = screen.getByLabelText(/^From, Gate 13/);
-    const to = screen.getByLabelText(/^To, Block 1, Block/);
-    expect(from.props.accessible).toBe(true);
-    expect(to.props.accessible).toBe(true);
-    // The three texts live inside that one stop, so none may be its own stop.
+    const from = screen.getByRole('button', { name: 'From Gate 13. Change start.' });
+    const to = screen.getByRole('button', { name: 'To Block 1. Change destination.' });
     expect(from).toContainElement(screen.getByText('From'));
     expect(from).toContainElement(screen.getByText('Gate 13'));
     expect(to).toContainElement(screen.getByText('To'));
     expect(to).toContainElement(screen.getByText('Block 1'));
-    // Change actions stay separate buttons.
-    expect(screen.getByRole('button', { name: 'Change starting point' })).toBeOnTheScreen();
-    expect(screen.getByRole('button', { name: 'Change destination' })).toBeOnTheScreen();
+    // No separate oversized "Change ..." buttons duplicate the rows.
+    expect(screen.queryByText('Change Start')).not.toBeOnTheScreen();
+    expect(screen.queryByText('Change destination')).not.toBeOnTheScreen();
   });
 });
