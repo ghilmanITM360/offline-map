@@ -74,7 +74,7 @@ Adding or changing a block/gate/rasta requires editing the corresponding `src/da
 
 ## Not built (do not assume it exists)
 
-A general venue-data authoring/import pipeline (GeoJSON/Excel → validated versioned output) is not implemented. The existing Overpass street-graph generator is narrower and must not be represented as that proposed workflow.
+A general venue-data authoring/import pipeline (GeoJSON/Excel → validated versioned output) is not implemented; the supported maintenance flow is the repo-controlled one in `DATA_MAINTENANCE.md` (#133). The existing Overpass street-graph generator is narrower and must not be represented as that proposed workflow.
 
 ## Field verification status
 

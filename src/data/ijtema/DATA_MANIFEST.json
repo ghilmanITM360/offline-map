@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 1,
+  "provenance": {
+    "dataVersion": "baseline-2026-10-05",
+    "updatedOn": "2026-10-05",
+    "editor": "Claude (maintenance tooling baseline; data content unchanged)",
+    "note": "Checksum baseline of the committed canonical venue data. Survey/GIS provenance stays in docs/DATA_GIS_AND_FIELD_REQUIREMENTS.md; street graph provenance in docs/OFFLINE_NAVIGATION_AND_ROUTING.md."
+  },
+  "counts": {
+    "gates": 18,
+    "blocks": 42,
+    "rastas": 11,
+    "specialRoutes": 3,
+    "centralPoints": 12,
+    "streetNodes": 7952,
+    "streetEdges": 11987
+  },
+  "streetGraph": {
+    "version": "1.0.0",
+    "source": "osm_overpass",
+    "generatedAt": "2026-09-17T21:21:01.400Z",
+    "pedestrianProfileVersion": "2026-08-15-v2"
+  },
+  "files": {
+    "src/data/ijtema/gates.ts": "113838ef934c44f9dedc921badc45a2b926930349e1ca13cd458c7a7130cf37a",
+    "src/data/ijtema/gateMeta.ts": "70b12844b38de3b5123b3a8a2a364f1a52579340aba4abf8e7c0b94a05ce1ba4",
+    "src/data/ijtema/blocks.ts": "c25feeaa91699bdc30208def6887a05dce5e9f843866e6b57e3ed279ae6be1d1",
+    "src/data/ijtema/rastas.ts": "4d252fe639c6bf9cd32545ed43623dae5928dea48d95efbf4172dedb5f4b7666",
+    "src/data/ijtema/specialRoutes.ts": "f0f3eb31278baf957f18a7e964d4cf98f4919feb5f535a9cba206f02c7679a75",
+    "src/data/ijtema/centralPoints.ts": "fdeb760ad1cb721fb3e6421d6af933dc2a3ff4a723d7275ec3bfeb2b1202c16f",
+    "src/data/ijtema/perimeterConnectors.ts": "e5c9af11911eaf5774953c501a0ce533b67817be2231a71ea32568038caf698c",
+    "src/data/ijtema/mapBounds.ts": "035368039e489d19936e755d62a6f9ca8a692d09f96e0c4c764e6b51c0dc7c7d",
+    "src/data/ijtema/entryPolicy.ts": "ec1380fdaad9b52fdc621fdf2ccf526396848ebd926cd836be4f2e258060ffcb",
+    "src/data/ijtema/dataIssues.ts": "ae4c4d7975f3be961b056d549321614231b2c381c854eb35e09c2c2a02ecacbc",
+    "src/data/ijtema/streetGraph.ts": "da7e532117d45d91639eb7ca063a1acf1a38e6338fb612bed35ae6253cc6c8be",
+    "scripts/generate-street-graph.ts": "cc3124de45b18b8f1758c749ce57f7a1dd69625a31a534a2e962f149b8135db4",
+    "scripts/pedestrianProfile.ts": "88afb8b2c4c809015da21f50ba075b3151f2502c6cf7454c74e0b44b0b9067bc"
+  }
+}
