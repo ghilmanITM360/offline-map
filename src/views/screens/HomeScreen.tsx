@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import { resetToDirectoryAction } from '../../navigation/postJourney';
 import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import ReanimatedView, { runOnJS, useAnimatedReaction, useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
 import {
@@ -462,14 +463,14 @@ export function HomeScreen() {
     ...navOverlay,
     completeArrivalNavigation: () => {
       navOverlay.completeArrivalNavigation();
-      nav.navigate('LocationsDirectory');
+      nav.dispatch(resetToDirectoryAction());
     },
   }), [navOverlay, nav]);
   const navOverlayV1ForChrome = useMemo(() => ({
     ...navOverlayV1,
     completeArrivalNavigation: () => {
       navOverlayV1.completeArrivalNavigation();
-      nav.navigate('LocationsDirectory');
+      nav.dispatch(resetToDirectoryAction());
     },
   }), [navOverlayV1, nav]);
 
