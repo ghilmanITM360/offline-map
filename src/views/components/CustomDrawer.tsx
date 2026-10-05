@@ -8,6 +8,7 @@ import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { DrawerContentComponentProps, DrawerContentScrollView } from '@react-navigation/drawer';
 import { 
   Home, 
+  Search,
   Settings, 
   HelpCircle, 
   Info, 
@@ -23,6 +24,8 @@ export function CustomDrawer(props: DrawerContentComponentProps) {
 
   const menuItems = [
     { label: 'Home', icon: Home, route: 'Home' },
+    // The Directory is the one place chooser; the map itself carries no search or browse controls.
+    { label: 'Find a place', icon: Search, route: 'LocationsDirectory' },
     { label: 'Settings', icon: Settings, route: 'Settings' },
   ];
 

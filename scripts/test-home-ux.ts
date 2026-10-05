@@ -21,7 +21,7 @@ assert(mapControls.includes('North-up') && mapControls.includes('Compass'), 'Hom
 assert(home.includes('[HomeControl] pressed='), 'Home controls should emit dev diagnostics logs');
 assert(home.includes('__DEV__ && developerModeEnabled'), 'Developer controls must be gated behind __DEV__ and developer mode');
 assert(home.includes('marginRight: 76'), 'Outside-area warning should leave room for right-side map controls');
-assert(home.includes('paddingRight: 88'), 'Category chips should have trailing padding so the last chip is not hidden behind controls');
+assert(!home.includes('paddingRight: 88'), 'Home must not carry a category chip row');
 assert(home.includes('setOutsideBannerDismissed'), 'Outside-area warning should be compact and dismissible');
 assert(
   home.includes('recommendPreviewEntryGate(currentLocation, selectedPlace)') && readFileSync('src/viewmodels/NavigationViewModelV2.ts', 'utf8').includes('return RoutingServiceV2.recommendOutsideEntryGate'),
@@ -33,7 +33,7 @@ assert(
 );
 // Category browsing moved to LocationsDirectoryScreen (PublicDestinationsService.getCategories(),
 // itself data-driven, not hardcoded) — Home keeps a single chip that opens it.
-assert(home.includes("nav.navigate('LocationsDirectory')"), 'Home chip should open the data-driven Locations Directory, not hardcoded category chips');
+assert(home.includes("nav.navigate('LocationsDirectory')"), 'Home hands off to the data-driven Locations Directory (arrival Done, start/destination changes), not hardcoded category chips');
 assert(locationSheet.includes('Member Masjid Gates'), 'Block detail sheet should show Member Masjid gates');
 assert(home.includes('buildMarkerOverlay('), 'Home should render the user dot through the shared marker overlay');
 assert(searchService.includes("{ id: 'gates', label: 'Gates' }"), 'Search categories should include Gates');

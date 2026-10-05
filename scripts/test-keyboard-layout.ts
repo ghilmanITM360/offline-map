@@ -8,7 +8,7 @@ const guide = readFileSync('src/views/screens/AppGuideScreen.tsx', 'utf8');
 assert(home.includes('KeyboardAvoidingView'), 'Home must protect sheet layout when keyboard opens');
 assert(home.includes("behavior={Platform.OS === 'ios' ? 'padding' : 'height'}"), 'Home must define platform keyboard behavior');
 assert(home.includes('hardwareBackPress'), 'Home Android back must step back through sheet modes first');
-assert(home.includes('contentContainerStyle={styles.chipsContent}'), 'Home chips need content container constraints');
+assert(!home.includes('chipsContent'), 'Home must not carry a chip row');
 
 assert(directions.includes('KeyboardAvoidingView'), 'Directions must protect FROM/TO layout when keyboard opens');
 assert(directions.includes("keyboardShouldPersistTaps=\"handled\""), 'Directions search result taps must work while keyboard is open');
