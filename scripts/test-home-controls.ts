@@ -27,12 +27,12 @@ assert(home.includes('handlePlaceSelect'), 'Map/search selection must call selec
 assert(home.includes('bottomSheetRef.current?.'), 'Selected place bottom sheet must be controllable');
 
 assert(home.includes('BackHandler.addEventListener'), 'Android back should step back through sheet modes before exiting Home');
-assert(home.includes('showsHorizontalScrollIndicator={false}'), 'Home chip row must use horizontal scrolling instead of clipping');
+assert(!home.includes('chipsContent'), 'Home must not carry a chip row: the Directory is the one place chooser');
 // The Layers/Compass/Zoom/Recenter cluster is one bottom-anchored stack (controlStackBottom)
 // instead of a top-anchored group that had to account for banner stacking height — see
 // docs/ARCHITECTURE.md Phase 5 / test-map-controls-v2.ts for the full rationale.
 assert(home.includes('controlStackBottom'), 'Floating controls must derive their position from the single bottom-anchored control-stack offset');
-assert(home.includes('onLayout={(e) => setTopOverlayHeight'), 'Top overlay (search+chip row) height must be measured, not a hardcoded guess');
+assert(home.includes('onLayout={(e) => setTopOverlayHeight'), 'Top overlay (menu button) height must be measured, not a hardcoded guess');
 // P0-2: route preview lives inside the BottomSheetModal (LocationSheet routePreview mode) —
 // no separate floating card to measure. Its extent already comes from the sheet's real snap
 // point via resolveOverlayExtent (see scripts/test-map-controls-v2.ts).

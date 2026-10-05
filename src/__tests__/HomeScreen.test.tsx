@@ -313,6 +313,14 @@ describe('HomeScreen — accessibility tree ownership (#128)', () => {
     });
   }
 
+  test('the map has no place search or browse control: the Directory is the one place chooser', async () => {
+    await render(<HomeScreen />);
+    expect(screen.getByRole('button', { name: 'Open menu' })).toBeOnTheScreen();
+    expect(screen.queryByText('Search destinations')).not.toBeOnTheScreen();
+    expect(screen.queryByText('All Locations')).not.toBeOnTheScreen();
+    expect(screen.queryByLabelText('Browse all locations')).not.toBeOnTheScreen();
+  });
+
   test('map stays reachable while exploring and on Place Details', async () => {
     await render(<HomeScreen />);
     expect(mapA11y()).toBe('auto');

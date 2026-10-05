@@ -5,8 +5,11 @@ const homeScreenSource = readFileSync('src/views/screens/HomeScreen.tsx', 'utf8'
 const locationSheetSource = readFileSync('src/views/components/map/LocationSheet.tsx', 'utf8');
 
 assert(homeScreenSource.includes('DrawerActions.openDrawer()'), 'Home menu button must open drawer.');
-assert(homeScreenSource.includes("nav.navigate('LocationsDirectory')"), 'Home chip must open the Locations Directory.');
-assert(homeScreenSource.includes("logHomeControl('all_locations_chip', 'open_directory')"), 'Home All Locations chip tap must stay instrumented.');
+// Owner rule: the Directory is the ONE place chooser. The map carries no search pill or browse chip.
+assert(!homeScreenSource.includes('Search destinations') && !homeScreenSource.includes("'search_bar'"), 'Home must not expose a Search destinations control.');
+assert(!homeScreenSource.includes('All Locations') && !homeScreenSource.includes('all_locations_chip'), 'Home must not expose an All Locations chip.');
+assert(homeScreenSource.includes('handleOpenDirectoryFor'), 'Home must still hand start/destination changes to the Directory.');
+assert(readFileSync('src/views/components/CustomDrawer.tsx', 'utf8').includes("route: 'LocationsDirectory'"), 'The drawer must keep one way back to the Directory.');
 assert(homeScreenSource.includes('handleRecenter'), 'Home current-location button must stay wired.');
 assert(homeScreenSource.includes('handleZoomIn'), 'Home zoom-in button must stay wired.');
 assert(homeScreenSource.includes('handleZoomOut'), 'Home zoom-out button must stay wired.');

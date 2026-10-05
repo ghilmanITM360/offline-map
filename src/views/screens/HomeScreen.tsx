@@ -10,7 +10,6 @@ import {
   Text,
   StyleSheet,
   Pressable,
-  ScrollView,
   Platform,
   StatusBar,
   KeyboardAvoidingView,
@@ -30,8 +29,6 @@ import {
   Menu,
   WifiOff,
   X,
-  LayoutGrid,
-  Search,
 } from 'lucide-react-native';
 import {
   BottomSheetModal,
@@ -243,7 +240,6 @@ export function HomeScreen() {
   const { height: windowHeight, fontScale } = useWindowDimensions();
   const warningAnim = useRef(new Animated.Value(0)).current;
   const userPulseAnim = useRef(new Animated.Value(0)).current;
-  const chipsAnim = useRef(new Animated.Value(1)).current;
 
   // MapMode actions — the only sanctioned way to move the map surface between modes.
   // selectPlace/showRoutePreview/startNavigation already exist as handlePlaceSelect/
@@ -1085,17 +1081,6 @@ export function HomeScreen() {
     }).start();
   }, [showOutsideBanner, warningAnim]);
 
-  // Google-Maps-style: category chip row fades out while the user is actively panning
-  // the map (decluttering the view for the map itself) and fades back in once the pan
-  // settles, matching handleMapRegionChangeComplete's existing onRegionChangeComplete hook.
-  useEffect(() => {
-    Animated.timing(chipsAnim, {
-      toValue: isMapDragging ? 0 : 1,
-      duration: 150,
-      useNativeDriver: true,
-    }).start();
-  }, [isMapDragging, chipsAnim]);
-
   const reducedMotion = useReducedMotion();
   useEffect(() => {
     if (reducedMotion) return;
@@ -1494,34 +1479,6 @@ export function HomeScreen() {
 
   const openLayerOptions = () => setLayersSheetVisible(true);
 
-  const renderChips = () => {
-    return (
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={styles.chipsContainer}
-        contentContainerStyle={styles.chipsContent}
-      >
-        <Pressable
-          key="all-locations"
-          style={[styles.chip, styles.allLocationsChip]}
-          onPress={() => {
-            logHomeControl('all_locations_chip', 'open_directory');
-            nav.navigate('LocationsDirectory');
-          }}
-          hitSlop={6}
-          accessibilityRole="button"
-          accessibilityLabel="Browse all locations"
-        >
-          <LayoutGrid size={14} color={staticColors.info} />
-          <Text style={[styles.chipText, styles.allLocationsChipText]} numberOfLines={1} ellipsizeMode="tail">
-            All Locations
-          </Text>
-        </Pressable>
-      </ScrollView>
-    );
-  };
-
   return (
     <KeyboardAvoidingView
       style={styles.container}
@@ -1607,12 +1564,8 @@ export function HomeScreen() {
           pointerEvents="box-none"
           onLayout={(e) => setTopOverlayHeight(e.nativeEvent.layout.height)}
         >
-          {/* This bar was styled like a search bar (Google Maps-style pill, shadow,
-              52dp height) but only ever held the menu button — the actual "search for
-              a destination" action lived a scroll-row down, in a small chip. Filling the
-              bar with what it already visually promises makes search the obvious primary
-              action on the map, not a secondary chip beside a hamburger icon. */}
-          <View style={[styles.searchBarContainer, { backgroundColor: theme.searchBar }]}>
+          {/* The Directory is the one place chooser (find / change a place there); the map only shows and navigates. */}
+          <View style={[styles.menuButtonContainer, { backgroundColor: theme.searchBar }]}>
             <Pressable
               onPress={() => {
                 logHomeControl('menu', 'open_drawer');
@@ -1624,25 +1577,7 @@ export function HomeScreen() {
             >
               <Menu size={24} color={theme.subtext} />
             </Pressable>
-            <Pressable
-              style={styles.searchBarAction}
-              onPress={() => {
-                logHomeControl('search_bar', 'open_directory');
-                nav.navigate('LocationsDirectory');
-              }}
-              accessibilityRole="button"
-              accessibilityLabel="Search destinations"
-            >
-              <Search size={18} color={theme.subtext} />
-              <Text style={[styles.searchBarPlaceholder, { color: theme.subtext }]} numberOfLines={1}>
-                Search destinations
-              </Text>
-            </Pressable>
           </View>
-
-          <Animated.View style={{ opacity: chipsAnim }} pointerEvents={isMapDragging ? 'none' : 'box-none'}>
-            {renderChips()}
-          </Animated.View>
         </SafeAreaView>
         )}
 
@@ -1984,53 +1919,19 @@ const styles = StyleSheet.create({
     paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
     zIndex: Z.mapControls,
   },
-  searchBarContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: staticColors.white,
-    marginHorizontal: 12,
+  menuButtonContainer: {
+    alignSelf: 'flex-start',
+    marginLeft: 12,
     marginTop: 8,
-    // True pill (height / 2), was 24 against a 52 height — Google Maps search bar
-    // is a full capsule, not a slightly-rounded rect.
     borderRadius: 26,
-    paddingHorizontal: 8,
+    width: 52,
     height: 52,
+    alignItems: 'center',
+    justifyContent: 'center',
     borderWidth: 1,
     ...shadows.medium,
   },
   iconButton: { padding: 14 },
-  searchBarAction: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    height: '100%',
-    paddingRight: 14,
-  },
-  searchBarPlaceholder: { fontSize: 15, flexShrink: 1 },
-  chipsContainer: { marginTop: 10 },
-  chipsContent: { paddingLeft: 12, paddingRight: 88, paddingBottom: 8 },
-  chip: {
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 20,
-    marginRight: 8,
-    elevation: 2,
-    borderWidth: 1,
-    borderColor: '#DADCE0',
-    minWidth: 64,
-    alignItems: 'center',
-  },
-  allLocationsChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: staticColors.infoBackground,
-    borderColor: staticColors.infoBorder,
-  },
-  allLocationsChipText: { color: staticColors.infoStrong, fontWeight: '700' },
-  chipText: { fontSize: 13, color: '#3C4043', fontWeight: '500' },
   navControls: { position: 'absolute', right: 16, zIndex: Z.mapControls },
   // Single bottom-anchored Layers/Compass/Zoom/Recenter stack (see MapControls) —
   // replaces the old separately-anchored rightControls (top) + bottomControls
