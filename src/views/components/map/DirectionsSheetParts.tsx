@@ -5,7 +5,7 @@
 
 import React from 'react';
 import { I18nManager, Pressable, StyleSheet, Text, View } from 'react-native';
-import { ArrowLeftRight, ChevronLeft, ChevronRight, Info, RefreshCw, WifiOff } from 'lucide-react-native';
+import { ChevronLeft, ChevronRight, Info, RefreshCw, WifiOff } from 'lucide-react-native';
 
 import { directionsSheetColors as c } from '../../../theme';
 
@@ -46,67 +46,6 @@ export function DirectionsHeader({
         </Text>
         <Text style={styles.subtitle}>{subtitle}</Text>
       </View>
-    </View>
-  );
-}
-
-/** "Going to" / "Starting from": labelled card, one summary row, one full-width action. */
-export function RouteEndpointCard({
-  label,
-  helper,
-  headerIcon,
-  icon,
-  name,
-  detail,
-  actionLabel,
-  actionAccessibilityLabel,
-  onAction,
-  children,
-}: {
-  label: string;
-  helper?: string;
-  headerIcon: React.ReactNode;
-  icon: React.ReactNode;
-  name: string;
-  detail?: string;
-  actionLabel: string;
-  actionAccessibilityLabel: string;
-  onAction: () => void;
-  children?: React.ReactNode;
-}) {
-  const Chevron = I18nManager.isRTL ? ChevronLeft : ChevronRight;
-  return (
-    <View style={styles.card}>
-      <View style={styles.cardHeader}>
-        <View style={styles.headerDisc}>{headerIcon}</View>
-        <View style={styles.flex}>
-          <Text accessibilityRole="header" style={styles.cardLabel}>
-            {label}
-          </Text>
-          {helper ? <Text style={styles.cardHelper}>{helper}</Text> : null}
-        </View>
-      </View>
-      {/* Whole row is a touch shortcut for the labelled action below; it is not its own screen-reader
-          stop, so the action is announced once. */}
-      <Pressable accessible={false} onPress={onAction} style={styles.inner}>
-        <View style={styles.innerDisc}>{icon}</View>
-        <View style={styles.flex}>
-          <Text style={styles.innerName}>{name}</Text>
-          {detail ? <Text style={styles.innerDetail}>{detail}</Text> : null}
-        </View>
-        <Chevron size={20} color={c.secondaryText} />
-      </Pressable>
-      {children}
-      <Pressable
-        style={({ pressed }) => [styles.action, pressed && styles.actionPressed]}
-        hitSlop={{ top: 2, bottom: 2 }}
-        onPress={onAction}
-        accessibilityRole="button"
-        accessibilityLabel={actionAccessibilityLabel}
-      >
-        <ArrowLeftRight size={18} color={c.brand} />
-        <Text style={styles.actionText}>{actionLabel}</Text>
-      </Pressable>
     </View>
   );
 }

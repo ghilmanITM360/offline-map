@@ -126,13 +126,13 @@ const flat = (node: { props: { style?: unknown } }) =>
   StyleSheet.flatten(typeof node.props.style === 'function' ? undefined : (node.props.style as object)) ?? {};
 
 describe('Get Directions redesign — structure and semantics', () => {
-  test('title and section labels are headers; subtitle follows the state', async () => {
+  test('title is a header; subtitle follows the state', async () => {
     mockedVm.mockReturnValue(vm());
     await renderSheet();
 
     expect(screen.getByRole('header', { name: 'Get Directions' })).toBeOnTheScreen();
-    expect(screen.getByRole('header', { name: 'Going to' })).toBeOnTheScreen();
-    expect(screen.getByRole('header', { name: 'Starting from' })).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: /^From .*Change start\.$/ })).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: /^To .*Change destination\.$/ })).toBeOnTheScreen();
     expect(screen.getByText('Plan your walking route inside Ijtema')).toBeOnTheScreen();
   });
 
@@ -150,11 +150,8 @@ describe('Get Directions redesign — structure and semantics', () => {
     await renderSheet();
 
     expect(flat(screen.getByRole('button', { name: 'Back' }))).toMatchObject({ width: 48, height: 48 });
-    for (const name of ['Change destination', 'Change starting point']) {
-      const button = screen.getByRole('button', { name });
-      expect(flat(button).minHeight).toBeGreaterThanOrEqual(44);
-      const hit = button.props.hitSlop as { top: number; bottom: number };
-      expect(44 + hit.top + hit.bottom).toBeGreaterThanOrEqual(48);
+    for (const name of [/Change destination\./, /Change start\./]) {
+      expect(flat(screen.getByRole('button', { name })).minHeight).toBeGreaterThanOrEqual(48);
     }
   });
 
@@ -179,10 +176,10 @@ describe('Get Directions redesign — structure and semantics', () => {
     const user = userEvent.setup();
     await renderSheet({ onOpenDirectory });
 
-    await user.press(screen.getByRole('button', { name: 'Change starting point' }));
+    await user.press(screen.getByRole('button', { name: /Change start\./ }));
 
     expect(onOpenDirectory).toHaveBeenCalledWith('start');
-    expect(screen.getByRole('header', { name: 'Going to' })).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: /Change destination\./ })).toBeOnTheScreen();
     expect(screen.queryByText('Choose where you are starting from')).not.toBeOnTheScreen();
     expect(screen.queryByRole('button', { name: /Use my current location/ })).not.toBeOnTheScreen();
   });
