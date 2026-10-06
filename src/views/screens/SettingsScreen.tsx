@@ -325,6 +325,14 @@ export function SettingsScreen() {
             onPress={() => navigation.navigate('AppGuide')}
             description="How to find places and get directions"
           />
+          <SettingItem
+            icon={Info}
+            label="About Ijtema Map"
+            value="Open"
+            type="text"
+            onPress={() => navigation.navigate('About')}
+            description="Version, privacy and terms"
+          />
           {__DEV__ && (
             <SettingItem
               icon={Shield}

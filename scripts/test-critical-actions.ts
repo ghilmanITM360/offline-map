@@ -181,11 +181,11 @@ assert(
   'Navigation active Exit and arrival Done actions must use their canonical paths',
 );
 assert(rootNavigator.includes("name=\"AppGuide\""), 'App Guide route should be registered');
-assert(customDrawer.includes("label: 'Home'"), 'Drawer should include Home');
+assert(!customDrawer.includes("label: 'Home'"), 'Drawer must not list Home: it was only the plain map');
 assert(!customDrawer.includes("label: 'Offline Maps'"), 'Drawer must not offer Offline Maps: the map ships with the app (#140)');
 assert(customDrawer.includes("label: 'Settings'"), 'Drawer should include Settings');
-assert(customDrawer.includes("label: 'Help & Feedback'"), 'Drawer should include Help & Feedback');
-assert(customDrawer.includes("label: 'About Ijtema Map'"), 'Drawer should include About Ijtema Map');
+assert(customDrawer.includes("label: 'Help'") && !customDrawer.includes('Feedback'), 'Drawer should say Help: there is no feedback form');
+assert(!customDrawer.includes("label: 'About Ijtema Map'"), 'About lives in Settings, not the drawer');
 assert(!customDrawer.includes("label: 'Saved Blocks'"), 'Drawer should hide Saved Blocks until implemented');
 assert(!customDrawer.includes("label: 'Recent Searches'"), 'Drawer should hide Recent Searches until implemented');
 
