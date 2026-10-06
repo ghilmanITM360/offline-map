@@ -186,13 +186,12 @@ export function LocationsDirectoryScreen() {
           permission: { granted: state.hasLocationPermission, canAskAgain: true, precision: state.locationPermissionPrecision },
           liveFix: state.currentLocationSource === 'live' ? state.currentLocation : null,
         }),
-        knownStart: state.routePlannerOrigin,
       });
       if (plan.kind === 'ask_start') {
         setJourneyDestination(place);
         return;
       }
-      setPendingJourney({ destination: place, start: plan.kind === 'guide' ? plan.start : null, mode: plan.kind });
+      setPendingJourney({ destination: place, start: null, mode: 'live' });
       goToMap();
     },
     [goToMap, handleDetails, setPendingJourney],

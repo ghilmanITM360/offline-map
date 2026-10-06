@@ -11,31 +11,28 @@ const cap = (permission: Parameters<typeof evaluateLocationCapability>[0]['permi
 
 describe('planDestinationTap: what a destination tap in the Directory should do (#307)', () => {
   it('A: a fresh usable live fix starts live navigation directly', () => {
-    expect(planDestinationTap({ capability: cap(granted, fresh), knownStart: null })).toEqual({ kind: 'live' });
-  });
-
-  it('A: live wins even when a manual start is remembered (the user is here, so guide from here)', () => {
-    expect(planDestinationTap({ capability: cap(granted, fresh), knownStart: start })).toEqual({ kind: 'live' });
+    expect(planDestinationTap({ capability: cap(granted, fresh) })).toEqual({ kind: 'live' });
   });
 
   it('B: permission and precision are fine but no fix yet: try to find the location (bounded by the sheet), do not ask', () => {
-    expect(planDestinationTap({ capability: cap(granted, null), knownStart: null })).toEqual({ kind: 'live' });
-    expect(planDestinationTap({ capability: cap(granted, { ...fresh, observedAtMs: NOW - 60_000 }), knownStart: null })).toEqual({ kind: 'live' });
-    expect(planDestinationTap({ capability: cap(granted, { ...fresh, accuracy: 90 }), knownStart: null })).toEqual({ kind: 'live' });
+    expect(planDestinationTap({ capability: cap(granted, null) })).toEqual({ kind: 'live' });
+    expect(planDestinationTap({ capability: cap(granted, { ...fresh, observedAtMs: NOW - 60_000 }) })).toEqual({ kind: 'live' });
+    expect(planDestinationTap({ capability: cap(granted, { ...fresh, accuracy: 90 }) })).toEqual({ kind: 'live' });
   });
 
-  it('C: no usable live location but a manual start is known: route guide from it', () => {
-    expect(planDestinationTap({ capability: cap({ ...granted, granted: false }), knownStart: start })).toEqual({ kind: 'guide', start });
-    expect(planDestinationTap({ capability: cap({ ...granted, precision: 'coarse' }, fresh), knownStart: start })).toEqual({ kind: 'guide', start });
+  it('C: a start from an earlier journey is never inherited: with no usable live location the user is asked', () => {
+    // The Directory no longer reads any remembered start; an extra stale one passed by an old caller changes nothing.
+    const stale = { capability: cap({ ...granted, granted: false }), knownStart: start } as unknown as Parameters<typeof planDestinationTap>[0];
+    expect(planDestinationTap(stale)).toEqual({ kind: 'ask_start' });
   });
 
   it('D: no usable live location and no start: ask where the user is starting from', () => {
-    expect(planDestinationTap({ capability: cap({ ...granted, granted: false }), knownStart: null })).toEqual({ kind: 'ask_start' });
-    expect(planDestinationTap({ capability: cap({ ...granted, precision: 'coarse' }, fresh), knownStart: null })).toEqual({ kind: 'ask_start' });
-    expect(planDestinationTap({ capability: cap({ ...granted, servicesState: 'disabled' }), knownStart: null })).toEqual({ kind: 'ask_start' });
+    expect(planDestinationTap({ capability: cap({ ...granted, granted: false }) })).toEqual({ kind: 'ask_start' });
+    expect(planDestinationTap({ capability: cap({ ...granted, precision: 'coarse' }, fresh) })).toEqual({ kind: 'ask_start' });
+    expect(planDestinationTap({ capability: cap({ ...granted, servicesState: 'disabled' }) })).toEqual({ kind: 'ask_start' });
   });
 
   it('E: a refusal is respected: permission blocked for good still just asks for a start, never routes to Settings', () => {
-    expect(planDestinationTap({ capability: cap({ ...granted, granted: false, canAskAgain: false }), knownStart: null })).toEqual({ kind: 'ask_start' });
+    expect(planDestinationTap({ capability: cap({ ...granted, granted: false, canAskAgain: false }) })).toEqual({ kind: 'ask_start' });
   });
 });

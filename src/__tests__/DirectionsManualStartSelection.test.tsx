@@ -41,7 +41,7 @@ beforeEach(() => {
   process.env.EXPO_PUBLIC_USE_IJTEMA_V2_ROUTING = 'true';
   useAppStore.setState(initialStoreState, true);
   useAppStore.setState({
-    currentLocation: { latitude: 24.9762, longitude: 67.011 },
+    currentLocation: { latitude: 24.9762, longitude: 67.011, accuracy: 10, observedAtMs: Date.now() },
     currentLocationSource: 'live',
   });
 });
@@ -135,7 +135,8 @@ describe('Directory is the single start chooser (Get Directions sheet)', () => {
   test('route-ready From row also opens the Directory directly', async () => {
     const user = userEvent.setup();
     await mount();
-    await waitFor(() => expect(screen.getByText('Route ready')).toBeOnTheScreen(), { timeout: 5_000 });
+    // A fresh live fix is the LIVE start, whose headline is "Ready to go" (a chosen start reads "Route ready").
+    await waitFor(() => expect(screen.getByText('Ready to go')).toBeOnTheScreen(), { timeout: 5_000 });
 
     await user.press(changeStart());
 
