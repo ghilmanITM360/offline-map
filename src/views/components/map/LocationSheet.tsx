@@ -46,6 +46,7 @@ import { Card } from '../common/Card';
 import { backChevron, forwardChevron } from '../common/directionalIcons';
 import { directionsSheetColors, radii, staticColors } from '../../../theme';
 import { placeCategoryLabel } from '../../../utils/placeCategoryLabel';
+import { buildPlaceShare } from '../../../utils/placeShare';
 import { unavailableReasonCopy } from '../../../utils/unavailableReasonCopy';
 import { ROUTE_NOT_FOUND, SAME_PLACE } from '../../../utils/routeCopy';
 import { DirectionsHeader, RouteEndpointRows } from './DirectionsSheetParts';
@@ -969,15 +970,12 @@ function PlaceSection(props: Extract<LocationSheetProps, { mode: 'preview' | 'de
             accessibilityRole="button"
             accessibilityLabel="Share location"
             onPress={() => {
-              if (!place.coordinate) {
+              const share = buildPlaceShare(place);
+              if (!share) {
                 Alert.alert('Place unavailable', unavailableReasonCopy(place.unavailableReason) ?? `${place.name} is not available on the map yet.`);
                 return;
               }
-              const { latitude, longitude } = place.coordinate;
-              Share.share({
-                title: place.name,
-                message: `${place.name} — Karachi Ijtema\nLocation: ${latitude.toFixed(6)}, ${longitude.toFixed(6)}`,
-              }).catch(() => Alert.alert("Can't share right now", 'Please try again.'));
+              Share.share(share).catch(() => Alert.alert("Can't share right now", 'Please try again.'));
             }}
           >
             <Share2 size={20} color={staticColors.info} />
