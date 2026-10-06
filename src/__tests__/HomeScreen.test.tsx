@@ -1861,3 +1861,47 @@ describe('HomeScreen — collapsed Directions keeps a visible peek (#307)', () =
     expect(handleComponent()).toBeUndefined();
   });
 });
+
+describe('HomeScreen — Start Navigation reads the store when it runs (#307)', () => {
+  test('a start handler captured before the route was published still starts navigation (the sheet renders through a portal and can hold a stale closure)', async () => {
+    const LocationSheetModule = require('../views/components/map/LocationSheet') as typeof import('../views/components/map/LocationSheet');
+    const actualSheet = LocationSheetModule.LocationSheet;
+    let firstStart: (() => void) | undefined;
+    const spy = jest.spyOn(LocationSheetModule, 'LocationSheet').mockImplementation(((props: { mode: string; onStartNavigation?: () => void }) => {
+      if (props.mode === 'routePreview' && !firstStart) firstStart = props.onStartNavigation;
+      return (actualSheet as unknown as (p: unknown) => React.ReactElement)(props);
+    }) as never);
+
+    const destination: Place = {
+      id: 'GATE_08', name: 'Gate 8', category: 'Gate', description: 'Official Gate 8.',
+      coordinate: { latitude: 24.903, longitude: 67.103 }, sourceVersion: 'v2', sourceKind: 'gate',
+    } as Place;
+    const previewRoute = {
+      nodes: ['start', 'end'],
+      coordinates: [{ latitude: 24.9, longitude: 67.1 }, { latitude: 24.903, longitude: 67.103 }],
+      totalDistance: 180, estimatedTimeMin: 3, segments: [], startLabel: 'Current location', destinationLabel: 'Gate 8',
+      startResolution: { mode: 'inside', coordinate: { latitude: 24.9, longitude: 67.1 } },
+      instructions: [{ id: 'i1', text: 'Head toward Gate 8', distance: 180, type: 'straight' as const, coordinate: { latitude: 24.9, longitude: 67.1 } }],
+    };
+    mockedUseHomeViewModel.mockImplementation(() => ({ ...useFakeHomeViewModel(), selectedPlace: destination }));
+    mockedUseDirectionsViewModel.mockReturnValue({
+      route: null, startSource: 'live_gps', rememberedLocationAgeLabel: '', rememberedLocationAvailable: false,
+      rememberedLocationInsideVenue: false, currentRouteOriginInsideVenue: true, loadState: 'idle', errorMessage: null,
+      manualStart: null, chooseManualStart: jest.fn(), setIsEditingManualStart: jest.fn(), setManualStartPlace: jest.fn(),
+      chooseCurrentLocation: jest.fn(async () => true), chooseRememberedLocation: jest.fn(() => true),
+      calculateRoute: jest.fn(async () => {}), showManualStartSearch: false, canStartNavigation: true, startNavigationDisabledReason: '',
+    });
+
+    await render(<HomeScreen />);
+    await userEvent.setup().press(screen.getByText('Directions'));
+    expect(firstStart).toBeDefined(); // captured while the store still had no preview route
+
+    await act(async () => {
+      useAppStore.setState({ routePlannerDest: destination, activeRoute: previewRoute as never, currentLocation: { latitude: 24.9, longitude: 67.1 } });
+    });
+    await act(async () => firstStart!());
+
+    expect(useAppStore.getState().isNavigating).toBe(true);
+    spy.mockRestore();
+  });
+});
