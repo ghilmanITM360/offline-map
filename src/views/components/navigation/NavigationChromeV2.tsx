@@ -4,7 +4,7 @@
  */
 
 import React, { useEffect, useRef, useState } from 'react';
-import { AccessibilityInfo, Animated, Modal, Pressable, Text, View } from 'react-native';
+import { AccessibilityInfo, Animated, Modal, Pressable, Text, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowLeft, ArrowRight, LocateFixed, MapPin, Navigation, RefreshCw, Volume2, VolumeX, X } from 'lucide-react-native';
 
@@ -37,6 +37,8 @@ function StepIcon({ type, size = 32 }: { type: string; size?: number }) {
  * not inside it. */
 export function NavigationChromeV2({ overlay, hasBaseMap }: { overlay: NavigationOverlayV2; hasBaseMap: boolean }) {
   const insets = useSafeAreaInsets();
+  // Wrapped to three lines at large text, the status banners would run under the map control column on the right.
+  const largeText = useWindowDimensions().fontScale >= 1.5;
   const {
     route,
     instructions,
@@ -189,7 +191,7 @@ export function NavigationChromeV2({ overlay, hasBaseMap }: { overlay: Navigatio
 
         {/* Single top safety/status slot — navigation safety (GPS lost/weak) outranks
             rerouting status, which outranks basemap degradation. Never stack more than one. */}
-        <View testID="navigation-subordinate-surfaces" style={styles.topStatusStack}>
+        <View testID="navigation-subordinate-surfaces" style={[styles.topStatusStack, largeText && styles.topStatusStackClearOfControls]}>
           {gpsSignalState === 'GPS_LOST' ? (
             <View style={styles.weakGpsBanner} accessibilityLiveRegion="assertive">
               <Text style={styles.weakGpsText}>Searching for GPS signal. Your position may be out of date.</Text>

@@ -4,7 +4,7 @@
  */
 
 import React from 'react';
-import { AccessibilityInfo, Animated, StyleSheet } from 'react-native';
+import { AccessibilityInfo, Animated, Dimensions, StyleSheet } from 'react-native';
 import { act, render, screen, userEvent, within } from './test-utils';
 
 import { NavigationChromeV2 } from '../views/components/navigation/NavigationChromeV2';
@@ -215,6 +215,16 @@ describe('NavigationChromeV2 — direct outside guide', () => {
     expect(stackContent.queryByText('Weak GPS signal detected. Route updates may be slower.')).not.toBeOnTheScreen();
     expect(stackContent.queryByText('Recalculating your route')).not.toBeOnTheScreen();
     expect(stackContent.queryByText('Base map unavailable. Offline route guidance continues.')).not.toBeOnTheScreen();
+  });
+
+  // 200% font on a 320 dp window: the GPS banner wrapped to three lines and ran under the map control column
+  // ("...may be out of dat" was covered by the "More" button).
+  test.each([[1, 0], [2, 72]])('at font scale %s the status banners leave %s dp free for the map control column', async (fontScale, margin) => {
+    Dimensions.set({ window: { width: 320, height: 711, scale: 2, fontScale } });
+    await render(<NavigationChromeV2 overlay={baseOverlay({ gpsSignalState: 'GPS_LOST' })} hasBaseMap />);
+    const stack = StyleSheet.flatten(screen.getByTestId('navigation-subordinate-surfaces').props.style);
+    expect(stack.marginEnd ?? 0).toBe(margin);
+    Dimensions.set({ window: { width: 390, height: 844, scale: 2, fontScale: 1 } });
   });
 
   test('#66: weak GPS outranks reroute status and basemap loss when GPS is not fully lost', async () => {
