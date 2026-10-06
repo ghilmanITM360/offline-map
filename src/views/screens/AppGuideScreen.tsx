@@ -117,7 +117,7 @@ const GUIDE_SECTIONS: GuideSection[] = [
     title: '11. Troubleshooting',
     urduTitle: '۱۱۔ مسئلہ حل',
     body:
-      'Map looks empty: close and reopen the app. Route not calculating: retry or tap Change Start. GPS not working: tap Change Start and pick a place, or use your last known location. If a gate needs connector verification or is not ready for navigation, choose another connected official gate.',
+      'Map looks empty: close and reopen the app. Route not calculating: retry or tap Change Start. GPS not working: tap Change Start and pick a place, or use your earlier location. If a gate needs connector verification or is not ready for navigation, choose another connected official gate.',
   },
 ];
 

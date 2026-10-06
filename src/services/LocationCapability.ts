@@ -111,7 +111,7 @@ export function evaluateLocationCapability(input: {
 export function liveBlockerMessage(blocker: LiveBlocker): string {
   switch (blocker) {
     case 'permission_needed':
-      return 'Allow location to follow your walk live.';
+      return 'Show me the way as I walk.';
     case 'permission_blocked':
       return 'Location is turned off for this app. Allow it in Settings to follow your walk live.';
     case 'approximate_only':

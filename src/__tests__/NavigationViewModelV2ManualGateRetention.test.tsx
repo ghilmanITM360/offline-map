@@ -84,7 +84,7 @@ describe('NavigationViewModelV2 manual gate session intent', () => {
       signal: new AbortController().signal,
       outsideProvider: createProductionOutsideRouteSource({ googleProxyBaseUrl: undefined }),
     });
-    if (preview.status !== 'ready' || !preview.route) throw new Error('Automatic gate fixture must resolve.');
+    if (preview.status !== 'ready' || !preview.route) throw new Error('Closest gate fixture must resolve.');
     const automaticRoute = V2NavigationAdapter.fromPreview({ previewRoute: preview.route, destination, currentLocation: origin });
 
     expect(automaticRoute.origin.manuallySelectedGate).not.toBe(true);
@@ -100,7 +100,7 @@ describe('NavigationViewModelV2 manual gate session intent', () => {
       signal: new AbortController().signal,
       outsideProvider: createProductionOutsideRouteSource({ googleProxyBaseUrl: undefined }),
     });
-    if (preview.status !== 'ready' || !preview.route) throw new Error('Automatic gate fixture must resolve.');
+    if (preview.status !== 'ready' || !preview.route) throw new Error('Closest gate fixture must resolve.');
     const automaticRoute = V2NavigationAdapter.fromPreview({ previewRoute: preview.route, destination, currentLocation: origin });
 
     await act(async () => {

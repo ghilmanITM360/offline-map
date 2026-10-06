@@ -9,7 +9,7 @@ import { NAVIGATION_WATCH_TIME_INTERVAL_MS } from '../src/constants/navigation';
 
 // --- Pure state-derivation checks -------------------------------------------------------
 // GPS_LOST is a plain timeout on top of the existing fix-handling: no fresh fix for
-// GPS_LOST_TIMEOUT_MS -> GPS_LOST, regardless of what the last known accuracy verdict was.
+// GPS_LOST_TIMEOUT_MS -> GPS_LOST, regardless of what the earlier accuracy verdict was.
 
 assert.equal(
   GPS_LOST_TIMEOUT_MS,

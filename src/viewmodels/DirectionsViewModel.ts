@@ -186,17 +186,17 @@ export function useDirectionsViewModel(destination: Place | null) {
     startSource === 'live_gps'
       ? (currentLocation ? 'My current location' : 'Choose where to start')
       : startSource === 'device_last_known'
-      ? 'Device last known location'
+      ? 'Earlier location'
       : startSource === 'remembered_location'
-      ? `Last known location (${rememberedLocationAgeLabel})`
+      ? `Earlier location (${rememberedLocationAgeLabel})`
       : (manualStart?.name ?? 'Choose where to start');
   const startSourceSupportingCopy =
     startSource === 'live_gps'
-      ? 'Using live GPS location now.'
+      ? 'Using your current location.'
       : startSource === 'device_last_known'
-      ? 'Using device last known location because live GPS is unavailable.'
+      ? "We can't find you right now. Showing where you were earlier."
       : startSource === 'remembered_location'
-      ? `Using last known location ${rememberedLocationAgeLabel}.`
+      ? `Using your location ${rememberedLocationAgeLabel}.`
       : manualStart
       ? `Starting from ${manualStart.name}.`
       : 'Where are you starting from?';
@@ -360,7 +360,7 @@ export function useDirectionsViewModel(destination: Place | null) {
 
     if (startSource === 'live_gps' && !RoutingService.isInsideVenue(originCoord)) {
       setLoadState('needs_origin');
-      setErrorMessage('Choose a starting point inside the Ijtema ground.');
+      setErrorMessage('Choose a place inside Ijtema to start from.');
       setRoute(null);
       setAlternatives([]);
       setInstructions([]);
@@ -370,7 +370,7 @@ export function useDirectionsViewModel(destination: Place | null) {
 
     if (startSource !== 'live_gps' && !RoutingService.isInsideVenue(originCoord)) {
       setLoadState('needs_origin');
-      setErrorMessage('Choose a starting point inside the Ijtema ground.');
+      setErrorMessage('Choose a place inside Ijtema to start from.');
       setRoute(null);
       setAlternatives([]);
       setInstructions([]);
@@ -514,7 +514,7 @@ export function useDirectionsViewModel(destination: Place | null) {
         setStartSource('manual_place');
         setIsEditingManualStart(true);
         setLoadState('needs_origin');
-        setErrorMessage('Choose a starting point inside the Ijtema ground.');
+        setErrorMessage('Choose a place inside Ijtema to start from.');
         return false;
       }
 
@@ -523,7 +523,7 @@ export function useDirectionsViewModel(destination: Place | null) {
       setManualStart(null);
       setErrorMessage(
         isV2Destination && !EntryGateRoutingService.isInsideIjtemaArea(resolved.coordinate)
-          ? "You're outside the Ijtema ground. We'll route you to the nearest gate."
+          ? "You're outside Ijtema. We'll guide you to the nearest gate."
           : null,
       );
       return true;
@@ -553,7 +553,7 @@ export function useDirectionsViewModel(destination: Place | null) {
     setManualStart(null);
     setErrorMessage(
       isInsideVenueForDestination(lastKnownLocation)
-        ? `Using last known location ${formatLastKnownAge(lastKnownLocationUpdatedAt)}.`
+        ? `Using your location ${formatLastKnownAge(lastKnownLocationUpdatedAt)}.`
         : "You are outside Ijtema. We'll enter through nearest official gate.",
     );
     return true;

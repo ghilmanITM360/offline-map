@@ -227,7 +227,7 @@ export function NavigationChromeV2({ overlay, hasBaseMap }: { overlay: Navigatio
           )}
           {directOutsideActive && showGateOptions && (
             <View style={styles.directGateOptions}>
-              <Text style={styles.directGateOptionsTitle}>Choose official entry gate</Text>
+              <Text style={styles.directGateOptionsTitle}>Choose a gate</Text>
               {availableOutsideGates.map((gate) => (
                 <Button
                   key={gate.id}

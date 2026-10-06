@@ -47,7 +47,7 @@ function vm(overrides: Record<string, unknown> = {}) {
     route: null,
     startSource: 'live_gps',
     startSourceLabel: 'My current location',
-    startSourceSupportingCopy: 'Using live GPS location now.',
+    startSourceSupportingCopy: 'Using your current location.',
     isCurrentLocationStartActive: true,
     rememberedLocationAgeLabel: 'from 5 minutes ago',
     rememberedLocationAvailable: true,
@@ -128,9 +128,9 @@ describe('Route ready — FROM / TO at a glance', () => {
     mockedVm.mockReturnValue(readyVm({ startSource: 'remembered_location', startSourceLabel: 'Last known location' }));
     await renderSheet();
 
-    expect(screen.getByText('Saved location, not live')).toBeOnTheScreen();
+    expect(screen.getByText('Saved earlier')).toBeOnTheScreen();
     expect(screen.queryByPlaceholderText(/search/i)).not.toBeOnTheScreen();
-    expect(screen.queryByRole('button', { name: /Use my current location/ })).not.toBeOnTheScreen();
+    expect(screen.queryByRole('button', { name: /Use my location/ })).not.toBeOnTheScreen();
   });
 
   test('exactly one primary action, with its disabled reason kept truthful', async () => {

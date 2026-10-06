@@ -1377,11 +1377,11 @@ export function HomeScreen() {
           {
             id: 'user_last_known',
             coordinate: rememberedLabelCoordinate,
-            text: 'last known',
+            text: 'earlier',
             kind: 'user',
             zPriority: 40,
             yOffset: 26,
-            accessibilityLabel: 'Your last known location',
+            accessibilityLabel: 'Your earlier location',
           },
         ]
       : items;

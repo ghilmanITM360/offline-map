@@ -46,7 +46,7 @@ export type EntryCameraPlan =
     }
   | { kind: 'FALLBACK_ANCHOR'; anchor: { id: 'B2'; name: string; coordinate: Coordinate }; notice: string };
 
-export const FALLBACK_LOCATION_NOTICE = 'Location unavailable. Showing Block 2.';
+export const FALLBACK_LOCATION_NOTICE = "We can't find where you are. Showing the main area.";
 
 const RETURNING_LAUNCH_RESOLVE_TIMEOUT_MS = 4000;
 

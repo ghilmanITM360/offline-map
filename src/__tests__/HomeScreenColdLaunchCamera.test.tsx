@@ -293,7 +293,7 @@ describe('HomeScreen - launch camera (Google Maps principles, adapted for a venu
     expect(mockedResolveCurrentLocation).not.toHaveBeenCalled();
     expect(cameraAnimateToUserSpy).toHaveBeenCalledWith(block2AnchorCoordinate);
     expect(cameraFitVenueBoundsSpy).not.toHaveBeenCalled();
-    expect(screen.getByText('Location unavailable. Showing Block 2.')).toBeOnTheScreen();
+    expect(screen.getByText("We can't find where you are. Showing the main area.")).toBeOnTheScreen();
     expect(useAppStore.getState().currentLocation).toBeNull();
     expect(useAppStore.getState().hasSeenMapOverview).toBe(true);
   });
@@ -677,7 +677,7 @@ describe('HomeScreen - launch camera (Google Maps principles, adapted for a venu
     expect(cameraAnimateToUserSpy).toHaveBeenCalledWith(block2AnchorCoordinate);
     expect(cameraAnimateToUserSpy).not.toHaveBeenCalledWith(staleRememberedCoordinate);
     expect(useAppStore.getState().currentLocationSource).toBe('remembered');
-    expect(screen.getByText('last known')).toBeOnTheScreen();
+    expect(screen.getByText('earlier')).toBeOnTheScreen();
   });
 });
 
@@ -691,7 +691,7 @@ describe('#222 Map entry camera rules', () => {
     await flushProjectionTimers();
 
     expect(cameraAnimateToUserSpy).toHaveBeenCalledWith(block2AnchorCoordinate);
-    expect(screen.getByText('Location unavailable. Showing Block 2.')).toBeOnTheScreen();
+    expect(screen.getByText("We can't find where you are. Showing the main area.")).toBeOnTheScreen();
     expect(useAppStore.getState().currentLocation).toBeNull();
     expect(useAppStore.getState().currentLocationSource).toBeNull();
   });
@@ -706,7 +706,7 @@ describe('#222 Map entry camera rules', () => {
     expect(cameraFitVenueBoundsSpy).toHaveBeenCalledTimes(1);
     expect(cameraAnimateToUserSpy).not.toHaveBeenCalled();
     expect(useAppStore.getState().currentLocation).toEqual(liveCoordinate);
-    expect(screen.queryByText('Location unavailable. Showing Block 2.')).toBeNull();
+    expect(screen.queryByText("We can't find where you are. Showing the main area.")).toBeNull();
   });
 
   test('a live location outside the Ijtema shows the venue context and still records the location for the outside status', async () => {
@@ -720,7 +720,7 @@ describe('#222 Map entry camera rules', () => {
     expect(cameraFitVenueBoundsSpy).toHaveBeenCalledTimes(1);
     expect(cameraAnimateToUserSpy).not.toHaveBeenCalled();
     expect(useAppStore.getState().currentLocation).toEqual(outsideCoordinate);
-    expect(screen.queryByText('Location unavailable. Showing Block 2.')).toBeNull();
+    expect(screen.queryByText("We can't find where you are. Showing the main area.")).toBeNull();
   });
 
   test('a destination already selected when the Map opens owns the camera: no overview and no Block 2 fallback', async () => {
@@ -733,7 +733,7 @@ describe('#222 Map entry camera rules', () => {
 
     expect(cameraAnimateToUserSpy).not.toHaveBeenCalled();
     expect(cameraFitVenueBoundsSpy).not.toHaveBeenCalled();
-    expect(screen.queryByText('Location unavailable. Showing Block 2.')).toBeNull();
+    expect(screen.queryByText("We can't find where you are. Showing the main area.")).toBeNull();
   });
 });
 
@@ -901,20 +901,20 @@ describe('#222 Change place on the Block 2 notice', () => {
   test('the notice goes away once a place is selected', async () => {
     mockedUseHomeViewModel.mockImplementation(() => useFakeHomeViewModel({ selectedPlace: null }));
     await openFallbackMap();
-    expect(screen.getByText('Location unavailable. Showing Block 2.')).toBeOnTheScreen();
+    expect(screen.getByText("We can't find where you are. Showing the main area.")).toBeOnTheScreen();
 
     mockedUseHomeViewModel.mockImplementation(() => useFakeHomeViewModel({ selectedPlace: searchResultPlace }));
     await act(async () => {
       useAppStore.setState({ currentLocation: null });
     });
-    expect(screen.queryByText('Location unavailable. Showing Block 2.')).toBeNull();
+    expect(screen.queryByText("We can't find where you are. Showing the main area.")).toBeNull();
 
     // Closing the place sheet later must not bring back a notice that no longer describes the camera.
     mockedUseHomeViewModel.mockImplementation(() => useFakeHomeViewModel({ selectedPlace: null }));
     await act(async () => {
       useAppStore.setState({ currentLocation: null });
     });
-    expect(screen.queryByText('Location unavailable. Showing Block 2.')).toBeNull();
+    expect(screen.queryByText("We can't find where you are. Showing the main area.")).toBeNull();
   });
 });
 

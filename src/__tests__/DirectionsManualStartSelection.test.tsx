@@ -93,8 +93,8 @@ describe('Directory is the single start chooser (Get Directions sheet)', () => {
     });
   const expectNoChooser = () => {
     expect(screen.queryByText('Choose start manually')).not.toBeOnTheScreen();
-    expect(screen.queryByText('Use my current location')).not.toBeOnTheScreen();
-    expect(screen.queryByText('Use last known location')).not.toBeOnTheScreen();
+    expect(screen.queryByText('Use my location')).not.toBeOnTheScreen();
+    expect(screen.queryByText('Use earlier location')).not.toBeOnTheScreen();
   };
 
   test('no start chosen: Change Start opens the Directory in start mode, with no 3-card chooser', async () => {
@@ -183,7 +183,7 @@ describe('Directory is the single start chooser (Get Directions sheet)', () => {
 
     await choose({ purpose: 'start', quick: 'last_known' });
 
-    await waitFor(() => expect(screen.getAllByText(/^Last known location/).length).toBeGreaterThan(0));
+    await waitFor(() => expect(screen.getAllByText(/^Earlier location/).length).toBeGreaterThan(0));
     expect(screen.getByText('Block 34')).toBeOnTheScreen();
   });
 

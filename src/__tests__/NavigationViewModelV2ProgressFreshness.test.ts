@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-// NAV-P0-001 regression coverage: a stale/historical GPS fix — the "last known location" Android
+// NAV-P0-001 regression coverage: a stale/historical GPS fix — the "earlier location" Android
 // commonly delivers as the very first update after a location subscription (re)starts — must
 // never be consumed as this navigation generation's live position. Exercises the real
 // NavigationViewModelV2 pipeline (store -> hook), the same path GPSManagerService's real fixes
@@ -116,7 +116,7 @@ describe('NavigationViewModelV2 progress freshness (NAV-P0-001)', () => {
 
     // Stale fix: native timestamp 5 minutes before trip start, positioned AT the destination
     // (the worst case — projects onto the very end of the route) — exactly the shape of the
-    // confirmed runtime defect (a cached "last known location" delivered as the first update).
+    // confirmed runtime defect (a cached "earlier location" delivered as the first update).
     await pushFix(hook, destinationPlace.coordinate, { observedAtMs: Date.now() - FIVE_MINUTES_MS });
 
     expect(hook.result.current.remainingDistance).toBe(initialRemaining);

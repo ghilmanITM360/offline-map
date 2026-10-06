@@ -448,7 +448,7 @@ export function LocationsDirectoryScreen() {
                 <StartOptionCard
                   icon={<LocateFixed size={26} color={directionsSheetColors.brand} />}
                   title="Use my location"
-                  subtitle="Allow location to follow your walk live"
+                  subtitle="Show me the way as I walk"
                   onPress={() => { void handleUseMyLocation(); }}
                 />
               </View>
@@ -458,15 +458,15 @@ export function LocationsDirectoryScreen() {
                 {canUseCurrentLocation && (
                   <StartOptionCard
                     icon={<LocateFixed size={26} color={directionsSheetColors.brand} />}
-                    title="Use my current location"
-                    subtitle="Find best eligible official gate automatically"
+                    title="Use my location"
+                    subtitle="We pick the nearest gate for you"
                     onPress={() => handleQuickStart('current_location')}
                   />
                 )}
                 {canUseLastKnown && (
                   <StartOptionCard
                     icon={<MapPin size={26} color={directionsSheetColors.brand} />}
-                    title="Use last known location"
+                    title="Use earlier location"
                     subtitle={`Saved ${formatLastKnownAge(lastKnownLocationUpdatedAt)}`}
                     onPress={() => handleQuickStart('last_known')}
                   />

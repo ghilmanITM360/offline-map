@@ -97,7 +97,7 @@ function baseViewModel(overrides: Record<string, unknown> = {}) {
     route: null,
     startSource: 'live_gps',
     startSourceLabel: 'My current location',
-    startSourceSupportingCopy: 'Using live GPS location now.',
+    startSourceSupportingCopy: 'Using your current location.',
     isCurrentLocationStartActive: true,
     rememberedLocationAgeLabel: 'from 5 minutes ago',
     rememberedLocationAvailable: true,
@@ -167,7 +167,7 @@ describe('LocationSheet (routePreview) — start option selection', () => {
     expect(screen.getByText('My current location')).toBeOnTheScreen();
     expect(screen.getByRole('button', { name: /Change start\./ })).toBeOnTheScreen();
     expect(screen.queryByText('Where are you starting from?')).not.toBeOnTheScreen();
-    expect(screen.queryByText('Use last known location')).not.toBeOnTheScreen();
+    expect(screen.queryByText('Use earlier location')).not.toBeOnTheScreen();
     expect(screen.queryByText('Choose start manually')).not.toBeOnTheScreen();
   });
 
@@ -183,8 +183,8 @@ describe('LocationSheet (routePreview) — start option selection', () => {
 
     expect(onOpenDirectory).toHaveBeenCalledWith('start');
     expect(screen.queryByText('Choose start manually')).not.toBeOnTheScreen();
-    expect(screen.queryByText('Use my current location')).not.toBeOnTheScreen();
-    expect(screen.queryByText('Use last known location')).not.toBeOnTheScreen();
+    expect(screen.queryByText('Use my location')).not.toBeOnTheScreen();
+    expect(screen.queryByText('Use earlier location')).not.toBeOnTheScreen();
   });
 
   test('a current-location quick choice from the Directory invokes chooseCurrentLocation', async () => {
@@ -222,14 +222,14 @@ describe('LocationSheet (routePreview) — start option selection', () => {
   test('89-05: needs_origin shows the failure message and recovers through the Directory', async () => {
     mockedUseDirectionsViewModel.mockReturnValue(baseViewModel({
       loadState: 'needs_origin',
-      errorMessage: 'Current location is unavailable. Choose start manually.',
+      errorMessage: "We can't find you. Choose where you're starting from.",
     }));
     const onOpenDirectory = jest.fn();
     await renderWithFooter(
       <LocationSheet mode="routePreview" destination={destination} onClose={onCloseSpy} onOpenDirectory={onOpenDirectory} />,
     );
 
-    expect(screen.getByText('Current location is unavailable. Choose start manually.')).toBeOnTheScreen();
+    expect(screen.getByText("We can't find you. Choose where you're starting from.")).toBeOnTheScreen();
     const user = userEvent.setup();
     await user.press(screen.getByRole('button', { name: /Change start\./ }));
 
@@ -239,31 +239,31 @@ describe('LocationSheet (routePreview) — start option selection', () => {
   test('active start option is visually reflected via accessible state', async () => {
     mockedUseDirectionsViewModel.mockReturnValue(baseViewModel({
       startSource: 'remembered_location',
-      startSourceLabel: 'Last known location (from 5 minutes ago)',
-      startSourceSupportingCopy: 'Using last known location from 5 minutes ago.',
+      startSourceLabel: 'Earlier location (from 5 minutes ago)',
+      startSourceSupportingCopy: 'Using your location from 5 minutes ago.',
       isCurrentLocationStartActive: false,
     }));
     await renderWithFooter(<LocationSheet mode="routePreview" destination={destination} onClose={onCloseSpy} />);
 
     // The status card reflects the active start source's message — real, user-visible output,
     // not an internal implementation detail.
-    expect(screen.getByText(/Using last known location/)).toBeOnTheScreen();
+    expect(screen.getByText(/Using your location from 5 minutes ago/)).toBeOnTheScreen();
   });
 
   test('device last-known origin is disclosed and does not activate the current-location option', async () => {
     mockedUseDirectionsViewModel.mockReturnValue(baseViewModel({
       startSource: 'device_last_known',
-      startSourceLabel: 'Device last known location',
-      startSourceSupportingCopy: 'Using device last known location because live GPS is unavailable.',
+      startSourceLabel: 'Earlier location',
+      startSourceSupportingCopy: "We can't find you right now. Showing where you were earlier.",
       isCurrentLocationStartActive: false,
     }));
     const user = userEvent.setup();
     await renderWithFooter(<LocationSheet mode="routePreview" destination={destination} onClose={onCloseSpy} />);
 
-    expect(screen.getByText('Device last known location')).toBeOnTheScreen();
-    expect(screen.getByText('Using device last known location because live GPS is unavailable.')).toBeOnTheScreen();
+    expect(screen.getByText('Earlier location')).toBeOnTheScreen();
+    expect(screen.getByText("We can't find you right now. Showing where you were earlier.")).toBeOnTheScreen();
     await user.press(screen.getByRole('button', { name: /Change start\./ }));
-    expect(screen.queryByRole('button', { name: /Use my current location/ })).not.toBeOnTheScreen();
+    expect(screen.queryByRole('button', { name: /Use my location/ })).not.toBeOnTheScreen();
   });
 });
 
@@ -364,7 +364,7 @@ describe('LocationSheet (routePreview) — route ready CTA', () => {
           estimatedTimeMin: 4,
         },
         canStartNavigation: false,
-        startNavigationDisabledReason: 'Precise location is required for live navigation. Route preview remains available.',
+        startNavigationDisabledReason: "Your location isn't exact enough yet. Move to an open area.",
       }),
     );
     const user = userEvent.setup();
@@ -378,10 +378,10 @@ describe('LocationSheet (routePreview) — route ready CTA', () => {
     );
 
     expect(screen.getByText('Route ready')).toBeOnTheScreen();
-    expect(screen.getByText('Precise location is required for live navigation. Route preview remains available.')).toBeOnTheScreen();
+    expect(screen.getByText("Your location isn't exact enough yet. Move to an open area.")).toBeOnTheScreen();
     // The disabled reason is part of the CTA's accessible name, not only visible text (#177).
     const startButton = screen.getByRole('button', {
-      name: 'Start Navigation. Precise location is required for live navigation. Route preview remains available.',
+      name: "Start Navigation. Your location isn't exact enough yet. Move to an open area.",
     });
     expect(startButton).toBeDisabled();
     await user.press(startButton);
@@ -457,7 +457,7 @@ describe('LocationSheet (routePreview) — route ready CTA', () => {
     await renderWithFooter(<LocationSheet mode="routePreview" destination={v2Destination} onClose={onCloseSpy} />);
 
     expect(screen.getByText('Straight-line guide, not a road route')).toBeOnTheScreen();
-    expect(screen.getByText('Start Direct Guide')).toBeOnTheScreen();
+    expect(screen.getByText('Start walking')).toBeOnTheScreen();
     expect(screen.getByText('Selected gate: Gate 05')).toBeOnTheScreen();
     expect(screen.queryByText('4 min')).not.toBeOnTheScreen();
     await user.press(screen.getByRole('button', { name: 'Try again' }));
@@ -510,7 +510,7 @@ describe('LocationSheet (routePreview) — route ready CTA', () => {
 
     await user.press(screen.getByRole('button', { name: 'Choose another gate' }));
 
-    expect(screen.getByRole('button', { name: 'Use automatic gate selection' }).props.accessibilityState).toMatchObject({ selected: false });
+    expect(screen.getByRole('button', { name: 'Use the closest gate' }).props.accessibilityState).toMatchObject({ selected: false });
     expect(screen.getByRole('button', { name: 'Use Gate 12' }).props.accessibilityState).toMatchObject({ selected: true });
     expect(screen.getByRole('button', { name: 'Use Gate 13' }).props.accessibilityState).toMatchObject({ selected: false });
   });

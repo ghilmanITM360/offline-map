@@ -50,7 +50,7 @@ assert(homeVm.includes('EntryGateRoutingService.getVenueStatus'), 'Home VM must 
 assert(!homeVm.includes('hasLocationPermission && settings.autoFollowLocation && isMapReady && !isNavigating'), 'Home GPS subscription must not depend on auto-follow being enabled');
 assert(homeVm.includes('hasLocationPermission && isMapReady && !isNavigating'), 'Home GPS subscription must stay active after permission grant');
 assert(homeVm.includes('MapFeatureFlagsService.useIjtemaV2Map() || isInsideHomeVenue(lastKnownLocation)'), 'Remembered outside location must stay usable when v2 routing is active');
-assert(homeVm.includes('Offline routing will enter through nearest connected official gate.'), 'Outside remembered-location fallback should explain nearest-gate routing');
+assert(homeVm.includes("We'll take you to the nearest gate when you ask for directions."), 'Outside remembered-location fallback should explain nearest-gate routing');
 assert(rendering.includes('graphOnlyFallbackSupported'), 'v2 render service must expose graph-only fallback support');
 
 console.log('Home control checks passed.');

@@ -33,21 +33,21 @@ export function evaluateNavigationLocationCapability(
   if (input.startSource === 'manual_place') {
     return {
       canStart: false,
-      message: 'Choose a current precise location before starting live navigation. Route preview remains available.',
+      message: 'Turn on your location to get live directions.',
     };
   }
 
   if (input.startSource === 'remembered_location' || input.startSource === 'device_last_known') {
     return {
       canStart: false,
-      message: 'Last known location cannot drive live navigation. Route preview remains available.',
+      message: 'Your saved location is old. Use your current location for live directions.',
     };
   }
 
   if (input.precision === 'coarse') {
     return {
       canStart: false,
-      message: 'Precise location is required for reliable walking navigation inside Ijtima.',
+      message: 'Turn on exact location in Settings for live directions.',
     };
   }
 
@@ -55,21 +55,21 @@ export function evaluateNavigationLocationCapability(
   if (fix === 'none') {
     return {
       canStart: false,
-      message: 'Searching for a current location. Route preview remains available.',
+      message: 'Finding your location…',
     };
   }
 
   if (fix === 'unusable') {
     return {
       canStart: false,
-      message: 'Precise location is required for live navigation. Route preview remains available.',
+      message: "Your location isn't exact enough yet. Move to an open area.",
     };
   }
 
   if (fix === 'stale') {
     return {
       canStart: false,
-      message: 'Current location is stale. Wait for a fresh fix before starting live navigation.',
+      message: 'Finding your location…',
     };
   }
 

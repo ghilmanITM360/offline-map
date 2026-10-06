@@ -76,7 +76,7 @@ function vm(overrides: Record<string, unknown> = {}) {
     route: null,
     startSource: 'live_gps',
     startSourceLabel: 'My current location',
-    startSourceSupportingCopy: 'Using live GPS location now.',
+    startSourceSupportingCopy: 'Using your current location.',
     isCurrentLocationStartActive: true,
     rememberedLocationAgeLabel: 'from 5 minutes ago',
     rememberedLocationAvailable: true,
@@ -191,7 +191,7 @@ describe('Get Directions redesign — structure and semantics', () => {
     );
     await renderSheet();
     expect(screen.queryByText('Using GPS')).not.toBeOnTheScreen();
-    expect(screen.getByText('Saved location, not live')).toBeOnTheScreen();
+    expect(screen.getByText('Saved earlier')).toBeOnTheScreen();
   });
 
   test('Change Start opens the Directory in start mode and the summary stays put', async () => {
@@ -205,7 +205,7 @@ describe('Get Directions redesign — structure and semantics', () => {
     expect(onOpenDirectory).toHaveBeenCalledWith('start');
     expect(screen.getByRole('button', { name: /Change destination\./ })).toBeOnTheScreen();
     expect(screen.queryByText('Choose where you are starting from')).not.toBeOnTheScreen();
-    expect(screen.queryByRole('button', { name: /Use my current location/ })).not.toBeOnTheScreen();
+    expect(screen.queryByRole('button', { name: /Use my location/ })).not.toBeOnTheScreen();
   });
 
   test('Back from the summary closes the sheet', async () => {
@@ -309,8 +309,8 @@ describe('Get Directions redesign — pinned footer', () => {
   test('loading status occupies the footer slot', async () => {
     mockedVm.mockReturnValue(vm({ loadState: 'loading' }));
     await renderSheet();
-    expect(screen.getByText('Finding route...')).toBeOnTheScreen();
-    expect(within(screen.getByTestId('sheet-scroll')).queryByText('Finding route...')).not.toBeOnTheScreen();
+    expect(screen.getByText('Finding your route…')).toBeOnTheScreen();
+    expect(within(screen.getByTestId('sheet-scroll')).queryByText('Finding your route…')).not.toBeOnTheScreen();
   });
 
   test('error detail scrolls with content while its Retry action is pinned in the footer', async () => {
