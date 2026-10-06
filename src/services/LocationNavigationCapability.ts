@@ -103,7 +103,7 @@ export function resolveStartAction(input: StartActionInput): StartAction {
   // A start the user chose or saved is a route guide: location never gates route planning (#307). Live guidance
   // stays one tap away and begins from a fresh fix, never from the planned place.
   if (input.startSource !== 'live_gps') {
-    return { kind: 'route_guide', primaryLabel: 'Start route', secondaryLabel: 'Use my location for live guidance' };
+    return { kind: 'route_guide', primaryLabel: 'Start route', secondaryLabel: 'Use my location to guide me' };
   }
   const capability = evaluateLocationCapability({
     permission: { granted: input.permission.granted, canAskAgain: true, precision: input.permission.precision },

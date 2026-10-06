@@ -75,8 +75,8 @@ export function RouteGuideCard({
       </View>
 
       <Pressable style={styles.link} onPress={onLive} disabled={liveBusy} accessibilityRole="button"
-        accessibilityLabel="Use my location for live guidance">
-        <Text style={styles.linkText}>{liveBusy ? 'Finding your location…' : 'Use my location for live guidance'}</Text>
+        accessibilityLabel="Use my location to guide me">
+        <Text style={styles.linkText}>{liveBusy ? 'Finding your location…' : 'Use my location to guide me'}</Text>
       </Pressable>
       {message ? <Text accessibilityLiveRegion="polite" style={styles.caption}>{message}</Text> : null}
       <Pressable style={styles.link} onPress={onEnd} accessibilityRole="button" accessibilityLabel="End route guide">

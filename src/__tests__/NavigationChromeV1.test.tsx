@@ -80,9 +80,10 @@ describe('NavigationChromeV1 — Exit/recenter/mute touch targets', () => {
     await render(<NavigationChromeV1 overlay={baseOverlay()} hasBaseMap />);
 
     // Instruction card shows the maneuver label + road name hierarchy (Google Maps style),
-    // not the raw instructions[].text — see InstructionService.maneuverLabel/ROAD_NAME_FALLBACK.
+    // not the raw instructions[].text — see InstructionService.maneuverLabel. A step with no road name
+    // adds no second line: "Continue Straight / Continue ahead" said the same thing twice (#333).
     expect(screen.getByText('Continue Straight')).toBeOnTheScreen();
-    expect(screen.getByText('Continue ahead')).toBeOnTheScreen();
+    expect(screen.queryByText('Continue ahead')).toBeNull();
     expect(screen.getByText('Gate 8')).toBeOnTheScreen();
   });
 

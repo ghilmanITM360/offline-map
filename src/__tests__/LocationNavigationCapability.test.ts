@@ -139,18 +139,18 @@ describe('resolveStartAction (zero-thinking start CTA)', () => {
   const base = { startSource: 'manual_place', permission: { granted: true, precision: 'fine' }, nowMs } as const;
 
   it('1: manual start with no fix offers an enabled Start route (route guide), live guidance as the secondary', () => {
-    expect(resolveStartAction({ ...base, liveFix: null })).toMatchObject({ kind: 'route_guide', primaryLabel: 'Start route', secondaryLabel: 'Use my location for live guidance' });
+    expect(resolveStartAction({ ...base, liveFix: null })).toMatchObject({ kind: 'route_guide', primaryLabel: 'Start route', secondaryLabel: 'Use my location to guide me' });
   });
 
   it('2: location denied never blocks a manual route; a live-location start offers turn-on-location', () => {
     const denied = { granted: false, precision: 'none' } as const;
-    expect(resolveStartAction({ ...base, liveFix: null, permission: denied })).toMatchObject({ kind: 'route_guide', primaryLabel: 'Start route', secondaryLabel: 'Use my location for live guidance' });
+    expect(resolveStartAction({ ...base, liveFix: null, permission: denied })).toMatchObject({ kind: 'route_guide', primaryLabel: 'Start route', secondaryLabel: 'Use my location to guide me' });
     expect(resolveStartAction({ ...base, startSource: 'live_gps', liveFix: null, permission: denied }))
       .toMatchObject({ kind: 'turn_on_location', primaryLabel: 'Turn on location & start' });
   });
 
   it('3: a manual start stays a route guide even with a perfect fix: the FROM the user chose is respected, live guidance is one tap away', () => {
-    expect(resolveStartAction({ ...base, liveFix: nearFix })).toMatchObject({ kind: 'route_guide', primaryLabel: 'Start route', secondaryLabel: 'Use my location for live guidance' });
+    expect(resolveStartAction({ ...base, liveFix: nearFix })).toMatchObject({ kind: 'route_guide', primaryLabel: 'Start route', secondaryLabel: 'Use my location to guide me' });
   });
 
   it('5: approximate permission never satisfies the precise gate, even with a good-looking fix', () => {
