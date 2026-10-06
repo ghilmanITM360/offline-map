@@ -1214,6 +1214,30 @@ export function HomeScreen() {
     setDirectionsDestination(place);
   }, [armSheetTransition]);
 
+  // #307: a destination tapped in the Directory means "take me here". Consume the journey once Home is focused and open
+  // Directions for it; the sheet applies the start and starts it (live from a fresh fix, or as a route guide). A trip
+  // already under way is never silently replaced: the place is shown instead, like any other Directory pick.
+  const pendingJourney = useAppStore((s) => s.pendingJourney);
+  const setPendingJourney = useAppStore((s) => s.setPendingJourney);
+  const addRecentSearchForJourney = useAppStore((s) => s.addRecentSearch);
+  const [journeyIntent, setJourneyIntent] = useState<{ mode: 'live' | 'guide'; start: Place | null } | null>(null);
+  useEffect(() => {
+    if (!pendingJourney || !isHomeFocused) return;
+    setPendingJourney(null);
+    const { destination, start, mode } = pendingJourney;
+    if (useAppStore.getState().isNavigating) {
+      useAppStore.getState().setPendingDirectorySelection(destination);
+      return;
+    }
+    addRecentSearchForJourney(destination);
+    setJourneyIntent({ mode, start });
+    handleOpenDirections(destination);
+    // handleOpenDirections is recreated every render; this intentionally runs once per journey.
+  }, [pendingJourney, isHomeFocused]);
+  useEffect(() => {
+    if (!directionsDestination) setJourneyIntent(null);
+  }, [directionsDestination]);
+
   // Get Directions asks the Directory (the one place chooser) for a start or destination; the choice comes back
   // through the store and Get Directions applies it. The sheet stays mounted, so its route intent is kept.
   const setDirectoryPurpose = useAppStore((s) => s.setDirectoryPurpose);
@@ -1838,6 +1862,7 @@ export function HomeScreen() {
               onStartNavigation={handleStartPreviewNavigation}
               onViewRoute={() => bottomSheetRef.current?.snapToIndex(0)}
               onRouteGuideStarted={handleRouteGuideStarted}
+              journey={journeyIntent}
               onCancelRoute={activePreviewRoute ? handleClearPreviewRoute : undefined}
               onChangeDestination={handleChangeDestination}
               onOpenDirectory={handleOpenDirectoryFor}

@@ -5,7 +5,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Animated, Pressable, View } from 'react-native';
-import { AlertTriangle, Check, Compass, Ellipsis, Layers, LocateFixed, Minus, Navigation, Plus, X } from 'lucide-react-native';
+import { AlertTriangle, Check, ChevronDown, Compass, Ellipsis, Layers, LocateFixed, Minus, Navigation, Plus } from 'lucide-react-native';
 
 import { mapControlStyles as styles } from './mapControlStyles';
 import { staticColors } from '../../../theme';
@@ -112,7 +112,8 @@ export function MapControls({ variant, compassMode, onLayers, onCompassToggle, o
         accessibilityLabel="More map controls"
         accessibilityState={{ expanded: moreOpen }}
       >
-        {moreOpen ? <X size={22} color={staticColors.iconMuted} /> : <Ellipsis size={22} color={staticColors.iconMuted} />}
+        {/* A fold chevron, not an X: a close glyph among the map controls reads as Cancel route or Close place. */}
+        {moreOpen ? <ChevronDown size={22} color={staticColors.iconMuted} /> : <Ellipsis size={22} color={staticColors.iconMuted} />}
       </Pressable>
       <Pressable
         style={[styles.controlButton, isHeadingFollow && styles.controlButtonActive]}
