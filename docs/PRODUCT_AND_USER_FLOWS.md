@@ -1,24 +1,72 @@
 # Product and User Flows
 
-## Onboarding
+How the app behaves today. Source of truth is the code; this explains it. Statements are SOURCE/RUNTIME level unless marked.
 
-Welcome → Permission → Directory (no map-setup step: the offline map ships with the app, #140). Each step's choice persists independently and does not re-prompt on its own:
+## Principles
 
-- `hasSeenWelcome` — set once, never re-shown.
-- `graphOnlyMode` / `skippedOnlineMode` — persisted user choice about offline-only operation.
-- Permission — the only step that can re-prompt, and only because the OS itself re-prompts, not app logic.
+1. **The Directory is the one place chooser.** Finding or changing a place happens there; the Map shows and navigates.
+2. **Location improves navigation, it never blocks route planning.** Without location the user still gets a full Route Guide.
+3. **No fake position.** A chosen FROM is never written into `currentLocation`; live guidance needs a real, fresh, usable fix.
+4. **Everything core works offline.** Launch, Directory, Map, internal routing and the Route Guide need no network.
 
-## Core navigation flow
+## Launch
 
-All on the one persistent map (see `docs/ARCHITECTURE.md` for why this is map-first, not screen-based):
+| Situation | Flow |
+|---|---|
+| Fresh install | Splash (>= 1.5 s) -> Welcome -> Directory |
+| Every later launch | Splash -> Directory |
+| Welcome flag unreadable | Welcome again, with a short notice saying why |
 
-1. Tap a marker (venue block, gate, facility) → `LocationSheet` opens showing distance/ETA.
-2. Tap Directions → `LocationSheet` switches to its `routePreview` mode showing the route.
-3. Tap Start Navigation → map enters navigation mode; `LocationSheet` closes, navigation chrome/overlays take over.
-4. Arrival uses proximity to the destination entry coordinate (within 20m), not venue-boundary crossing. Both navigation versions also require route progress to reach the end of the route (V2: the final guidance segment; legacy V1: remaining route distance within the threshold plus the route-end-to-destination gap) so an earlier leg passing near the destination does not end the trip. Once reported, arrival stays latched for the trip, so GPS noise at the threshold cannot flip the UI out of the completion overlay. Arrival shows the completion overlay; Done returns to the resting map.
+- `StartupManager.resolve({ hasSeenWelcome })` is the only routing decision. Location permission is **not** a launch gate: a user who declined or revoked it is never sent to a permission screen. Splash still reads the OS permission and its precision so approximate-only is known at launch.
+- Welcome says location is optional. There is no map-download or setup step: the basemap ships in the APK and is copied and hash-verified in the background at app start (`docs/OFFLINE_BASEMAP.md`).
+- Splash, Welcome and Directory are reached with `replace`, so the Directory is the only route on the stack and Back leaves the app.
+- Process death, force-stop, Clear Data and reinstall all start here; see `docs/DATA_RETENTION.md` for what survives.
 
-Start-source (GPS, search, map tap, remembered state) never changes routing policy — every outside coordinate goes through the same `prepareOutsideRoutingPlan` → provider fallback → `finalizeOutsideRoutingPlan` pipeline described in `docs/OFFLINE_NAVIGATION_AND_ROUTING.md`.
+## Choosing a destination (Directory)
 
-Manual gate selection, once made, stays authoritative across an automatic reroute — the app does not silently override a user's explicit gate choice.
+A tap on a destination means **take me here** (`LocationsDirectoryScreen.takeMeTo`, `planDestinationTap`):
 
-Active navigation and arrival have two live presentations: `NavigationChromeV1`/`NavigationMapLayersV1` for legacy Block destinations and `NavigationChromeV2`/`NavigationMapLayersV2` for Gate/facility destinations. Only one renders content, chosen by `sourceVersion`. A navigation or arrival UI change must land in both, or state why one is exempt (see NAV-004 in `docs/KNOWN_LIMITATIONS_AND_OWNER_ACTIONS.md`).
+| Situation | Result |
+|---|---|
+| A. Fresh usable live location | Map opens and live navigation starts by itself (fresh fix only) |
+| B. Permission and precise accuracy fine, no fix yet | Map opens and finds the location (bounded); on failure the usual "choose where to start" UI stays |
+| C. No usable location, a start already chosen this session | Map opens with a Route Guide from that start |
+| D. No usable location, no start | Stay in the Directory: "Where are you starting from?" / "To <place>". Picking a place starts a Route Guide. "Use my location" is the one contextual permission request |
+| E. Permission refused | Respected. Declining the prompt keeps the question open; Settings opens only after an explicit "Open Settings" on a permanent block |
+
+- Approximate-only location is never treated as live. A destination that cannot be routed opens its details instead.
+- **Details** stays reachable: an info control on list rows, a long press and a TalkBack "Details" action on block tiles.
+- The Directory hands Home a runtime-only `pendingJourney`; Home consumes it once focused, adds the place to Recent, opens Directions and the sheet starts the journey. A trip already under way is never replaced silently (the place is shown instead).
+- The recovery card's "Get new route" plans the journey exactly like a destination tap.
+
+## Live navigation vs Route Guide
+
+| | Live navigation | Route Guide |
+|---|---|---|
+| Needs | Fresh, usable, precise live fix | A chosen FROM and TO |
+| Gives | Current position, automatic progress, instruction advance, reroute, automatic arrival | Full route, distance, ETA, steps, map framing |
+| Never | Starts from a remembered or manual position | Claims live movement, progress, reroute or arrival |
+| State | `isNavigating`, recovery marker, nav engines | `routeGuide {steps, stepIndex}` in the store: runtime only, not persisted, no marker |
+
+- A start the user chose or saved offers **Start route** (Route Guide); **Use my location for live guidance** is the secondary. The Route Guide card shows "Your position isn't tracked. Use the steps to find your way.", Step N of M, Previous/Next, and End route guide.
+- Upgrading to live reuses the fresh-fix flow: acquire a real fix, recompute from the real position, start navigation, and the guide closes.
+- The capability model (`LocationCapability`) keeps permission, accuracy authorization (precise/approximate), device services and fix quality separate. Live guidance is available only with no blocker; the Route Guide is always available.
+
+## The Map
+
+- **Top bar:** `<- Places` (pushes the Directory over the Map; Back returns), what the map shows (place name, Directions, Route guide), and the menu (Settings, Help, About). No search, no browse chips, no bottom navigation. Absent in live navigation and arrival.
+- **One map, one sheet:** Directions, route preview, the Route Guide, live navigation and arrival are modes of `HomeScreen`, not screens. `LocationSheet` has `details`, `preview` and `routePreview` modes.
+- **Collapsed Directions** keeps a tappable peek (state line + up chevron, >= 48 dp) as the sheet's handle, so it never goes silent.
+- **Map controls** (Direction, Recenter, More = Layers and Zoom) control the map only; journey actions live in the sheet they belong to (Cancel Route, End route guide, Close).
+- **Camera on entry:** a destination or route owns the camera; otherwise a live fix shows the venue overview with the user marker, and no usable location shows the Block 2 anchor with "Location unavailable. Showing Block 2." A persisted last-known location never moves the camera on its own.
+
+## Navigation, arrival and what follows
+
+1. Start Navigation (or auto-start from a destination tap) enters navigation mode and writes the coordinate-free recovery marker.
+2. Arrival uses proximity to the destination entry coordinate (within 20 m) **and** progress along the route reaching its end, so an earlier leg passing near the destination does not end the trip. Once reported it stays latched. **Only the engine that owns the session may arrive:** a V2 route (Gate/facility destinations, the current flows) belongs to `NavigationViewModelV2`; the legacy V1 engine cannot produce arrival during a V2 trip, and V2 never runs for a V1 route.
+3. Arrival clears the recovery marker. **Done** resets the stack to the Directory alone, like a launch: Back from it leaves the app, and picking the next destination opens a fresh Map. Mid-trip **Exit** stops navigation and stays on the Map.
+4. Process death during live navigation: the next launch lands on the Directory with a "Your last navigation didn't finish" card (2 h from when navigation started). Nothing resumes by itself; **Get new route** plans a fresh journey, **Dismiss** clears the marker. Route Guide, previews and arrival leave no recovery card.
+
+Start-source (GPS, search, map tap, remembered state) never changes routing policy: every outside coordinate goes through `prepareOutsideRoutingPlan` -> provider fallback -> `finalizeOutsideRoutingPlan` (`docs/OFFLINE_NAVIGATION_AND_ROUTING.md`). A manual gate selection stays authoritative across an automatic reroute.
+
+Active navigation and arrival have two presentations, `NavigationChromeV1`/`NavigationMapLayersV1` (legacy Block destinations) and `NavigationChromeV2`/`NavigationMapLayersV2` (Gate/facility destinations); only one renders, chosen by `sourceVersion`. A navigation or arrival UI change must land in both, or state why one is exempt (NAV-004 in `docs/KNOWN_LIMITATIONS_AND_OWNER_ACTIONS.md`).

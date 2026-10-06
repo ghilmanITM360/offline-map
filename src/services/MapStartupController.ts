@@ -8,8 +8,9 @@ import { IJTEMA_BLOCKS } from '../data/ijtema';
 import type { LocationResolveResult } from './LocationAccessService';
 
 export interface MapStartupChecks {
-  /** False only until the very first cold-launch venue-overview fit has completed —
-   * see useAppStore's hasSeenMapOverview. */
+  /** Persisted marker (useAppStore.hasSeenMapOverview) set after the first Map entry commits its overview.
+   * Informational today: only resolveColdLaunchCamera reads it, and production uses resolveReturningLaunchCamera
+   * + planEntryCamera instead (see HomeScreen's startup camera decision). */
   hasSeenMapOverview: boolean;
   hasLocationPermission: boolean;
   /** Live GPS fix, or a remembered last-known fallback — either counts as "GPS available". */
@@ -67,12 +68,11 @@ function isLiveCoordinate(result: LocationResolveResult | null): result is Locat
 }
 
 /**
- * Decides the single one-shot cold-launch camera move (Google Maps principles, adapted
- * for a single venue): first install ever -> venue overview; returning + GPS -> straight
- * to user; no GPS -> venue overview fallback. Pure decision only — the caller (HomeScreen's
- * onMapReady) is responsible for actually calling CameraManager and for the one-shot guard
- * (coldLaunchCameraDoneRef), same division of labor as StartupManager.resolve() vs the
- * screen that navigates on its result.
+ * Pure decisions for the Map's one-shot entry camera. HomeScreen's onMapReady asks resolveReturningLaunchCamera for a
+ * fresh live fix (never a remembered one) and planEntryCamera for the plan: a usable location shows the venue overview
+ * with the user marker; none shows the Block 2 anchor with a notice. A destination, route or user gesture always wins
+ * and invalidates the decision. resolveColdLaunchCamera is the older synchronous variant, kept for its tests and not
+ * used by production code. The caller owns moving the camera and the one-shot guard.
  */
 export class MapStartupController {
   static resolveColdLaunchCamera(checks: MapStartupChecks): MapStartupCameraDecision {
