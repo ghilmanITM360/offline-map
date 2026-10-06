@@ -63,7 +63,8 @@ const sheet = (journey?: { mode: 'live' | 'guide'; start: Place | null }) => (
 );
 
 const initialStoreState = useAppStore.getState();
-const publishedRoute = () => useAppStore.setState({ activeRoute: route as never });
+const dest = { id: 'B2', name: 'Block 2' } as never;
+const publishedRoute = () => useAppStore.setState({ activeRoute: route as never, routePlannerDest: dest });
 beforeEach(() => {
   jest.clearAllMocks();
   useAppStore.setState(initialStoreState, true);
@@ -94,12 +95,16 @@ describe('journey auto-start (#307)', () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
-  test('live waits until the preview route is published to the store: Home cannot start without it (runtime race)', async () => {
+  test('live waits until Home can start it: the preview route AND its destination are in the store (runtime race)', async () => {
     mockedVm.mockReturnValue(vm({ startSource: 'live_gps', manualStart: null, startAction: { kind: 'start', primaryLabel: 'Start Navigation', title: 'Ready to go' } }));
     await render(sheet({ mode: 'live', start: null }));
     expect(onStartNavigation).not.toHaveBeenCalled();
 
-    await act(async () => publishedRoute());
+    // The route alone is not enough: Home's start handler also needs routePlannerDest and silently returns without it.
+    await act(async () => useAppStore.setState({ activeRoute: route as never }));
+    expect(onStartNavigation).not.toHaveBeenCalled();
+
+    await act(async () => useAppStore.setState({ routePlannerDest: dest }));
     expect(onStartNavigation).toHaveBeenCalledTimes(1);
   });
 
