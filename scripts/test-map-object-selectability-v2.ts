@@ -52,9 +52,9 @@ assert(
   'animateToPlace must shift the region center based on the computed marker screen fraction so the marker renders above the LocationSheet, not centered behind it.',
 );
 assert(
-  cameraManager.includes("mapRef.current?.fitToCoordinates(coordinates, { edgePadding, animated: true });") &&
+  cameraManager.includes("mapRef.current?.fitToCoordinates(coordinates, { edgePadding: intent.padding, animated: true });") &&
     cameraManager.includes("mapRef.current?.fitToCoordinates(boundary, { edgePadding, animated: true });"),
-  'fitRoute/fitVenueBounds edge-padding behavior must be untouched by the animateToPlace fix.',
+  'fitRoute must use the latest intent padding; fitVenueBounds must retain edge padding. Runtime camera ownership is covered by RouteCameraOwnership.test.tsx.',
 );
 
 // --- P1 Fix 4: gate info surfaces number/type/entry information ------------
