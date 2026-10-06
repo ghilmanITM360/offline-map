@@ -43,10 +43,11 @@ import {
   computeMapControlsInset,
   resolveControlStackPlacement,
   computeMapContentInsets,
-  computeMaxSheetOcclusionForAttribution,
   computeNavControlsInset,
+  fullSheetHeight,
   insetAwareSnapPoints,
   routePreviewSnapPoints,
+  withFullDetent,
   MIN_TOP_VISIBLE_MAP_FOR_ATTRIBUTION,
   MIN_TOP_VISIBLE_MAP_FOR_ROUTE_PREVIEW,
   resolveNavBarHeight,
@@ -951,11 +952,20 @@ export function HomeScreen() {
     () => (mode === 'ROUTE_PREVIEW' ? routePreviewSnapPoints(sheetContainerHeight, insets.bottom) : baseSnapPoints),
     [mode, baseSnapPoints, sheetContainerHeight, insets.bottom],
   );
+  // FULL (the top detent) is everything below the status bar, derived from the real window and top inset. It used to
+  // be a fixed 92% of the container above, which left it at about half of a phone screen once the map band and the
+  // top overlay were cut out of that container. Collapsed and middle detents are unchanged; every mode and both the
+  // drag and snapToIndex(2) reach this same detent.
+  const fullSheetPx = Math.round(fullSheetHeight(windowHeight, topInsetBase));
   const snapPoints = useMemo(
-    () => (mode === 'ROUTE_PREVIEW'
-      ? layoutSnapPoints
-      : insetAwareSnapPoints(layoutSnapPoints, sheetContainerHeight, insets.bottom, fontScale)),
-    [mode, layoutSnapPoints, sheetContainerHeight, insets.bottom, fontScale],
+    () => withFullDetent(
+      mode === 'ROUTE_PREVIEW'
+        ? layoutSnapPoints
+        : insetAwareSnapPoints(layoutSnapPoints, sheetContainerHeight, insets.bottom, fontScale),
+      sheetContainerHeight,
+      fullSheetPx,
+    ),
+    [mode, layoutSnapPoints, sheetContainerHeight, insets.bottom, fontScale, fullSheetPx],
   );
   // The reserved top band is applied here, as pixel heights of the sheet's container (window minus the band),
   // instead of as gorhom's `topInset`. gorhom derives its container height from `topInset` only when the sheet
@@ -1060,20 +1070,6 @@ export function HomeScreen() {
     bottomSheetRef.current?.snapToIndex(2);
     requestAnimationFrame(fitPreviewRoute);
   }, [bottomSheetRef, fitPreviewRoute]);
-  // @gorhom/bottom-sheet computes EVERY snap point — the declared 15/50/92% ones, not
-  // just content-driven dynamic sizing — as a percentage of its own containerHeight.
-  // On this app's real window heights, the plain 92% snap alone already leaves less than
-  // MIN_TOP_VISIBLE_MAP_FOR_ATTRIBUTION above the sheet (measured on-device: ~71dp) — no
-  // dynamic sizing or over-drag needed to reproduce Route Preview's clip, a simple manual
-  // drag to 92% does it. mapLabelEdgeInsets' clamp alone can't fix this: it only changes
-  // what we tell the map is obstructed, not how tall the sheet actually
-  // renders, so the attribution button can still land somewhere the real (taller) sheet covers.
-  // The reserved band is therefore taken out of the heights the snaps are computed from (see
-  // sheetSnapPoints) — not passed as gorhom's `topInset`, which it does not re-apply once the
-  // sheet is presented (#208 F2) — so 92% of that container can never reach into it (ATTR-001).
-  const minimumVisibleMapHeight = mode === 'ROUTE_PREVIEW'
-    ? MIN_TOP_VISIBLE_MAP_FOR_ROUTE_PREVIEW
-    : MIN_TOP_VISIBLE_MAP_FOR_ATTRIBUTION;
   // Route-preview footer (Start Navigation, summary) is pinned by gorhom's footer slot; hide it at
   // the collapsed snap, where only the handle and header are meant to show.
   const renderDirectionsFooter = useCallback(
@@ -1082,18 +1078,9 @@ export function HomeScreen() {
     ),
     [sheetIndex],
   );
-  // Caps dynamic sizing so a content-sized detent can never reach into the reserved top band, even for
-  // content taller than the container. Same shared formula the mapPadding clamp above uses, so the two
-  // ceilings can't drift apart.
-  const sheetMaxDynamicContentSize = useMemo(
-    () => computeMaxSheetOcclusionForAttribution(
-      windowHeight,
-      topOverlayHeight > 0 ? topOverlayHeight + 8 : 0,
-      insets.bottom,
-      minimumVisibleMapHeight,
-    ),
-    [insets.bottom, minimumVisibleMapHeight, topOverlayHeight, windowHeight],
-  );
+  // Caps dynamic sizing at FULL, so a content-sized detent can never carry the sheet past the status bar, and equals
+  // the top detent exactly (gorhom drops a dynamic detent identical to a declared one instead of adding a second stop).
+  const sheetMaxDynamicContentSize = sheetSnapPoints[sheetSnapPoints.length - 1];
 
   useEffect(() => {
     Animated.timing(warningAnim, {
