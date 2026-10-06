@@ -1234,8 +1234,17 @@ export function HomeScreen() {
     handleOpenDirections(destination);
     // handleOpenDirections is recreated every render; this intentionally runs once per journey.
   }, [pendingJourney, isHomeFocused]);
+  // The intent ends when Directions closes. Only a real open -> closed transition counts: on mount this effect runs
+  // after the consumption effect above with directionsDestination still null, and clearing then would drop the
+  // journey before the sheet ever saw it.
+  const directionsWereOpenRef = useRef(false);
   useEffect(() => {
-    if (!directionsDestination) setJourneyIntent(null);
+    if (directionsDestination) {
+      directionsWereOpenRef.current = true;
+    } else if (directionsWereOpenRef.current) {
+      directionsWereOpenRef.current = false;
+      setJourneyIntent(null);
+    }
   }, [directionsDestination]);
 
   // Get Directions asks the Directory (the one place chooser) for a start or destination; the choice comes back
