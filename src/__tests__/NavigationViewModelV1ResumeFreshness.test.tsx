@@ -122,7 +122,7 @@ describe('NavigationViewModel (V1) background-resume GPS freshness (NAV-004)', (
       jest.advanceTimersByTime(GPS_LOST_TIMEOUT_MS + 1500);
     });
     await emitAppState('active');
-    expect(hook.result.current.rerouteStatusMessage).toMatch(/fresh GPS position/i);
+    expect(hook.result.current.rerouteStatusMessage).toMatch(/Finding your location/i);
 
     await act(async () => publish(origin.latitude, origin.longitude));
     expect(hook.result.current.rerouteStatusMessage).toBeNull();

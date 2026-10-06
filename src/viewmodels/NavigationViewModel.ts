@@ -24,7 +24,7 @@ const OFF_ROUTE_CONSECUTIVE_REQUIRED = 3;
 const REROUTE_COOLDOWN_MS = 25000;
 const MIN_MOVEMENT_FOR_REROUTE_M = 12;
 const WEAK_GPS_THRESHOLD_M = 50;
-const GPS_STALE_MESSAGE = 'Waiting for a fresh GPS position…';
+const GPS_STALE_MESSAGE = 'Finding your location…';
 
 export function useNavigationViewModel() {
   const {
@@ -198,8 +198,8 @@ export function useNavigationViewModel() {
       latestGpsAccuracyRef.current = gpsAccuracy;
       setIsWeakGps(gpsAccuracy > WEAK_GPS_THRESHOLD_M);
       if (holdRouteForWeakGps) {
-        setRerouteStatusMessage('GPS signal is weak. Route is being held stable.');
-      } else if (rerouteStatusMessage === 'GPS signal is weak. Route is being held stable.') {
+        setRerouteStatusMessage('Weak signal. Keep walking the way shown.');
+      } else if (rerouteStatusMessage === 'Weak signal. Keep walking the way shown.') {
         setRerouteStatusMessage(null);
       }
 
@@ -340,7 +340,7 @@ export function useNavigationViewModel() {
             !shouldTrigger ||
             (offRouteDurationMs < OFF_ROUTE_PENDING_MS && consecutiveOffRouteCountRef.current < OFF_ROUTE_CONSECUTIVE_REQUIRED)
           ) {
-            setRerouteStatusMessage('You may be off route. Keep moving or stop to recalculate.');
+            setRerouteStatusMessage("You may be off the route. Keep walking and we'll fix it.");
             return;
           }
 
@@ -349,7 +349,7 @@ export function useNavigationViewModel() {
           const rerouteSessionId = useAppStore.getState().navigationSessionId;
           setReroutePending(true);
           routeUpdatedNotice.cancel();
-          setRerouteStatusMessage('Recalculating...');
+          setRerouteStatusMessage('Finding a new way…');
           rerouteTimerRef.current = setTimeout(() => {
             const currentSession = useAppStore.getState();
             if (
@@ -392,14 +392,14 @@ export function useNavigationViewModel() {
                 VoiceService.speak(
                   settingsRef.current.language === 'ur'
                     ? 'راستہ دوبارہ بن رہا ہے۔ چلتے رہیں۔'
-                    : 'Recalculating. Please continue walking.',
+                    : 'Finding a new way. Please keep walking.',
                   settingsRef.current.language,
                 );
               }
               if (resolvedStart.warning) setRerouteStatusMessage(resolvedStart.warning);
               else routeUpdatedNotice.announce();
             } else {
-              setRerouteStatusMessage('Could not find a better route. continuing current route.');
+              setRerouteStatusMessage('Keep following the current route.');
             }
             setReroutePending(false);
           }, 250);
@@ -407,7 +407,7 @@ export function useNavigationViewModel() {
           lastAcceptedLocationRef.current = snapped;
           consecutiveOffRouteCountRef.current = 0;
           offRouteSinceRef.current = null;
-          if (rerouteStatusMessage === 'You may be off route. Keep moving or stop to recalculate.') {
+          if (rerouteStatusMessage === "You may be off the route. Keep walking and we'll fix it.") {
             setRerouteStatusMessage(null);
           }
           if (rerouteTimerRef.current) {
@@ -442,7 +442,7 @@ export function useNavigationViewModel() {
   }, [handleGPS]);
 
   // Unmount only. This used to live in the listener cleanup above, which re-runs whenever
-  // handleGPS is recreated — including by the 'Recalculating...' status message the reroute
+  // handleGPS is recreated — including by the 'Finding a new way…' status message the reroute
   // itself sets — so the pending reroute timer was cleared before it fired, leaving
   // rerouteTimerRef stale (blocking every later reroute) and reroutePending stuck true.
   useEffect(() => () => {

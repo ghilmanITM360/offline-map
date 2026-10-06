@@ -83,7 +83,7 @@ describe('Shahr-e-Pindal reroute failure preserves destination identity (NEW-02 
     await waitFor(() => expect(hook.result.current.reroutePending).toBe(false));
 
     expect(hook.result.current.rerouteStatusMessage).toBe(
-      'Could not find a better route. Continuing current route.',
+      'Keep following the current route.',
     );
     // Session destination identity must be untouched by the failure.
     const afterFirstFailure = useAppStore.getState().activeRoute!;

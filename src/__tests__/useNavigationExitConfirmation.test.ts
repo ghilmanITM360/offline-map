@@ -23,12 +23,12 @@ describe('useNavigationExitConfirmation', () => {
     expect(alertSpy).toHaveBeenCalledTimes(1);
     expect(onExit).not.toHaveBeenCalled();
 
-    await act(async () => alertButtons(alertSpy).find((button) => button.text === 'Cancel')?.onPress?.());
+    await act(async () => alertButtons(alertSpy).find((button) => button.text === 'Keep going')?.onPress?.());
     expect(onExit).not.toHaveBeenCalled();
 
     await act(async () => result.current.requestNavigationExit());
     expect(alertSpy).toHaveBeenCalledTimes(2);
-    const confirm = alertButtons(alertSpy).find((button) => button.text === 'Exit')?.onPress;
+    const confirm = alertButtons(alertSpy).find((button) => button.text === 'Stop')?.onPress;
     await act(async () => {
       confirm?.();
       confirm?.();
@@ -50,7 +50,7 @@ describe('useNavigationExitConfirmation', () => {
     expect(alertSpy).toHaveBeenCalledTimes(1);
     expect(onExit).not.toHaveBeenCalled();
 
-    await act(async () => alertButtons(alertSpy).find((button) => button.text === 'Cancel')?.onPress?.());
+    await act(async () => alertButtons(alertSpy).find((button) => button.text === 'Keep going')?.onPress?.());
     arrived = true;
     await rerender(undefined);
     back = backSpy.mock.calls.filter(([name]) => name === 'hardwareBackPress').at(-1)?.[1] as () => boolean;
@@ -68,7 +68,7 @@ describe('useNavigationExitConfirmation', () => {
     ));
 
     await act(async () => result.current.requestNavigationExit());
-    const confirm = alertButtons(alertSpy).find((button) => button.text === 'Exit')?.onPress;
+    const confirm = alertButtons(alertSpy).find((button) => button.text === 'Stop')?.onPress;
     await unmount();
     confirm?.();
 

@@ -59,11 +59,11 @@ export function useNavigationExitConfirmation({ active, arrived, onExit }: Navig
       exitOnce();
     };
     Alert.alert(
-      'Exit navigation?',
-      'Do you want to stop navigation and return to map?',
+      'Stop directions?',
+      'You will go back to the map.',
       [
-        { text: 'Cancel', style: 'cancel', onPress: releaseConfirmation },
-        { text: 'Exit', style: 'destructive', onPress: confirmExit },
+        { text: 'Keep going', style: 'cancel', onPress: releaseConfirmation },
+        { text: 'Stop', style: 'destructive', onPress: confirmExit },
       ],
       { cancelable: true, onDismiss: releaseConfirmation },
     );

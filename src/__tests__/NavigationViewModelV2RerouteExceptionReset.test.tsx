@@ -55,7 +55,7 @@ describe('NavigationViewModelV2 reroute exception safety (#143)', () => {
     await waitFor(() => expect(V2NavigationAdapter.fromPreview).toHaveBeenCalled());
     await waitFor(() => expect(useAppStore.getState().reroutePending).toBe(false));
     expect(useAppStore.getState().activeRoute).toBe(activeRoute);
-    expect(hook.result.current.rerouteStatusMessage).toBe('Could not find a better route. Continuing current route.');
+    expect(hook.result.current.rerouteStatusMessage).toBe('Keep following the current route.');
     jest.restoreAllMocks();
   });
 });

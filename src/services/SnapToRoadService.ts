@@ -105,7 +105,7 @@ export class SnapToRoadService {
       snappedCoordinate: this.nodeToCoordinate(nodeId, coord),
       insideVenue,
       insideBlockId: null,
-      warning: 'You are outside the mapped Ijtema navigation area.',
+      warning: 'You are outside Ijtema.',
     };
   }
 

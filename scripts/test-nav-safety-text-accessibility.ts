@@ -67,7 +67,7 @@ const MANEUVER_LABEL_SIZE = 24; // primary instruction — not in scope for this
 assert(fontSizeOf(stylesSource, 'weakGpsText') >= SAFETY_TEXT_FLOOR, 'weakGpsText (GPS weak/lost banner, shared by NavigationChromeV1 and V2) must be >= 15px');
 assert(fontSizeOf(stylesSource, 'rerouteHintText') >= SAFETY_TEXT_FLOOR, 'rerouteHintText (reroute notification banner) must be >= 15px');
 assert(fontSizeOf(stylesSource, 'nextStepText') >= SAFETY_TEXT_FLOOR, 'nextStepText (upcoming-turn preview) must be >= 15px');
-assert(fontSizeOf(stylesSource, 'rerouteText') >= SAFETY_TEXT_FLOOR, '"Recalculating..." reroute-card text must be >= 15px');
+assert(fontSizeOf(stylesSource, 'rerouteText') >= SAFETY_TEXT_FLOOR, '"Finding a new way…" reroute-card text must be >= 15px');
 
 // Arrival messaging was already at/above the floor before this pass — pin it so it can't regress.
 assert(fontSizeOf(stylesSource, 'arrivedTitle') >= SAFETY_TEXT_FLOOR, 'arrivedTitle must stay >= 15px');

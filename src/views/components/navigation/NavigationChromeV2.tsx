@@ -123,7 +123,7 @@ export function NavigationChromeV2({ overlay, hasBaseMap }: { overlay: Navigatio
           {reroutePending ? (
             <View style={[styles.instructionCard, styles.rerouteCard]}>
               <RefreshCw size={28} color={staticColors.white} />
-              <Text style={styles.rerouteText}>Recalculating...</Text>
+              <Text style={styles.rerouteText}>Finding a new way…</Text>
             </View>
           ) : directOutsideActive && !arrived ? (
             <View
@@ -194,11 +194,11 @@ export function NavigationChromeV2({ overlay, hasBaseMap }: { overlay: Navigatio
         <View testID="navigation-subordinate-surfaces" style={[styles.topStatusStack, largeText && styles.topStatusStackClearOfControls]}>
           {gpsSignalState === 'GPS_LOST' ? (
             <View style={styles.weakGpsBanner} accessibilityLiveRegion="assertive">
-              <Text style={styles.weakGpsText}>Searching for GPS signal. Your position may be out of date.</Text>
+              <Text style={styles.weakGpsText}>We can't find you. Move to an open area.</Text>
             </View>
           ) : isWeakGps ? (
             <View style={styles.weakGpsBanner} accessibilityLiveRegion="polite">
-              <Text style={styles.weakGpsText}>Weak GPS signal detected. Route updates may be slower.</Text>
+              <Text style={styles.weakGpsText}>Weak signal. Directions may be slow.</Text>
             </View>
           ) : rerouteStatusMessage && !reroutePending ? (
             <View style={styles.rerouteHintBanner} accessibilityLiveRegion="polite">
@@ -260,7 +260,7 @@ export function NavigationChromeV2({ overlay, hasBaseMap }: { overlay: Navigatio
               <Text style={styles.distanceRemaining}>
                 {directOutsideActive
                   ? InstructionService.formatDistance(remainingDistance, settings.distanceUnit)
-                  : `${InstructionService.formatDistance(remainingDistance, settings.distanceUnit)} · ETA ${arrivalTime}`}
+                  : `${InstructionService.formatDistance(remainingDistance, settings.distanceUnit)} · Arrive ${arrivalTime}`}
               </Text>
               <Text style={styles.destName} numberOfLines={1}>{route.destination.label}</Text>
             </View>

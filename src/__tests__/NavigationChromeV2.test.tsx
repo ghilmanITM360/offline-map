@@ -211,8 +211,8 @@ describe('NavigationChromeV2 — direct outside guide', () => {
 
     const stack = screen.getByTestId('navigation-top-stack');
     const stackContent = within(stack);
-    expect(stackContent.getByText('Searching for GPS signal. Your position may be out of date.')).toBeOnTheScreen();
-    expect(stackContent.queryByText('Weak GPS signal detected. Route updates may be slower.')).not.toBeOnTheScreen();
+    expect(stackContent.getByText("We can't find you. Move to an open area.")).toBeOnTheScreen();
+    expect(stackContent.queryByText('Weak signal. Directions may be slow.')).not.toBeOnTheScreen();
     expect(stackContent.queryByText('Recalculating your route')).not.toBeOnTheScreen();
     expect(stackContent.queryByText("The map can't be shown. Directions still work.")).not.toBeOnTheScreen();
   });
@@ -237,7 +237,7 @@ describe('NavigationChromeV2 — direct outside guide', () => {
 
     const stack = screen.getByTestId('navigation-top-stack');
     const stackContent = within(stack);
-    expect(stackContent.getByText('Weak GPS signal detected. Route updates may be slower.')).toBeOnTheScreen();
+    expect(stackContent.getByText('Weak signal. Directions may be slow.')).toBeOnTheScreen();
     expect(stackContent.queryByText('Recalculating your route')).not.toBeOnTheScreen();
     expect(stackContent.queryByText("The map can't be shown. Directions still work.")).not.toBeOnTheScreen();
   });
@@ -259,13 +259,13 @@ describe('NavigationChromeV2 — direct outside guide', () => {
   test('#156: GPS_LOST banner is an assertive live region so screen-reader users hear it unprompted', async () => {
     await render(<NavigationChromeV2 overlay={baseOverlay({ gpsSignalState: 'GPS_LOST' })} hasBaseMap={false} />);
 
-    const banner = screen.getByText('Searching for GPS signal. Your position may be out of date.').parent;
+    const banner = screen.getByText("We can't find you. Move to an open area.").parent;
     expect(banner?.props.accessibilityLiveRegion).toBe('assertive');
   });
 
   test('#156: weak-GPS banner is a polite live region', async () => {
     await render(<NavigationChromeV2 overlay={baseOverlay({ isWeakGps: true })} hasBaseMap={false} />);
-    expect(screen.getByText('Weak GPS signal detected. Route updates may be slower.').parent?.props.accessibilityLiveRegion).toBe('polite');
+    expect(screen.getByText('Weak signal. Directions may be slow.').parent?.props.accessibilityLiveRegion).toBe('polite');
   });
 
   test('#156: reroute-hint banner is a polite live region', async () => {
@@ -548,6 +548,6 @@ describe('NavigationChromeV2 — reduced motion (#100)', () => {
 
     await act(async () => { jest.advanceTimersByTime(NAV_TRANSITION_TIMINGS.chromeRevealDelayMs); });
 
-    expect(screen.getByText('Recalculating...')).toBeOnTheScreen();
+    expect(screen.getByText('Finding a new way…')).toBeOnTheScreen();
   });
 });

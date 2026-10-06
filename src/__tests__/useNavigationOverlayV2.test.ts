@@ -79,7 +79,7 @@ describe('useNavigationOverlayV2 — hardware back (NAVIGATION vs ARRIVAL)', () 
     let handler = latestHandler(addEventListenerSpy);
     expect(handler).toBeDefined();
     handler!();
-    expect(alertSpy).toHaveBeenCalledWith('Exit navigation?', expect.any(String), expect.any(Array), expect.any(Object));
+    expect(alertSpy).toHaveBeenCalledWith('Stop directions?', expect.any(String), expect.any(Array), expect.any(Object));
     expect(mockVm.handleExit).not.toHaveBeenCalled();
 
     // Arrival: hardware Back completes immediately, same as visible Done.
@@ -135,7 +135,7 @@ describe('useNavigationOverlayV2 — hardware back (NAVIGATION vs ARRIVAL)', () 
     expect(handler).toBeDefined();
     expect(handler!()).toBe(true);
     expect(alertSpy).toHaveBeenCalledWith(
-      'Exit navigation?',
+      'Stop directions?',
       expect.any(String),
       expect.any(Array),
       expect.any(Object),
