@@ -6,9 +6,11 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable, Image, Linking, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Info, Heart, Shield, ExternalLink } from 'lucide-react-native';
+import { Info, Heart, Shield, ExternalLink, Map as MapIcon } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
 import { backChevron } from '../components/common/directionalIcons';
+import { BASEMAP_ATTRIBUTION } from '../components/mapgl/basemapStyle';
+import { OSM_COPYRIGHT_URL } from '../components/map/OsmAttribution';
 
 const PRIVACY_POLICY_URL = 'TODO_PRIVACY_POLICY_URL'; // fixed: replace placeholder privacy URL with an explicit TODO constant
 const TERMS_OF_SERVICE_URL = 'TODO_TERMS_OF_SERVICE_URL'; // fixed: replace placeholder terms URL with an explicit TODO constant
@@ -109,6 +111,18 @@ export function AboutScreen() {
           >
             <FileText size={20} color="#666" />
             <Text style={styles.linkText}>Terms of Service</Text>
+            <ExternalLink size={16} color="#AAA" />
+          </Pressable>
+          {/* The map's own attribution control is covered while the Directions sheet is expanded to full height, so it is
+              always reachable here too. The wording is the basemap's own (BASEMAP_ATTRIBUTION). */}
+          <Pressable
+            style={styles.linkItem}
+            onPress={() => { void openExternalUrl(OSM_COPYRIGHT_URL); }}
+            accessibilityRole="button"
+            accessibilityLabel={`Map data, ${BASEMAP_ATTRIBUTION}`}
+          >
+            <MapIcon size={20} color="#666" />
+            <Text style={styles.linkText}>Map data {BASEMAP_ATTRIBUTION}</Text>
             <ExternalLink size={16} color="#AAA" />
           </Pressable>
         </View>

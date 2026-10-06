@@ -5,7 +5,7 @@
 
 import React from 'react';
 import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
-import { Info, Milestone, Route, Signpost } from 'lucide-react-native';
+import { Info, Milestone, Route, Signpost, X } from 'lucide-react-native';
 
 import { V2Place } from '../../../models/types';
 import { usePressScale } from '../../../viewmodels/usePressScale';
@@ -33,12 +33,15 @@ export function DestinationRow({
   place,
   onPress,
   onDetails,
+  onRemove,
   showCategory = true,
 }: {
   place: V2Place;
   onPress: (place: V2Place) => void;
   /** A tap on the row means "take me here" (#307); this separate, named control opens the place's details. */
   onDetails?: (place: V2Place) => void;
+  /** Recent only: a visible, named control (never swipe-only) that forgets this one place. */
+  onRemove?: (place: V2Place) => void;
   showCategory?: boolean;
 }) {
   const Icon = CATEGORY_ICON[place.category] ?? Signpost;
@@ -92,7 +95,7 @@ export function DestinationRow({
             </View>
           ) : null}
         </View>
-        {onDetails ? null : <ForwardIcon size={18} color={staticColors.iconMuted} />}
+        {onDetails || onRemove ? null : <ForwardIcon size={18} color={staticColors.iconMuted} />}
       </Pressable>
       {onDetails ? (
         <Pressable
@@ -102,6 +105,16 @@ export function DestinationRow({
           accessibilityLabel={`Details for ${place.name}`}
         >
           <Info size={20} color={staticColors.iconMuted} />
+        </Pressable>
+      ) : null}
+      {onRemove ? (
+        <Pressable
+          style={({ pressed }) => [styles.detailsButton, pressed && styles.rowPressed]}
+          onPress={() => onRemove(place)}
+          accessibilityRole="button"
+          accessibilityLabel={`Remove from recent: ${place.name}`}
+        >
+          <X size={20} color={staticColors.iconMuted} />
         </Pressable>
       ) : null}
     </Animated.View>

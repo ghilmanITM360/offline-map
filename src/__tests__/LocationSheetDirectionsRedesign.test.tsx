@@ -317,7 +317,7 @@ describe('Get Directions redesign — pinned footer', () => {
     expect(within(screen.getByTestId('sheet-scroll')).getByText('No route.')).toBeOnTheScreen();
     expect(within(screen.getByTestId('sheet-scroll')).queryByText('Try again')).not.toBeOnTheScreen();
     expect(screen.getByRole('button', { name: 'Try again' })).toBeOnTheScreen();
-    expect(screen.getByRole('button', { name: 'Choose another start' })).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: 'Change start' })).toBeOnTheScreen();
   });
 
   test('same start and destination says so and offers no Start, no route summary and no 0 m', async () => {

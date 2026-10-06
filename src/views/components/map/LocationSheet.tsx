@@ -46,6 +46,7 @@ import { Card } from '../common/Card';
 import { backChevron, forwardChevron } from '../common/directionalIcons';
 import { directionsSheetColors, radii, staticColors } from '../../../theme';
 import { placeCategoryLabel } from '../../../utils/placeCategoryLabel';
+import { buildPlaceShare } from '../../../utils/placeShare';
 import { unavailableReasonCopy } from '../../../utils/unavailableReasonCopy';
 import { ROUTE_NOT_FOUND, SAME_PLACE } from '../../../utils/routeCopy';
 import { DirectionsHeader, RouteEndpointRows } from './DirectionsSheetParts';
@@ -327,6 +328,9 @@ function RoutePreviewSection({
   const showLoading = loadState === 'loading';
   const showError = loadState === 'error';
   const showSamePlace = loadState === 'same_place';
+  // A journey that is still looking for the person's own location is not asking where they start (see below).
+  const [locatingForJourney, setLocatingForJourney] = useState(false);
+  const showNeedsStart = loadState === 'needs_origin' && !locatingForJourney;
   const destinationCannotBeRouted =
     destination.isRoutable === false ||
     (destination.routingStatus !== undefined && destination.routingStatus !== 'routable');
@@ -394,7 +398,7 @@ function RoutePreviewSection({
       </Text>
     </Pressable>
   ) : null;
-  const footerVisible = (showLoading || showError || showSamePlace || showRouteReady) && !(showRouteReady && routeGuide);
+  const footerVisible = (showLoading || showError || showSamePlace || showNeedsStart || showRouteReady) && !(showRouteReady && routeGuide);
   // The caption scrolls with the content: the pinned footer only has room for the route summary,
   // the action and its disabled reason (gorhom's visible area at the 50% snap is small).
 
@@ -437,7 +441,9 @@ function RoutePreviewSection({
     if (startAttempt === 'working') return;
     if (loadState === 'needs_origin' && !journeyLocateRef.current) {
       journeyLocateRef.current = true;
+      setLocatingForJourney(true);
       void chooseCurrentLocation().then((found) => {
+        setLocatingForJourney(false);
         if (!found) journeyDoneRef.current = true;
       });
       return;
@@ -480,9 +486,11 @@ function RoutePreviewSection({
                     label="Try again"
                     onPress={retryRoute}
                   />
-                  <Button variant="outline" label="Choose another start" onPress={handleChangeStart} />
+                  <Button variant="outline" label="Change start" onPress={handleChangeStart} />
                 </>
               ))}
+
+            {showNeedsStart && <Button variant="brand" label="Choose start" onPress={handleChangeStart} />}
 
             {showSamePlace && (
               <Button
@@ -632,6 +640,13 @@ function RoutePreviewSection({
               <Text style={styles.statusTitle}>{SAME_PLACE}</Text>
             </Card>
           )}
+
+          {showNeedsStart && (
+            <Card variant="neutral" style={styles.statusCard}>
+              <Text style={styles.statusTitle}>Where are you starting from?</Text>
+              {errorMessage ? <Text style={styles.statusText}>{errorMessage}</Text> : null}
+            </Card>
+          )}
           </FadeContent>
 
           <FadeContent transitionKey="routeEnds">
@@ -679,12 +694,6 @@ function RoutePreviewSection({
               {startSource === 'live_gps' && currentRouteOriginInsideVenue === false && (
                 <Text style={styles.statusHint}>We will route to selected official gate first, then continue inside venue.</Text>
               )}
-            </Card>
-          )}
-
-          {loadState === 'needs_origin' && errorMessage && (
-            <Card variant="warning" style={styles.statusCard}>
-              <Text style={styles.statusText}>{errorMessage}</Text>
             </Card>
           )}
 
@@ -961,15 +970,12 @@ function PlaceSection(props: Extract<LocationSheetProps, { mode: 'preview' | 'de
             accessibilityRole="button"
             accessibilityLabel="Share location"
             onPress={() => {
-              if (!place.coordinate) {
+              const share = buildPlaceShare(place);
+              if (!share) {
                 Alert.alert('Place unavailable', unavailableReasonCopy(place.unavailableReason) ?? `${place.name} is not available on the map yet.`);
                 return;
               }
-              const { latitude, longitude } = place.coordinate;
-              Share.share({
-                title: place.name,
-                message: `${place.name} — Karachi Ijtema\nLocation: ${latitude.toFixed(6)}, ${longitude.toFixed(6)}`,
-              }).catch(() => Alert.alert("Can't share right now", 'Please try again.'));
+              Share.share(share).catch(() => Alert.alert("Can't share right now", 'Please try again.'));
             }}
           >
             <Share2 size={20} color={staticColors.info} />

@@ -12,7 +12,7 @@ Android backup exclusions are already in place.
 | Active route, progress, snapped/current position, Route Guide steps, pending Directory journey, arrival latch | memory only | transient | process lifetime | n/a |
 | Last known location (one fix, `lastKnownLocation*`) | `ijtema-app-store` | sensitive | **24 h**, then dropped on write and on read | Settings > Privacy > Clear Saved Location (a live GPS fix saves a new one afterwards) |
 | Recent searches (<=10, `recentSearches`, `recentSearchTimes`) | `ijtema-app-store` | search history | **30 days per entry** | Settings > Privacy > Clear Recent Searches |
-| Unfinished-journey marker (destination id + time, no coordinates) | `ijtema-app-store` | recovery marker | **2 h** | Settings > Privacy > Clear Navigation Recovery |
+| Unfinished-journey marker (destination id + time, no coordinates) | `ijtema-app-store` | recovery marker | **2 h** | Settings > Privacy > Clear unfinished journey |
 | Favorites, settings, map-layer toggles, tutorial flags | `ijtema-app-store` | user preference | until user changes/uninstall | not wiped by any clear |
 | Welcome seen (`ijtema.onboarding.welcome_seen.v1`) | AsyncStorage | preference | until uninstall | not wiped |
 | Bundled basemap copy (`map/ijtema-basemap-<sha12>.pmtiles`) | app document dir | bundled asset copy | rebuilt from the APK asset whenever it is missing or its SHA-256 does not match the manifest; older versions are deleted | none needed (self-healing; Clear Data removes it and the next app start recopies it) |
