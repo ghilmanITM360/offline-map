@@ -5,7 +5,7 @@
 
 import React from 'react';
 import { readFileSync } from 'node:fs';
-import { Dimensions, I18nManager, StyleSheet } from 'react-native';
+import { AccessibilityInfo, Dimensions, I18nManager, StyleSheet } from 'react-native';
 import { render, screen, userEvent, within } from './test-utils';
 
 import { LocationSheet } from '../views/components/map/LocationSheet';
@@ -134,6 +134,21 @@ describe('Get Directions redesign — structure and semantics', () => {
     const scroll = within(screen.getByTestId('sheet-scroll'));
     expect(scroll.getByRole('header', { name: 'Get Directions' })).toBeOnTheScreen();
     expect(scroll.getByRole('button', { name: 'Back' })).toBeOnTheScreen();
+  });
+
+  // GREEN before and after: jest has no native driver, so it cannot reproduce the Android race this guards against
+  // (rows stuck at ~15% opacity with animations off). The fix itself is verified on the emulator.
+  test('with reduced motion the sheet content is not left to an animated opacity', async () => {
+    jest.spyOn(AccessibilityInfo, 'isReduceMotionEnabled').mockResolvedValue(true);
+    mockedVm.mockReturnValue(vm());
+    await renderSheet();
+    // Walk up from the To row: no ancestor may carry an opacity below 1.
+    let node: { props: { style?: unknown }; parent: unknown } | null = screen.getByRole('button', { name: /^To .*Change destination\.$/ }) as never;
+    while (node) {
+      const style = typeof node.props.style === 'function' ? undefined : (StyleSheet.flatten(node.props.style as object) as { opacity?: number } | undefined);
+      expect(style?.opacity ?? 1).toBe(1);
+      node = node.parent as typeof node;
+    }
   });
 
   test('title is a header; subtitle follows the state', async () => {
