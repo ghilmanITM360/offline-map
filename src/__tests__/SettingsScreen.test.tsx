@@ -30,10 +30,10 @@ describe('SettingsScreen — accessibility and copy (#155)', () => {
 
     const row = screen.getByRole(
       'switch',
-      { name: /North-up Map, Map always has north at the top/ },
+      { name: /Voice Instructions, Speaks each turn aloud/ },
     );
     expect(row.props.accessibilityState).toMatchObject({ checked: expect.any(Boolean) });
-    expect(screen.queryAllByRole('switch', { name: /North-up Map/ })).toHaveLength(1);
+    expect(screen.queryAllByRole('switch', { name: /Voice Instructions/ })).toHaveLength(1);
   });
 
   test('does not use "heading-up rotation" jargon', async () => {

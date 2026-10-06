@@ -83,20 +83,19 @@ assert(
   'Settings should refresh permission state when app returns to foreground',
 );
 assert(
-  settingsScreen.includes('Tap to turn it on.'),
-  'Settings Location Permission should say what tapping does',
+  settingsScreen.includes('label="Location"') && settingsScreen.includes('value="Manage"') && !settingsScreen.includes('Not allowed'),
+  'Settings Location should be one plain On/Off row with a Manage action',
 );
 assert(
   settingsScreen.includes('disabled={!isToggle && !onPress}'),
   'Settings info-only rows should be visually and interactively non-actionable',
 );
-assert(settingsScreen.includes('Voice Language'), 'Settings should label speech locale as Voice Language');
 assert(!settingsScreen.includes('Dark Mode'), 'Dark Mode should be hidden until app-wide support is complete');
-assert(settingsScreen.includes('Auto-follow Location'), 'Settings should expose Auto-follow toggle');
-assert(settingsScreen.includes('North-up Map'), 'Settings should expose North-up toggle');
-assert(settingsScreen.includes('Fix my route automatically'), 'Settings should expose Fix my route automatically toggle');
+for (const removed of ['Voice Language', 'Auto-follow Location', 'North-up Map', 'Fix my route automatically', 'Walking Speed']) {
+  assert(!settingsScreen.includes(`label="${removed}"`), `Settings must not offer ${removed}: an attendee cannot meaningfully use it`);
+}
+assert(settingsScreen.includes('Voice Instructions'), 'Settings should expose the voice directions toggle');
 assert(settingsScreen.includes('Distance Unit'), 'Settings should expose Distance Unit selector');
-assert(settingsScreen.includes('Walking Speed'), 'Settings should expose Walking Speed selector');
 
 assert(
   appStore.includes('lastKnownLocationUpdatedAt') && appStore.includes('currentLocationSource'),
