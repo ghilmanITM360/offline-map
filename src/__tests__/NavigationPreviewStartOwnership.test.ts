@@ -42,7 +42,7 @@ describe('V2 preview start ownership', () => {
     const before = useAppStore.getState();
     const check = startPreview({ route: null, destination });
     expect(check.canStart).toBe(false);
-    expect(check.message).toContain('valid v2 route');
+    expect(check.message).toBe("We couldn't find a walking route.");
     expect(useAppStore.getState()).toBe(before);
   });
 
@@ -63,7 +63,7 @@ describe('V2 preview start ownership', () => {
     const before = useAppStore.getState();
     const check = startPreview({ route: preview, destination: V2PlaceAdapter.getPlaceById('GATE_18') });
     expect(check.canStart).toBe(false);
-    expect(check.message).toContain('connector verification');
+    expect(check.message).toBe("Directions to this gate aren't ready. Choose another gate.");
     expect(useAppStore.getState()).toBe(before);
   });
 

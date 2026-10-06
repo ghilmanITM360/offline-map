@@ -16,6 +16,7 @@ import type {
 import { IJTEMA_GATES } from '../data/ijtema';
 import { MapFeatureFlagsService } from './MapFeatureFlagsService';
 import { assertCompleteCandidateSet } from './outsideRouting/OutsideRouteValidation';
+import { CHOOSE_START, NAVIGATION_UNAVAILABLE, ROUTE_NOT_FOUND } from '../utils/routeCopy';
 import {
   RoutePreviewV2,
   RoutingDestinationV2,
@@ -50,15 +51,15 @@ export interface V2HybridDirectionsPreviewInput {
 
 function routeMessageForUnavailablePlace(place: Place): string {
   if (place.routingStatus === 'missing_coordinate') {
-    if (place.category === 'Gate') return 'This gate has no verified location yet.';
-    return 'Destination entry point is not verified yet.';
+    if (place.category === 'Gate') return "Directions to this gate aren't ready yet.";
+    return "Directions to this place aren't ready yet.";
   }
   if (place.routingStatus === 'needs_connector_verification') {
-    if (place.category === 'Gate') return 'This gate is not ready for navigation. Please choose another nearby gate.';
-    return 'This place is not connected to the walking route yet.';
+    if (place.category === 'Gate') return "Directions to this gate aren't ready. Choose another gate.";
+    return "Directions to this place aren't ready yet.";
   }
-  if (place.routingStatus === 'visual_only') return 'This place is not connected to the walking route yet.';
-  return place.unavailableReason ?? 'No safe offline route found between these points.';
+  if (place.routingStatus === 'visual_only') return "Directions to this place aren't ready yet.";
+  return place.unavailableReason ?? ROUTE_NOT_FOUND;
 }
 
 export function destinationFromPlace(place: Place): RoutingDestinationV2 | null {
@@ -151,7 +152,7 @@ export class V2DirectionsService {
         status: 'disabled',
         route: null,
         instructions: [],
-        message: 'V2 routing preview is disabled by feature flag.',
+        message: NAVIGATION_UNAVAILABLE,
       };
     }
     const destination = destinationFromPlace(request.destination);
@@ -160,11 +161,11 @@ export class V2DirectionsService {
         status: 'unavailable',
         route: null,
         instructions: [],
-        message: 'Hybrid outside routing requires an outside coordinate and routable v2 destination.',
+        message: ROUTE_NOT_FOUND,
       };
     }
     if (input.signal.aborted) {
-      return { status: 'unavailable', route: null, instructions: [], message: 'Outside route request was cancelled.' };
+      return { status: 'unavailable', route: null, instructions: [], message: ROUTE_NOT_FOUND };
     }
 
     const plan = RoutingServiceV2.prepareOutsideRoutingPlan({
@@ -178,7 +179,7 @@ export class V2DirectionsService {
         status: 'unavailable',
         route: null,
         instructions: [],
-        message: 'No eligible official gate is available for outside routing.',
+        message: ROUTE_NOT_FOUND,
       };
     }
 
@@ -211,11 +212,11 @@ export class V2DirectionsService {
         status: 'unavailable',
         route: null,
         instructions: [],
-        message: 'Outside route provider returned an invalid candidate set.',
+        message: ROUTE_NOT_FOUND,
       };
     }
     if (input.signal.aborted) {
-      return { status: 'unavailable', route: null, instructions: [], message: 'Outside route request was cancelled.' };
+      return { status: 'unavailable', route: null, instructions: [], message: ROUTE_NOT_FOUND };
     }
 
     const finalized = RoutingServiceV2.finalizeOutsideRoutingPlan({
@@ -230,7 +231,7 @@ export class V2DirectionsService {
         status: 'unavailable',
         route: null,
         instructions: [],
-        message: 'No complete outside-to-inside route is available.',
+        message: ROUTE_NOT_FOUND,
       };
     }
     const selectedOutcome = attempt.candidateSet.outcomes.find(
@@ -249,7 +250,7 @@ export class V2DirectionsService {
         status: 'unavailable',
         route: null,
         instructions: [],
-        message: 'Core-selected gate has no matching outside provider route.',
+        message: ROUTE_NOT_FOUND,
       };
     }
     const instructions = composeOutsideInstructions(selectedOutsideRoute, finalized.instructions);
@@ -268,7 +269,7 @@ export class V2DirectionsService {
         status: 'disabled',
         route: null,
         instructions: [],
-        message: 'V2 routing preview is disabled by feature flag.',
+        message: NAVIGATION_UNAVAILABLE,
       };
     }
 
@@ -278,7 +279,7 @@ export class V2DirectionsService {
         status: 'unavailable',
         route: null,
         instructions: [],
-        message: `${request.destination.name} is visual-only in this phase and is not routable yet.`,
+        message: `Directions to ${request.destination.name} aren't ready yet.`,
       };
     }
 
@@ -313,7 +314,7 @@ export class V2DirectionsService {
         status: 'unavailable',
         route: null,
         instructions: [],
-        message: 'Choose a routable start point to calculate directions.',
+        message: CHOOSE_START,
       };
     }
 
@@ -328,7 +329,7 @@ export class V2DirectionsService {
         status: 'unavailable',
         route: null,
         instructions: [],
-        message: 'No safe offline route found between these points.',
+        message: ROUTE_NOT_FOUND,
       };
     }
 

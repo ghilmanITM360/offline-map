@@ -105,8 +105,8 @@ describe('Route-ready start action (no dead Start button)', () => {
   });
 
   test('an unstartable route (not a location problem) still shows the truthful disabled reason', async () => {
-    mockedVm.mockReturnValue(vm(null, { startNavigationDisabledReason: 'This gate needs connector verification before navigation.' }));
+    mockedVm.mockReturnValue(vm(null, { startNavigationDisabledReason: "We couldn't find a walking route." }));
     await renderSheet();
-    expect(screen.getByText('This gate needs connector verification before navigation.')).toBeOnTheScreen();
+    expect(screen.getByText("We couldn't find a walking route.")).toBeOnTheScreen();
   });
 });
