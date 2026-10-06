@@ -1905,3 +1905,37 @@ describe('HomeScreen — Start Navigation reads the store when it runs (#307)', 
     spy.mockRestore();
   });
 });
+
+describe('HomeScreen — the route guide opens at the top detent (#307)', () => {
+  test('starting the guide expands the sheet so the whole card fits above the navigation bar', async () => {
+    const LocationSheetModule = require('../views/components/map/LocationSheet') as typeof import('../views/components/map/LocationSheet');
+    const actualSheet = LocationSheetModule.LocationSheet;
+    let guideStarted: (() => void) | undefined;
+    const spy = jest.spyOn(LocationSheetModule, 'LocationSheet').mockImplementation(((props: { mode: string; onRouteGuideStarted?: () => void }) => {
+      if (props.mode === 'routePreview') guideStarted = props.onRouteGuideStarted;
+      return (actualSheet as unknown as (p: unknown) => React.ReactElement)(props);
+    }) as never);
+    let sheetRef: { current: { snapToIndex: jest.Mock } | null } | undefined;
+    mockedUseHomeViewModel.mockImplementation(() => {
+      const vm = useFakeHomeViewModel();
+      sheetRef = vm.bottomSheetRef as never;
+      return { ...vm, selectedPlace: gateResult };
+    });
+    mockedUseDirectionsViewModel.mockReturnValue({
+      route: null, startSource: 'live_gps', rememberedLocationAgeLabel: '', rememberedLocationAvailable: false,
+      rememberedLocationInsideVenue: false, currentRouteOriginInsideVenue: true, loadState: 'idle', errorMessage: null,
+      manualStart: null, chooseManualStart: jest.fn(), setIsEditingManualStart: jest.fn(), setManualStartPlace: jest.fn(),
+      chooseCurrentLocation: jest.fn(async () => true), chooseRememberedLocation: jest.fn(() => true),
+      calculateRoute: jest.fn(async () => {}), showManualStartSearch: false, canStartNavigation: true, startNavigationDisabledReason: '',
+    });
+    await render(<HomeScreen />);
+    await userEvent.setup().press(screen.getByText('Directions'));
+    expect(guideStarted).toBeDefined();
+
+    sheetRef!.current!.snapToIndex.mockClear();
+    await act(async () => guideStarted!());
+
+    expect(sheetRef!.current!.snapToIndex).toHaveBeenCalledWith(2);
+    spy.mockRestore();
+  });
+});
