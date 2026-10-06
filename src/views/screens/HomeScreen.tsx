@@ -1284,19 +1284,25 @@ export function HomeScreen() {
     closeSheetNative();
   }, [armSheetTransition, closeSheetNative, resetDismissedSheetState]);
 
+  // Reads the store when it runs, not a closed-over copy: the sheet is rendered through the bottom-sheet portal and can
+  // hold a handler captured one render before the preview route was published, which then returned silently and left
+  // "Ready to go" on screen (runtime finding, #307). The preview is the same one `activePreviewRoute` describes.
   const handleStartPreviewNavigation = useCallback(() => {
-    if (!activePreviewRoute || !previewDestination) return;
+    const state = useAppStore.getState();
+    const route = state.activeRoute;
+    const destination = state.routePlannerDest;
+    if (state.isNavigating || !destination || !destinationFromPlace(destination) || !isV2PreviewRoute(route)) return;
     invalidateStartupCameraIntent();
     const startCheck = startPreviewNavigationV2({
-      route: activePreviewRoute,
-      destination: previewDestination,
-      startPlace: routePlannerOrigin,
-      currentLocation,
+      route,
+      destination,
+      startPlace: state.routePlannerOrigin,
+      currentLocation: state.currentLocation,
     });
     if (!startCheck.canStart) {
       Alert.alert('Cannot start navigation', startCheck.message);
     }
-  }, [activePreviewRoute, currentLocation, invalidateStartupCameraIntent, previewDestination, routePlannerOrigin]);
+  }, [invalidateStartupCameraIntent]);
 
   const handleClearPreviewRoute = useCallback(() => {
     Alert.alert('Cancel route?', 'You will need to choose your destination again.', [
