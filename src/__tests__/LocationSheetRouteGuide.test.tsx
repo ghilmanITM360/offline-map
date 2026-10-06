@@ -86,6 +86,19 @@ describe('Start route (route ready, chosen FROM + TO)', () => {
     expect(onClose).not.toHaveBeenCalled(); // the sheet stays: the guide lives in it
   });
 
+  // #326: at 200% font on a 320 dp window the pinned footer outgrew the sheet and the live-guidance link sat under the
+  // navigation bar. Like the summary, the secondary link scrolls with the body; only the primary action stays pinned.
+  test('at 200% font only the primary action is pinned; the live-guidance secondary scrolls with the body', async () => {
+    Dimensions.set({ window: { width: 320, height: 711, scale: 2, fontScale: 2 } });
+    await renderSheet();
+    const scroll = within(screen.getByTestId('sheet-scroll'));
+    expect(scroll.getByRole('button', { name: 'Use my location for live guidance' })).toBeOnTheScreen();
+    expect(scroll.queryByRole('button', { name: 'Start route' })).not.toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: 'Start route' })).toBeOnTheScreen();
+    expect(screen.getAllByRole('button', { name: 'Use my location for live guidance' })).toHaveLength(1);
+    Dimensions.set({ window: { width: 390, height: 844, scale: 2, fontScale: 1 } });
+  });
+
   test('the secondary runs the live start flow (fresh fix, recompute from the real position)', async () => {
     const user = userEvent.setup();
     await renderSheet();

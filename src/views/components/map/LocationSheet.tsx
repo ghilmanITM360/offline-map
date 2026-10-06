@@ -379,6 +379,20 @@ function RoutePreviewSection({
       </View>
     </View>
   ) : null;
+  // At large text the pinned footer keeps only the primary action: this link scrolls with the body instead (#326).
+  const secondaryLink = startAction?.secondaryLabel ? (
+    <Pressable
+      style={styles.linkButton}
+      onPress={isRouteGuideStart ? () => void runStartAction(() => startNowRef.current()) : onViewRoute}
+      disabled={isRouteGuideStart && startAttempt === 'working'}
+      accessibilityRole="button"
+      accessibilityLabel={startAction.secondaryLabel}
+    >
+      <Text style={styles.linkButtonText}>
+        {isRouteGuideStart && startAttempt === 'working' ? 'Finding your location…' : startAction.secondaryLabel}
+      </Text>
+    </Pressable>
+  ) : null;
   const captionNode = offlineCaption ? <OfflineInfo text={offlineCaption} /> : null;
   const footerVisible = (showLoading || showError || showRouteReady) && !(showRouteReady && routeGuide);
   // The caption scrolls with the content: the pinned footer only has room for the route summary,
@@ -504,19 +518,7 @@ function RoutePreviewSection({
                     else startNow();
                   }}
                 />
-                {startAction?.secondaryLabel ? (
-                  <Pressable
-                    style={styles.linkButton}
-                    onPress={isRouteGuideStart ? () => void runStartAction(() => startNowRef.current()) : onViewRoute}
-                    disabled={isRouteGuideStart && startAttempt === 'working'}
-                    accessibilityRole="button"
-                    accessibilityLabel={startAction.secondaryLabel}
-                  >
-                    <Text style={styles.linkButtonText}>
-                      {isRouteGuideStart && startAttempt === 'working' ? 'Finding your location…' : startAction.secondaryLabel}
-                    </Text>
-                  </Pressable>
-                ) : null}
+                {!compactFooter && secondaryLink}
                 {startAttempt === 'failed' || startAttempt === 'settings' || startAttempt === 'services_off' ? (
                   <Text accessibilityLiveRegion="polite" style={styles.footerReason}>
                     {startAttempt === 'settings'
@@ -670,6 +672,7 @@ function RoutePreviewSection({
           {showRouteReady && (
             <View style={styles.readyBody}>
               {compactFooter && routeSummary}
+              {compactFooter && !routeGuide && secondaryLink}
               {routeEntrySummary ? <Text style={styles.statusText}>{routeEntrySummary}</Text> : null}
 
               {outsideRoute && (
