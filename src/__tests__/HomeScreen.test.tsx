@@ -1805,3 +1805,41 @@ describe('HomeScreen — contextual top bar (#307)', () => {
     overlaySpy.mockRestore();
   });
 });
+
+describe('HomeScreen — collapsed Directions keeps a visible peek (#307)', () => {
+  const directionsVm = () => ({
+    route: null, startSource: 'live_gps', rememberedLocationAgeLabel: '', rememberedLocationAvailable: false,
+    rememberedLocationInsideVenue: false, currentRouteOriginInsideVenue: true, loadState: 'idle', errorMessage: null,
+    manualStart: null, chooseManualStart: jest.fn(), setIsEditingManualStart: jest.fn(), setManualStartPlace: jest.fn(),
+    chooseCurrentLocation: jest.fn(async () => true), chooseRememberedLocation: jest.fn(() => true),
+    calculateRoute: jest.fn(async () => {}), showManualStartSearch: false, canStartNavigation: true, startNavigationDisabledReason: '',
+  });
+  const handleComponent = () => (__getLastBottomSheetModalProps() as unknown as { handleComponent?: unknown }).handleComponent;
+
+  test('the folded Directions sheet uses the peek as its handle; the open sheet keeps the default handle', async () => {
+    mockedUseDirectionsViewModel.mockReturnValue(directionsVm());
+    mockedUseHomeViewModel.mockImplementation(() => ({ ...useFakeHomeViewModel(), selectedPlace: gateResult }));
+    await render(<HomeScreen />);
+    await userEvent.setup().press(screen.getByText('Directions'));
+
+    const sheetProps = __getLastBottomSheetModalProps() as unknown as { onChange: (index: number) => void };
+    await act(async () => sheetProps.onChange(1));
+    expect(handleComponent()).toBeUndefined();
+
+    await act(async () => sheetProps.onChange(0));
+    expect(handleComponent()).toBeDefined();
+
+    await act(async () => sheetProps.onChange(1));
+    expect(handleComponent()).toBeUndefined();
+  });
+
+  test('a folded place sheet (not Directions) keeps the default handle', async () => {
+    mockedUseDirectionsViewModel.mockReturnValue(directionsVm());
+    mockedUseHomeViewModel.mockImplementation(() => ({ ...useFakeHomeViewModel(), selectedPlace: gateResult }));
+    await render(<HomeScreen />);
+
+    const sheetProps = __getLastBottomSheetModalProps() as unknown as { onChange: (index: number) => void };
+    await act(async () => sheetProps.onChange(0));
+    expect(handleComponent()).toBeUndefined();
+  });
+});

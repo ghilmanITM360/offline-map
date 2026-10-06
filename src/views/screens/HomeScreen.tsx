@@ -74,6 +74,7 @@ import { V2PlaceAdapter } from '../../services/V2PlaceAdapter';
 import { IJTEMA_MAP_REGION } from '../../data/ijtema';
 import { MapLabelOverlay, MapLabelItem, MapLabelOverlayHandle, hangSelectedLabelsBelowPin } from '../components/map/MapLabelOverlay';
 import { MapControls, MapControlsRecenter } from '../components/map/MapControls';
+import { DirectionsPeekHandle } from '../components/map/DirectionsPeekHandle';
 import { MapTopBar } from '../components/map/MapTopBar';
 import { LayersSheet } from '../components/map/LayersSheet';
 import { useNavigationOverlayV2 } from '../../viewmodels/useNavigationOverlayV2';
@@ -1812,6 +1813,8 @@ export function HomeScreen() {
           accessibilityRole={null}
           backgroundComponent={SheetBackground}
           footerComponent={renderDirectionsFooter}
+          // Folded Directions keeps a visible, tappable peek instead of a bare handle (#307).
+          handleComponent={mode === 'ROUTE_PREVIEW' && sheetIndex === 0 ? DirectionsPeekHandle : undefined}
           keyboardBehavior="interactive"
           keyboardBlurBehavior="restore"
           android_keyboardInputMode="adjustResize"
@@ -1861,6 +1864,7 @@ export function HomeScreen() {
               onStartNavigation={handleStartPreviewNavigation}
               onViewRoute={() => bottomSheetRef.current?.snapToIndex(0)}
               onRouteGuideStarted={handleRouteGuideStarted}
+              onExpandSheet={() => bottomSheetRef.current?.snapToIndex(1)}
               journey={journeyIntent}
               onCancelRoute={activePreviewRoute ? handleClearPreviewRoute : undefined}
               onChangeDestination={handleChangeDestination}

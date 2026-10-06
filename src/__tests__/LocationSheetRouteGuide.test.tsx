@@ -11,6 +11,7 @@ import { render, screen, userEvent } from './test-utils';
 
 import { LocationSheet } from '../views/components/map/LocationSheet';
 import { DirectionsSheetFooter } from '../views/components/map/DirectionsSheetFooter';
+import { DirectionsPeekHandle } from '../views/components/map/DirectionsPeekHandle';
 import { useDirectionsViewModel } from '../viewmodels/DirectionsViewModel';
 import { useAppStore } from '../store/useAppStore';
 import type { Place } from '../models/types';
@@ -60,6 +61,7 @@ const renderSheet = () =>
       <LocationSheet mode="routePreview" destination={destination} onClose={onClose} onStartNavigation={jest.fn()}
         onOpenDirectory={jest.fn()} onViewRoute={jest.fn()} onChangeDestination={jest.fn()} onRouteGuideStarted={onRouteGuideStarted} />
       <DirectionsSheetFooter animatedFooterPosition={{ value: 0, get: () => 0 } as never} />
+      <DirectionsPeekHandle />
     </>,
   );
 
@@ -138,5 +140,45 @@ describe('Route guide card', () => {
 
     await user.press(screen.getByRole('button', { name: 'End route guide' }));
     expect(useAppStore.getState().routeGuide).toBeNull();
+  });
+});
+
+
+describe('collapsed Directions peek (#307)', () => {
+  test('route setup says what is being planned', async () => {
+    mockedVm.mockReturnValue(vm({ loadState: 'needs_origin', route: null, startAction: null }));
+    await renderSheet();
+    expect(screen.getByText('Directions · Block 9 → Block 2')).toBeOnTheScreen();
+  });
+
+  test('route ready shows the time and distance', async () => {
+    await renderSheet();
+    expect(screen.getByText('2 min · 121 m')).toBeOnTheScreen();
+  });
+
+  test('route guide shows the next step and how far', async () => {
+    useAppStore.setState({ routeGuide: { steps, stepIndex: 1 } });
+    await renderSheet();
+    expect(screen.getByText('Next: Turn right onto Rasta 4 · 40 m')).toBeOnTheScreen();
+  });
+
+  test('tapping the peek asks the owner of the sheet to expand it', async () => {
+    const onExpandSheet = jest.fn();
+    await render(
+      <>
+        <LocationSheet mode="routePreview" destination={destination} onClose={jest.fn()} onStartNavigation={jest.fn()}
+          onOpenDirectory={jest.fn()} onViewRoute={jest.fn()} onChangeDestination={jest.fn()} onExpandSheet={onExpandSheet} />
+        <DirectionsPeekHandle />
+      </>,
+    );
+    await userEvent.setup().press(screen.getByRole('button', { name: /Show route details/ }));
+    expect(onExpandSheet).toHaveBeenCalledTimes(1);
+  });
+
+  test('the peek goes away with the sheet', async () => {
+    const view = await renderSheet();
+    await view.unmount();
+    await render(<DirectionsPeekHandle />);
+    expect(screen.queryByRole('button', { name: /Show route details/ })).not.toBeOnTheScreen();
   });
 });
