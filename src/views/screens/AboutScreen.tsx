@@ -61,7 +61,7 @@ export function AboutScreen() {
             <Heart size={24} color="#E91E63" style={styles.cardIcon} />
             <Text style={styles.cardText}>
               This app is a humble effort to assist the millions of pilgrims attending the Karachi Ijtema. 
-              Our goal is to give clear directions so everyone can find their way easily 
+              Our goal is to give clear directions so everyone can find their way easily
               within the vast grounds.
             </Text>
           </View>
