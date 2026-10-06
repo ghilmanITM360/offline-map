@@ -7,6 +7,7 @@
 // show readable steps the user moves through themselves, and never claim live movement, progress or arrival.
 
 import React from 'react';
+import { readFileSync } from 'node:fs';
 import { Dimensions } from 'react-native';
 import { render, screen, userEvent, within } from './test-utils';
 
@@ -140,6 +141,15 @@ describe('Route guide card', () => {
     await renderSheet();
     expect(screen.getByTestId('guide-stepper')).toHaveStyle({ flexDirection: direction });
     Dimensions.set({ window: { width: 390, height: 844, scale: 2, fontScale: 1 } });
+  });
+
+  // RTL: lucide's chevrons are fixed glyphs, so Previous/Next must pick their direction through the directional helpers
+  // (a hard-coded ChevronLeft on "Previous" pointed forward under RTL).
+  test('Previous/Next chevrons follow the reading direction instead of being hard-coded', () => {
+    const source = readFileSync('src/views/components/map/RouteGuideCard.tsx', 'utf8');
+    expect(source).not.toMatch(/\bChevron(Left|Right)\b/);
+    expect(source).toMatch(/backChevron\(\)/);
+    expect(source).toMatch(/forwardChevron\(\)/);
   });
 
   test('a failed live attempt explains itself inside the guide', async () => {
