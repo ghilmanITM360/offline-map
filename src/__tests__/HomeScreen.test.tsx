@@ -1722,6 +1722,18 @@ describe('HomeScreen — a journey handed over by the Directory (#307)', () => {
     expect(useAppStore.getState().recentSearches.map((p) => p.id)).toContain(gateResult.id);
   });
 
+  test('the chosen start reaches the sheet: it is applied as FROM (the intent must survive Home\'s own mount effects)', async () => {
+    const setManualStartPlace = jest.fn();
+    mockedUseDirectionsViewModel.mockReturnValue({ ...idleDirectionsVm(), setManualStartPlace });
+    const startPlace = { ...gateResult, id: 'B9', name: 'Block 9', category: 'Block' } as Place;
+    useAppStore.setState({ pendingJourney: { destination: gateResult, start: startPlace, mode: 'guide' } });
+
+    await render(<HomeScreen />);
+
+    expect(await screen.findByText('Get Directions')).toBeOnTheScreen();
+    expect(setManualStartPlace).toHaveBeenCalledWith(startPlace);
+  });
+
   test('while a journey is already being navigated it falls back to showing the place, never silently replacing the trip', async () => {
     mockedUseDirectionsViewModel.mockReturnValue(idleDirectionsVm());
     useAppStore.setState({ isNavigating: true, pendingJourney: { destination: gateResult, start: null, mode: 'live' } });
