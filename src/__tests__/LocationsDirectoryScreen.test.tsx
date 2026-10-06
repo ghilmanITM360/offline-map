@@ -490,14 +490,15 @@ describe('LocationsDirectoryScreen — a destination tap means "take me here" (#
     expect(useAppStore.getState().pendingJourney).toEqual({ destination: firstBlock, start: null, mode: 'live' });
   });
 
-  test('C: no usable location but a start is already chosen: a route guide from it', async () => {
+  test('C: a start left over from an earlier journey is never reused: with no usable location the user is asked', async () => {
     const navigation = mockNav({ canGoBack: true });
     useAppStore.setState({ hasLocationPermission: false, routePlannerOrigin: origin });
     await render(<LocationsDirectoryScreen />);
     await tapBlock();
 
-    expect(useAppStore.getState().pendingJourney).toEqual({ destination: firstBlock, start: origin, mode: 'guide' });
-    expect(navigation.goBack).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole('header', { name: 'Where are you starting from?' })).toBeOnTheScreen();
+    expect(useAppStore.getState().pendingJourney).toBeNull();
+    expect(navigation.goBack).not.toHaveBeenCalled();
   });
 
   test('D: no usable location and no start: stay here and ask "Where are you starting from?"', async () => {

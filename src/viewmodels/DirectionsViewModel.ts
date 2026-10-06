@@ -9,7 +9,7 @@ import { useAppStore } from '../store/useAppStore';
 import { RoutingService } from '../services/RoutingService';
 import { InstructionService, Instruction } from '../services/InstructionService';
 import { Place, RouteAlternative, RoutePreview } from '../models/types';
-import { evaluateLocationCapability } from '../services/LocationCapability';
+import { classifyLiveFix, evaluateLocationCapability } from '../services/LocationCapability';
 import { LocationAccessService } from '../services/LocationAccessService';
 import {
   evaluateNavigationLocationCapability,
@@ -40,14 +40,13 @@ const productionOutsideRouteSource = createProductionOutsideRouteSource();
 type RouteLoadState = 'idle' | 'loading' | 'ready' | 'error' | 'needs_origin' | 'same_place';
 export type StartSource = NavigationStartSource;
 
-function resolveInitialStartSource(
-  hasLocation: boolean,
+// A journey starts silently only from a LIVE fix: genuinely live, fresh and accurate. A remembered, earlier-known,
+// map-fallback or stale position is never a start until the user picks it; without one the journey asks (needs_origin).
+function usableLiveFix(
+  coordinate: ReturnType<typeof useAppStore.getState>['currentLocation'],
   source: ReturnType<typeof useAppStore.getState>['currentLocationSource'],
-): StartSource {
-  if (!hasLocation || source === 'manual') return 'manual_place';
-  if (source === 'device_last_known') return 'device_last_known';
-  if (source === 'remembered') return 'remembered_location';
-  return 'live_gps';
+) {
+  return source === 'live' && classifyLiveFix(coordinate, Date.now()) === 'usable' ? coordinate : null;
 }
 
 export function useDirectionsViewModel(destination: Place | null) {
@@ -78,10 +77,9 @@ export function useDirectionsViewModel(destination: Place | null) {
   const [loadState, setLoadState] = useState<RouteLoadState>('idle');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [manualStart, setManualStart] = useState<Place | null>(null);
-  const [startSource, setStartSource] = useState<StartSource>(
-    resolveInitialStartSource(Boolean(currentLocation), currentLocationSource),
-  );
-  const [routeOriginLocation, setRouteOriginLocation] = useState(currentLocation);
+  const [initialLiveFix] = useState(() => usableLiveFix(currentLocation, currentLocationSource));
+  const [startSource, setStartSource] = useState<StartSource>(initialLiveFix ? 'live_gps' : 'manual_place');
+  const [routeOriginLocation, setRouteOriginLocation] = useState(initialLiveFix);
   const [isEditingManualStart, setIsEditingManualStart] = useState(false);
   const [manualGateId, setManualGateId] = useState<string | null>(null);
   const [routeRefreshing, setRouteRefreshing] = useState(false);
@@ -114,10 +112,12 @@ export function useDirectionsViewModel(destination: Place | null) {
 
   useEffect(() => {
     setManualGateId(null);
+    // This journey starts from nothing but what it chooses itself: a start left in the store by an earlier trip is gone.
+    setRoutePlannerOrigin(null);
   }, [destination?.id]);
 
   useEffect(() => {
-    if (startSource !== 'live_gps' || !currentLocation) return;
+    if (startSource !== 'live_gps' || !currentLocation || currentLocationSource !== 'live') return;
     setRouteOriginLocation((previous) => {
       if (!previous) return currentLocation;
       if (getDistance(previous, currentLocation) >= DIRECTIONS_RECALCULATE_ORIGIN_MOVEMENT_M) return currentLocation;
@@ -132,7 +132,7 @@ export function useDirectionsViewModel(destination: Place | null) {
         heading: currentLocation.heading,
       };
     });
-  }, [currentLocation, startSource]);
+  }, [currentLocation, currentLocationSource, startSource]);
 
   // v2 destinations use precise venue polygon/polyline geometry everywhere in
   // this flow, matching the routing decision itself (EntryGateRoutingService);
@@ -659,7 +659,10 @@ export function useDirectionsViewModel(destination: Place | null) {
   };
   // A guide belongs to the route it started from: a changed start, destination or recomputed route ends it.
   useEffect(() => {
-    if (routeGuideActive && route !== routeGuideRouteRef.current) useAppStore.getState().endRouteGuide();
+    // A guide this view model never started (left over from an earlier trip) belongs to no route here either.
+    if (routeGuideActive && (routeGuideRouteRef.current === null || route !== routeGuideRouteRef.current)) {
+      useAppStore.getState().endRouteGuide();
+    }
   }, [route, routeGuideActive]);
 
   // Legacy (v1) destinations only — v2 destinations start navigation through

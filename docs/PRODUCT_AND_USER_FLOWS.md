@@ -30,7 +30,7 @@ A tap on a destination means **take me here** (`LocationsDirectoryScreen.takeMeT
 |---|---|
 | A. Fresh usable live location | Map opens and live navigation starts by itself (fresh fix only) |
 | B. Permission and precise accuracy fine, no fix yet | Map opens and finds the location (bounded); on failure the usual "choose where to start" UI stays |
-| C. No usable location, a start already chosen this session | Map opens with a Route Guide from that start |
+| C. No usable location, a start left over from an earlier journey | Never reused: same as D. A start counts only if it is a fresh live fix or was chosen for **this** journey |
 | D. No usable location, no start | Stay in the Directory: "Where are you starting from?" / "To <place>". Picking a place starts a Route Guide. "Use my location" is the one contextual permission request |
 | E. Permission refused | Respected. Declining the prompt keeps the question open; Settings opens only after an explicit "Open Settings" on a permanent block |
 
