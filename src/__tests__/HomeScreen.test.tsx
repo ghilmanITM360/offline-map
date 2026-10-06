@@ -11,7 +11,7 @@ import { act, fireEvent, render, screen, userEvent, waitFor } from './test-utils
 import { DrawerStatusContext } from '@react-navigation/drawer';
 import { HomeScreen } from '../views/screens/HomeScreen';
 import { facilityIds, hasSource, pinRoles, pressMapFeature, sourceFeatures, userDot } from './mapTestUtils';
-import { MIN_BOTTOM_FLOOR, MIN_TOP_VISIBLE_MAP_FOR_ATTRIBUTION, OVERLAY_CONTROL_GAP } from '../viewmodels/useOverlayInsets';
+import { fullSheetHeight, MIN_BOTTOM_FLOOR, MIN_TOP_VISIBLE_MAP_FOR_ATTRIBUTION, OVERLAY_CONTROL_GAP } from '../viewmodels/useOverlayInsets';
 import { useHomeViewModel } from '../viewmodels/HomeViewModel';
 import { useDirectionsViewModel } from '../viewmodels/DirectionsViewModel';
 import { useAppStore } from '../store/useAppStore';
@@ -221,6 +221,8 @@ beforeEach(() => {
 // the drawer owns the foreground, and Home's hardware-back handler must stand down with it.
 // test-utils' SafeAreaProvider reports a 34 dp bottom inset.
 const TEST_BOTTOM_INSET = 34;
+// test-utils' safe-area metrics report a 47 dp top inset (and the Android StatusBar mock is not taller).
+const TEST_TOP_INSET = 47;
 
 describe('HomeScreen — foreground workflow exclusivity (#190)', () => {
   const sheetProps = () =>
@@ -497,17 +499,18 @@ describe('HomeScreen — Get Directions sheet detents (#177)', () => {
     await render(<HomeScreen />);
 
     await pressMapFeature('facility', 'LM_GATE_MAIN_NORTH');
-    // Place preview keeps the 15/50/92 contract; only the middle snap is lifted by the device's bottom
+    // Place preview keeps its collapsed and middle detents; only the middle snap is lifted by the device's bottom
     // system inset (see insetAwareSnapPoints), so the CTA is not left behind the navigation bar. The snaps
-    // are pixel heights of the sheet's container (window minus the reserved top band), not percentages:
-    // gorhom never recomputes its container for a later `topInset` change (#208 F2).
+    // are pixel heights (a container that excludes the reserved top band), not percentages: gorhom never
+    // recomputes its container for a later `topInset` change (#208 F2). The top one is FULL: everything below the
+    // status bar, not a share of that reduced container.
     const { height } = Dimensions.get('window');
     const placeContainer = height - MIN_TOP_VISIBLE_MAP_FOR_ATTRIBUTION;
     const placeProps = __getLastBottomSheetModalProps() as unknown as { snapPoints: number[]; topInset?: number; enableOverDrag?: boolean };
     const [lowSnap, midSnap, highSnap] = placeProps.snapPoints;
     expect(placeProps.topInset).toBeUndefined();
     expect(placeProps.enableOverDrag).toBe(false);
-    expect([lowSnap, highSnap]).toEqual([Math.round(0.15 * placeContainer), Math.round(0.92 * placeContainer)]);
+    expect([lowSnap, highSnap]).toEqual([Math.round(0.15 * placeContainer), Math.round(fullSheetHeight(height, TEST_TOP_INSET))]);
     expect(midSnap / placeContainer).toBeGreaterThan(0.5);
     expect(midSnap / placeContainer).toBeLessThan(0.6);
 
@@ -518,11 +521,14 @@ describe('HomeScreen — Get Directions sheet detents (#177)', () => {
     const routeContainer = height - MIN_TOP_VISIBLE_MAP_FOR_ROUTE_PREVIEW;
     const routeProps = __getLastBottomSheetModalProps() as unknown as { snapPoints: number[]; topInset?: number };
     expect(routeProps.topInset).toBeUndefined();
+    // Collapsed and middle detents keep their meaning; the top one is the same FULL as the place sheet's, so a
+    // programmatic snapToIndex(2) and a drag to the top land in exactly the same place.
     expect(routeProps.snapPoints).toEqual([
       Math.round(0.15 * routeContainer),
       Math.round(0.79 * routeContainer),
-      Math.round(0.92 * routeContainer),
+      Math.round(fullSheetHeight(height, TEST_TOP_INSET)),
     ]);
+    expect(routeProps.snapPoints[2]).toBe(placeProps.snapPoints[2]);
   });
 });
 
@@ -1196,12 +1202,14 @@ describe('HomeScreen — map attribution band', () => {
       sheetProps.onChange(2);
     });
 
+    // FULL covers the map on purpose (the owner asked for a genuinely useful full-height sheet), so the sheet is no
+    // longer held below the attribution band. What stays true: the map's own padding and attribution control are still
+    // clamped to the visible band (so camera fits and labels never aim at the covered area), and the dynamic-content
+    // ceiling is exactly FULL, so content can never push the sheet past the status bar.
+    const { height } = Dimensions.get('window');
     const mapPaddingBottom = screen.getByTestId('home-map-view', { includeHiddenElements: true }).props.attributionPosition.bottom - 8;
-    expect(sheetProps.maxDynamicContentSize).toBeGreaterThan(0);
-    // The dynamic-content ceiling can never actually render taller than mapPadding
-    // assumed it might — same shared formula (computeMaxSheetOcclusionForAttribution)
-    // on both sides.
-    expect(sheetProps.maxDynamicContentSize).toBe(mapPaddingBottom);
+    expect(mapPaddingBottom).toBeLessThanOrEqual(height - MIN_TOP_VISIBLE_MAP_FOR_ROUTE_PREVIEW);
+    expect(sheetProps.maxDynamicContentSize).toBe(Math.round(fullSheetHeight(height, TEST_TOP_INSET)));
   });
 
   test('Route Preview camera fit reserves the sheet-covered band itself at the maximum sheet snap', async () => {

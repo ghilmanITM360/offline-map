@@ -85,6 +85,30 @@ export function routePreviewSnapPoints(containerHeight: number, bottomInset: num
   return [`${collapsed}%`, '79%', '92%'];
 }
 
+// A sliver of map kept above the FULL sheet, below the status bar, so it still reads as a sheet you can drag down.
+export const FULL_SHEET_TOP_GAP = 8;
+
+/**
+ * Height (dp, up from the window bottom) of the sheet at its FULL detent: everything below the status bar. The
+ * window already includes the bottom system bar, so the pinned footer (which pads itself by the bottom inset) keeps
+ * its actions clear of it; the body scrolls in between. Derived, not a fixed share: a share of the container left FULL
+ * at about half of a phone screen once the map band and the top overlay were cut out of that container.
+ */
+export function fullSheetHeight(windowHeight: number, topInset: number): number {
+  return Math.max(windowHeight - Math.max(topInset, 0) - FULL_SHEET_TOP_GAP, 0);
+}
+
+/** Replaces the declared top detent with FULL, as a share of the same container the other detents are shares of.
+ * Never shrinks it, and leaves the lower detents (collapsed, middle) exactly as they were. */
+export function withFullDetent(snapPoints: readonly string[], containerHeight: number, fullHeight: number): string[] {
+  if (containerHeight <= 0 || snapPoints.length < 3) return [...snapPoints];
+  const declared = parseFloat(snapPoints[snapPoints.length - 1]);
+  if (!Number.isFinite(declared) || fullHeight <= (declared / 100) * containerHeight) return [...snapPoints];
+  const next = [...snapPoints];
+  next[next.length - 1] = `${(fullHeight / containerHeight) * 100}%`;
+  return next;
+}
+
 export function insetAwareSnapPoints(
   snapPoints: readonly string[],
   containerHeight: number,
