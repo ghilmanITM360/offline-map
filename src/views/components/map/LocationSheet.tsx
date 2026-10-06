@@ -593,6 +593,8 @@ function RoutePreviewSection({
   const guideStep = routeGuide?.steps[routeGuide.stepIndex];
   const peekText = guideStep
     ? `Next: ${guideStep.text}${guideStep.distanceM > 0 ? ` · ${InstructionService.formatDistance(guideStep.distanceM, distanceUnit)}` : ''}`
+    : directGuide
+    ? outsideGuideHeadline(guideGateName ?? 'the gate') // never the walking-looking total
     : showRouteReady
     ? [outsideRoute?.durationSeconds !== null ? routeEta : null, routeDistance].filter(Boolean).join(' · ')
     : showLoading
