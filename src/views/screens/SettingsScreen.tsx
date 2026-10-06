@@ -15,27 +15,7 @@ import {
   AppState,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import {
-  Navigation,
-  Info,
-  Shield,
-  Trash2,
-  RefreshCw,
-  Volume2,
-  Globe,
-  Compass,
-  Footprints,
-  BookOpen,
-  LucideIcon,
-} from 'lucide-react-native';
-
-// Walking speed presets. `value` (m/s) drives internal ETA math only —
-// labels stay plain-language, no raw units shown to the user.
-const SPEED_PRESETS: { label: string; value: number }[] = [
-  { label: 'Slow', value: 0.8 },
-  { label: 'Normal', value: 1.1 },
-  { label: 'Fast', value: 1.4 },
-];
+import { Info, Shield, Trash2, Volume2, BookOpen, LucideIcon } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
 import { backChevron } from '../components/common/directionalIcons';
 import { useSettingsViewModel } from '../../viewmodels/SettingsViewModel';
@@ -136,6 +116,7 @@ export function SettingsScreen() {
   };
 
   const handleVersionTap = () => {
+    if (!__DEV__) return; // release builds have no developer mode, not even a hidden gesture
     const nextCount = versionTapCount + 1;
     if (nextCount >= 7) {
       const nextEnabled = !developerModeEnabled;
@@ -160,28 +141,10 @@ export function SettingsScreen() {
     return () => sub.remove();
   }, [refreshLocationPermissionState]);
 
-  const locationPermissionLabel = (() => {
-    if (!locationPermissionState) return 'Checking';
-    if (!locationPermissionState.granted) return 'Not allowed';
-    if (locationPermissionState.servicesState === 'disabled') return 'Location Off';
-    if (locationPermissionState.servicesState === 'unknown') return 'Checking location';
-    return 'Allowed';
-  })();
-
-  const locationPermissionDescription = (() => {
-    if (!locationPermissionState) return 'Checking…';
-    if (!locationPermissionState.granted) {
-      return locationPermissionState.canAskAgain
-        ? 'Tap to allow location'
-        : 'Location is off for this app. Tap to turn it on.';
-    }
-    if (locationPermissionState.servicesState === 'disabled') {
-      return "Your phone's location is off. Tap to turn it on.";
-    }
-    if (locationPermissionState.servicesState === 'unknown') {
-      return "Couldn't check your location. Tap to try again.";
-    }
-    return 'Tap to change this in Settings';
+  // One plain state word, said once. "Manage" opens the permission prompt or the phone's own settings as needed.
+  const locationState = (() => {
+    if (!locationPermissionState || locationPermissionState.servicesState === 'unknown') return 'Checking';
+    return locationPermissionState.granted && locationPermissionState.servicesState !== 'disabled' ? 'On' : 'Off';
   })();
 
   return (
@@ -196,38 +159,6 @@ export function SettingsScreen() {
       <ScrollView style={styles.content}>
 
         <View style={[styles.section, { backgroundColor: theme.card, borderColor: theme.border }]}>
-          <Text style={[styles.sectionTitle, { color: theme.primary }]}>Appearance</Text>
-          <SettingItem
-            icon={Globe}
-            label="Voice Language"
-            value={settings.language === 'en' ? 'English' : 'اردو'}
-            type="text"
-            onPress={() =>
-              updateSettingValue('language', settings.language === 'en' ? 'ur' : 'en')
-            }
-            description="Language of spoken directions"
-          />
-        </View>
-
-        <View style={[styles.section, { backgroundColor: theme.card, borderColor: theme.border }]}>
-          <Text style={[styles.sectionTitle, { color: theme.primary }]}>Map Display</Text>
-          <SettingItem
-            icon={Navigation}
-            label="Auto-follow Location"
-            value={settings.autoFollowLocation}
-            onToggle={() => handleToggle('autoFollowLocation')}
-            description="Keeps the map on where you are"
-          />
-          <SettingItem
-            icon={Compass}
-            label="North-up Map"
-            value={settings.keepNorthFixed}
-            onToggle={() => handleToggle('keepNorthFixed')}
-            description="Map always has north at the top"
-          />
-        </View>
-
-        <View style={[styles.section, { backgroundColor: theme.card, borderColor: theme.border }]}>
           <Text style={[styles.sectionTitle, { color: theme.primary }]}>Navigation</Text>
           <SettingItem
             icon={Volume2}
@@ -235,13 +166,6 @@ export function SettingsScreen() {
             value={settings.voiceInstructions}
             onToggle={() => handleToggle('voiceInstructions')}
             description="Speaks each turn aloud"
-          />
-          <SettingItem
-            icon={RefreshCw}
-            label="Fix my route automatically"
-            value={settings.autoReroute}
-            onToggle={() => handleToggle('autoReroute')}
-            description="Finds a new way if you go the wrong way"
           />
           <SettingItem
             icon={Info}
@@ -256,34 +180,17 @@ export function SettingsScreen() {
             }
             description="Meters or feet"
           />
-          <SettingItem
-            icon={Footprints}
-            label="Walking Speed"
-            value={SPEED_PRESETS.find((p) => p.value === settings.walkingSpeed)?.label ?? 'Normal'}
-            type="text"
-            onPress={() => {
-              const options = SPEED_PRESETS.map((p) => ({
-                text: p.label + (p.value === settings.walkingSpeed ? ' ✓' : ''),
-                onPress: () => updateSettingValue('walkingSpeed', p.value),
-              }));
-              Alert.alert('Walking Speed', 'Choose how fast you walk. This sets the time shown.', [
-                ...options,
-                { text: 'Cancel', style: 'cancel' },
-              ]);
-            }}
-            description="Used to show how long a walk takes"
-          />
         </View>
 
         <View style={[styles.section, { backgroundColor: theme.card, borderColor: theme.border }]}>
           <Text style={[styles.sectionTitle, { color: theme.primary }]}>Location</Text>
           <SettingItem
             icon={Shield}
-            label="Location Permission"
-            value={locationPermissionLabel}
+            label="Location"
+            value="Manage"
             type="text"
             onPress={handleReRequestPermission}
-            description={locationPermissionDescription}
+            description={`${locationState}. Used for live guidance.`}
           />
         </View>
 
@@ -307,11 +214,11 @@ export function SettingsScreen() {
           />
           <SettingItem
             icon={Trash2}
-            label="Clear Unfinished Trip Reminder"
+            label="Clear unfinished journey"
             value="Clear"
             type="text"
             onPress={() => handleClearLocalData('navigationRecovery')}
-            description="Unfinished-trip reminder, kept for up to 2 hours"
+            description="Removes the reminder for your last unfinished route."
           />
         </View>
 
@@ -323,7 +230,15 @@ export function SettingsScreen() {
             value="Open"
             type="text"
             onPress={() => navigation.navigate('AppGuide')}
-            description="How to find places and get directions"
+            description="Learn how to find places and follow directions."
+          />
+          <SettingItem
+            icon={Info}
+            label="About Ijtema Map"
+            value="Open"
+            type="text"
+            onPress={() => navigation.navigate('About')}
+            description="Version, privacy and terms"
           />
           {__DEV__ && (
             <SettingItem

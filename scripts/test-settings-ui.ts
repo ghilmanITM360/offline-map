@@ -6,27 +6,25 @@ const settingsVm = readFileSync('src/viewmodels/SettingsViewModel.ts', 'utf8');
 const appStore = readFileSync('src/store/useAppStore.ts', 'utf8');
 
 const requiredFunctionalRows = [
-  'Voice Language',
-  'Auto-follow Location',
-  'North-up Map',
   'Voice Instructions',
-  'Fix my route automatically',
   'Distance Unit',
-  'Walking Speed',
-  'Location Permission',
+  'label="Location"',
   'App Guide',
+  'About Ijtema Map',
 ];
+
+// Removed because the code shows an attendee cannot meaningfully use them (see SettingsSimplification.test.tsx).
+for (const removed of ['Voice Language', 'Auto-follow Location', 'North-up Map', 'Fix my route automatically', 'Walking Speed']) {
+  assert(!settings.includes(`label="${removed}"`), `Settings must not offer ${removed}`);
+}
 
 for (const label of requiredFunctionalRows) {
   assert(settings.includes(label), `Settings row missing: ${label}`);
 }
 
 assert(settings.includes('updateSettingValue'), 'Text selector rows must persist setting changes');
-assert(settings.includes("handleToggle('autoFollowLocation')"), 'Auto-follow row must be functional');
-assert(settings.includes("handleToggle('keepNorthFixed')"), 'North-up row must be functional');
 assert(settings.includes("handleToggle('voiceInstructions')"), 'Voice instructions row must be functional');
-assert(settings.includes("handleToggle('autoReroute')"), 'Fix my route automatically row must be functional');
-assert(settings.includes('handleReRequestPermission'), 'Location Permission row must be functional');
+assert(settings.includes('handleReRequestPermission'), 'Location row must be functional');
 assert(settings.includes("navigation.navigate('AppGuide')"), 'App Guide row must be functional');
 
 assert(settings.includes('disabled={!isToggle && !onPress}'), 'Info-only rows must not look or behave like active buttons');
