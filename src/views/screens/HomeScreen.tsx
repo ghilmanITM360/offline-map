@@ -1050,8 +1050,12 @@ export function HomeScreen() {
   }, [activePreviewRoute, fitPreviewRoute]);
   // Starting the route guide re-frames the whole route once the sheet has settled (#307).
   const handleRouteGuideStarted = useCallback(() => {
+    // The guide card needs the room: open the top detent so the step, Previous/Next and the live-guidance link all sit
+    // above the navigation bar (at the middle detent "Next" was half clipped on the emulator). The route is re-framed
+    // by the preview-fit effect as the sheet's insets change.
+    bottomSheetRef.current?.snapToIndex(2);
     requestAnimationFrame(fitPreviewRoute);
-  }, [fitPreviewRoute]);
+  }, [bottomSheetRef, fitPreviewRoute]);
   // @gorhom/bottom-sheet computes EVERY snap point — the declared 15/50/92% ones, not
   // just content-driven dynamic sizing — as a percentage of its own containerHeight.
   // On this app's real window heights, the plain 92% snap alone already leaves less than
