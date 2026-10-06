@@ -46,6 +46,7 @@ import {
   computeMaxSheetOcclusionForAttribution,
   computeNavControlsInset,
   insetAwareSnapPoints,
+  routePreviewSnapPoints,
   MIN_TOP_VISIBLE_MAP_FOR_ATTRIBUTION,
   MIN_TOP_VISIBLE_MAP_FOR_ROUTE_PREVIEW,
   resolveNavBarHeight,
@@ -121,7 +122,6 @@ const routeRevealKey = (coordinates: Coordinate[]) => {
 // 79% (~398 dp) shows the header, the Going to card through its whole destination row, and
 // the footer (76% clipped that row by ~11 dp on the 914 dp emulator window), while the map
 // keeps ~42% of the window. Same three-detent index contract.
-const ROUTE_PREVIEW_SNAP_POINTS = ['15%', '79%', '92%'];
 type V2PreviewRoute = RoutePreviewV2;
 
 // gorhom's default sheet background is itself an accessible, "adjustable" View labelled "Bottom Sheet"
@@ -947,8 +947,8 @@ export function HomeScreen() {
   // The sheet is given the inset-lifted snaps and the control stack clears exactly those. mapPadding and label
   // culling still use the declared snaps: they over-reach (window height) and must not grow with the lift.
   const layoutSnapPoints = useMemo(
-    () => (mode === 'ROUTE_PREVIEW' ? ROUTE_PREVIEW_SNAP_POINTS : baseSnapPoints),
-    [mode, baseSnapPoints],
+    () => (mode === 'ROUTE_PREVIEW' ? routePreviewSnapPoints(sheetContainerHeight, insets.bottom) : baseSnapPoints),
+    [mode, baseSnapPoints, sheetContainerHeight, insets.bottom],
   );
   const snapPoints = useMemo(
     () => (mode === 'ROUTE_PREVIEW'
@@ -1822,8 +1822,9 @@ export function HomeScreen() {
           accessibilityRole={null}
           backgroundComponent={SheetBackground}
           footerComponent={renderDirectionsFooter}
-          // Folded Directions keeps a visible, tappable peek instead of a bare handle (#307).
-          handleComponent={mode === 'ROUTE_PREVIEW' && sheetIndex === 0 ? DirectionsPeekHandle : undefined}
+          // Directions keeps a visible, tappable peek as its handle at every detent (#307). It is never swapped for the
+          // default handle: replacing the handle mid-gesture left the sheet's index stale (runtime finding).
+          handleComponent={mode === 'ROUTE_PREVIEW' ? DirectionsPeekHandle : undefined}
           keyboardBehavior="interactive"
           keyboardBlurBehavior="restore"
           android_keyboardInputMode="adjustResize"
@@ -1873,7 +1874,8 @@ export function HomeScreen() {
               onStartNavigation={handleStartPreviewNavigation}
               onViewRoute={() => bottomSheetRef.current?.snapToIndex(0)}
               onRouteGuideStarted={handleRouteGuideStarted}
-              onExpandSheet={() => bottomSheetRef.current?.snapToIndex(1)}
+              sheetCollapsed={sheetIndex === 0}
+              onToggleSheet={() => bottomSheetRef.current?.snapToIndex(sheetIndex === 0 ? 1 : 0)}
               journey={journeyIntent}
               onCancelRoute={activePreviewRoute ? handleClearPreviewRoute : undefined}
               onChangeDestination={handleChangeDestination}

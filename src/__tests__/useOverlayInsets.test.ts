@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import {
+import { routePreviewSnapPoints,
   computeMapContentInsets,
   computeMapControlsInset,
   computeMaxSheetOcclusionForAttribution,
@@ -331,5 +331,24 @@ describe('resolveControlStackPlacement — follows the real sheet top (#208 F1)'
     const fits = base.topOverlayBottom + base.stackHeight + OVERLAY_CONTROL_GAP;
     expect(resolveControlStackPlacement({ ...base, sheetTopY: fits }).visible).toBe(true);
     expect(resolveControlStackPlacement({ ...base, sheetTopY: fits - 1 }).visible).toBe(false);
+  });
+});
+
+
+describe('routePreviewSnapPoints (#307): the collapsed Directions detent must clear the system navigation bar', () => {
+  it('keeps the 15% detent when it already clears the bar and the peek', () => {
+    expect(routePreviewSnapPoints(900, 0)).toEqual(['15%', '79%', '92%']);
+  });
+
+  it('grows the collapsed detent on a three-button bar so the peek row is above it (914 dp window, 48 dp bar)', () => {
+    const [collapsed, middle, top] = routePreviewSnapPoints(480, 48);
+    expect(parseFloat(collapsed)).toBeGreaterThanOrEqual(((48 + 72) / 480) * 100);
+    expect(middle).toBe('79%');
+    expect(top).toBe('92%');
+  });
+
+  it('never exceeds the middle detent on a very short container', () => {
+    const [collapsed] = routePreviewSnapPoints(200, 60);
+    expect(parseFloat(collapsed)).toBeLessThan(79);
   });
 });

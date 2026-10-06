@@ -8,11 +8,12 @@
 // begins only from a fresh fix, and a failure leaves the usual manual-start UI instead of a dead end.
 
 import React from 'react';
-import { render } from './test-utils';
+import { act, render } from './test-utils';
 
 import { LocationSheet } from '../views/components/map/LocationSheet';
 import { DirectionsSheetFooter } from '../views/components/map/DirectionsSheetFooter';
 import { useDirectionsViewModel } from '../viewmodels/DirectionsViewModel';
+import { useAppStore } from '../store/useAppStore';
 import type { Place } from '../models/types';
 
 jest.mock('@gorhom/bottom-sheet', () => {
@@ -61,8 +62,11 @@ const sheet = (journey?: { mode: 'live' | 'guide'; start: Place | null }) => (
   </>
 );
 
+const initialStoreState = useAppStore.getState();
+const publishedRoute = () => useAppStore.setState({ activeRoute: route as never });
 beforeEach(() => {
   jest.clearAllMocks();
+  useAppStore.setState(initialStoreState, true);
   fns.chooseCurrentLocation.mockResolvedValue(true);
 });
 
@@ -83,10 +87,20 @@ describe('journey auto-start (#307)', () => {
   });
 
   test('live with a fresh fix: starts navigation directly (no extra Start tap)', async () => {
+    publishedRoute();
     mockedVm.mockReturnValue(vm({ startSource: 'live_gps', manualStart: null, startAction: { kind: 'start', primaryLabel: 'Start Navigation', title: 'Ready to go' } }));
     await render(sheet({ mode: 'live', start: null }));
     expect(onStartNavigation).toHaveBeenCalledTimes(1);
     expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  test('live waits until the preview route is published to the store: Home cannot start without it (runtime race)', async () => {
+    mockedVm.mockReturnValue(vm({ startSource: 'live_gps', manualStart: null, startAction: { kind: 'start', primaryLabel: 'Start Navigation', title: 'Ready to go' } }));
+    await render(sheet({ mode: 'live', start: null }));
+    expect(onStartNavigation).not.toHaveBeenCalled();
+
+    await act(async () => publishedRoute());
+    expect(onStartNavigation).toHaveBeenCalledTimes(1);
   });
 
   test('live with a fix that needs refreshing: runs the fresh-fix start flow once', async () => {

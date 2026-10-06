@@ -25,7 +25,7 @@ Destination selection, directions, route preview and the Route Guide all render 
 - **Destination tap** — the Directory plans with `planDestinationTap` (live / guide / ask for a start) and hands Home a runtime-only `pendingJourney`; `HomeScreen` consumes it when focused and `LocationSheet` auto-starts it (`docs/PRODUCT_AND_USER_FLOWS.md`).
 - **Route Guide** — `routeGuide {steps, stepIndex}` in the store: runtime-only, never persisted, never `isNavigating`, so no engine, GPS watcher, reroute or arrival can run for it.
 - **Stack** — launch is `[LocationsDirectory]`; the Map is `replace`d in or pushed under it; Done after arrival resets to `[LocationsDirectory]` (`resetToDirectoryAction`).
-- **Top bar and sheet** — `MapTopBar` (Places, context title, menu) and `DirectionsPeekHandle` (collapsed Directions) are presentation only; state lives in the store and `LocationSheet`.
+- **Top bar and sheet** — `MapTopBar` (Places, context title, menu) and `DirectionsPeekHandle` (the Directions sheet handle at every detent) are presentation only; state lives in the store and `LocationSheet`.
 
 ## Arrival ownership
 

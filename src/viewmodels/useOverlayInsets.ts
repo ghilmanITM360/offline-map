@@ -70,6 +70,21 @@ export function placeContentFontFactor(fontScale: number): number {
  * bottom, so on a 48 dp three-button bar the primary CTA at the end of the 50% preview sat behind the bar.
  * On a short container the middle snap grows further, up to just under the top snap, so the primary button stays
  * visible. Only the middle snap moves; the collapsed and expanded snaps keep their meaning. */
+/** Height the collapsed Directions peek needs above the system navigation bar: drag pill + a 48 dp row + margin. */
+export const DIRECTIONS_PEEK_HEIGHT_DP = 72;
+
+/**
+ * Route preview detents (#307). The collapsed one holds the peek row, so it must clear the system navigation bar:
+ * the sheet's container runs to the window bottom, behind the bar, and a bare 15% (~72 dp) left only a sliver above a
+ * 48 dp three-button bar. The middle and top detents keep their meaning.
+ */
+export function routePreviewSnapPoints(containerHeight: number, bottomInset: number): string[] {
+  if (containerHeight <= 0) return ['15%', '79%', '92%'];
+  const needed = ((bottomInset + DIRECTIONS_PEEK_HEIGHT_DP) / containerHeight) * 100;
+  const collapsed = Math.min(Math.max(15, Math.ceil(needed)), 40);
+  return [`${collapsed}%`, '79%', '92%'];
+}
+
 export function insetAwareSnapPoints(
   snapPoints: readonly string[],
   containerHeight: number,

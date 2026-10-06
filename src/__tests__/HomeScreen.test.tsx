@@ -1798,7 +1798,10 @@ describe('HomeScreen — contextual top bar (#307)', () => {
     await render(<HomeScreen />);
     await userEvent.setup().press(screen.getByText('Directions'));
 
-    expect(screen.getByText('Route guide', { includeHiddenElements: true })).toBeOnTheScreen();
+    // The sheet header names it for screen readers; the top bar repeats it for sighted orientation (hidden from them).
+    expect(screen.getAllByText('Route guide', { includeHiddenElements: true }).length).toBeGreaterThan(
+      screen.getAllByText('Route guide').length,
+    );
   });
 
   test('live navigation keeps its own chrome: no top bar competes with the maneuver banner', async () => {
@@ -1828,21 +1831,19 @@ describe('HomeScreen — collapsed Directions keeps a visible peek (#307)', () =
   });
   const handleComponent = () => (__getLastBottomSheetModalProps() as unknown as { handleComponent?: unknown }).handleComponent;
 
-  test('the folded Directions sheet uses the peek as its handle; the open sheet keeps the default handle', async () => {
+  test('Directions uses the peek as its handle at every detent (never swapped), so the sheet index cannot desynchronise', async () => {
     mockedUseDirectionsViewModel.mockReturnValue(directionsVm());
     mockedUseHomeViewModel.mockImplementation(() => ({ ...useFakeHomeViewModel(), selectedPlace: gateResult }));
     await render(<HomeScreen />);
     await userEvent.setup().press(screen.getByText('Directions'));
 
     const sheetProps = __getLastBottomSheetModalProps() as unknown as { onChange: (index: number) => void };
-    await act(async () => sheetProps.onChange(1));
-    expect(handleComponent()).toBeUndefined();
-
-    await act(async () => sheetProps.onChange(0));
-    expect(handleComponent()).toBeDefined();
-
-    await act(async () => sheetProps.onChange(1));
-    expect(handleComponent()).toBeUndefined();
+    const first = handleComponent();
+    expect(first).toBeDefined();
+    for (const index of [1, 0, 1, 2, 0]) {
+      await act(async () => sheetProps.onChange(index));
+      expect(handleComponent()).toBe(first);
+    }
   });
 
   test('a folded place sheet (not Directions) keeps the default handle', async () => {

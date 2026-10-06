@@ -20,6 +20,7 @@ export function RouteGuideCard({
   onLive,
   onEnd,
   liveBusy,
+  message,
 }: {
   guide: RouteGuideState;
   onPrevious: () => void;
@@ -27,6 +28,8 @@ export function RouteGuideCard({
   onLive: () => void;
   onEnd: () => void;
   liveBusy?: boolean;
+  /** One plain sentence when a live attempt could not start. */
+  message?: string | null;
 }) {
   const distanceUnit = useAppStore((s) => s.settings.distanceUnit);
   const { steps, stepIndex } = guide;
@@ -37,9 +40,6 @@ export function RouteGuideCard({
 
   return (
     <View style={styles.card}>
-      <Text style={styles.title}>Route guide</Text>
-      <Text style={styles.caption}>Your position isn't tracked. Use the steps to find your way.</Text>
-
       <View style={styles.step} accessible accessibilityLiveRegion="polite"
         accessibilityLabel={`Step ${stepIndex + 1} of ${steps.length}. ${step.text}${distance ? `, ${distance}` : ''}`}>
         <Text style={styles.stepCount}>{`Step ${stepIndex + 1} of ${steps.length}`}</Text>
@@ -74,6 +74,7 @@ export function RouteGuideCard({
         accessibilityLabel="Use my location for live guidance">
         <Text style={styles.linkText}>{liveBusy ? 'Finding your location…' : 'Use my location for live guidance'}</Text>
       </Pressable>
+      {message ? <Text accessibilityLiveRegion="polite" style={styles.caption}>{message}</Text> : null}
       <Pressable style={styles.link} onPress={onEnd} accessibilityRole="button" accessibilityLabel="End route guide">
         <Text style={styles.endText}>End route guide</Text>
       </Pressable>
@@ -83,7 +84,6 @@ export function RouteGuideCard({
 
 const styles = StyleSheet.create({
   card: { gap: 8 },
-  title: { fontSize: 14, fontWeight: '800', color: directionsSheetColors.brand },
   caption: { fontSize: 13, lineHeight: 18, color: directionsSheetColors.secondaryText },
   step: {
     gap: 2,
