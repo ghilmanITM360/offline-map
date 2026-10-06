@@ -917,9 +917,10 @@ describe('HomeScreen — navigation completion cleanup', () => {
     alertSpy.mockRestore();
   });
 
-  test('Arrival Done hands the user to the Locations Directory instead of a passive map', async () => {
+  test('Arrival Done hands the user to the Locations Directory as the new stack root, not pushed over the Map (#307)', async () => {
     const navigateSpy = jest.fn();
-    useNavigation.mockReturnValue({ navigate: navigateSpy, dispatch: jest.fn(), goBack: jest.fn() });
+    const dispatchSpy = jest.fn();
+    useNavigation.mockReturnValue({ navigate: navigateSpy, dispatch: dispatchSpy, goBack: jest.fn() });
     const overlaySpy = jest.spyOn(NavigationOverlayV1Module, 'useNavigationOverlayV1').mockReturnValue({
       active: true,
       route: v1Route,
@@ -948,7 +949,10 @@ describe('HomeScreen — navigation completion cleanup', () => {
     await render(<HomeScreen />);
     await userEvent.setup().press(await screen.findByTestId('nav-arrived-done-button'));
 
-    expect(navigateSpy).toHaveBeenCalledWith('LocationsDirectory');
+    expect(dispatchSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'RESET', payload: expect.objectContaining({ index: 0, routes: [{ name: 'LocationsDirectory' }] }) }),
+    );
+    expect(navigateSpy).not.toHaveBeenCalledWith('LocationsDirectory');
     overlaySpy.mockRestore();
   });
 });
