@@ -7,6 +7,7 @@
 // show readable steps the user moves through themselves, and never claim live movement, progress or arrival.
 
 import React from 'react';
+import { Dimensions } from 'react-native';
 import { render, screen, userEvent, within } from './test-utils';
 
 import { LocationSheet } from '../views/components/map/LocationSheet';
@@ -117,6 +118,15 @@ describe('Route guide card', () => {
     const scroll = within(screen.getByTestId('sheet-scroll'));
     expect(scroll.getByRole('header', { name: 'Route guide' })).toBeOnTheScreen();
     expect(scroll.getByRole('button', { name: 'Back' })).toBeOnTheScreen();
+  });
+
+  // 200% font on a 320 dp window split "Previous" mid-word across two lines in a half-width button.
+  test.each([[1, 'row'], [2, 'column']])('at font scale %s Previous and Next sit in a %s so neither label breaks mid-word', async (fontScale, direction) => {
+    Dimensions.set({ window: { width: 320, height: 711, scale: 2, fontScale } });
+    open();
+    await renderSheet();
+    expect(screen.getByTestId('guide-stepper')).toHaveStyle({ flexDirection: direction });
+    Dimensions.set({ window: { width: 390, height: 844, scale: 2, fontScale: 1 } });
   });
 
   test('a failed live attempt explains itself inside the guide', async () => {

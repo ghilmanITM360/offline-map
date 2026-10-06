@@ -4,7 +4,7 @@
  */
 
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { ChevronLeft, ChevronRight } from 'lucide-react-native';
 import { useAppStore, type RouteGuideState } from '../../../store/useAppStore';
 import { Button } from '../common/Button';
@@ -32,6 +32,8 @@ export function RouteGuideCard({
   message?: string | null;
 }) {
   const distanceUnit = useAppStore((s) => s.settings.distanceUnit);
+  // Same threshold as the Directions footer: side by side, "Previous" splits mid-word at large text on a narrow window.
+  const stacked = useWindowDimensions().fontScale >= 1.5;
   const { steps, stepIndex } = guide;
   const step = steps[stepIndex];
   const atStart = stepIndex === 0;
@@ -47,7 +49,7 @@ export function RouteGuideCard({
         {distance ? <Text style={styles.stepDistance}>{distance}</Text> : null}
       </View>
 
-      <View style={styles.stepper}>
+      <View testID="guide-stepper" style={[styles.stepper, stacked && styles.stepperStacked]}>
         <Button
           variant="brandTint"
           fullWidth={false}
@@ -97,6 +99,7 @@ const styles = StyleSheet.create({
   stepText: { fontSize: 20, lineHeight: 26, fontWeight: '800', color: directionsSheetColors.headingText },
   stepDistance: { fontSize: 15, color: directionsSheetColors.secondaryText },
   stepper: { flexDirection: 'row', gap: 10 },
+  stepperStacked: { flexDirection: 'column' },
   stepperButton: { flex: 1, borderRadius: radii.xl },
   link: { alignSelf: 'flex-start', minHeight: 48, justifyContent: 'center', paddingHorizontal: 4 },
   linkText: { fontSize: 16, fontWeight: '800', color: directionsSheetColors.brand },
