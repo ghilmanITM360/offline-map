@@ -189,7 +189,10 @@ function FadeContent({ transitionKey, children }: { transitionKey: string; child
       useNativeDriver: true,
     }).start();
   }, [transitionKey, opacity, reducedMotion]);
-  return <Animated.View style={{ opacity }}>{children}</Animated.View>;
+  // With reduced motion the content is simply opaque. The first render cannot know that yet (the OS setting is read
+  // asynchronously), so a fade has already been handed to the native driver; stopping it and jumping the value raced
+  // with it on Android and left the Directions rows at ~15% opacity with animations off (EMULATOR).
+  return <Animated.View style={reducedMotion ? undefined : { opacity }}>{children}</Animated.View>;
 }
 
 /** Hint under the start name; a resolved start needs none (its name already says it). */
@@ -379,6 +382,20 @@ function RoutePreviewSection({
       </View>
     </View>
   ) : null;
+  // At large text the pinned footer keeps only the primary action: this link scrolls with the body instead (#326).
+  const secondaryLink = startAction?.secondaryLabel ? (
+    <Pressable
+      style={styles.linkButton}
+      onPress={isRouteGuideStart ? () => void runStartAction(() => startNowRef.current()) : onViewRoute}
+      disabled={isRouteGuideStart && startAttempt === 'working'}
+      accessibilityRole="button"
+      accessibilityLabel={startAction.secondaryLabel}
+    >
+      <Text style={styles.linkButtonText}>
+        {isRouteGuideStart && startAttempt === 'working' ? 'Finding your location…' : startAction.secondaryLabel}
+      </Text>
+    </Pressable>
+  ) : null;
   const captionNode = offlineCaption ? <OfflineInfo text={offlineCaption} /> : null;
   const footerVisible = (showLoading || showError || showRouteReady) && !(showRouteReady && routeGuide);
   // The caption scrolls with the content: the pinned footer only has room for the route summary,
@@ -504,19 +521,7 @@ function RoutePreviewSection({
                     else startNow();
                   }}
                 />
-                {startAction?.secondaryLabel ? (
-                  <Pressable
-                    style={styles.linkButton}
-                    onPress={isRouteGuideStart ? () => void runStartAction(() => startNowRef.current()) : onViewRoute}
-                    disabled={isRouteGuideStart && startAttempt === 'working'}
-                    accessibilityRole="button"
-                    accessibilityLabel={startAction.secondaryLabel}
-                  >
-                    <Text style={styles.linkButtonText}>
-                      {isRouteGuideStart && startAttempt === 'working' ? 'Finding your location…' : startAction.secondaryLabel}
-                    </Text>
-                  </Pressable>
-                ) : null}
+                {!compactFooter && secondaryLink}
                 {startAttempt === 'failed' || startAttempt === 'settings' || startAttempt === 'services_off' ? (
                   <Text accessibilityLiveRegion="polite" style={styles.footerReason}>
                     {startAttempt === 'settings'
@@ -571,9 +576,6 @@ function RoutePreviewSection({
       collapsable={false}
       importantForAccessibility="yes"
     >
-      {/* The guide's heading scrolls with its content (#326): pinned, its title and subtitle outgrow the top detent on a
-          320 dp window or at 200% font and leave the step card and Previous/Next no viewport. */}
-      {!routeGuide && directionsHeader}
 
       <KeyboardAvoidingView
         style={styles.container}
@@ -586,7 +588,9 @@ function RoutePreviewSection({
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"
         >
-          {routeGuide && <View style={styles.guideHeader}>{directionsHeader}</View>}
+          {/* The heading scrolls with its content (#326): pinned, its title and subtitle outgrow the top detent on a
+              320 dp window or at 200% font and leave the body no viewport. */}
+          <View style={styles.directionsHeader}>{directionsHeader}</View>
           {showRouteReady && routeGuide && (
             <RouteGuideCard
               guide={routeGuide}
@@ -671,6 +675,7 @@ function RoutePreviewSection({
           {showRouteReady && (
             <View style={styles.readyBody}>
               {compactFooter && routeSummary}
+              {compactFooter && !routeGuide && secondaryLink}
               {routeEntrySummary ? <Text style={styles.statusText}>{routeEntrySummary}</Text> : null}
 
               {outsideRoute && (
@@ -987,7 +992,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   // Cancels the scroll content's own padding and gap so the heading sits where the pinned one did.
-  guideHeader: { marginHorizontal: -16, marginTop: -4, marginBottom: -6 },
+  directionsHeader: { marginHorizontal: -16, marginTop: -4, marginBottom: -6 },
   scrollContent: {
     paddingHorizontal: 16,
     paddingTop: 4,

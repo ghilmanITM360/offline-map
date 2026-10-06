@@ -15,12 +15,14 @@ import {
   Map as MapIcon
 } from 'lucide-react-native';
 import { useTheme } from '../../services/useTheme'; // fixed: use theme-safe colors for icons and badges
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { staticColors } from '../../theme';
 
 const DRAWER_ICON_COLOR_KEY = 'subtext'; // fixed: centralize drawer icon color selection for future theming changes
 
 export function CustomDrawer(props: DrawerContentComponentProps) {
   const theme = useTheme(); // fixed: source icon and badge colors from the active theme
+  const insets = useSafeAreaInsets();
 
   const menuItems = [
     { label: 'Home', icon: Home, route: 'Home' },
@@ -83,7 +85,7 @@ export function CustomDrawer(props: DrawerContentComponentProps) {
         </View>
       </DrawerContentScrollView>
 
-      <View style={styles.footer}>
+      <View style={[styles.footer, { paddingBottom: styles.footer.padding + insets.bottom }]}>
         <Text style={styles.version}>Version 1.0.0</Text>
       </View>
     </View>
@@ -111,6 +113,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   headerText: {
+    flex: 1, // shrinks and wraps at large text instead of running past the drawer's edge
     marginLeft: 16,
   },
   title: {

@@ -5,7 +5,7 @@
 
 import React from 'react';
 import { readFileSync } from 'node:fs';
-import { Dimensions, I18nManager, StyleSheet } from 'react-native';
+import { AccessibilityInfo, Dimensions, I18nManager, StyleSheet } from 'react-native';
 import { render, screen, userEvent, within } from './test-utils';
 
 import { LocationSheet } from '../views/components/map/LocationSheet';
@@ -126,6 +126,31 @@ const flat = (node: { props: { style?: unknown } }) =>
   StyleSheet.flatten(typeof node.props.style === 'function' ? undefined : (node.props.style as object)) ?? {};
 
 describe('Get Directions redesign — structure and semantics', () => {
+  // #326: pinned, the heading plus the peek row left no scroll window at 200% font on a 320 dp window, so FROM/TO and
+  // the route were unreachable. The heading scrolls with the body in every Directions state.
+  test('the Get Directions heading scrolls with the body instead of being pinned above it', async () => {
+    mockedVm.mockReturnValue(vm());
+    await renderSheet();
+    const scroll = within(screen.getByTestId('sheet-scroll'));
+    expect(scroll.getByRole('header', { name: 'Get Directions' })).toBeOnTheScreen();
+    expect(scroll.getByRole('button', { name: 'Back' })).toBeOnTheScreen();
+  });
+
+  // GREEN before and after: jest has no native driver, so it cannot reproduce the Android race this guards against
+  // (rows stuck at ~15% opacity with animations off). The fix itself is verified on the emulator.
+  test('with reduced motion the sheet content is not left to an animated opacity', async () => {
+    jest.spyOn(AccessibilityInfo, 'isReduceMotionEnabled').mockResolvedValue(true);
+    mockedVm.mockReturnValue(vm());
+    await renderSheet();
+    // Walk up from the To row: no ancestor may carry an opacity below 1.
+    let node: { props: { style?: unknown }; parent: unknown } | null = screen.getByRole('button', { name: /^To .*Change destination\.$/ }) as never;
+    while (node) {
+      const style = typeof node.props.style === 'function' ? undefined : (StyleSheet.flatten(node.props.style as object) as { opacity?: number } | undefined);
+      expect(style?.opacity ?? 1).toBe(1);
+      node = node.parent as typeof node;
+    }
+  });
+
   test('title is a header; subtitle follows the state', async () => {
     mockedVm.mockReturnValue(vm());
     await renderSheet();
