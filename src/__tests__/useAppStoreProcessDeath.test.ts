@@ -27,7 +27,7 @@ const fix = { latitude: 24.9762, longitude: 67.011, accuracy: 5, observedAtMs: 1
 const RUNTIME_KEYS = [
   'isNavigating', 'navigationSessionId', 'destination', 'activeRoute', 'routeInstructions',
   'reroutePending', 'selectedPlace', 'routePlannerOrigin', 'routePlannerDest', 'routeAlternatives',
-  'routeGuide', 'pendingDirectorySelection', 'directoryPurpose', 'directoryChoice', 'currentLocation', 'currentLocationSource', 'snappedLocation',
+  'routeGuide', 'pendingJourney', 'pendingDirectorySelection', 'directoryPurpose', 'directoryChoice', 'currentLocation', 'currentLocationSource', 'snappedLocation',
 ];
 
 // Any addition here forces an explicit privacy decision (#145) in the PR that makes it.

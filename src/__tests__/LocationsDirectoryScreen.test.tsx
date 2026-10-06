@@ -160,7 +160,7 @@ describe('LocationsDirectoryScreen — selection hands off to the existing map p
     await render(<LocationsDirectoryScreen />);
 
     await act(async () => {
-      fireEvent.press(screen.getByLabelText(`${firstBlock.name}, Block`));
+      fireEvent(screen.getByLabelText(`${firstBlock.name}, Block`), 'longPress');
     });
 
     expect(useAppStore.getState().pendingDirectorySelection).toEqual(firstBlock);
@@ -177,7 +177,7 @@ describe('LocationsDirectoryScreen — selection hands off to the existing map p
     await render(<LocationsDirectoryScreen />);
 
     await act(async () => {
-      fireEvent.press(screen.getByLabelText(`${firstGate.name}, Gate`));
+      fireEvent.press(screen.getByLabelText(`Details for ${firstGate.name}`));
     });
 
     expect(useAppStore.getState().pendingDirectorySelection).toEqual(firstGate);
@@ -244,7 +244,7 @@ describe('LocationsDirectoryScreen — recent destinations (#99)', () => {
     await render(<LocationsDirectoryScreen />);
 
     await act(async () => {
-      fireEvent.press(screen.getAllByLabelText(`${firstBlock.name}, Block`)[0]);
+      fireEvent.press(screen.getByLabelText(`Details for ${firstBlock.name}`));
     });
 
     expect(useAppStore.getState().pendingDirectorySelection).toEqual(firstBlock);
@@ -457,5 +457,157 @@ describe('LocationsDirectoryScreen — start quick options (#222)', () => {
 
     await act(async () => fireEvent.press(screen.getByLabelText(/^Use last known location/)));
     expect(useAppStore.getState().directoryChoice).toEqual({ purpose: 'start', quick: 'last_known' });
+  });
+});
+
+
+describe('LocationsDirectoryScreen — a destination tap means "take me here" (#307)', () => {
+  const origin = PublicDestinationsService.getByCategory('gates')[1];
+  const liveFix = () => ({ latitude: 24.965, longitude: 67.006, accuracy: 8, observedAtMs: Date.now() });
+  const tapBlock = () => act(async () => { fireEvent.press(screen.getByLabelText(`${firstBlock.name}, Block`)); });
+  beforeEach(() => {
+    jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+  });
+
+  test('A: a fresh live fix starts live navigation: the journey is handed to the Map, no place sheet in between', async () => {
+    const navigation = mockNav({ canGoBack: false });
+    useAppStore.setState({ hasLocationPermission: true, locationPermissionPrecision: 'fine', currentLocation: liveFix(), currentLocationSource: 'live' });
+    await render(<LocationsDirectoryScreen />);
+    await tapBlock();
+
+    expect(useAppStore.getState().pendingJourney).toEqual({ destination: firstBlock, start: null, mode: 'live' });
+    expect(useAppStore.getState().pendingDirectorySelection).toBeNull();
+    expect(navigation.replace).toHaveBeenCalledWith('Main');
+    expect(useAppStore.getState().isNavigating).toBe(false); // Home starts it; the Directory never does
+  });
+
+  test('B: permission granted but no fix yet still hands over a live journey (Home finds the location, bounded)', async () => {
+    mockNav({ canGoBack: false });
+    useAppStore.setState({ hasLocationPermission: true, locationPermissionPrecision: 'fine' });
+    await render(<LocationsDirectoryScreen />);
+    await tapBlock();
+
+    expect(useAppStore.getState().pendingJourney).toEqual({ destination: firstBlock, start: null, mode: 'live' });
+  });
+
+  test('C: no usable location but a start is already chosen: a route guide from it', async () => {
+    const navigation = mockNav({ canGoBack: true });
+    useAppStore.setState({ hasLocationPermission: false, routePlannerOrigin: origin });
+    await render(<LocationsDirectoryScreen />);
+    await tapBlock();
+
+    expect(useAppStore.getState().pendingJourney).toEqual({ destination: firstBlock, start: origin, mode: 'guide' });
+    expect(navigation.goBack).toHaveBeenCalledTimes(1);
+  });
+
+  test('D: no usable location and no start: stay here and ask "Where are you starting from?"', async () => {
+    const navigation = mockNav({ canGoBack: false });
+    useAppStore.setState({ hasLocationPermission: false });
+    await render(<LocationsDirectoryScreen />);
+    await tapBlock();
+
+    expect(screen.getByRole('header', { name: 'Where are you starting from?' })).toBeOnTheScreen();
+    expect(screen.getByText(`To ${firstBlock.name}`)).toBeOnTheScreen();
+    expect(navigation.replace).not.toHaveBeenCalled();
+    expect(useAppStore.getState().pendingJourney).toBeNull();
+
+    await act(async () => { fireEvent.press(screen.getByLabelText(`${origin.name}, Gate`)); });
+
+    expect(useAppStore.getState().pendingJourney).toEqual({ destination: firstBlock, start: origin, mode: 'guide' });
+    expect(navigation.replace).toHaveBeenCalledWith('Main');
+  });
+
+  test('D: an unavailable place is never a valid start; say so and keep asking', async () => {
+    const navigation = mockNav({ canGoBack: false });
+    useAppStore.setState({ hasLocationPermission: false });
+    await render(<LocationsDirectoryScreen />);
+    await tapBlock();
+    const unavailable = PublicDestinationsService.getByCategory('gates').find((gate) => gate.isStartRoutable === false)!;
+
+    await act(async () => { fireEvent.press(screen.getByLabelText(new RegExp(`^${unavailable.name}, Gate, navigation unavailable`))); });
+
+    expect(Alert.alert).toHaveBeenCalledWith('Place unavailable', expect.any(String));
+    expect(navigation.replace).not.toHaveBeenCalled();
+    expect(screen.getByText(`To ${firstBlock.name}`)).toBeOnTheScreen();
+  });
+
+  test('D: Cancel returns to browsing without leaving the Directory', async () => {
+    const navigation = mockNav({ canGoBack: false });
+    useAppStore.setState({ hasLocationPermission: false });
+    await render(<LocationsDirectoryScreen />);
+    await tapBlock();
+    await act(async () => { fireEvent.press(screen.getByLabelText('Cancel and go back')); });
+
+    expect(screen.getByRole('header', { name: 'Find your way' })).toBeOnTheScreen();
+    expect(navigation.replace).not.toHaveBeenCalled();
+    expect(useAppStore.getState().pendingJourney).toBeNull();
+  });
+
+  test('D: "Use my location" asks for permission in context and, with a fix, starts live navigation', async () => {
+    const { LocationAccessService } = require('../services/LocationAccessService');
+    const resolve = jest.spyOn(LocationAccessService, 'resolveCurrentLocation').mockResolvedValue({
+      ok: true, source: 'live', coordinate: liveFix(), message: null,
+      permissionState: { granted: true, canAskAgain: true, status: 'granted', precision: 'fine', servicesEnabled: true, servicesState: 'enabled' },
+    });
+    const navigation = mockNav({ canGoBack: false });
+    useAppStore.setState({ hasLocationPermission: false });
+    await render(<LocationsDirectoryScreen />);
+    await tapBlock();
+    await act(async () => { fireEvent.press(screen.getByLabelText(/^Use my location\./)); });
+
+    expect(resolve).toHaveBeenCalledWith(true);
+    expect(useAppStore.getState().pendingJourney).toEqual({ destination: firstBlock, start: null, mode: 'live' });
+    expect(useAppStore.getState().hasLocationPermission).toBe(true);
+    expect(navigation.replace).toHaveBeenCalledWith('Main');
+  });
+
+  test('E: a refusal is respected: declining the prompt keeps asking for a start and never opens Settings', async () => {
+    const { LocationAccessService } = require('../services/LocationAccessService');
+    jest.spyOn(LocationAccessService, 'resolveCurrentLocation').mockResolvedValue({
+      ok: false, source: null, coordinate: null, message: 'Location permission is required to use your current position.',
+      permissionState: { granted: false, canAskAgain: true, status: 'denied', precision: 'none', servicesEnabled: true, servicesState: 'enabled' },
+    });
+    const openSettings = jest.spyOn(LocationAccessService, 'openAppSettings').mockResolvedValue(true);
+    const navigation = mockNav({ canGoBack: false });
+    useAppStore.setState({ hasLocationPermission: false });
+    await render(<LocationsDirectoryScreen />);
+    await tapBlock();
+    await act(async () => { fireEvent.press(screen.getByLabelText(/^Use my location\./)); });
+
+    expect(openSettings).not.toHaveBeenCalled();
+    expect(navigation.replace).not.toHaveBeenCalled();
+    expect(screen.getByText(`To ${firstBlock.name}`)).toBeOnTheScreen();
+  });
+
+  test('approximate-only location is never treated as live: it asks for a start', async () => {
+    mockNav({ canGoBack: false });
+    useAppStore.setState({ hasLocationPermission: true, locationPermissionPrecision: 'coarse', currentLocation: liveFix(), currentLocationSource: 'live' });
+    await render(<LocationsDirectoryScreen />);
+    await tapBlock();
+
+    expect(screen.getByText(`To ${firstBlock.name}`)).toBeOnTheScreen();
+    expect(useAppStore.getState().pendingJourney).toBeNull();
+  });
+
+  test('a place that cannot be routed opens its details instead of a dead journey', async () => {
+    const navigation = mockNav({ canGoBack: false });
+    const unavailable = PublicDestinationsService.getByCategory('gates').find((gate) => gate.isRoutable === false)!;
+    await render(<LocationsDirectoryScreen />);
+    await act(async () => { fireEvent.press(screen.getByLabelText(new RegExp(`^${unavailable.name}, Gate, navigation unavailable`))); });
+
+    expect(useAppStore.getState().pendingDirectorySelection).toEqual(unavailable);
+    expect(useAppStore.getState().pendingJourney).toBeNull();
+    expect(navigation.replace).toHaveBeenCalledWith('Main');
+  });
+
+  test('Details is a separate, named control on rows and a long-press / action on block tiles', async () => {
+    mockNav({ canGoBack: false });
+    await render(<LocationsDirectoryScreen />);
+
+    expect(screen.getByLabelText(`Details for ${firstGate.name}`)).toBeOnTheScreen();
+    const tile = screen.getByLabelText(`${firstBlock.name}, Block`);
+    expect(tile.props.accessibilityActions).toEqual([{ name: 'details', label: `Details for ${firstBlock.name}` }]);
+    await act(async () => { fireEvent(tile, 'accessibilityAction', { nativeEvent: { actionName: 'details' } }); });
+    expect(useAppStore.getState().pendingDirectorySelection).toEqual(firstBlock);
   });
 });
