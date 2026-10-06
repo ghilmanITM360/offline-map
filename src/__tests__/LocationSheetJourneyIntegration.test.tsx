@@ -7,7 +7,7 @@
 // Directory with a chosen start must show that start as FROM, compute the route and open the route guide.
 
 import React from 'react';
-import { act, render, screen, waitFor } from './test-utils';
+import { render, screen, waitFor } from './test-utils';
 
 import { LocationSheet } from '../views/components/map/LocationSheet';
 import { DirectionsSheetFooter } from '../views/components/map/DirectionsSheetFooter';

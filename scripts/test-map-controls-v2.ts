@@ -29,7 +29,7 @@ for (const styleKey of ['controlButton:', 'controlButtonActive:', 'moreButtonOpe
 // overlay height, not a chain of hardcoded per-banner guesses.
 assert(home.includes('onLayout={(e) => setTopOverlayHeight(e.nativeEvent.layout.height)}'), 'Top overlay height must be measured via onLayout');
 assert(home.includes('topOverlayHeight > 0 ? topOverlayHeight + 8'), 'bannerStackTop must derive from the measured top-overlay height');
-for (const deadOffsetGuess of ['isOffline ? 42', 'showMapWarningBanner ? 56', 'showOutsideBanner ? 60']) { // eslint-disable-line
+for (const deadOffsetGuess of ['isOffline ? 42', 'showMapWarningBanner ? 56', 'showOutsideBanner ? 60']) {
   assert(!home.includes(deadOffsetGuess), `Hardcoded banner-height guess "${deadOffsetGuess}" must be gone`);
 }
 
