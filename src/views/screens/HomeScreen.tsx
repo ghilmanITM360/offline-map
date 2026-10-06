@@ -238,6 +238,7 @@ export function HomeScreen() {
   // cover two distinct snap heights (15%/50% peek vs preview) that mode alone can't
   // distinguish — see onChange below and useOverlayInsets.computeMapControlsInset.
   const [sheetIndex, setSheetIndex] = useState(-1);
+  const guideDetentPendingRef = useRef(false);
   const { height: windowHeight, fontScale } = useWindowDimensions();
   const warningAnim = useRef(new Animated.Value(0)).current;
   const userPulseAnim = useRef(new Animated.Value(0)).current;
@@ -1053,6 +1054,9 @@ export function HomeScreen() {
     // The guide card needs the room: open the top detent so the step, Previous/Next and the live-guidance link all sit
     // above the navigation bar (at the middle detent "Next" was half clipped on the emulator). The route is re-framed
     // by the preview-fit effect as the sheet's insets change.
+    // A request made while the sheet is still landing at the middle detent (the journey auto-starts the moment
+    // Directions opens) is swallowed by that animation, so it is repeated once when the sheet reports landing.
+    guideDetentPendingRef.current = true;
     bottomSheetRef.current?.snapToIndex(2);
     requestAnimationFrame(fitPreviewRoute);
   }, [bottomSheetRef, fitPreviewRoute]);
@@ -1858,6 +1862,10 @@ export function HomeScreen() {
           onChange={(index) => {
             setSheetIndex(index);
             handleSheetIndexChange(index);
+            if (guideDetentPendingRef.current) {
+              guideDetentPendingRef.current = false;
+              if (index === 1) bottomSheetRef.current?.snapToIndex(2);
+            }
             if (index < 0) {
               closingSheetIdentityRef.current ??= currentSheetIdentityRef.current;
             } else {
