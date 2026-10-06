@@ -103,6 +103,8 @@ export function LocationsDirectoryScreen() {
   const setDirectoryPurpose = useAppStore((s) => s.setDirectoryPurpose);
   const setDirectoryChoice = useAppStore((s) => s.setDirectoryChoice);
   const recentSearches = useAppStore((s) => s.recentSearches);
+  const removeRecentSearch = useAppStore((s) => s.removeRecentSearch);
+  const clearRecentSearches = useAppStore((s) => s.clearRecentSearches);
   // #139 Option B: select the id (a primitive) so the selector's fresh marker object never churns the subscription.
   const unfinishedDestinationId = useAppStore((s) => selectUnfinishedJourney(s)?.destinationId ?? null);
   const beginRecovery = useAppStore((s) => s.beginRecovery);
@@ -134,6 +136,13 @@ export function LocationsDirectoryScreen() {
       .filter((place): place is V2Place => Boolean(place))
       .slice(0, 5);
   }, [recentSearches]);
+
+  const confirmClearRecent = useCallback(() => {
+    Alert.alert('Clear recent places?', 'Places you opened recently will be removed from this list.', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Clear', style: 'destructive', onPress: clearRecentSearches },
+    ]);
+  }, [clearRecentSearches]);
 
   // Start-only quick options, shown only when the location behind them is usable.
   const canUseCurrentLocation =
@@ -475,10 +484,26 @@ export function LocationsDirectoryScreen() {
             )}
             {!activeCategory && recentPlaces.length > 0 && (
               <View style={styles.section}>
-                <Text style={styles.sectionTitle} accessibilityRole="header">Recent</Text>
+                <View style={styles.recentHeader}>
+                  <Text style={[styles.sectionTitle, styles.recentTitle]} accessibilityRole="header">Recent</Text>
+                  <Pressable
+                    style={styles.recentClear}
+                    onPress={confirmClearRecent}
+                    accessibilityRole="button"
+                    accessibilityLabel="Clear recent places"
+                  >
+                    <Text style={styles.recentClearLabel}>Clear</Text>
+                  </Pressable>
+                </View>
                 <View style={styles.sectionRows}>
                   {recentPlaces.map((place) => (
-                    <DestinationRow key={place.id} place={place} onPress={handleSelect} onDetails={purpose ? undefined : handleDetails} />
+                    <DestinationRow
+                      key={place.id}
+                      place={place}
+                      onPress={handleSelect}
+                      onDetails={purpose ? undefined : handleDetails}
+                      onRemove={(p) => removeRecentSearch(p.id)}
+                    />
                   ))}
                 </View>
               </View>
@@ -668,6 +693,28 @@ const styles = StyleSheet.create({
   },
   section: {
     marginTop: spacing.lg,
+  },
+  recentHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: spacing.xs,
+  },
+  recentTitle: {
+    flex: 1,
+    marginBottom: 0, // the header row, not the title, owns the gap to the rows
+  },
+  recentClear: {
+    minHeight: 48, // Android's 48dp minimum touch target
+    minWidth: 48,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: spacing.xl,
+  },
+  recentClearLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: staticColors.info,
   },
   sectionTitle: {
     fontSize: 13,
