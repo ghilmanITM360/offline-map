@@ -33,6 +33,11 @@ import {
 
 import { useDirectionsViewModel, type StartSource } from '../../../viewmodels/DirectionsViewModel';
 import { useReducedMotion } from '../../../viewmodels/useReducedMotion';
+import {
+  isJourneyStartable,
+  outsideGuideSummary,
+  selectJourneyPresentationState,
+} from '../../../services/JourneyPresentationState';
 import { InstructionService } from '../../../services/InstructionService';
 import { destinationFromPlace } from '../../../services/V2DirectionsService';
 import { V2PlaceAdapter } from '../../../services/V2PlaceAdapter';
@@ -48,7 +53,7 @@ import { directionsSheetColors, radii, staticColors } from '../../../theme';
 import { placeCategoryLabel } from '../../../utils/placeCategoryLabel';
 import { buildPlaceShare } from '../../../utils/placeShare';
 import { unavailableReasonCopy } from '../../../utils/unavailableReasonCopy';
-import { ROUTE_NOT_FOUND, SAME_PLACE } from '../../../utils/routeCopy';
+import { OUTSIDE_GUIDE_SCOPE, ROUTE_NOT_FOUND, SAME_PLACE, outsideGuideHeadline } from '../../../utils/routeCopy';
 import { DirectionsHeader, RouteEndpointRows } from './DirectionsSheetParts';
 import { publishDirectionsFooter, useDirectionsFooterHeight } from './DirectionsSheetFooter';
 import { OutsideRouteStatusCard } from '../navigation/OutsideRouteStatusCard';
@@ -310,6 +315,9 @@ function RoutePreviewSection({
   const outsideStart = isOutsideStart;
   const routeMeta = route as RoutePreviewWithV2Meta | null;
   const outsideRoute = routeMeta?.outsideRoute;
+  // Everything below renders from the one journey state, never from coordinates, distances or provider names.
+  const journeyState = selectJourneyPresentationState({ loadState, startSource, route: routeMeta });
+  const outsideGuide = outsideGuideSummary(routeMeta as Parameters<typeof outsideGuideSummary>[0]);
   const entryGateName = routeMeta?.startResolution?.gate?.name?.en ?? null;
   const routeDistance = route ? InstructionService.formatDistance(route.totalDistance, distanceUnit) : null;
   const routeEta = route ? InstructionService.formatDuration(route.estimatedTimeMin) : null;
@@ -318,19 +326,21 @@ function RoutePreviewSection({
     : startSourceSupportingCopy;
 
   // Only what the FROM/TO rows don't already say: which gate the route enters through, or that the start was snapped.
-  const routeEntrySummary = entryGateName
+  const routeEntrySummary = journeyState === 'OUTSIDE_VENUE_GUIDE'
+    ? null // the headline already says which gate
+    : entryGateName
     ? `Go in through ${entryGateName}`
     : routeMeta?.startResolution?.startType === 'internal_snap'
     ? 'Starting from the closest path.'
     : null;
 
-  const showRouteReady = loadState === 'ready' && !!route;
+  const showRouteReady = isJourneyStartable(journeyState);
   const showLoading = loadState === 'loading';
-  const showError = loadState === 'error';
-  const showSamePlace = loadState === 'same_place';
+  const showError = journeyState === 'ROUTE_FAILURE';
+  const showSamePlace = journeyState === 'SAME_PLACE';
   // A journey that is still looking for the person's own location is not asking where they start (see below).
   const [locatingForJourney, setLocatingForJourney] = useState(false);
-  const showNeedsStart = loadState === 'needs_origin' && !locatingForJourney;
+  const showNeedsStart = journeyState === 'NEEDS_START' && !locatingForJourney;
   const destinationCannotBeRouted =
     destination.isRoutable === false ||
     (destination.routingStatus !== undefined && destination.routingStatus !== 'routable');
@@ -352,8 +362,12 @@ function RoutePreviewSection({
   // arrival announcement (#64), keyed on loadState so it fires once per resolved
   // calculation, not on every re-render while the state holds steady.
   useEffect(() => {
-    if (loadState === 'ready' && route) {
-      AccessibilityInfo.announceForAccessibility(['Route ready', routeEntrySummary, routeDistance].filter(Boolean).join('. ') + '.');
+    if (isJourneyStartable(journeyState) && route) {
+      AccessibilityInfo.announceForAccessibility(
+        directGuide
+          ? `${outsideGuideHeadline(guideGateName ?? 'the gate')}. ${OUTSIDE_GUIDE_SCOPE}`
+          : ['Route ready', routeEntrySummary, routeDistance].filter(Boolean).join('. ') + '.',
+      );
     } else if (loadState === 'error' && errorMessage) {
       AccessibilityInfo.announceForAccessibility(errorMessage);
     } else if (loadState === 'same_place') {
@@ -361,27 +375,42 @@ function RoutePreviewSection({
     }
   }, [loadState]);
 
-  const directGuide = outsideRoute?.provider === 'direct-guide';
+  const directGuide = journeyState === 'OUTSIDE_VENUE_GUIDE';
   // Past ~150% font the pinned footer would eat the sheet: it keeps only the action (and its
   // disabled reason) and the summary/caption scroll with the content instead.
   const compactFooter = fontScale >= 1.5;
 
   // One TalkBack stop ("Route ready, 13 min, 1.1 km") instead of three that Android sorts apart.
-  const readyHeadline = startAction?.kind === 'start' ? 'Ready to go' : 'Route ready';
-  const routeSummaryLabel = [
-    readyHeadline,
-    outsideRoute?.durationSeconds !== null ? routeEta : null,
-    routeDistance,
-  ].filter(Boolean).join(', ');
+  const guideGateName = outsideGuide
+    ? entryGateName ?? V2PlaceAdapter.getPlaceById(outsideGuide.gateId)?.name ?? outsideGuide.gateId.replace('GATE_', 'Gate ')
+    : null;
+  const guideDistance = outsideGuide ? `${InstructionService.formatDistance(outsideGuide.straightLineDistanceM, distanceUnit)} in a straight line` : null;
+  const readyHeadline = directGuide
+    ? outsideGuideHeadline(guideGateName ?? 'the gate')
+    : startAction?.kind === 'start' ? 'Ready to go' : 'Route ready';
+  const routeSummaryLabel = directGuide
+    ? `${readyHeadline}, ${guideDistance}. ${OUTSIDE_GUIDE_SCOPE}`
+    : [
+        readyHeadline,
+        outsideRoute?.durationSeconds !== null ? routeEta : null,
+        routeDistance,
+      ].filter(Boolean).join(', ');
   const routeSummary = showRouteReady ? (
     <View style={styles.summary} accessible accessibilityLabel={routeSummaryLabel}>
       <Text style={styles.summaryLabel}>{readyHeadline}</Text>
-      <View style={styles.routeHeroRow}>
-        {outsideRoute?.durationSeconds !== null && (
-          <Text style={styles.routeHeroDuration}>{routeEta}</Text>
-        )}
-        <Text style={styles.routeHeroDistance}>{routeDistance}</Text>
-      </View>
+      {directGuide ? (
+        <>
+          <Text style={styles.routeHeroDistance}>{guideDistance}</Text>
+          <Text style={styles.statusText}>{OUTSIDE_GUIDE_SCOPE}</Text>
+        </>
+      ) : (
+        <View style={styles.routeHeroRow}>
+          {outsideRoute?.durationSeconds !== null && (
+            <Text style={styles.routeHeroDuration}>{routeEta}</Text>
+          )}
+          <Text style={styles.routeHeroDistance}>{routeDistance}</Text>
+        </View>
+      )}
     </View>
   ) : null;
   // At large text the pinned footer keeps only the primary action: this link scrolls with the body instead (#326).

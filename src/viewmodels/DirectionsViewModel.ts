@@ -16,11 +16,7 @@ import {
   resolveStartAction,
   type NavigationStartSource,
 } from '../services/LocationNavigationCapability';
-import {
-  isJourneyStartable,
-  outsideGuideSummary,
-  selectJourneyPresentationState,
-} from '../services/JourneyPresentationState';
+import { isJourneyStartable, selectJourneyPresentationState } from '../services/JourneyPresentationState';
 import { MapFeatureFlagsService } from '../services/MapFeatureFlagsService';
 import {
   V2DirectionsService,
@@ -217,10 +213,8 @@ export function useDirectionsViewModel(destination: Place | null) {
   });
 
   // The one authoritative journey state; the sheet renders from it and a start is offered only for a ready route.
-  const previewState = selectJourneyPresentationState({ loadState, startSource, route: route as Parameters<typeof selectJourneyPresentationState>[0]['route'] });
-  const journeyState = useAppStore((s) => s.isNavigating) ? 'ACTIVE_NAVIGATION' as const : previewState;
-  const startable = isJourneyStartable(previewState);
-  const outsideGuide = outsideGuideSummary(route as Parameters<typeof outsideGuideSummary>[0]);
+  const journeyState = selectJourneyPresentationState({ loadState, startSource, route: route as Parameters<typeof selectJourneyPresentationState>[0]['route'] });
+  const startable = isJourneyStartable(journeyState);
 
   const clearRoute = () => {
     setRoute(null);
@@ -722,7 +716,6 @@ export function useDirectionsViewModel(destination: Place | null) {
     routeRefreshing,
     handleStartNavigation,
     journeyState,
-    outsideGuide,
     startAction: v2NavigationStartCheck.canStart && startable ? startAction : null,
     startAttempt,
     runStartAction,

@@ -5,6 +5,7 @@
 
 // The Directions view model exposes the one authoritative journey state, and offers a start only for a ready route.
 
+import { outsideGuideSummary } from '../services/JourneyPresentationState';
 import { V2PlaceAdapter } from '../services/V2PlaceAdapter';
 import { V2DirectionsService } from '../services/V2DirectionsService';
 import { useAppStore } from '../store/useAppStore';
@@ -68,7 +69,7 @@ describe('journey state exposed by the Directions view model', () => {
       routeCostM: number;
     };
     expect(route.outsideRoute).toMatchObject({ provider: 'direct-guide', distanceKind: 'direct-distance', roadFollowing: false });
-    expect(hook.result.current.outsideGuide).toEqual({
+    expect(outsideGuideSummary(route as never)).toEqual({
       gateId: route.outsideRoute.gateId,
       straightLineDistanceM: Math.round(route.outsideRoute.distanceM),
     });
@@ -86,7 +87,7 @@ describe('journey state exposed by the Directions view model', () => {
     await waitFor(() => expect(hook.result.current.route).not.toBeNull(), { timeout: 8_000 });
     expect(hook.result.current.route?.outsideRoute?.provider).toBe('offline-osm');
     expect(hook.result.current.journeyState).toBe('MANUAL_GUIDE_READY');
-    expect(hook.result.current.outsideGuide).toBeNull();
+    expect(outsideGuideSummary(hook.result.current.route as never)).toBeNull();
   });
 
   test('same place: SAME_PLACE and nothing is startable', async () => {
@@ -106,11 +107,5 @@ describe('journey state exposed by the Directions view model', () => {
     await waitFor(() => expect(hook.result.current.journeyState).toBe('ROUTE_FAILURE'));
     expect(hook.result.current.startAction).toBeNull();
     expect(hook.result.current.canStartNavigation).toBe(false);
-  });
-
-  test('navigation under way: ACTIVE_NAVIGATION', async () => {
-    useAppStore.setState({ isNavigating: true });
-    const hook = await renderHook(() => useDirectionsViewModel(destination));
-    expect(hook.result.current.journeyState).toBe('ACTIVE_NAVIGATION');
   });
 });
