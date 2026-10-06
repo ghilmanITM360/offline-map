@@ -121,7 +121,8 @@ export type LocationSheetProps =
       /** "View route": tucks the sheet down so the whole route is visible on the map. */
       onViewRoute?: () => void;
       onRouteGuideStarted?: () => void;
-      onExpandSheet?: () => void;
+      sheetCollapsed?: boolean;
+      onToggleSheet?: () => void;
       journey?: { mode: 'live' | 'guide'; start: Place | null } | null;
       /** Opens the Directory, the one place chooser, to pick a start (or destination); the choice comes
        * back through the store's directoryChoice. */
@@ -157,7 +158,8 @@ export function LocationSheet(props: LocationSheetProps) {
         onStartNavigation={props.onStartNavigation}
         onViewRoute={props.onViewRoute}
         onRouteGuideStarted={props.onRouteGuideStarted}
-        onExpandSheet={props.onExpandSheet}
+        sheetCollapsed={props.sheetCollapsed}
+        onToggleSheet={props.onToggleSheet}
         journey={props.journey}
         onCancelRoute={props.onCancelRoute}
         onChangeDestination={props.onChangeDestination}
@@ -205,7 +207,8 @@ function RoutePreviewSection({
   onOpenDirectory,
   onViewRoute,
   onRouteGuideStarted,
-  onExpandSheet,
+  sheetCollapsed,
+  onToggleSheet,
   journey,
   basemapOffline,
 }: {
@@ -215,8 +218,9 @@ function RoutePreviewSection({
   onViewRoute?: () => void;
   /** Called once the route guide opens so the map can frame the whole route. */
   onRouteGuideStarted?: () => void;
-  /** Expands the sheet from its collapsed peek. */
-  onExpandSheet?: () => void;
+  /** Whether the sheet is at its lowest detent, and a way to fold/expand it from the peek handle. */
+  sheetCollapsed?: boolean;
+  onToggleSheet?: () => void;
   /** The journey the Directory handed over (#307): the sheet applies its start and starts it by itself. */
   journey?: { mode: 'live' | 'guide'; start: Place | null } | null;
   onCancelRoute?: () => void;
@@ -226,6 +230,7 @@ function RoutePreviewSection({
 }) {
   const { fontScale } = useWindowDimensions();
   const footerHeight = useDirectionsFooterHeight();
+  const insets = useSafeAreaInsets();
   const ChevronEnd = forwardChevron();
   const currentLocation = useAppStore((s) => s.currentLocation);
   const distanceUnit = useAppStore((s) => s.settings.distanceUnit);
@@ -266,6 +271,9 @@ function RoutePreviewSection({
     startRouteGuide,
   } = useDirectionsViewModel(destination);
   const routeGuide = useAppStore((s) => s.routeGuide);
+  // Home can start a preview only once the route has been published to the store; the view-model's own `ready` can
+  // be one render ahead of that (runtime race found on the emulator).
+  const previewRoutePublished = useAppStore((s) => s.activeRoute !== null);
   const setRouteGuideStep = useAppStore((s) => s.setRouteGuideStep);
   const endRouteGuide = useAppStore((s) => s.endRouteGuide);
   const isRouteGuideStart = startAction?.kind === 'route_guide';
@@ -372,7 +380,7 @@ function RoutePreviewSection({
     </View>
   ) : null;
   const captionNode = offlineCaption ? <OfflineInfo text={offlineCaption} /> : null;
-  const footerVisible = showLoading || showError || showRouteReady;
+  const footerVisible = (showLoading || showError || showRouteReady) && !(showRouteReady && routeGuide);
   // The caption scrolls with the content: the pinned footer only has room for the route summary,
   // the action and its disabled reason (gorhom's visible area at the 50% snap is small).
 
@@ -421,11 +429,12 @@ function RoutePreviewSection({
       return;
     }
     if (loadState !== 'ready' || !startAction) return;
+    if (startAction.kind === 'start' && !previewRoutePublished) return; // retried when the route is published
     journeyDoneRef.current = true;
     if (startAction.kind === 'start') startNowRef.current();
     else if (startAction.kind === 'use_location') void runStartAction(() => startNowRef.current());
     // Anything else (permission, precision, services) is shown as its button; never auto-bounce to Settings.
-  }, [journey, loadState, startAction, startAttempt, startRouteGuide, onRouteGuideStarted, chooseCurrentLocation, runStartAction]);
+  }, [journey, loadState, startAction, startAttempt, startRouteGuide, onRouteGuideStarted, chooseCurrentLocation, runStartAction, previewRoutePublished]);
 
   const footerNode = footerVisible ? (
     <>
@@ -457,17 +466,6 @@ function RoutePreviewSection({
                   onPress={retryRoute}
                 />
               ))}
-
-            {showRouteReady && routeGuide && (
-              <RouteGuideCard
-                guide={routeGuide}
-                onPrevious={() => setRouteGuideStep(routeGuide.stepIndex - 1)}
-                onNext={() => setRouteGuideStep(routeGuide.stepIndex + 1)}
-                onLive={() => void runStartAction(() => startNowRef.current())}
-                onEnd={endRouteGuide}
-                liveBusy={startAttempt === 'working'}
-              />
-            )}
 
             {showRouteReady && !routeGuide && (
               <>
@@ -551,8 +549,8 @@ function RoutePreviewSection({
     ? 'Finding route…'
     : `Directions · ${startSourceLabel} → ${destination.name}`;
   useEffect(() => {
-    publishDirectionsPeek({ text: peekText, onExpand: onExpandSheet });
-  }, [peekText, onExpandSheet]);
+    publishDirectionsPeek({ text: peekText, collapsed: sheetCollapsed ?? false, onToggle: onToggleSheet });
+  }, [peekText, sheetCollapsed, onToggleSheet]);
   useEffect(() => () => publishDirectionsPeek(null), []);
 
   return (
@@ -566,8 +564,8 @@ function RoutePreviewSection({
       importantForAccessibility="yes"
     >
       <DirectionsHeader
-        title="Get Directions"
-        subtitle="Plan your walking route inside Ijtema"
+        title={routeGuide ? 'Route guide' : 'Get Directions'}
+        subtitle={routeGuide ? "Your position isn't tracked. Use the steps to find your way." : 'Plan your walking route inside Ijtema'}
         onBack={onClose}
       />
 
@@ -578,10 +576,30 @@ function RoutePreviewSection({
       >
         <BottomSheetScrollView
           style={styles.scroll}
-          contentContainerStyle={[styles.scrollContent, { paddingBottom: 24 + footerHeight }]}
+          contentContainerStyle={[styles.scrollContent, { paddingBottom: 24 + (footerHeight || insets.bottom) }]}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"
         >
+          {showRouteReady && routeGuide && (
+            <RouteGuideCard
+              guide={routeGuide}
+              onPrevious={() => setRouteGuideStep(routeGuide.stepIndex - 1)}
+              onNext={() => setRouteGuideStep(routeGuide.stepIndex + 1)}
+              onLive={() => void runStartAction(() => startNowRef.current())}
+              onEnd={endRouteGuide}
+              liveBusy={startAttempt === 'working'}
+              message={
+                startAttempt === 'settings'
+                  ? 'Allow location in Settings, then try again.'
+                  : startAttempt === 'services_off'
+                  ? liveBlockerMessage('services_off')
+                  : startAttempt === 'failed'
+                  ? "Couldn't find your location. Try again, or keep following the steps."
+                  : null
+              }
+            />
+          )}
+
           <FadeContent transitionKey="routeEnds">
             <RouteEndpointRows
               from={{

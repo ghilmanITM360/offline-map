@@ -5,20 +5,23 @@
 
 import React, { useSyncExternalStore } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { ChevronUp } from 'lucide-react-native';
+import { ChevronDown, ChevronUp } from 'lucide-react-native';
 
 import { directionsSheetColors } from '../../../theme';
 
 /**
- * The collapsed Directions sheet's peek (#307). When the sheet is folded to its lowest detent only the handle
- * remains, which gave no hint the journey was still there. This is the handle then: the drag pill plus one line that
- * says where the journey stands ("Directions · Block 9 → Block 2", "2 min · 121 m", "Next: Turn right · 40 m") and an
- * up chevron, all one >= 48 dp button that expands the sheet. LocationSheet publishes the line; HomeScreen mounts
- * this as the sheet's handle only while collapsed. Same publish pattern as DirectionsSheetFooter.
+ * The Directions sheet's handle (#307). Folded to its lowest detent only the handle remains, which gave no hint the
+ * journey was still there. So the handle is the drag pill plus one line that says where the journey stands
+ * ("Directions · Block 9 → Block 2", "2 min · 121 m", "Next: Turn right · 40 m") and a chevron, all one >= 48 dp
+ * button that expands (collapsed) or folds (expanded) the sheet. It is the handle at every detent and never swapped:
+ * replacing the handle component mid-gesture desynchronised the sheet's index. LocationSheet publishes the line;
+ * HomeScreen mounts this as the Directions handle. Same publish pattern as DirectionsSheetFooter.
  */
 export interface DirectionsPeek {
   text: string;
-  onExpand?: () => void;
+  /** True at the lowest detent: the chevron points up and a tap expands; otherwise it points down and a tap folds. */
+  collapsed: boolean;
+  onToggle?: () => void;
 }
 
 let peek: DirectionsPeek | null = null;
@@ -31,7 +34,7 @@ const subscribe = (listener: () => void) => {
 };
 
 export function publishDirectionsPeek(next: DirectionsPeek | null) {
-  if (next === peek || (next && peek && next.text === peek.text && next.onExpand === peek.onExpand)) return;
+  if (next === peek || (next && peek && next.text === peek.text && next.collapsed === peek.collapsed && next.onToggle === peek.onToggle)) return;
   peek = next;
   listeners.forEach((listener) => listener());
 }
@@ -44,12 +47,16 @@ export function DirectionsPeekHandle() {
       {current ? (
         <Pressable
           style={styles.row}
-          onPress={current.onExpand}
+          onPress={current.onToggle}
           accessibilityRole="button"
-          accessibilityLabel={`${current.text}. Show route details`}
+          accessibilityLabel={`${current.text}. ${current.collapsed ? 'Show' : 'Hide'} route details`}
         >
           <Text style={styles.text} numberOfLines={1} ellipsizeMode="tail">{current.text}</Text>
-          <ChevronUp size={22} color={directionsSheetColors.brand} />
+          {current.collapsed ? (
+            <ChevronUp size={22} color={directionsSheetColors.brand} />
+          ) : (
+            <ChevronDown size={22} color={directionsSheetColors.brand} />
+          )}
         </Pressable>
       ) : null}
     </View>
