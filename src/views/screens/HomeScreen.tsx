@@ -489,12 +489,11 @@ export function HomeScreen() {
   const modeRef = useRef<typeof mode>('EXPLORE');
   modeRef.current = mode;
 
-  // The search bar/chip row (and its onLayout) only mounts when
-  // `mode !== 'NAVIGATION' && !directionsDestination` (see its render below) — so
+  // The top bar (and its onLayout) only mounts outside NAVIGATION and ARRIVAL (see its render below) — so
   // topOverlayHeight would otherwise keep its last measurement indefinitely once the
-  // row unmounts, misreporting real headroom to every other mode's mapLabelEdgeInsets
+  // bar unmounts, misreporting real headroom to every other mode's mapLabelEdgeInsets
   // (ATTR-001 follow-up: this stale top, combined with a near-full-height LocationSheet,
-  // could push the Google logo's reserved band behind where the sheet actually,
+  // could push the attribution button's reserved band behind where the sheet actually,
   // visually, covers the screen).
   useEffect(() => {
     if (mode === 'NAVIGATION' || mode === 'ARRIVAL') setTopOverlayHeight(0);
