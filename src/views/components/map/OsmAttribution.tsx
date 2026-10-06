@@ -6,7 +6,7 @@
 import React from 'react';
 import { Linking, Pressable, StyleSheet, Text } from 'react-native';
 
-const OSM_COPYRIGHT_URL = 'https://www.openstreetmap.org/copyright';
+export const OSM_COPYRIGHT_URL = 'https://www.openstreetmap.org/copyright';
 
 export function OsmAttribution({ visible, top }: { visible: boolean; top: number }) {
   if (!visible) return null;
