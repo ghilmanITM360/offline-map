@@ -59,7 +59,7 @@ for (const f of ['OfflineMapCanvas.tsx', 'basemapStyle.ts', 'overlaySpec.ts', 'n
   assert(!/\bfetch\(|XMLHttpRequest|WebSocket|downloadFileAsync/.test(src), `${f} must not use the network`);
 }
 assert(!readFileSync('src/services/BundledBasemap.ts', 'utf8').match(/\bfetch\(|XMLHttpRequest|downloadFileAsync/), 'The basemap installer must copy locally, never download');
-assert(appGuide.includes('The map is built into the app') && appGuide.includes('without internet'), 'User copy must explain that the map and core navigation remain offline');
+assert(!/without internet|work offline|App Offline/i.test(appGuide), 'Offline is the normal contract: the guide must not carry routine offline reassurance');
 assert(!directionsScreen.includes('MapView'), 'Directions start-selection flow must not depend on base map preview while offline');
 assert(
   homeScreenForOffline.includes('archiveUri={basemapRejected ? null : basemap.uri}') && !homeScreenForOffline.includes('PROVIDER_GOOGLE'),

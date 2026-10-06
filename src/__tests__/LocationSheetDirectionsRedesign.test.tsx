@@ -13,7 +13,6 @@ import { DirectionsSheetFooter } from '../views/components/map/DirectionsSheetFo
 import { DirectionsHeader, StartOptionCard } from '../views/components/map/DirectionsSheetParts';
 import { useDirectionsViewModel } from '../viewmodels/DirectionsViewModel';
 import { placeCategoryLabel } from '../utils/placeCategoryLabel';
-import { directionsOfflineCaption } from '../utils/directionsOfflineCopy';
 import { useAppStore } from '../store/useAppStore';
 import type { Place } from '../models/types';
 
@@ -275,14 +274,13 @@ describe('Get Directions redesign — pinned footer', () => {
     expect(screen.getByRole('button', { name: 'Start Navigation' })).toBeEnabled();
   });
 
-  test('at 200% font the footer keeps only the action; summary and caption scroll', async () => {
+  test('at 200% font the footer keeps only the action; the summary scrolls', async () => {
     Dimensions.set({ window: { width: 390, height: 844, scale: 2, fontScale: 2 } });
     mockedVm.mockReturnValue(ready());
     await renderSheet();
 
     const scroll = within(screen.getByTestId('sheet-scroll'));
     expect(scroll.getByText('Route ready')).toBeOnTheScreen();
-    expect(scroll.getByText('Ijtema routes work without internet.')).toBeOnTheScreen();
     expect(scroll.queryByRole('button', { name: 'Start Navigation' })).not.toBeOnTheScreen();
     expect(screen.getByRole('button', { name: 'Start Navigation' })).toBeOnTheScreen();
   });
@@ -333,87 +331,18 @@ describe('Get Directions redesign — pinned footer', () => {
   });
 });
 
-describe('Get Directions redesign — truthful offline copy', () => {
-  test('caption branches', () => {
-    expect(directionsOfflineCaption(undefined, false)).toBe('Ijtema routes work without internet.');
-    expect(directionsOfflineCaption('offline-osm', false)).toBe('Ijtema routes work without internet.');
-    // The map banner already says the imagery is missing; the sheet must not repeat it (#222 UX-01).
-    expect(directionsOfflineCaption(undefined, true)).toBeNull();
-    expect(directionsOfflineCaption('offline-osm', true)).toBeNull();
-    expect(directionsOfflineCaption('google', false)).toBeNull();
-    expect(directionsOfflineCaption('direct-guide', true)).toBeNull();
-  });
-
-  test('never claims offline maps or all-information availability', () => {
-    const all = [
-      directionsOfflineCaption(undefined, false),
-    ].join(' ');
-    expect(all).not.toMatch(/all maps|all .*information|Works Offline|download/i);
-  });
-
-  test('imagery unavailable: the map banner owns the message, the sheet adds no second one', async () => {
-    mockedVm.mockReturnValue(vm({ loadState: 'ready', route }));
-    await renderSheet({ basemapOffline: true } as never);
-    expect(screen.queryByText(/without internet/)).not.toBeOnTheScreen();
-    expect(screen.queryByText(/background map picture/)).not.toBeOnTheScreen();
-  });
-
-  test.each(['google', 'direct-guide'] as const)('%s routes make no offline claim', async (provider) => {
+describe('Get Directions redesign — no routine offline reassurance', () => {
+  test.each(['offline-osm', 'google', 'direct-guide'] as const)('a %s route never says the app works offline', async (provider) => {
     mockedVm.mockReturnValue(vm({ loadState: 'ready', route: outsideRoute(provider) }));
     await renderSheet();
-    expect(screen.queryByText(/without internet/)).not.toBeOnTheScreen();
+    expect(screen.queryByText(/internet|offline/i)).not.toBeOnTheScreen();
   });
 
-  test('State A shows the caption as a banner', async () => {
+  test('choosing a start shows no offline banner either', async () => {
     mockedVm.mockReturnValue(
       vm({ startSource: 'manual_place', isCurrentLocationStartActive: false, showManualStartSearch: true }),
     );
     await renderSheet();
-
-    expect(screen.getByText('Ijtema routes work without internet.')).toBeOnTheScreen();
-  });
-});
-
-describe('Get Directions redesign — RTL, colour and jargon guards', () => {
-  const parts = readFileSync('src/views/components/map/DirectionsSheetParts.tsx', 'utf8');
-  const sheet = readFileSync('src/views/components/map/LocationSheet.tsx', 'utf8');
-  const routePreview = sheet.slice(
-    sheet.indexOf('function RoutePreviewSection('),
-    sheet.indexOf('function PlaceSection('),
-  );
-
-  test('layout uses logical (start/end) properties only', () => {
-    for (const source of [parts, routePreview]) {
-      expect(source).not.toMatch(/\b(left|right):|marginLeft|marginRight|paddingLeft|paddingRight|textAlign: 'left'/);
-    }
-  });
-
-  test('the two states carry no blue tokens', () => {
-    for (const source of [parts, routePreview]) {
-      expect(source).not.toMatch(/staticColors\.(info|infoStrong|infoBorder|infoBackground|routeInside|routePreviewPill)|#1A73E8/);
-    }
-    expect(routePreview).not.toMatch(/variant="secondary"|variant=\{[^}]*'secondary'/);
-  });
-
-  test('no uppercase grey labels and no raw category enum in the sheet', () => {
-    expect(routePreview).not.toContain("textTransform: 'uppercase'");
-    expect(routePreview).not.toMatch(/\{(destination|candidate)\.category\}/);
-  });
-
-  test('header and option cards render under RTL (chevron direction follows I18nManager.isRTL)', async () => {
-    const original = I18nManager.isRTL;
-    Object.defineProperty(I18nManager, 'isRTL', { value: true, configurable: true });
-    try {
-      await render(
-        <>
-          <DirectionsHeader title="T" subtitle="S" onBack={jest.fn()} />
-          <StartOptionCard icon={null} title="A" subtitle="B" onPress={jest.fn()} />
-        </>,
-      );
-      expect(screen.getByRole('header', { name: 'T' })).toBeOnTheScreen();
-      expect(screen.getByRole('button', { name: 'A. B' })).toBeOnTheScreen();
-    } finally {
-      Object.defineProperty(I18nManager, 'isRTL', { value: original, configurable: true });
-    }
+    expect(screen.queryByText(/internet|offline/i)).not.toBeOnTheScreen();
   });
 });

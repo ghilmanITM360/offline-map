@@ -11,7 +11,6 @@ assert(!settings.includes('Dark Mode'), 'Dark Mode should be hidden until fully 
 
 const requiredSections = [
   'Welcome',
-  'Offline Maps',
   'Search Places',
   'Choose Destination',
   'Choose Start Source',

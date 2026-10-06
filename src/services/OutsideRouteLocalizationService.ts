@@ -19,44 +19,44 @@ interface BilingualMessage {
 
 const MESSAGES: Record<OutsideRouteMessageKey, BilingualMessage> = {
   'provider.google': {
-    en: 'Google walking route',
-    ur: 'گوگل کا پیدل راستہ',
+    en: 'Walking route',
+    ur: 'پیدل راستہ',
   },
   'provider.offlineOsm': {
-    en: 'Offline walking route',
-    ur: 'آف لائن پیدل راستہ',
+    en: 'Walking route',
+    ur: 'پیدل راستہ',
   },
   'provider.directGuide': {
-    en: 'Direct gate guide',
-    ur: 'گیٹ کی سیدھی سمت کی رہنمائی',
+    en: 'Straight-line guide',
+    ur: 'سیدھی سمت کی رہنمائی',
   },
   'fallback.googleUnavailable': {
-    en: 'Google walking route unavailable. Using offline walking roads.',
-    ur: 'گوگل کا پیدل راستہ دستیاب نہیں۔ آف لائن پیدل سڑکوں کا راستہ استعمال ہو رہا ہے۔',
+    en: 'Using a simpler route. It may be less exact.',
+    ur: 'سادہ راستہ استعمال ہو رہا ہے۔ یہ کم درست ہو سکتا ہے۔',
   },
   'direct.warning': {
-    en: 'Road navigation is currently unavailable. This guide points directly toward the selected gate and may not follow walkable roads.',
-    ur: 'سڑک کے مطابق نیویگیشن اس وقت دستیاب نہیں۔ یہ رہنمائی منتخب گیٹ کی سیدھی سمت دکھاتی ہے اور ضروری نہیں کہ پیدل چلنے کے قابل سڑکوں کے مطابق ہو۔',
+    en: "We can't find a road route. The arrow points straight to the gate and may not follow walkable roads. Look around as you walk.",
+    ur: 'سڑک کا راستہ نہیں مل سکا۔ تیر سیدھا گیٹ کی طرف اشارہ کرتا ہے اور ضروری نہیں کہ پیدل چلنے کے راستوں پر ہو۔ چلتے وقت اردگرد دیکھ لیں۔',
   },
   'direct.notRoadRoute': {
-    en: 'Direct guide — not a road route',
-    ur: 'سیدھی سمت کی رہنمائی — یہ سڑک کا راستہ نہیں',
+    en: 'Straight-line guide, not a road route',
+    ur: 'سیدھی سمت کی رہنمائی، سڑک کا راستہ نہیں',
   },
   'direct.heading': {
-    en: 'Follow the direction line toward {gate}.',
-    ur: 'دکھائی گئی سیدھی سمت میں {gate} کی طرف جائیں۔',
+    en: 'Walk toward {gate}.',
+    ur: '{gate} کی طرف جائیں۔',
   },
   'action.retryRoadRoute': {
-    en: 'Retry road route',
-    ur: 'سڑک کے مطابق راستہ دوبارہ تلاش کریں',
+    en: 'Try again',
+    ur: 'دوبارہ کوشش کریں',
   },
   'action.chooseGate': {
     en: 'Choose another gate',
     ur: 'دوسرا گیٹ منتخب کریں',
   },
   retrying: {
-    en: 'Checking for a road route…',
-    ur: 'سڑک کے مطابق راستہ دوبارہ تلاش ہو رہا ہے…',
+    en: 'Looking for a better route…',
+    ur: 'بہتر راستہ تلاش ہو رہا ہے…',
   },
 };
 

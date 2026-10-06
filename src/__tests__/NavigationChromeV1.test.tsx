@@ -141,7 +141,7 @@ describe('NavigationChromeV1 — Exit/recenter/mute touch targets', () => {
 
     const stack = screen.getByTestId('navigation-top-stack-v1');
     expect(within(stack).getByText('Continue Straight')).toBeOnTheScreen();
-    expect(within(stack).getByText('Base map unavailable. Offline route guidance continues.')).toBeOnTheScreen();
+    expect(within(stack).getByText("The map can't be shown. Directions still work.")).toBeOnTheScreen();
   });
 
   test('#66: shows only the highest-priority status when weak GPS, reroute, and basemap loss all apply', async () => {
@@ -156,7 +156,7 @@ describe('NavigationChromeV1 — Exit/recenter/mute touch targets', () => {
     const stackContent = within(stack);
     expect(stackContent.getByText('Weak GPS signal detected. Route updates may be slower.')).toBeOnTheScreen();
     expect(stackContent.queryByText('Recalculating your route')).not.toBeOnTheScreen();
-    expect(stackContent.queryByText('Base map unavailable. Offline route guidance continues.')).not.toBeOnTheScreen();
+    expect(stackContent.queryByText("The map can't be shown. Directions still work.")).not.toBeOnTheScreen();
   });
 
   test('#66: reroute status outranks basemap loss', async () => {
@@ -170,7 +170,7 @@ describe('NavigationChromeV1 — Exit/recenter/mute touch targets', () => {
     const stack = screen.getByTestId('navigation-top-stack-v1');
     const stackContent = within(stack);
     expect(stackContent.getByText('Recalculating your route')).toBeOnTheScreen();
-    expect(stackContent.queryByText('Base map unavailable. Offline route guidance continues.')).not.toBeOnTheScreen();
+    expect(stackContent.queryByText("The map can't be shown. Directions still work.")).not.toBeOnTheScreen();
   });
 
   test('#156: weak-GPS banner is a polite live region', async () => {
@@ -185,7 +185,7 @@ describe('NavigationChromeV1 — Exit/recenter/mute touch targets', () => {
 
   test('#156: map-unavailable banner is a polite live region', async () => {
     await render(<NavigationChromeV1 overlay={baseOverlay()} hasBaseMap={false} />);
-    expect(screen.getByText('Base map unavailable. Offline route guidance continues.').parent?.props.accessibilityLiveRegion).toBe('polite');
+    expect(screen.getByText("The map can't be shown. Directions still work.").parent?.props.accessibilityLiveRegion).toBe('polite');
   });
 
   test('pressing Exit requests confirmation instead of stopping directly', async () => {

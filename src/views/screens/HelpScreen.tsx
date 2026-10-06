@@ -81,17 +81,6 @@ export function HelpScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Common Questions</Text>
           <HelpItem
-            icon={HelpCircle}
-            title="Does the map work without internet?"
-            description="Yes — the map is built into the app."
-            onPress={() =>
-              showFAQ(
-                'Offline Maps',
-                'The map, the venue routes, the outside walking router, route preview, progress, instructions, rerouting and arrival are all built into the app. They work without internet and there is nothing to download.\n\nSome optional extras, like a live walking-route service, may use the internet when it is available, but you never need it.',
-              )
-            }
-          />
-          <HelpItem
             icon={MapPin}
             title="Finding your block"
             description="Tips for locating your specific block and tent."
@@ -161,7 +150,7 @@ export function HelpScreen() {
             icon={FileText}
             title="App Version"
             description="Ijtema Navigator v1.0 — Karachi Ijtema Edition"
-            onPress={() => Alert.alert('App Info', 'Ijtema Navigator v1.0\nBuilt for offline navigation inside Karachi Ijtema ground.')}
+            onPress={() => Alert.alert('App Info', 'Ijtema Map, version 1.0')}
           />
           <HelpItem
             icon={ExternalLink}
