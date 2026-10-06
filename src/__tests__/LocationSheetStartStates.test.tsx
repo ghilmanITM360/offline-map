@@ -11,6 +11,7 @@
 import React from 'react';
 import { render, screen, userEvent } from './test-utils';
 
+import { DirectionsPeekHandle } from '../views/components/map/DirectionsPeekHandle';
 import { LocationSheet } from '../views/components/map/LocationSheet';
 import { DirectionsSheetFooter } from '../views/components/map/DirectionsSheetFooter';
 import { useDirectionsViewModel } from '../viewmodels/DirectionsViewModel';
@@ -157,6 +158,20 @@ describe('outside the venue with only a straight-line guide', () => {
     mockedVm.mockReturnValue(outsideVm());
     await renderSheet();
     expect(screen.getByLabelText('Get to Gate 12 first, 12.8 km in a straight line. This app guides you inside the Ijtema area.')).toBeOnTheScreen();
+  });
+
+  test('the folded handle says the same thing: get to the gate first, no walking-looking total', async () => {
+    mockedVm.mockReturnValue(outsideVm());
+    await render(
+      <>
+        <LocationSheet mode="routePreview" destination={destination} onClose={jest.fn()} onStartNavigation={jest.fn()}
+          onOpenDirectory={onOpenDirectory} onViewRoute={jest.fn()} onChangeDestination={jest.fn()} />
+        <DirectionsPeekHandle />
+      </>,
+    );
+    expect(screen.getAllByText('Get to Gate 12 first').length).toBeGreaterThan(0);
+    expect(screen.queryByText('13.1 km')).not.toBeOnTheScreen();
+    expect(screen.queryByText(/^13\.1 km/)).not.toBeOnTheScreen();
   });
 
   test('a chosen start outside is the same guide, not a route guide of a walking route', async () => {
