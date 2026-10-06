@@ -47,11 +47,11 @@ assert(
   'CameraManager tests must cover place-near-bottom-edge, place-near-center, and place-near-top scenarios.',
 );
 
-// fitRoute / fitVenueBounds edge-padding behavior must remain untouched.
+// Route intents use current padding when deferred until the map is ready.
 assert(
-  cameraManager.includes('mapRef.current?.fitToCoordinates(coordinates, { edgePadding, animated: true });') &&
+  cameraManager.includes('mapRef.current?.fitToCoordinates(coordinates, { edgePadding: intent.padding, animated: true });') &&
     cameraManager.includes('mapRef.current?.fitToCoordinates(boundary, { edgePadding, animated: true });'),
-  'fitRoute/fitVenueBounds edge-padding behavior must be untouched by the dynamic camera fix.',
+  'fitRoute must use the latest intent padding; fitVenueBounds must retain edge padding. Runtime camera ownership is covered by RouteCameraOwnership.test.tsx.',
 );
 
 // --- FIX 2: tuned Rasta/Pindal hit widths -----------------------------------

@@ -57,5 +57,5 @@ jobs:
       - name: Whitespace / conflict-marker check
         run: |
           BASE_REF="${{ github.event.pull_request.base.ref || 'integration/ijtema-clean-baseline' }}"
-          git fetch origin "$BASE_REF" --depth=1
+          git fetch origin "$BASE_REF"
           git diff --check "origin/$BASE_REF...HEAD"

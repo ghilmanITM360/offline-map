@@ -36,7 +36,9 @@ export function createMapLibreCameraHandle({ getCamera, getMap, getViewport, isR
   const readyCamera = () => (isReady() ? getCamera() : null);
   // Camera commands are fire-and-forget for the app; a native rejection (view torn down mid-flight) must never become
   // an unhandled promise rejection.
+  let commandRevision = 0;
   const send = (stop: Record<string, unknown>) => {
+    commandRevision += 1;
     void readyCamera()?.setStop(stop as never)?.catch(() => undefined);
   };
   const readyMap = () => (isReady() ? getMap() : null);
@@ -87,7 +89,18 @@ export function createMapLibreCameraHandle({ getCamera, getMap, getViewport, isR
       if (camera.zoom !== undefined) stop.zoom = googleZoomToMapLibre(camera.zoom);
       if (camera.heading !== undefined) stop.bearing = camera.heading;
       if (camera.pitch !== undefined) stop.pitch = camera.pitch;
-      send({ ...stop, duration: options?.duration ?? 500, easing: 'ease' });
+      if (camera.padding !== undefined) stop.padding = camera.padding;
+      const update = { ...stop, duration: options?.duration ?? 500, easing: 'ease' };
+      if (camera.padding && !camera.center) {
+        // Android CameraStop applies padding only with a center/bounds. Reuse the current
+        // native target; never replay route bounds or reset zoom/bearing/pitch for a sheet.
+        const revision = ++commandRevision;
+        void readyMap()?.getViewState().then((view) => {
+          if (revision === commandRevision) send({ ...update, center: view.center });
+        }).catch(() => undefined);
+      } else {
+        send(update);
+      }
     },
 
     async getCamera() {
