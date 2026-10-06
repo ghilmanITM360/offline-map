@@ -83,6 +83,6 @@ assert(guide.includes('Location Problems') && !guide.includes('Offline Maps'), '
 assert(guide.includes('nearest gate') && guide.includes("If a gate isn't ready"), 'App Guide must explain nearest-gate entry and what to do when a gate is not ready');
 
 assert(drawer.includes('accessibilityRole="button"'), 'Drawer items must expose button role');
-assert(drawer.includes("label: 'Home'") && drawer.includes("label: 'Settings'"), 'Drawer must expose core app navigation items');
+assert(drawer.includes("label: 'Find a place'") && drawer.includes("label: 'Settings'") && drawer.includes("label: 'Help'"), 'Drawer must expose core app navigation items');
 
 console.log('UI component source checks passed.');

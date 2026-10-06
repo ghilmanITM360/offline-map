@@ -59,3 +59,13 @@ describe('SettingsScreen — targeted privacy clears (#145)', () => {
     alert.mockRestore();
   });
 });
+
+describe('SettingsScreen — About lives here, not in the drawer', () => {
+  test('an About row opens the About screen', async () => {
+    mockNavigation.navigate.mockClear();
+    await render(<SettingsScreen />);
+
+    fireEvent.press(screen.getByRole('button', { name: /About Ijtema Map/ }));
+    expect(mockNavigation.navigate).toHaveBeenCalledWith('About');
+  });
+});

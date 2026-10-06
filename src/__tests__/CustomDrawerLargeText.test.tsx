@@ -4,7 +4,7 @@
  */
 
 // 200% font acceptance: the drawer title ("Ijtema Map") ran past the drawer's edge because its text column could not
-// shrink, and the version footer sat under the system navigation bar.
+// shrink. Entries: the drawer is Find a place / Settings / Help only.
 
 import React from 'react';
 import { StyleSheet } from 'react-native';
@@ -26,10 +26,12 @@ describe('CustomDrawer at large text', () => {
     expect(StyleSheet.flatten(column.props.style).flex).toBe(1);
   });
 
-  test('the version footer clears the system navigation bar', async () => {
+  test('lists only the three real destinations, with Help named plainly', async () => {
     await renderDrawer();
-    const footer = screen.getByText('Version 1.0.0').parent!;
-    // test-utils reports a 34 dp bottom inset
-    expect(StyleSheet.flatten(footer.props.style).paddingBottom).toBeGreaterThanOrEqual(20 + 34);
+    expect(screen.getAllByRole('button').map((b) => b.props.accessibilityLabel)).toEqual(['Find a place', 'Settings', 'Help']);
+    // Home was only the plain map (one tap on the scrim away); About and the version now live in Settings.
+    for (const gone of ['Home', 'Help & Feedback', 'About Ijtema Map', 'Version 1.0.0']) {
+      expect(screen.queryByText(gone)).not.toBeOnTheScreen();
+    }
   });
 });
