@@ -16,6 +16,7 @@ import {
 import { MapFeatureFlagsService } from './MapFeatureFlagsService';
 import { RoutePreviewV2 } from './RoutingServiceV2';
 import { destinationFromPlace } from './V2DirectionsService';
+import { CHOOSE_DESTINATION, NAVIGATION_UNAVAILABLE, ROUTE_NOT_FOUND } from '../utils/routeCopy';
 import { V2PlaceAdapter } from './V2PlaceAdapter';
 
 export interface V2NavigationAdapterInput {
@@ -36,7 +37,7 @@ export interface V2NavigationStartCheck {
 }
 
 const RAW_ID_PATTERN = /\b(?:P\d+|S\d+|T\d+|C\d+|R\d+-\d+|SPNP-\d+|SPSP-\d+|SPWP-\d+|B\d+_C\d+)\b/;
-const GATE_CONNECTOR_VERIFICATION_MESSAGE = 'This gate needs connector verification before navigation.';
+const GATE_CONNECTOR_VERIFICATION_MESSAGE = "Directions to this gate aren't ready. Choose another gate.";
 
 function nodeCoordinate(nodeId: string): Coordinate | null {
   const node = IJTEMA_NAVIGATION_GRAPH_V2.nodes[nodeId];
@@ -157,28 +158,28 @@ export class V2NavigationAdapter {
     if (!MapFeatureFlagsService.useIjtemaV2Map()) {
       return {
         canStart: false,
-        message: 'V2 active navigation requires EXPO_PUBLIC_USE_IJTEMA_V2_MAP=true.',
+        message: NAVIGATION_UNAVAILABLE,
       };
     }
 
     if (!MapFeatureFlagsService.useIjtemaV2Routing()) {
       return {
         canStart: false,
-        message: 'V2 active navigation requires EXPO_PUBLIC_USE_IJTEMA_V2_ROUTING=true.',
+        message: NAVIGATION_UNAVAILABLE,
       };
     }
 
     if (!MapFeatureFlagsService.useIjtemaV2Navigation()) {
       return {
         canStart: false,
-        message: 'V2 active navigation is disabled by feature flag.',
+        message: NAVIGATION_UNAVAILABLE,
       };
     }
 
     if (!input.destination || !destinationFromPlace(input.destination)) {
       return {
         canStart: false,
-        message: 'Choose a destination available for V2 navigation.',
+        message: CHOOSE_DESTINATION,
       };
     }
 
@@ -198,7 +199,7 @@ export class V2NavigationAdapter {
     if (!input.route || input.route.coordinates.length < 2 || input.route.totalDistance <= 0) {
       return {
         canStart: false,
-        message: 'Calculate a valid v2 route before starting navigation.',
+        message: ROUTE_NOT_FOUND,
       };
     }
 

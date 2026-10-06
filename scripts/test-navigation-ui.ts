@@ -60,7 +60,7 @@ assert(navChrome.includes('onPress={requestNavigationExit}'), 'v2 active navigat
 assert(navChrome.includes('onPress={completeArrivalNavigation}'), 'v2 arrival Done must exit immediately');
 assert(navChrome.includes('LocateFixed') && navOverlay.includes('cameraManager.enterNavigationCamera('), 'v2 navigation recenter must be wired');
 
-assert(navAdapter.includes('This gate needs connector verification before navigation.'), 'Missing/disconnected gates must show connector verification message');
+assert(navAdapter.includes("Directions to this gate aren't ready. Choose another gate."), 'Missing/disconnected gates must show a plain not-ready message');
 assert(navAdapter.includes('canStartActiveNavigation'), 'v2 adapter must validate route start eligibility');
 assert(navVmV2.includes('calculateNavigationProgressV2'), 'v2 VM must project progress through runtime service');
 assert(runtime.includes('getDynamicOffRouteThresholdMeters'), 'v2 runtime must require dynamic reroute distance threshold');

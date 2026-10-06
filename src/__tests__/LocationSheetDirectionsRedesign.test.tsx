@@ -318,9 +318,18 @@ describe('Get Directions redesign — pinned footer', () => {
   test('error detail scrolls with content while its Retry action is pinned in the footer', async () => {
     mockedVm.mockReturnValue(vm({ loadState: 'error', errorMessage: 'No route.' }));
     await renderSheet();
-    expect(within(screen.getByTestId('sheet-scroll')).getByText('Route problem')).toBeOnTheScreen();
-    expect(within(screen.getByTestId('sheet-scroll')).queryByText('Retry')).not.toBeOnTheScreen();
-    expect(screen.getByRole('button', { name: 'Retry' })).toBeOnTheScreen();
+    expect(within(screen.getByTestId('sheet-scroll')).getByText('No route.')).toBeOnTheScreen();
+    expect(within(screen.getByTestId('sheet-scroll')).queryByText('Try again')).not.toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: 'Try again' })).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: 'Choose another start' })).toBeOnTheScreen();
+  });
+
+  test('same start and destination says so and offers no Start, no route summary and no 0 m', async () => {
+    mockedVm.mockReturnValue(vm({ loadState: 'same_place', route: null }));
+    await renderSheet();
+    expect(screen.getByText('Start and destination are the same place.')).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: 'Choose another place' })).toBeOnTheScreen();
+    expect(screen.queryByText(/Start Navigation|Route ready|Ready to go| 0 m/)).not.toBeOnTheScreen();
   });
 });
 

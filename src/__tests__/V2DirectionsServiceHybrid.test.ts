@@ -178,7 +178,7 @@ describe('V2DirectionsService hybrid core integration', () => {
     expect(result).toMatchObject({
       status: 'unavailable',
       route: null,
-      message: 'Outside route provider returned an invalid candidate set.',
+      message: "We couldn't find a walking route.",
     });
   });
 });

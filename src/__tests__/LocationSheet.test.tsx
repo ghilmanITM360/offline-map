@@ -409,7 +409,7 @@ describe('LocationSheet (routePreview) — route ready CTA', () => {
     );
     await renderWithFooter(<LocationSheet mode="routePreview" destination={v2Destination} onClose={onCloseSpy} />);
 
-    expect(announce).toHaveBeenCalledWith('Route problem. No offline route could be found.');
+    expect(announce).toHaveBeenCalledWith('No offline route could be found.');
   });
 
   test('surfaces direct-guide warning and retries road routing from ready state', async () => {
@@ -624,8 +624,8 @@ describe('LocationSheet (routePreview) — route ready CTA', () => {
     const user = userEvent.setup();
     await renderWithFooter(<LocationSheet mode="routePreview" destination={destination} onClose={onCloseSpy} />);
 
-    expect(screen.getByText('Route problem')).toBeOnTheScreen();
-    await user.press(screen.getByText('Retry'));
+    expect(screen.getByText('Could not calculate route.')).toBeOnTheScreen();
+    await user.press(screen.getByText('Try again'));
 
     expect(calculateRoute).toHaveBeenCalledTimes(1);
   });
@@ -647,7 +647,7 @@ describe('LocationSheet (routePreview) — route ready CTA', () => {
       />,
     );
 
-    expect(screen.queryByText('Retry')).toBeNull();
+    expect(screen.queryByText('Try again')).toBeNull();
     await user.press(screen.getByText('Choose another destination'));
     expect(onOpenDirectory).toHaveBeenCalledWith('destination');
   });
@@ -666,7 +666,7 @@ describe('LocationSheet (routePreview) — route ready CTA', () => {
     const user = userEvent.setup();
     await renderWithFooter(<LocationSheet mode="routePreview" destination={destination} onClose={onCloseSpy} />);
 
-    const retryButton = screen.getByText('Retry');
+    const retryButton = screen.getByText('Try again');
     await user.press(retryButton);
     // Second tap while the first calculateRoute() promise is still unresolved — the
     // in-flight ref guard must swallow this, not the stale loadState prop (which the

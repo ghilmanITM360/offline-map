@@ -48,6 +48,7 @@ import { directionsSheetColors, radii, staticColors } from '../../../theme';
 import { placeCategoryLabel } from '../../../utils/placeCategoryLabel';
 import { unavailableReasonCopy } from '../../../utils/unavailableReasonCopy';
 import { directionsOfflineCaption } from '../../../utils/directionsOfflineCopy';
+import { ROUTE_NOT_FOUND, SAME_PLACE } from '../../../utils/routeCopy';
 import { DirectionsHeader, OfflineInfo, RouteEndpointRows } from './DirectionsSheetParts';
 import { publishDirectionsFooter, useDirectionsFooterHeight } from './DirectionsSheetFooter';
 import { OutsideRouteStatusCard } from '../navigation/OutsideRouteStatusCard';
@@ -330,12 +331,13 @@ function RoutePreviewSection({
   const showRouteReady = loadState === 'ready' && !!route;
   const showLoading = loadState === 'loading';
   const showError = loadState === 'error';
+  const showSamePlace = loadState === 'same_place';
   const destinationCannotBeRouted =
     destination.isRoutable === false ||
     (destination.routingStatus !== undefined && destination.routingStatus !== 'routable');
   // Only what the FROM row can't say: an outside start, or a saved (not live) start. "Start ready" said nothing new.
   const savedStart = startSource === 'remembered_location' || startSource === 'device_last_known';
-  const showStartHint = !showLoading && !showError && !showRouteReady && (outsideStart || savedStart);
+  const showStartHint = !showLoading && !showError && !showSamePlace && !showRouteReady && (outsideStart || savedStart);
   const retryRoute = () => {
     if (retryInFlightRef.current) return;
     retryInFlightRef.current = true;
@@ -354,7 +356,9 @@ function RoutePreviewSection({
     if (loadState === 'ready' && route) {
       AccessibilityInfo.announceForAccessibility(['Route ready', routeEntrySummary, routeDistance].filter(Boolean).join('. ') + '.');
     } else if (loadState === 'error' && errorMessage) {
-      AccessibilityInfo.announceForAccessibility(`Route problem. ${errorMessage}`);
+      AccessibilityInfo.announceForAccessibility(errorMessage);
+    } else if (loadState === 'same_place') {
+      AccessibilityInfo.announceForAccessibility(SAME_PLACE);
     }
   }, [loadState]);
 
@@ -397,7 +401,7 @@ function RoutePreviewSection({
     </Pressable>
   ) : null;
   const captionNode = offlineCaption ? <OfflineInfo text={offlineCaption} /> : null;
-  const footerVisible = (showLoading || showError || showRouteReady) && !(showRouteReady && routeGuide);
+  const footerVisible = (showLoading || showError || showSamePlace || showRouteReady) && !(showRouteReady && routeGuide);
   // The caption scrolls with the content: the pinned footer only has room for the route summary,
   // the action and its disabled reason (gorhom's visible area at the 50% snap is small).
 
@@ -476,13 +480,24 @@ function RoutePreviewSection({
                   onPress={onChangeDestination && onOpenDirectory ? () => onOpenDirectory('destination') : onClose}
                 />
               ) : (
-                <Button
-                  variant="danger"
-                  icon={<RefreshCw size={18} color={staticColors.white} />}
-                  label="Retry"
-                  onPress={retryRoute}
-                />
+                <>
+                  <Button
+                    variant="brand"
+                    icon={<RefreshCw size={18} color={directionsSheetColors.brandText} />}
+                    label="Try again"
+                    onPress={retryRoute}
+                  />
+                  <Button variant="outline" label="Choose another start" onPress={handleChangeStart} />
+                </>
               ))}
+
+            {showSamePlace && (
+              <Button
+                variant="brand"
+                label="Choose another place"
+                onPress={onChangeDestination && onOpenDirectory ? () => onOpenDirectory('destination') : onClose}
+              />
+            )}
 
             {showRouteReady && !routeGuide && (
               <>
@@ -667,8 +682,13 @@ function RoutePreviewSection({
 
           {showError && (
             <Card variant="error" style={styles.statusCard}>
-              <Text style={[styles.statusTitle, styles.statusTitleError]}>Route problem</Text>
-              <Text style={styles.statusText}>{errorMessage}</Text>
+              <Text style={[styles.statusTitle, styles.statusTitleError]}>{errorMessage || ROUTE_NOT_FOUND}</Text>
+            </Card>
+          )}
+
+          {showSamePlace && (
+            <Card variant="neutral" style={styles.statusCard}>
+              <Text style={styles.statusTitle}>{SAME_PLACE}</Text>
             </Card>
           )}
 
