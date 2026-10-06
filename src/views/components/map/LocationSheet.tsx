@@ -54,6 +54,7 @@ import { OutsideRouteStatusCard } from '../navigation/OutsideRouteStatusCard';
 import type { NormalizedOutsideCandidate } from '../../../models/outsideRouting';
 import { liveBlockerMessage } from '../../../services/LocationCapability';
 import { RouteGuideCard } from './RouteGuideCard';
+import { publishDirectionsPeek } from './DirectionsPeekHandle';
 
 declare const __DEV__: boolean;
 
@@ -120,6 +121,7 @@ export type LocationSheetProps =
       /** "View route": tucks the sheet down so the whole route is visible on the map. */
       onViewRoute?: () => void;
       onRouteGuideStarted?: () => void;
+      onExpandSheet?: () => void;
       /** Opens the Directory, the one place chooser, to pick a start (or destination); the choice comes
        * back through the store's directoryChoice. */
       onOpenDirectory?: (purpose: DirectoryPurpose) => void;
@@ -154,6 +156,7 @@ export function LocationSheet(props: LocationSheetProps) {
         onStartNavigation={props.onStartNavigation}
         onViewRoute={props.onViewRoute}
         onRouteGuideStarted={props.onRouteGuideStarted}
+        onExpandSheet={props.onExpandSheet}
         onCancelRoute={props.onCancelRoute}
         onChangeDestination={props.onChangeDestination}
         onOpenDirectory={props.onOpenDirectory}
@@ -200,6 +203,7 @@ function RoutePreviewSection({
   onOpenDirectory,
   onViewRoute,
   onRouteGuideStarted,
+  onExpandSheet,
   basemapOffline,
 }: {
   destination: Place;
@@ -208,6 +212,8 @@ function RoutePreviewSection({
   onViewRoute?: () => void;
   /** Called once the route guide opens so the map can frame the whole route. */
   onRouteGuideStarted?: () => void;
+  /** Expands the sheet from its collapsed peek. */
+  onExpandSheet?: () => void;
   onCancelRoute?: () => void;
   onChangeDestination?: (place: Place) => void;
   onOpenDirectory?: (purpose: DirectoryPurpose) => void;
@@ -494,6 +500,19 @@ function RoutePreviewSection({
     publishDirectionsFooter(footerNode);
   });
   useEffect(() => () => publishDirectionsFooter(null), []);
+  // The collapsed sheet's peek (#307): where the journey stands, so a folded sheet never goes silent.
+  const guideStep = routeGuide?.steps[routeGuide.stepIndex];
+  const peekText = guideStep
+    ? `Next: ${guideStep.text}${guideStep.distanceM > 0 ? ` · ${InstructionService.formatDistance(guideStep.distanceM, distanceUnit)}` : ''}`
+    : showRouteReady
+    ? [outsideRoute?.durationSeconds !== null ? routeEta : null, routeDistance].filter(Boolean).join(' · ')
+    : showLoading
+    ? 'Finding route…'
+    : `Directions · ${startSourceLabel} → ${destination.name}`;
+  useEffect(() => {
+    publishDirectionsPeek({ text: peekText, onExpand: onExpandSheet });
+  }, [peekText, onExpandSheet]);
+  useEffect(() => () => publishDirectionsPeek(null), []);
 
   return (
     // collapsable={false} keeps the body a native view and importantForAccessibility marks it as one node, so
