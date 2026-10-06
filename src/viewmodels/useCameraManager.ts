@@ -241,11 +241,13 @@ export function useCameraManager({ mapRef }: Params) {
   );
 
   const fitRoute = useCallback(
-    (coordinates: Coordinate[], edgePadding: EdgePadding = DEFAULT_ROUTE_PADDING) => {
+    (coordinates: Coordinate[], edgePadding: EdgePadding = DEFAULT_ROUTE_PADDING, options?: { force?: boolean }) => {
       if (coordinates.length < 2) return;
       const key = JSON.stringify(coordinates.map(({ latitude, longitude }) => [latitude, longitude]));
       const previous = routeIntentRef.current;
-      if (previous?.key === key) {
+      if (previous?.key === key && !options?.force) {
+        if (previous.padding.top === edgePadding.top && previous.padding.right === edgePadding.right &&
+            previous.padding.bottom === edgePadding.bottom && previous.padding.left === edgePadding.left) return;
         // Sheet movement is a viewport update, not permission to frame the journey again.
         // A queued/early semantic intent reads the latest padding when it eventually runs.
         previous.padding = edgePadding;

@@ -86,3 +86,22 @@ describe('route camera intent ownership (#307)', () => {
     for (const call of mapRef.current.fitToCoordinates.mock.calls) expect(call[1].edgePadding).toEqual(padding);
   });
 });
+
+
+test('a render with identical route and padding cannot interrupt the initial camera ease', async () => {
+  const mapRef = makeFakeMapRef();
+  const { result } = await renderHook(() => useCameraManager({ mapRef }));
+  await act(() => { markCameraReady(result); result.current.fitRoute(ROUTE_COORDS); });
+  await act(() => result.current.fitRoute(ROUTE_COORDS.map(c => ({ ...c }))));
+  expect(mapRef.current.fitToCoordinates).toHaveBeenCalledTimes(1);
+  expect(mapRef.current.animateCamera).not.toHaveBeenCalled();
+});
+
+
+test('an explicit user refit can frame unchanged route geometry again', async () => {
+  const mapRef = makeFakeMapRef();
+  const { result } = await renderHook(() => useCameraManager({ mapRef }));
+  await act(() => { markCameraReady(result); result.current.fitRoute(ROUTE_COORDS); });
+  await act(() => result.current.fitRoute(ROUTE_COORDS, undefined, { force: true }));
+  expect(mapRef.current.fitToCoordinates).toHaveBeenCalledTimes(2);
+});
