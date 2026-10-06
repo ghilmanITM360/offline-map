@@ -13,3 +13,5 @@ export const CHOOSE_DESTINATION = 'Choose a place to go to.';
 export const SAME_PLACE = 'Start and destination are the same place.';
 export const LOCATION_UNAVAILABLE = "Your location isn't available.";
 export const NAVIGATION_UNAVAILABLE = "Directions aren't available right now.";
+export const OUTSIDE_GUIDE_SCOPE = 'This app guides you inside the Ijtema area.';
+export const outsideGuideHeadline = (gate: string) => `Get to ${gate} first`;

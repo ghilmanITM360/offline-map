@@ -128,3 +128,51 @@ describe('no dead primary button in any state', () => {
     }
   });
 });
+
+describe('outside the venue with only a straight-line guide', () => {
+  // totalDistance adds the walk inside the venue to the straight line; neither is a walking-route distance.
+  const outsideRoute = {
+    ...route,
+    totalDistance: 13_100,
+    estimatedTimeMin: 3,
+    startResolution: { gate: { name: { en: 'Gate 12' } } },
+    outsideRoute: { provider: 'direct-guide', gateId: 'GATE_12', distanceM: 12_800, durationSeconds: null, distanceKind: 'direct-distance', roadFollowing: false, fallbackHistory: [], warnings: [] },
+  };
+  const outsideVm = (over: Record<string, unknown> = {}) =>
+    vm({ route: outsideRoute, startSource: 'live_gps', isOutsideStart: true, startAction: { kind: 'start', primaryLabel: 'Start Navigation', title: 'Ready to go' }, canStartNavigation: true, ...over });
+
+  test('says to get to the gate first, never "Route ready", and gives the straight-line distance only', async () => {
+    mockedVm.mockReturnValue(outsideVm());
+    await renderSheet();
+
+    expect(screen.getByText('Get to Gate 12 first')).toBeOnTheScreen();
+    expect(screen.getByText('This app guides you inside the Ijtema area.')).toBeOnTheScreen();
+    expect(screen.getByText('12.8 km in a straight line')).toBeOnTheScreen();
+    expect(screen.queryByText('Route ready')).not.toBeOnTheScreen();
+    expect(screen.queryByText('Ready to go')).not.toBeOnTheScreen();
+    expect(screen.queryByText('13.1 km')).not.toBeOnTheScreen();
+  });
+
+  test('one summary stop for a screen reader, with no walking claim', async () => {
+    mockedVm.mockReturnValue(outsideVm());
+    await renderSheet();
+    expect(screen.getByLabelText('Get to Gate 12 first, 12.8 km in a straight line. This app guides you inside the Ijtema area.')).toBeOnTheScreen();
+  });
+
+  test('a chosen start outside is the same guide, not a route guide of a walking route', async () => {
+    mockedVm.mockReturnValue(outsideVm({ startSource: 'manual_place', startAction: { kind: 'route_guide', primaryLabel: 'Start route', secondaryLabel: 'Use my location to guide me' } }));
+    await renderSheet();
+    expect(screen.getByText('Get to Gate 12 first')).toBeOnTheScreen();
+    expect(screen.queryByText('Route ready')).not.toBeOnTheScreen();
+  });
+
+  test('a real walking route outside is still a normal ready route', async () => {
+    mockedVm.mockReturnValue(outsideVm({
+      route: { ...outsideRoute, outsideRoute: { ...outsideRoute.outsideRoute, provider: 'offline-osm', distanceKind: 'walking-route', roadFollowing: true } },
+      startAction: { kind: 'use_location', primaryLabel: 'Use my location & start', secondaryLabel: 'View route' },
+    }));
+    await renderSheet();
+    expect(screen.getByText('Route ready')).toBeOnTheScreen();
+    expect(screen.queryByText(/Get to .* first/)).not.toBeOnTheScreen();
+  });
+});

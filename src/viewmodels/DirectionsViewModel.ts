@@ -16,6 +16,7 @@ import {
   resolveStartAction,
   type NavigationStartSource,
 } from '../services/LocationNavigationCapability';
+import { isJourneyStartable, selectJourneyPresentationState } from '../services/JourneyPresentationState';
 import { MapFeatureFlagsService } from '../services/MapFeatureFlagsService';
 import {
   V2DirectionsService,
@@ -210,6 +211,10 @@ export function useDirectionsViewModel(destination: Place | null) {
     liveFix,
     permission: { granted: hasLocationPermission || liveFix !== null, precision: locationPermissionPrecision },
   });
+
+  // The one authoritative journey state; the sheet renders from it and a start is offered only for a ready route.
+  const journeyState = selectJourneyPresentationState({ loadState, startSource, route: route as Parameters<typeof selectJourneyPresentationState>[0]['route'] });
+  const startable = isJourneyStartable(journeyState);
 
   const clearRoute = () => {
     setRoute(null);
@@ -710,7 +715,8 @@ export function useDirectionsViewModel(destination: Place | null) {
     clearManualGateSelection,
     routeRefreshing,
     handleStartNavigation,
-    startAction: v2NavigationStartCheck.canStart ? startAction : null,
+    journeyState,
+    startAction: v2NavigationStartCheck.canStart && startable ? startAction : null,
     startAttempt,
     runStartAction,
     startRouteGuide,
@@ -718,9 +724,9 @@ export function useDirectionsViewModel(destination: Place | null) {
     // Editing mode only. `startSource === 'manual_place'` records where the start came from; it
     // must not keep the picker open after a place is chosen (#222 / #131).
     showManualStartSearch: isEditingManualStart,
-    canStartNavigation: isV2Destination
+    canStartNavigation: startable && (isV2Destination
       ? v2NavigationStartCheck.canStart && navigationLocationCapability.canStart
-      : Boolean(route) && navigationLocationCapability.canStart,
+      : Boolean(route) && navigationLocationCapability.canStart),
     startNavigationDisabledReason: v2NavigationStartCheck.canStart
       ? navigationLocationCapability.message
       : v2NavigationStartCheck.message,
