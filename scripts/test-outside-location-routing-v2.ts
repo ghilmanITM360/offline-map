@@ -28,15 +28,15 @@ assert(
   'Directions viewmodel must stop forcing outside users to choose an inside-only start.',
 );
 assert(
-  directionsServiceSource.includes('This gate has no verified location yet.'),
+  directionsServiceSource.includes("Directions to this gate aren't ready yet."),
   'V2 directions service must expose missing-coordinate gate message.',
 );
 assert(
-  directionsServiceSource.includes('This gate is not ready for navigation. Please choose another nearby gate.'),
+  directionsServiceSource.includes("Directions to this gate aren't ready. Choose another gate."),
   'V2 directions service must expose disconnected-gate message.',
 );
 assert(
-  directionsServiceSource.includes('No safe offline route found between these points.'),
+  directionsServiceSource.includes('ROUTE_NOT_FOUND'),
   'V2 directions service must expose safe no-route message.',
 );
 
@@ -99,7 +99,7 @@ const disconnectedGatePreview = V2DirectionsService.calculatePreview({
 assert.equal(disconnectedGatePreview.status, 'unavailable', 'Gate 18 must stay blocked.');
 assert.equal(
   disconnectedGatePreview.message,
-  'This gate is not ready for navigation. Please choose another nearby gate.',
+  "Directions to this gate aren't ready. Choose another gate.",
   'Gate 18 must show disconnected-gate user copy.',
 );
 

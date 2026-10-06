@@ -123,7 +123,7 @@ process.env.EXPO_PUBLIC_USE_IJTEMA_V2_NAVIGATION = 'true';
 const missingMapStartCheck = V2NavigationAdapter.canStartActiveNavigation({ route: gate21Preview.route, destination: block28 });
 assert.equal(missingMapStartCheck.canStart, false, 'V2 active navigation must require the v2 map flag');
 assert(
-  missingMapStartCheck.message.includes('EXPO_PUBLIC_USE_IJTEMA_V2_MAP'),
+  missingMapStartCheck.message === "Directions aren't available right now.",
   'V2 active navigation must explain when the v2 map flag is missing',
 );
 
@@ -178,7 +178,7 @@ const disconnectedGatePreview = V2DirectionsService.calculatePreview({
 assert.equal(disconnectedGatePreview.status, 'unavailable', 'Disconnected gates cannot start navigation silently');
 assert.equal(
   disconnectedGatePreview.message,
-  'This gate is not ready for navigation. Please choose another nearby gate.',
+  "Directions to this gate aren't ready. Choose another gate.",
   'Disconnected gate message must be clear and stable',
 );
 

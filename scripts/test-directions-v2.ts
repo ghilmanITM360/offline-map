@@ -97,7 +97,7 @@ const disconnectedGate18 = V2DirectionsService.calculatePreview({
   walkingSpeedMs: 1.4,
 });
 assert.equal(disconnectedGate18.status, 'unavailable', 'Disconnected Gate 18 route start must fail gracefully');
-assert.equal(disconnectedGate18.message, 'This gate is not ready for navigation. Please choose another nearby gate.', 'Disconnected Gate 18 must explain blocked start clearly');
+assert.equal(disconnectedGate18.message, "Directions to this gate aren't ready. Choose another gate.", 'Disconnected Gate 18 must explain blocked start clearly');
 
 const gate15Preview = V2DirectionsService.calculatePreview({
   startPlace: SearchService.search('Gate 15')[0],
