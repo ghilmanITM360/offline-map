@@ -224,6 +224,7 @@ interface AppState {
   /** #145: place id -> epoch ms when it was searched; drives the 30 day expiry. */
   recentSearchTimes: Record<string, number>;
   addRecentSearch: (place: Place) => void;
+  removeRecentSearch: (placeId: string) => void;
   clearRecentSearches: () => void;
 
   // --- Favorites (persisted) ---
@@ -527,6 +528,12 @@ export const useAppStore = create<AppState>()(
           const filtered = state.recentSearches.filter((p) => p.id !== place.id);
           const now = Date.now();
           return pruneRecentSearches([place, ...filtered], { ...state.recentSearchTimes, [place.id]: now }, now);
+        }),
+      removeRecentSearch: (placeId) =>
+        set((state) => {
+          const times = { ...state.recentSearchTimes };
+          delete times[placeId];
+          return { recentSearches: state.recentSearches.filter((p) => p.id !== placeId), recentSearchTimes: times };
         }),
       clearRecentSearches: () => set({ recentSearches: [], recentSearchTimes: {} }),
 
