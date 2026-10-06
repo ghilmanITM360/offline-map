@@ -1701,6 +1701,111 @@ describe('HomeScreen — recenter follow mode (Google Maps parity)', () => {
   });
 });
 
+describe('HomeScreen — a journey handed over by the Directory (#307)', () => {
+  const idleDirectionsVm = () => ({
+    route: null, startSource: 'live_gps', rememberedLocationAgeLabel: '', rememberedLocationAvailable: false,
+    rememberedLocationInsideVenue: false, currentRouteOriginInsideVenue: true, loadState: 'idle', errorMessage: null,
+    manualStart: null, chooseManualStart: jest.fn(), setIsEditingManualStart: jest.fn(), setManualStartPlace: jest.fn(),
+    chooseCurrentLocation: jest.fn(async () => true), chooseRememberedLocation: jest.fn(() => true),
+    calculateRoute: jest.fn(async () => {}), showManualStartSearch: false, canStartNavigation: true, startNavigationDisabledReason: '',
+  });
+
+  test('consumes the journey, opens Directions for its destination and remembers it as a recent place', async () => {
+    mockedUseDirectionsViewModel.mockReturnValue(idleDirectionsVm());
+    useAppStore.setState({ pendingJourney: { destination: gateResult, start: null, mode: 'live' } });
+
+    await render(<HomeScreen />);
+
+    expect(await screen.findByText('Get Directions')).toBeOnTheScreen();
+    expect(useAppStore.getState().pendingJourney).toBeNull();
+    expect(mockedUseDirectionsViewModel).toHaveBeenCalledWith(expect.objectContaining({ id: gateResult.id }));
+    expect(useAppStore.getState().recentSearches.map((p) => p.id)).toContain(gateResult.id);
+  });
+
+  test('while a journey is already being navigated it falls back to showing the place, never silently replacing the trip', async () => {
+    mockedUseDirectionsViewModel.mockReturnValue(idleDirectionsVm());
+    useAppStore.setState({ isNavigating: true, pendingJourney: { destination: gateResult, start: null, mode: 'live' } });
+
+    await render(<HomeScreen />);
+
+    expect(useAppStore.getState().pendingJourney).toBeNull();
+    expect(useAppStore.getState().pendingDirectorySelection).toEqual(gateResult);
+    expect(screen.queryByText('Get Directions')).not.toBeOnTheScreen();
+  });
+});
+
+describe('HomeScreen — contextual top bar (#307)', () => {
+  const directionsVm = () => ({
+    route: null, startSource: 'live_gps', rememberedLocationAgeLabel: '', rememberedLocationAvailable: false,
+    rememberedLocationInsideVenue: false, currentRouteOriginInsideVenue: true, loadState: 'idle', errorMessage: null,
+    manualStart: null, chooseManualStart: jest.fn(), setIsEditingManualStart: jest.fn(), setManualStartPlace: jest.fn(),
+    chooseCurrentLocation: jest.fn(async () => true), chooseRememberedLocation: jest.fn(() => true),
+    calculateRoute: jest.fn(async () => {}), showManualStartSearch: false, canStartNavigation: true, startNavigationDisabledReason: '',
+  });
+
+  test('exploring: Places goes back to the Directory by pushing it over the Map', async () => {
+    const navigate = jest.fn();
+    useNavigation.mockReturnValue({ navigate, dispatch: jest.fn(), goBack: jest.fn() });
+    mockedUseDirectionsViewModel.mockReturnValue(directionsVm());
+    await render(<HomeScreen />);
+
+    await userEvent.setup().press(screen.getByRole('button', { name: 'Places' }));
+
+    expect(navigate).toHaveBeenCalledWith('LocationsDirectory');
+    expect(screen.queryByText(gateResult.name, { includeHiddenElements: true })).not.toBeOnTheScreen();
+  });
+
+  test('a selected place names itself in the top bar', async () => {
+    mockedUseDirectionsViewModel.mockReturnValue(directionsVm());
+    mockedUseHomeViewModel.mockImplementation(() => ({ ...useFakeHomeViewModel(), selectedPlace: gateResult }));
+    await render(<HomeScreen />);
+
+    // The sheet names the place for screen readers; the bar repeats it for sighted orientation (hidden from them).
+    expect(screen.getAllByText(gateResult.name, { includeHiddenElements: true }).length).toBeGreaterThan(
+      screen.getAllByText(gateResult.name).length,
+    );
+    expect(screen.getByRole('button', { name: 'Places' })).toBeOnTheScreen();
+  });
+
+  test('the bar stays through Directions and says what the sheet is', async () => {
+    mockedUseDirectionsViewModel.mockReturnValue(directionsVm());
+    mockedUseHomeViewModel.mockImplementation(() => ({ ...useFakeHomeViewModel(), selectedPlace: gateResult }));
+    await render(<HomeScreen />);
+
+    await userEvent.setup().press(screen.getByText('Directions'));
+
+    expect(screen.getByText('Directions', { includeHiddenElements: true })).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: 'Places' })).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: 'Open menu' })).toBeOnTheScreen();
+  });
+
+  test('the route guide is named in the bar', async () => {
+    mockedUseDirectionsViewModel.mockReturnValue(directionsVm());
+    mockedUseHomeViewModel.mockImplementation(() => ({ ...useFakeHomeViewModel(), selectedPlace: gateResult }));
+    useAppStore.setState({ routePlannerDest: gateResult, routeGuide: { steps: [{ text: 'Walk', distanceM: 10 }], stepIndex: 0 } });
+    await render(<HomeScreen />);
+    await userEvent.setup().press(screen.getByText('Directions'));
+
+    expect(screen.getByText('Route guide', { includeHiddenElements: true })).toBeOnTheScreen();
+  });
+
+  test('live navigation keeps its own chrome: no top bar competes with the maneuver banner', async () => {
+    mockedUseDirectionsViewModel.mockReturnValue(directionsVm());
+    const overlaySpy = jest.spyOn(NavigationOverlayV1Module, 'useNavigationOverlayV1').mockReturnValue({
+      active: true, route: v1Route, destination: v1Destination, instructions: [], currentStepIndex: 0, isMuted: false,
+      setIsMuted: jest.fn(), remainingDistance: 100, arrived: false, reroutePending: false, isWeakGps: false,
+      rerouteStatusMessage: null, snappedLocation: v1Destination.coordinate,
+      mapLayers: { venueBoundary: [], blocks: [], edges: [] }, userPulseAnim: new Animated.Value(0),
+      settings: useAppStore.getState().settings, graphOnlyFallbackUsed: false, requestNavigationExit: jest.fn(),
+      completeArrivalNavigation: jest.fn(), setIsAutoFollowing: jest.fn(), bottomBarHeight: 0, setBottomBarHeight: jest.fn(),
+    } as unknown as ReturnType<typeof NavigationOverlayV1Module.useNavigationOverlayV1>);
+    await render(<HomeScreen />);
+
+    expect(screen.queryByRole('button', { name: 'Places' })).not.toBeOnTheScreen();
+    overlaySpy.mockRestore();
+  });
+});
+
 describe('HomeScreen — collapsed Directions keeps a visible peek (#307)', () => {
   const directionsVm = () => ({
     route: null, startSource: 'live_gps', rememberedLocationAgeLabel: '', rememberedLocationAvailable: false,

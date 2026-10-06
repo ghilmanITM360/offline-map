@@ -10,17 +10,23 @@ import { V2Place } from '../../../models/types';
 import { usePressScale } from '../../../viewmodels/usePressScale';
 import { radii, spacing, staticColors } from '../../../theme';
 
-function BlockTile({ place, onPress }: { place: V2Place; onPress: (place: V2Place) => void }) {
+function BlockTile({ place, onPress, onDetails }: { place: V2Place; onPress: (place: V2Place) => void; onDetails?: (place: V2Place) => void }) {
   const { scale, onPressIn, onPressOut } = usePressScale(0.94);
   return (
     <Animated.View style={[styles.tileWrap, { transform: [{ scale }] }]}>
       <Pressable
         style={({ pressed }) => [styles.tile, pressed && styles.tilePressed]}
         onPress={() => onPress(place)}
+        // A tap means "take me here" (#307). Tiles are too small for a second target, so details is a long press and a
+        // named TalkBack action.
+        onLongPress={onDetails ? () => onDetails(place) : undefined}
         onPressIn={onPressIn}
         onPressOut={onPressOut}
         accessibilityRole="button"
         accessibilityLabel={`${place.name}, Block`}
+        accessibilityHint={onDetails ? 'Takes you to this block' : undefined}
+        accessibilityActions={onDetails ? [{ name: 'details', label: `Details for ${place.name}` }] : undefined}
+        onAccessibilityAction={onDetails ? (event) => { if (event.nativeEvent.actionName === 'details') onDetails(place); } : undefined}
       >
         <Text style={styles.number} numberOfLines={1} adjustsFontSizeToFit>
           {place.name.replace(/^Block\s*/i, '')}
@@ -33,11 +39,11 @@ function BlockTile({ place, onPress }: { place: V2Place; onPress: (place: V2Plac
 
 /** Compact numbered tile grid for Blocks — the venue's own numbering system as the
  * screen's signature element, instead of 40+ full-width decorative cards. */
-export function DestinationBlockGrid({ places, onPress }: { places: V2Place[]; onPress: (place: V2Place) => void }) {
+export function DestinationBlockGrid({ places, onPress, onDetails }: { places: V2Place[]; onPress: (place: V2Place) => void; onDetails?: (place: V2Place) => void }) {
   return (
     <View style={styles.grid}>
       {places.map((place) => (
-        <BlockTile key={place.id} place={place} onPress={onPress} />
+        <BlockTile key={place.id} place={place} onPress={onPress} onDetails={onDetails} />
       ))}
     </View>
   );

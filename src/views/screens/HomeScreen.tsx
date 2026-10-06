@@ -27,7 +27,6 @@ import { buildNavigationScene, buildNavigationSceneV1 } from '../components/mapg
 import { useBundledBasemap } from '../components/mapgl/useBundledBasemap';
 import { BASEMAP_COLORS } from '../components/mapgl/basemapStyle';
 import {
-  Menu,
   X,
 } from 'lucide-react-native';
 import {
@@ -76,6 +75,7 @@ import { IJTEMA_MAP_REGION } from '../../data/ijtema';
 import { MapLabelOverlay, MapLabelItem, MapLabelOverlayHandle, hangSelectedLabelsBelowPin } from '../components/map/MapLabelOverlay';
 import { MapControls, MapControlsRecenter } from '../components/map/MapControls';
 import { DirectionsPeekHandle } from '../components/map/DirectionsPeekHandle';
+import { MapTopBar } from '../components/map/MapTopBar';
 import { LayersSheet } from '../components/map/LayersSheet';
 import { useNavigationOverlayV2 } from '../../viewmodels/useNavigationOverlayV2';
 import { useNavigationOverlayV1 } from '../../viewmodels/useNavigationOverlayV1';
@@ -498,8 +498,17 @@ export function HomeScreen() {
   // could push the Google logo's reserved band behind where the sheet actually,
   // visually, covers the screen).
   useEffect(() => {
-    if (mode === 'NAVIGATION' || directionsDestination) setTopOverlayHeight(0);
-  }, [mode, directionsDestination]);
+    if (mode === 'NAVIGATION' || mode === 'ARRIVAL') setTopOverlayHeight(0);
+  }, [mode]);
+
+  // What the map is showing, in one or two words (#307). Live navigation has its own chrome, so no bar there.
+  const routeGuideOpen = useAppStore((s) => s.routeGuide !== null);
+  const topBarTitle =
+    mode === 'ROUTE_PREVIEW' || directionsDestination
+      ? routeGuideOpen ? 'Route guide' : 'Directions'
+      : mode === 'PLACE_SELECTED' || mode === 'DETAILS'
+      ? selectedPlace?.name ?? null
+      : null;
 
   const startupCameraStillOwnsIntent = useCallback((requestGeneration: number, cameraIntentGeneration: number) => (
     mountedRef.current &&
@@ -1206,6 +1215,30 @@ export function HomeScreen() {
     setDirectionsDestination(place);
   }, [armSheetTransition]);
 
+  // #307: a destination tapped in the Directory means "take me here". Consume the journey once Home is focused and open
+  // Directions for it; the sheet applies the start and starts it (live from a fresh fix, or as a route guide). A trip
+  // already under way is never silently replaced: the place is shown instead, like any other Directory pick.
+  const pendingJourney = useAppStore((s) => s.pendingJourney);
+  const setPendingJourney = useAppStore((s) => s.setPendingJourney);
+  const addRecentSearchForJourney = useAppStore((s) => s.addRecentSearch);
+  const [journeyIntent, setJourneyIntent] = useState<{ mode: 'live' | 'guide'; start: Place | null } | null>(null);
+  useEffect(() => {
+    if (!pendingJourney || !isHomeFocused) return;
+    setPendingJourney(null);
+    const { destination, start, mode } = pendingJourney;
+    if (useAppStore.getState().isNavigating) {
+      useAppStore.getState().setPendingDirectorySelection(destination);
+      return;
+    }
+    addRecentSearchForJourney(destination);
+    setJourneyIntent({ mode, start });
+    handleOpenDirections(destination);
+    // handleOpenDirections is recreated every render; this intentionally runs once per journey.
+  }, [pendingJourney, isHomeFocused]);
+  useEffect(() => {
+    if (!directionsDestination) setJourneyIntent(null);
+  }, [directionsDestination]);
+
   // Get Directions asks the Directory (the one place chooser) for a start or destination; the choice comes back
   // through the store and Get Directions applies it. The sheet stays mounted, so its route intent is kept.
   const setDirectoryPurpose = useAppStore((s) => s.setDirectoryPurpose);
@@ -1564,26 +1597,25 @@ export function HomeScreen() {
 
         {/* ARRIVAL outranks NAVIGATION in deriveMapMode and still shows the navigation chrome, so the
             search bar/chips must hide for both or they draw over the maneuver banner. */}
-        {mode !== 'NAVIGATION' && mode !== 'ARRIVAL' && !directionsDestination && (
+        {mode !== 'NAVIGATION' && mode !== 'ARRIVAL' && (
         <SafeAreaView
           style={styles.topOverlay}
           pointerEvents="box-none"
           onLayout={(e) => setTopOverlayHeight(e.nativeEvent.layout.height)}
         >
-          {/* The Directory is the one place chooser (find / change a place there); the map only shows and navigates. */}
-          <View style={[styles.menuButtonContainer, { backgroundColor: theme.searchBar }]}>
-            <Pressable
-              onPress={() => {
-                logHomeControl('menu', 'open_drawer');
-                nav.dispatch(DrawerActions.openDrawer());
-              }}
-              style={styles.iconButton}
-              accessibilityRole="button"
-              accessibilityLabel="Open menu"
-            >
-              <Menu size={24} color={theme.subtext} />
-            </Pressable>
-          </View>
+          {/* The Directory is the one place chooser (find / change a place there); the map only shows and navigates.
+              The bar is a way back to it, what the map is showing, and the menu (#307). */}
+          <MapTopBar
+            title={topBarTitle}
+            onPlaces={() => {
+              logHomeControl('places', 'open_directory');
+              nav.navigate('LocationsDirectory');
+            }}
+            onMore={() => {
+              logHomeControl('menu', 'open_drawer');
+              nav.dispatch(DrawerActions.openDrawer());
+            }}
+          />
         </SafeAreaView>
         )}
 
@@ -1834,6 +1866,7 @@ export function HomeScreen() {
               onViewRoute={() => bottomSheetRef.current?.snapToIndex(0)}
               onRouteGuideStarted={handleRouteGuideStarted}
               onExpandSheet={() => bottomSheetRef.current?.snapToIndex(1)}
+              journey={journeyIntent}
               onCancelRoute={activePreviewRoute ? handleClearPreviewRoute : undefined}
               onChangeDestination={handleChangeDestination}
               onOpenDirectory={handleOpenDirectoryFor}
@@ -1922,19 +1955,6 @@ const styles = StyleSheet.create({
     paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
     zIndex: Z.mapControls,
   },
-  menuButtonContainer: {
-    alignSelf: 'flex-start',
-    marginLeft: 12,
-    marginTop: 8,
-    borderRadius: 26,
-    width: 52,
-    height: 52,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    ...shadows.medium,
-  },
-  iconButton: { padding: 14 },
   navControls: { position: 'absolute', right: 16, zIndex: Z.mapControls },
   // Single bottom-anchored Layers/Compass/Zoom/Recenter stack (see MapControls) —
   // replaces the old separately-anchored rightControls (top) + bottomControls

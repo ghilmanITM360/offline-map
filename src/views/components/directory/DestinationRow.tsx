@@ -5,7 +5,7 @@
 
 import React from 'react';
 import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
-import { Milestone, Route, Signpost } from 'lucide-react-native';
+import { Info, Milestone, Route, Signpost } from 'lucide-react-native';
 
 import { V2Place } from '../../../models/types';
 import { usePressScale } from '../../../viewmodels/usePressScale';
@@ -32,10 +32,13 @@ const CATEGORY_ACCENT: Partial<Record<V2Place['category'], string>> = {
 export function DestinationRow({
   place,
   onPress,
+  onDetails,
   showCategory = true,
 }: {
   place: V2Place;
   onPress: (place: V2Place) => void;
+  /** A tap on the row means "take me here" (#307); this separate, named control opens the place's details. */
+  onDetails?: (place: V2Place) => void;
   showCategory?: boolean;
 }) {
   const Icon = CATEGORY_ICON[place.category] ?? Signpost;
@@ -51,13 +54,14 @@ export function DestinationRow({
   const { scale, onPressIn, onPressOut } = usePressScale(0.98);
 
   return (
-    <Animated.View style={{ transform: [{ scale }] }}>
+    <Animated.View style={[styles.row, { transform: [{ scale }] }]}>
       <Pressable
-        style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
+        style={({ pressed }) => [styles.rowMain, pressed && styles.rowPressed]}
         onPress={() => onPress(place)}
         onPressIn={onPressIn}
         onPressOut={onPressOut}
         accessibilityRole="button"
+        accessibilityHint={onDetails && !isUnavailable ? 'Takes you to this place' : undefined}
         accessibilityLabel={
           isUnavailable ? `${place.name}, ${categoryLabel}, navigation unavailable` : `${place.name}, ${categoryLabel}`
         }
@@ -88,8 +92,18 @@ export function DestinationRow({
             </View>
           ) : null}
         </View>
-        <ForwardIcon size={18} color={staticColors.iconMuted} />
+        {onDetails ? null : <ForwardIcon size={18} color={staticColors.iconMuted} />}
       </Pressable>
+      {onDetails ? (
+        <Pressable
+          style={({ pressed }) => [styles.detailsButton, pressed && styles.rowPressed]}
+          onPress={() => onDetails(place)}
+          accessibilityRole="button"
+          accessibilityLabel={`Details for ${place.name}`}
+        >
+          <Info size={20} color={staticColors.iconMuted} />
+        </Pressable>
+      ) : null}
     </Animated.View>
   );
 }
@@ -101,12 +115,25 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     minHeight: ROW_MIN_HEIGHT,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.lg,
-    gap: spacing.md,
     backgroundColor: staticColors.white,
     borderBottomWidth: 1,
     borderBottomColor: staticColors.borderLight,
+  },
+  rowMain: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'stretch',
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    gap: spacing.md,
+  },
+  detailsButton: {
+    width: 56,
+    alignSelf: 'stretch',
+    minHeight: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   rowPressed: {
     backgroundColor: staticColors.neutralSurface,
