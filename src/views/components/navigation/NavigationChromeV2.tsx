@@ -35,6 +35,9 @@ function StepIcon({ type, size = 32 }: { type: string; size?: number }) {
 /** Overlay chrome (banners, instruction/trip cards, recenter, arrival modal) shown over the
  * shared MapView while a v2 route is being navigated. Renders as a sibling of the MapView,
  * not inside it. */
+// Within this distance of the gate the user counts as having reached the venue.
+const OUTSIDE_PHASE_ENTRY_TOLERANCE_M = 15;
+
 export function NavigationChromeV2({ overlay, hasBaseMap }: { overlay: NavigationOverlayV2; hasBaseMap: boolean }) {
   const insets = useSafeAreaInsets();
   // Wrapped to three lines at large text, the status banners would run under the map control column on the right.
@@ -95,9 +98,15 @@ export function NavigationChromeV2({ overlay, hasBaseMap }: { overlay: Navigatio
   const currentStep = instructions[currentStepIndex];
   const nextStep = instructions[currentStepIndex + 1];
   const outsideRoute = route.outsideRoute;
+  // Outside phase = the outside leg is not walked yet. Live progress advances the current step past the approach
+  // step on the first fix, so the step index alone is not enough: more distance remaining than the walk inside the
+  // venue also means the user is still outside.
+  const routeWithConnector = route as typeof route & { startConnectorDistanceM?: number };
+  const insideLegM = Math.max(0, route.totalDistanceM - (routeWithConnector.startConnectorDistanceM ?? 0));
   const outsidePhaseActive = Boolean(
     outsideRoute &&
-    (currentStep?.routeIndex ?? 0) < (route.outsideLegCoordinateCount ?? 0),
+    ((currentStep?.routeIndex ?? 0) < (route.outsideLegCoordinateCount ?? 0) ||
+      remainingDistance > insideLegM + OUTSIDE_PHASE_ENTRY_TOLERANCE_M),
   );
   const directOutsideActive = Boolean(
     outsidePhaseActive && outsideRoute?.provider === 'direct-guide',
