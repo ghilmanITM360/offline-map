@@ -571,9 +571,6 @@ function RoutePreviewSection({
       collapsable={false}
       importantForAccessibility="yes"
     >
-      {/* The guide's heading scrolls with its content (#326): pinned, its title and subtitle outgrow the top detent on a
-          320 dp window or at 200% font and leave the step card and Previous/Next no viewport. */}
-      {!routeGuide && directionsHeader}
 
       <KeyboardAvoidingView
         style={styles.container}
@@ -586,7 +583,9 @@ function RoutePreviewSection({
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"
         >
-          {routeGuide && <View style={styles.guideHeader}>{directionsHeader}</View>}
+          {/* The heading scrolls with its content (#326): pinned, its title and subtitle outgrow the top detent on a
+              320 dp window or at 200% font and leave the body no viewport. */}
+          <View style={styles.directionsHeader}>{directionsHeader}</View>
           {showRouteReady && routeGuide && (
             <RouteGuideCard
               guide={routeGuide}
@@ -987,7 +986,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   // Cancels the scroll content's own padding and gap so the heading sits where the pinned one did.
-  guideHeader: { marginHorizontal: -16, marginTop: -4, marginBottom: -6 },
+  directionsHeader: { marginHorizontal: -16, marginTop: -4, marginBottom: -6 },
   scrollContent: {
     paddingHorizontal: 16,
     paddingTop: 4,

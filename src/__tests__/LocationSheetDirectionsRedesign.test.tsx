@@ -126,6 +126,16 @@ const flat = (node: { props: { style?: unknown } }) =>
   StyleSheet.flatten(typeof node.props.style === 'function' ? undefined : (node.props.style as object)) ?? {};
 
 describe('Get Directions redesign — structure and semantics', () => {
+  // #326: pinned, the heading plus the peek row left no scroll window at 200% font on a 320 dp window, so FROM/TO and
+  // the route were unreachable. The heading scrolls with the body in every Directions state.
+  test('the Get Directions heading scrolls with the body instead of being pinned above it', async () => {
+    mockedVm.mockReturnValue(vm());
+    await renderSheet();
+    const scroll = within(screen.getByTestId('sheet-scroll'));
+    expect(scroll.getByRole('header', { name: 'Get Directions' })).toBeOnTheScreen();
+    expect(scroll.getByRole('button', { name: 'Back' })).toBeOnTheScreen();
+  });
+
   test('title is a header; subtitle follows the state', async () => {
     mockedVm.mockReturnValue(vm());
     await renderSheet();
