@@ -271,9 +271,9 @@ function RoutePreviewSection({
     startRouteGuide,
   } = useDirectionsViewModel(destination);
   const routeGuide = useAppStore((s) => s.routeGuide);
-  // Home can start a preview only once the route has been published to the store; the view-model's own `ready` can
-  // be one render ahead of that (runtime race found on the emulator).
-  const previewRoutePublished = useAppStore((s) => s.activeRoute !== null);
+  // Home can start a preview only once BOTH the route and its destination are in the store (its start handler returns
+  // silently otherwise); the view-model's own `ready` can be a render ahead of that (runtime race on the emulator).
+  const previewRoutePublished = useAppStore((s) => s.activeRoute !== null && s.routePlannerDest !== null);
   const setRouteGuideStep = useAppStore((s) => s.setRouteGuideStep);
   const endRouteGuide = useAppStore((s) => s.endRouteGuide);
   const isRouteGuideStart = startAction?.kind === 'route_guide';

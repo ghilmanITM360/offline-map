@@ -48,4 +48,23 @@ describe('journey auto-start with the real view-model (#307)', () => {
     expect(screen.queryByText('Choose where to start')).not.toBeOnTheScreen();
     expect(useAppStore.getState().isNavigating).toBe(false);
   });
+
+  test('live: with permission and a fresh fix the journey starts navigation by itself', async () => {
+    const onStartNavigation = jest.fn();
+    useAppStore.setState({
+      hasLocationPermission: true,
+      locationPermissionPrecision: 'fine',
+      currentLocation: { latitude: 24.9693333, longitude: 67.0016944, accuracy: 5, observedAtMs: Date.now() },
+      currentLocationSource: 'live',
+    });
+    await render(
+      <>
+        <LocationSheet mode="routePreview" destination={destination} onClose={jest.fn()} onStartNavigation={onStartNavigation}
+          onOpenDirectory={jest.fn()} onViewRoute={jest.fn()} onChangeDestination={jest.fn()} journey={{ mode: 'live', start: null }} />
+        <DirectionsSheetFooter animatedFooterPosition={{ value: 0, get: () => 0 } as never} />
+      </>,
+    );
+
+    await waitFor(() => expect(onStartNavigation).toHaveBeenCalledTimes(1), { timeout: 10_000 });
+  });
 });
