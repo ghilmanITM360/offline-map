@@ -1938,4 +1938,45 @@ describe('HomeScreen — the route guide opens at the top detent (#307)', () => 
     expect(sheetRef!.current!.snapToIndex).toHaveBeenCalledWith(2);
     spy.mockRestore();
   });
+
+  test('a request made while the sheet is still landing at the middle detent is repeated once it lands, and only once', async () => {
+    const LocationSheetModule = require('../views/components/map/LocationSheet') as typeof import('../views/components/map/LocationSheet');
+    const actualSheet = LocationSheetModule.LocationSheet;
+    let guideStarted: (() => void) | undefined;
+    const spy = jest.spyOn(LocationSheetModule, 'LocationSheet').mockImplementation(((props: { mode: string; onRouteGuideStarted?: () => void }) => {
+      if (props.mode === 'routePreview') guideStarted = props.onRouteGuideStarted;
+      return (actualSheet as unknown as (p: unknown) => React.ReactElement)(props);
+    }) as never);
+    let sheetRef: { current: { snapToIndex: jest.Mock } | null } | undefined;
+    mockedUseHomeViewModel.mockImplementation(() => {
+      const vm = useFakeHomeViewModel();
+      sheetRef = vm.bottomSheetRef as never;
+      return { ...vm, selectedPlace: gateResult };
+    });
+    mockedUseDirectionsViewModel.mockReturnValue({
+      route: null, startSource: 'live_gps', rememberedLocationAgeLabel: '', rememberedLocationAvailable: false,
+      rememberedLocationInsideVenue: false, currentRouteOriginInsideVenue: true, loadState: 'idle', errorMessage: null,
+      manualStart: null, chooseManualStart: jest.fn(), setIsEditingManualStart: jest.fn(), setManualStartPlace: jest.fn(),
+      chooseCurrentLocation: jest.fn(async () => true), chooseRememberedLocation: jest.fn(() => true),
+      calculateRoute: jest.fn(async () => {}), showManualStartSearch: false, canStartNavigation: true, startNavigationDisabledReason: '',
+    });
+    await render(<HomeScreen />);
+    await userEvent.setup().press(screen.getByText('Directions'));
+    await act(async () => guideStarted!());
+
+    // The sheet reports landing at the middle detent: the earlier request was swallowed by the opening animation.
+    // (The mocked modal re-creates its handle on every render, so hold the one the call goes to.)
+    const handleAtLanding = sheetRef!.current!;
+    handleAtLanding.snapToIndex.mockClear();
+    await act(async () => __getLastBottomSheetModalProps().onChange(1));
+    expect(handleAtLanding.snapToIndex).toHaveBeenCalledWith(2);
+
+    // Once it is at the top, the user choosing the middle detent again is theirs to make.
+    await act(async () => __getLastBottomSheetModalProps().onChange(2));
+    const handleAtTop = sheetRef!.current!;
+    handleAtTop.snapToIndex.mockClear();
+    await act(async () => __getLastBottomSheetModalProps().onChange(1));
+    expect(handleAtTop.snapToIndex).not.toHaveBeenCalled();
+    spy.mockRestore();
+  });
 });
