@@ -4,7 +4,7 @@
  */
 
 import React from 'react';
-import { AccessibilityInfo, Animated } from 'react-native';
+import { AccessibilityInfo, Animated, Share } from 'react-native';
 import { render, screen, userEvent, act } from './test-utils';
 
 import { LocationSheet } from '../views/components/map/LocationSheet';
@@ -720,6 +720,20 @@ describe('LocationSheet (preview) — Save/Share/Details accessibility', () => {
 
     expect(screen.getByRole('button', { name: 'Share location' })).toBeOnTheScreen();
     expect(screen.getByRole('button', { name: 'Show details' })).toBeOnTheScreen();
+  });
+
+  test('Share opens the Android Sharesheet with the place name and a map link, not raw coordinates', async () => {
+    const share = jest.spyOn(Share, 'share').mockResolvedValue({ action: 'sharedAction' } as never);
+    await renderWithFooter(<LocationSheet {...basePlaceSectionProps({ place: { ...candidatePlace, name: 'Block 14' } })} />);
+
+    const user = userEvent.setup();
+    await user.press(screen.getByRole('button', { name: 'Share location' }));
+
+    const { message } = share.mock.calls[0][0];
+    expect(message.split('\n')[0]).toBe('Block 14 — Karachi Ijtema');
+    expect(message).toContain('https://www.openstreetmap.org/');
+    expect(message).not.toMatch(/Location:/);
+    share.mockRestore();
   });
 });
 
