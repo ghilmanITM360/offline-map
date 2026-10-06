@@ -6,7 +6,7 @@ const guide = readFileSync('src/views/screens/AppGuideScreen.tsx', 'utf8');
 
 assert(settings.includes('App Guide'), 'Settings must contain App Guide item');
 assert(settings.includes("navigation.navigate('AppGuide')"), 'App Guide item must navigate to AppGuide screen');
-assert(settings.includes('Voice Language'), 'Settings should use Voice Language label, not generic Language');
+assert(!settings.includes('Voice Language'), 'Voice Language is gone: the spoken text is English only');
 assert(!settings.includes('Dark Mode'), 'Dark Mode should be hidden until fully implemented');
 
 const requiredSections = [

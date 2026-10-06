@@ -90,7 +90,7 @@ const GUIDE_SECTIONS: GuideSection[] = [
     title: '8. Settings Meaning',
     urduTitle: '۸۔ سیٹنگز کی وضاحت',
     body:
-      'Voice Language changes the spoken directions. You can also choose north at the top, voice directions, fixing your route automatically, meters or feet, and your walking speed.',
+      'In Settings you can turn spoken directions on or off, choose meters or feet, and clear what the app remembers on your phone. Location shows whether live guidance is on.',
   },
   {
     key: 'gps',
