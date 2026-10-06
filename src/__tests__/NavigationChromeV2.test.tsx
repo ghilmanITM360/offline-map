@@ -408,6 +408,48 @@ describe('NavigationChromeV2 — direct outside guide', () => {
   });
 });
 
+describe('NavigationChromeV2 — straight-line guide stays a straight-line guide while the outside leg is walked', () => {
+  // Found in the final emulator run: live progress moves the current step past the approach step on the first
+  // fix (its boundary is the route start), so a step-index check dropped the warning and showed a walking ETA.
+  const outsideInstructions = [
+    { ...route.instructions[0], id: 'o1', text: 'Walk toward Gate 8.', routeIndex: 0, distanceM: 900 },
+    { ...route.instructions[0], id: 'o2', text: 'Enter through Gate 8.', routeIndex: 1, distanceM: 0 },
+    { ...route.instructions[0], id: 'o3', text: 'Continue for 100 meters.', routeIndex: 2, distanceM: 100 },
+  ];
+  const directRoute = {
+    ...route,
+    totalDistanceM: 1000, // 900 straight line to the gate + 100 inside
+    startConnectorDistanceM: 900,
+    outsideLegCoordinateCount: 1,
+    outsideRoute: {
+      schemaVersion: 1, candidateId: 'c', requestId: 'r', requestVersion: 1, provider: 'direct-guide', gateId: 'GATE_08',
+      distanceM: 900, durationSeconds: null, coordinates: route.coordinates, steps: [], roadFollowing: false,
+      distanceKind: 'direct-distance', warnings: [{ code: 'direct-guide-not-road-route' }], fallbackReason: 'outside-coverage', fallbackHistory: [],
+    },
+    instructions: outsideInstructions,
+    metadata: { ...route.metadata, startedOutside: true, entryGateId: 'GATE_08', usesOfficialGateEntry: true },
+  } as unknown as V2ActiveRoute;
+
+  test('far from the gate, with the current step already past the approach step: warning, no walking ETA', async () => {
+    await render(<NavigationChromeV2
+      overlay={baseOverlay({ route: directRoute, instructions: outsideInstructions, currentStepIndex: 1, remainingDistance: 950, etaMinutes: 11 })}
+      hasBaseMap
+    />);
+    expect(screen.getByText('Straight-line guide, not a road route')).toBeOnTheScreen();
+    expect(screen.queryByText('11 min')).not.toBeOnTheScreen();
+    expect(screen.queryByText(/Arrive/)).not.toBeOnTheScreen();
+  });
+
+  test('once the user is at the gate the guide ends and the normal inside card returns', async () => {
+    await render(<NavigationChromeV2
+      overlay={baseOverlay({ route: directRoute, instructions: outsideInstructions, currentStepIndex: 2, remainingDistance: 95, etaMinutes: 2 })}
+      hasBaseMap
+    />);
+    expect(screen.queryByText('Straight-line guide, not a road route')).not.toBeOnTheScreen();
+    expect(screen.getByText('2 min')).toBeOnTheScreen();
+  });
+});
+
 // Regression test for Phase 3 (Exit/recenter touch-target re-verification): Exit (~44px) and
 // Mute (~44px) buttons sit below Android's 48dp minimum touch target, and Recenter (48px) has
 // zero margin above it — none had hitSlop. Without the fix, these Pressables carry no hitSlop
