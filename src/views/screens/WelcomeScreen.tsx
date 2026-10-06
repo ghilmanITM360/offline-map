@@ -7,13 +7,12 @@ import React from 'react';
 import { View, Text, StyleSheet, Pressable, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { Map as MapIcon, MapPin, Navigation, WifiOff, Footprints } from 'lucide-react-native';
+import { Map as MapIcon, MapPin, Navigation, Footprints } from 'lucide-react-native';
 import { useWelcomeViewModel } from '../../viewmodels/WelcomeViewModel';
 
 const BENEFITS = [
   { icon: MapPin, text: 'See where you are' },
   { icon: Navigation, text: 'Navigate to blocks and gates' },
-  { icon: WifiOff, text: 'Venue routes work offline' },
   { icon: Footprints, text: 'Get walking directions' },
 ];
 
@@ -33,10 +32,10 @@ export function WelcomeScreen() {
           <Text style={styles.title}>Welcome to Ijtema Map</Text>
           <Text style={styles.urduTitle}>اجتماع میپ میں خوش آمدید</Text>
           {onboardingStatusReadFailed && (
-            <Text style={styles.notice}>We couldn't confirm your previous setup, so we're showing this again.</Text>
+            <Text style={styles.notice}>Welcome back.</Text>
           )}
           <Text style={styles.description}>
-            Find blocks, gates, and routes easily.{'\n'}Works even without internet.
+            Find blocks, gates, and routes easily.
           </Text>
 
           <View style={styles.featureList}>
@@ -49,7 +48,7 @@ export function WelcomeScreen() {
           </View>
 
           <Text style={styles.optionalNote}>
-            Location is optional. You can allow it later to follow your walk live.
+            Location is optional. You can turn it on later.
           </Text>
 
           <Pressable

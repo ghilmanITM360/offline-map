@@ -47,9 +47,8 @@ import { backChevron, forwardChevron } from '../common/directionalIcons';
 import { directionsSheetColors, radii, staticColors } from '../../../theme';
 import { placeCategoryLabel } from '../../../utils/placeCategoryLabel';
 import { unavailableReasonCopy } from '../../../utils/unavailableReasonCopy';
-import { directionsOfflineCaption } from '../../../utils/directionsOfflineCopy';
 import { ROUTE_NOT_FOUND, SAME_PLACE } from '../../../utils/routeCopy';
-import { DirectionsHeader, OfflineInfo, RouteEndpointRows } from './DirectionsSheetParts';
+import { DirectionsHeader, RouteEndpointRows } from './DirectionsSheetParts';
 import { publishDirectionsFooter, useDirectionsFooterHeight } from './DirectionsSheetFooter';
 import { OutsideRouteStatusCard } from '../navigation/OutsideRouteStatusCard';
 import type { NormalizedOutsideCandidate } from '../../../models/outsideRouting';
@@ -129,7 +128,6 @@ export type LocationSheetProps =
        * back through the store's directoryChoice. */
       onOpenDirectory?: (purpose: DirectoryPurpose) => void;
       /** Legacy flag (the basemap now ships with the app, so Home always passes false). Display-only. */
-      basemapOffline?: boolean;
     }
   | {
       mode: 'preview' | 'details';
@@ -165,7 +163,6 @@ export function LocationSheet(props: LocationSheetProps) {
         onCancelRoute={props.onCancelRoute}
         onChangeDestination={props.onChangeDestination}
         onOpenDirectory={props.onOpenDirectory}
-        basemapOffline={props.basemapOffline}
       />
     );
   }
@@ -214,7 +211,6 @@ function RoutePreviewSection({
   sheetCollapsed,
   onToggleSheet,
   journey,
-  basemapOffline,
 }: {
   destination: Place;
   onClose: () => void;
@@ -230,7 +226,6 @@ function RoutePreviewSection({
   onCancelRoute?: () => void;
   onChangeDestination?: (place: Place) => void;
   onOpenDirectory?: (purpose: DirectoryPurpose) => void;
-  basemapOffline?: boolean;
 }) {
   const { fontScale } = useWindowDimensions();
   const footerHeight = useDirectionsFooterHeight();
@@ -363,7 +358,6 @@ function RoutePreviewSection({
   }, [loadState]);
 
   const directGuide = outsideRoute?.provider === 'direct-guide';
-  const offlineCaption = directionsOfflineCaption(outsideRoute?.provider, !!basemapOffline);
   // Past ~150% font the pinned footer would eat the sheet: it keeps only the action (and its
   // disabled reason) and the summary/caption scroll with the content instead.
   const compactFooter = fontScale >= 1.5;
@@ -400,7 +394,6 @@ function RoutePreviewSection({
       </Text>
     </Pressable>
   ) : null;
-  const captionNode = offlineCaption ? <OfflineInfo text={offlineCaption} /> : null;
   const footerVisible = (showLoading || showError || showSamePlace || showRouteReady) && !(showRouteReady && routeGuide);
   // The caption scrolls with the content: the pinned footer only has room for the route summary,
   // the action and its disabled reason (gorhom's visible area at the 50% snap is small).
@@ -753,8 +746,6 @@ function RoutePreviewSection({
             </View>
           )}
           </FadeContent>
-
-          {captionNode}
         </BottomSheetScrollView>
 
       </KeyboardAvoidingView>

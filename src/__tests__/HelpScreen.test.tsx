@@ -18,7 +18,7 @@ describe('HelpScreen — accessibility and copy (#155)', () => {
   test('help rows expose an accessible button role and name', async () => {
     await render(<HelpScreen />);
 
-    const row = screen.getByRole('button', { name: 'Does the map work without internet?, Yes — the map is built into the app.' });
+    const row = screen.getByRole('button', { name: 'Finding your block, Tips for locating your specific block and tent.' });
     expect(row).toBeTruthy();
   });
 

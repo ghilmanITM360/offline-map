@@ -118,7 +118,7 @@ function composeOutsideInstructions(
     const gateLabelUr = gate?.name.ur ?? gateLabelEn;
     return [{
       id: 'outside-direct-guide',
-      text: `Follow the direction line toward ${gateLabelEn}.`,
+      text: `Walk toward ${gateLabelEn}.`,
       urduText: `دکھائی گئی سیدھی سمت میں ${gateLabelUr} کی طرف جائیں۔`,
       distance: route.distanceM,
       type: 'straight',

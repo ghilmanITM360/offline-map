@@ -140,7 +140,7 @@ export function NavigationChromeV1({ overlay, hasBaseMap }: { overlay: Navigatio
             </View>
           ) : !hasBaseMap ? (
             <View style={styles.mapUnavailableBanner} accessibilityLiveRegion="polite">
-              <Text style={styles.mapUnavailableText}>Base map unavailable. Offline route guidance continues.</Text>
+              <Text style={styles.mapUnavailableText}>The map can't be shown. Directions still work.</Text>
             </View>
           ) : null}
         </View>

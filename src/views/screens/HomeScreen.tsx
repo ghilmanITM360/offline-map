@@ -1906,7 +1906,6 @@ export function HomeScreen() {
               onCancelRoute={activePreviewRoute ? handleClearPreviewRoute : undefined}
               onChangeDestination={handleChangeDestination}
               onOpenDirectory={handleOpenDirectoryFor}
-              basemapOffline={graphOnlyFallbackUsed}
             />
           ) : selectedPlace ? (
             <LocationSheet

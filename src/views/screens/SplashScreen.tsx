@@ -136,7 +136,7 @@ export function SplashScreen() {
         </View>
         <Text style={styles.title}>Ijtema Map</Text>
         <Text style={styles.urduTitle}>اجتماع میپ</Text>
-        <Text style={styles.subtitle}>Offline Navigation Guide</Text>
+        <Text style={styles.subtitle}>Find your way at Ijtema</Text>
       </Animated.View>
     </View>
   );

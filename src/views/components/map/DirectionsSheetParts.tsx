@@ -5,7 +5,7 @@
 
 import React from 'react';
 import { I18nManager, Pressable, StyleSheet, Text, View } from 'react-native';
-import { ChevronLeft, ChevronRight, Info, RefreshCw, WifiOff } from 'lucide-react-native';
+import { ChevronLeft, ChevronRight, RefreshCw } from 'lucide-react-native';
 
 import { directionsSheetColors as c } from '../../../theme';
 
@@ -149,17 +149,6 @@ export function StartOptionCard({
   );
 }
 
-/** Truthful offline note: a quiet line under the CTA, or a banner in the start chooser. */
-export function OfflineInfo({ text, banner }: { text: string; banner?: boolean }) {
-  const Icon = banner ? Info : WifiOff;
-  return (
-    <View style={[styles.offline, banner && styles.offlineBanner]}>
-      <Icon size={banner ? 20 : 14} color={c.secondaryText} />
-      <Text style={[styles.offlineText, !banner && styles.offlineLineText]}>{text}</Text>
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   header: {
@@ -281,18 +270,4 @@ const styles = StyleSheet.create({
   optionTitle: { fontSize: 18, fontWeight: '800', color: c.headingText },
   optionSubtitle: { fontSize: 14, lineHeight: 20, color: c.secondaryText },
 
-  offline: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-  },
-  offlineBanner: {
-    justifyContent: 'flex-start',
-    borderRadius: 12,
-    backgroundColor: c.bannerFill,
-    padding: 14,
-  },
-  offlineText: { flexShrink: 1, fontSize: 14, lineHeight: 20, color: c.secondaryText },
-  offlineLineText: { fontSize: 13, lineHeight: 18, textAlign: 'center' },
 });

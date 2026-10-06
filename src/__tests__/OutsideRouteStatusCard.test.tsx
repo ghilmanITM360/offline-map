@@ -31,8 +31,8 @@ function route(overrides: Partial<NormalizedOutsideCandidate> = {}): NormalizedO
 
 describe('OutsideRouteStatusCard', () => {
   test.each([
-    ['google', 'Google walking route'],
-    ['offline-osm', 'Offline walking route'],
+    ['google', 'Walking route'],
+    ['offline-osm', 'Walking route'],
   ] as const)('shows accurate %s provider identity', async (provider, label) => {
     await render(<OutsideRouteStatusCard route={route({ provider })} gateLabel="Gate 05" />);
     expect(screen.getByText(label)).toBeOnTheScreen();
@@ -48,8 +48,8 @@ describe('OutsideRouteStatusCard', () => {
       })}
       gateLabel="Gate 05"
     />);
-    expect(screen.getByText('Offline walking route')).toBeOnTheScreen();
-    expect(screen.getByText('Google walking route unavailable. Using offline walking roads.')).toBeOnTheScreen();
+    expect(screen.getByText('Walking route')).toBeOnTheScreen();
+    expect(screen.getByText('Using a simpler route. It may be less exact.')).toBeOnTheScreen();
   });
 
   test('renders direct guide as bilingual alert with retry and manual-gate actions', async () => {
@@ -72,13 +72,13 @@ describe('OutsideRouteStatusCard', () => {
     />);
 
     expect(screen.getByRole('alert')).toBeOnTheScreen();
-    expect(screen.getByText('Direct guide — not a road route')).toBeOnTheScreen();
-    expect(screen.getByText('Road navigation is currently unavailable. This guide points directly toward the selected gate and may not follow walkable roads.')).toBeOnTheScreen();
-    expect(screen.getByText('سڑک کے مطابق نیویگیشن اس وقت دستیاب نہیں۔ یہ رہنمائی منتخب گیٹ کی سیدھی سمت دکھاتی ہے اور ضروری نہیں کہ پیدل چلنے کے قابل سڑکوں کے مطابق ہو۔')).toBeOnTheScreen();
+    expect(screen.getByText('Straight-line guide, not a road route')).toBeOnTheScreen();
+    expect(screen.getByText("We can't find a road route. The arrow points straight to the gate and may not follow walkable roads. Look around as you walk.")).toBeOnTheScreen();
+    expect(screen.getByText('سڑک کا راستہ نہیں مل سکا۔ تیر سیدھا گیٹ کی طرف اشارہ کرتا ہے اور ضروری نہیں کہ پیدل چلنے کے راستوں پر ہو۔ چلتے وقت اردگرد دیکھ لیں۔')).toBeOnTheScreen();
     expect(screen.queryByText(/turn (left|right)/i)).not.toBeOnTheScreen();
     expect(screen.queryByText(/continue ahead/i)).not.toBeOnTheScreen();
 
-    await user.press(screen.getByRole('button', { name: 'Retry road route' }));
+    await user.press(screen.getByRole('button', { name: 'Try again' }));
     await user.press(screen.getByRole('button', { name: 'Choose another gate' }));
     expect(onRetry).toHaveBeenCalledTimes(1);
     expect(onChooseGate).toHaveBeenCalledTimes(1);
@@ -97,7 +97,7 @@ describe('OutsideRouteStatusCard', () => {
       retrying
       onRetry={jest.fn()}
     />);
-    expect(screen.getByRole('button', { name: 'Retry road route' })).toBeDisabled();
-    expect(screen.getByText('Checking for a road route…')).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: 'Try again' })).toBeDisabled();
+    expect(screen.getByText('Looking for a better route…')).toBeOnTheScreen();
   });
 });

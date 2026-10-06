@@ -134,7 +134,7 @@ export function NavigationChromeV2({ overlay, hasBaseMap }: { overlay: Navigatio
                 <Navigation size={32} color={staticColors.white} />
               </View>
               <View style={styles.instructionTextContainer}>
-                <Text style={styles.maneuverLabel}>Direct gate guide</Text>
+                <Text style={styles.maneuverLabel}>Straight-line guide</Text>
                 <Text style={styles.nextStepText}>
                   {outsideRouteMessage('direct.heading', 'en', { gate: directGateLabel })}
                 </Text>
@@ -206,7 +206,7 @@ export function NavigationChromeV2({ overlay, hasBaseMap }: { overlay: Navigatio
             </View>
           ) : !hasBaseMap ? (
             <View style={styles.mapUnavailableBanner} accessibilityLiveRegion="polite">
-              <Text style={styles.mapUnavailableText}>Base map unavailable. Offline route guidance continues.</Text>
+              <Text style={styles.mapUnavailableText}>The map can't be shown. Directions still work.</Text>
             </View>
           ) : null}
           {route.metadata.startedOutside && route.metadata.entryGateId && (

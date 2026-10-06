@@ -456,11 +456,11 @@ describe('LocationSheet (routePreview) — route ready CTA', () => {
     const user = userEvent.setup();
     await renderWithFooter(<LocationSheet mode="routePreview" destination={v2Destination} onClose={onCloseSpy} />);
 
-    expect(screen.getByText('Direct guide — not a road route')).toBeOnTheScreen();
+    expect(screen.getByText('Straight-line guide, not a road route')).toBeOnTheScreen();
     expect(screen.getByText('Start Direct Guide')).toBeOnTheScreen();
     expect(screen.getByText('Selected gate: Gate 05')).toBeOnTheScreen();
     expect(screen.queryByText('4 min')).not.toBeOnTheScreen();
-    await user.press(screen.getByRole('button', { name: 'Retry road route' }));
+    await user.press(screen.getByRole('button', { name: 'Try again' }));
     expect(retryOutsideRoute).toHaveBeenCalledTimes(1);
     await user.press(screen.getByRole('button', { name: 'Choose another gate' }));
     await user.press(screen.getByRole('button', { name: 'Use Gate 12' }));

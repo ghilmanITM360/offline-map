@@ -197,8 +197,8 @@ describe('NavigationChromeV2 — direct outside guide', () => {
     const stackContent = within(stack);
     expect(stackContent.getByTestId('navigation-maneuver-surface')).toBeOnTheScreen();
     expect(stackContent.getByTestId('navigation-subordinate-surfaces')).toBeOnTheScreen();
-    expect(stackContent.getByText('Offline walking route')).toBeOnTheScreen();
-    expect(stackContent.getByText('Base map unavailable. Offline route guidance continues.')).toBeOnTheScreen();
+    expect(stackContent.getByText('Walking route')).toBeOnTheScreen();
+    expect(stackContent.getByText("The map can't be shown. Directions still work.")).toBeOnTheScreen();
   });
 
   test('#66: shows only the highest-priority status when GPS lost, reroute, and basemap loss all apply', async () => {
@@ -214,7 +214,7 @@ describe('NavigationChromeV2 — direct outside guide', () => {
     expect(stackContent.getByText('Searching for GPS signal. Your position may be out of date.')).toBeOnTheScreen();
     expect(stackContent.queryByText('Weak GPS signal detected. Route updates may be slower.')).not.toBeOnTheScreen();
     expect(stackContent.queryByText('Recalculating your route')).not.toBeOnTheScreen();
-    expect(stackContent.queryByText('Base map unavailable. Offline route guidance continues.')).not.toBeOnTheScreen();
+    expect(stackContent.queryByText("The map can't be shown. Directions still work.")).not.toBeOnTheScreen();
   });
 
   // 200% font on a 320 dp window: the GPS banner wrapped to three lines and ran under the map control column
@@ -239,7 +239,7 @@ describe('NavigationChromeV2 — direct outside guide', () => {
     const stackContent = within(stack);
     expect(stackContent.getByText('Weak GPS signal detected. Route updates may be slower.')).toBeOnTheScreen();
     expect(stackContent.queryByText('Recalculating your route')).not.toBeOnTheScreen();
-    expect(stackContent.queryByText('Base map unavailable. Offline route guidance continues.')).not.toBeOnTheScreen();
+    expect(stackContent.queryByText("The map can't be shown. Directions still work.")).not.toBeOnTheScreen();
   });
 
   test('#66: reroute status outranks basemap loss', async () => {
@@ -253,7 +253,7 @@ describe('NavigationChromeV2 — direct outside guide', () => {
     const stack = screen.getByTestId('navigation-top-stack');
     const stackContent = within(stack);
     expect(stackContent.getByText('Recalculating your route')).toBeOnTheScreen();
-    expect(stackContent.queryByText('Base map unavailable. Offline route guidance continues.')).not.toBeOnTheScreen();
+    expect(stackContent.queryByText("The map can't be shown. Directions still work.")).not.toBeOnTheScreen();
   });
 
   test('#156: GPS_LOST banner is an assertive live region so screen-reader users hear it unprompted', async () => {
@@ -275,7 +275,7 @@ describe('NavigationChromeV2 — direct outside guide', () => {
 
   test('#156: map-unavailable banner is a polite live region', async () => {
     await render(<NavigationChromeV2 overlay={baseOverlay()} hasBaseMap={false} />);
-    expect(screen.getByText('Base map unavailable. Offline route guidance continues.').parent?.props.accessibilityLiveRegion).toBe('polite');
+    expect(screen.getByText("The map can't be shown. Directions still work.").parent?.props.accessibilityLiveRegion).toBe('polite');
   });
 
   test('shows accurate road provider identity while outside leg is active', async () => {
@@ -307,8 +307,8 @@ describe('NavigationChromeV2 — direct outside guide', () => {
       hasBaseMap
     />);
 
-    expect(screen.getByText('Offline walking route')).toBeOnTheScreen();
-    expect(screen.getByText('Google walking route unavailable. Using offline walking roads.')).toBeOnTheScreen();
+    expect(screen.getByText('Walking route')).toBeOnTheScreen();
+    expect(screen.getByText('Using a simpler route. It may be less exact.')).toBeOnTheScreen();
   });
 
   test('shows direct-guide warning, suppresses road fields, and uses confirmed Exit', async () => {
@@ -351,8 +351,8 @@ describe('NavigationChromeV2 — direct outside guide', () => {
       hasBaseMap
     />);
 
-    expect(screen.getByText('Direct guide — not a road route')).toBeOnTheScreen();
-    expect(screen.getByText('Follow the direction line toward Gate 05.')).toBeOnTheScreen();
+    expect(screen.getByText('Straight-line guide, not a road route')).toBeOnTheScreen();
+    expect(screen.getByText('Walk toward Gate 05.')).toBeOnTheScreen();
     expect(screen.queryByText('Imaginary Road')).not.toBeOnTheScreen();
     expect(screen.queryByText('Turn right on Imaginary Road')).not.toBeOnTheScreen();
     expect(screen.queryByText('5 min')).not.toBeOnTheScreen();
@@ -399,7 +399,7 @@ describe('NavigationChromeV2 — direct outside guide', () => {
       hasBaseMap
     />);
 
-    await user.press(screen.getByRole('button', { name: 'Retry road route' }));
+    await user.press(screen.getByRole('button', { name: 'Try again' }));
     await user.press(screen.getByRole('button', { name: 'Choose another gate' }));
     await user.press(screen.getByRole('button', { name: 'Use Gate 12' }));
 

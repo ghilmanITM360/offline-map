@@ -11,7 +11,6 @@ import {
   Navigation,
   LocateFixed,
   Route,
-  WifiOff,
   Shield,
   Layers,
   MapPin,
@@ -41,90 +40,82 @@ const GUIDE_SECTIONS: GuideSection[] = [
       'Ijtema Map helps you find internal walking routes inside Karachi Ijtema ground. This app is for venue navigation, not city-wide driving routes.',
   },
   {
-    key: 'offline',
-    icon: WifiOff,
-    title: '2. Offline Maps',
-    urduTitle: '۲۔ آف لائن نقشہ',
-    body:
-      'The map is built into the app. Search, the map, directions and navigation all work without internet — there is nothing to download.',
-  },
-  {
     key: 'search',
     icon: Search,
-    title: '3. Search Places',
-    urduTitle: '۳۔ تلاش کریں',
+    title: '2. Search Places',
+    urduTitle: '۲۔ تلاش کریں',
     body:
       'Use search to find Blocks, Rastas, Gates, Masjids, Terminals, and Help points. Category chips help you filter quickly.',
   },
   {
     key: 'destination',
     icon: MapPin,
-    title: '4. Choose Destination',
-    urduTitle: '۴۔ منزل منتخب کریں',
+    title: '3. Choose Destination',
+    urduTitle: '۳۔ منزل منتخب کریں',
     body:
       'Tap a search result or map place to set destination. Red marker means destination. Review details, then open Directions.',
   },
   {
     key: 'start',
     icon: LocateFixed,
-    title: '5. Choose Start Source',
-    urduTitle: '۵۔ آغاز کا مقام',
+    title: '4. Choose Start Source',
+    urduTitle: '۴۔ آغاز کا مقام',
     body:
       'Tap the FROM row to open the place list. Use My Current Location = live GPS now. Use Last Known Location = your last saved location, not live. Or pick a gate, block or rasta yourself. If you start outside Ijtema, routes enter from the nearest connected official gate.',
   },
   {
     key: 'directions',
     icon: Route,
-    title: '6. Directions Screen',
-    urduTitle: '۶۔ ڈائریکشن اسکرین',
+    title: '5. Directions Screen',
+    urduTitle: '۵۔ ڈائریکشن اسکرین',
     body:
       'Directions shows FROM and TO. Tap either row to change it. When the route is ready, tap Use my location & start, or View route to see the blue line, distance, and time on the map.',
   },
   {
     key: 'navigation',
     icon: Navigation,
-    title: '7. Navigation Screen',
-    urduTitle: '۷۔ نیویگیشن اسکرین',
+    title: '6. Navigation Screen',
+    urduTitle: '۶۔ نیویگیشن اسکرین',
     body:
       'Blue marker = your current/active position. Green marker = start. Red marker = destination. Blue route line = internal path. Follow instruction card and bottom summary.',
   },
   {
     key: 'controls',
     icon: Layers,
-    title: '8. Map Controls',
-    urduTitle: '۸۔ نقشہ کنٹرولز',
+    title: '7. Map Controls',
+    urduTitle: '۷۔ نقشہ کنٹرولز',
     body:
       'Follow direction turns the map to face the way you are moving; tap it again for north-up. Recenter jumps back to your position. More map controls holds Layers and Zoom in / Zoom out. You can also pinch to zoom.',
   },
   {
     key: 'settings',
     icon: Settings,
-    title: '9. Settings Meaning',
-    urduTitle: '۹۔ سیٹنگز کی وضاحت',
+    title: '8. Settings Meaning',
+    urduTitle: '۸۔ سیٹنگز کی وضاحت',
     body:
       'Voice Language changes speech only. Map Style, Auto-follow, North-up, Voice Instructions, Auto-reroute, Distance Unit, and Walking Speed all affect navigation behavior.',
   },
   {
     key: 'gps',
     icon: TriangleAlert,
-    title: '10. GPS & Permission Problems',
-    urduTitle: '۱۰۔ جی پی ایس مسائل',
+    title: '9. GPS & Permission Problems',
+    urduTitle: '۹۔ جی پی ایس مسائل',
     body:
       'If permission is denied, open Manage in Settings. If signal is weak, pause and wait. If you are outside Ijtema, the app will enter through the nearest connected official gate automatically.',
   },
   {
     key: 'safety',
     icon: Shield,
-    title: '11. Safety Tips',
-    urduTitle: '۱۱۔ حفاظتی ہدایات',
+    title: '10. Safety Tips',
+    urduTitle: '۱۰۔ حفاظتی ہدایات',
     body:
       'Keep phone charged. Stop walking before reading screen. Follow official volunteers and announcements first in heavy crowd conditions.',
   },
   {
     key: 'troubleshoot',
     icon: LifeBuoy,
-    title: '12. Troubleshooting',
-    urduTitle: '۱۲۔ مسئلہ حل',
+    title: '11. Troubleshooting',
+    urduTitle: '۱۱۔ مسئلہ حل',
     body:
       'Map looks empty: close and reopen the app. Route not calculating: retry or tap Change Start. GPS not working: tap Change Start and pick a place, or use your last known location. If a gate needs connector verification or is not ready for navigation, choose another connected official gate.',
   },
@@ -154,7 +145,7 @@ export function AppGuideScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.subtitle}>How to Use App Offline • ایپ گائیڈ</Text>
+        <Text style={styles.subtitle}>How to use the app • ایپ گائیڈ</Text>
 
         <View style={styles.quickCard}>
           <Text style={styles.quickTitle}>Quick Marker Legend</Text>
@@ -196,13 +187,6 @@ export function AppGuideScreen() {
             </View>
           );
         })}
-
-        <View style={styles.footerCard}>
-          <WifiOff size={16} color="#7C4A03" />
-          <Text style={styles.footerText}>
-            No internet? Everything here still works — the map and all routes are built into the app.
-          </Text>
-        </View>
       </ScrollView>
     </SafeAreaView>
   );

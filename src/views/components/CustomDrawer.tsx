@@ -44,7 +44,7 @@ export function CustomDrawer(props: DrawerContentComponentProps) {
         </View>
         <View style={styles.headerText}>
           <Text style={styles.title}>Ijtema Map</Text>
-          <Text style={styles.subtitle}>Offline Navigation</Text>
+          <Text style={styles.subtitle}>Find your way</Text>
         </View>
       </View>
 

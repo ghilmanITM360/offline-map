@@ -52,7 +52,7 @@ export function AboutScreen() {
             />
           </View>
           <Text style={styles.appName}>Karachi Ijtema Navigation</Text>
-          <Text style={styles.version}>Version 1.0.0 (Stable)</Text>
+          <Text style={styles.version}>Version 1.0.0</Text>
         </View>
 
         <View style={styles.section}>
@@ -61,7 +61,7 @@ export function AboutScreen() {
             <Heart size={24} color="#E91E63" style={styles.cardIcon} />
             <Text style={styles.cardText}>
               This app is a humble effort to assist the millions of pilgrims attending the Karachi Ijtema. 
-              Our goal is to provide accurate, offline navigation to help everyone find their way easily 
+              Our goal is to give clear directions so everyone can find their way easily
               within the vast grounds.
             </Text>
           </View>
@@ -72,7 +72,7 @@ export function AboutScreen() {
           <View style={styles.featureList}>
             <View style={styles.featureItem}>
               <View style={styles.dot} />
-              <Text style={styles.featureText}>Core Ijtima navigation works offline</Text>
+              <Text style={styles.featureText}>Find blocks, gates and routes inside Ijtema</Text>
             </View>
             <View style={styles.featureItem}>
               <View style={styles.dot} />
@@ -84,7 +84,7 @@ export function AboutScreen() {
             </View>
             <View style={styles.featureItem}>
               <View style={styles.dot} />
-              <Text style={styles.featureText}>Real-time GPS Tracking & Rerouting</Text>
+              <Text style={styles.featureText}>Shows you the way as you walk</Text>
             </View>
           </View>
         </View>
