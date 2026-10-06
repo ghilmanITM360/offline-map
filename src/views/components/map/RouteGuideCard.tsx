@@ -5,9 +5,9 @@
 
 import React from 'react';
 import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
-import { ChevronLeft, ChevronRight } from 'lucide-react-native';
 import { useAppStore, type RouteGuideState } from '../../../store/useAppStore';
 import { Button } from '../common/Button';
+import { backChevron, forwardChevron } from '../common/directionalIcons';
 import { directionsSheetColors, radii } from '../../../theme';
 import { InstructionService } from '../../../services/InstructionService';
 
@@ -38,6 +38,8 @@ export function RouteGuideCard({
   const step = steps[stepIndex];
   const atStart = stepIndex === 0;
   const atEnd = stepIndex === steps.length - 1;
+  const BackIcon = backChevron();
+  const ForwardIcon = forwardChevron();
   const distance = step.distanceM > 0 ? InstructionService.formatDistance(step.distanceM, distanceUnit) : null;
 
   return (
@@ -56,7 +58,7 @@ export function RouteGuideCard({
           style={styles.stepperButton}
           label="Previous"
           accessibilityLabel="Previous step"
-          icon={<ChevronLeft size={20} color={directionsSheetColors.brand} />}
+          icon={<BackIcon size={20} color={directionsSheetColors.brand} />}
           disabled={atStart}
           onPress={onPrevious}
         />
@@ -66,7 +68,7 @@ export function RouteGuideCard({
           style={styles.stepperButton}
           label="Next"
           accessibilityLabel="Next step"
-          trailingIcon={<ChevronRight size={20} color={directionsSheetColors.brandText} />}
+          trailingIcon={<ForwardIcon size={20} color={directionsSheetColors.brandText} />}
           disabled={atEnd}
           onPress={onNext}
         />
