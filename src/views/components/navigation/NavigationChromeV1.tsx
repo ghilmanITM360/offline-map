@@ -104,9 +104,11 @@ export function NavigationChromeV1({ overlay, hasBaseMap }: { overlay: Navigatio
               <Text style={styles.instructionDistance}>
                 {currentStep.distance > 0 ? InstructionService.formatDistance(currentStep.distance, settings.distanceUnit) : ''}
               </Text>
-              <Text style={styles.roadNameText} numberOfLines={1} ellipsizeMode="tail">
+              {InstructionService.stepRoadLine(currentStep, destination?.name) ? (
+                <Text style={styles.roadNameText} numberOfLines={1} ellipsizeMode="tail">
                 {InstructionService.stepRoadLine(currentStep, destination?.name)}
               </Text>
+              ) : null}
               {nextStep && (
                 // B-001: was the full raw instruction sentence, clipped by numberOfLines={1}
                 // at exactly the upcoming place name — see NavigationChromeV2's identical fix.

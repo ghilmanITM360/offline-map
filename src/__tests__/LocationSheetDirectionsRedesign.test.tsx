@@ -329,6 +329,17 @@ describe('Get Directions redesign — pinned footer', () => {
     expect(screen.getByRole('button', { name: 'Choose another place' })).toBeOnTheScreen();
     expect(screen.queryByText(/Start Navigation|Route ready|Ready to go| 0 m/)).not.toBeOnTheScreen();
   });
+
+  test('the explanation comes before the From/To rows, so it is seen at the half-height snap', async () => {
+    mockedVm.mockReturnValue(vm({ loadState: 'same_place', route: null }));
+    await renderSheet();
+    const tree = JSON.stringify(screen.toJSON());
+    const message = tree.indexOf('Start and destination are the same place.');
+    const fromRow = tree.indexOf('Change start');
+    expect(message).toBeGreaterThan(-1);
+    expect(fromRow).toBeGreaterThan(-1);
+    expect(message).toBeLessThan(fromRow);
+  });
 });
 
 describe('Get Directions redesign — no routine offline reassurance', () => {

@@ -179,16 +179,14 @@ export class InstructionService {
     }
   }
 
-  /** Fallback shown in the road-name line when the step has no known road/rasta name. */
-  static readonly ROAD_NAME_FALLBACK = 'Continue ahead';
-
   /**
    * Road-name line for a step. Arrival steps carry no roadName, so they name the destination
-   * (V1 `destination.name`, V2 `route.destination.label`) instead of "Continue ahead".
+   * (V1 `destination.name`, V2 `route.destination.label`). A step with no road name has no line at all:
+   * "Continue Straight" followed by "Continue ahead" said the same thing twice.
    */
   static stepRoadLine(step: Pick<NavigationInstruction, 'type' | 'roadName'>, destinationName?: string | null): string {
     if (step.type === 'arrival') return destinationName?.trim() || 'Your destination';
-    return step.roadName?.trim() || InstructionService.ROAD_NAME_FALLBACK;
+    return step.roadName?.trim() || '';
   }
 
   /** Short next-step preview: "Then: Left Turn onto Rasta 05" / "Then: Arrive at Gate 8". */

@@ -37,7 +37,7 @@ describe('Start action for a chosen (manual) start', () => {
     const hook = await readyHook();
     expect(hook.result.current.route).not.toBeNull();
     expect(hook.result.current.canStartNavigation).toBe(false); // safety rule unchanged
-    expect(hook.result.current.startAction).toMatchObject({ kind: 'route_guide', primaryLabel: 'Start route', secondaryLabel: 'Use my location for live guidance' });
+    expect(hook.result.current.startAction).toMatchObject({ kind: 'route_guide', primaryLabel: 'Start route', secondaryLabel: 'Use my location to guide me' });
   });
 
   test('2: permission not granted never blocks a manual route: it is still a Start route', async () => {

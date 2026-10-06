@@ -42,7 +42,7 @@ const steps = [
 
 const runStartAction = jest.fn();
 const startRouteGuide = jest.fn();
-const guideAction = { kind: 'route_guide', primaryLabel: 'Start route', secondaryLabel: 'Use my location for live guidance' };
+const guideAction = { kind: 'route_guide', primaryLabel: 'Start route', secondaryLabel: 'Use my location to guide me' };
 function vm(overrides: Record<string, unknown> = {}) {
   return {
     route, loadState: 'ready', startSource: 'manual_place', startSourceLabel: 'Block 9', startSourceSupportingCopy: '',
@@ -78,7 +78,7 @@ describe('Start route (route ready, chosen FROM + TO)', () => {
     const user = userEvent.setup();
     await renderSheet();
     expect(screen.getByRole('button', { name: 'Start route' })).toBeEnabled();
-    expect(screen.getByRole('button', { name: 'Use my location for live guidance' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Use my location to guide me' })).toBeEnabled();
 
     await user.press(screen.getByRole('button', { name: 'Start route' }));
     expect(startRouteGuide).toHaveBeenCalledTimes(1);
@@ -93,17 +93,17 @@ describe('Start route (route ready, chosen FROM + TO)', () => {
     Dimensions.set({ window: { width: 320, height: 711, scale: 2, fontScale: 2 } });
     await renderSheet();
     const scroll = within(screen.getByTestId('sheet-scroll'));
-    expect(scroll.getByRole('button', { name: 'Use my location for live guidance' })).toBeOnTheScreen();
+    expect(scroll.getByRole('button', { name: 'Use my location to guide me' })).toBeOnTheScreen();
     expect(scroll.queryByRole('button', { name: 'Start route' })).not.toBeOnTheScreen();
     expect(screen.getByRole('button', { name: 'Start route' })).toBeOnTheScreen();
-    expect(screen.getAllByRole('button', { name: 'Use my location for live guidance' })).toHaveLength(1);
+    expect(screen.getAllByRole('button', { name: 'Use my location to guide me' })).toHaveLength(1);
     Dimensions.set({ window: { width: 390, height: 844, scale: 2, fontScale: 1 } });
   });
 
   test('the secondary runs the live start flow (fresh fix, recompute from the real position)', async () => {
     const user = userEvent.setup();
     await renderSheet();
-    await user.press(screen.getByRole('button', { name: 'Use my location for live guidance' }));
+    await user.press(screen.getByRole('button', { name: 'Use my location to guide me' }));
     expect(runStartAction).toHaveBeenCalledTimes(1);
     expect(startRouteGuide).not.toHaveBeenCalled();
   });
@@ -197,7 +197,7 @@ describe('Route guide card', () => {
     open();
     const user = userEvent.setup();
     await renderSheet();
-    await user.press(screen.getByRole('button', { name: 'Use my location for live guidance' }));
+    await user.press(screen.getByRole('button', { name: 'Use my location to guide me' }));
     expect(runStartAction).toHaveBeenCalledTimes(1);
 
     await user.press(screen.getByRole('button', { name: 'End route guide' }));

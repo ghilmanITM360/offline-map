@@ -619,6 +619,21 @@ function RoutePreviewSection({
             />
           )}
 
+          {/* What went wrong comes first: at the half-height snap the From/To rows already fill the view. */}
+          <FadeContent transitionKey={`status-${loadState}`}>
+          {showError && (
+            <Card variant="error" style={styles.statusCard}>
+              <Text style={[styles.statusTitle, styles.statusTitleError]}>{errorMessage || ROUTE_NOT_FOUND}</Text>
+            </Card>
+          )}
+
+          {showSamePlace && (
+            <Card variant="neutral" style={styles.statusCard}>
+              <Text style={styles.statusTitle}>{SAME_PLACE}</Text>
+            </Card>
+          )}
+          </FadeContent>
+
           <FadeContent transitionKey="routeEnds">
             <RouteEndpointRows
               from={{
@@ -670,18 +685,6 @@ function RoutePreviewSection({
           {loadState === 'needs_origin' && errorMessage && (
             <Card variant="warning" style={styles.statusCard}>
               <Text style={styles.statusText}>{errorMessage}</Text>
-            </Card>
-          )}
-
-          {showError && (
-            <Card variant="error" style={styles.statusCard}>
-              <Text style={[styles.statusTitle, styles.statusTitleError]}>{errorMessage || ROUTE_NOT_FOUND}</Text>
-            </Card>
-          )}
-
-          {showSamePlace && (
-            <Card variant="neutral" style={styles.statusCard}>
-              <Text style={styles.statusTitle}>{SAME_PLACE}</Text>
             </Card>
           )}
 

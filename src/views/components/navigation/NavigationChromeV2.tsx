@@ -161,9 +161,11 @@ export function NavigationChromeV2({ overlay, hasBaseMap }: { overlay: Navigatio
                 <Text style={styles.instructionDistance}>
                   {maneuverDistance > 0 ? InstructionService.formatDistance(maneuverDistance, settings.distanceUnit) : ''}
                 </Text>
+                {InstructionService.stepRoadLine(currentStep, route.destination.label) ? (
                 <Text style={styles.roadNameText} numberOfLines={1} ellipsizeMode="tail">
                   {InstructionService.stepRoadLine(currentStep, route.destination.label)}
                 </Text>
+              ) : null}
                 {nextStep && (
                   // B-001: was the full raw instruction sentence ("Then: Continue 40 meters
                   // on Rasta 09 to Rasta 09 & Rasta 01 Junction.") — with numberOfLines={1} the

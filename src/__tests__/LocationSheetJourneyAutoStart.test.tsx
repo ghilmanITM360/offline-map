@@ -73,7 +73,7 @@ beforeEach(() => {
 
 describe('journey auto-start (#307)', () => {
   test('guide: applies the chosen start, then opens the route guide once the route is ready', async () => {
-    mockedVm.mockReturnValue(vm({ startAction: { kind: 'route_guide', primaryLabel: 'Start route', secondaryLabel: 'Use my location for live guidance' } }));
+    mockedVm.mockReturnValue(vm({ startAction: { kind: 'route_guide', primaryLabel: 'Start route', secondaryLabel: 'Use my location to guide me' } }));
     await render(sheet({ mode: 'guide', start }));
     expect(fns.setManualStartPlace).toHaveBeenCalledWith(start);
     expect(fns.startRouteGuide).toHaveBeenCalledTimes(1);
@@ -138,7 +138,7 @@ describe('journey auto-start (#307)', () => {
   });
 
   test('no journey: nothing starts by itself', async () => {
-    mockedVm.mockReturnValue(vm({ startAction: { kind: 'route_guide', primaryLabel: 'Start route', secondaryLabel: 'Use my location for live guidance' } }));
+    mockedVm.mockReturnValue(vm({ startAction: { kind: 'route_guide', primaryLabel: 'Start route', secondaryLabel: 'Use my location to guide me' } }));
     await render(sheet(undefined));
     expect(fns.startRouteGuide).not.toHaveBeenCalled();
     expect(fns.runStartAction).not.toHaveBeenCalled();
