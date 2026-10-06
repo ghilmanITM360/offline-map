@@ -1308,7 +1308,7 @@ export function HomeScreen() {
       currentLocation: state.currentLocation,
     });
     if (!startCheck.canStart) {
-      Alert.alert('Cannot start navigation', startCheck.message);
+      Alert.alert("Can't start yet", startCheck.message);
     }
   }, [invalidateStartupCameraIntent]);
 
@@ -1692,7 +1692,7 @@ export function HomeScreen() {
                   <Text style={styles.outsideVenueTitle}>Outside Ijtema</Text>
                   <Text style={styles.outsideVenueSuggestion}>Suggested entry</Text>
                   <Text style={styles.outsideVenueGateText}>
-                    {nearestEntryGate?.name.en ?? 'Entry recommendation unavailable'}
+                    {nearestEntryGate?.name.en ?? 'No gate suggested yet'}
                   </Text>
                 </View>
                 <Pressable

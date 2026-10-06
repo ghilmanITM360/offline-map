@@ -121,7 +121,7 @@ export function MapControls({ variant, compassMode, onLayers, onCompassToggle, o
         accessibilityRole="button"
         accessibilityLabel={
           isHeadingFollow
-            ? 'Follow direction is on. The map turns to face the way you are moving. Tap to return to north-up.'
+            ? 'Follow direction is on. The map turns to face the way you walk. Tap to keep north at the top.'
             : 'Follow direction is off. Tap to turn the map to face the way you are moving.'
         }
       >

@@ -37,7 +37,7 @@ export function useSettingsViewModel() {
   const LOCAL_DATA_CLEARS = {
     recentSearches: { title: 'Clear recent searches?', message: 'Your recent search list will be emptied.', run: clearRecentSearches },
     savedLocation: { title: 'Clear saved location?', message: 'Your saved location will be deleted from this phone. While location is on, it is saved again.', run: clearSavedLocation },
-    navigationRecovery: { title: 'Clear navigation recovery?', message: 'The reminder about an unfinished trip will be removed.', run: clearUnfinishedJourney },
+    navigationRecovery: { title: 'Clear the unfinished trip reminder?', message: 'The reminder about an unfinished trip will be removed.', run: clearUnfinishedJourney },
   } as const;
   const handleClearLocalData = (kind: keyof typeof LOCAL_DATA_CLEARS) => {
     const { title, message, run } = LOCAL_DATA_CLEARS[kind];

@@ -37,10 +37,10 @@ describe('AppGuideScreen — accessibility', () => {
 describe('AppGuideScreen — start-selection wording (#222)', () => {
   // The Directory is the single start chooser; the guide must name the FROM row,
   // not the removed "Choose start manually" card.
-  test('explains the FROM row and no longer mentions the removed manual-start card', async () => {
+  test('explains the From row and no longer mentions the removed manual-start card', async () => {
     await render(<AppGuideScreen />);
 
-    expect(screen.getAllByText(/FROM row/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/From row/).length).toBeGreaterThan(0);
     expect(screen.queryByText(/Choose start manually/)).toBeNull();
     expect(screen.queryByText(/manual start/i)).toBeNull();
   });

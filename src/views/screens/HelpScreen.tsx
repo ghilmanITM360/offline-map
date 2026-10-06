@@ -18,18 +18,18 @@ export function HelpScreen() {
 
   const openExternalUrl = async (url: string) => {
     if (!url.startsWith('http')) {
-      Alert.alert('Link unavailable', 'This link has not been configured yet.'); // fixed: handle TODO URLs without throwing
+      Alert.alert("This link isn't ready", 'Please try again later.'); // fixed: handle TODO URLs without throwing
       return;
     }
     try {
       const supported = await Linking.canOpenURL(url);
       if (!supported) {
-        Alert.alert('Unable to open link', 'This link is not supported on this device.'); // fixed: guard unsupported URLs
+        Alert.alert("Can't open this link", "This phone can't open it."); // fixed: guard unsupported URLs
         return;
       }
       await Linking.openURL(url); // fixed: await the promise so errors can be caught
     } catch {
-      Alert.alert('Unable to open link', 'Please try again later.'); // fixed: surface linking failures instead of silently rejecting
+      Alert.alert("Can't open this link", 'Please try again later.'); // fixed: surface linking failures instead of silently rejecting
     }
   };
 
@@ -87,18 +87,18 @@ export function HelpScreen() {
             onPress={() =>
               showFAQ(
                 'Finding Your Block',
-                'Each block is labelled B1–B24 on the map.\n\n• Open the menu, tap Find a place and type your block number (e.g. "Block 7" or "7").\n• Tap the block polygon on the map for entrance options.\n• Use "Take Me There" to start turn-by-turn navigation to the nearest gate.\n\nUrdu names are also searchable (e.g. بلاک ۷).',
+                'Every block has a number on the map.\n\n• Use the search box and type your block number, for example "Block 7" or "7".\n• Tap the block on the map to see its entrances.\n• Tap Directions to be guided there.\n\nUrdu names also work, for example بلاک ۷.',
               )
             }
           />
           <HelpItem
             icon={HelpCircle}
-            title="How does navigation work?"
-            description="Understand turn-by-turn directions inside the venue."
+            title="How do directions work?"
+            description="How the app guides you as you walk."
             onPress={() =>
               showFAQ(
-                'Turn-by-Turn Navigation',
-                'The app uses your GPS position to guide you along pre-mapped rastas (paths) inside the Ijtema ground.\n\n• Spoken instructions are announced automatically.\n• Rerouting requires repeated reliable off-route GPS evidence and observes a cooldown.\n• Tap the speaker icon to mute / unmute voice.\n• Tap Exit to stop navigation at any time.',
+                'How directions work',
+                'The app shows you the way on foot inside the Ijtema ground.\n\n• Turns are spoken aloud.\n• If you go the wrong way, it finds a new way.\n• Tap the speaker icon to turn the voice on or off.\n• Tap Exit to stop whenever you like.',
               )
             }
           />
@@ -121,12 +121,12 @@ export function HelpScreen() {
           <Text style={styles.sectionTitle}>Navigation Tips</Text>
           <HelpItem
             icon={HelpCircle}
-            title="GPS accuracy"
-            description="For best results, use outdoors with clear sky view."
+            title="Finding your location"
+            description="Works best outdoors with a clear view of the sky."
             onPress={() =>
               showFAQ(
-                'GPS Accuracy',
-                '• Stand in an open area away from large structures for best accuracy.\n• If your position looks wrong, tap the Recenter button.\n• Enable "High accuracy" GPS mode in your phone settings.\n• Low accuracy warnings are shown automatically.',
+                'Finding your location',
+                '• Stand in an open area away from tall buildings.\n• If your position looks wrong, tap the Recenter button.\n• If it still looks wrong, choose where you are starting from.',
               )
             }
           />
@@ -149,7 +149,7 @@ export function HelpScreen() {
           <HelpItem
             icon={FileText}
             title="App Version"
-            description="Ijtema Navigator v1.0 — Karachi Ijtema Edition"
+            description="Ijtema Map, version 1.0"
             onPress={() => Alert.alert('App Info', 'Ijtema Map, version 1.0')}
           />
           <HelpItem

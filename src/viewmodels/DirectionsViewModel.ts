@@ -323,8 +323,8 @@ export function useDirectionsViewModel(destination: Place | null) {
       }
 
       const alt: RouteAlternative = {
-        label: 'V2 Route',
-        labelUr: 'وی ٹو راستہ',
+        label: 'Walking route',
+        labelUr: 'پیدل راستہ',
         route: preview.route,
       };
       setAlternatives([alt]);

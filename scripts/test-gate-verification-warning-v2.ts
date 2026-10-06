@@ -3,7 +3,7 @@ import { strict as assert } from 'node:assert';
 import { IJTEMA_GATES } from '../src/data/ijtema';
 import { V2PlaceAdapter } from '../src/services/V2PlaceAdapter';
 
-const VERIFICATION_WARNING = 'This gate needs verification before navigation.';
+const VERIFICATION_WARNING = 'Directions to this gate may be less exact.';
 const CONNECTOR_VERIFICATION_UNAVAILABLE_SUFFIX = 'needs connector verification before routing.';
 
 // Gate 13 and Gate 14 previously carried the raw needs_verification status

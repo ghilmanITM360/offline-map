@@ -188,7 +188,7 @@ describe('HomeScreen returning live location venue banner', () => {
 
     await renderOutsideBanner();
 
-    const unavailableText = 'Entry recommendation unavailable';
+    const unavailableText = 'No gate suggested yet';
     await waitFor(() => {
       expect(screen.getByText(unavailableText)).toBeTruthy();
       expect(screen.getByLabelText('Outside Ijtema. Suggested entry unavailable. Final entry gate is confirmed when route preview is calculated.')).toBeTruthy();

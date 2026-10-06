@@ -19,18 +19,18 @@ export function AboutScreen() {
 
   const openExternalUrl = async (url: string) => {
     if (!url.startsWith('http')) {
-      Alert.alert('Link unavailable', 'This link has not been configured yet.'); // fixed: handle TODO URLs without throwing
+      Alert.alert("This link isn't ready", 'Please try again later.'); // fixed: handle TODO URLs without throwing
       return;
     }
     try {
       const supported = await Linking.canOpenURL(url);
       if (!supported) {
-        Alert.alert('Unable to open link', 'This link is not supported on this device.'); // fixed: guard unsupported URLs
+        Alert.alert("Can't open this link", "This phone can't open it."); // fixed: guard unsupported URLs
         return;
       }
       await Linking.openURL(url); // fixed: await the promise so errors can be caught
     } catch {
-      Alert.alert('Unable to open link', 'Please try again later.'); // fixed: surface linking failures instead of silently rejecting
+      Alert.alert("Can't open this link", 'Please try again later.'); // fixed: surface linking failures instead of silently rejecting
     }
   };
 

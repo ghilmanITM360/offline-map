@@ -851,7 +851,7 @@ function PlaceSection(props: Extract<LocationSheetProps, { mode: 'preview' | 'de
         {isDetails && place.description && (
           <View style={sheetStyles.detailsBlock}>
             <Text style={sheetStyles.sectionLabel}>Block information</Text>
-            <Text style={sheetStyles.placeDesc}>{place.description}</Text>
+            <Text style={sheetStyles.placeDesc}>{unavailableReasonCopy(place.description)}</Text>
           </View>
         )}
 
@@ -966,7 +966,7 @@ function PlaceSection(props: Extract<LocationSheetProps, { mode: 'preview' | 'de
               Share.share({
                 title: place.name,
                 message: `${place.name} — Karachi Ijtema\nLocation: ${latitude.toFixed(6)}, ${longitude.toFixed(6)}`,
-              }).catch(() => Alert.alert('Unable to share', 'Could not open the share dialog.'));
+              }).catch(() => Alert.alert("Can't share right now", 'Please try again.'));
             }}
           >
             <Share2 size={20} color={staticColors.info} />
@@ -987,7 +987,7 @@ function PlaceSection(props: Extract<LocationSheetProps, { mode: 'preview' | 'de
         </View>
 
         {!isDetails && place.description && (
-          <Text style={sheetStyles.placeDesc}>{place.description}</Text>
+          <Text style={sheetStyles.placeDesc}>{unavailableReasonCopy(place.description)}</Text>
         )}
       </View>
     </BottomSheetScrollView>

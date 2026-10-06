@@ -79,8 +79,8 @@ assert(!settings.includes('Delete Map Data') && !settings.includes('Update Map')
 assert(settings.includes('App Guide') && settings.includes("navigation.navigate('AppGuide')"), 'Settings App Guide row must navigate');
 
 assert(guide.includes('ScrollView'), 'App Guide must be scrollable');
-assert(guide.includes('GPS & Permission Problems') && !guide.includes('Offline Maps'), 'App Guide must cover location problems and carry no offline section');
-assert(guide.includes('official gate') && guide.includes('connector verification'), 'App Guide must explain official gate and connector verification behavior');
+assert(guide.includes('Location Problems') && !guide.includes('Offline Maps'), 'App Guide must cover location problems and carry no offline section');
+assert(guide.includes('nearest gate') && guide.includes("If a gate isn't ready"), 'App Guide must explain nearest-gate entry and what to do when a gate is not ready');
 
 assert(drawer.includes('accessibilityRole="button"'), 'Drawer items must expose button role');
 assert(drawer.includes("label: 'Home'") && drawer.includes("label: 'Settings'"), 'Drawer must expose core app navigation items');
