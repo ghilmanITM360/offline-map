@@ -189,7 +189,10 @@ function FadeContent({ transitionKey, children }: { transitionKey: string; child
       useNativeDriver: true,
     }).start();
   }, [transitionKey, opacity, reducedMotion]);
-  return <Animated.View style={{ opacity }}>{children}</Animated.View>;
+  // With reduced motion the content is simply opaque. The first render cannot know that yet (the OS setting is read
+  // asynchronously), so a fade has already been handed to the native driver; stopping it and jumping the value raced
+  // with it on Android and left the Directions rows at ~15% opacity with animations off (EMULATOR).
+  return <Animated.View style={reducedMotion ? undefined : { opacity }}>{children}</Animated.View>;
 }
 
 /** Hint under the start name; a resolved start needs none (its name already says it). */
