@@ -1305,6 +1305,14 @@ export function HomeScreen() {
     ]);
   }, [clearRoutePlanner]);
 
+  // The route-preview sheet closes itself after Start Navigation. Starting is not cancelling: once navigation is under
+  // way the close is a no-op, so the "Cancel route?" confirmation never appears over live navigation (runtime finding).
+  const handleRoutePreviewClose = useCallback(() => {
+    if (useAppStore.getState().isNavigating) return;
+    if (directionsDestination) handleCloseDirections();
+    else handleClearPreviewRoute();
+  }, [directionsDestination, handleCloseDirections, handleClearPreviewRoute]);
+
   // Mode-aware hardware back: steps back through the map surface one mode at a time
   // (Google Maps model — MAP is always the root, back never falls through to the
   // drawer/stack while a sheet mode is open) instead of exiting the screen. NAVIGATION/
@@ -1870,7 +1878,7 @@ export function HomeScreen() {
             <LocationSheet
               mode="routePreview"
               destination={routePreviewSheetDestination}
-              onClose={directionsDestination ? handleCloseDirections : handleClearPreviewRoute}
+              onClose={handleRoutePreviewClose}
               onStartNavigation={handleStartPreviewNavigation}
               onViewRoute={() => bottomSheetRef.current?.snapToIndex(0)}
               onRouteGuideStarted={handleRouteGuideStarted}

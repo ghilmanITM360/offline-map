@@ -1492,6 +1492,7 @@ describe('HomeScreen — route preview "Start Navigation" (real handler wiring)'
       startNavigationDisabledReason: '',
     });
 
+    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
     await render(<HomeScreen />);
 
     const startButton = await screen.findByText('Start Navigation');
@@ -1501,6 +1502,10 @@ describe('HomeScreen — route preview "Start Navigation" (real handler wiring)'
     // v2 navigation now transforms Home's own persistent map in place instead of pushing a
     // separate Navigation screen — see docs/ARCHITECTURE.md.
     expect(navigateSpy).not.toHaveBeenCalledWith('Navigation');
+    // Starting is not cancelling: the sheet's close after Start must never raise the "Cancel route?" confirmation
+    // over live navigation (runtime finding, #307).
+    expect(alertSpy).not.toHaveBeenCalledWith('Cancel route?', expect.anything(), expect.anything());
+    alertSpy.mockRestore();
   });
 });
 
