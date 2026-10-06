@@ -86,6 +86,7 @@ export function useCameraManager({ mapRef }: Params) {
   const lastPlaceFocusRef = useRef<Coordinate | null>(null);
   const [mode, setMode] = useState<CameraMode>('IDLE');
   const modeRef = useRef<CameraMode>('IDLE');
+  const routeIntentRef = useRef<{ key: string; padding: EdgePadding } | null>(null);
   const setCameraMode = useCallback((next: CameraMode) => {
     modeRef.current = next;
     setMode(next);
@@ -192,6 +193,7 @@ export function useCameraManager({ mapRef }: Params) {
       requestedDuration?: number,
     ): number => {
       if (!place.coordinate) return 0;
+      routeIntentRef.current = null;
       const coordinate = place.coordinate;
       const last = lastPlaceFocusRef.current;
       lastPlaceFocusRef.current = coordinate;
@@ -229,6 +231,7 @@ export function useCameraManager({ mapRef }: Params) {
   const fitVenueBounds = useCallback(
     (boundary: Coordinate[], edgePadding: EdgePadding = DEFAULT_BOUNDS_PADDING) => {
       if (boundary.length === 0) return;
+      routeIntentRef.current = null;
       runWhenReady(() => {
         mapRef.current?.fitToCoordinates(boundary, { edgePadding, animated: true });
         setCameraMode('EXPLORING');
@@ -240,16 +243,31 @@ export function useCameraManager({ mapRef }: Params) {
   const fitRoute = useCallback(
     (coordinates: Coordinate[], edgePadding: EdgePadding = DEFAULT_ROUTE_PADDING) => {
       if (coordinates.length < 2) return;
+      const key = JSON.stringify(coordinates.map(({ latitude, longitude }) => [latitude, longitude]));
+      const previous = routeIntentRef.current;
+      if (previous?.key === key) {
+        // Sheet movement is a viewport update, not permission to frame the journey again.
+        // A queued/early semantic intent reads the latest padding when it eventually runs.
+        previous.padding = edgePadding;
+        if (isCameraReady()) {
+          cancelEarlyReplay();
+          mapRef.current?.animateCamera({ padding: edgePadding }, { duration: 0 });
+        }
+        return;
+      }
+      const intent = { key, padding: edgePadding };
+      routeIntentRef.current = intent;
       runWhenReady(() => {
-        mapRef.current?.fitToCoordinates(coordinates, { edgePadding, animated: true });
+        mapRef.current?.fitToCoordinates(coordinates, { edgePadding: intent.padding, animated: true });
         setCameraMode('ROUTE_PREVIEW');
       });
     },
-    [mapRef, runWhenReady, setCameraMode],
+    [cancelEarlyReplay, isCameraReady, mapRef, runWhenReady, setCameraMode],
   );
 
   const followUser = useCallback(
     (coord: Coordinate, duration = 1000) => {
+      routeIntentRef.current = null;
       animateToUser(coord, duration);
       setCameraMode('FOLLOWING_USER');
     },
@@ -257,11 +275,14 @@ export function useCameraManager({ mapRef }: Params) {
   );
 
   const stopFollowing = useCallback(() => {
-    if (modeRef.current === 'FOLLOWING_USER') setCameraMode('EXPLORING');
-  }, [setCameraMode]);
+    cancelEarlyReplay();
+    if (modeRef.current === 'FOLLOWING_USER' || modeRef.current === 'ROUTE_PREVIEW') setCameraMode('EXPLORING');
+  }, [cancelEarlyReplay, setCameraMode]);
 
   const enterNavigationCamera = useCallback(
     (coord: Coordinate, opts?: { heading?: number; zoom?: number; pitch?: number; duration?: number }) => {
+      routeIntentRef.current = null;
+      cancelEarlyReplay();
       mapRef.current?.animateCamera(
         {
           center: { latitude: coord.latitude, longitude: coord.longitude },
@@ -273,7 +294,7 @@ export function useCameraManager({ mapRef }: Params) {
       );
       setCameraMode('NAVIGATION');
     },
-    [mapRef, setCameraMode],
+    [cancelEarlyReplay, mapRef, setCameraMode],
   );
 
   const exitNavigationCamera = useCallback(() => {

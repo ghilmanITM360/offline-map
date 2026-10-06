@@ -26,6 +26,8 @@ export interface CameraState {
   zoom?: number;
   heading?: number;
   pitch?: number;
+  /** Viewport obstruction only; never a new semantic camera target. */
+  padding?: EdgePadding;
 }
 
 /**

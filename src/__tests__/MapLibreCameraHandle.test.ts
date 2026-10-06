@@ -115,3 +115,25 @@ describe('createMapLibreCameraHandle', () => {
     await Promise.resolve();
   });
 });
+
+
+test('padding-only update preserves native center without supplying new bounds, zoom, bearing or pitch', async () => {
+  const { handle, stops } = setup();
+  const padding = { top: 20, right: 10, bottom: 100, left: 10 };
+  handle.animateCamera({ padding } as Parameters<typeof handle.animateCamera>[0], { duration: 0 });
+  await Promise.resolve();
+  expect(stops).toEqual([{ center: [67, 25], padding, duration: 0, easing: 'ease' }]);
+});
+
+
+test('a delayed padding read cannot overwrite a newer semantic camera command', async () => {
+  const { handle, stops, map } = setup();
+  let resolveView!: (view: Awaited<ReturnType<typeof map.getViewState>>) => void;
+  map.getViewState.mockImplementationOnce(() => new Promise(resolve => { resolveView = resolve; }));
+  handle.animateCamera({ padding: { top: 20, right: 10, bottom: 100, left: 10 } } as Parameters<typeof handle.animateCamera>[0]);
+  handle.animateCamera({ center: { latitude: 26, longitude: 68 } });
+  resolveView({ center: [67, 25], zoom: 16, bearing: 30, pitch: 10, bounds: [66.99, 24.99, 67.01, 25.01] });
+  await Promise.resolve();
+  expect(stops).toHaveLength(1);
+  expect(stops[0].center).toEqual([68, 26]);
+});
