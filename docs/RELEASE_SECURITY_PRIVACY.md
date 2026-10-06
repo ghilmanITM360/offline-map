@@ -20,7 +20,9 @@ Release minify and resource shrinking are enabled (#80, merged) — verify this 
 
 ## Android permissions
 
-`INTERNET` and `ACCESS_NETWORK_STATE` are explicit; `ACCESS_FINE_LOCATION`/`ACCESS_COARSE_LOCATION` are autolinked via `expo-location`. `VIBRATE` was removed — it had zero traceable source and zero code usage (no Vibration/Haptics calls in `src/`). `READ_EXTERNAL_STORAGE`/`WRITE_EXTERNAL_STORAGE` are stripped via `tools:node="remove"` (#81, merged) — deleting the line alone isn't enough, since `expo-file-system`'s own manifest would silently re-add them via autolinking; the app never needed them, map downloads use app-scoped storage.
+`INTERNET` and `ACCESS_NETWORK_STATE` are explicit; `ACCESS_FINE_LOCATION`/`ACCESS_COARSE_LOCATION` are autolinked via `expo-location`. `VIBRATE` was removed — it had zero traceable source and zero code usage (no Vibration/Haptics calls in `src/`). `READ_EXTERNAL_STORAGE`/`WRITE_EXTERNAL_STORAGE` are stripped via `tools:node="remove"` (#81, merged) — deleting the line alone isn't enough, since `expo-file-system`'s own manifest would silently re-add them via autolinking; the app never needed them; the bundled basemap copy uses app-scoped storage.
+
+**Location is optional and asked in context.** Location (foreground only, `expo-location`; no background location) is requested only when the user chooses something that benefits from it: live guidance, "use my location", or recenter. It is not asked at launch or in onboarding, and a user who declines is not asked again unprompted. Precise and approximate grants are distinguished (`docs/PRODUCT_AND_USER_FLOWS.md`); approximate never drives live navigation.
 
 **Ground truth:** the checked-in `android/app/src/main/AndroidManifest.xml` is the source of truth for permissions, not `app.json` — this repo commits the native `android/` project rather than regenerating it fresh each time, so the two can silently diverge if only one is edited.
 

@@ -4,7 +4,7 @@
   <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
   <uses-permission android:name="android.permission.INTERNET"/>
   <!-- expo-file-system's own manifest unconditionally declares these; the app only
-       uses its app-internal Paths.document API (see OfflineMapService/DownloadMapViewModel),
+       uses its app-internal Paths.document API (the bundled basemap copy, see BundledBasemap.ts),
        which needs neither, so they're stripped from the merged manifest. See #81. -->
   <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" tools:node="remove"/>
   <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" tools:node="remove"/>

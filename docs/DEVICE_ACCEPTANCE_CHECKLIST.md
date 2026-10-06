@@ -30,8 +30,8 @@ Evidence for each row: a screenshot or screen recording, plus the log excerpt fo
 | # | Step | Expected | Result | Evidence |
 |---|---|---|---|---|
 | 2.1 | Fresh install, cold launch, no dev server | Splash, then Welcome | NOT RUN | |
-| 2.2 | Continue, allow location "While using the app" (Precise) | Directory (no map-setup step; the offline map is already installed) | NOT RUN | |
-| 2.3 | Pick Block 1 | Map renders the bundled basemap with Block 1 focused, offline | NOT RUN | |
+| 2.2 | Continue on Welcome (it says location is optional) | Directory directly: no permission screen, no map-setup step; the offline map is already installed | NOT RUN | |
+| 2.3 | Tap Block 1; if asked "Where are you starting from?" choose "Use my location" and allow "While using the app" (Precise) | Live navigation starts from the real fix; with a start chosen instead, a Route Guide opens. Map renders the bundled basemap, offline | NOT RUN | |
 | 2.4 | Force-stop and relaunch | Lands on the Directory, not onboarding | NOT RUN | |
 
 ## 3. Real GPS acquisition and freshness (#46 tier)
@@ -105,7 +105,7 @@ A physical phone will not be at the #124 coordinates. To run these you must inje
 
 `am kill` and `am force-stop` are different and must be reported separately. `am kill` only ends an app that is in the background, and is the closer stand-in for Android's low-memory kill. `am force-stop` ends it from any state, removes it from recents and puts it in the stopped state. Never use `pm clear` here; it wipes stored data and invalidates the test.
 
-The expected behavior below is **undecided** until the owner chooses restore or notify-and-rebuild (see `docs/audit/ISSUE_139_PROCESS_DEATH_DESIGN.md`). Record what you observe; do not mark PASS or FAIL against a policy that has not been approved. The invariant that already holds: navigation must **never** resume by itself or from a stale position.
+The implemented policy is **notify and rebuild** (Option B, #139): the next launch lands on the Directory with a "Your last navigation didn't finish" card for 2 h after navigation started; nothing resumes by itself, from a stale position or from a stale arrival. "Get new route" plans a fresh journey, "Dismiss" clears the marker. A Route Guide, a route preview or a finished journey leaves no card. Record what you observe against that expectation.
 
 Package: `com.aicrafted.karachiijtema`.
 

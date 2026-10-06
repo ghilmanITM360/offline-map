@@ -27,12 +27,9 @@ export const RECENTER_BUTTON_SIZE = 56;
 // Approximate navigation trip-info bar height, used only for the single frame before
 // its real onLayout height is measured (see resolveNavBarHeight).
 export const NAV_BAR_FALLBACK_HEIGHT = 140;
-// Google's attribution logo needs real headroom to render at all — Maps Android SDK
-// silently omits the logo (not just clips it) once mapPadding.bottom leaves it too
-// little unobscured space, observed at ~71dp remaining (DETAILS' 92% snap on a real
-// device). 96dp still clipped the logo's top sliver against the sheet on-device (the
-// SDK reserves its own internal margin beyond the padding boundary), so this sits
-// well above both empirical floors (ATTR-001 follow-up).
+// The map's attribution button (MapLibre, bottom of the map) needs real headroom above the sheet: with too little
+// unobscured map it ends up behind the sheet. Measured at ~71 dp remaining on a real device at the 92% snap, and 96 dp
+// still clipped its top edge, so this sits well above both empirical floors (ATTR-001 follow-up).
 export const MIN_TOP_VISIBLE_MAP_FOR_ATTRIBUTION = 160;
 // Route Preview must show both route endpoints/markers, not merely attribution.
 // Keep a larger usable map band when its sheet reaches the maximum practical snap.
@@ -40,10 +37,10 @@ export const MIN_TOP_VISIBLE_MAP_FOR_ROUTE_PREVIEW = 280;
 
 /** Maximum height (px, measured up from the screen's bottom edge) anything bottom-anchored
  * may occupy while still leaving MIN_TOP_VISIBLE_MAP_FOR_ATTRIBUTION of clear map above it.
- * Shared by two call sites that must never disagree: the mapPadding clamp below (what we
- * tell the Google Maps SDK is obstructed) and the BottomSheetModal's own maxDynamicContentSize
- * (what we actually let the sheet grow to, HomeScreen.tsx) — if they drifted apart, the SDK
- * could draw the logo in a spot the real sheet still covers. That's exactly how Route Preview
+ * Shared by two call sites that must never disagree: the label/attribution inset clamp below (what we
+ * tell the map is obstructed) and the BottomSheetModal's own maxDynamicContentSize
+ * (what we actually let the sheet grow to, HomeScreen.tsx) — if they drifted apart, the attribution
+ * button could be placed where the real sheet still covers it. That's exactly how Route Preview
  * clipped the logo before dynamic sizing was capped: @gorhom/bottom-sheet's enableDynamicSizing
  * (on by default, v5) sizes the sheet to fit its content with no ceiling unless
  * maxDynamicContentSize is set, so a tall enough card stack could render past the mapPadding

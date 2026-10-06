@@ -158,7 +158,7 @@ export function HomeScreen() {
   const nav = useNavigation<HomeScreenNavigationProp>();
   // Home stays mounted under every other screen, and its bottom sheet is portal-hosted above
   // the whole navigator (App.tsx), so it would otherwise stay drawn, touchable and answering
-  // hardware Back over the Directory, Settings, Help, About, Download Map or an open drawer
+  // hardware Back over the Directory, Settings, Help, About or an open drawer
   // (#190). One foreground workflow owns touches, accessibility focus and Back at a time.
   const isHomeFocused = useIsFocused();
   // Read the context directly: useDrawerStatus() throws when there is no drawer above Home.
@@ -319,8 +319,8 @@ export function HomeScreen() {
     };
   }, []);
 
-  // #140: the venue basemap ships inside the app, so a base map is always present — there is no
-  // download step, Google mode, or graph-only fallback any more.
+  // #140: the venue basemap ships inside the app (bundled PMTiles, copied and hash-verified at app start), so a base
+  // map is always present: no download step, no Google map mode, no graph-only fallback.
   const graphOnlyFallbackUsed = false;
   const hasBaseMap = true;
 
@@ -489,12 +489,11 @@ export function HomeScreen() {
   const modeRef = useRef<typeof mode>('EXPLORE');
   modeRef.current = mode;
 
-  // The search bar/chip row (and its onLayout) only mounts when
-  // `mode !== 'NAVIGATION' && !directionsDestination` (see its render below) — so
+  // The top bar (and its onLayout) only mounts outside NAVIGATION and ARRIVAL (see its render below) — so
   // topOverlayHeight would otherwise keep its last measurement indefinitely once the
-  // row unmounts, misreporting real headroom to every other mode's mapLabelEdgeInsets
+  // bar unmounts, misreporting real headroom to every other mode's mapLabelEdgeInsets
   // (ATTR-001 follow-up: this stale top, combined with a near-full-height LocationSheet,
-  // could push the Google logo's reserved band behind where the sheet actually,
+  // could push the attribution button's reserved band behind where the sheet actually,
   // visually, covers the screen).
   useEffect(() => {
     if (mode === 'NAVIGATION' || mode === 'ARRIVAL') setTopOverlayHeight(0);
@@ -690,7 +689,7 @@ export function HomeScreen() {
   const previewDestination = activePreviewRoute ? routePlannerDest : null;
   // Single route-preview surface: whichever of the two ways a route preview can start
   // (explicit "Directions" tap -> directionsDestination, or a v2 route already resolved
-  // in the store, e.g. restored on relaunch -> activePreviewRoute/previewDestination)
+  // in the store this session -> activePreviewRoute/previewDestination; a route never survives a relaunch)
   // resolves to the same destination shown in the same LocationSheet routePreview mode.
   const routePreviewSheetDestination = directionsDestination ?? previewDestination;
   const previewDestinationCoordinate = previewDestination
@@ -1058,8 +1057,8 @@ export function HomeScreen() {
   // MIN_TOP_VISIBLE_MAP_FOR_ATTRIBUTION above the sheet (measured on-device: ~71dp) — no
   // dynamic sizing or over-drag needed to reproduce Route Preview's clip, a simple manual
   // drag to 92% does it. mapLabelEdgeInsets' clamp alone can't fix this: it only changes
-  // what we tell the Google Maps SDK is obstructed, not how tall the sheet actually
-  // renders, so the SDK can still place the logo somewhere the real (taller) sheet covers.
+  // what we tell the map is obstructed, not how tall the sheet actually
+  // renders, so the attribution button can still land somewhere the real (taller) sheet covers.
   // The reserved band is therefore taken out of the heights the snaps are computed from (see
   // sheetSnapPoints) — not passed as gorhom's `topInset`, which it does not re-apply once the
   // sheet is presented (#208 F2) — so 92% of that container can never reach into it (ATTR-001).

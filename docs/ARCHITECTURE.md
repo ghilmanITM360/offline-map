@@ -15,11 +15,21 @@ v1 is kept for rollback, not deleted, to avoid an API break — see `docs/KNOWN_
 
 ## Map-first UI, not screen-based
 
-One persistent `MapView` lives in `HomeScreen`. Directions, route preview, active navigation, and arrival are overlays/modes on that same map (`NavigationChromeV2`, `NavigationMapLayersV2`, `useNavigationOverlayV2`), not separate screens. The legacy v1 presentation renders as `NavigationChromeV1`/`NavigationMapLayersV1` overlays on `HomeScreen` (for legacy Block destinations); there is no separate `NavigationScreen.tsx`.
+One persistent map lives in `HomeScreen`: MapLibre (`OfflineMapCanvas`) rendering the bundled PMTiles basemap (`docs/OFFLINE_BASEMAP.md`) with the venue overlays drawn as GeoJSON sources and layers (`overlaySpec.ts`, `mapLayerStyles.ts`). Directions, route preview, the Route Guide, active navigation and arrival are overlays/modes on that same map (`NavigationChromeV2`, `NavigationMapLayersV2`, `useNavigationOverlayV2`), not separate screens. The legacy v1 presentation renders as `NavigationChromeV1`/`NavigationMapLayersV1` overlays on `HomeScreen` (for legacy Block destinations); there is no separate `NavigationScreen.tsx`.
 
-Destination selection, directions, and route preview all render through one `LocationSheet` component (`src/views/components/map/LocationSheet.tsx`), which has a `routePreview` mode rather than being three separate sheets.
+Destination selection, directions, route preview and the Route Guide all render through one `LocationSheet` component (`src/views/components/map/LocationSheet.tsx`), which has `details`, `preview` and `routePreview` modes rather than being separate sheets. Map features are layers, not accessibility nodes: the Directory is the accessible place chooser, and place labels render through `MapLabelOverlay`.
 
-Gate labels render via a separate `MapLabelOverlay` layer keyed to `HomeScreen`'s `mapLabelItems`, not as native `Marker` children — `GateLayer.tsx` renders touch-target dots only. This split exists because native Marker label text couldn't render reliably under this app's New Architecture/Bridgeless runtime; see the in-code comment at `src/views/components/map/GateLayer.tsx:29-47` and `docs/TESTING_AND_FIELD_ACCEPTANCE.md` history. This resolved what earlier audits (now retired) tracked as an open "gate label clipping" defect.
+## Journey flow
+
+- **Capability** — `LocationCapability` is the one evaluator for what location can do: permission, accuracy authorization, device services and fix quality are separate facets, `liveBlocker` says why live guidance is unavailable, and the route guide is always available. `LocationNavigationCapability` (start action, 50 m / 30 s live-fix gate) delegates to it.
+- **Destination tap** — the Directory plans with `planDestinationTap` (live / guide / ask for a start) and hands Home a runtime-only `pendingJourney`; `HomeScreen` consumes it when focused and `LocationSheet` auto-starts it (`docs/PRODUCT_AND_USER_FLOWS.md`).
+- **Route Guide** — `routeGuide {steps, stepIndex}` in the store: runtime-only, never persisted, never `isNavigating`, so no engine, GPS watcher, reroute or arrival can run for it.
+- **Stack** — launch is `[LocationsDirectory]`; the Map is `replace`d in or pushed under it; Done after arrival resets to `[LocationsDirectory]` (`resetToDirectoryAction`).
+- **Top bar and sheet** — `MapTopBar` (Places, context title, menu) and `DirectionsPeekHandle` (collapsed Directions) are presentation only; state lives in the store and `LocationSheet`.
+
+## Arrival ownership
+
+`HomeScreen` mounts both navigation engines and ORs their `arrived`. Ownership is by route shape: `NavigationViewModelV2` runs only for `isNavigating` plus a V2 `activeRoute`; the V1 engine skips arrival whenever the active route is V2-shaped. The arrival latch is React state in each engine, never persisted; the unfinished-journey marker is cleared at the moment arrival fires.
 
 ## Navigation state
 

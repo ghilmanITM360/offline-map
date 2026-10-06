@@ -4,8 +4,7 @@ Purpose: a single table proving every known piece of project work is trackable �
 mapped to an issue, a sub-issue, an explicit parent checklist, DONE evidence, a
 field-data blocker, an owner decision, or explicitly deferred/future scope.
 Built 2026-09-24 during a full ticket-reconciliation pass. Companion to
-[`CURRENT_PROJECT_STATE_2026-09-24.md`](CURRENT_PROJECT_STATE_2026-09-24.md) and
-[`EVIDENCE_LEDGER.md`](EVIDENCE_LEDGER.md).
+[`EVIDENCE_LEDGER.md`](EVIDENCE_LEDGER.md); the current snapshot is `docs/PROJECT_STATUS.md` (the dated state document it was built with was retired; it is in git history).
 
 **Coverage states used**: COVERED-BY-EXISTING-ISSUE · COVERED-BY-NEW-ISSUE ·
 COVERED-BY-PARENT-CHECKLIST · ALREADY-DONE-WITH-EVIDENCE ·
@@ -164,7 +163,7 @@ rollup):
 |---|---|---|---|---|---|---|---|---|---|
 | I-1 | Gate-label zoom-visibility deliberate review | #127 | #126 | COVERED-BY-NEW-ISSUE | P3 | — | — | `docs/ARCHITECTURE.md:38-40` | Side effect of redesign, never separately reviewed |
 | I-2 | Gate-label clipping | — | — | ALREADY-DONE-WITH-EVIDENCE | — | — | — | `docs/ARCHITECTURE.md:22` | Resolved via `MapLabelOverlay` |
-| I-3 | Loading/error/empty/disabled states, touch targets, readability, low-literacy/elderly, accessibility, back/recovery behavior | #128 | #126 | COVERED-BY-NEW-ISSUE | P2 | — | — | Zero prior tracked-doc coverage at the time; a prior untracked audit exists, see `docs/audit/ui-ux/HISTORICAL_AUDIT_INVENTORY.md` | One consolidated checklist issue, not per-screen, per anti-spam guidance |
+| I-3 | Loading/error/empty/disabled states, touch targets, readability, low-literacy/elderly, accessibility, back/recovery behavior | #128 | #126 | COVERED-BY-NEW-ISSUE | P2 | — | — | Zero prior tracked-doc coverage at the time; the prior audit documents were retired from the tree (git history) | One consolidated checklist issue, not per-screen, per anti-spam guidance |
 | I-4 | Map control semantics/font-scale/reduced-motion | #65, #100, #102 (closed) | #63 | ALREADY-DONE-WITH-EVIDENCE | — | — | — | — | Baseline #128 builds on |
 
 ## Epic J — Performance / Resource

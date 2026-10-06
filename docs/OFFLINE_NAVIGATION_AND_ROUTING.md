@@ -45,8 +45,8 @@ The whole Ijtema experience works with **zero internet**: launch, Directory, Pla
 - **Renderer:** MapLibre Native (`@maplibre/maplibre-react-native`) on a **bundled vector archive** — see [ADR 0001](adr/0001-offline-visual-map-renderer.md) and [OFFLINE_BASEMAP.md](OFFLINE_BASEMAP.md). The archive ships inside the APK and is copied once into app-private storage on first launch (`BundledBasemap`); there is **no Download Map step, no map setup screen, no download banner and no remote tile/style/font/sprite request**.
 - **Data:** generated from OpenStreetMap *data* (ODbL, "© OpenStreetMap contributors" shown by the map's attribution control). The app never downloads or bulk-prefetches tiles from `tile.openstreetmap.org` / `vector.openstreetmap.org` (prohibited by the OSM Foundation) and nothing is derived from Google data.
 - **Routing:** internal and outside routing run on bundled graphs (no network). A live walking-route provider is an optional enhancement only (#123/#161).
-- **First launch:** Splash → Welcome → Permission → Directory. No map-setup step.
-- **Failure mode:** if the archive cannot be installed or read, the map falls back to a plain canvas with the venue overlays — never a download prompt.
+- **First launch:** Splash → Welcome → Directory. No map-setup step and no permission step: location is asked in context.
+- **Failure mode:** if the archive cannot be installed (or fails its SHA-256, #306), the map falls back to a plain canvas with the venue overlays — never a download prompt.
 
 `OfflineVisualMapContract.test.ts` guards the user-facing copy, `npm run test:offline-basemap` the archive/provenance.
 

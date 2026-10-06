@@ -14,8 +14,8 @@ Evidence levels follow `AGENTS.md`. **Everything below is SOURCE or EMULATOR lev
 
 | # | Check | Result |
 |---|---|---|
-| 1 | Fresh install, airplane mode, Splash → Welcome → Permission → Directory | PASS — no map-download step |
-| 2 | First launch copies the bundled PMTiles archive to app-private storage | PASS (no network) |
+| 1 | Fresh install, airplane mode, Splash → Welcome → Permission → Directory (flow at the time; today Welcome → Directory, location asked in context) | PASS — no map-download step |
+| 2 | App start copies the bundled PMTiles archive to app-private storage when it is missing or fails its manifest SHA-256 | PASS (no network); hash verification added by #306 (SOURCE/RUNTIME) |
 | 3 | Directory → Block 1 → map opens **on the block** (no venue-overview flash), one pulse ring, label under the pin tip | PASS (screen recording, 20 fps extraction) |
 | 4 | Place Details → Directions → route preview from live GPS (15 min, 1.2 km), route drawn offline | PASS |
 | 5 | Start Navigation, walk the route with mock GPS, walked/remaining styling, instruction card, ETA | PASS |

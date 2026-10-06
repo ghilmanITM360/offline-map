@@ -5,7 +5,8 @@
 
 // #140: installs the offline basemap that ships inside the APK into app-private storage, because
 // MapLibre Native can open `pmtiles://file://…` but not `pmtiles://asset://…`. Purely local — there is
-// no network path here, and no user action (the old Download Map step is gone).
+// no network path here, and no user action. Integrity is the manifest's SHA-256 (#306), so a corrupt or
+// interrupted copy is discarded and reinstalled from the bundled asset.
 
 export interface BasemapFs {
   ensureDir(dir: string): void;

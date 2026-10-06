@@ -70,8 +70,8 @@ export function SplashScreen() {
         // Persisted-store hydration gate (pre-APK correction) — StartupManager/
         // MapStartupController must never see default (unhydrated) persisted values.
         // HomeScreen only mounts after this Promise.all resolves and navigation.replace()
-        // below runs, so this transitively guards every persisted read (hasSeenMapOverview,
-        // lastKnownLocation, settings, ...) downstream of Splash too. A known rehydration
+        // below runs, so this transitively guards every persisted read (lastKnownLocation, settings,
+        // recents, the recovery marker, ...) downstream of Splash too. A known rehydration
         // failure resolves this immediately (see waitForStoreHydration); only a genuine hang
         // rides out the full timeout. Either way startup proceeds with whatever the store
         // currently holds — in-memory defaults on failure/timeout, persisted values on success

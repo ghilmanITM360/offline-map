@@ -30,9 +30,8 @@
 
 ## UI/UX owner decisions still open
 
-Product/scope calls that no agent may make. Identifiers are from the retired UI/UX audit (full text in git history at `fb13901`, and in `docs/audit/ui-ux/`):
+Product/scope calls that no agent may make. Identifiers are from the retired UI/UX audit (full text in git history at `fb13901`; the deep-audit documents were removed from the tree once the screens they described changed):
 
-- Permission screen: PERM-001, PERM-002, PERM-003, PERM-007, PERM-008; #153 Finding 1.
 - Welcome screen: WEL-001 to WEL-006.
 - Directory / Settings / status copy: #154 Findings 2 and 3; #155 bilingual (Urdu) coverage; #156 Finding 4.
 - #127; SPLASH-UX-003 and SPLASH-UX-004; F005.
@@ -63,3 +62,14 @@ Source and Jest checks prove the wiring, not TalkBack behavior. Run on Android w
 - **Small-screen / large-font layout:** recenter button vs Exit hit areas must not overlap on a short screen; the instruction card must not clip or collide with the mute button at maximum font scale.
 - **One-shot announcements:** route-ready/route-error, location tooltip and arrival announcements each fire once per event, not repeatedly.
 - **One accessibility node per map object:** overlay labels take priority, marker labels are fallback only; no double reads.
+
+## Known limitations of the journey flow (2026-10)
+
+Honest edges of today's behavior, not defects scheduled for a fix:
+
+- **Block-tile Details is a long press** (and a TalkBack action); list rows have a visible info control. Tiles are too small for a second target, so the long press is not visible by itself.
+- **The Route Guide does not know where the user is.** Steps are advanced by hand; there is no progress, reroute or arrival. That is the point of the mode, and the card says so.
+- **"Location unavailable. Showing Block 2."** appears on first Map entry for anyone who has not allowed location yet, because Block 2 is the camera anchor when there is no usable location. The wording predates location becoming optional.
+- **Approximate-only** is detected from the OS at launch (Splash) and on every resolve; Settings still shows "Allowed" for it, and the failure text after the live-guidance button points to app settings without saying "precise".
+- **`hasSeenMapOverview`** is still persisted but only informational; `MapStartupController.resolveColdLaunchCamera` is unused by production code (kept for its tests).
+- **Directory reopened from the Map** (via `<- Places` or the drawer) is pushed over it; hardware Back returns to the Map. After Done it is the root and Back leaves the app.

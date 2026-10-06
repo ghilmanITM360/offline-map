@@ -1,7 +1,7 @@
 # Evidence Ledger
 
-Purpose: let anyone return weeks later and immediately see *why* a claim in
-[`CURRENT_PROJECT_STATE_2026-09-24.md`](CURRENT_PROJECT_STATE_2026-09-24.md) was made, and at
+Purpose: let anyone return weeks later and immediately see *why* a claim in the
+2026-09-24 project-state snapshot (retired from the tree; see git history) was made, and at
 what exact commit. This ledger does not restate full reasoning — it points at
 the smallest reproducible piece of evidence.
 

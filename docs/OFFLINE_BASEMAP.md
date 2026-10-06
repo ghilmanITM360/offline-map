@@ -17,6 +17,24 @@ Renderer decision: [ADR 0001](adr/0001-offline-visual-map-renderer.md).
 Never derived from `tile.openstreetmap.org` / `vector.openstreetmap.org` (bulk tile prefetch is prohibited by the OSM Foundation) nor from Google data.
 `npm run test:offline-basemap` enforces this, plus archive checksum/size, PMTiles header, venue coverage and a 5 MiB size budget.
 
+## Install and integrity (#306)
+
+MapLibre opens `pmtiles://file://...` but not `pmtiles://asset://...`, so the archive is copied from the APK into app-private storage as `map/ijtema-basemap-<sha12>.pmtiles` (`BundledBasemap.ts`, `BundledBasemapService.ts`). `App` starts the install at app launch in parallel with Splash; Home awaits the same single-flight promise and shows a plain land-coloured placeholder until it resolves. Nothing waits on it before the Directory.
+
+Trust is by **content, not size**. The manifest (`BASEMAP_PROVENANCE.json`) records the SHA-256 and byte length:
+
+| Situation | Result |
+|---|---|
+| Copy valid (size and SHA-256 match) | Reused; a stale `.partial` is discarded; older-version archives are pruned |
+| Copy missing | Copied from the bundled asset to `.partial`, size- and SHA-256-checked, then moved into place |
+| Wrong size, or same size with different bytes | Removed and reinstalled from the bundle |
+| Unreadable copy | Treated as invalid and reinstalled |
+| Interrupted or failed copy | The `.partial` is removed; nothing incomplete is ever promoted; the next attempt starts clean |
+| Bundled asset itself bad | The install throws; the map shows a plain canvas with the venue overlays (no crash, no download prompt) |
+| New app version with a new archive | New file name; the old archive is deleted only after the new one is in place |
+
+The hash is computed once per install call (so once per app start; pure-JS SHA-256 of the ~0.4 MB archive, a few tens of milliseconds in Node), never per render. There is no network recovery: the APK asset is the only source.
+
 ## Rebuild
 
 Tools (dev machine only, not CI): `brew install osmium-tool tippecanoe pmtiles`.
@@ -47,7 +65,7 @@ The venue overlay is styled from one token set, so the map reads the same everyw
 
 ## Destination focus (PR G)
 
-- **Priority** — active navigation > destination > valid user location > Block 2 fallback. A destination handed off by the Directory invalidates the launch camera (`invalidateStartupCameraIntent`), and a pending hand-off at mount is the map's *initial* region, so the first painted frame is the destination, never the venue overview.
+- **Priority** — active navigation or route > destination > a live fix (venue overview plus the user marker; the map does not zoom onto the dot) > the Block 2 anchor with a notice. A persisted last-known location never moves the camera by itself. A destination handed off by the Directory invalidates the launch camera (`invalidateStartupCameraIntent`), and a pending hand-off at mount is the map's *initial* region, so the first painted frame is the destination, never the venue overview.
 - **Motion** — a place focus eases 600 ms (350 ms when the target is within 80 m of the last focus); it jumps (0 ms) under OS reduce-motion and whenever the map is not ready yet (nobody can watch an ease on an unpainted map). The Directory hand-off jumps while the Directory is still closing and the focus-time selection then does not animate again. A user gesture still cancels the early-replay (`cancelEarlyReplay`).
 - **Pulse** — one outward ring per destination (`useDestinationPulse`): hold 400 ms while the camera settles, then a native 800 ms paint transition (`destination-pulse` layer), then idle. Reduced motion: a static ring.
 - **Label** — the selected label hangs below the pin tip (`hangSelectedLabelsBelowPin`).
