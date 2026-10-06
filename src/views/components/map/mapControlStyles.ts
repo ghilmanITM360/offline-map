@@ -5,7 +5,7 @@
 
 import { StyleSheet } from 'react-native';
 import { Z } from '../../styles/zLayers';
-import { radii, shadows, spacing, staticColors } from '../../../theme';
+import { shadows, spacing, staticColors } from '../../../theme';
 
 // Styles for the shared floating map-control cluster (MapControls, RecenterButton).
 // Button size bumped from the original 44dp to 48dp (Android accessibility touch-target floor).

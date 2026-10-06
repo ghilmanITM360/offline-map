@@ -6,7 +6,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Location from 'expo-location';
 import { GPSManagerService } from '../services/GPSManagerService';
-import { LocationAccessService } from '../services/LocationAccessService';
 
 jest.mock('expo-location', () => ({
   getForegroundPermissionsAsync: jest.fn(),
