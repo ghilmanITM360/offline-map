@@ -7,7 +7,8 @@
 // show readable steps the user moves through themselves, and never claim live movement, progress or arrival.
 
 import React from 'react';
-import { render, screen, userEvent } from './test-utils';
+import { Dimensions } from 'react-native';
+import { render, screen, userEvent, within } from './test-utils';
 
 import { LocationSheet } from '../views/components/map/LocationSheet';
 import { DirectionsSheetFooter } from '../views/components/map/DirectionsSheetFooter';
@@ -21,7 +22,7 @@ jest.mock('@gorhom/bottom-sheet', () => {
   const { View } = jest.requireActual('react-native');
   return {
     __esModule: true,
-    BottomSheetScrollView: (props: { children?: React.ReactNode }) => ReactActual.createElement(View, null, props.children),
+    BottomSheetScrollView: (props: { children?: React.ReactNode }) => ReactActual.createElement(View, { testID: 'sheet-scroll' }, props.children),
     BottomSheetFooter: (props: { children?: React.ReactNode }) => ReactActual.createElement(View, null, props.children),
   };
 });
@@ -107,6 +108,25 @@ describe('Route guide card', () => {
     expect(screen.getByText('Step 1 of 3')).toBeOnTheScreen();
     expect(screen.getByRole('button', { name: 'Next step' })).toBeOnTheScreen();
     expect(screen.getByRole('button', { name: 'End route guide' })).toBeOnTheScreen();
+  });
+
+  // #326: a pinned title + subtitle (about 360 dp at 200% font on a 320 dp window) is taller than the whole top detent,
+  // leaving the step card and Previous/Next no viewport. The heading must scroll with the guide so nothing is trapped.
+  test('the guide heading scrolls with its content instead of being pinned above it', async () => {
+    open();
+    await renderSheet();
+    const scroll = within(screen.getByTestId('sheet-scroll'));
+    expect(scroll.getByRole('header', { name: 'Route guide' })).toBeOnTheScreen();
+    expect(scroll.getByRole('button', { name: 'Back' })).toBeOnTheScreen();
+  });
+
+  // 200% font on a 320 dp window split "Previous" mid-word across two lines in a half-width button.
+  test.each([[1, 'row'], [2, 'column']])('at font scale %s Previous and Next sit in a %s so neither label breaks mid-word', async (fontScale, direction) => {
+    Dimensions.set({ window: { width: 320, height: 711, scale: 2, fontScale } });
+    open();
+    await renderSheet();
+    expect(screen.getByTestId('guide-stepper')).toHaveStyle({ flexDirection: direction });
+    Dimensions.set({ window: { width: 390, height: 844, scale: 2, fontScale: 1 } });
   });
 
   test('a failed live attempt explains itself inside the guide', async () => {

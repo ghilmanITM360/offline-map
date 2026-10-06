@@ -553,6 +553,14 @@ function RoutePreviewSection({
   }, [peekText, sheetCollapsed, onToggleSheet]);
   useEffect(() => () => publishDirectionsPeek(null), []);
 
+  const directionsHeader = (
+    <DirectionsHeader
+      title={routeGuide ? 'Route guide' : 'Get Directions'}
+      subtitle={routeGuide ? "Your position isn't tracked. Use the steps to find your way." : 'Plan your walking route inside Ijtema'}
+      onBack={onClose}
+    />
+  );
+
   return (
     // collapsable={false} keeps the body a native view and importantForAccessibility marks it as one node, so
     // TalkBack reads it as a block before the pinned footer instead of interleaving their rows (#128 B;
@@ -563,11 +571,9 @@ function RoutePreviewSection({
       collapsable={false}
       importantForAccessibility="yes"
     >
-      <DirectionsHeader
-        title={routeGuide ? 'Route guide' : 'Get Directions'}
-        subtitle={routeGuide ? "Your position isn't tracked. Use the steps to find your way." : 'Plan your walking route inside Ijtema'}
-        onBack={onClose}
-      />
+      {/* The guide's heading scrolls with its content (#326): pinned, its title and subtitle outgrow the top detent on a
+          320 dp window or at 200% font and leave the step card and Previous/Next no viewport. */}
+      {!routeGuide && directionsHeader}
 
       <KeyboardAvoidingView
         style={styles.container}
@@ -580,6 +586,7 @@ function RoutePreviewSection({
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"
         >
+          {routeGuide && <View style={styles.guideHeader}>{directionsHeader}</View>}
           {showRouteReady && routeGuide && (
             <RouteGuideCard
               guide={routeGuide}
@@ -979,6 +986,8 @@ const styles = StyleSheet.create({
   scroll: {
     flex: 1,
   },
+  // Cancels the scroll content's own padding and gap so the heading sits where the pinned one did.
+  guideHeader: { marginHorizontal: -16, marginTop: -4, marginBottom: -6 },
   scrollContent: {
     paddingHorizontal: 16,
     paddingTop: 4,
