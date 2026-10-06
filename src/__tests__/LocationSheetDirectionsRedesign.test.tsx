@@ -4,13 +4,11 @@
  */
 
 import React from 'react';
-import { readFileSync } from 'node:fs';
-import { AccessibilityInfo, Dimensions, I18nManager, StyleSheet } from 'react-native';
+import { AccessibilityInfo, Dimensions, StyleSheet } from 'react-native';
 import { render, screen, userEvent, within } from './test-utils';
 
 import { LocationSheet } from '../views/components/map/LocationSheet';
 import { DirectionsSheetFooter } from '../views/components/map/DirectionsSheetFooter';
-import { DirectionsHeader, StartOptionCard } from '../views/components/map/DirectionsSheetParts';
 import { useDirectionsViewModel } from '../viewmodels/DirectionsViewModel';
 import { placeCategoryLabel } from '../utils/placeCategoryLabel';
 import { useAppStore } from '../store/useAppStore';
