@@ -83,8 +83,8 @@ assert(
   'Settings should refresh permission state when app returns to foreground',
 );
 assert(
-  settingsScreen.includes('Tap Manage'),
-  'Settings Location Permission should explain Manage behavior',
+  settingsScreen.includes('Tap to turn it on.'),
+  'Settings Location Permission should say what tapping does',
 );
 assert(
   settingsScreen.includes('disabled={!isToggle && !onPress}'),
@@ -94,7 +94,7 @@ assert(settingsScreen.includes('Voice Language'), 'Settings should label speech 
 assert(!settingsScreen.includes('Dark Mode'), 'Dark Mode should be hidden until app-wide support is complete');
 assert(settingsScreen.includes('Auto-follow Location'), 'Settings should expose Auto-follow toggle');
 assert(settingsScreen.includes('North-up Map'), 'Settings should expose North-up toggle');
-assert(settingsScreen.includes('Auto-reroute'), 'Settings should expose Auto-reroute toggle');
+assert(settingsScreen.includes('Fix my route automatically'), 'Settings should expose Fix my route automatically toggle');
 assert(settingsScreen.includes('Distance Unit'), 'Settings should expose Distance Unit selector');
 assert(settingsScreen.includes('Walking Speed'), 'Settings should expose Walking Speed selector');
 

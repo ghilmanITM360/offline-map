@@ -169,19 +169,19 @@ export function SettingsScreen() {
   })();
 
   const locationPermissionDescription = (() => {
-    if (!locationPermissionState) return 'Checking current location permission status';
+    if (!locationPermissionState) return 'Checking…';
     if (!locationPermissionState.granted) {
       return locationPermissionState.canAskAgain
-        ? 'Tap Manage to request location permission'
-        : 'Not allowed. Tap Manage to change permission in Android settings';
+        ? 'Tap to allow location'
+        : 'Location is off for this app. Tap to turn it on.';
     }
     if (locationPermissionState.servicesState === 'disabled') {
-      return 'Permission allowed, but device location is off. Tap Manage to open location settings';
+      return "Your phone's location is off. Tap to turn it on.";
     }
     if (locationPermissionState.servicesState === 'unknown') {
-      return 'Permission allowed. Location status could not be checked — tap Manage to try again';
+      return "Couldn't check your location. Tap to try again.";
     }
-    return 'Tap Manage to change permission in Android settings';
+    return 'Tap to change this in Settings';
   })();
 
   return (
@@ -200,12 +200,12 @@ export function SettingsScreen() {
           <SettingItem
             icon={Globe}
             label="Voice Language"
-            value={settings.language === 'en' ? 'English (voice)' : 'اردو (voice)'}
+            value={settings.language === 'en' ? 'English' : 'اردو'}
             type="text"
             onPress={() =>
               updateSettingValue('language', settings.language === 'en' ? 'ur' : 'en')
             }
-            description="Changes voice instruction language. Full app translation is not available yet"
+            description="Language of spoken directions"
           />
         </View>
 
@@ -216,14 +216,14 @@ export function SettingsScreen() {
             label="Auto-follow Location"
             value={settings.autoFollowLocation}
             onToggle={() => handleToggle('autoFollowLocation')}
-            description="Automatically center map on your position"
+            description="Keeps the map on where you are"
           />
           <SettingItem
             icon={Compass}
             label="North-up Map"
             value={settings.keepNorthFixed}
             onToggle={() => handleToggle('keepNorthFixed')}
-            description="Map always points north instead of turning to match your walking direction"
+            description="Map always has north at the top"
           />
         </View>
 
@@ -234,14 +234,14 @@ export function SettingsScreen() {
             label="Voice Instructions"
             value={settings.voiceInstructions}
             onToggle={() => handleToggle('voiceInstructions')}
-            description="Enable turn-by-turn voice guidance"
+            description="Speaks each turn aloud"
           />
           <SettingItem
             icon={RefreshCw}
-            label="Auto-reroute"
+            label="Fix my route automatically"
             value={settings.autoReroute}
             onToggle={() => handleToggle('autoReroute')}
-            description="Recalculate route if you go off-track"
+            description="Finds a new way if you go the wrong way"
           />
           <SettingItem
             icon={Info}
@@ -254,7 +254,7 @@ export function SettingsScreen() {
                 settings.distanceUnit === 'meters' ? 'feet' : 'meters'
               )
             }
-            description="Unit for distances and measurements"
+            description="Meters or feet"
           />
           <SettingItem
             icon={Footprints}
@@ -266,17 +266,17 @@ export function SettingsScreen() {
                 text: p.label + (p.value === settings.walkingSpeed ? ' ✓' : ''),
                 onPress: () => updateSettingValue('walkingSpeed', p.value),
               }));
-              Alert.alert('Walking Speed', 'Choose your typical walking pace for ETA estimates.', [
+              Alert.alert('Walking Speed', 'Choose how fast you walk. This sets the time shown.', [
                 ...options,
                 { text: 'Cancel', style: 'cancel' },
               ]);
             }}
-            description="Used for walking time estimates"
+            description="Used to show how long a walk takes"
           />
         </View>
 
         <View style={[styles.section, { backgroundColor: theme.card, borderColor: theme.border }]}>
-          <Text style={[styles.sectionTitle, { color: theme.primary }]}>Privacy & Permissions</Text>
+          <Text style={[styles.sectionTitle, { color: theme.primary }]}>Location</Text>
           <SettingItem
             icon={Shield}
             label="Location Permission"
@@ -303,11 +303,11 @@ export function SettingsScreen() {
             value="Clear"
             type="text"
             onPress={() => handleClearLocalData('savedLocation')}
-            description="Last known position, kept up to 24 hours. A new one is saved while location is on"
+            description="Your saved location, kept for up to 24 hours"
           />
           <SettingItem
             icon={Trash2}
-            label="Clear Navigation Recovery"
+            label="Clear Unfinished Trip Reminder"
             value="Clear"
             type="text"
             onPress={() => handleClearLocalData('navigationRecovery')}
@@ -323,7 +323,7 @@ export function SettingsScreen() {
             value="Open"
             type="text"
             onPress={() => navigation.navigate('AppGuide')}
-            description="How to use offline maps, search, directions, GPS fallback, and safety tips"
+            description="How to find places and get directions"
           />
           {__DEV__ && (
             <SettingItem

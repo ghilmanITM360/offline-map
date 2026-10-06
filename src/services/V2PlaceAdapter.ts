@@ -60,7 +60,7 @@ const gateUnavailableReason = (gate: Gate): string | undefined => {
  * this must never block or alter routing, only inform the user on selection.
  */
 const gateVerificationWarning = (gate: Gate): string | undefined =>
-  gate.status === 'needs_verification' ? 'This gate needs verification before navigation.' : undefined;
+  gate.status === 'needs_verification' ? 'Directions to this gate may be less exact.' : undefined;
 
 /**
  * Blocks whose entry node sits on (or is graph-adjacent to) one of the given path point
@@ -184,7 +184,7 @@ export class V2PlaceAdapter {
       category: 'SpecialRoute',
       description: isConnected
         ? `${route.name.en} walking corridor.`
-        : `${route.name.en} needs connector verification before routing.`,
+        : `${route.name.en} isn't ready for directions yet.`,
       coordinate: toAppCoordinate(firstPoint.coordinate),
       polyline: route.points.map((point) => toAppCoordinate(point.coordinate)),
       routingNodeId: firstPoint.id,

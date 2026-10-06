@@ -37,7 +37,7 @@ describe('DestinationRow (#96)', () => {
     expect(gate18!.isRoutable).toBe(false);
     await render(<DestinationRow place={gate18!} onPress={jest.fn()} />);
 
-    const row = screen.getByLabelText(`${gate18!.name}, Gate, navigation unavailable`);
+    const row = screen.getByLabelText(`${gate18!.name}, Gate, not available yet`);
     expect(row.props.accessibilityState?.disabled).not.toBe(true);
   });
 
@@ -47,7 +47,7 @@ describe('DestinationRow (#96)', () => {
     expect(gate19!.isRoutable).toBe(false);
     await render(<DestinationRow place={gate19!} onPress={jest.fn()} />);
 
-    const row = screen.getByLabelText(`${gate19!.name}, Gate, navigation unavailable`);
+    const row = screen.getByLabelText(`${gate19!.name}, Gate, not available yet`);
     expect(row.props.accessibilityState?.disabled).not.toBe(true);
   });
 
@@ -56,7 +56,7 @@ describe('DestinationRow (#96)', () => {
     const onPress = jest.fn();
     await render(<DestinationRow place={gate18} onPress={onPress} />);
 
-    fireEvent.press(screen.getByLabelText(`${gate18.name}, Gate, navigation unavailable`));
+    fireEvent.press(screen.getByLabelText(`${gate18.name}, Gate, not available yet`));
     expect(onPress).toHaveBeenCalledWith(gate18);
   });
 
@@ -64,6 +64,6 @@ describe('DestinationRow (#96)', () => {
     const gate18 = PublicDestinationsService.search('Gate 18')[0] as V2Place;
     await render(<DestinationRow place={gate18} onPress={jest.fn()} />);
 
-    expect(screen.getByText(/Not yet available for routing/)).toBeTruthy();
+    expect(screen.getByText(/Not available yet/)).toBeTruthy();
   });
 });

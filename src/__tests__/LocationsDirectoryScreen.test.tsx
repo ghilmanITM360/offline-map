@@ -260,7 +260,7 @@ describe('LocationsDirectoryScreen — recent destinations (#99)', () => {
 
     // #146: this gate now also renders in its own "Gates" browse section (consistent with
     // search), in addition to Recent — so both instances must exist; neither claims disabled (rows still open).
-    const rows = await screen.findAllByLabelText(`${blockedGate.name}, Gate, navigation unavailable`);
+    const rows = await screen.findAllByLabelText(`${blockedGate.name}, Gate, not available yet`);
     expect(rows.length).toBeGreaterThanOrEqual(2);
     rows.forEach((row) => expect(row.props.accessibilityState?.disabled).not.toBe(true));
   });
@@ -360,7 +360,7 @@ describe('LocationsDirectoryScreen — choosing a start or destination for Get D
     expect(unavailable).toBeDefined();
 
     await act(async () => {
-      fireEvent.press(screen.getByLabelText(new RegExp(`^${unavailable!.name}, Gate, navigation unavailable`)));
+      fireEvent.press(screen.getByLabelText(new RegExp(`^${unavailable!.name}, Gate, not available yet`)));
     });
 
     expect(Alert.alert).toHaveBeenCalledWith('Place unavailable', expect.stringContaining("isn't ready for directions yet"));
@@ -524,7 +524,7 @@ describe('LocationsDirectoryScreen — a destination tap means "take me here" (#
     await tapBlock();
     const unavailable = PublicDestinationsService.getByCategory('gates').find((gate) => gate.isStartRoutable === false)!;
 
-    await act(async () => { fireEvent.press(screen.getByLabelText(new RegExp(`^${unavailable.name}, Gate, navigation unavailable`))); });
+    await act(async () => { fireEvent.press(screen.getByLabelText(new RegExp(`^${unavailable.name}, Gate, not available yet`))); });
 
     expect(Alert.alert).toHaveBeenCalledWith('Place unavailable', expect.any(String));
     expect(navigation.replace).not.toHaveBeenCalled();
@@ -593,7 +593,7 @@ describe('LocationsDirectoryScreen — a destination tap means "take me here" (#
     const navigation = mockNav({ canGoBack: false });
     const unavailable = PublicDestinationsService.getByCategory('gates').find((gate) => gate.isRoutable === false)!;
     await render(<LocationsDirectoryScreen />);
-    await act(async () => { fireEvent.press(screen.getByLabelText(new RegExp(`^${unavailable.name}, Gate, navigation unavailable`))); });
+    await act(async () => { fireEvent.press(screen.getByLabelText(new RegExp(`^${unavailable.name}, Gate, not available yet`))); });
 
     expect(useAppStore.getState().pendingDirectorySelection).toEqual(unavailable);
     expect(useAppStore.getState().pendingJourney).toBeNull();

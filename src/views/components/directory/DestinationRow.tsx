@@ -63,7 +63,7 @@ export function DestinationRow({
         accessibilityRole="button"
         accessibilityHint={onDetails && !isUnavailable ? 'Takes you to this place' : undefined}
         accessibilityLabel={
-          isUnavailable ? `${place.name}, ${categoryLabel}, navigation unavailable` : `${place.name}, ${categoryLabel}`
+          isUnavailable ? `${place.name}, ${categoryLabel}, not available yet` : `${place.name}, ${categoryLabel}`
         }
       >
         <View style={[styles.iconWrap, { backgroundColor: isUnavailable ? staticColors.neutralSurface : `${accent}1A` }]}>
@@ -84,7 +84,7 @@ export function DestinationRow({
           {showCategory ? (
             <Text style={styles.subtitle} numberOfLines={1} ellipsizeMode="tail">
               {categoryLabel}
-              {place.unavailableReason ? ' · Not yet available for routing' : ''}
+              {place.unavailableReason ? ' · Not available yet' : ''}
             </Text>
           ) : isUnavailable ? (
             <View style={styles.unavailableBadge}>

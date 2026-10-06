@@ -10,7 +10,7 @@ const requiredFunctionalRows = [
   'Auto-follow Location',
   'North-up Map',
   'Voice Instructions',
-  'Auto-reroute',
+  'Fix my route automatically',
   'Distance Unit',
   'Walking Speed',
   'Location Permission',
@@ -25,7 +25,7 @@ assert(settings.includes('updateSettingValue'), 'Text selector rows must persist
 assert(settings.includes("handleToggle('autoFollowLocation')"), 'Auto-follow row must be functional');
 assert(settings.includes("handleToggle('keepNorthFixed')"), 'North-up row must be functional');
 assert(settings.includes("handleToggle('voiceInstructions')"), 'Voice instructions row must be functional');
-assert(settings.includes("handleToggle('autoReroute')"), 'Auto-reroute row must be functional');
+assert(settings.includes("handleToggle('autoReroute')"), 'Fix my route automatically row must be functional');
 assert(settings.includes('handleReRequestPermission'), 'Location Permission row must be functional');
 assert(settings.includes("navigation.navigate('AppGuide')"), 'App Guide row must be functional');
 

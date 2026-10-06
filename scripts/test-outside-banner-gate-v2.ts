@@ -23,7 +23,7 @@ assert(
   'Outside-venue banner must name the actual suggested gate in its own text surface',
 );
 assert(
-  home.includes('Entry recommendation unavailable'),
+  home.includes('No gate suggested yet'),
   'Outside-venue banner must have a sane fallback when no routable gate is found',
 );
 assert(

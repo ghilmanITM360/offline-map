@@ -36,32 +36,29 @@ const GUIDE_SECTIONS: GuideSection[] = [
     icon: Navigation,
     title: '1. Welcome',
     urduTitle: '۱۔ خوش آمدید',
-    body:
-      'Ijtema Map helps you find internal walking routes inside Karachi Ijtema ground. This app is for venue navigation, not city-wide driving routes.',
+    body: 'Ijtema Map helps you find your way on foot inside the Karachi Ijtema ground.',
   },
   {
     key: 'search',
     icon: Search,
     title: '2. Search Places',
     urduTitle: '۲۔ تلاش کریں',
-    body:
-      'Use search to find Blocks, Rastas, Gates, Masjids, Terminals, and Help points. Category chips help you filter quickly.',
+    body: 'Search for a block, gate, rasta, masjid or help point. Tap a place to see it on the map.',
   },
   {
     key: 'destination',
     icon: MapPin,
     title: '3. Choose Destination',
     urduTitle: '۳۔ منزل منتخب کریں',
-    body:
-      'Tap a search result or map place to set destination. Red marker means destination. Review details, then open Directions.',
+    body: 'Tap a place, then tap Directions. A red marker shows where you are going.',
   },
   {
     key: 'start',
     icon: LocateFixed,
-    title: '4. Choose Start Source',
+    title: '4. Choose Where You Start',
     urduTitle: '۴۔ آغاز کا مقام',
     body:
-      'Tap the FROM row to open the place list. Use My Current Location = live GPS now. Use Last Known Location = your last saved location, not live. Or pick a gate, block or rasta yourself. If you start outside Ijtema, routes enter from the nearest connected official gate.',
+      'In Directions, tap the From row. Choose Use my location, or pick a gate, block or rasta yourself. If you are outside Ijtema, we guide you to the nearest gate first.',
   },
   {
     key: 'directions',
@@ -69,15 +66,15 @@ const GUIDE_SECTIONS: GuideSection[] = [
     title: '5. Directions Screen',
     urduTitle: '۵۔ ڈائریکشن اسکرین',
     body:
-      'Directions shows FROM and TO. Tap either row to change it. When the route is ready, tap Use my location & start, or View route to see the blue line, distance, and time on the map.',
+      'Directions shows From and To. Tap either one to change it. When a route is found you see the time and distance. Tap Start Navigation to be guided as you walk. If you picked your own start, tap Start route to follow the steps one by one.',
   },
   {
     key: 'navigation',
     icon: Navigation,
-    title: '6. Navigation Screen',
-    urduTitle: '۶۔ نیویگیشن اسکرین',
+    title: '6. While You Walk',
+    urduTitle: '۶۔ چلتے وقت',
     body:
-      'Blue marker = your current/active position. Green marker = start. Red marker = destination. Blue route line = internal path. Follow instruction card and bottom summary.',
+      'Blue marker: you. Green marker: where you start. Red marker: where you are going. Follow the card at the top for the next turn. If you go the wrong way, we find a new way.',
   },
   {
     key: 'controls',
@@ -85,7 +82,7 @@ const GUIDE_SECTIONS: GuideSection[] = [
     title: '7. Map Controls',
     urduTitle: '۷۔ نقشہ کنٹرولز',
     body:
-      'Follow direction turns the map to face the way you are moving; tap it again for north-up. Recenter jumps back to your position. More map controls holds Layers and Zoom in / Zoom out. You can also pinch to zoom.',
+      'Follow direction turns the map the way you walk; tap it again to keep north at the top. Recenter brings the map back to you. More map controls has layers and zoom. You can also pinch to zoom.',
   },
   {
     key: 'settings',
@@ -93,15 +90,15 @@ const GUIDE_SECTIONS: GuideSection[] = [
     title: '8. Settings Meaning',
     urduTitle: '۸۔ سیٹنگز کی وضاحت',
     body:
-      'Voice Language changes speech only. Map Style, Auto-follow, North-up, Voice Instructions, Auto-reroute, Distance Unit, and Walking Speed all affect navigation behavior.',
+      'Voice Language changes the spoken directions. You can also choose north at the top, voice directions, fixing your route automatically, meters or feet, and your walking speed.',
   },
   {
     key: 'gps',
     icon: TriangleAlert,
-    title: '9. GPS & Permission Problems',
-    urduTitle: '۹۔ جی پی ایس مسائل',
+    title: '9. Location Problems',
+    urduTitle: '۹۔ لوکیشن کے مسائل',
     body:
-      'If permission is denied, open Manage in Settings. If signal is weak, pause and wait. If you are outside Ijtema, the app will enter through the nearest connected official gate automatically.',
+      "If we can't find you, stand in an open area and wait a moment. If location is off, turn it on in Settings. You can always choose where you are starting from instead.",
   },
   {
     key: 'safety',
@@ -109,7 +106,7 @@ const GUIDE_SECTIONS: GuideSection[] = [
     title: '10. Safety Tips',
     urduTitle: '۱۰۔ حفاظتی ہدایات',
     body:
-      'Keep phone charged. Stop walking before reading screen. Follow official volunteers and announcements first in heavy crowd conditions.',
+      'Keep your phone charged. Stop walking before you read the screen. In a heavy crowd, follow volunteers and announcements first.',
   },
   {
     key: 'troubleshoot',
@@ -117,7 +114,7 @@ const GUIDE_SECTIONS: GuideSection[] = [
     title: '11. Troubleshooting',
     urduTitle: '۱۱۔ مسئلہ حل',
     body:
-      'Map looks empty: close and reopen the app. Route not calculating: retry or tap Change Start. GPS not working: tap Change Start and pick a place, or use your earlier location. If a gate needs connector verification or is not ready for navigation, choose another connected official gate.',
+      "Map looks empty: close and reopen the app. No route found: tap Try again or choose another start. Can't find you: choose where you're starting from. If a gate isn't ready, choose another gate.",
   },
 ];
 
@@ -151,23 +148,23 @@ export function AppGuideScreen() {
           <Text style={styles.quickTitle}>Quick Marker Legend</Text>
           <View style={styles.legendRow}>
             <LegendDot color="#1A73E8" />
-            <Text style={styles.legendText}>Blue: Current / active location</Text>
+            <Text style={styles.legendText}>Blue: you</Text>
           </View>
           <View style={styles.legendRow}>
             <LegendDot color="#2E7D32" />
-            <Text style={styles.legendText}>Green: Start marker</Text>
+            <Text style={styles.legendText}>Green: where you start</Text>
           </View>
           <View style={styles.legendRow}>
             <LegendDot color="#EA4335" />
-            <Text style={styles.legendText}>Red: Destination marker</Text>
+            <Text style={styles.legendText}>Red: where you are going</Text>
           </View>
         </View>
 
         <View style={styles.quickCard}>
-          <Text style={styles.quickTitle}>Start Source Mini Guide</Text>
-          <Text style={styles.quickBody}>Use My Current Location: Live GPS location now.</Text>
-          <Text style={styles.quickBody}>Use Last Known Location: Last saved valid location (not live).</Text>
-          <Text style={styles.quickBody}>Pick a place: Choose a gate, block or rasta yourself.</Text>
+          <Text style={styles.quickTitle}>Where You Start</Text>
+          <Text style={styles.quickBody}>Use my location: we show the way from where you stand.</Text>
+          <Text style={styles.quickBody}>Use earlier location: from where you were a little while ago.</Text>
+          <Text style={styles.quickBody}>Pick a place: choose a gate, block or rasta yourself.</Text>
         </View>
 
         {GUIDE_SECTIONS.map((section) => {
