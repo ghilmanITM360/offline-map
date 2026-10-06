@@ -98,7 +98,7 @@ describe('MapStartupController.resolveReturningLaunchCamera', () => {
       coordinate: staleRememberedCoordinate,
       source: 'device_last_known',
       permissionState: basePermissionState,
-      message: 'Using device last known location.',
+      message: 'Using device earlier location.',
     });
 
     const decision = await MapStartupController.resolveReturningLaunchCamera(

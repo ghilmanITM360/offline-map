@@ -77,7 +77,7 @@ assert(
 
 // --- P2 Fix 5: re-selecting another object preserves the sheet's snap state -
 
-assert(homeViewModel.includes('lastSheetIndexRef'), 'HomeViewModel must track the last known sheet snap index.');
+assert(homeViewModel.includes('lastSheetIndexRef'), 'HomeViewModel must track the earlier sheet snap index.');
 assert(homeViewModel.includes('handleSheetIndexChange'), 'HomeViewModel must expose a handler to record sheet snap index changes.');
 assert(
   homeViewModel.includes('isSheetOpenForReselection') && homeViewModel.includes('const nextSnapIndex = isSheetOpenForReselection ? lastSheetIndexRef.current : 1;'),

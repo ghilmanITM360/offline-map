@@ -9,8 +9,8 @@ assert(screen.includes('Get Directions'), 'Directions screen must use layman-fri
 assert(screen.includes('Change destination.'), 'Directions screen must show a tappable destination row');
 assert(vm.includes("'Choose where to start'"), 'The FROM row must focus on start selection');
 const directoryScreen = readFileSync('src/views/screens/LocationsDirectoryScreen.tsx', 'utf8');
-assert(directoryScreen.includes('Use my current location'), 'Directory must include current-location action');
-assert(directoryScreen.includes('Use last known location'), 'Directory should use clear last-known location labeling');
+assert(directoryScreen.includes('Use my location'), 'Directory must include current-location action');
+assert(directoryScreen.includes('Use earlier location'), 'Directory should use clear last-known location labeling');
 // The Directory is the one place chooser: the sheet opens it for a start instead of hosting its own search box (#222).
 assert(!screen.includes('Search start point: gate, rasta, block'), 'Directions screen must not host a second start search');
 assert(screen.includes("onOpenDirectory?.('start')"), 'Choose start manually must open the Directory to choose a start');
@@ -20,7 +20,7 @@ assert(screen.includes('ScrollView'), 'Directions screen should use scroll layou
 assert(screen.includes('paddingBottom'), 'Directions screen should add bottom padding for safe area');
 assert(screen.includes('Start Navigation'), 'Directions screen should expose a Start Navigation CTA once a route is ready');
 assert(screen.includes('Route ready'), 'Directions screen should show route-ready summary');
-assert(screen.includes('Finding route...'), 'Directions screen should show provider-neutral calculating state clearly');
+assert(screen.includes('Finding your route…'), 'Directions screen should show provider-neutral calculating state clearly');
 
 assert(vm.includes('ROUTE_TIMEOUT_MS'), 'Directions route calculation should include timeout');
 assert(vm.includes('forceOutside'), 'Directions should pass outside start mode into v2 preview service');

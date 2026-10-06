@@ -47,7 +47,7 @@ afterEach(() => {
   useAppStore.persist.setOptions(realPersistOptions);
 });
 
-describe('#145 last known location: one latest fix, 24 h cutoff', () => {
+describe('#145 earlier location: one latest fix, 24 h cutoff', () => {
   it('rehydrates a fix younger than the cutoff', async () => {
     const s = await relaunchWith({ lastKnownLocation: fix, lastKnownLocationUpdatedAt: iso(NOW - LAST_KNOWN_LOCATION_MAX_AGE_MS + 1000) });
     expect(s.lastKnownLocation).toEqual(fix);

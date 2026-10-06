@@ -30,7 +30,7 @@ const homeScreenSource = readFileSync('src/views/screens/HomeScreen.tsx', 'utf8'
 
 // #222: the start chooser is the Directory; the sheet only opens it.
 const directoryScreen = readFileSync('src/views/screens/LocationsDirectoryScreen.tsx', 'utf8');
-assert(directoryScreen.includes('Use my current location'), 'Directory should offer current-location start action');
+assert(directoryScreen.includes('Use my location'), 'Directory should offer current-location start action');
 assert(directions.includes("onOpenDirectory?.('start')"), 'Directions should keep the Directory as the manual-start fallback');
 assert(navVm.includes('REROUTE_COOLDOWN_MS'), 'Navigation should include reroute cooldown to avoid loops');
 assert(navVm.includes('OFF_ROUTE_CONSECUTIVE_REQUIRED'), 'Navigation should require consecutive off-route samples before rerouting');
@@ -38,8 +38,8 @@ assert(navVm.includes('MIN_MOVEMENT_FOR_REROUTE_M'), 'Navigation should block re
 assert(navVm.includes('OFF_ROUTE_PENDING_MS'), 'Navigation should wait before rerouting when off-route is uncertain');
 assert(navVm.includes('projectProgressMetersOnRoute'), 'Navigation should project user progress on active route');
 assert(navVm.includes('holdRouteForWeakGps'), 'Navigation should hold route stable when GPS accuracy is poor');
-assert(navVm.includes('continuing current route'), 'Navigation should preserve current route when candidate reroute fails');
-assert(navChrome.includes('Weak GPS signal detected'), 'Navigation UI should show weak GPS warning');
+assert(navVm.includes('Keep following the current route.'), 'Navigation should preserve current route when candidate reroute fails');
+assert(navChrome.includes('Weak signal. Directions may be slow.'), 'Navigation UI should show weak GPS warning');
 // Navigation runs on HomeScreen's single persistent map. The basemap is installed locally (no download, no network), and
 // even a failed install degrades to a plain canvas with the venue overlays — never a spinner that waits on the network.
 assert(homeScreenSource.includes('useBundledBasemap()') && !homeScreenSource.includes('Loading map...'), 'Home map must not show a network-style loading state');

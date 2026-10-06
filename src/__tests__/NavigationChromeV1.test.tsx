@@ -154,7 +154,7 @@ describe('NavigationChromeV1 — Exit/recenter/mute touch targets', () => {
 
     const stack = screen.getByTestId('navigation-top-stack-v1');
     const stackContent = within(stack);
-    expect(stackContent.getByText('Weak GPS signal detected. Route updates may be slower.')).toBeOnTheScreen();
+    expect(stackContent.getByText('Weak signal. Directions may be slow.')).toBeOnTheScreen();
     expect(stackContent.queryByText('Recalculating your route')).not.toBeOnTheScreen();
     expect(stackContent.queryByText("The map can't be shown. Directions still work.")).not.toBeOnTheScreen();
   });
@@ -175,7 +175,7 @@ describe('NavigationChromeV1 — Exit/recenter/mute touch targets', () => {
 
   test('#156: weak-GPS banner is a polite live region', async () => {
     await render(<NavigationChromeV1 overlay={baseOverlay({ isWeakGps: true })} hasBaseMap={false} />);
-    expect(screen.getByText('Weak GPS signal detected. Route updates may be slower.').parent?.props.accessibilityLiveRegion).toBe('polite');
+    expect(screen.getByText('Weak signal. Directions may be slow.').parent?.props.accessibilityLiveRegion).toBe('polite');
   });
 
   test('#156: reroute-hint banner is a polite live region', async () => {

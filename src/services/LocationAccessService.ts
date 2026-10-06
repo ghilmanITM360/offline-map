@@ -91,8 +91,8 @@ export class LocationAccessService {
           source: null,
           permissionState,
           message: permissionState.canAskAgain
-            ? 'Location permission is required to use your current position.'
-            : 'Location permission is denied. Open app settings to allow location access.',
+            ? 'Allow location to see where you are.'
+            : 'Location is off for this app. Turn it on in Settings.',
         };
       }
 
@@ -105,7 +105,7 @@ export class LocationAccessService {
           coordinate: null,
           source: null,
           permissionState,
-          message: 'Device location is turned off. Enable location services and try again.',
+          message: "Your phone's location is off. Turn it on, then try again.",
         };
       }
 
@@ -149,7 +149,7 @@ export class LocationAccessService {
             },
             source: 'device_last_known',
             permissionState,
-            message: 'Using device last known location because live GPS is unavailable.',
+            message: "We can't find you right now. Showing where you were earlier.",
           };
         }
         return {
@@ -157,7 +157,7 @@ export class LocationAccessService {
           coordinate: null,
           source: null,
           permissionState,
-          message: 'Current location is unavailable. Choose start manually.',
+          message: "We can't find you. Choose where you're starting from.",
         };
       }
     } catch {
@@ -174,7 +174,7 @@ export class LocationAccessService {
         coordinate: null,
         source: null,
         permissionState,
-        message: 'Location service is temporarily unavailable. Please try again.',
+        message: "We can't find your location right now. Please try again.",
       };
     }
   }

@@ -94,7 +94,7 @@ describe('Start action for a chosen (manual) start', () => {
   test('6: no fix at all gives one recovery state and leaves the route and actions in place', async () => {
     const hook = await readyHook();
     jest.spyOn(LocationAccessService, 'resolveCurrentLocation').mockResolvedValue(
-      resolved({ ok: false, source: null, message: 'Current location is unavailable. Choose start manually.' }),
+      resolved({ ok: false, source: null, message: "We can't find you. Choose where you're starting from." }),
     );
     const startNow = jest.fn();
     await act(async () => hook.result.current.runStartAction(startNow));

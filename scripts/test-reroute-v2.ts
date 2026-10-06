@@ -69,7 +69,7 @@ const failed = keepCurrentRouteAfterRerouteFailureV2(activeRoute);
 assert.equal(failed.route, activeRoute, 'Reroute failure must keep old route visible');
 assert.equal(
   failed.message,
-  'Could not find a better route. Continuing current route.',
+  'Keep following the current route.',
   'Reroute failure message must be exact',
 );
 

@@ -187,7 +187,7 @@ export function keepCurrentRouteAfterRerouteFailureV2(route: V2ActiveRoute): {
 } {
   return {
     route,
-    message: 'Could not find a better route. Continuing current route.',
+    message: 'Keep following the current route.',
   };
 }
 

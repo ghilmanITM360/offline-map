@@ -36,7 +36,7 @@ assert(
   'LocationSheet routePreview mode must expose the tappable start row.',
 );
 assert(
-  directionsScreenSource.includes('Enter through'),
+  directionsScreenSource.includes('Go in through'),
   'LocationSheet routePreview mode must explain entry gate.',
 );
 assert(

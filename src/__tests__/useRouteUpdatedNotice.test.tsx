@@ -39,9 +39,9 @@ describe('useRouteUpdatedNotice', () => {
     const first = hook.result.current.notice;
     await act(async () => hook.result.current.notice.announce());
     await act(async () => hook.result.current.notice.cancel());
-    await act(async () => hook.result.current.setMessage('Recalculating...'));
+    await act(async () => hook.result.current.setMessage('Finding a new way…'));
     await act(async () => { jest.advanceTimersByTime(ROUTE_UPDATED_VISIBLE_MS * 2); });
-    expect(hook.result.current.message).toBe('Recalculating...');
+    expect(hook.result.current.message).toBe('Finding a new way…');
     expect(hook.result.current.notice).toBe(first);
   });
 });

@@ -54,8 +54,8 @@ assert(
 assert(navScene.includes('route.origin.coordinate'), 'v2 navigation must render start marker from v2 route origin');
 assert(navScene.includes('route.destination.coordinate'), 'v2 navigation must render red destination marker from v2 route destination');
 assert(navScene.includes('snappedLocation') && navScene.includes('user:'), 'v2 navigation must render current/user marker');
-assert(navChrome.includes('Weak GPS signal detected'), 'v2 navigation must show weak GPS warning');
-assert(navChrome.includes('Recalculating...'), 'v2 navigation must show reroute state without clearing map');
+assert(navChrome.includes('Weak signal. Directions may be slow.'), 'v2 navigation must show weak GPS warning');
+assert(navChrome.includes('Finding a new way…'), 'v2 navigation must show reroute state without clearing map');
 assert(navChrome.includes('onPress={requestNavigationExit}'), 'v2 active navigation exit must request confirmation');
 assert(navChrome.includes('onPress={completeArrivalNavigation}'), 'v2 arrival Done must exit immediately');
 assert(navChrome.includes('LocateFixed') && navOverlay.includes('cameraManager.enterNavigationCamera('), 'v2 navigation recenter must be wired');

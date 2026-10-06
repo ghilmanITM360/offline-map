@@ -144,7 +144,7 @@ describe('NavigationViewModelV2 hybrid rerouting', () => {
 
     expect(useAppStore.getState().activeRoute).toBe(routeBeforeRetry);
     expect(useAppStore.getState().isNavigating).toBe(true);
-    expect(hook.result.current.rerouteStatusMessage).toBe('Could not find a better route. Continuing current route.');
+    expect(hook.result.current.rerouteStatusMessage).toBe('Keep following the current route.');
     expect(hook.result.current.rerouteStatusMessage).not.toBe('Route updated');
     previewSpy.mockRestore();
   });
@@ -158,7 +158,7 @@ describe('NavigationViewModelV2 hybrid rerouting', () => {
 
     expect(useAppStore.getState().activeRoute).toBe(routeBeforeRetry);
     expect(hook.result.current.reroutePending).toBe(false);
-    expect(hook.result.current.rerouteStatusMessage).toBe('Could not find a better route. Continuing current route.');
+    expect(hook.result.current.rerouteStatusMessage).toBe('Keep following the current route.');
     previewSpy.mockRestore();
   });
 

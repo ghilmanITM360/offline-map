@@ -90,7 +90,7 @@ describe('DirectionsViewModel hybrid outside routing', () => {
     expect(previewRoute?.outsideRoute?.provider).toBe('offline-osm');
     expect(hook.result.current.canStartNavigation).toBe(false);
     expect(hook.result.current.startNavigationDisabledReason).toBe(
-      'Current location is stale. Wait for a fresh fix before starting live navigation.',
+      'Finding your location…',
     );
     expect(useAppStore.getState().isNavigating).toBe(false);
 
@@ -143,8 +143,8 @@ describe('DirectionsViewModel hybrid outside routing', () => {
   });
 
   test.each([
-    ['live', 'live_gps', 'My current location', 'Using live GPS location now.', true],
-    ['device_last_known', 'device_last_known', 'Device last known location', 'Using device last known location because live GPS is unavailable.', false],
+    ['live', 'live_gps', 'My current location', 'Using your current location.', true],
+    ['device_last_known', 'device_last_known', 'Earlier location', "We can't find you right now. Showing where you were earlier.", false],
   ] as const)(
     'preserves %s provenance in route-origin presentation',
     async (locationSource, expectedStartSource, primaryLabel, supportingCopy, currentOptionActive) => {
@@ -254,8 +254,8 @@ describe('DirectionsViewModel hybrid outside routing', () => {
     await act(() => expect(hook.result.current.chooseRememberedLocation()).toBe(true));
     await waitFor(() => expect(hook.result.current.startSource).toBe('remembered_location'));
 
-    expect(hook.result.current.startSourceLabel).toContain('Last known location');
-    expect(hook.result.current.startSourceSupportingCopy).toContain('Using last known location');
+    expect(hook.result.current.startSourceLabel).toContain('Earlier location');
+    expect(hook.result.current.startSourceSupportingCopy).toContain('Using your location from 5 minutes ago');
     expect(hook.result.current.isCurrentLocationStartActive).toBe(false);
     expect(hook.result.current.activeOriginCoordinate).toEqual(origin);
   });

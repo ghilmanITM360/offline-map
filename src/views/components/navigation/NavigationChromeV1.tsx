@@ -92,7 +92,7 @@ export function NavigationChromeV1({ overlay, hasBaseMap }: { overlay: Navigatio
         {reroutePending ? (
           <View style={[styles.instructionCard, styles.rerouteCard]}>
             <RefreshCw size={28} color={staticColors.white} />
-            <Text style={styles.rerouteText}>Recalculating...</Text>
+            <Text style={styles.rerouteText}>Finding a new way…</Text>
           </View>
         ) : currentStep && !arrived ? (
           <View style={styles.instructionCard} accessibilityLabel={currentStep.text}>
@@ -132,7 +132,7 @@ export function NavigationChromeV1({ overlay, hasBaseMap }: { overlay: Navigatio
         <View style={styles.topStatusStack}>
           {isWeakGps ? (
             <View style={styles.weakGpsBanner} accessibilityLiveRegion="polite">
-              <Text style={styles.weakGpsText}>Weak GPS signal detected. Route updates may be slower.</Text>
+              <Text style={styles.weakGpsText}>Weak signal. Directions may be slow.</Text>
             </View>
           ) : rerouteStatusMessage && !reroutePending ? (
             <View style={styles.rerouteHintBanner} accessibilityLiveRegion="polite">

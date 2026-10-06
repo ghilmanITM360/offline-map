@@ -391,7 +391,7 @@ describe('LocationsDirectoryScreen — start quick options (#222)', () => {
   test('current-location option appears only with a valid precise live location', async () => {
     useAppStore.setState({ currentLocation: here, currentLocationSource: 'live', locationPermissionPrecision: 'fine' });
     await openForStart();
-    expect(screen.getByLabelText(/^Use my current location/)).toBeOnTheScreen();
+    expect(screen.getByLabelText(/^Use my location/)).toBeOnTheScreen();
   });
 
   test.each([
@@ -401,18 +401,18 @@ describe('LocationsDirectoryScreen — start quick options (#222)', () => {
   ])('current-location option is hidden: %s', async (_name, state) => {
     useAppStore.setState(state);
     await openForStart();
-    expect(screen.queryByLabelText(/^Use my current location/)).not.toBeOnTheScreen();
+    expect(screen.queryByLabelText(/^Use my location/)).not.toBeOnTheScreen();
   });
 
   test('last-known option appears only when a remembered location exists', async () => {
     useAppStore.setState({ lastKnownLocation: here, lastKnownLocationUpdatedAt: new Date().toISOString() });
     await openForStart();
-    expect(screen.getByLabelText(/^Use last known location/)).toBeOnTheScreen();
+    expect(screen.getByLabelText(/^Use earlier location/)).toBeOnTheScreen();
   });
 
   test('last-known option is hidden without a remembered location', async () => {
     await openForStart();
-    expect(screen.queryByLabelText(/^Use last known location/)).not.toBeOnTheScreen();
+    expect(screen.queryByLabelText(/^Use earlier location/)).not.toBeOnTheScreen();
   });
 
   test('quick options never appear for destination choosing or plain browsing', async () => {
@@ -426,13 +426,13 @@ describe('LocationsDirectoryScreen — start quick options (#222)', () => {
     mockNav();
     useAppStore.getState().setDirectoryPurpose('destination');
     const view = await render(<LocationsDirectoryScreen />);
-    expect(screen.queryByLabelText(/^Use my current location/)).not.toBeOnTheScreen();
-    expect(screen.queryByLabelText(/^Use last known location/)).not.toBeOnTheScreen();
+    expect(screen.queryByLabelText(/^Use my location/)).not.toBeOnTheScreen();
+    expect(screen.queryByLabelText(/^Use earlier location/)).not.toBeOnTheScreen();
     await view.unmount();
 
     mockNav();
     await render(<LocationsDirectoryScreen />);
-    expect(screen.queryByLabelText(/^Use my current location/)).not.toBeOnTheScreen();
+    expect(screen.queryByLabelText(/^Use my location/)).not.toBeOnTheScreen();
   });
 
   test('tapping a quick option stores a place-less choice and returns', async () => {
@@ -445,7 +445,7 @@ describe('LocationsDirectoryScreen — start quick options (#222)', () => {
     });
     const navigation = await openForStart();
 
-    await act(async () => fireEvent.press(screen.getByLabelText(/^Use my current location/)));
+    await act(async () => fireEvent.press(screen.getByLabelText(/^Use my location/)));
     expect(useAppStore.getState().directoryChoice).toEqual({ purpose: 'start', quick: 'current_location' });
     expect(useAppStore.getState().directoryPurpose).toBeNull();
     expect(navigation.goBack).toHaveBeenCalledTimes(1);
@@ -455,7 +455,7 @@ describe('LocationsDirectoryScreen — start quick options (#222)', () => {
     useAppStore.setState({ lastKnownLocation: here, lastKnownLocationUpdatedAt: new Date().toISOString() });
     await openForStart();
 
-    await act(async () => fireEvent.press(screen.getByLabelText(/^Use last known location/)));
+    await act(async () => fireEvent.press(screen.getByLabelText(/^Use earlier location/)));
     expect(useAppStore.getState().directoryChoice).toEqual({ purpose: 'start', quick: 'last_known' });
   });
 });
@@ -564,7 +564,7 @@ describe('LocationsDirectoryScreen — a destination tap means "take me here" (#
   test('E: a refusal is respected: declining the prompt keeps asking for a start and never opens Settings', async () => {
     const { LocationAccessService } = require('../services/LocationAccessService');
     jest.spyOn(LocationAccessService, 'resolveCurrentLocation').mockResolvedValue({
-      ok: false, source: null, coordinate: null, message: 'Location permission is required to use your current position.',
+      ok: false, source: null, coordinate: null, message: 'Allow location to see where you are.',
       permissionState: { granted: false, canAskAgain: true, status: 'denied', precision: 'none', servicesEnabled: true, servicesState: 'enabled' },
     });
     const openSettings = jest.spyOn(LocationAccessService, 'openAppSettings').mockResolvedValue(true);

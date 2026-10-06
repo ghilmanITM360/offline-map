@@ -117,7 +117,7 @@ describe('LocationAccessService.resolveCurrentLocation — capability-safe fallb
       ok: false,
       coordinate: null,
       source: null,
-      message: 'Device location is turned off. Enable location services and try again.',
+      message: "Your phone's location is off. Turn it on, then try again.",
     });
     expect(Location.getCurrentPositionAsync).not.toHaveBeenCalled();
     expect(Location.getLastKnownPositionAsync).not.toHaveBeenCalled();
@@ -138,7 +138,7 @@ describe('LocationAccessService.resolveCurrentLocation — capability-safe fallb
       ok: false,
       coordinate: null,
       source: null,
-      message: 'Current location is unavailable. Choose start manually.',
+      message: "We can't find you. Choose where you're starting from.",
     });
   });
 
@@ -206,7 +206,7 @@ describe('LocationAccessService.resolveCurrentLocation — #89 bounded current-p
       ok: false,
       coordinate: null,
       source: null,
-      message: 'Current location is unavailable. Choose start manually.',
+      message: "We can't find you. Choose where you're starting from.",
     });
     expect(Location.getLastKnownPositionAsync).toHaveBeenCalled();
   });

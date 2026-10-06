@@ -906,7 +906,7 @@ describe('HomeScreen — navigation completion cleanup', () => {
 
     await user.press(screen.getByTestId('nav-exit-button'));
     const confirmExit = (alertSpy.mock.calls.at(-1)?.[2] as Array<{ text: string; onPress?: () => void }>).find(
-      (button) => button.text === 'Exit',
+      (button) => button.text === 'Stop',
     )?.onPress;
     await act(async () => confirmExit?.());
 

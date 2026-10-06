@@ -45,7 +45,7 @@ describe('#222 MapStartupController.planEntryCamera', () => {
     expect(plan.anchor.name).toBe('Block 2');
     expect(plan.anchor.coordinate).toEqual({ latitude: 24.9685, longitude: 66.9999167 });
     expect(plan.notice).toBe(FALLBACK_LOCATION_NOTICE);
-    expect(FALLBACK_LOCATION_NOTICE).toBe('Location unavailable. Showing Block 2.');
+    expect(FALLBACK_LOCATION_NOTICE).toBe("We can't find where you are. Showing the main area.");
   });
 
   it('the fallback is never represented as a detected location and never uses the legacy Masjid coordinate', () => {

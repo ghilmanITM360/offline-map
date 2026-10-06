@@ -9,7 +9,7 @@ import { NAVIGATION_WATCH_TIME_INTERVAL_MS } from '../src/constants/navigation';
 
 // --- Pure state-derivation checks -------------------------------------------------------
 // GPS_LOST is a plain timeout on top of the existing fix-handling: no fresh fix for
-// GPS_LOST_TIMEOUT_MS -> GPS_LOST, regardless of what the last known accuracy verdict was.
+// GPS_LOST_TIMEOUT_MS -> GPS_LOST, regardless of what the earlier accuracy verdict was.
 
 assert.equal(
   GPS_LOST_TIMEOUT_MS,
@@ -166,8 +166,8 @@ assert(
 // building a new UI surface, and the pre-existing weak-GPS banner block is left untouched.
 assert(
   navigationChromeSource.includes("gpsSignalState === 'GPS_LOST'") &&
-    navigationChromeSource.includes('Searching for GPS signal'),
-  'NavigationChromeV2 must show a "Searching for GPS signal" message when gpsSignalState is GPS_LOST',
+    navigationChromeSource.includes("We can't find you. Move to an open area."),
+  'NavigationChromeV2 must show a plain "can\'t find you" message when gpsSignalState is GPS_LOST',
 );
 const gpsLostBannerStart = navigationChromeSource.indexOf("gpsSignalState === 'GPS_LOST'");
 const gpsLostBannerSnippet = navigationChromeSource.slice(gpsLostBannerStart, gpsLostBannerStart + 200);
@@ -180,7 +180,7 @@ assert(
 // independent `&&` block. Its text/styles are otherwise unchanged (asserted above).
 assert(
   navigationChromeSource.includes(') : isWeakGps ? (') &&
-    navigationChromeSource.includes('Weak GPS signal detected. Route updates may be slower.'),
+    navigationChromeSource.includes('Weak signal. Directions may be slow.'),
   'The pre-existing weak-GPS banner content must remain, as the next branch of the GPS_LOST priority ternary',
 );
 

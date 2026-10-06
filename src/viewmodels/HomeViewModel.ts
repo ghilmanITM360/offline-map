@@ -236,16 +236,16 @@ export function useHomeViewModel({ isFocused = true }: { isFocused?: boolean } =
         });
         const centered = recenterTo(resolved.coordinate);
         if (!centered) {
-          Alert.alert('Map still loading', 'Location updated. Try recenter again in a moment.');
+          Alert.alert('Map is loading', 'Tap the location button again in a moment.');
         }
 
         if (!isInsideHomeVenue(resolved.coordinate)) {
           Alert.alert(
-            'Outside Ijtema area',
-            'You are outside the mapped venue. We centered on your position. Offline routing will enter through the nearest connected official gate.',
+            'You are outside Ijtema',
+            "We'll take you to the nearest gate when you ask for directions.",
           );
         } else if (resolved.source === 'device_last_known') {
-          Alert.alert('Using last known location', resolved.message ?? 'Live GPS was unavailable, so the device last known location is being shown.');
+          Alert.alert('Showing where you were earlier', resolved.message ?? "We can't find you right now. The map shows where you were earlier.");
         }
         return centered;
       }
@@ -254,10 +254,10 @@ export function useHomeViewModel({ isFocused = true }: { isFocused?: boolean } =
         && (MapFeatureFlagsService.useIjtemaV2Map() || isInsideHomeVenue(lastKnownLocation));
       const actions = [
         {
-          text: 'Pick a start place',
+          text: 'Choose where to start',
           style: 'default' as const,
           onPress: () => {
-            Alert.alert('Pick a start place', 'Open Get Directions from a place, then tap Change Start.');
+            Alert.alert('Choose where to start', 'Tap a place, tap Directions, then tap the From row.');
           },
         },
         ...(!resolved.permissionState.canAskAgain && !resolved.permissionState.granted
@@ -267,7 +267,7 @@ export function useHomeViewModel({ isFocused = true }: { isFocused?: boolean } =
                 void (async () => {
                   const opened = await LocationAccessService.openAppSettings();
                   if (!opened) {
-                    Alert.alert('Unable to open settings', 'Open Android app settings manually and allow location permission for this app.');
+                    Alert.alert("Can't open Settings", "Open your phone's Settings and allow location for this app.");
                   }
                 })();
               },
@@ -275,22 +275,22 @@ export function useHomeViewModel({ isFocused = true }: { isFocused?: boolean } =
           : []),
         ...(canUseRemembered
           ? [{
-              text: 'Use remembered location',
+              text: 'Use earlier location',
               onPress: () => {
                 setCurrentLocation(lastKnownLocation, 'remembered');
                 const centered = recenterTo(lastKnownLocation);
                 if (!centered) {
-                  Alert.alert('Map still loading', 'Remembered location selected. Try recenter again in a moment.');
+                  Alert.alert('Map is loading', 'Tap the location button again in a moment.');
                   return;
                 }
                 if (!isInsideHomeVenue(lastKnownLocation)) {
                   Alert.alert(
-                    'Using last known location',
-                    `Last known location ${formatLastKnownAge(lastKnownLocationUpdatedAt)}. Offline routing will enter through nearest connected official gate.`,
+                    'Showing where you were earlier',
+                    `Showing your location ${formatLastKnownAge(lastKnownLocationUpdatedAt)}. We'll take you to the nearest gate when you ask for directions.`,
                   );
                   return;
                 }
-                Alert.alert('Using last known location', `Last known location ${formatLastKnownAge(lastKnownLocationUpdatedAt)}.`);
+                Alert.alert('Showing where you were earlier', `Showing your location ${formatLastKnownAge(lastKnownLocationUpdatedAt)}.`);
               },
             }]
           : []),
@@ -298,8 +298,8 @@ export function useHomeViewModel({ isFocused = true }: { isFocused?: boolean } =
       ];
 
       Alert.alert(
-        'Location unavailable',
-        resolved.message ?? 'Current location could not be found. Use a remembered location, or tap Change Start in Directions.',
+        "We can't find you",
+        resolved.message ?? "Choose where you're starting from in Directions.",
         actions,
       );
       devLogControl('recenter', 'location_unavailable', {
@@ -310,7 +310,7 @@ export function useHomeViewModel({ isFocused = true }: { isFocused?: boolean } =
       return false;
     } catch {
       devLogControl('recenter', 'location_error');
-      Alert.alert('Location error', 'Could not read location right now. Please try again.');
+      Alert.alert("We can't find you", 'Please try again.');
       return false;
     }
   }, [cameraManager, lastKnownLocation, lastKnownLocationUpdatedAt, setCurrentLocation, setHasLocationPermission, setLocationPermissionPrecision, setSnappedLocation]);

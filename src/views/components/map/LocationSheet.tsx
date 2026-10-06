@@ -196,7 +196,7 @@ function FadeContent({ transitionKey, children }: { transitionKey: string; child
 /** Hint under the start name; a resolved start needs none (its name already says it). */
 function startSourceHelper(source: StartSource, unresolved: boolean): string | undefined {
   if (unresolved) return undefined; // the row's own name ("Choose where to start") already asks
-  return source === 'device_last_known' || source === 'remembered_location' ? 'Saved location, not live' : undefined;
+  return source === 'device_last_known' || source === 'remembered_location' ? 'Saved earlier' : undefined;
 }
 
 function RoutePreviewSection({
@@ -313,14 +313,14 @@ function RoutePreviewSection({
   const routeDistance = route ? InstructionService.formatDistance(route.totalDistance, distanceUnit) : null;
   const routeEta = route ? InstructionService.formatDuration(route.estimatedTimeMin) : null;
   const routeStatusMessage = outsideStart
-    ? `${startSourceSupportingCopy} We'll enter through best eligible official gate.`
+    ? `${startSourceSupportingCopy} We'll take you to the nearest open gate first.`
     : startSourceSupportingCopy;
 
   // Only what the FROM/TO rows don't already say: which gate the route enters through, or that the start was snapped.
   const routeEntrySummary = entryGateName
-    ? `Enter through ${entryGateName}`
+    ? `Go in through ${entryGateName}`
     : routeMeta?.startResolution?.startType === 'internal_snap'
-    ? 'Starting from nearest path inside Ijtema.'
+    ? 'Starting from the closest path.'
     : null;
 
   const showRouteReady = loadState === 'ready' && !!route;
@@ -456,7 +456,7 @@ function RoutePreviewSection({
               <View accessibilityLiveRegion="polite" style={styles.footerStatus}>
                 <View style={styles.statusRow}>
                   <RefreshCw size={18} color={directionsSheetColors.brand} />
-                  <Text style={styles.statusTitle}>Finding route...</Text>
+                  <Text style={styles.statusTitle}>Finding your route…</Text>
                 </View>
                 <Text style={styles.statusText}>{routeStatusMessage}</Text>
               </View>
@@ -504,12 +504,12 @@ function RoutePreviewSection({
                       : startAction && startAction.kind !== 'start'
                       ? startAction.primaryLabel
                       : directGuide
-                      ? 'Start Direct Guide'
+                      ? 'Start walking'
                       : 'Start Navigation'
                   }
                   accessibilityLabel={
                     !startAction && !canStartNavigation && startNavigationDisabledReason
-                      ? `${directGuide ? 'Start Direct Guide' : 'Start Navigation'}. ${startNavigationDisabledReason}`
+                      ? `${directGuide ? 'Start walking' : 'Start Navigation'}. ${startNavigationDisabledReason}`
                       : undefined
                   }
                   icon={
@@ -559,7 +559,7 @@ function RoutePreviewSection({
     : showRouteReady
     ? [outsideRoute?.durationSeconds !== null ? routeEta : null, routeDistance].filter(Boolean).join(' · ')
     : showLoading
-    ? 'Finding route…'
+    ? 'Finding your route…'
     : `Directions · ${startSourceLabel} → ${destination.name}`;
   useEffect(() => {
     publishDirectionsPeek({ text: peekText, collapsed: sheetCollapsed ?? false, onToggle: onToggleSheet });
@@ -703,11 +703,11 @@ function RoutePreviewSection({
 
               {directGuide && showGateOptions && (
                 <View style={styles.gateOptions}>
-                  <Text accessibilityRole="header" style={styles.cardLabel}>Choose official entry gate</Text>
+                  <Text accessibilityRole="header" style={styles.cardLabel}>Choose a gate</Text>
                   <Button
                     variant={manualGateId ? 'outline' : 'brandTint'}
-                    label="Automatic gate"
-                    accessibilityLabel="Use automatic gate selection"
+                    label="Closest gate"
+                    accessibilityLabel="Use the closest gate"
                     // Selection state was previously conveyed only by variant color
                     // (secondary vs outline) — invisible to TalkBack. Same fix already
                     // applied to LayersSheet's Standard/Satellite toggle (#65).

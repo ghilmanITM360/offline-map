@@ -36,7 +36,7 @@ export function useSettingsViewModel() {
   // #145: targeted, confirmed clears. Favorites, settings and offline venue data are never touched here.
   const LOCAL_DATA_CLEARS = {
     recentSearches: { title: 'Clear recent searches?', message: 'Your recent search list will be emptied.', run: clearRecentSearches },
-    savedLocation: { title: 'Clear saved location?', message: 'The last known position stored on this device will be forgotten. While location is on, your next position is saved again.', run: clearSavedLocation },
+    savedLocation: { title: 'Clear saved location?', message: 'Your saved location will be deleted from this phone. While location is on, it is saved again.', run: clearSavedLocation },
     navigationRecovery: { title: 'Clear navigation recovery?', message: 'The reminder about an unfinished trip will be removed.', run: clearUnfinishedJourney },
   } as const;
   const handleClearLocalData = (kind: keyof typeof LOCAL_DATA_CLEARS) => {
@@ -61,7 +61,7 @@ export function useSettingsViewModel() {
       if (state.granted && state.servicesState === 'disabled') {
         const opened = await LocationAccessService.openLocationSettings();
         if (!opened) {
-          Alert.alert('Location services are off', 'Open device location settings and turn location on.');
+          Alert.alert("Your phone's location is off", 'Open Settings and turn location on.');
         }
         return;
       }
@@ -69,7 +69,7 @@ export function useSettingsViewModel() {
       if (state.granted) {
         const opened = await LocationAccessService.openAppSettings();
         if (!opened) {
-          Alert.alert('Location enabled', 'Location permission is granted. Manage it from Android app settings.');
+          Alert.alert('Location is on', "You can change this in your phone's Settings.");
         }
         return;
       }
@@ -80,7 +80,7 @@ export function useSettingsViewModel() {
         setHasLocationPermission(granted);
         await refreshLocationPermissionState();
         if (!granted) {
-          Alert.alert('Location permission required', 'Please allow location to use current-position navigation.');
+          Alert.alert('Allow location', 'Allow location to get directions from where you are.');
         }
         return;
       }
@@ -88,12 +88,12 @@ export function useSettingsViewModel() {
       const opened = await LocationAccessService.openAppSettings();
       if (!opened) {
         Alert.alert(
-          'Unable to open settings',
-          'Open Android app settings manually and allow location permission for this app.',
+          "Can't open Settings",
+          "Open your phone's Settings and allow location for this app.",
         );
       }
     } catch {
-      Alert.alert('Permission error', 'Could not open location permission controls right now.');
+      Alert.alert("Can't open Settings", 'Please try again.');
     }
   };
 

@@ -29,15 +29,15 @@ assert(
   'Home current-location action should fetch latest GPS and persist the location source',
 );
 assert(
-  homeVm.includes('Use remembered location'),
+  homeVm.includes('Use earlier location'),
   'Home current-location failure should offer remembered-location fallback',
 );
 assert(
-  homeVm.includes("text: 'Pick a start place'") && homeVm.includes("onPress: () =>"),
-  'Home current-location failure action should not include a dead \"Pick a start place\" option',
+  homeVm.includes("text: 'Choose where to start'") && homeVm.includes("onPress: () =>"),
+  'Home current-location failure action should not include a dead \"Choose where to start\" option',
 );
 assert(
-  homeVm.includes('Outside Ijtema area'),
+  homeVm.includes('You are outside Ijtema'),
   'Home current-location action should explain outside-venue fallback',
 );
 assert(
@@ -58,7 +58,7 @@ assert(
   'Directions should expose remembered-location fallback state',
 );
 assert(
-  directionsVm.includes('forceOutside') && directionsVm.includes("We'll enter through nearest official gate."),
+  directionsVm.includes('forceOutside') && directionsVm.includes("We'll guide you to the nearest gate."),
   'Directions should accept outside starts and route through nearest official gate',
 );
 
