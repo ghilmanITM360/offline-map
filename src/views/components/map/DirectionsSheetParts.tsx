@@ -4,10 +4,11 @@
  */
 
 import React from 'react';
-import { I18nManager, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { ChevronLeft, ChevronRight, RefreshCw } from 'lucide-react-native';
 
 import { directionsSheetColors as c } from '../../../theme';
+import { isRtl } from '../../../i18n';
 
 /**
  * Presentational pieces of the Get Directions sheet (#177). They hold no route, GPS or
@@ -27,7 +28,7 @@ export function DirectionsHeader({
   subtitle: string;
   onBack: () => void;
 }) {
-  const BackIcon = I18nManager.isRTL ? ChevronRight : ChevronLeft;
+  const BackIcon = isRtl() ? ChevronRight : ChevronLeft;
   return (
     <View style={styles.header}>
       <Pressable
@@ -85,7 +86,7 @@ export type EndpointRow = {
 
 /** The whole row is the "change" control: one tap target, one TalkBack stop, a chevron as the affordance. */
 function EndpointRowView({ row }: { row: EndpointRow }) {
-  const ForwardIcon = I18nManager.isRTL ? ChevronLeft : ChevronRight;
+  const ForwardIcon = isRtl() ? ChevronLeft : ChevronRight;
   return (
     <Pressable
       style={({ pressed }) => [styles.endpointRow, pressed && styles.actionPressed]}
@@ -122,7 +123,7 @@ export function StartOptionCard({
   loading?: boolean;
   onPress: () => void;
 }) {
-  const Chevron = I18nManager.isRTL ? ChevronLeft : ChevronRight;
+  const Chevron = isRtl() ? ChevronLeft : ChevronRight;
   return (
     <Pressable
       style={({ pressed }) => [

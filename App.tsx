@@ -1,5 +1,6 @@
 import 'react-native-gesture-handler';
 import React, { useEffect } from 'react';
+import { View } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { RootNavigator } from './src/navigation/RootNavigator';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -7,6 +8,7 @@ import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { getBundledBasemap } from './src/services/BundledBasemap';
+import { useI18n } from './src/i18n';
 import { ErrorBoundary } from './src/components/ErrorBoundary'; // fixed: protect the navigator tree with a render error boundary
 
 // #140 POC harness: isolated MapLibre offline-render proof, off unless enabled at bundle time.
@@ -15,6 +17,19 @@ const OfflineMapPoc =
   process.env.EXPO_PUBLIC_OFFLINE_MAP_POC === '1'
     ? (require('./src/poc/OfflineMapPoc') as typeof import('./src/poc/OfflineMapPoc')).OfflineMapPoc
     : null;
+
+/**
+ * The layout direction comes from the chosen app language, not the phone's: Urdu is right-to-left, English and
+ * Roman Urdu are left-to-right. The map is a native canvas, so geography never mirrors.
+ */
+function LocalizedShell({ children }: { children: React.ReactNode }) {
+  const { dir } = useI18n();
+  return (
+    <View style={{ flex: 1, direction: dir }}>
+      <NavigationContainer direction={dir}>{children}</NavigationContainer>
+    </View>
+  );
+}
 
 // BottomSheetModalProvider must wrap every screen that presents a BottomSheetModal
 // (HomeScreen's directions/place sheet) — it renders a portal host so sheet content
@@ -33,10 +48,10 @@ export default function App() {
       <SafeAreaProvider>
         <ErrorBoundary>
           <BottomSheetModalProvider>
-            <NavigationContainer>
+            <LocalizedShell>
               <StatusBar style="auto" />
               <RootNavigator />
-            </NavigationContainer>
+            </LocalizedShell>
           </BottomSheetModalProvider>
         </ErrorBoundary>
       </SafeAreaProvider>
