@@ -1914,6 +1914,143 @@ describe('HomeScreen — Start Navigation reads the store when it runs (#307)', 
   });
 });
 
+// Directions-sheet contract: during place preview, Directions setup, Route Ready and the manual Route Guide the sheet may
+// fold to a visible, tappable peek but never disappear; once live navigation actually runs the setup sheet is removed.
+describe('HomeScreen — Directions sheet presentation contract', () => {
+  type SheetProps = {
+    onChange: (index: number) => void;
+    enablePanDownToClose?: boolean;
+    snapPoints: number[];
+    handleComponent?: React.ComponentType;
+  };
+  const sheetProps = () => __getLastBottomSheetModalProps() as unknown as SheetProps;
+  const destination: Place = {
+    id: 'GATE_08', name: 'Gate 8', category: 'Gate', description: 'Official Gate 8.',
+    coordinate: { latitude: 24.903, longitude: 67.103 }, sourceVersion: 'v2', sourceKind: 'gate',
+  } as Place;
+  const previewRoute = {
+    nodes: ['start', 'end'],
+    coordinates: [{ latitude: 24.9, longitude: 67.1 }, destination.coordinate],
+    totalDistance: 180, estimatedTimeMin: 3, segments: [], startLabel: 'Current location', destinationLabel: destination.name,
+    startResolution: { mode: 'inside', coordinate: { latitude: 24.9, longitude: 67.1 } },
+    instructions: [{ id: 'i1', text: 'Head toward Gate 8', distance: 180, type: 'straight' as const, coordinate: { latitude: 24.9, longitude: 67.1 } }],
+  };
+  const directionsVm = (route: unknown = null) => ({
+    route, startSource: 'live_gps', startSourceLabel: 'My current location', rememberedLocationAgeLabel: '',
+    rememberedLocationAvailable: false, rememberedLocationInsideVenue: false, currentRouteOriginInsideVenue: true,
+    loadState: route ? 'ready' : 'idle', errorMessage: null, manualStart: null, chooseManualStart: jest.fn(),
+    setIsEditingManualStart: jest.fn(), setManualStartPlace: jest.fn(), chooseCurrentLocation: jest.fn(async () => true),
+    chooseRememberedLocation: jest.fn(() => true), calculateRoute: jest.fn(async () => {}), showManualStartSearch: false,
+    canStartNavigation: true, startNavigationDisabledReason: '',
+  });
+  let sheetRef: { current: { snapToIndex: jest.Mock } | null } | undefined;
+  function useHomeWithPlace() {
+    mockedUseHomeViewModel.mockImplementation(() => {
+      const vm = useFakeHomeViewModel();
+      sheetRef = vm.bottomSheetRef as never;
+      return { ...vm, selectedPlace: destination };
+    });
+  }
+
+  type Setup = () => Promise<void>;
+  const modes: Array<[string, Setup]> = [
+    ['place preview', async () => {
+      mockedUseDirectionsViewModel.mockReturnValue(directionsVm());
+      useHomeWithPlace();
+      await render(<HomeScreen />);
+    }],
+    ['Directions setup', async () => {
+      mockedUseDirectionsViewModel.mockReturnValue(directionsVm());
+      useHomeWithPlace();
+      await render(<HomeScreen />);
+      await userEvent.setup().press(screen.getByText('Directions'));
+    }],
+    ['Route Ready', async () => {
+      mockedUseDirectionsViewModel.mockReturnValue(directionsVm(previewRoute));
+      useHomeWithPlace();
+      useAppStore.setState({ routePlannerDest: destination, activeRoute: previewRoute as never, currentLocation: { latitude: 24.9, longitude: 67.1 } });
+      await render(<HomeScreen />);
+    }],
+    ['manual Route Guide preview', async () => {
+      mockedUseDirectionsViewModel.mockReturnValue(directionsVm());
+      useHomeWithPlace();
+      useAppStore.setState({ routeGuide: { steps: [{ text: 'Walk', distanceM: 10 }], stepIndex: 0 } });
+      await render(<HomeScreen />);
+      await userEvent.setup().press(screen.getByText('Directions'));
+    }],
+  ];
+
+  test.each(modes)('%s: the sheet cannot be swiped away, only folded to a peek between three ascending detents', async (_name, setup) => {
+    await setup();
+    expect(sheetProps().enablePanDownToClose).toBe(false);
+    const { snapPoints } = sheetProps();
+    expect(snapPoints).toHaveLength(3);
+    expect(snapPoints[0]).toBeGreaterThan(0);
+    expect(snapPoints[0]).toBeLessThan(snapPoints[1]);
+    expect(snapPoints[1]).toBeLessThan(snapPoints[2]);
+  });
+
+  const directionsModes = modes.filter(([name]) => name !== 'place preview');
+  test.each(directionsModes)('%s: PEEK -> PARTIAL -> FULL -> PEEK -> FULL, every detent reachable from every other', async (_name, setup) => {
+    await setup();
+    // The peek is the sheet's handle at every detent (the Jest sheet stand-in does not draw handles, so mount it here).
+    const Handle = sheetProps().handleComponent!;
+    expect(Handle).toBeDefined();
+    const handle = await render(<Handle />);
+    const tapPeek = async () => {
+      const call = sheetRef!.current!.snapToIndex;
+      call.mockClear();
+      await userEvent.setup().press(handle.getByRole('button'));
+      return call;
+    };
+    const landAt = (index: number) => act(async () => sheetProps().onChange(index));
+
+    await landAt(0); // PEEK
+    expect(handle.getByRole('button', { name: /Show route details/ })).toBeOnTheScreen();
+    expect(await tapPeek()).toHaveBeenCalledWith(1); // PEEK -> PARTIAL
+    await landAt(1);
+    expect(handle.getByRole('button', { name: /Hide route details/ })).toBeOnTheScreen();
+    await landAt(2); // PARTIAL -> FULL (drag; the detents are real snaps)
+    expect(handle.getByRole('button', { name: /Hide route details/ })).toBeOnTheScreen();
+    expect(await tapPeek()).toHaveBeenCalledWith(0); // FULL -> PEEK
+    await landAt(0);
+    expect(handle.getByRole('button', { name: /Show route details/ })).toBeOnTheScreen();
+    await landAt(2); // PEEK -> FULL (drag)
+    expect(handle.getByRole('button', { name: /Hide route details/ })).toBeOnTheScreen();
+  });
+
+  const sheetRemoved = () => {
+    const props = __getLastBottomSheetModalProps() as unknown as { containerStyle?: { display?: string } };
+    return props.containerStyle?.display === 'none';
+  };
+  const directionsRemnants = () => [
+    screen.queryByTestId('directions-body', { includeHiddenElements: true }),
+    screen.queryByText('Get Directions', { includeHiddenElements: true }),
+    screen.queryByText('Start Navigation', { includeHiddenElements: true }),
+  ].filter(Boolean);
+
+  test('Start Navigation removes the Directions sheet entirely (no content, no footer, not touchable); stopping brings the normal sheet back', async () => {
+    await modes[2][1]();
+    expect(sheetRemoved()).toBe(false);
+    expect(directionsRemnants().length).toBeGreaterThan(0);
+
+    await userEvent.setup().press(await screen.findByText('Start Navigation'));
+
+    expect(useAppStore.getState().isNavigating).toBe(true);
+    const live = __getLastBottomSheetModalProps() as unknown as { footerComponent?: unknown };
+    expect(sheetRemoved()).toBe(true);
+    expect(live.footerComponent).toBeUndefined();
+    expect(directionsRemnants()).toEqual([]);
+    // No setup sheet competes with the live chrome: no Directions peek handle either.
+    expect(sheetProps().handleComponent).toBeUndefined();
+
+    await act(async () => useAppStore.getState().stopNavigation());
+    expect(useAppStore.getState().isNavigating).toBe(false);
+    expect(sheetRemoved()).toBe(false);
+    expect((__getLastBottomSheetModalProps() as unknown as { footerComponent?: unknown }).footerComponent).toBeDefined();
+  });
+});
+
 describe('HomeScreen — the route guide opens at the top detent (#307)', () => {
   test('starting the guide expands the sheet so the whole card fits above the navigation bar', async () => {
     const LocationSheetModule = require('../views/components/map/LocationSheet') as typeof import('../views/components/map/LocationSheet');

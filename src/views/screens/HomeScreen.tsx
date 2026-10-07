@@ -1818,11 +1818,15 @@ export function HomeScreen() {
           // Not dragged past the top detent into the reserved band; no topInset (see sheetSnapPoints).
           enableOverDrag={false}
           maxDynamicContentSize={sheetMaxDynamicContentSize}
-          enablePanDownToClose
+          // The sheet folds to its peek (lowest detent) but a swipe never dismisses it: place preview, Directions setup,
+          // Route Ready and the Route Guide always keep a visible, tappable sheet. Leaving is the explicit close/back
+          // control; live navigation removes the sheet itself (below). Programmatic close() is unaffected.
+          enablePanDownToClose={false}
           // display:none drops the whole sheet (handle, content, pinned footer) from touch and
           // the accessibility tree while keeping it mounted, so selection, route and snap index
-          // are exactly as the user left them when Home is foreground again.
-          containerStyle={sheetSuppressed ? styles.sheetSuppressed : undefined}
+          // are exactly as the user left them when Home is foreground again. Live navigation hides it the same
+          // way at once (the native close animation below would otherwise leave it hit-testable for its duration).
+          containerStyle={sheetSuppressed || showAnyNavOverlay ? styles.sheetSuppressed : undefined}
           // gorhom defaults the sheet container to accessible + role "adjustable" + label "Bottom Sheet",
           // which makes TalkBack treat the whole sheet as one stop and swallow the non-actionable
           // title, subtitle and footer summary inside it. Let the children own their semantics.
@@ -1830,7 +1834,7 @@ export function HomeScreen() {
           accessibilityLabel={null}
           accessibilityRole={null}
           backgroundComponent={SheetBackground}
-          footerComponent={renderDirectionsFooter}
+          footerComponent={showAnyNavOverlay ? undefined : renderDirectionsFooter}
           // Directions keeps a visible, tappable peek as its handle at every detent (#307). It is never swapped for the
           // default handle: replacing the handle mid-gesture left the sheet's index stale (runtime finding).
           handleComponent={mode === 'ROUTE_PREVIEW' ? DirectionsPeekHandle : undefined}
@@ -1879,7 +1883,7 @@ export function HomeScreen() {
             handleSheetDismiss();
           }}
         >
-          {routePreviewSheetDestination ? (
+          {showAnyNavOverlay ? null : routePreviewSheetDestination ? (
             <LocationSheet
               mode="routePreview"
               destination={routePreviewSheetDestination}
