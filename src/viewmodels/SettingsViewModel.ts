@@ -8,6 +8,7 @@ import { useAppStore } from '../store/useAppStore';
 import { Alert } from 'react-native';
 import * as Location from 'expo-location';
 import { UserSettings } from '../models/types';
+import { t } from '../i18n';
 import { LocationAccessService, LocationPermissionState } from '../services/LocationAccessService';
 
 export function useSettingsViewModel() {
@@ -35,15 +36,15 @@ export function useSettingsViewModel() {
 
   // #145: targeted, confirmed clears. Favorites, settings and offline venue data are never touched here.
   const LOCAL_DATA_CLEARS = {
-    recentSearches: { title: 'Clear recent searches?', message: 'Your recent search list will be emptied.', run: clearRecentSearches },
-    savedLocation: { title: 'Clear saved location?', message: 'Your saved location will be deleted from this phone. While location is on, it is saved again.', run: clearSavedLocation },
-    navigationRecovery: { title: 'Clear unfinished journey?', message: 'The reminder for your last unfinished route will be removed.', run: clearUnfinishedJourney },
+    recentSearches: { titleKey: 'settings.clearRecentConfirmTitle', messageKey: 'settings.clearRecentConfirmBody', run: clearRecentSearches },
+    savedLocation: { titleKey: 'settings.clearSavedConfirmTitle', messageKey: 'settings.clearSavedConfirmBody', run: clearSavedLocation },
+    navigationRecovery: { titleKey: 'settings.clearJourneyConfirmTitle', messageKey: 'settings.clearJourneyConfirmBody', run: clearUnfinishedJourney },
   } as const;
   const handleClearLocalData = (kind: keyof typeof LOCAL_DATA_CLEARS) => {
-    const { title, message, run } = LOCAL_DATA_CLEARS[kind];
-    Alert.alert(title, message, [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Clear', style: 'destructive', onPress: run },
+    const { titleKey, messageKey, run } = LOCAL_DATA_CLEARS[kind];
+    Alert.alert(t(titleKey), t(messageKey), [
+      { text: t('common.cancel'), style: 'cancel' },
+      { text: t('common.clear'), style: 'destructive', onPress: run },
     ]);
   };
 
@@ -61,7 +62,7 @@ export function useSettingsViewModel() {
       if (state.granted && state.servicesState === 'disabled') {
         const opened = await LocationAccessService.openLocationSettings();
         if (!opened) {
-          Alert.alert("Your phone's location is off", 'Open Settings and turn location on.');
+          Alert.alert(t('settings.phoneLocationOffTitle'), t('settings.phoneLocationOffBody'));
         }
         return;
       }
@@ -69,7 +70,7 @@ export function useSettingsViewModel() {
       if (state.granted) {
         const opened = await LocationAccessService.openAppSettings();
         if (!opened) {
-          Alert.alert('Location is on', "You can change this in your phone's Settings.");
+          Alert.alert(t('settings.locationOnTitle'), t('settings.locationOnBody'));
         }
         return;
       }
@@ -80,20 +81,17 @@ export function useSettingsViewModel() {
         setHasLocationPermission(granted);
         await refreshLocationPermissionState();
         if (!granted) {
-          Alert.alert('Allow location', 'Allow location to get directions from where you are.');
+          Alert.alert(t('settings.allowLocationTitle'), t('settings.allowLocationBody'));
         }
         return;
       }
 
       const opened = await LocationAccessService.openAppSettings();
       if (!opened) {
-        Alert.alert(
-          "Can't open Settings",
-          "Open your phone's Settings and allow location for this app.",
-        );
+        Alert.alert(t('settings.cantOpenSettingsTitle'), t('settings.cantOpenSettingsBody'));
       }
     } catch {
-      Alert.alert("Can't open Settings", 'Please try again.');
+      Alert.alert(t('settings.cantOpenSettingsTitle'), t('settings.cantOpenSettingsRetry'));
     }
   };
 

@@ -1,8 +1,6 @@
 {
-  "components/ErrorBoundary.tsx": 4,
   "services/EntryGateRoutingService.ts": 4,
   "services/InstructionService.ts": 10,
-  "services/LocationAccessService.ts": 6,
   "services/LocationNavigationCapability.ts": 12,
   "services/MapStartupController.ts": 1,
   "services/OutsideRouteLocalizationService.ts": 8,
@@ -13,7 +11,6 @@
   "services/SearchService.ts": 14,
   "services/SnapToRoadService.ts": 1,
   "services/StreetInstructionService.ts": 1,
-  "services/ThemeService.ts": 2,
   "services/V2DirectionsService.ts": 7,
   "services/V2NavigationAdapter.ts": 4,
   "services/V2NavigationRuntimeService.ts": 1,
@@ -25,10 +22,7 @@
   "viewmodels/DirectionsViewModel.ts": 14,
   "viewmodels/HomeViewModel.ts": 26,
   "viewmodels/NavigationViewModel.ts": 6,
-  "viewmodels/SettingsViewModel.ts": 18,
-  "viewmodels/useNavigationExitConfirmation.ts": 4,
   "viewmodels/useRouteUpdatedNotice.ts": 1,
-  "views/components/CustomDrawer.tsx": 5,
   "views/components/common/SearchBarField.tsx": 1,
   "views/components/common/SheetHeader.tsx": 1,
   "views/components/directory/DestinationBlockGrid.tsx": 4,
@@ -45,12 +39,6 @@
   "views/components/navigation/NavigationChromeV1.tsx": 16,
   "views/components/navigation/NavigationChromeV2.tsx": 24,
   "views/components/navigation/OutsideRouteStatusCard.tsx": 2,
-  "views/screens/AboutScreen.tsx": 26,
-  "views/screens/AppGuideScreen.tsx": 33,
-  "views/screens/HelpScreen.tsx": 37,
   "views/screens/HomeScreen.tsx": 38,
-  "views/screens/LocationsDirectoryScreen.tsx": 40,
-  "views/screens/SettingsScreen.tsx": 33,
-  "views/screens/SplashScreen.tsx": 2,
-  "views/screens/WelcomeScreen.tsx": 9
+  "views/screens/LocationsDirectoryScreen.tsx": 40
 }
