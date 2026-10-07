@@ -6,6 +6,7 @@
 
 import type { Coordinate } from '../models/types';
 import { classifyLiveFix, evaluateLocationCapability } from './LocationCapability';
+import { t } from './serviceI18n';
 
 export type NavigationStartSource = 'live_gps' | 'device_last_known' | 'remembered_location' | 'manual_place';
 
@@ -33,21 +34,21 @@ export function evaluateNavigationLocationCapability(
   if (input.startSource === 'manual_place') {
     return {
       canStart: false,
-      message: 'Turn on your location to get live directions.',
+      message: t('navigation.needLiveLocation'),
     };
   }
 
   if (input.startSource === 'remembered_location' || input.startSource === 'device_last_known') {
     return {
       canStart: false,
-      message: 'Your saved location is old. Use your current location for live directions.',
+      message: t('navigation.savedLocationOld'),
     };
   }
 
   if (input.precision === 'coarse') {
     return {
       canStart: false,
-      message: 'Turn on exact location in Settings for live directions.',
+      message: t('navigation.needExactLocation'),
     };
   }
 
@@ -55,21 +56,21 @@ export function evaluateNavigationLocationCapability(
   if (fix === 'none') {
     return {
       canStart: false,
-      message: 'Finding your location…',
+      message: t('navigation.findingLocation'),
     };
   }
 
   if (fix === 'unusable') {
     return {
       canStart: false,
-      message: "Your location isn't exact enough yet. Move to an open area.",
+      message: t('navigation.locationNotExact'),
     };
   }
 
   if (fix === 'stale') {
     return {
       canStart: false,
-      message: 'Finding your location…',
+      message: t('navigation.findingLocation'),
     };
   }
 
@@ -103,7 +104,7 @@ export function resolveStartAction(input: StartActionInput): StartAction {
   // A start the user chose or saved is a route guide: location never gates route planning (#307). Live guidance
   // stays one tap away and begins from a fresh fix, never from the planned place.
   if (input.startSource !== 'live_gps') {
-    return { kind: 'route_guide', primaryLabel: 'Start route', secondaryLabel: 'Use my location to guide me' };
+    return { kind: 'route_guide', primaryLabel: t('navigation.startRoute'), secondaryLabel: t('navigation.useMyLocationToGuide') };
   }
   const capability = evaluateLocationCapability({
     permission: { granted: input.permission.granted, canAskAgain: true, precision: input.permission.precision },
@@ -111,13 +112,13 @@ export function resolveStartAction(input: StartActionInput): StartAction {
     nowMs: input.nowMs,
   });
   if (capability.permission === 'denied') {
-    return { kind: 'turn_on_location', primaryLabel: 'Turn on location & start', secondaryLabel: 'View route' };
+    return { kind: 'turn_on_location', primaryLabel: t('navigation.turnOnLocationAndStart'), secondaryLabel: t('navigation.viewRoute') };
   }
   if (capability.liveBlocker === 'approximate_only') {
-    return { kind: 'precise_location', primaryLabel: 'Turn on precise location', secondaryLabel: 'View route' };
+    return { kind: 'precise_location', primaryLabel: t('navigation.turnOnPreciseLocation'), secondaryLabel: t('navigation.viewRoute') };
   }
   if (capability.fix !== 'usable') {
-    return { kind: 'use_location', primaryLabel: 'Use my location & start', secondaryLabel: 'View route' };
+    return { kind: 'use_location', primaryLabel: t('navigation.useMyLocationAndStart'), secondaryLabel: t('navigation.viewRoute') };
   }
-  return { kind: 'start', primaryLabel: 'Start Navigation', title: 'Ready to go' };
+  return { kind: 'start', primaryLabel: t('navigation.startNavigation'), title: t('navigation.readyToGo') };
 }

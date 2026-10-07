@@ -6,30 +6,36 @@
 import { IJTEMA_DATA } from '../constants/data';
 import { getRhumbLineBearing } from 'geolib';
 import { NavigationInstruction } from '../models/types';
+import type { Locale, MessageKey } from '../i18n';
+import { bothLocales, getLocale, t, tIn, tn, venueName } from './serviceI18n';
 
 export type Instruction = NavigationInstruction;
 
-/** Human-readable names for intersection nodes */
-const INTERSECTION_NAMES: Record<string, { en: string; ur: string }> = {
-  P1:  { en: 'Rasta 09 & Rasta 01 Junction',  ur: 'راستہ ۰۹ اور راستہ ۰۱ چوراہا' },
-  P2:  { en: 'Rasta 09 & Rasta 02 Junction',  ur: 'راستہ ۰۹ اور راستہ ۰۲ چوراہا' },
-  P3:  { en: 'Rasta 09 & Rasta 03 Junction',  ur: 'راستہ ۰۹ اور راستہ ۰۳ چوراہا' },
-  P4:  { en: 'Rasta 09 & Rasta 04 Junction',  ur: 'راستہ ۰۹ اور راستہ ۰۴ چوراہا' },
-  P5:  { en: 'Rasta 09 & Rasta 05 Junction',  ur: 'راستہ ۰۹ اور راستہ ۰۵ چوراہا' },
-  P6:  { en: 'Middle Road & Rasta 02 Junction', ur: 'درمیانی سڑک اور راستہ ۰۲ چوراہا' },
-  P7:  { en: 'Middle Road & Rasta 05 Junction', ur: 'درمیانی سڑک اور راستہ ۰۵ چوراہا' },
-  P8:  { en: 'Rasta 11 & Rasta 01 Junction',  ur: 'راستہ ۱۱ اور راستہ ۰۱ چوراہا' },
-  P9:  { en: 'Rasta 11 & Rasta 02 Junction',  ur: 'راستہ ۱۱ اور راستہ ۰۲ چوراہا' },
-  P10: { en: 'Rasta 11 & Rasta 03 Junction',  ur: 'راستہ ۱۱ اور راستہ ۰۳ چوراہا' },
-  P11: { en: 'Rasta 11 & Rasta 04 Junction',  ur: 'راستہ ۱۱ اور راستہ ۰۴ چوراہا' },
-  P12: { en: 'Rasta 11 & Rasta 05 Junction',  ur: 'راستہ ۱۱ اور راستہ ۰۵ چوراہا' },
+/** Junction nodes are named after the two roads that meet there (rasta numbers, or the middle road). */
+type Road = number | 'middle';
+const INTERSECTION_ROADS: Record<string, [Road, Road]> = {
+  P1:  [9, 1],
+  P2:  [9, 2],
+  P3:  [9, 3],
+  P4:  [9, 4],
+  P5:  [9, 5],
+  P6:  ['middle', 2],
+  P7:  ['middle', 5],
+  P8:  [11, 1],
+  P9:  [11, 2],
+  P10: [11, 3],
+  P11: [11, 4],
+  P12: [11, 5],
 };
 
-const GATE_NAMES: Record<string, { en: string; ur: string }> = {
-  C1: { en: 'Member Masjid south-west gate', ur: 'ممبر مسجد جنوب مغربی گیٹ' },
-  C2: { en: 'Member Masjid south-east gate', ur: 'ممبر مسجد جنوب مشرقی گیٹ' },
-  C3: { en: 'Member Masjid north-west gate', ur: 'ممبر مسجد شمال مغربی گیٹ' },
-  C4: { en: 'Member Masjid north-east gate', ur: 'ممبر مسجد شمال مشرقی گیٹ' },
+const roadLabel = (road: Road, locale: Locale): string =>
+  road === 'middle' ? tIn(locale, 'routeGuide.middleRoad') : venueName(`Rasta ${String(road).padStart(2, '0')}`, locale);
+
+const GATE_NAME_KEYS: Record<string, MessageKey> = {
+  C1: 'routeGuide.memberMasjidSouthWest',
+  C2: 'routeGuide.memberMasjidSouthEast',
+  C3: 'routeGuide.memberMasjidNorthWest',
+  C4: 'routeGuide.memberMasjidNorthEast',
 };
 
 export class InstructionService {
@@ -48,18 +54,16 @@ export class InstructionService {
 
       const distance = this.getEdgeDistance(currentId, nextId);
 
-      let text = '';
-      let urduText = '';
+      let build: (locale: Locale) => string;
       let type: 'straight' | 'left' | 'right' | 'arrival' = 'straight';
 
-      const nextNameUr = this.getFriendlyName(nextId, 'ur');
-      const nextName = this.getFriendlyName(nextId, 'en');
-      const edgeName = this.getEdgeName(currentId, nextId);
-      const roadName = edgeName !== 'the path' ? edgeName : undefined;
+      const roadName = this.getRoadName(currentId, nextId, getLocale());
+      const edge = (locale: Locale) => this.getRoadName(currentId, nextId, locale) ?? tIn(locale, 'routeGuide.thePath');
 
       if (i === 0) {
-        text = `Start on ${edgeName}. Continue ${distance} meters to ${nextName}.`;
-        urduText = `${edgeName} پر چلیں۔ ${nextNameUr} تک ${distance} میٹر جائیں`;
+        build = (locale) => tIn(locale, 'routeGuide.v1Start', {
+          road: edge(locale), distance, place: this.getFriendlyName(nextId, locale),
+        });
       } else {
         const prevId = nodeIds[i - 1];
         const prevNode = (IJTEMA_DATA.nodes as any)[prevId];
@@ -78,28 +82,21 @@ export class InstructionService {
         if (diff > 180) diff -= 360;
         if (diff < -180) diff += 360;
 
-        const atName = this.getFriendlyName(currentId, 'en');
-        const atNameUr = this.getFriendlyName(currentId, 'ur');
-
         if (Math.abs(diff) < 30) {
-          text = `Continue ${distance} meters on ${edgeName} to ${nextName}.`;
-          urduText = `${nextNameUr} تک ${distance} میٹر سیدھا جائیں`;
+          build = (locale) => tIn(locale, 'routeGuide.v1Straight', {
+            distance, road: edge(locale), place: this.getFriendlyName(nextId, locale),
+          });
           type = 'straight';
-        } else if (diff > 0) {
-          text = `Turn right at ${atName} onto ${edgeName}.`;
-          urduText = `${atNameUr} پر ${edgeName} کی طرف دائیں مڑیں`;
-          type = 'right';
         } else {
-          text = `Turn left at ${atName} onto ${edgeName}.`;
-          urduText = `${atNameUr} پر ${edgeName} کی طرف بائیں مڑیں`;
-          type = 'left';
+          type = diff > 0 ? 'right' : 'left';
+          const turnKey = diff > 0 ? 'routeGuide.v1Right' : 'routeGuide.v1Left';
+          build = (locale) => tIn(locale, turnKey, { at: this.getFriendlyName(currentId, locale), road: edge(locale) });
         }
       }
 
       instructions.push({
         id: `inst_${i}`,
-        text,
-        urduText,
+        ...bothLocales(build),
         distance,
         type,
         coordinate: { latitude: nextNode.lat, longitude: nextNode.lng },
@@ -111,13 +108,10 @@ export class InstructionService {
     const lastNodeId = nodeIds[nodeIds.length - 1];
     const lastNode = (IJTEMA_DATA.nodes as any)[lastNodeId];
     if (!lastNode) return instructions; // fixed: guard against missing destination nodes before reading coordinates
-    const destName = this.getFriendlyName(lastNodeId, 'en');
-    const destNameUr = this.getFriendlyName(lastNodeId, 'ur');
 
     instructions.push({
       id: `inst_${nodeIds.length - 1}`,
-      text: `You have reached ${destName}.`,
-      urduText: `${destNameUr} پہنچ گئے`,
+      ...bothLocales((locale) => tIn(locale, 'routeGuide.arrive', { place: this.getFriendlyName(lastNodeId, locale) })),
       distance: 0,
       type: 'arrival',
       coordinate: { latitude: lastNode.lat, longitude: lastNode.lng },
@@ -133,36 +127,33 @@ export class InstructionService {
     return edge ? edge.distance_m : 0;
   }
 
-  private static getEdgeName(fromId: string, toId: string): string {
+  /** The named road/rasta between two nodes in `locale`, or undefined when the edge has no real name. */
+  private static getRoadName(fromId: string, toId: string, locale: Locale): string | undefined {
     const edge = IJTEMA_DATA.edges.find(
       (e) => (e.from === fromId && e.to === toId) || (e.from === toId && e.to === fromId)
     );
-    return edge?.name ?? 'the path';
+    return edge?.name ? venueName(edge.name, locale) : undefined;
   }
 
-  private static getFriendlyName(nodeId: string, lang: 'en' | 'ur'): string {
+  private static getFriendlyName(nodeId: string, locale: Locale): string {
     // Check intersection lookup table first
-    const inter = INTERSECTION_NAMES[nodeId];
-    if (inter) return lang === 'ur' ? inter.ur : inter.en;
+    const roads = INTERSECTION_ROADS[nodeId];
+    if (roads) return tIn(locale, 'routeGuide.junctionName', { a: roadLabel(roads[0], locale), b: roadLabel(roads[1], locale) });
 
-    const gate = GATE_NAMES[nodeId];
-    if (gate) return lang === 'ur' ? gate.ur : gate.en;
+    const gateKey = GATE_NAME_KEYS[nodeId];
+    if (gateKey) return tIn(locale, gateKey);
 
     const node = (IJTEMA_DATA.nodes as any)[nodeId];
-    if (!node) return lang === 'ur' ? 'منزل' : 'destination';
+    if (!node) return tIn(locale, 'routeGuide.destination');
 
-    if (lang === 'ur' && node.urduName) return node.urduName;
-    if (node.name) return node.name;
+    if (locale === 'ur' && node.urduName) return node.urduName;
+    if (node.name) return venueName(node.name, locale);
 
     // Check if it's an entry point for a block
     const block = Object.values(IJTEMA_DATA.blocks).find((b) => b.entry_nodes.includes(nodeId));
-    if (block) {
-      return lang === 'ur'
-        ? (block.urduName ?? block.name) + ' گیٹ'
-        : `${block.name} Entrance`;
-    }
+    if (block) return tIn(locale, 'routeGuide.blockEntrance', { block: venueName({ en: block.name, ur: block.urduName }, locale) });
 
-    return lang === 'ur' ? 'چوراہا' : 'the junction';
+    return tIn(locale, 'routeGuide.theJunction');
   }
 
   /**
@@ -172,10 +163,10 @@ export class InstructionService {
    */
   static maneuverLabel(type: NavigationInstruction['type']): string {
     switch (type) {
-      case 'left': return 'Left Turn';
-      case 'right': return 'Right Turn';
-      case 'arrival': return 'Arrive';
-      default: return 'Continue Straight';
+      case 'left': return t('navigation.maneuverLeft');
+      case 'right': return t('navigation.maneuverRight');
+      case 'arrival': return t('navigation.maneuverArrive');
+      default: return t('navigation.maneuverStraight');
     }
   }
 
@@ -185,21 +176,29 @@ export class InstructionService {
    * "Continue Straight" followed by "Continue ahead" said the same thing twice.
    */
   static stepRoadLine(step: Pick<NavigationInstruction, 'type' | 'roadName'>, destinationName?: string | null): string {
-    if (step.type === 'arrival') return destinationName?.trim() || 'Your destination';
+    if (step.type === 'arrival') {
+      const place = destinationName?.trim();
+      return place ? venueName(place) : t('navigation.yourDestination');
+    }
     return step.roadName?.trim() || '';
   }
 
   /** Short next-step preview: "Then: Left Turn onto Rasta 05" / "Then: Arrive at Gate 8". */
   static nextStepPreview(step: Pick<NavigationInstruction, 'type' | 'roadName'>, destinationName?: string | null): string {
-    const label = `Then: ${InstructionService.maneuverLabel(step.type)}`;
-    if (step.type === 'arrival') return `${label} at ${destinationName?.trim() || 'destination'}`;
+    const maneuver = InstructionService.maneuverLabel(step.type);
+    if (step.type === 'arrival') {
+      const place = destinationName?.trim();
+      return place
+        ? t('navigation.nextThenAt', { maneuver, place: venueName(place) })
+        : t('navigation.nextThenAtDestination', { maneuver });
+    }
     const road = step.roadName?.trim();
-    return road ? `${label} onto ${road}` : label;
+    return road ? t('navigation.nextThenOnto', { maneuver, road }) : t('navigation.nextThen', { maneuver });
   }
 
   /**
    * Format a distance value according to the user's unit preference.
-   * Returns a display string like "120 m" or "394 ft". Distances at or
+   * Returns a display string like "120 m" or "394 ft" (the unit is a word in the chosen language). Distances at or
    * above 1 km / 1 mile switch to that unit (1 decimal place) — plain-language
    * for elderly/low-literacy users instead of raw large meter/foot counts.
    */
@@ -207,14 +206,14 @@ export class InstructionService {
     if (unit === 'feet') {
       const feet = meters * 3.28084;
       if (feet >= 5280) {
-        return `${(feet / 5280).toFixed(1)} mi`;
+        return t('navigation.distanceMiles', { value: (feet / 5280).toFixed(1) });
       }
-      return `${Math.round(feet)} ft`;
+      return t('navigation.distanceFeet', { value: Math.round(feet) });
     }
     if (meters >= 1000) {
-      return `${(meters / 1000).toFixed(1)} km`;
+      return t('navigation.distanceKilometers', { value: (meters / 1000).toFixed(1) });
     }
-    return `${Math.round(meters)} m`;
+    return t('navigation.distanceMeters', { value: Math.round(meters) });
   }
 
   /**
@@ -224,10 +223,17 @@ export class InstructionService {
   static formatDuration(minutes: number): string {
     const wholeMinutes = Math.round(minutes);
     if (wholeMinutes < 60) {
-      return `${wholeMinutes} min`;
+      return t('navigation.durationMinutes', { minutes: wholeMinutes });
     }
     const hours = Math.floor(wholeMinutes / 60);
     const remainingMinutes = wholeMinutes % 60;
-    return remainingMinutes > 0 ? `${hours} hr ${remainingMinutes} min` : `${hours} hr`;
+    return remainingMinutes > 0
+      ? tn('navigation.durationHoursMinutes', hours, { hours, minutes: remainingMinutes })
+      : tn('navigation.durationHours', hours, { hours });
+  }
+
+  /** Clock time for an arrival estimate. Digits stay 0-9 in every language. */
+  static formatClockTime(date: Date): string {
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', numberingSystem: 'latn' } as Intl.DateTimeFormatOptions);
   }
 }

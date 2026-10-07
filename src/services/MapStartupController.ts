@@ -6,6 +6,7 @@
 import { Coordinate } from '../models/types';
 import { IJTEMA_BLOCKS } from '../data/ijtema';
 import type { LocationResolveResult } from './LocationAccessService';
+import { t, tIn, venueName } from './serviceI18n';
 
 export interface MapStartupChecks {
   /** Persisted marker (useAppStore.hasSeenMapOverview) set after the first Map entry commits its overview.
@@ -46,7 +47,8 @@ export type EntryCameraPlan =
     }
   | { kind: 'FALLBACK_ANCHOR'; anchor: { id: 'B2'; name: string; coordinate: Coordinate }; notice: string };
 
-export const FALLBACK_LOCATION_NOTICE = "We can't find where you are. Showing the main area.";
+/** The English wording, kept as a stable reference; the notice shown at runtime follows the chosen language. */
+export const FALLBACK_LOCATION_NOTICE = tIn('en', 'navigation.fallbackLocationNotice');
 
 const RETURNING_LAUNCH_RESOLVE_TIMEOUT_MS = 4000;
 
@@ -133,8 +135,8 @@ export class MapStartupController {
     if (!block2) return { kind: 'VENUE_OVERVIEW', reason: 'first_overview' };
     return {
       kind: 'FALLBACK_ANCHOR',
-      anchor: { id: 'B2', name: block2.name.en, coordinate: { latitude: block2.center.lat, longitude: block2.center.lng } },
-      notice: FALLBACK_LOCATION_NOTICE,
+      anchor: { id: 'B2', name: venueName(block2.name), coordinate: { latitude: block2.center.lat, longitude: block2.center.lng } },
+      notice: t('navigation.fallbackLocationNotice'),
     };
   }
 

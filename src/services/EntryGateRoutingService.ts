@@ -15,6 +15,7 @@ import {
 } from '../data/ijtema';
 import { Coordinate as V2Coordinate } from '../data/ijtema/types';
 import { Coordinate as AppCoordinate } from '../models/types';
+import { t, venueName } from './serviceI18n';
 
 export type RouteStartModeV2 = 'inside' | 'outside';
 export type RouteStartTypeV2 = 'internal_snap' | 'nearest_official_gate' | 'selected_official_gate' | 'unresolved';
@@ -176,7 +177,7 @@ export class EntryGateRoutingService {
           coordinate: appCoordinate,
           candidateNodes: [],
           gate,
-          error: `${gate?.name.en ?? options.manualGateId} is not routable because its coordinate is missing or unavailable.`,
+          error: t('navigation.gateNotRoutable', { gate: venueName(gate?.name ?? { en: options.manualGateId }) }),
         };
       }
 
@@ -187,7 +188,7 @@ export class EntryGateRoutingService {
           coordinate: appCoordinate,
           candidateNodes: [],
           gate,
-          error: `${gate.name.en} is not connected to the internal Ijtema graph yet.`,
+          error: t('navigation.gateNotConnected', { gate: venueName(gate.name) }),
         };
       }
 
@@ -213,7 +214,7 @@ export class EntryGateRoutingService {
           startType: 'unresolved',
           coordinate: appCoordinate,
           candidateNodes: [],
-          error: 'No routable official entry gate is available for this outside location.',
+          error: t('navigation.noEntryGate'),
         };
       }
 
@@ -238,7 +239,7 @@ export class EntryGateRoutingService {
         startType: 'unresolved',
         coordinate: appCoordinate,
         candidateNodes: [],
-        error: 'No internal graph node is available for this inside location.',
+        error: t('navigation.noGraphNode'),
       };
     }
 

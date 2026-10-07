@@ -38,6 +38,9 @@ import {
   TIE_BREAK_EPSILON_M,
 } from './OutsideStreetRoutingService';
 import { generateStreetInstructions } from './StreetInstructionService';
+import type { LocalizedLabel } from '../data/ijtema/types';
+import type { Locale } from '../i18n';
+import { bothLocales, t, tIn, venueName } from './serviceI18n';
 
 export type RoutingStartV2 =
   | { type: 'gate'; gateId: string }
@@ -275,39 +278,32 @@ const getSpecialRouteCandidates = (routeId: string): string[] => {
   return getConnectedCandidates(route?.points.map((point) => point.id) ?? []);
 };
 
-const friendlyNodeName = (nodeId: string): string => {
+const friendlyNodeName = (nodeId: string, locale: Locale): string => {
   const node = IJTEMA_NAVIGATION_GRAPH_V2.nodes[nodeId];
-  if (!node) return 'the route';
+  if (!node) return tIn(locale, 'routeGuide.theRoute');
 
-  if (node.type === 'central_point') return 'central junction';
-  if (node.type === 'block_entry') return node.name.en;
-  if (node.type === 'gate') return node.name.en;
+  if (node.type === 'central_point') return tIn(locale, 'routeGuide.centralJunction');
+  if (node.type === 'block_entry') return venueName(node.name, locale);
+  if (node.type === 'gate') return venueName(node.name, locale);
   if (node.type === 'rasta_point') {
     const rastaId = node.sourceId;
     const rasta = IJTEMA_RASTAS.find((item) => item.id === rastaId);
-    return rasta?.name.en ?? 'rasta';
+    return rasta ? venueName(rasta.name, locale) : tIn(locale, 'routeGuide.rastaFallback');
   }
   if (node.type === 'special_route_point') {
-    return node.name.en.replace(/\s+Point\s+\d+$/i, '');
+    return venueName({ ...node.name, en: node.name.en.replace(/\s+Point\s+\d+$/i, '') }, locale);
   }
 
-  return node.name.en;
+  return venueName(node.name, locale);
 };
 
-const instructionTextForEdge = (edge: GraphEdge): string => {
-  if (edge.pathType === 'gate_connector') return `Continue from ${edge.name.en}`;
-  if (edge.pathType === 'block_connector') return `Continue to ${edge.name.en}`;
-  if (edge.pathType === 'perimeter_connector') return 'Keep walking';
-  if (edge.pathType === 'intersection_connector' || edge.pathType === 'central_connector') return 'Continue through the junction';
-  return `Continue on ${edge.name.en}`;
-};
-
-const instructionUrduForEdge = (edge: GraphEdge): string => {
-  if (edge.pathType === 'gate_connector') return `${edge.name.ur ?? edge.name.en} سے آگے بڑھیں`;
-  if (edge.pathType === 'block_connector') return `${edge.name.ur ?? edge.name.en} تک جائیں`;
-  if (edge.pathType === 'perimeter_connector') return 'رابطہ راستے پر چلتے رہیں';
-  if (edge.pathType === 'intersection_connector' || edge.pathType === 'central_connector') return 'جنکشن سے آگے بڑھیں';
-  return `${edge.name.ur ?? edge.name.en} پر چلتے رہیں`;
+const instructionTextForEdge = (edge: GraphEdge, locale: Locale): string => {
+  const params = { name: venueName(edge.name, locale), distance: Math.round(edge.distanceM) };
+  if (edge.pathType === 'gate_connector') return tIn(locale, 'routeGuide.edgeFromGate', params);
+  if (edge.pathType === 'block_connector') return tIn(locale, 'routeGuide.edgeToBlock', params);
+  if (edge.pathType === 'perimeter_connector') return tIn(locale, 'routeGuide.edgePerimeter', params);
+  if (edge.pathType === 'intersection_connector' || edge.pathType === 'central_connector') return tIn(locale, 'routeGuide.edgeJunction', params);
+  return tIn(locale, 'routeGuide.edgeOn', params);
 };
 
 /**
@@ -356,8 +352,7 @@ const generateInstructions = (path: ShortestPathResult, destinationLabel: string
 
   instructions.push({
     id: 'v2-start',
-    text: `Start from ${friendlyNodeName(path.nodes[0])}.`,
-    urduText: `${firstNode?.name.ur ?? friendlyNodeName(path.nodes[0])} سے شروع کریں۔`,
+    ...bothLocales((locale) => tIn(locale, 'routeGuide.start', { place: friendlyNodeName(path.nodes[0], locale) })),
     distance: 0,
     type: 'straight',
     coordinate: firstNode ? toAppCoordinate(firstNode) : { latitude: 0, longitude: 0 },
@@ -373,20 +368,18 @@ const generateInstructions = (path: ShortestPathResult, destinationLabel: string
         : 'straight';
     instructions.push({
       id: `v2-step-${index + 1}`,
-      text: `${instructionTextForEdge(edge)} for ${Math.round(edge.distanceM)} meters.`,
-      urduText: `${instructionUrduForEdge(edge)} (${Math.round(edge.distanceM)} میٹر)۔`,
+      ...bothLocales((locale) => instructionTextForEdge(edge, locale)),
       distance: edge.distanceM,
       type: maneuverType,
       coordinate: toNode ? toAppCoordinate(toNode) : { latitude: 0, longitude: 0 },
-      roadName: edge.name.en,
+      roadName: venueName(edge.name),
     });
   });
 
   const finalNode = IJTEMA_NAVIGATION_GRAPH_V2.nodes[path.nodes[path.nodes.length - 1]];
   instructions.push({
     id: 'v2-arrival',
-    text: `You have reached ${destinationLabel}.`,
-    urduText: `آپ ${destinationLabel} پہنچ گئے ہیں۔`,
+    ...bothLocales((locale) => tIn(locale, 'routeGuide.arrive', { place: venueName(destinationLabel, locale) })),
     distance: 0,
     type: 'arrival',
     coordinate: finalNode ? toAppCoordinate(finalNode) : { latitude: 0, longitude: 0 },
@@ -435,7 +428,7 @@ const resolveStartCandidates = (start: RoutingStartV2): RouteCandidateSet => {
     });
     return {
       nodeIds: getConnectedCandidates(startResolution.candidateNodes),
-      label: startResolution.gate?.name.en ?? 'Official entry gate',
+      label: startResolution.gate?.name.en ?? t('navigation.officialEntryGate'),
       startResolution,
     };
   }
@@ -443,7 +436,7 @@ const resolveStartCandidates = (start: RoutingStartV2): RouteCandidateSet => {
   const startResolution = EntryGateRoutingService.resolveRouteStartForUser(start.coordinate, { previousNodeId: start.previousNodeId });
   return {
     nodeIds: getConnectedCandidates(startResolution.candidateNodes),
-    label: 'Current location',
+    label: t('navigation.currentLocation'),
     startResolution,
   };
 };
@@ -562,16 +555,13 @@ const routeSegmentsFromPath = (path: ShortestPathResult): RouteSegment[] =>
 const renumberAndRewriteEntry = (
   instructions: NavigationInstruction[],
   outsideStepCount: number,
-  gateLabel: { en: string; ur: string },
+  gateLabel: LocalizedLabel,
 ): NavigationInstruction[] =>
   instructions.map((instruction, index) => ({
     ...instruction,
     id: instruction.id === 'v2-start' ? 'v2-entry-start' : instruction.id.replace(/^v2-step-(\d+)$/, (_match, step) => `v2-step-${Number(step) + outsideStepCount}`),
     ...(index === 0
-      ? {
-          text: `Enter through ${gateLabel.en}.`,
-          urduText: `${gateLabel.ur} سے داخل ہوں۔`,
-        }
+      ? bothLocales((locale) => tIn(locale, 'routeGuide.enter', { gate: venueName(gateLabel, locale) }))
       : {}),
   }));
 
@@ -583,7 +573,8 @@ const prependOutsideApproachInstruction = (
     return instructions;
   }
 
-  const gateLabel = {
+  const gateLabel: LocalizedLabel = {
+    ...selected.startResolution.gate?.name,
     en: selected.startResolution.gate?.name.en ?? selected.startLabel,
     ur: selected.startResolution.gate?.name.ur ?? selected.startLabel,
   };
@@ -607,8 +598,10 @@ const prependOutsideApproachInstruction = (
   return [
     {
       id: 'v2-outside-approach',
-      text: `Walk ${selected.startConnectorDistanceM} meters to enter through ${gateLabel.en}.`,
-      urduText: `${gateLabel.ur} سے داخل ہونے کے لیے ${selected.startConnectorDistanceM} میٹر چلیں۔`,
+      ...bothLocales((locale) => tIn(locale, 'routeGuide.walkToEnter', {
+        distance: selected.startConnectorDistanceM,
+        gate: venueName(gateLabel, locale),
+      })),
       distance: selected.startConnectorDistanceM,
       type: 'straight',
       coordinate: selected.startCoordinate,

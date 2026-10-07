@@ -18,6 +18,7 @@ import { RoutePreviewV2 } from './RoutingServiceV2';
 import { destinationFromPlace } from './V2DirectionsService';
 import { CHOOSE_DESTINATION, NAVIGATION_UNAVAILABLE, ROUTE_NOT_FOUND } from '../utils/routeCopy';
 import { V2PlaceAdapter } from './V2PlaceAdapter';
+import { t, venueName } from './serviceI18n';
 
 export interface V2NavigationAdapterInput {
   previewRoute: RoutePreviewV2;
@@ -37,7 +38,7 @@ export interface V2NavigationStartCheck {
 }
 
 const RAW_ID_PATTERN = /\b(?:P\d+|S\d+|T\d+|C\d+|R\d+-\d+|SPNP-\d+|SPSP-\d+|SPWP-\d+|B\d+_C\d+)\b/;
-const GATE_CONNECTOR_VERIFICATION_MESSAGE = "Directions to this gate aren't ready. Choose another gate.";
+
 
 function nodeCoordinate(nodeId: string): Coordinate | null {
   const node = IJTEMA_NAVIGATION_GRAPH_V2.nodes[nodeId];
@@ -140,10 +141,10 @@ function activeInstructions(previewRoute: RoutePreviewV2): V2NavigationInstructi
     searchFrom = routeIndex;
     return {
       ...instruction,
-      text: instruction.text.replace(RAW_ID_PATTERN, 'route point'),
+      text: instruction.text.replace(RAW_ID_PATTERN, t('navigation.routePoint')),
       distanceM: instruction.distance,
       routeIndex,
-      spokenText: instruction.text.replace(RAW_ID_PATTERN, 'route point'),
+      spokenText: instruction.text.replace(RAW_ID_PATTERN, t('navigation.routePoint')),
       developerLabel: developerNode,
     };
   });
@@ -187,12 +188,12 @@ export class V2NavigationAdapter {
       if (input.destination.category === 'Gate' && input.destination.routingStatus === 'needs_connector_verification') {
         return {
           canStart: false,
-          message: GATE_CONNECTOR_VERIFICATION_MESSAGE,
+          message: t('navigation.gateNotReady'),
         };
       }
       return {
         canStart: false,
-        message: input.destination.unavailableReason ?? `${input.destination.name} is not available for navigation yet.`,
+        message: input.destination.unavailableReason ?? t('navigation.placeNotAvailable', { place: venueName(input.destination.name) }),
       };
     }
 
@@ -226,7 +227,7 @@ export class V2NavigationAdapter {
         to,
         distanceM: edge?.distanceM ?? input.previewRoute.segments[index]?.distance ?? 0,
         pathType: edge?.pathType ?? (input.previewRoute.segments[index]?.isRasta ? 'rasta' : 'connector'),
-        label: edge?.name.en ?? input.previewRoute.segments[index]?.name ?? 'Ijtema route',
+        label: edge ? venueName(edge.name) : venueName(input.previewRoute.segments[index]?.name ?? t('navigation.ijtemaRoute')),
       };
     });
 

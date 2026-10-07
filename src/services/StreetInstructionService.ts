@@ -5,6 +5,8 @@
 
 import { getRhumbLineBearing } from 'geolib';
 import { Coordinate as AppCoordinate, V2NavigationInstruction } from '../models/types';
+import type { Locale, MessageKey } from '../i18n';
+import { bothLocales, tIn, venueName } from './serviceI18n';
 
 /**
  * Finer-grained turn classification than v1's single 30° threshold
@@ -45,17 +47,16 @@ const coarseType = (maneuver: StreetManeuver): V2NavigationInstruction['type'] =
   return 'straight';
 };
 
-const maneuverPhrase = (maneuver: StreetManeuver): { en: string; ur: string } => {
-  switch (maneuver) {
-    case 'slight_left': return { en: 'Bear left', ur: 'ہلکا بائیں مڑیں' };
-    case 'slight_right': return { en: 'Bear right', ur: 'ہلکا دائیں مڑیں' };
-    case 'left': return { en: 'Turn left', ur: 'بائیں مڑیں' };
-    case 'right': return { en: 'Turn right', ur: 'دائیں مڑیں' };
-    case 'sharp_left': return { en: 'Turn sharply left', ur: 'تیزی سے بائیں مڑیں' };
-    case 'sharp_right': return { en: 'Turn sharply right', ur: 'تیزی سے دائیں مڑیں' };
-    case 'u_turn': return { en: 'Make a U-turn', ur: 'یو ٹرن لیں' };
-    default: return { en: 'Continue straight', ur: 'سیدھا جاری رکھیں' };
-  }
+const MANEUVER_KEYS: Record<StreetManeuver, MessageKey> = {
+  slight_left: 'routeGuide.turnBearLeft',
+  slight_right: 'routeGuide.turnBearRight',
+  left: 'routeGuide.turnLeft',
+  right: 'routeGuide.turnRight',
+  sharp_left: 'routeGuide.turnSharpLeft',
+  sharp_right: 'routeGuide.turnSharpRight',
+  u_turn: 'routeGuide.turnUTurn',
+  straight: 'routeGuide.turnStraight',
+  arrival: 'routeGuide.turnStraight',
 };
 
 const bearing = (from: AppCoordinate, to: AppCoordinate): number =>
@@ -84,7 +85,7 @@ export function generateStreetInstructions(
   topologyCoordinates: AppCoordinate[],
   hopDistancesM: number[],
   hopNames: Array<string | undefined>,
-  gateLabel: { en: string; ur: string },
+  gateLabel: { en: string; ur?: string; romanUrdu?: string },
 ): V2StreetNavigationInstruction[] {
   if (topologyCoordinates.length < 2 || hopDistancesM.length !== topologyCoordinates.length - 1) {
     return [];
@@ -107,28 +108,30 @@ export function generateStreetInstructions(
       maneuver = classifyTurn(angleDiffDeg(previousBearing, currentBearing));
     }
 
-    const namePart = name ? ` on ${name}` : '';
-    const nameUrPart = name ? ` ${name} پر` : '';
+    // Whole sentences per case (with and without a road name) so word order can differ per language.
+    const sentence = (locale: Locale): string => {
+      const gate = venueName(gateLabel, locale);
+      if (isFirstHop) {
+        return name
+          ? tIn(locale, 'routeGuide.streetWalkOn', { distance: distanceM, road: name, gate })
+          : tIn(locale, 'routeGuide.streetWalk', { distance: distanceM, gate });
+      }
+      if (maneuver === 'straight') {
+        return name
+          ? tIn(locale, 'routeGuide.streetContinueOn', { distance: distanceM, road: name })
+          : tIn(locale, 'routeGuide.streetContinue', { distance: distanceM });
+      }
+      const turn = tIn(locale, MANEUVER_KEYS[maneuver]);
+      return name
+        ? tIn(locale, 'routeGuide.streetTurnOn', { maneuver: turn, road: name, distance: distanceM })
+        : tIn(locale, 'routeGuide.streetTurn', { maneuver: turn, distance: distanceM });
+    };
 
-    let text: string;
-    let urduText: string;
-
-    if (isFirstHop) {
-      text = `Walk ${distanceM}m${namePart} toward ${gateLabel.en}.`;
-      urduText = `${gateLabel.ur} کی طرف${nameUrPart} ${distanceM} میٹر چلیں۔`;
-    } else if (maneuver === 'straight') {
-      text = `Continue ${distanceM}m${namePart}.`;
-      urduText = `${distanceM} میٹر${nameUrPart} سیدھا جاری رکھیں۔`;
-    } else {
-      const phrase = maneuverPhrase(maneuver);
-      text = `${phrase.en}${namePart}, then continue ${distanceM}m.`;
-      urduText = `${phrase.ur}${nameUrPart}، پھر ${distanceM} میٹر جاری رکھیں۔`;
-    }
-
-    if (isLastHop) {
-      text = `${text} Arrive at ${gateLabel.en}.`;
-      urduText = `${urduText} ${gateLabel.ur} پہنچیں۔`;
-    }
+    const { text, urduText } = bothLocales((locale) =>
+      isLastHop
+        ? `${sentence(locale)} ${tIn(locale, 'routeGuide.streetArrive', { gate: venueName(gateLabel, locale) })}`
+        : sentence(locale),
+    );
 
     instructions.push({
       id: `v2-street-step-${i}`,

@@ -7,6 +7,7 @@ import { findNearestGraphNode, GRAPH_SNAP_SWITCH_MARGIN_M } from '../data/ijtema
 import { IJTEMA_NAVIGATION_GRAPH_V2 } from '../data/ijtema/navigationGraph';
 import { Coordinate, V2ActiveRoute } from '../models/types';
 import { RerouteService } from './RerouteService';
+import { t } from './serviceI18n';
 import { EntryGateRoutingService } from './EntryGateRoutingService';
 import { RoutingDestinationV2, RoutingStartV2 } from './RoutingServiceV2';
 // Deliberately from constants/navigation, not GPSManagerService (which imports react-native
@@ -187,7 +188,7 @@ export function keepCurrentRouteAfterRerouteFailureV2(route: V2ActiveRoute): {
 } {
   return {
     route,
-    message: 'Keep following the current route.',
+    message: t('navigation.keepFollowingRoute'),
   };
 }
 

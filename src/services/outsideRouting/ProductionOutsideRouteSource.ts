@@ -35,7 +35,7 @@ function maneuver(type: string): OutsideWalkingManeuver {
 
 function normalizedSteps(
   candidate: NonNullable<ReturnType<typeof RoutingServiceV2.resolveOfflineOsmOutsideCandidate>>,
-  gateLabel: { en: string; ur: string },
+  gateLabel: { en: string; ur?: string; romanUrdu?: string },
 ): NormalizedWalkingStep[] {
   return generateStreetInstructions(
     candidate.topologyCoordinates,
@@ -74,7 +74,7 @@ export function createProductionOutsideRouteSource(
       if (!candidate?.outsideCoordinates) return { status: 'unreachable', reason: 'no-route' };
       const gateRecord = IJTEMA_GATES.find((entry) => entry.id === gate.gateId);
       const gateLabelEn = gateRecord?.name.en ?? gate.gateId.replace('GATE_', 'Gate ');
-      const gateLabel = { en: gateLabelEn, ur: gateRecord?.name.ur ?? gateLabelEn };
+      const gateLabel = { ...gateRecord?.name, en: gateLabelEn, ur: gateRecord?.name.ur ?? gateLabelEn };
       return {
         status: 'routed',
         distanceM: candidate.outsideDistanceM,

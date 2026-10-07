@@ -7,6 +7,7 @@ import { IJTEMA_DATA, LANDMARK_NEAREST_NODE, MAP_BOUNDS } from '../constants/dat
 import { OUTSIDE_VENUE_BOUNDARY_NODE_IDS_V1 } from '../constants/navigation';
 import { Coordinate, Place, RoutePreview, RouteSegment, RouteAlternative } from '../models/types';
 import { getDistance } from 'geolib';
+import { t, tIn } from './serviceI18n';
 
 export interface VenueStatus {
   insideVenue: boolean;
@@ -268,7 +269,7 @@ export class RoutingService {
       }
     }
     if (route1) {
-      results.push({ label: 'Fastest', labelUr: 'تیز ترین', route: route1 });
+      results.push({ label: t('navigation.routeFastest'), labelUr: tIn('ur', 'navigation.routeFastest'), route: route1 });
     } else {
       return results;
     }
@@ -281,7 +282,7 @@ export class RoutingService {
       route2.nodes.join() !== route1.nodes.join() &&
       route2.totalDistance < route1.totalDistance * 1.5
     ) {
-      results.push({ label: 'Shortest', labelUr: 'مختصر ترین', route: route2 });
+      results.push({ label: t('navigation.routeShortest'), labelUr: tIn('ur', 'navigation.routeShortest'), route: route2 });
     }
 
     // --- Route 3: Alternative (penalise primary-route edges) ---
@@ -303,7 +304,7 @@ export class RoutingService {
         route3.nodes.join() !== route1.nodes.join() &&
         (!results[1] || route3.nodes.join() !== results[1].route.nodes.join())
       ) {
-        results.push({ label: 'Alternative', labelUr: 'متبادل راستہ', route: route3 });
+        results.push({ label: t('navigation.routeAlternative'), labelUr: tIn('ur', 'navigation.routeAlternative'), route: route3 });
       }
     }
 
