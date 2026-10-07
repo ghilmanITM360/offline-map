@@ -74,7 +74,7 @@ export const navOverlayStyles = StyleSheet.create({
   },
   recenterButton: {
     position: 'absolute',
-    right: 16,
+    end: 16,
     width: 48,
     height: 48,
     borderRadius: 24,
@@ -273,7 +273,7 @@ export const navOverlayStyles = StyleSheet.create({
     color: staticColors.white,
   },
   instructionIcon: {
-    marginRight: 16,
+    marginEnd: 16,
     width: 40,
     alignItems: 'center',
   },
@@ -311,7 +311,7 @@ export const navOverlayStyles = StyleSheet.create({
   },
   muteButton: {
     padding: 10,
-    marginLeft: 8,
+    marginStart: 8,
   },
   bottomBar: {
     position: 'absolute',

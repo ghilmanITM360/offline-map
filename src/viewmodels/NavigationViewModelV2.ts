@@ -9,6 +9,7 @@ import { getDistance } from 'geolib';
 import { useAppStore } from '../store/useAppStore';
 import { useRouteUpdatedNotice } from './useRouteUpdatedNotice';
 import { VoiceService } from '../services/VoiceService';
+import { speechLanguage } from '../services/serviceI18n';
 import {
   Coordinate,
   Place,
@@ -527,7 +528,7 @@ export function useNavigationViewModelV2() {
     const currentInstruction = instructions[nextIndex];
     if (settings.voiceInstructions && !isMuted && currentInstruction && currentInstruction.id !== lastSpokenInstructionIdRef.current) {
       lastSpokenInstructionIdRef.current = currentInstruction.id;
-      VoiceService.speakInstruction(currentInstruction.spokenText ?? currentInstruction.text, settings.language);
+      VoiceService.speakInstruction(currentInstruction.spokenText ?? currentInstruction.text, speechLanguage());
     }
 
     const thresholdM = RerouteService.getDynamicOffRouteThresholdMeters(accuracyM);

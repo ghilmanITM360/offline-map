@@ -4,8 +4,11 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { t } from '../i18n';
+import { tIn } from '../services/serviceI18n';
 
-export const ROUTE_UPDATED_MESSAGE = 'Route updated';
+/** English reference wording; what is shown follows the chosen language (see announce). */
+export const ROUTE_UPDATED_MESSAGE = tIn('en', 'navigation.routeUpdated');
 export const ROUTE_UPDATED_VISIBLE_MS = 4000;
 
 /**
@@ -22,10 +25,11 @@ export function useRouteUpdatedNotice(setMessage: (update: (previous: string | n
   useEffect(() => cancel, [cancel]);
   const announce = useCallback(() => {
     cancel();
-    setMessage(() => ROUTE_UPDATED_MESSAGE);
+    const message = t('navigation.routeUpdated');
+    setMessage(() => message);
     timerRef.current = setTimeout(() => {
       timerRef.current = null;
-      setMessage((previous) => (previous === ROUTE_UPDATED_MESSAGE ? null : previous));
+      setMessage((previous) => (previous === message ? null : previous));
     }, ROUTE_UPDATED_VISIBLE_MS);
   }, [cancel, setMessage]);
   // Stable identity: callers list it in hook dependencies and must not be re-created on every render.

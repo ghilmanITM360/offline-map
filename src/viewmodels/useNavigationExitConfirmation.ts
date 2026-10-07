@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { Alert, BackHandler } from 'react-native';
+import { t } from '../i18n';
 
 interface NavigationExitConfirmationInputs {
   active: boolean;
@@ -59,11 +60,11 @@ export function useNavigationExitConfirmation({ active, arrived, onExit }: Navig
       exitOnce();
     };
     Alert.alert(
-      'Stop directions?',
-      'You will go back to the map.',
+      t('navigation.stopTitle'),
+      t('navigation.stopBody'),
       [
-        { text: 'Keep going', style: 'cancel', onPress: releaseConfirmation },
-        { text: 'Stop', style: 'destructive', onPress: confirmExit },
+        { text: t('navigation.keepGoing'), style: 'cancel', onPress: releaseConfirmation },
+        { text: t('navigation.stop'), style: 'destructive', onPress: confirmExit },
       ],
       { cancelable: true, onDismiss: releaseConfirmation },
     );

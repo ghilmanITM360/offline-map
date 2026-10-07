@@ -8,6 +8,8 @@ import {
 } from '../../../services/OutsideRouteLocalizationService';
 import { directionsSheetColors, radii, spacing, staticColors, typography } from '../../../theme';
 import { Button } from '../common/Button';
+import { useI18n } from '../../../i18n';
+import { localizeVenueName } from '../../../i18n/venueNames';
 
 export interface OutsideRouteStatusCardProps {
   route: NormalizedOutsideCandidate;
@@ -24,6 +26,8 @@ export function OutsideRouteStatusCard({
   onRetry,
   onChooseGate,
 }: OutsideRouteStatusCardProps) {
+  const { t, locale } = useI18n();
+  const gate = localizeVenueName(gateLabel);
   const directGuide = route.provider === 'direct-guide';
   const googleFallback = route.provider === 'offline-osm' && route.fallbackHistory.some((failure) => failure.provider === 'google');
 
@@ -42,7 +46,7 @@ export function OutsideRouteStatusCard({
         </Text>
       </View>
 
-      {!directGuide && <Text style={styles.gateText}>Entry: {gateLabel}</Text>}
+      {!directGuide && <Text style={styles.gateText}>{t('navigation.outsideEntry', { gate })}</Text>}
 
       {googleFallback && (
         <Text style={styles.fallbackText}>{outsideRouteMessage('fallback.googleUnavailable')}</Text>
@@ -57,8 +61,8 @@ export function OutsideRouteStatusCard({
           >
             {outsideRouteMessage('direct.warning')}
           </Text>
-          <Text style={styles.warningUrdu}>{outsideRouteMessage('direct.warning', 'ur')}</Text>
-          <Text style={styles.gateText}>Selected gate: {gateLabel}</Text>
+          {locale === 'en' && <Text style={styles.warningUrdu}>{outsideRouteMessage('direct.warning', 'ur')}</Text>}
+          <Text style={styles.gateText}>{t('navigation.outsideSelectedGate', { gate })}</Text>
           {retrying && <Text style={styles.retryingText}>{outsideRouteMessage('retrying')}</Text>}
           <View style={styles.actions}>
             {onRetry && (

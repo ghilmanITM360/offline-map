@@ -9,6 +9,8 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { ArrowLeft, ArrowRight, LocateFixed, MapPin, Navigation, RefreshCw, Volume2, VolumeX, X } from 'lucide-react-native';
 
 import { InstructionService } from '../../../services/InstructionService';
+import { translate, useI18n } from '../../../i18n';
+import { localizeVenueName } from '../../../i18n/venueNames';
 import { staticColors } from '../../../theme';
 import { NAV_TRANSITION_TIMINGS } from '../../../constants/navigationTransitions';
 import { NavigationOverlayV1 } from '../../../viewmodels/useNavigationOverlayV1';
@@ -32,6 +34,7 @@ function StepIcon({ type, size = 32 }: { type: string; size?: number }) {
  * MapView, not inside it — moved verbatim out of the old standalone NavigationScreen. */
 export function NavigationChromeV1({ overlay, hasBaseMap }: { overlay: NavigationOverlayV1; hasBaseMap: boolean }) {
   const insets = useSafeAreaInsets();
+  const { t, locale } = useI18n();
   const {
     route,
     destination,
@@ -67,18 +70,19 @@ export function NavigationChromeV1({ overlay, hasBaseMap }: { overlay: Navigatio
   // otherwise silent to screen-reader users, who get no signal the trip ended.
   useEffect(() => {
     if (arrived && destination) {
-      AccessibilityInfo.announceForAccessibility(`Arrived at ${destination.name}`);
+      AccessibilityInfo.announceForAccessibility(t('arrival.announcement', { place: localizeVenueName(destination.name) }));
     }
-  }, [arrived, destination]);
+  }, [arrived, destination, t]);
 
   if (!route) return null;
 
   const currentStep = instructions[currentStepIndex];
   const nextStep = instructions[currentStepIndex + 1];
-  const arrivalTime = new Date(Date.now() + (route.estimatedTimeMin ?? 0) * 60_000).toLocaleTimeString([], {
-    hour: '2-digit',
-    minute: '2-digit',
-  });
+  const arrivalTime = InstructionService.formatClockTime(new Date(Date.now() + (route.estimatedTimeMin ?? 0) * 60_000));
+  const remainingText = InstructionService.formatDistance(
+    remainingDistance > 0 ? remainingDistance : route.totalDistance,
+    settings.distanceUnit,
+  );
 
   return (
     <>
@@ -92,7 +96,7 @@ export function NavigationChromeV1({ overlay, hasBaseMap }: { overlay: Navigatio
         {reroutePending ? (
           <View style={[styles.instructionCard, styles.rerouteCard]}>
             <RefreshCw size={28} color={staticColors.white} />
-            <Text style={styles.rerouteText}>Finding a new way…</Text>
+            <Text style={styles.rerouteText}>{t('navigation.findingNewWay')}</Text>
           </View>
         ) : currentStep && !arrived ? (
           <View style={styles.instructionCard} accessibilityLabel={currentStep.text}>
@@ -123,7 +127,7 @@ export function NavigationChromeV1({ overlay, hasBaseMap }: { overlay: Navigatio
               style={styles.muteButton}
               hitSlop={NAV_TOUCH_TARGET_HIT_SLOP}
               accessibilityRole="button"
-              accessibilityLabel={isMuted ? 'Unmute voice guidance' : 'Mute voice guidance'}
+              accessibilityLabel={isMuted ? t('navigation.unmuteVoice') : t('navigation.muteVoice')}
             >
               {isMuted ? <VolumeX size={24} color={staticColors.white} /> : <Volume2 size={24} color={staticColors.white} />}
             </Pressable>
@@ -134,7 +138,7 @@ export function NavigationChromeV1({ overlay, hasBaseMap }: { overlay: Navigatio
         <View style={styles.topStatusStack}>
           {isWeakGps ? (
             <View style={styles.weakGpsBanner} accessibilityLiveRegion="polite">
-              <Text style={styles.weakGpsText}>Weak signal. Directions may be slow.</Text>
+              <Text style={styles.weakGpsText}>{t('navigation.weakSignal')}</Text>
             </View>
           ) : rerouteStatusMessage && !reroutePending ? (
             <View style={styles.rerouteHintBanner} accessibilityLiveRegion="polite">
@@ -142,7 +146,7 @@ export function NavigationChromeV1({ overlay, hasBaseMap }: { overlay: Navigatio
             </View>
           ) : !hasBaseMap ? (
             <View style={styles.mapUnavailableBanner} accessibilityLiveRegion="polite">
-              <Text style={styles.mapUnavailableText}>The map can't be shown. Directions still work.</Text>
+              <Text style={styles.mapUnavailableText}>{t('navigation.mapUnavailable')}</Text>
             </View>
           ) : null}
         </View>
@@ -160,17 +164,12 @@ export function NavigationChromeV1({ overlay, hasBaseMap }: { overlay: Navigatio
           <View style={styles.tripInfo}>
             <View style={styles.tripTextWrap}>
               <Text style={styles.timeRemaining}>
-                {route ? InstructionService.formatDuration(route.estimatedTimeMin) : '— min'}
+                {InstructionService.formatDuration(route.estimatedTimeMin)}
               </Text>
               <Text style={styles.distanceRemaining}>
-                {remainingDistance > 0
-                  ? InstructionService.formatDistance(remainingDistance, settings.distanceUnit)
-                  : route
-                  ? InstructionService.formatDistance(route.totalDistance, settings.distanceUnit)
-                  : '—'}{' '}
-                · ETA {arrivalTime}
+                {t('navigation.remainingWithEta', { distance: remainingText, time: arrivalTime })}
               </Text>
-              <Text style={styles.destName} numberOfLines={1}>{destination?.name}</Text>
+              <Text style={styles.destName} numberOfLines={1}>{destination ? localizeVenueName(destination.name) : ''}</Text>
             </View>
             <Pressable
               testID="nav-exit-button"
@@ -178,10 +177,10 @@ export function NavigationChromeV1({ overlay, hasBaseMap }: { overlay: Navigatio
               onPress={requestNavigationExit}
               hitSlop={NAV_TOUCH_TARGET_HIT_SLOP}
               accessibilityRole="button"
-              accessibilityLabel="Exit navigation"
+              accessibilityLabel={t('navigation.exitA11y')}
             >
               <X size={20} color={staticColors.textPrimary} />
-              <Text style={styles.exitText}>Exit</Text>
+              <Text style={styles.exitText}>{t('navigation.exit')}</Text>
             </Pressable>
           </View>
         </Animated.View>
@@ -197,7 +196,7 @@ export function NavigationChromeV1({ overlay, hasBaseMap }: { overlay: Navigatio
           onPress={() => setIsAutoFollowing(true)}
           hitSlop={NAV_TOUCH_TARGET_HIT_SLOP}
           accessibilityRole="button"
-          accessibilityLabel="Re-center map on my location"
+          accessibilityLabel={t('navigation.recenterA11y')}
         >
           <LocateFixed size={20} color={staticColors.routeInside} />
         </Pressable>
@@ -214,9 +213,9 @@ export function NavigationChromeV1({ overlay, hasBaseMap }: { overlay: Navigatio
           {/* The Modal window is full-screen (under the system nav bar), so the buttons must clear the bottom inset (#301). */}
           <View testID="nav-arrived-card" style={[styles.arrivedCard, { paddingBottom: Math.max(36, insets.bottom + 24) }]}>
             <MapPin size={52} color={staticColors.arrivalGreen} />
-            <Text style={styles.arrivedTitle}>You've Arrived!</Text>
-            <Text style={styles.arrivedUrdu}>منزل پر پہنچ گئے</Text>
-            <Text style={styles.arrivedSubtitle}>{destination?.name}</Text>
+            <Text style={styles.arrivedTitle}>{t('arrival.title')}</Text>
+            {locale === 'en' && <Text style={styles.arrivedUrdu}>{translate('ur', 'arrival.title')}</Text>}
+            <Text style={styles.arrivedSubtitle}>{destination ? localizeVenueName(destination.name) : ''}</Text>
             <View style={styles.arrivedActionsRow}>
               <Pressable
                 testID="nav-arrived-recenter-button"
@@ -224,10 +223,10 @@ export function NavigationChromeV1({ overlay, hasBaseMap }: { overlay: Navigatio
                 onPress={() => setIsAutoFollowing(true)}
                 hitSlop={NAV_TOUCH_TARGET_HIT_SLOP}
                 accessibilityRole="button"
-                accessibilityLabel="Re-center map on my location"
+                accessibilityLabel={t('navigation.recenterA11y')}
               >
                 <LocateFixed size={18} color={staticColors.routeInside} />
-                <Text style={styles.arrivedSecondaryButtonText}>Recenter</Text>
+                <Text style={styles.arrivedSecondaryButtonText}>{t('arrival.recenter')}</Text>
               </Pressable>
               <Pressable
                 testID="nav-arrived-done-button"
@@ -235,9 +234,9 @@ export function NavigationChromeV1({ overlay, hasBaseMap }: { overlay: Navigatio
                 onPress={completeArrivalNavigation}
                 hitSlop={NAV_TOUCH_TARGET_HIT_SLOP}
                 accessibilityRole="button"
-                accessibilityLabel="Done, return to map"
+                accessibilityLabel={t('arrival.doneA11y')}
               >
-                <Text style={styles.arrivedButtonText}>Done</Text>
+                <Text style={styles.arrivedButtonText}>{t('arrival.done')}</Text>
               </Pressable>
             </View>
           </View>
