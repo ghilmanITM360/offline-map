@@ -4,7 +4,7 @@
  */
 
 import React from 'react';
-import { I18nManager } from 'react-native';
+import { useLocaleStore } from '../i18n';
 import { render, screen } from './test-utils';
 
 import { AboutScreen } from '../views/screens/AboutScreen';
@@ -41,14 +41,14 @@ function svgPaths(node: any, out: string[] = []): string[] {
 }
 
 async function renderUnderRtl(ui: React.ReactElement, isRtl: boolean) {
-  const original = I18nManager.isRTL;
-  Object.defineProperty(I18nManager, 'isRTL', { value: isRtl, configurable: true });
-  try {
-    await render(ui);
-    return svgPaths(screen.toJSON());
-  } finally {
-    Object.defineProperty(I18nManager, 'isRTL', { value: original, configurable: true });
-  }
+  // The layout direction is the app language's: Urdu is right-to-left, English left-to-right.
+  const original = useLocaleStore.getState().locale;
+  useLocaleStore.setState({ locale: isRtl ? 'ur' : 'en' });
+  await render(ui);
+  const paths = svgPaths(screen.toJSON());
+  screen.unmount();
+  useLocaleStore.setState({ locale: original });
+  return paths;
 }
 
 describe('#128: back and forward chevrons follow the layout direction', () => {

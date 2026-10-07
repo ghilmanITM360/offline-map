@@ -15,13 +15,14 @@ import {
   AppState,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Info, Shield, Trash2, Volume2, BookOpen, LucideIcon } from 'lucide-react-native';
+import { Check, Info, Shield, Trash2, Volume2, BookOpen, LucideIcon } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
 import { backChevron } from '../components/common/directionalIcons';
 import { useSettingsViewModel } from '../../viewmodels/SettingsViewModel';
 import { useTheme } from '../../services/useTheme';
 import { useAppStore } from '../../store/useAppStore';
 import { staticColors } from '../../theme';
+import { LOCALE_CODES, LOCALES, useI18n } from '../../i18n';
 
 declare const __DEV__: boolean;
 
@@ -29,6 +30,7 @@ export function SettingsScreen() {
   const navigation = useNavigation<any>();
   const BackIcon = backChevron();
   const theme = useTheme();
+  const { t, locale, setLocale } = useI18n();
   const developerModeEnabled = useAppStore((s) => s.developerModeEnabled);
   const setDeveloperModeEnabled = useAppStore((s) => s.setDeveloperModeEnabled);
   const [versionTapCount, setVersionTapCount] = useState(0);
@@ -157,6 +159,24 @@ export function SettingsScreen() {
       </View>
 
       <ScrollView style={styles.content}>
+
+        <View style={[styles.section, { backgroundColor: theme.card, borderColor: theme.border }]}>
+          <Text style={[styles.sectionTitle, { color: theme.primary }]}>{t('settings.language')}</Text>
+          {LOCALE_CODES.map((code) => (
+            <Pressable
+              key={code}
+              android_ripple={{ color: `${theme.primary}22` }}
+              style={[styles.settingItem, styles.languageRow, { borderBottomColor: theme.border }]}
+              onPress={() => setLocale(code)}
+              accessibilityRole="radio"
+              accessibilityLabel={LOCALES[code].autonym}
+              accessibilityState={{ selected: code === locale }}
+            >
+              <Text style={[styles.settingLabel, { color: theme.text }]}>{LOCALES[code].autonym}</Text>
+              {code === locale && <Check size={22} color={theme.primary} />}
+            </Pressable>
+          ))}
+        </View>
 
         <View style={[styles.section, { backgroundColor: theme.card, borderColor: theme.border }]}>
           <Text style={[styles.sectionTitle, { color: theme.primary }]}>Navigation</Text>
@@ -309,6 +329,7 @@ const styles = StyleSheet.create({
   textContainer: { marginLeft: 16, flex: 1 },
   settingLabel: { fontSize: 16, fontWeight: '500' },
   settingDescription: { fontSize: 12, marginTop: 2 },
+  languageRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: 48 },
   settingValue: { fontSize: 14, fontWeight: '600', maxWidth: 132, textAlign: 'right' },
   footer: { padding: 32, alignItems: 'center' },
   version: { fontSize: 14, fontWeight: '500' },
