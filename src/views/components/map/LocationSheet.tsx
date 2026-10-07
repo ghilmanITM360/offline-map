@@ -51,7 +51,7 @@ import { Card } from '../common/Card';
 import { backChevron, forwardChevron } from '../common/directionalIcons';
 import { directionsSheetColors, radii, staticColors } from '../../../theme';
 import { placeCategoryLabel } from '../../../utils/placeCategoryLabel';
-import { buildPlaceShare } from '../../../utils/placeShare';
+import { buildPlaceShareMessage } from '../../../utils/placeShare';
 import { unavailableReasonCopy } from '../../../utils/unavailableReasonCopy';
 import { OUTSIDE_GUIDE_SCOPE, ROUTE_NOT_FOUND, SAME_PLACE, outsideGuideHeadline } from '../../../utils/routeCopy';
 import { DirectionsHeader, RouteEndpointRows } from './DirectionsSheetParts';
@@ -1001,12 +1001,12 @@ function PlaceSection(props: Extract<LocationSheetProps, { mode: 'preview' | 'de
             accessibilityRole="button"
             accessibilityLabel="Share location"
             onPress={() => {
-              const share = buildPlaceShare(place);
+              const share = buildPlaceShareMessage(place);
               if (!share) {
                 Alert.alert('Place unavailable', unavailableReasonCopy(place.unavailableReason) ?? `${place.name} is not available on the map yet.`);
                 return;
               }
-              Share.share(share).catch(() => Alert.alert("Can't share right now", 'Please try again.'));
+              Share.share({ title: share.title, message: share.message }).catch(() => Alert.alert("Can't share right now", 'Please try again.'));
             }}
           >
             <Share2 size={20} color={staticColors.info} />

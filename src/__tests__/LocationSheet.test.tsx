@@ -730,7 +730,7 @@ describe('LocationSheet (preview) — Save/Share/Details accessibility', () => {
     await user.press(screen.getByRole('button', { name: 'Share location' }));
 
     const { message } = share.mock.calls[0][0];
-    expect(message.split('\n')[0]).toBe('Block 14 — Karachi Ijtema');
+    expect(message.split('\n')[0]).toBe('📍 Block 14 — Karachi Ijtema');
     expect(message).toContain('https://www.openstreetmap.org/');
     expect(message).not.toMatch(/Location:/);
     share.mockRestore();
