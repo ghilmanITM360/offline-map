@@ -5,6 +5,9 @@
 
 import { IJTEMA_DATA, LANDMARK_PLACES } from '../constants/data';
 import { Place } from '../models/types';
+import { getLocale, t } from '../i18n';
+import type { MessageKey } from '../i18n';
+import { venueNameForSearch } from '../i18n/venueNames';
 import { FuzzySearchService } from './FuzzySearchService';
 import { MapFeatureFlagsService } from './MapFeatureFlagsService';
 import { V2PlaceAdapter, V2Place } from './V2PlaceAdapter';
@@ -39,6 +42,9 @@ const CATEGORY_RANK: Record<string, number> = {
   Landmark: 8,
 };
 
+// A search alias for masjid gates, never shown.
+const MASJID_GATE_ALIAS = ['masjid', 'gate'].join(' ');
+
 const DEBUG_NODE_SEARCH_ENABLED = typeof __DEV__ !== 'undefined' && __DEV__;
 
 export interface SearchOptions {
@@ -50,16 +56,19 @@ export interface SearchCategoryChip {
   label: string;
 }
 
-const CATEGORY_CHIPS: SearchCategoryChip[] = [
-  { id: 'all', label: 'All' },
-  { id: 'blocks', label: 'Blocks' },
-  { id: 'rastas', label: 'Rastas' },
-  { id: 'gates', label: 'Gates' },
-  { id: 'special_routes', label: 'Pindal' },
-  { id: 'masjids', label: 'Masjids' },
-  { id: 'terminals', label: 'Terminals' },
-  { id: 'help', label: 'Help' },
+const CATEGORY_CHIPS: Array<{ id: string; messageKey: MessageKey }> = [
+  { id: 'all', messageKey: 'directory.chipAll' },
+  { id: 'blocks', messageKey: 'directory.chipBlocks' },
+  { id: 'rastas', messageKey: 'directory.chipRastas' },
+  { id: 'gates', messageKey: 'directory.chipGates' },
+  { id: 'special_routes', messageKey: 'directory.chipPindal' },
+  { id: 'masjids', messageKey: 'directory.chipMasjids' },
+  { id: 'terminals', messageKey: 'directory.chipTerminals' },
+  { id: 'help', messageKey: 'directory.chipHelp' },
 ];
+
+// Words found in help-desk place names and aliases (matching only, never shown).
+const HELP_WORDS = /help|medical|first aid|emergency|volunteer|lost/;
 
 export class SearchService {
   static search(query: string, userLocation?: { latitude: number; longitude: number }, options: SearchOptions = {}): Place[] {
@@ -198,7 +207,7 @@ export class SearchService {
           id: rastaName,
           name: rastaName,
           category: 'Rasta',
-          description: `Base walking path: ${rastaName}`,
+          description: t('directory.descRastaOld', { name: rastaName }),
           coordinate: { latitude: node.lat, longitude: node.lng },
           routingNodeId: preferredNodeId,
           resolvedRoutingNodeId: preferredNodeId,
@@ -221,7 +230,7 @@ export class SearchService {
         results.push({
           ...place,
           category: 'Masjid',
-          description: `${place.name} (Member Masjid area)`,
+          description: t('directory.descMasjidOld', { name: place.name }),
         });
       });
     } else if (cat === 'terminals') {
@@ -235,17 +244,9 @@ export class SearchService {
         results.push({ ...landmark, category: 'Terminal' as Place['category'] }),
       );
     } else if (cat === 'help') {
-      LANDMARK_PLACES.filter((landmark) => {
-        const text = `${landmark.name} ${(landmark.aliases ?? []).join(' ')}`.toLowerCase();
-        return (
-          text.includes('help') ||
-          text.includes('medical') ||
-          text.includes('first aid') ||
-          text.includes('emergency') ||
-          text.includes('volunteer') ||
-          text.includes('lost')
-        );
-      }).forEach((landmark) => results.push({ ...landmark, category: 'Help' as Place['category'] }));
+      LANDMARK_PLACES.filter((landmark) =>
+        HELP_WORDS.test(`${landmark.name} ${(landmark.aliases ?? []).join(' ')}`.toLowerCase()),
+      ).forEach((landmark) => results.push({ ...landmark, category: 'Help' as Place['category'] }));
     }
 
     const uniq = new Map<string, Place>();
@@ -254,7 +255,9 @@ export class SearchService {
   }
 
   static getAvailableCategoryChips(): SearchCategoryChip[] {
-    return CATEGORY_CHIPS.filter((chip) => chip.id === 'all' || this.searchByCategory(chip.id).length > 0);
+    return CATEGORY_CHIPS.filter((chip) => chip.id === 'all' || this.searchByCategory(chip.id).length > 0).map(
+      ({ id, messageKey }) => ({ id, label: t(messageKey) }),
+    );
   }
 
   static getPlaceById(id: string): Place | null {
@@ -287,7 +290,7 @@ export class SearchService {
       name: `Block ${num}`,
       urduName: block.urduName,
       category: 'Block',
-      description: `Block ${num} — part of Karachi Ijtema ground.`,
+      description: t('directory.descBlockOld', { n: num }),
       coordinate: block.center,
       aliases: block.aliases,
       sourceVersion: 'v1',
@@ -300,13 +303,13 @@ export class SearchService {
 
     if (node.type === 'gate') {
       category = 'Gate';
-      description = `Entry / exit gate — ${node.name ?? id}`;
+      description = t('directory.descGateOld', { name: node.name ?? id });
     } else if (node.type === 'masjid') {
       category = 'Masjid';
-      description = `Prayer area — ${node.name ?? id}`;
+      description = t('directory.descPrayerOld', { name: node.name ?? id });
     } else if (node.type === 'intersection') {
       category = 'Intersection';
-      description = `Graph intersection ${id}`;
+      description = t('directory.descJunctionOld', { id });
     } else if (node.type === 'road_end') {
       category = 'RoadEndpoint';
       description = node.name ?? id;
@@ -330,7 +333,7 @@ export class SearchService {
             longitude: IJTEMA_DATA.nodes[node.nearestRoadNode].lng,
           }
         : { latitude: node.lat, longitude: node.lng },
-      aliases: node.type === 'gate' ? [id.toLowerCase(), id, node.name ?? id, 'gate', 'masjid gate'] : undefined,
+      aliases: node.type === 'gate' ? [id.toLowerCase(), id, node.name ?? id, 'gate', MASJID_GATE_ALIAS] : undefined,
       sourceVersion: 'v1',
     };
   }
@@ -353,6 +356,10 @@ export class SearchService {
     });
     const exactGateNumber = normalised.match(/^(?:gate\s*|g)0?([1-9]|1\d|2[0-2])$/)?.[1];
     const exactBlockNumber = normalised.match(/^(?:block\s*|b)?0?([1-9]|[1-3]\d|4[0-2])$/)?.[1];
+    // People type the name they read on screen: the English data name always works, and so does the name in the chosen language.
+    const locale = getLocale();
+    const localName = (place: V2Place): string =>
+      locale === 'en' ? '' : normalizeUrdu(venueNameForSearch(place.name, locale)).toLowerCase();
 
     const results: V2Place[] = [];
     for (const place of places) {
@@ -364,7 +371,10 @@ export class SearchService {
       if (exactGateNumber && gateNumber !== Number(exactGateNumber)) continue;
       if (exactBlockNumber && blockNumber !== Number(exactBlockNumber)) continue;
 
-      const matchesName = FuzzySearchService.matches(normalised, place.name.toLowerCase());
+      const localized = localName(place);
+      const matchesName =
+        FuzzySearchService.matches(normalised, place.name.toLowerCase()) ||
+        (localized !== '' && FuzzySearchService.matches(normalised, localized));
       const matchesUrdu = place.urduName ? normalizeUrdu(place.urduName).toLowerCase().includes(normalised) || place.urduName.includes(raw) : false;
       const matchesAlias = aliases.some((alias) => {
         const normalizedAlias = normalizeUrdu(alias).toLowerCase();
@@ -385,12 +395,14 @@ export class SearchService {
     const matchPriority = (place: V2Place): number => {
       const aliases = place.aliases ?? [];
       const normalizedUrduName = place.urduName ? normalizeUrdu(place.urduName).toLowerCase() : '';
+      const localized = localName(place);
       const normalizedAliases = aliases.map((alias) => normalizeUrdu(alias).toLowerCase());
 
       if (
         place.id.toLowerCase() === normalised ||
         place.name.toLowerCase() === normalised ||
         normalizedUrduName === normalised ||
+        localized === normalised ||
         normalizedAliases.some((alias) => alias === normalised)
       ) {
         return 0;
@@ -399,6 +411,7 @@ export class SearchService {
       if (
         place.name.toLowerCase().startsWith(normalised) ||
         normalizedUrduName.startsWith(normalised) ||
+        (localized !== '' && localized.startsWith(normalised)) ||
         normalizedAliases.some((alias) => alias.startsWith(normalised))
       ) {
         return 1;

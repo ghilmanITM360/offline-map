@@ -8,6 +8,8 @@ import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Info, Milestone, Route, Signpost, X } from 'lucide-react-native';
 
 import { V2Place } from '../../../models/types';
+import { useI18n } from '../../../i18n';
+import { localizeVenueName } from '../../../i18n/venueNames';
 import { usePressScale } from '../../../viewmodels/usePressScale';
 import { placeCategoryLabel } from '../../../utils/placeCategoryLabel';
 import { radii, spacing, staticColors } from '../../../theme';
@@ -47,7 +49,11 @@ export function DestinationRow({
   const Icon = CATEGORY_ICON[place.category] ?? Signpost;
   const ForwardIcon = forwardChevron();
   const accent = CATEGORY_ACCENT[place.category] ?? staticColors.normalBlock;
+  const { t, locale } = useI18n();
+  const name = localizeVenueName(place.name, locale);
   const categoryLabel = placeCategoryLabel(place.category);
+  // English readers get the Urdu name under the name; Urdu readers get the English name (the one on the signs).
+  const secondaryName = locale === 'en' ? place.urduName : locale === 'ur' ? place.name : undefined;
   // #96: unavailable rows stay tappable-to-view (map/sheet navigation is correct
   // today) — only the routing dead-end needs to be signaled earlier, so this never
   // touches onPress or blocks the Pressable. The unavailability is carried by the
@@ -64,34 +70,34 @@ export function DestinationRow({
         onPressIn={onPressIn}
         onPressOut={onPressOut}
         accessibilityRole="button"
-        accessibilityHint={onDetails && !isUnavailable ? 'Takes you to this place' : undefined}
-        accessibilityLabel={
-          isUnavailable ? `${place.name}, ${categoryLabel}, not available yet` : `${place.name}, ${categoryLabel}`
-        }
+        accessibilityHint={onDetails && !isUnavailable ? t('directory.takesYouToPlace') : undefined}
+        accessibilityLabel={t(isUnavailable ? 'directory.rowLabelUnavailable' : 'directory.rowLabel', {
+          name,
+          category: categoryLabel,
+        })}
       >
         <View style={[styles.iconWrap, { backgroundColor: isUnavailable ? staticColors.neutralSurface : `${accent}1A` }]}>
           <Icon size={20} color={isUnavailable ? staticColors.iconMuted : accent} />
         </View>
         <View style={styles.body}>
           <Text style={[styles.name, isUnavailable && styles.nameMuted]} numberOfLines={1} ellipsizeMode="tail">
-            {place.name}
+            {name}
           </Text>
           {/* Own line, not squeezed onto the name's baseline — a long English name was
               truncating the Urdu name first, and Urdu script reads better at its own
               size than a cramped secondary-label size. */}
-          {place.urduName ? (
+          {secondaryName ? (
             <Text style={styles.nameSecondary} numberOfLines={1} ellipsizeMode="tail">
-              {place.urduName}
+              {secondaryName}
             </Text>
           ) : null}
           {showCategory ? (
             <Text style={styles.subtitle} numberOfLines={1} ellipsizeMode="tail">
-              {categoryLabel}
-              {place.unavailableReason ? ' · Not available yet' : ''}
+              {place.unavailableReason ? t('directory.rowSubtitleUnavailable', { category: categoryLabel }) : categoryLabel}
             </Text>
           ) : isUnavailable ? (
             <View style={styles.unavailableBadge}>
-              <Text style={styles.unavailableBadgeText}>Not available yet</Text>
+              <Text style={styles.unavailableBadgeText}>{t('directory.notAvailableYet')}</Text>
             </View>
           ) : null}
         </View>
@@ -102,7 +108,7 @@ export function DestinationRow({
           style={({ pressed }) => [styles.detailsButton, pressed && styles.rowPressed]}
           onPress={() => onDetails(place)}
           accessibilityRole="button"
-          accessibilityLabel={`Details for ${place.name}`}
+          accessibilityLabel={t('directory.detailsFor', { name })}
         >
           <Info size={20} color={staticColors.iconMuted} />
         </Pressable>
@@ -112,7 +118,7 @@ export function DestinationRow({
           style={({ pressed }) => [styles.detailsButton, pressed && styles.rowPressed]}
           onPress={() => onRemove(place)}
           accessibilityRole="button"
-          accessibilityLabel={`Remove from recent: ${place.name}`}
+          accessibilityLabel={t('directory.removeRecent', { name })}
         >
           <X size={20} color={staticColors.iconMuted} />
         </Pressable>

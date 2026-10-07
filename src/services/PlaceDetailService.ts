@@ -6,6 +6,8 @@
 import { getDistance } from 'geolib';
 import { IJTEMA_DATA } from '../constants/data';
 import { Coordinate, BlockEntryPoint, Gate } from '../models/types';
+import { getLocale, translate } from '../i18n';
+import type { MessageKey } from '../i18n';
 
 /** Maps a raw entry_node ID to its cardinal side relative to the block. */
 const ENTRY_SIDE_MAP: Record<string, BlockEntryPoint['side']> = {
@@ -23,12 +25,20 @@ const ENTRY_SIDE_MAP: Record<string, BlockEntryPoint['side']> = {
   S1: 'north', S2: 'north', S3: 'north', S4: 'north', S5: 'north', S6: 'north',
 };
 
-const SIDE_LABEL: Record<BlockEntryPoint['side'], { en: string; ur: string }> = {
-  north: { en: 'North Entrance', ur: 'شمالی دروازہ' },
-  south: { en: 'South Entrance', ur: 'جنوبی دروازہ' },
-  east:  { en: 'East Entrance',  ur: 'مشرقی دروازہ' },
-  west:  { en: 'West Entrance',  ur: 'مغربی دروازہ' },
+const SIDE_DIRECTION: Record<BlockEntryPoint['side'], MessageKey> = {
+  north: 'places.dirNorth',
+  south: 'places.dirSouth',
+  east: 'places.dirEast',
+  west: 'places.dirWest',
 };
+
+/** "North Entrance" / "North Entrance 2" in the chosen language (or the one asked for). */
+function entranceName(side: BlockEntryPoint['side'], ordinal: number | null, locale = getLocale()): string {
+  const dir = translate(locale, SIDE_DIRECTION[side]);
+  return ordinal === null
+    ? translate(locale, 'places.entrance', { dir })
+    : translate(locale, 'places.entranceNumbered', { dir, n: ordinal });
+}
 
 export class PlaceDetailService {
   /**
@@ -58,14 +68,14 @@ export class PlaceDetailService {
 
     return uniqueNodes.map((nodeId) => {
       const side: BlockEntryPoint['side'] = ENTRY_SIDE_MAP[nodeId] ?? 'north';
-      const label = SIDE_LABEL[side];
       sideIndex[side] = (sideIndex[side] ?? 0) + 1;
-      const needsOrdinal = sideCounts[side] > 1;
+      const ordinal = sideCounts[side] > 1 ? sideIndex[side] : null;
       return {
         nodeId,
         side,
-        friendlyName: needsOrdinal ? `${label.en} ${sideIndex[side]}` : label.en,
-        urduName: label.ur,
+        friendlyName: entranceName(side, ordinal),
+        // The Urdu line sits under the name for English readers; in Urdu the name is already that line.
+        urduName: getLocale() === 'en' ? entranceName(side, ordinal, 'ur') : '',
       };
     });
   }

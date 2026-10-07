@@ -4,7 +4,8 @@ import { IJTEMA_GATES } from '../src/data/ijtema';
 import { V2PlaceAdapter } from '../src/services/V2PlaceAdapter';
 
 const VERIFICATION_WARNING = 'Directions to this gate may be less exact.';
-const CONNECTOR_VERIFICATION_UNAVAILABLE_SUFFIX = 'needs connector verification before routing.';
+// The reason is the visitor-facing wording now (src/i18n/messages/directory.ts), not the data team's.
+const CONNECTOR_VERIFICATION_UNAVAILABLE_SUFFIX = "isn't ready for directions yet.";
 
 // Gate 13 and Gate 14 previously carried the raw needs_verification status
 // (near-duplicate coordinates in the originally supplied dataset) and were

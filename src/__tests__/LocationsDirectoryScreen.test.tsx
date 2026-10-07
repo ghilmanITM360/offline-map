@@ -95,7 +95,7 @@ describe('LocationsDirectoryScreen — search', () => {
     expect(field.props.placeholder).toBe('Search destinations');
     expect(field.props.placeholder.length).toBeLessThanOrEqual(20);
     // No room reserved for the clear button while it is not shown.
-    expect(StyleSheet.flatten(field.props.style).paddingRight).toBe(16);
+    expect(StyleSheet.flatten(field.props.style).paddingEnd).toBe(16);
   });
 
   test('#128 A: the title wraps instead of truncating beside the Map pill at 200% font on a narrow window', async () => {

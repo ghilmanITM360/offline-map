@@ -7,11 +7,16 @@ import React from 'react';
 import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { V2Place } from '../../../models/types';
+import { useI18n } from '../../../i18n';
+import { localizeVenueName } from '../../../i18n/venueNames';
 import { usePressScale } from '../../../viewmodels/usePressScale';
 import { radii, spacing, staticColors } from '../../../theme';
 
 function BlockTile({ place, onPress, onDetails }: { place: V2Place; onPress: (place: V2Place) => void; onDetails?: (place: V2Place) => void }) {
   const { scale, onPressIn, onPressOut } = usePressScale(0.94);
+  const { t, locale } = useI18n();
+  const name = localizeVenueName(place.name, locale);
+  const blockWord = t('directory.categoryBlock');
   return (
     <Animated.View style={[styles.tileWrap, { transform: [{ scale }] }]}>
       <Pressable
@@ -23,15 +28,15 @@ function BlockTile({ place, onPress, onDetails }: { place: V2Place; onPress: (pl
         onPressIn={onPressIn}
         onPressOut={onPressOut}
         accessibilityRole="button"
-        accessibilityLabel={`${place.name}, Block`}
-        accessibilityHint={onDetails ? 'Takes you to this block' : undefined}
-        accessibilityActions={onDetails ? [{ name: 'details', label: `Details for ${place.name}` }] : undefined}
+        accessibilityLabel={t('directory.rowLabel', { name, category: blockWord })}
+        accessibilityHint={onDetails ? t('directory.takesYouToBlock') : undefined}
+        accessibilityActions={onDetails ? [{ name: 'details', label: t('directory.detailsFor', { name }) }] : undefined}
         onAccessibilityAction={onDetails ? (event) => { if (event.nativeEvent.actionName === 'details') onDetails(place); } : undefined}
       >
         <Text style={styles.number} numberOfLines={1} adjustsFontSizeToFit>
           {place.name.replace(/^Block\s*/i, '')}
         </Text>
-        <Text style={styles.label}>Block</Text>
+        <Text style={styles.label}>{blockWord}</Text>
       </Pressable>
     </Animated.View>
   );

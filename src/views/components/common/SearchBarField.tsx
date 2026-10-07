@@ -27,8 +27,9 @@ export const SearchBarField = forwardRef<TextInput, TextInputProps>(function Sea
   const flat: TextStyle = StyleSheet.flatten([styles.input, style]) ?? {};
   const num = (value: unknown, fallback: number) => (typeof value === 'number' ? value : fallback);
   const border = num(flat.borderWidth, 0);
-  const hintLeft = num(flat.paddingLeft ?? flat.paddingHorizontal, spacing.lg) + border;
-  const hintRight = num(flat.paddingRight ?? flat.paddingHorizontal, spacing.lg) + border;
+  // Start/end insets (callers pass paddingStart/End; a physical paddingLeft/Right still works for callers not yet moved over).
+  const hintStart = num(flat.paddingStart ?? flat.paddingLeft ?? flat.paddingHorizontal, spacing.lg) + border;
+  const hintEnd = num(flat.paddingEnd ?? flat.paddingRight ?? flat.paddingHorizontal, spacing.lg) + border;
   return (
     <View>
       <TextInput
@@ -41,7 +42,7 @@ export const SearchBarField = forwardRef<TextInput, TextInputProps>(function Sea
         maxFontSizeMultiplier={1.8}
         {...props}
         // After the spread so a caller cannot un-hide the native hint underneath the overlay.
-        placeholderTextColor={showHint ? 'transparent' : props.placeholderTextColor ?? staticColors.textMuted}
+        placeholderTextColor={showHint ? HIDDEN_HINT_COLOR : props.placeholderTextColor ?? staticColors.textMuted}
       />
       {showHint && (
         <Text
@@ -51,11 +52,11 @@ export const SearchBarField = forwardRef<TextInput, TextInputProps>(function Sea
           pointerEvents="none"
           accessible={false}
           importantForAccessibility="no-hide-descendants"
-          // Same insets as the field's own text (callers add icon/clear-button room through paddingLeft/Right);
-          // left/right swap together in RTL, exactly as the TextInput's padding does.
+          // Same insets as the field's own text (callers add icon/clear-button room through paddingStart/End);
+          // start/end swap together in RTL, exactly as the TextInput's padding does.
           style={[
             styles.hint,
-            { left: hintLeft, right: hintRight },
+            { start: hintStart, end: hintEnd },
           ]}
         >
           {placeholder}
@@ -66,6 +67,8 @@ export const SearchBarField = forwardRef<TextInput, TextInputProps>(function Sea
 });
 
 export const SEARCH_BAR_HEIGHT = 52;
+
+const HIDDEN_HINT_COLOR = 'transparent';
 
 const styles = StyleSheet.create({
   input: {

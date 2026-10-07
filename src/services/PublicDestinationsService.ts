@@ -4,6 +4,7 @@
  */
 
 import { V2Place } from '../models/types';
+import { t } from '../i18n';
 import { SearchService } from './SearchService';
 import { V2PlaceAdapter } from './V2PlaceAdapter';
 
@@ -14,11 +15,11 @@ export interface DestinationCategoryChip {
   label: string;
 }
 
-const DESTINATION_CATEGORIES: DestinationCategoryChip[] = [
-  { id: 'blocks', label: 'Blocks' },
-  { id: 'gates', label: 'Gates' },
-  { id: 'rastas', label: 'Rastas' },
-  { id: 'special_routes', label: 'Shahr-e-Pindal' },
+const DESTINATION_CATEGORIES: Array<{ id: DestinationCategoryId; label: () => string }> = [
+  { id: 'blocks', label: () => t('directory.chipBlocks') },
+  { id: 'gates', label: () => t('directory.chipGates') },
+  { id: 'rastas', label: () => t('directory.chipRastas') },
+  { id: 'special_routes', label: () => t('directory.chipShahrePindal') },
 ];
 
 const SOURCE_KIND_TO_CATEGORY: Record<V2Place['sourceKind'], DestinationCategoryId> = {
@@ -49,7 +50,9 @@ export class PublicDestinationsService {
 
   /** Only categories that actually have at least one destination — never renders an empty chip. */
   static getCategories(): DestinationCategoryChip[] {
-    return DESTINATION_CATEGORIES.filter((category) => this.getByCategory(category.id).length > 0);
+    return DESTINATION_CATEGORIES.filter((category) => this.getByCategory(category.id).length > 0).map(
+      ({ id, label }) => ({ id, label: label() }),
+    );
   }
 
   // #146: matches SearchService.searchV2's own includeUnavailableGates:true — a gate that

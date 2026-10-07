@@ -13,6 +13,8 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { LocateFixed, Map as MapIcon, MapPin, Search, X } from 'lucide-react-native';
 
+import { useI18n } from '../../i18n';
+import { localizeVenueName } from '../../i18n/venueNames';
 import { RootStackParamList } from '../../navigation/RootNavigator';
 import { selectUnfinishedJourney, useAppStore } from '../../store/useAppStore';
 import { V2Place } from '../../models/types';
@@ -82,6 +84,7 @@ type Nav = NativeStackNavigationProp<RootStackParamList, 'LocationsDirectory'>;
  */
 export function LocationsDirectoryScreen() {
   const navigation = useNavigation<Nav>();
+  const { t, locale, isRTL } = useI18n();
   const currentLocation = useAppStore((s) => s.currentLocation);
   const currentLocationSource = useAppStore((s) => s.currentLocationSource);
   const locationPermissionPrecision = useAppStore((s) => s.locationPermissionPrecision);
@@ -115,7 +118,8 @@ export function LocationsDirectoryScreen() {
   const [query, setQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState<DestinationCategoryId | null>(null);
 
-  const categories = useMemo(() => PublicDestinationsService.getCategories(), []);
+  // Chip labels are in the chosen language, so they are read again when it changes.
+  const categories = useMemo(() => PublicDestinationsService.getCategories(), [locale]);
   const trimmedQuery = query.trim();
 
   const searchResults = useMemo(() => {
@@ -124,7 +128,8 @@ export function LocationsDirectoryScreen() {
     return activeCategory
       ? results.filter((place) => PublicDestinationsService.categoryIdForPlace(place) === activeCategory)
       : results;
-  }, [trimmedQuery, activeCategory, currentLocation]);
+    // The language is a dependency: a name typed in Urdu finds places by their Urdu name.
+  }, [trimmedQuery, activeCategory, currentLocation, locale]);
 
   // #99: recentSearches stores full Place snapshots at selection time, so re-resolve each
   // by id through V2PlaceAdapter (the same lookup favorites already re-validates through)
@@ -135,14 +140,15 @@ export function LocationsDirectoryScreen() {
       .map((place) => V2PlaceAdapter.getPlaceById(place.id))
       .filter((place): place is V2Place => Boolean(place))
       .slice(0, 5);
-  }, [recentSearches]);
+    // Re-resolved when the language changes, so reasons and descriptions are in the chosen language.
+  }, [recentSearches, locale]);
 
   const confirmClearRecent = useCallback(() => {
-    Alert.alert('Clear recent places?', 'Places you opened recently will be removed from this list.', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Clear', style: 'destructive', onPress: clearRecentSearches },
+    Alert.alert(t('directory.clearRecentTitle'), t('directory.clearRecentBody'), [
+      { text: t('directory.cancel'), style: 'cancel' },
+      { text: t('directory.clear'), style: 'destructive', onPress: clearRecentSearches },
     ]);
-  }, [clearRecentSearches]);
+  }, [clearRecentSearches, t]);
 
   // Start-only quick options, shown only when the location behind them is usable.
   const canUseCurrentLocation =
@@ -203,8 +209,9 @@ export function LocationsDirectoryScreen() {
         // Answering "Where are you starting from?" for the destination already tapped: a route guide from here.
         if (place.isStartRoutable === false) {
           Alert.alert(
-            'Place unavailable',
-            unavailableReasonCopy(place.unavailableReason) ?? `${place.name} is not available on the map yet.`,
+            t('directory.unavailableTitle'),
+            unavailableReasonCopy(place.unavailableReason) ??
+              t('directory.unavailableFallback', { name: localizeVenueName(place.name, locale) }),
           );
           return;
         }
@@ -218,8 +225,9 @@ export function LocationsDirectoryScreen() {
         const usable = storePurpose === 'start' ? place.isStartRoutable !== false : place.isRoutable !== false;
         if (!usable) {
           Alert.alert(
-            'Place unavailable',
-            unavailableReasonCopy(place.unavailableReason) ?? `${place.name} is not available on the map yet.`,
+            t('directory.unavailableTitle'),
+            unavailableReasonCopy(place.unavailableReason) ??
+              t('directory.unavailableFallback', { name: localizeVenueName(place.name, locale) }),
           );
           return;
         }
@@ -231,7 +239,7 @@ export function LocationsDirectoryScreen() {
       // Plain browsing: a tap means "take me here" (#307).
       takeMeTo(place);
     },
-    [goToMap, journeyDestination, setDirectoryChoice, setDirectoryPurpose, setPendingJourney, storePurpose, takeMeTo],
+    [goToMap, journeyDestination, locale, setDirectoryChoice, setDirectoryPurpose, setPendingJourney, storePurpose, t, takeMeTo],
   );
 
   // "Use my location" while asking where to start: the one place location is requested from the Directory, and only
@@ -253,13 +261,16 @@ export function LocationsDirectoryScreen() {
     }
     const blocked = !resolved.permissionState.granted && !resolved.permissionState.canAskAgain;
     Alert.alert(
-      "Couldn't use your location",
-      resolved.message ?? 'Choose where you are starting from.',
+      t('directory.locationFailedTitle'),
+      resolved.message ?? t('directory.chooseStartFallback'),
       blocked
-        ? [{ text: 'Not now', style: 'cancel' }, { text: 'Open Settings', onPress: () => { void LocationAccessService.openAppSettings(); } }]
-        : [{ text: 'OK' }],
+        ? [
+            { text: t('directory.notNow'), style: 'cancel' },
+            { text: t('directory.openSettings'), onPress: () => { void LocationAccessService.openAppSettings(); } },
+          ]
+        : [{ text: t('directory.ok') }],
     );
-  }, [goToMap, journeyDestination, setPendingJourney]);
+  }, [goToMap, journeyDestination, setPendingJourney, t]);
 
   // #139 Option B: never resumes the old journey. "Get new route" consumes the marker and plans a fresh journey to the
   // same destination exactly like a destination tap: live from the user's location, or ask where they start.
@@ -275,8 +286,11 @@ export function LocationsDirectoryScreen() {
   }, [beginRecovery, goToMap, setPendingDirectorySelection, takeMeTo]);
 
   const unfinishedDestinationName = useMemo(
-    () => (unfinishedDestinationId ? V2PlaceAdapter.getPlaceById(unfinishedDestinationId)?.name ?? null : null),
-    [unfinishedDestinationId],
+    () => {
+      const name = unfinishedDestinationId ? V2PlaceAdapter.getPlaceById(unfinishedDestinationId)?.name : undefined;
+      return name ? localizeVenueName(name, locale) : null;
+    },
+    [unfinishedDestinationId, locale],
   );
 
   const handleQuickStart = useCallback(
@@ -317,7 +331,7 @@ export function LocationsDirectoryScreen() {
       const places = PublicDestinationsService.getByCategory(category.id);
       return (
         <View key={category.id} style={styles.section}>
-          <Text style={styles.sectionTitle} accessibilityRole="header">
+          <Text style={[styles.sectionTitle, isRTL && styles.noLetterSpacing]} accessibilityRole="header">
             {category.label} ({places.length})
           </Text>
           {category.id === 'blocks' ? (
@@ -338,8 +352,8 @@ export function LocationsDirectoryScreen() {
     if (searchResults.length === 0) {
       return (
         <View style={styles.emptyState} accessibilityLiveRegion="polite">
-          <Text style={styles.emptyTitle}>{`No matches for "${trimmedQuery}"`}</Text>
-          <Text style={styles.emptyHint}>Try a block or gate number, like 24 or Gate 15.</Text>
+          <Text style={styles.emptyTitle}>{t('directory.noMatches', { query: trimmedQuery })}</Text>
+          <Text style={styles.emptyHint}>{t('directory.noMatchesHint')}</Text>
         </View>
       );
     }
@@ -359,21 +373,25 @@ export function LocationsDirectoryScreen() {
             search placeholder already says). It may wrap: at 200% font on a 320 dp window one line
             truncated to "Find your…" beside the Map pill (#128 A). */}
         <Text style={styles.title} accessibilityRole="header">
-          {purpose === 'start' ? 'Where are you starting from?' : purpose === 'destination' ? 'Where do you want to go?' : 'Find your way'}
+          {purpose === 'start'
+            ? t('directory.titleStart')
+            : purpose === 'destination'
+            ? t('directory.titleDestination')
+            : t('directory.titleBrowse')}
         </Text>
         <Pressable
           style={styles.viewMapButton}
           onPress={journeyDestination ? () => setJourneyDestination(null) : goToMap}
           accessibilityRole="button"
-          accessibilityLabel={purpose ? 'Cancel and go back' : 'View map'}
+          accessibilityLabel={purpose ? t('directory.cancelAndGoBack') : t('directory.viewMap')}
         >
           {purpose ? <X size={18} color={staticColors.info} /> : <MapIcon size={18} color={staticColors.info} />}
-          <Text style={styles.viewMapLabel}>{purpose ? 'Cancel' : 'Map'}</Text>
+          <Text style={styles.viewMapLabel}>{purpose ? t('directory.cancel') : t('directory.map')}</Text>
         </Pressable>
       </View>
 
       {journeyDestination ? (
-        <Text style={styles.journeyTo} accessibilityLiveRegion="polite">{`To ${journeyDestination.name}`}</Text>
+        <Text style={styles.journeyTo} accessibilityLiveRegion="polite">{t('directory.journeyTo', { name: localizeVenueName(journeyDestination.name, locale) })}</Text>
       ) : null}
 
       <View style={styles.searchWrap}>
@@ -383,9 +401,9 @@ export function LocationsDirectoryScreen() {
           onChangeText={setQuery}
           // Same words as Home's search and this field's name. The old 31-character hint wrapped at 200% font
           // and the fixed-height field clipped it; Android's TextInput cannot ellipsize a placeholder.
-          placeholder="Search destinations"
+          placeholder={t('directory.searchPlaceholder')}
           style={[styles.searchInput, query.length > 0 && styles.searchInputWithClear]}
-          accessibilityLabel="Search destinations"
+          accessibilityLabel={t('directory.searchPlaceholder')}
           autoCorrect={false}
         />
         {query.length > 0 && (
@@ -393,7 +411,7 @@ export function LocationsDirectoryScreen() {
             style={styles.clearButton}
             onPress={() => setQuery('')}
             accessibilityRole="button"
-            accessibilityLabel="Clear search"
+            accessibilityLabel={t('directory.clearSearch')}
             hitSlop={8}
           >
             <X size={18} color={staticColors.iconMuted} />
@@ -421,28 +439,28 @@ export function LocationsDirectoryScreen() {
       <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
         {unfinishedDestinationId !== null && !purpose && (
           <View style={styles.recoveryCard} accessibilityLiveRegion="polite">
-            <Text style={styles.recoveryTitle}>Your last navigation didn't finish</Text>
+            <Text style={styles.recoveryTitle}>{t('directory.recoveryTitle')}</Text>
             <Text style={styles.recoveryBody}>
               {unfinishedDestinationName
-                ? `You were heading to ${unfinishedDestinationName}. Want a new route from where you are now?`
-                : "Your last navigation didn't finish. Want a new route from where you are now?"}
+                ? t('directory.recoveryBodyNamed', { name: unfinishedDestinationName })
+                : t('directory.recoveryBodyGeneric')}
             </Text>
             <View style={styles.recoveryActions}>
               <Pressable
                 style={[styles.recoveryButton, styles.recoveryPrimary]}
                 onPress={handleGetNewRoute}
                 accessibilityRole="button"
-                accessibilityLabel="Get new route"
+                accessibilityLabel={t('directory.getNewRoute')}
               >
-                <Text style={styles.recoveryPrimaryLabel}>Get new route</Text>
+                <Text style={styles.recoveryPrimaryLabel}>{t('directory.getNewRoute')}</Text>
               </Pressable>
               <Pressable
                 style={styles.recoveryButton}
                 onPress={clearUnfinishedJourney}
                 accessibilityRole="button"
-                accessibilityLabel="Dismiss"
+                accessibilityLabel={t('directory.dismiss')}
               >
-                <Text style={styles.recoverySecondaryLabel}>Dismiss</Text>
+                <Text style={styles.recoverySecondaryLabel}>{t('directory.dismiss')}</Text>
               </Pressable>
             </View>
           </View>
@@ -455,8 +473,8 @@ export function LocationsDirectoryScreen() {
               <View style={styles.quickStarts}>
                 <StartOptionCard
                   icon={<LocateFixed size={26} color={directionsSheetColors.brand} />}
-                  title="Use my location"
-                  subtitle="Show me the way as I walk"
+                  title={t('directory.useMyLocation')}
+                  subtitle={t('directory.useMyLocationHint')}
                   onPress={() => { void handleUseMyLocation(); }}
                 />
               </View>
@@ -466,16 +484,16 @@ export function LocationsDirectoryScreen() {
                 {canUseCurrentLocation && (
                   <StartOptionCard
                     icon={<LocateFixed size={26} color={directionsSheetColors.brand} />}
-                    title="Use my location"
-                    subtitle="We pick the nearest gate for you"
+                    title={t('directory.useMyLocation')}
+                    subtitle={t('directory.nearestGateHint')}
                     onPress={() => handleQuickStart('current_location')}
                   />
                 )}
                 {canUseLastKnown && (
                   <StartOptionCard
                     icon={<MapPin size={26} color={directionsSheetColors.brand} />}
-                    title="Use earlier location"
-                    subtitle={`Saved ${formatLastKnownAge(lastKnownLocationUpdatedAt)}`}
+                    title={t('directory.useEarlierLocation')}
+                    subtitle={t('directory.savedAge', { age: formatLastKnownAge(lastKnownLocationUpdatedAt) })}
                     onPress={() => handleQuickStart('last_known')}
                   />
                 )}
@@ -484,14 +502,16 @@ export function LocationsDirectoryScreen() {
             {!activeCategory && recentPlaces.length > 0 && (
               <View style={styles.section}>
                 <View style={styles.recentHeader}>
-                  <Text style={[styles.sectionTitle, styles.recentTitle]} accessibilityRole="header">Recent</Text>
+                  <Text style={[styles.sectionTitle, styles.recentTitle, isRTL && styles.noLetterSpacing]} accessibilityRole="header">
+                    {t('directory.recent')}
+                  </Text>
                   <Pressable
                     style={styles.recentClear}
                     onPress={confirmClearRecent}
                     accessibilityRole="button"
-                    accessibilityLabel="Clear recent places"
+                    accessibilityLabel={t('directory.clearRecentLabel')}
                   >
-                    <Text style={styles.recentClearLabel}>Clear</Text>
+                    <Text style={styles.recentClearLabel}>{t('directory.clear')}</Text>
                   </Pressable>
                 </View>
                 <View style={styles.sectionRows}>
@@ -574,19 +594,19 @@ const styles = StyleSheet.create({
   },
   searchIcon: {
     position: 'absolute',
-    left: spacing.md,
+    start: spacing.md,
     zIndex: 1,
   },
   searchInput: {
-    paddingLeft: 44,
-    paddingRight: spacing.lg,
+    paddingStart: 44,
+    paddingEnd: spacing.lg,
   },
   searchInputWithClear: {
-    paddingRight: 44,
+    paddingEnd: 44,
   },
   clearButton: {
     position: 'absolute',
-    right: spacing.md,
+    end: spacing.md,
     width: 24,
     height: 24,
     alignItems: 'center',
@@ -723,6 +743,10 @@ const styles = StyleSheet.create({
     letterSpacing: 0.4,
     paddingHorizontal: spacing.xl,
     marginBottom: spacing.sm,
+  },
+  // Letter spacing pulls Urdu letters apart; they must stay joined.
+  noLetterSpacing: {
+    letterSpacing: 0,
   },
   sectionRows: {
     backgroundColor: staticColors.white,
