@@ -74,7 +74,7 @@ process.env.EXPO_PUBLIC_USE_IJTEMA_OUTSIDE_STREET_GRAPH = 'true';
 
   // Regression: outsideLegCoordinateCount must point at the actual shared
   // gate coordinate — not one node past it into the venue interior. See
-  // docs/OFFLINE_NAVIGATION_AND_ROUTING.md Phase 1.
+  // docs/NAVIGATION_AND_ROUTING.md.
   const boundaryCoordinate = route!.coordinates[route!.outsideLegCoordinateCount!];
   assert.ok(boundaryCoordinate, 'expected a coordinate at the outside/inside boundary index');
   assert.equal(boundaryCoordinate.latitude, gate05.coordinate!.lat, 'boundary coordinate must be the entry gate, not a node past it');

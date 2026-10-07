@@ -1,4 +1,4 @@
-// #133: deterministic, reviewable venue-data maintenance. Runbook: docs/DATA_MAINTENANCE.md.
+// #133: deterministic, reviewable venue-data maintenance. Runbook: docs/OFFLINE_MAP_AND_DATA.md.
 //   npm run data:check     validate sources + generated artifact + manifest (read-only; also part of `npm test`)
 //   npm run data:manifest  rewrite src/data/ijtema/DATA_MANIFEST.json (machine fields only), then review the diff
 import { createHash } from 'node:crypto';

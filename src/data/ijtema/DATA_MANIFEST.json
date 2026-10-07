@@ -4,7 +4,7 @@
     "dataVersion": "baseline-2026-10-05",
     "updatedOn": "2026-10-05",
     "editor": "Claude (maintenance tooling baseline; data content unchanged)",
-    "note": "Checksum baseline of the committed canonical venue data. Survey/GIS provenance stays in docs/DATA_GIS_AND_FIELD_REQUIREMENTS.md; street graph provenance in docs/OFFLINE_NAVIGATION_AND_ROUTING.md."
+    "note": "Checksum baseline of the committed canonical venue data. Survey/GIS and street graph provenance: docs/OFFLINE_MAP_AND_DATA.md."
   },
   "counts": {
     "gates": 18,
@@ -33,7 +33,7 @@
     "src/data/ijtema/entryPolicy.ts": "ec1380fdaad9b52fdc621fdf2ccf526396848ebd926cd836be4f2e258060ffcb",
     "src/data/ijtema/dataIssues.ts": "ae4c4d7975f3be961b056d549321614231b2c381c854eb35e09c2c2a02ecacbc",
     "src/data/ijtema/streetGraph.ts": "da7e532117d45d91639eb7ca063a1acf1a38e6338fb612bed35ae6253cc6c8be",
-    "scripts/generate-street-graph.ts": "cc3124de45b18b8f1758c749ce57f7a1dd69625a31a534a2e962f149b8135db4",
+    "scripts/generate-street-graph.ts": "047e3915ecce2a1bfd04d9aa2f44fd6424abc6ab3a372944f3ab26bf435fa854",
     "scripts/pedestrianProfile.ts": "88afb8b2c4c809015da21f50ba075b3151f2502c6cf7454c74e0b44b0b9067bc"
   }
 }

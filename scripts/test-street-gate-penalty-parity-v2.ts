@@ -29,7 +29,7 @@ assert.ok(nearerGate.coordinate && fartherGate.coordinate);
 // matching the beeline path's gatePenaltyM-driven gate selection. Before the
 // Phase 3 fix, selectStreetGraphOutsidePath ignored verification status
 // entirely and always picked the raw-nearest gate. See
-// docs/OFFLINE_NAVIGATION_AND_ROUTING.md Phase 3.
+// docs/NAVIGATION_AND_ROUTING.md.
 {
   const mixedVerification = [
     { ...nearerGate, status: 'needs_verification' as const },

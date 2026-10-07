@@ -3,9 +3,9 @@ import { readFileSync } from 'node:fs';
 
 import { resolveTapCandidate, TapCandidate } from '../src/services/TapDisambiguationService';
 
-// Production stabilization pass — P0 touch-target fix. react-native-maps dispatches one
-// onPress per native shape a tap actually hits, independently per layer (no shared
-// dispatcher). Widening touch targets to 44dp (see test-gate-touch-target-v2.ts,
+// Production stabilization pass — P0 touch-target fix. The map used to be react-native-maps (removed, #140),
+// which dispatched one onPress per native shape a tap actually hit, independently per layer (no shared
+// dispatcher); the resolver is still the one place that picks a winner when MapLibre features overlap. Widening touch targets to 44dp (see test-gate-touch-target-v2.ts,
 // test-facility-touch-target-v2.ts) increases the odds a single tap fires onPress on more
 // than one overlapping shape (e.g. a widened gate hit-area over a rasta hit-corridor).
 // TapDisambiguationService.resolveTapCandidate resolves which object wins; this script

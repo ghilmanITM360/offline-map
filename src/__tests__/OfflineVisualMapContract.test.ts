@@ -5,7 +5,7 @@
 
 // #140 (owner decision 2026-10-05): the visual map ships with the app and works with no internet. No UI copy may claim a
 // map must be downloaded or that imagery needs internet, and no download/setup screen may come back
-// (docs/OFFLINE_NAVIGATION_AND_ROUTING.md).
+// (docs/NAVIGATION_AND_ROUTING.md).
 
 import { existsSync, readdirSync, readFileSync, statSync } from 'fs';
 import { join } from 'path';

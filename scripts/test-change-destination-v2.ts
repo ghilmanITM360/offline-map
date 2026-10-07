@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 
 // Regression for "Change Destination" doesn't change destination: tapping the link used
 // to unconditionally call onClose (exiting route preview entirely) instead of letting the
-// rider pick a new destination in place — see docs/fix.md Fix 1. The fix reuses the exact
+// rider pick a new destination in place (a retired fix note). The fix reuses the exact
 // same in-sheet search pattern "Change Start" already established (SearchService.search,
 // no full-screen search overlay), adapted to the destination side, and reuses the same
 // directionsDestination state HomeScreen already writes on the very first "Directions" tap

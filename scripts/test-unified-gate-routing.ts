@@ -21,9 +21,8 @@ process.env.EXPO_PUBLIC_USE_IJTEMA_OUTSIDE_STREET_GRAPH = 'false';
 // (RoutingServiceV2) picks the gate that minimises total cost to the
 // destination. For a point at GATE_08 with a destination near the
 // GATE_14/15/16 cluster, these disagreed: banner said GATE_08, routing said
-// GATE_16 — reproduced live and documented in
-// docs/ARCHITECTURE.md as the "Gate 08 vs Gate 15/14
-// dual-implementation mismatch".
+// GATE_16 — reproduced live and recorded in the retired audit notes (repo history) as the
+// "Gate 08 vs Gate 15/14 dual-implementation mismatch".
 const gate08Coordinate = IJTEMA_GATES.find((gate) => gate.id === 'GATE_08')!.coordinate!;
 const pointAtGate08 = { latitude: gate08Coordinate.lat, longitude: gate08Coordinate.lng };
 const destinationNearEastCluster = { type: 'block' as const, blockId: 'B32' };

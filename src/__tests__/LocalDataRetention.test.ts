@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-// #145: bounded on-device retention and targeted clearing. Policy: docs/DATA_RETENTION.md.
+// #145: bounded on-device retention and targeted clearing. Policy: docs/DATA_PRIVACY_RETENTION.md.
 
 import type { Place } from '../models/types';
 import { useAppStore, waitForStoreHydration } from '../store/useAppStore';

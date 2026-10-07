@@ -6,8 +6,7 @@
 import { strict as assert } from 'node:assert';
 import { readFileSync } from 'node:fs';
 
-// Verifies the Marker-snapshot label rendering removal (docs/ARCHITECTURE.md
-// Phase 5) stuck: no layer component renders label text inside a Marker anymore, and
+// Verifies the Marker-snapshot label rendering removal (see docs/ARCHITECTURE.md) stuck: no layer component renders label text inside a Marker anymore, and
 // HomeScreen renders exactly one shared MapLabelOverlay instead.
 
 const overlay = readFileSync('src/views/components/map/MapLabelOverlay.tsx', 'utf8');

@@ -93,7 +93,7 @@ const mapContentBase = {
 assert.equal(computeMapContentInsets({ ...mapContentBase, mode: 'EXPLORE' }).bottom, 24);
 assert.equal(computeMapContentInsets({ ...mapContentBase, mode: 'PLACE_SELECTED', sheetIndex: 0 }).bottom, 120);
 // Not 736 (92% of 800): this predates the MIN_TOP_VISIBLE_MAP_FOR_ATTRIBUTION clamp
-// (ATTR-001 follow-up) that keeps the Google logo's headroom from being squeezed out —
+// (ATTR-001 follow-up) that keeps the map attribution control's headroom from being squeezed out —
 // bottom is capped at windowHeight - top - MIN_TOP_VISIBLE_MAP_FOR_ATTRIBUTION (496 here).
 // This script wasn't updated alongside MapContentInsets.test.ts's equivalent fix.
 assert.equal(computeMapContentInsets({ ...mapContentBase, mode: 'DETAILS', sheetIndex: 2 }).bottom, 496);

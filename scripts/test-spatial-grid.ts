@@ -44,7 +44,7 @@ import { SpatialGrid, haversineM } from '../src/utils/SpatialGrid';
 
 // Brute-force cross-check over a random point cloud around Karachi Ijtema,
 // at realistic street-graph density (~14k points, same order as the real
-// OSM extract validated in docs/DATA_GIS_AND_FIELD_REQUIREMENTS.md).
+// OSM extract validated in docs/OFFLINE_MAP_AND_DATA.md).
 {
   const centerLat = 24.971698;
   const centerLng = 67.006464;

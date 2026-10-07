@@ -31,7 +31,7 @@ assert(navScene.includes('blocks: mapLayers.blocks') && overlaySpec.includes("id
 assert(navScene.includes('rastas: mapLayers.rastas') && overlaySpec.includes("id: 'nav-rastas'"), 'v2 navigation must render rasta lines');
 assert(navScene.includes('specialRoutes: mapLayers.specialRoutes') && overlaySpec.includes("id: 'nav-special'"), 'v2 navigation must render special route lines');
 // Nav-mode gate labels are not map layers: HomeScreen's shared MapLabelOverlay draws them, built from
-// navOverlay.mapLayers.gates — see docs/ARCHITECTURE.md Phase 5.
+// navOverlay.mapLayers.gates — see docs/ARCHITECTURE.md.
 assert(!overlaySpec.includes('text-field'), 'nav map layers must not render gate label text (labels live in the shared MapLabelOverlay)');
 assert(homeScreen.includes('navOverlay.mapLayers.gates.map('), 'v2 navigation must render gate context via HomeScreen\'s shared mapLabelItems/MapLabelOverlay');
 assert(navOverlay.includes('graphOnlyFallbackUsed'), 'v2 navigation must expose graph-only fallback status');
@@ -42,7 +42,7 @@ assert(navOverlay.includes('graphOnlyFallbackUsed'), 'v2 navigation must expose 
 // other consumer, it's just not read by the chrome's own status banner anymore.
 assert(navChrome.includes("The map can't be shown. Directions still work."), 'v2 navigation must show a clear, user-facing basemap-unavailable message');
 
-// Phase 8 (docs/OFFLINE_NAVIGATION_AND_ROUTING.md): route.coordinates was moved
+// Phase 8 (see docs/NAVIGATION_AND_ROUTING.md): route.coordinates was moved
 // into a useMemo above the `!route` early return (Rules of Hooks), so the
 // reference is now optional-chained (`route?.coordinates`).
 assert(

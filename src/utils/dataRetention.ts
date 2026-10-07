@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-// #145 retention policy (docs/DATA_RETENTION.md). Pure functions: the clock is always passed in.
+// #145 retention policy (docs/DATA_PRIVACY_RETENTION.md). Pure functions: the clock is always passed in.
 
 export const LAST_KNOWN_LOCATION_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 export const RECENT_SEARCH_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;

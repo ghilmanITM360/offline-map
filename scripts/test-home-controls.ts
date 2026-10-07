@@ -30,7 +30,7 @@ assert(home.includes('BackHandler.addEventListener'), 'Android back should step 
 assert(!home.includes('chipsContent'), 'Home must not carry a chip row: the Directory is the one place chooser');
 // The Layers/Compass/Zoom/Recenter cluster is one bottom-anchored stack (controlStackBottom)
 // instead of a top-anchored group that had to account for banner stacking height — see
-// docs/ARCHITECTURE.md Phase 5 / test-map-controls-v2.ts for the full rationale.
+// docs/ARCHITECTURE.md / test-map-controls-v2.ts for the full rationale.
 assert(home.includes('controlStackBottom'), 'Floating controls must derive their position from the single bottom-anchored control-stack offset');
 assert(home.includes('onLayout={(e) => setTopOverlayHeight'), 'Top overlay (menu button) height must be measured, not a hardcoded guess');
 // P0-2: route preview lives inside the BottomSheetModal (LocationSheet routePreview mode) —

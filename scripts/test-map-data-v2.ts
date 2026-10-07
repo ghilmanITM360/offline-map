@@ -28,7 +28,7 @@ const BROAD_KARACHI_BOUNDS = {
 const internalPointIdPattern = /\b(?:R\d+-\d+|SPNP(?:-\d+)?|SPSP(?:-\d+)?|SPWP(?:-\d+)?|P\d+)\b/;
 const activeGateNumbers = [1, 2, 3, 4, 5, 7, 8, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22];
 const nonexistentGateNumbers = [6, 9, 10, 11];
-const outsideRoutingDoc = readFileSync(join(process.cwd(), 'docs/OFFLINE_NAVIGATION_AND_ROUTING.md'), 'utf8');
+const outsideRoutingDoc = readFileSync(join(process.cwd(), 'docs/NAVIGATION_AND_ROUTING.md'), 'utf8');
 
 const hasGraphConnection = (gate: Gate): boolean => (IJTEMA_NAVIGATION_GRAPH_V2.adjacency[gate.id] ?? []).length > 0;
 
