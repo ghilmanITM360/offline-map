@@ -10,6 +10,7 @@ import { Button } from '../common/Button';
 import { backChevron, forwardChevron } from '../common/directionalIcons';
 import { directionsSheetColors, radii } from '../../../theme';
 import { InstructionService } from '../../../services/InstructionService';
+import { useI18n } from '../../../i18n';
 
 // The Route Guide card (#307). The user reads the steps and moves through them; the app does not know where
 // they are, so nothing here may claim live movement, progress, rerouting or arrival.
@@ -31,6 +32,7 @@ export function RouteGuideCard({
   /** One plain sentence when a live attempt could not start. */
   message?: string | null;
 }) {
+  const { t } = useI18n();
   const distanceUnit = useAppStore((s) => s.settings.distanceUnit);
   // Same threshold as the Directions footer: side by side, "Previous" splits mid-word at large text on a narrow window.
   const stacked = useWindowDimensions().fontScale >= 1.5;
@@ -45,8 +47,10 @@ export function RouteGuideCard({
   return (
     <View style={styles.card}>
       <View style={styles.step} accessible accessibilityLiveRegion="polite"
-        accessibilityLabel={`Step ${stepIndex + 1} of ${steps.length}. ${step.text}${distance ? `, ${distance}` : ''}`}>
-        <Text style={styles.stepCount}>{`Step ${stepIndex + 1} of ${steps.length}`}</Text>
+        accessibilityLabel={t(distance ? 'directions.stepA11yDistance' : 'directions.stepA11y', {
+          step: stepIndex + 1, total: steps.length, text: step.text, distance: distance ?? '',
+        })}>
+        <Text style={styles.stepCount}>{t('directions.stepOf', { step: stepIndex + 1, total: steps.length })}</Text>
         <Text style={styles.stepText}>{step.text}</Text>
         {distance ? <Text style={styles.stepDistance}>{distance}</Text> : null}
       </View>
@@ -56,8 +60,8 @@ export function RouteGuideCard({
           variant="brandTint"
           fullWidth={false}
           style={styles.stepperButton}
-          label="Previous"
-          accessibilityLabel="Previous step"
+          label={t('directions.previous')}
+          accessibilityLabel={t('directions.previousStep')}
           icon={<BackIcon size={20} color={directionsSheetColors.brand} />}
           disabled={atStart}
           onPress={onPrevious}
@@ -66,8 +70,8 @@ export function RouteGuideCard({
           variant="brand"
           fullWidth={false}
           style={styles.stepperButton}
-          label="Next"
-          accessibilityLabel="Next step"
+          label={t('directions.next')}
+          accessibilityLabel={t('directions.nextStep')}
           trailingIcon={<ForwardIcon size={20} color={directionsSheetColors.brandText} />}
           disabled={atEnd}
           onPress={onNext}
@@ -75,12 +79,12 @@ export function RouteGuideCard({
       </View>
 
       <Pressable style={styles.link} onPress={onLive} disabled={liveBusy} accessibilityRole="button"
-        accessibilityLabel="Use my location to guide me">
-        <Text style={styles.linkText}>{liveBusy ? 'Finding your location…' : 'Use my location to guide me'}</Text>
+        accessibilityLabel={t('directions.useLocationToGuide')}>
+        <Text style={styles.linkText}>{liveBusy ? t('directions.findingLocation') : t('directions.useLocationToGuide')}</Text>
       </Pressable>
       {message ? <Text accessibilityLiveRegion="polite" style={styles.caption}>{message}</Text> : null}
-      <Pressable style={styles.link} onPress={onEnd} accessibilityRole="button" accessibilityLabel="End route guide">
-        <Text style={styles.endText}>End route guide</Text>
+      <Pressable style={styles.link} onPress={onEnd} accessibilityRole="button" accessibilityLabel={t('directions.endGuide')}>
+        <Text style={styles.endText}>{t('directions.endGuide')}</Text>
       </Pressable>
     </View>
   );

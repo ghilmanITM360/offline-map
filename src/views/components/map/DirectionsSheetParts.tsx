@@ -5,10 +5,11 @@
 
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { ChevronLeft, ChevronRight, RefreshCw } from 'lucide-react-native';
+import { RefreshCw } from 'lucide-react-native';
 
 import { directionsSheetColors as c } from '../../../theme';
-import { isRtl } from '../../../i18n';
+import { useI18n } from '../../../i18n';
+import { backChevron, forwardChevron } from '../common/directionalIcons';
 
 /**
  * Presentational pieces of the Get Directions sheet (#177). They hold no route, GPS or
@@ -28,14 +29,15 @@ export function DirectionsHeader({
   subtitle: string;
   onBack: () => void;
 }) {
-  const BackIcon = isRtl() ? ChevronRight : ChevronLeft;
+  const { t } = useI18n();
+  const BackIcon = backChevron();
   return (
     <View style={styles.header}>
       <Pressable
         onPress={onBack}
         style={styles.backHit}
         accessibilityRole="button"
-        accessibilityLabel="Back"
+        accessibilityLabel={t('directions.back')}
       >
         <View style={styles.backCircle}>
           <BackIcon size={24} color={c.headingText} />
@@ -86,7 +88,8 @@ export type EndpointRow = {
 
 /** The whole row is the "change" control: one tap target, one TalkBack stop, a chevron as the affordance. */
 function EndpointRowView({ row }: { row: EndpointRow }) {
-  const ForwardIcon = isRtl() ? ChevronLeft : ChevronRight;
+  const { isRTL } = useI18n();
+  const ForwardIcon = forwardChevron();
   return (
     <Pressable
       style={({ pressed }) => [styles.endpointRow, pressed && styles.actionPressed]}
@@ -96,7 +99,7 @@ function EndpointRowView({ row }: { row: EndpointRow }) {
     >
       <View style={styles.innerDisc}>{row.icon}</View>
       <View style={styles.flex}>
-        <Text style={styles.endpointLabel}>{row.label}</Text>
+        <Text style={[styles.endpointLabel, isRTL && styles.noLetterSpacing]}>{row.label}</Text>
         <Text style={styles.innerName}>{row.name}</Text>
         {row.detail ? <Text style={styles.innerDetail}>{row.detail}</Text> : null}
       </View>
@@ -123,7 +126,8 @@ export function StartOptionCard({
   loading?: boolean;
   onPress: () => void;
 }) {
-  const Chevron = isRtl() ? ChevronLeft : ChevronRight;
+  const { t } = useI18n();
+  const Chevron = forwardChevron();
   return (
     <Pressable
       style={({ pressed }) => [
@@ -135,7 +139,7 @@ export function StartOptionCard({
       disabled={disabled}
       onPress={onPress}
       accessibilityRole="button"
-      accessibilityLabel={`${title}. ${subtitle}`}
+      accessibilityLabel={t('directions.titleSubtitle', { title, subtitle })}
       accessibilityState={{ selected: !!active, disabled: !!disabled, busy: !!loading }}
     >
       <View style={[styles.optionDisc, active && styles.optionDiscActive]}>
@@ -241,6 +245,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 12,
   },
+  // Tracking pulls Urdu letters apart (they join), so the spaced-out label style is for Latin text only.
+  noLetterSpacing: { letterSpacing: 0 },
   rowDivider: { height: StyleSheet.hairlineWidth, backgroundColor: c.cardBorder },
   actionText: { fontSize: 15, fontWeight: '800', color: c.brand, flexShrink: 1 },
 

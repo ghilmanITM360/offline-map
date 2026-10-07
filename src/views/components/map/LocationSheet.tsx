@@ -53,12 +53,14 @@ import { directionsSheetColors, radii, staticColors } from '../../../theme';
 import { placeCategoryLabel } from '../../../utils/placeCategoryLabel';
 import { buildPlaceShareMessage } from '../../../utils/placeShare';
 import { unavailableReasonCopy } from '../../../utils/unavailableReasonCopy';
-import { OUTSIDE_GUIDE_SCOPE, ROUTE_NOT_FOUND, SAME_PLACE, outsideGuideHeadline } from '../../../utils/routeCopy';
 import { DirectionsHeader, RouteEndpointRows } from './DirectionsSheetParts';
 import { publishDirectionsFooter, useDirectionsFooterHeight } from './DirectionsSheetFooter';
 import { OutsideRouteStatusCard } from '../navigation/OutsideRouteStatusCard';
 import type { NormalizedOutsideCandidate } from '../../../models/outsideRouting';
 import { liveBlockerMessage } from '../../../services/LocationCapability';
+import type { StartActionKind } from '../../../services/LocationNavigationCapability';
+import { useI18n, type MessageKey } from '../../../i18n';
+import { localizeVenueName } from '../../../i18n/venueNames';
 import { RouteGuideCard } from './RouteGuideCard';
 import { publishDirectionsPeek } from './DirectionsPeekHandle';
 
@@ -68,18 +70,30 @@ declare const __DEV__: boolean;
  * id-prefix signal FacilityLayer.tsx already uses to pick an icon (LM_FOOD_*, LM_WATER_*,
  * ...), just spelled out as a label instead of an icon. Not fabricated: same source data,
  * same categorization already relied on elsewhere. */
-function facilityTypeLabel(place: Place): string | null {
-  if (place.category === 'Masjid') return 'Masjid';
+function facilityTypeLabel(place: Place, t: (key: MessageKey) => string): string | null {
+  if (place.category === 'Masjid') return t('place.typeMasjid');
   if (place.category !== 'Landmark') return null;
-  if (place.id.startsWith('LM_FOOD')) return 'Food & refreshments point';
-  if (place.id.startsWith('LM_WATER')) return 'Water point';
-  if (place.id.startsWith('LM_MEDICAL')) return 'Medical point';
-  if (place.id.startsWith('LM_PARKING')) return 'Parking area';
-  if (place.id.startsWith('LM_BUS')) return 'Bus point';
-  if (place.id.startsWith('LM_LOST_FOUND')) return 'Lost & found point';
-  if (place.id.startsWith('LM_VOLUNTEER')) return 'Volunteer help point';
-  return 'Landmark';
+  if (place.id.startsWith('LM_FOOD')) return t('place.typeFood');
+  if (place.id.startsWith('LM_WATER')) return t('place.typeWater');
+  if (place.id.startsWith('LM_MEDICAL')) return t('place.typeMedical');
+  if (place.id.startsWith('LM_PARKING')) return t('place.typeParking');
+  if (place.id.startsWith('LM_BUS')) return t('place.typeBus');
+  if (place.id.startsWith('LM_LOST_FOUND')) return t('place.typeLostFound');
+  if (place.id.startsWith('LM_VOLUNTEER')) return t('place.typeVolunteer');
+  return t('place.typeLandmark');
 }
+
+/** The sheet owns what a start action says: the service only decides which kind of action it is. */
+const PRIMARY_LABEL: Record<StartActionKind, MessageKey> = {
+  start: 'directions.startNavigation',
+  use_location: 'directions.useMyLocationStart',
+  turn_on_location: 'directions.turnOnLocationStart',
+  precise_location: 'directions.turnOnPrecise',
+  route_guide: 'directions.startRoute',
+};
+
+/** A member-masjid gate is shown as the plain gate name, in the app language. */
+const gateName = (name: string) => localizeVenueName(name.replace(/^Member Masjid Gate /, 'Gate '));
 
 type RoutePreviewWithV2Meta = RoutePreview & {
   outsideRoute?: NormalizedOutsideCandidate;
@@ -200,9 +214,9 @@ function FadeContent({ transitionKey, children }: { transitionKey: string; child
 }
 
 /** Hint under the start name; a resolved start needs none (its name already says it). */
-function startSourceHelper(source: StartSource, unresolved: boolean): string | undefined {
+function startSourceHelper(source: StartSource, unresolved: boolean, t: (key: MessageKey) => string): string | undefined {
   if (unresolved) return undefined; // the row's own name ("Choose where to start") already asks
-  return source === 'device_last_known' || source === 'remembered_location' ? 'Saved earlier' : undefined;
+  return source === 'device_last_known' || source === 'remembered_location' ? t('directions.savedEarlier') : undefined;
 }
 
 function RoutePreviewSection({
@@ -233,6 +247,7 @@ function RoutePreviewSection({
   onChangeDestination?: (place: Place) => void;
   onOpenDirectory?: (purpose: DirectoryPurpose) => void;
 }) {
+  const { t } = useI18n();
   const { fontScale } = useWindowDimensions();
   const footerHeight = useDirectionsFooterHeight();
   const insets = useSafeAreaInsets();
@@ -318,20 +333,21 @@ function RoutePreviewSection({
   // Everything below renders from the one journey state, never from coordinates, distances or provider names.
   const journeyState = selectJourneyPresentationState({ loadState, startSource, route: routeMeta });
   const outsideGuide = outsideGuideSummary(routeMeta as Parameters<typeof outsideGuideSummary>[0]);
-  const entryGateName = routeMeta?.startResolution?.gate?.name?.en ?? null;
+  const rawEntryGateName = routeMeta?.startResolution?.gate?.name?.en;
+  const entryGateName = rawEntryGateName ? localizeVenueName(rawEntryGateName) : null;
   const routeDistance = route ? InstructionService.formatDistance(route.totalDistance, distanceUnit) : null;
   const routeEta = route ? InstructionService.formatDuration(route.estimatedTimeMin) : null;
   const routeStatusMessage = outsideStart
-    ? `${startSourceSupportingCopy} We'll take you to the nearest open gate first.`
+    ? `${startSourceSupportingCopy} ${t('directions.nearestGateFirst')}`
     : startSourceSupportingCopy;
 
   // Only what the FROM/TO rows don't already say: which gate the route enters through, or that the start was snapped.
   const routeEntrySummary = journeyState === 'OUTSIDE_VENUE_GUIDE'
     ? null // the headline already says which gate
     : entryGateName
-    ? `Go in through ${entryGateName}`
+    ? t('directions.goInThrough', { gate: entryGateName })
     : routeMeta?.startResolution?.startType === 'internal_snap'
-    ? 'Starting from the closest path.'
+    ? t('directions.closestPath')
     : null;
 
   const showRouteReady = isJourneyStartable(journeyState);
@@ -365,13 +381,13 @@ function RoutePreviewSection({
     if (isJourneyStartable(journeyState) && route) {
       AccessibilityInfo.announceForAccessibility(
         directGuide
-          ? `${outsideGuideHeadline(guideGateName ?? 'the gate')}. ${OUTSIDE_GUIDE_SCOPE}`
-          : ['Route ready', routeEntrySummary, routeDistance].filter(Boolean).join('. ') + '.',
+          ? t('directions.guideAnnounce', { headline: outsideHeadline, scope: t('directions.guideScope') })
+          : [t('directions.routeReady'), routeEntrySummary, routeDistance].filter(Boolean).join(`${t('directions.stop')} `) + t('directions.stop'),
       );
     } else if (loadState === 'error' && errorMessage) {
       AccessibilityInfo.announceForAccessibility(errorMessage);
     } else if (loadState === 'same_place') {
-      AccessibilityInfo.announceForAccessibility(SAME_PLACE);
+      AccessibilityInfo.announceForAccessibility(t('directions.samePlace'));
     }
   }, [loadState]);
 
@@ -379,29 +395,35 @@ function RoutePreviewSection({
   // Past ~150% font the pinned footer would eat the sheet: it keeps only the action (and its
   // disabled reason) and the summary/caption scroll with the content instead.
   const compactFooter = fontScale >= 1.5;
+  const keyboardBehavior = Platform.OS === 'ios' ? 'padding' : undefined;
+  const hintVariant = outsideStart ? 'warning' : 'neutral';
+  const gateVariant = (selected: boolean) => (selected ? 'brandTint' : 'outline');
 
   // One TalkBack stop ("Route ready, 13 min, 1.1 km") instead of three that Android sorts apart.
   const guideGateName = outsideGuide
-    ? entryGateName ?? V2PlaceAdapter.getPlaceById(outsideGuide.gateId)?.name ?? outsideGuide.gateId.replace('GATE_', 'Gate ')
+    ? entryGateName ?? localizeVenueName(V2PlaceAdapter.getPlaceById(outsideGuide.gateId)?.name ?? outsideGuide.gateId.replace('GATE_', 'Gate '))
     : null;
-  const guideDistance = outsideGuide ? `${InstructionService.formatDistance(outsideGuide.straightLineDistanceM, distanceUnit)} in a straight line` : null;
+  const outsideHeadline = t('directions.getToGate', { gate: guideGateName ?? t('directions.theGate') });
+  const guideDistance = outsideGuide
+    ? t('directions.straightLine', { distance: InstructionService.formatDistance(outsideGuide.straightLineDistanceM, distanceUnit) })
+    : null;
   const readyHeadline = directGuide
-    ? outsideGuideHeadline(guideGateName ?? 'the gate')
-    : startAction?.kind === 'start' ? 'Ready to go' : 'Route ready';
+    ? outsideHeadline
+    : startAction?.kind === 'start' ? t('directions.readyToGo') : t('directions.routeReady');
   const routeSummaryLabel = directGuide
-    ? `${readyHeadline}, ${guideDistance}. ${OUTSIDE_GUIDE_SCOPE}`
+    ? t('directions.guideSummary', { headline: readyHeadline, distance: guideDistance ?? '', scope: t('directions.guideScope') })
     : [
         readyHeadline,
         outsideRoute?.durationSeconds !== null ? routeEta : null,
         routeDistance,
-      ].filter(Boolean).join(', ');
+      ].filter(Boolean).join(`${t('directions.comma')} `);
   const routeSummary = showRouteReady ? (
     <View style={styles.summary} accessible accessibilityLabel={routeSummaryLabel}>
       <Text style={styles.summaryLabel}>{readyHeadline}</Text>
       {directGuide ? (
         <>
           <Text style={styles.routeHeroDistance}>{guideDistance}</Text>
-          <Text style={styles.statusText}>{OUTSIDE_GUIDE_SCOPE}</Text>
+          <Text style={styles.statusText}>{t('directions.guideScope')}</Text>
         </>
       ) : (
         <View style={styles.routeHeroRow}>
@@ -414,16 +436,19 @@ function RoutePreviewSection({
     </View>
   ) : null;
   // At large text the pinned footer keeps only the primary action: this link scrolls with the body instead (#326).
-  const secondaryLink = startAction?.secondaryLabel ? (
+  const secondaryLabel = startAction?.secondaryLabel
+    ? t(isRouteGuideStart ? 'directions.useLocationToGuide' : 'directions.viewRoute')
+    : null;
+  const secondaryLink = secondaryLabel ? (
     <Pressable
       style={styles.linkButton}
       onPress={isRouteGuideStart ? () => void runStartAction(() => startNowRef.current()) : onViewRoute}
       disabled={isRouteGuideStart && startAttempt === 'working'}
       accessibilityRole="button"
-      accessibilityLabel={startAction.secondaryLabel}
+      accessibilityLabel={secondaryLabel}
     >
       <Text style={styles.linkButtonText}>
-        {isRouteGuideStart && startAttempt === 'working' ? 'Finding your location…' : startAction.secondaryLabel}
+        {isRouteGuideStart && startAttempt === 'working' ? t('directions.findingLocation') : secondaryLabel}
       </Text>
     </Pressable>
   ) : null;
@@ -491,7 +516,7 @@ function RoutePreviewSection({
               <View accessibilityLiveRegion="polite" style={styles.footerStatus}>
                 <View style={styles.statusRow}>
                   <RefreshCw size={18} color={directionsSheetColors.brand} />
-                  <Text style={styles.statusTitle}>Finding your route…</Text>
+                  <Text style={styles.statusTitle}>{t('directions.findingRoute')}</Text>
                 </View>
                 <Text style={styles.statusText}>{routeStatusMessage}</Text>
               </View>
@@ -504,7 +529,7 @@ function RoutePreviewSection({
                 // change of destination instead (no route is invented).
                 <Button
                   variant="brandTint"
-                  label="Choose another destination"
+                  label={t('directions.chooseAnotherDestination')}
                   onPress={onChangeDestination && onOpenDirectory ? () => onOpenDirectory('destination') : onClose}
                 />
               ) : (
@@ -512,19 +537,19 @@ function RoutePreviewSection({
                   <Button
                     variant="brand"
                     icon={<RefreshCw size={18} color={directionsSheetColors.brandText} />}
-                    label="Try again"
+                    label={t('directions.tryAgain')}
                     onPress={retryRoute}
                   />
-                  <Button variant="outline" label="Change start" onPress={handleChangeStart} />
+                  <Button variant="outline" label={t('directions.changeStart')} onPress={handleChangeStart} />
                 </>
               ))}
 
-            {showNeedsStart && <Button variant="brand" label="Choose start" onPress={handleChangeStart} />}
+            {showNeedsStart && <Button variant="brand" label={t('directions.chooseStart')} onPress={handleChangeStart} />}
 
             {showSamePlace && (
               <Button
                 variant="brand"
-                label="Choose another place"
+                label={t('directions.chooseAnotherPlace')}
                 onPress={onChangeDestination && onOpenDirectory ? () => onOpenDirectory('destination') : onClose}
               />
             )}
@@ -537,16 +562,19 @@ function RoutePreviewSection({
                   style={styles.cta}
                   label={
                     startAttempt === 'working' && !isRouteGuideStart
-                      ? 'Finding your location…'
+                      ? t('directions.findingLocation')
                       : startAction && startAction.kind !== 'start'
-                      ? startAction.primaryLabel
+                      ? t(PRIMARY_LABEL[startAction.kind])
                       : directGuide
-                      ? 'Start walking'
-                      : 'Start Navigation'
+                      ? t('directions.startWalking')
+                      : t('directions.startNavigation')
                   }
                   accessibilityLabel={
                     !startAction && !canStartNavigation && startNavigationDisabledReason
-                      ? `${directGuide ? 'Start walking' : 'Start Navigation'}. ${startNavigationDisabledReason}`
+                      ? t('directions.actionWithReason', {
+                          action: directGuide ? t('directions.startWalking') : t('directions.startNavigation'),
+                          reason: startNavigationDisabledReason,
+                        })
                       : undefined
                   }
                   icon={
@@ -570,10 +598,10 @@ function RoutePreviewSection({
                 {startAttempt === 'failed' || startAttempt === 'settings' || startAttempt === 'services_off' ? (
                   <Text accessibilityLiveRegion="polite" style={styles.footerReason}>
                     {startAttempt === 'settings'
-                      ? 'Allow location in Settings, then try again.'
+                      ? t('directions.allowLocationSettings')
                       : startAttempt === 'services_off'
                       ? liveBlockerMessage('services_off')
-                      : "Couldn't find your location. Try again, or change your start."}
+                      : t('directions.locationNotFoundChangeStart')}
                   </Text>
                 ) : null}
                 {!startAction && !canStartNavigation && startNavigationDisabledReason ? (
@@ -592,14 +620,16 @@ function RoutePreviewSection({
   // The collapsed sheet's peek (#307): where the journey stands, so a folded sheet never goes silent.
   const guideStep = routeGuide?.steps[routeGuide.stepIndex];
   const peekText = guideStep
-    ? `Next: ${guideStep.text}${guideStep.distanceM > 0 ? ` · ${InstructionService.formatDistance(guideStep.distanceM, distanceUnit)}` : ''}`
+    ? guideStep.distanceM > 0
+      ? t('directions.peekNextDistance', { step: guideStep.text, distance: InstructionService.formatDistance(guideStep.distanceM, distanceUnit) })
+      : t('directions.peekNext', { step: guideStep.text })
     : directGuide
-    ? outsideGuideHeadline(guideGateName ?? 'the gate') // never the walking-looking total
+    ? outsideHeadline // never the walking-looking total
     : showRouteReady
     ? [outsideRoute?.durationSeconds !== null ? routeEta : null, routeDistance].filter(Boolean).join(' · ')
     : showLoading
-    ? 'Finding your route…'
-    : `Directions · ${startSourceLabel} → ${destination.name}`;
+    ? t('directions.findingRoute')
+    : t('directions.peekDirections', { from: startSourceLabel, to: localizeVenueName(destination.name) });
   useEffect(() => {
     publishDirectionsPeek({ text: peekText, collapsed: sheetCollapsed ?? false, onToggle: onToggleSheet });
   }, [peekText, sheetCollapsed, onToggleSheet]);
@@ -607,8 +637,8 @@ function RoutePreviewSection({
 
   const directionsHeader = (
     <DirectionsHeader
-      title={routeGuide ? 'Route guide' : 'Get Directions'}
-      subtitle={routeGuide ? "Your position isn't tracked. Use the steps to find your way." : 'Plan your walking route inside Ijtema'}
+      title={routeGuide ? t('directions.guideTitle') : t('directions.title')}
+      subtitle={routeGuide ? t('directions.guideSubtitle') : t('directions.subtitle')}
       onBack={onClose}
     />
   );
@@ -626,7 +656,7 @@ function RoutePreviewSection({
 
       <KeyboardAvoidingView
         style={styles.container}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={keyboardBehavior}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 12 : 0}
       >
         <BottomSheetScrollView
@@ -648,11 +678,11 @@ function RoutePreviewSection({
               liveBusy={startAttempt === 'working'}
               message={
                 startAttempt === 'settings'
-                  ? 'Allow location in Settings, then try again.'
+                  ? t('directions.allowLocationSettings')
                   : startAttempt === 'services_off'
                   ? liveBlockerMessage('services_off')
                   : startAttempt === 'failed'
-                  ? "Couldn't find your location. Try again, or keep following the steps."
+                  ? t('directions.locationNotFoundKeepSteps')
                   : null
               }
             />
@@ -662,19 +692,19 @@ function RoutePreviewSection({
           <FadeContent transitionKey={`status-${loadState}`}>
           {showError && (
             <Card variant="error" style={styles.statusCard}>
-              <Text style={[styles.statusTitle, styles.statusTitleError]}>{errorMessage || ROUTE_NOT_FOUND}</Text>
+              <Text style={[styles.statusTitle, styles.statusTitleError]}>{errorMessage || t('directions.routeNotFound')}</Text>
             </Card>
           )}
 
           {showSamePlace && (
             <Card variant="neutral" style={styles.statusCard}>
-              <Text style={styles.statusTitle}>{SAME_PLACE}</Text>
+              <Text style={styles.statusTitle}>{t('directions.samePlace')}</Text>
             </Card>
           )}
 
           {showNeedsStart && (
             <Card variant="neutral" style={styles.statusCard}>
-              <Text style={styles.statusTitle}>Where are you starting from?</Text>
+              <Text style={styles.statusTitle}>{t('directions.whereStarting')}</Text>
               {errorMessage ? <Text style={styles.statusText}>{errorMessage}</Text> : null}
             </Card>
           )}
@@ -683,28 +713,29 @@ function RoutePreviewSection({
           <FadeContent transitionKey="routeEnds">
             <RouteEndpointRows
               from={{
-                label: 'From',
+                label: t('directions.from'),
                 name: startSourceLabel,
                 detail: startSourceHelper(
                   startSource,
                   (startSource === 'live_gps' && !currentLocation) || (startSource === 'manual_place' && !manualStart),
+                  t,
                 ),
                 icon: startIcon,
-                actionAccessibilityLabel: `From ${startSourceLabel}. Change start.`,
+                actionAccessibilityLabel: t('directions.fromChange', { name: startSourceLabel }),
                 onAction: handleChangeStart,
               }}
               to={{
-                label: 'To',
-                name: destination.name,
+                label: t('directions.to'),
+                name: localizeVenueName(destination.name),
                 detail: placeCategoryLabel(destination.category),
                 icon: <MapPin size={24} color={directionsSheetColors.brand} />,
-                actionAccessibilityLabel: `To ${destination.name}. Change destination.`,
+                actionAccessibilityLabel: t('directions.toChange', { name: localizeVenueName(destination.name) }),
                 onAction: onChangeDestination && onOpenDirectory ? () => onOpenDirectory('destination') : onClose,
               }}
             >
               {(destination.verificationWarning || destination.unavailableReason) && (
                 <Card variant="warning" style={styles.statusCard}>
-                  <Text style={[styles.statusTitle, styles.statusTitleWarning]}>Heads up</Text>
+                  <Text style={[styles.statusTitle, styles.statusTitleWarning]}>{t('directions.headsUp')}</Text>
                   <Text style={styles.statusText}>
                     {destination.verificationWarning ?? unavailableReasonCopy(destination.unavailableReason)}
                   </Text>
@@ -715,15 +746,15 @@ function RoutePreviewSection({
 
           <FadeContent transitionKey={loadState}>
           {showStartHint && (
-            <Card variant={outsideStart ? 'warning' : 'neutral'} style={styles.statusCard}>
+            <Card variant={hintVariant} style={styles.statusCard}>
               <Text style={[styles.statusTitle, outsideStart && styles.statusTitleWarning]}>
-                {outsideStart ? 'Outside Ijtema' : 'Saved location'}
+                {outsideStart ? t('directions.outsideIjtema') : t('directions.savedLocation')}
               </Text>
               <Text style={styles.statusText}>
                 {routeStatusMessage}
               </Text>
               {startSource === 'live_gps' && currentRouteOriginInsideVenue === false && (
-                <Text style={styles.statusHint}>We will route to selected official gate first, then continue inside venue.</Text>
+                <Text style={styles.statusHint}>{t('directions.gateFirstThenInside')}</Text>
               )}
             </Card>
           )}
@@ -737,7 +768,7 @@ function RoutePreviewSection({
               {outsideRoute && (
                 <OutsideRouteStatusCard
                   route={outsideRoute}
-                  gateLabel={V2PlaceAdapter.getPlaceById(outsideRoute.gateId)?.name ?? outsideRoute.gateId.replace('GATE_', 'Gate ')}
+                  gateLabel={localizeVenueName(V2PlaceAdapter.getPlaceById(outsideRoute.gateId)?.name ?? outsideRoute.gateId.replace('GATE_', 'Gate '))}
                   retrying={routeRefreshing}
                   onRetry={outsideRoute.provider === 'direct-guide' ? () => void retryOutsideRoute() : undefined}
                   onChooseGate={outsideRoute.provider === 'direct-guide' ? () => setShowGateOptions(true) : undefined}
@@ -746,11 +777,11 @@ function RoutePreviewSection({
 
               {directGuide && showGateOptions && (
                 <View style={styles.gateOptions}>
-                  <Text accessibilityRole="header" style={styles.cardLabel}>Choose a gate</Text>
+                  <Text accessibilityRole="header" style={styles.cardLabel}>{t('directions.chooseGate')}</Text>
                   <Button
-                    variant={manualGateId ? 'outline' : 'brandTint'}
-                    label="Closest gate"
-                    accessibilityLabel="Use the closest gate"
+                    variant={gateVariant(!manualGateId)}
+                    label={t('directions.closestGate')}
+                    accessibilityLabel={t('directions.useClosestGate')}
                     // Selection state was previously conveyed only by variant color
                     // (secondary vs outline) — invisible to TalkBack. Same fix already
                     // applied to LayersSheet's Standard/Satellite toggle (#65).
@@ -763,9 +794,9 @@ function RoutePreviewSection({
                   {manualGateOptions.map((gate) => (
                     <Button
                       key={gate.gateId}
-                      variant={manualGateId === gate.gateId ? 'brandTint' : 'outline'}
+                      variant={gateVariant(manualGateId === gate.gateId)}
                       label={gate.label}
-                      accessibilityLabel={`Use ${gate.label}`}
+                      accessibilityLabel={t('directions.useGate', { gate: gate.label })}
                       accessibilityState={{ selected: manualGateId === gate.gateId }}
                       onPress={() => {
                         selectManualGate(gate.gateId);
@@ -781,9 +812,9 @@ function RoutePreviewSection({
                   style={styles.linkButton}
                   onPress={onCancelRoute}
                   accessibilityRole="button"
-                  accessibilityLabel="Cancel route"
+                  accessibilityLabel={t('directions.cancelRouteLabel')}
                 >
-                  <Text style={styles.cancelRouteText}>Cancel Route</Text>
+                  <Text style={styles.cancelRouteText}>{t('directions.cancelRoute')}</Text>
                 </Pressable>
               )}
             </View>
@@ -797,6 +828,7 @@ function RoutePreviewSection({
 }
 
 function PlaceSection(props: Extract<LocationSheetProps, { mode: 'preview' | 'details' }>) {
+  const { t, tn } = useI18n();
   const BackIcon = backChevron();
   const insets = useSafeAreaInsets();
   const {
@@ -818,6 +850,7 @@ function PlaceSection(props: Extract<LocationSheetProps, { mode: 'preview' | 'de
     developerModeEnabled,
   } = props;
   const isDetails = mode === 'details';
+  const starFill = isFav ? staticColors.starActive : 'none';
 
   return (
     // The sheet runs to the window bottom, behind the system navigation bar: let the last row scroll clear of it.
@@ -830,13 +863,13 @@ function PlaceSection(props: Extract<LocationSheetProps, { mode: 'preview' | 'de
               style={sheetStyles.detailsBackButton}
               hitSlop={12}
               accessibilityRole="button"
-              accessibilityLabel="Back"
+              accessibilityLabel={t('place.back')}
             >
               <BackIcon size={24} color={staticColors.iconMuted} />
             </Pressable>
           )}
           <View style={{ flex: 1 }}>
-            <Text style={[sheetStyles.placeName, { color: theme.text }]}>{place.name}</Text>
+            <Text style={[sheetStyles.placeName, { color: theme.text }]}>{localizeVenueName(place.name)}</Text>
             {place.urduName && (
               <Text style={[sheetStyles.placeUrdu, { color: theme.primary }]}>{place.urduName}</Text>
             )}
@@ -846,11 +879,11 @@ function PlaceSection(props: Extract<LocationSheetProps, { mode: 'preview' | 'de
             )}
             {place.category === 'Gate' && (
               <Text style={sheetStyles.placeRole}>
-                {place.isMajorGate ? 'Official entry / exit gate · Recommended entry point' : 'Official entry / exit gate'}
+                {place.isMajorGate ? t('place.officialGateMajor') : t('place.officialGate')}
               </Text>
             )}
-            {facilityTypeLabel(place) && (
-              <Text style={sheetStyles.placeRole}>{facilityTypeLabel(place)}</Text>
+            {facilityTypeLabel(place, t) && (
+              <Text style={sheetStyles.placeRole}>{facilityTypeLabel(place, t)}</Text>
             )}
           </View>
           {!isDetails && (
@@ -859,7 +892,7 @@ function PlaceSection(props: Extract<LocationSheetProps, { mode: 'preview' | 'de
               hitSlop={12}
               style={sheetStyles.headerCloseButton}
               accessibilityRole="button"
-              accessibilityLabel="Close"
+              accessibilityLabel={t('place.close')}
             >
               <X size={24} color={staticColors.iconMuted} />
             </Pressable>
@@ -879,13 +912,13 @@ function PlaceSection(props: Extract<LocationSheetProps, { mode: 'preview' | 'de
             {walkingTimeMin !== null && (
               <View style={sheetStyles.infoChip}>
                 <Clock size={14} color={staticColors.success} />
-                <Text style={sheetStyles.infoChipText}>{walkingTimeMin} min walk</Text>
+                <Text style={sheetStyles.infoChipText}>{t('place.walkMinutes', { minutes: walkingTimeMin })}</Text>
               </View>
             )}
             {entryPoints.length > 0 && (
               <View style={sheetStyles.infoChip}>
                 <MapPin size={14} color={staticColors.success} />
-                <Text style={sheetStyles.infoChipText}>{entryPoints.length} entrances</Text>
+                <Text style={sheetStyles.infoChipText}>{tn('place.entrances', entryPoints.length)}</Text>
               </View>
             )}
           </View>
@@ -893,14 +926,14 @@ function PlaceSection(props: Extract<LocationSheetProps, { mode: 'preview' | 'de
 
         {isDetails && place.description && (
           <View style={sheetStyles.detailsBlock}>
-            <Text style={sheetStyles.sectionLabel}>Block information</Text>
+            <Text style={sheetStyles.sectionLabel}>{t('place.blockInfo')}</Text>
             <Text style={sheetStyles.placeDesc}>{unavailableReasonCopy(place.description)}</Text>
           </View>
         )}
 
         {entryPoints.length > 0 && (
           <View style={sheetStyles.entranceSection}>
-            <Text style={sheetStyles.sectionLabel}>{isDetails ? 'Connected Rastay' : 'Entrances'}</Text>
+            <Text style={sheetStyles.sectionLabel}>{isDetails ? t('place.connectedRastay') : t('place.entrances')}</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
               {entryPoints.map((ep, idx) => (
                 <Pressable
@@ -911,7 +944,7 @@ function PlaceSection(props: Extract<LocationSheetProps, { mode: 'preview' | 'de
                   ]}
                   onPress={() => onSelectEntryIdx(idx)}
                   accessibilityRole="button"
-                  accessibilityLabel={`Entrance ${idx + 1}: ${ep.friendlyName}`}
+                  accessibilityLabel={t('place.entranceA11y', { n: idx + 1, name: localizeVenueName(ep.friendlyName) })}
                   accessibilityState={{ selected: selectedEntryIdx === idx }}
                 >
                   <Text
@@ -920,7 +953,7 @@ function PlaceSection(props: Extract<LocationSheetProps, { mode: 'preview' | 'de
                       selectedEntryIdx === idx && sheetStyles.entranceChipTextActive,
                     ]}
                   >
-                    Entrance {idx + 1}
+                    {t('place.entranceN', { n: idx + 1 })}
                   </Text>
                   <Text
                     style={[
@@ -928,7 +961,7 @@ function PlaceSection(props: Extract<LocationSheetProps, { mode: 'preview' | 'de
                       selectedEntryIdx === idx && sheetStyles.entranceChipTextActive,
                     ]}
                   >
-                    {ep.friendlyName}
+                    {localizeVenueName(ep.friendlyName)}
                   </Text>
                   <Text style={sheetStyles.entranceUrdu}>{ep.urduName}</Text>
                 </Pressable>
@@ -939,7 +972,7 @@ function PlaceSection(props: Extract<LocationSheetProps, { mode: 'preview' | 'de
 
         {blockGates.length > 0 && (
           <View style={sheetStyles.entranceSection}>
-            <Text style={sheetStyles.sectionLabel}>{isDetails ? 'Nearby Gates' : 'Member Masjid Gates'}</Text>
+            <Text style={sheetStyles.sectionLabel}>{isDetails ? t('place.nearbyGates') : t('place.memberGates')}</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
               {blockGates.map((gate) => (
                 <Pressable
@@ -947,10 +980,10 @@ function PlaceSection(props: Extract<LocationSheetProps, { mode: 'preview' | 'de
                   style={sheetStyles.gateChip}
                   onPress={() => onSelectGate(gate)}
                   accessibilityRole="button"
-                  accessibilityLabel={gate.name.replace('Member Masjid Gate ', 'Gate ')}
+                  accessibilityLabel={gateName(gate.name)}
                 >
                   {__DEV__ && developerModeEnabled && <Text style={sheetStyles.entranceNodeText}>{gate.id}</Text>}
-                  <Text style={sheetStyles.entranceChipText}>{gate.name.replace('Member Masjid Gate ', 'Gate ')}</Text>
+                  <Text style={sheetStyles.entranceChipText}>{gateName(gate.name)}</Text>
                   {gate.urduName && <Text style={sheetStyles.entranceUrdu}>{gate.urduName}</Text>}
                 </Pressable>
               ))}
@@ -960,11 +993,11 @@ function PlaceSection(props: Extract<LocationSheetProps, { mode: 'preview' | 'de
 
         {(place.category === 'Rasta' || place.category === 'SpecialRoute') && (place.connectedBlockNames?.length ?? 0) > 0 && (
           <View style={sheetStyles.entranceSection}>
-            <Text style={sheetStyles.sectionLabel}>{place.category === 'Rasta' ? 'Connected Blocks' : 'Connected Areas'}</Text>
+            <Text style={sheetStyles.sectionLabel}>{place.category === 'Rasta' ? t('place.connectedBlocks') : t('place.connectedAreas')}</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
               {place.connectedBlockNames!.map((name) => (
                 <View key={name} style={sheetStyles.entranceChip}>
-                  <Text style={sheetStyles.entranceChipText}>{name}</Text>
+                  <Text style={sheetStyles.entranceChipText}>{localizeVenueName(name)}</Text>
                 </View>
               ))}
             </ScrollView>
@@ -974,7 +1007,7 @@ function PlaceSection(props: Extract<LocationSheetProps, { mode: 'preview' | 'de
         <Button
           variant="primary"
           icon={<Navigation size={22} color={staticColors.white} />}
-          label="Directions"
+          label={t('place.directions')}
           onPress={onOpenDirections}
           style={sheetStyles.takeMeButtonWrap}
         />
@@ -985,32 +1018,36 @@ function PlaceSection(props: Extract<LocationSheetProps, { mode: 'preview' | 'de
             onPress={onToggleFavorite}
             hitSlop={8}
             accessibilityRole="button"
-            accessibilityLabel={isFav ? 'Remove from saved' : 'Save location'}
+            accessibilityLabel={isFav ? t('place.removeSaved') : t('place.saveLocation')}
             accessibilityState={{ selected: isFav }}
           >
             <Star
               size={20}
               color={isFav ? staticColors.starActive : staticColors.info}
-              fill={isFav ? staticColors.starActive : 'none'}
+              fill={starFill}
             />
-            <Text style={sheetStyles.secondaryActionText}>{isFav ? 'Saved' : 'Save'}</Text>
+            <Text style={sheetStyles.secondaryActionText}>{isFav ? t('place.saved') : t('place.save')}</Text>
           </Pressable>
           <Pressable
             style={sheetStyles.secondaryAction}
             hitSlop={8}
             accessibilityRole="button"
-            accessibilityLabel="Share location"
+            accessibilityLabel={t('place.shareLocation')}
             onPress={() => {
-              const share = buildPlaceShareMessage(place);
+              const share = buildPlaceShareMessage(place, t('place.shareHeading'));
               if (!share) {
-                Alert.alert('Place unavailable', unavailableReasonCopy(place.unavailableReason) ?? `${place.name} is not available on the map yet.`);
+                Alert.alert(
+                  t('place.unavailableTitle'),
+                  unavailableReasonCopy(place.unavailableReason) ?? t('place.notOnMapYet', { name: localizeVenueName(place.name) }),
+                );
                 return;
               }
-              Share.share({ title: share.title, message: share.message }).catch(() => Alert.alert("Can't share right now", 'Please try again.'));
+              Share.share({ title: share.title, message: share.message }, { dialogTitle: t('place.shareLocation') })
+                .catch(() => Alert.alert(t('place.shareFailedTitle'), t('place.tryAgain')));
             }}
           >
             <Share2 size={20} color={staticColors.info} />
-            <Text style={sheetStyles.secondaryActionText}>Share</Text>
+            <Text style={sheetStyles.secondaryActionText}>{t('place.share')}</Text>
           </Pressable>
           {!isDetails && (
             <Pressable
@@ -1018,10 +1055,10 @@ function PlaceSection(props: Extract<LocationSheetProps, { mode: 'preview' | 'de
               onPress={onShowDetails}
               hitSlop={8}
               accessibilityRole="button"
-              accessibilityLabel="Show details"
+              accessibilityLabel={t('place.showDetails')}
             >
               <MapPin size={20} color={staticColors.info} />
-              <Text style={sheetStyles.secondaryActionText}>Details</Text>
+              <Text style={sheetStyles.secondaryActionText}>{t('place.details')}</Text>
             </Pressable>
           )}
         </View>
@@ -1168,7 +1205,7 @@ const sheetStyles = StyleSheet.create({
     alignItems: 'flex-start',
     marginBottom: 12,
   },
-  detailsBackButton: { paddingRight: 12, paddingTop: 2 },
+  detailsBackButton: { paddingEnd: 12, paddingTop: 2 },
   placeName: { fontSize: 24, fontWeight: 'bold', color: staticColors.textPrimary },
   placeUrdu: { fontSize: 18, color: staticColors.success, marginTop: 2 },
   placeCategory: { fontSize: 14, color: staticColors.iconSubtle, marginTop: 4 },
@@ -1192,7 +1229,7 @@ const sheetStyles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 14,
     backgroundColor: staticColors.neutralSurface,
-    marginRight: 8,
+    marginEnd: 8,
     minWidth: 120,
   },
   gateChip: {
@@ -1202,7 +1239,7 @@ const sheetStyles = StyleSheet.create({
     backgroundColor: staticColors.gateChipBackground,
     borderWidth: 1,
     borderColor: staticColors.gateAccent,
-    marginRight: 8,
+    marginEnd: 8,
     minWidth: 132,
   },
   entranceChipActive: { backgroundColor: staticColors.routePreviewPill, borderWidth: 1.5, borderColor: staticColors.info },

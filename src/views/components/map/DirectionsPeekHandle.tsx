@@ -8,6 +8,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { ChevronDown, ChevronUp } from 'lucide-react-native';
 
 import { directionsSheetColors } from '../../../theme';
+import { useI18n } from '../../../i18n';
 
 /**
  * The Directions sheet's handle (#307). Folded to its lowest detent only the handle remains, which gave no hint the
@@ -40,6 +41,7 @@ export function publishDirectionsPeek(next: DirectionsPeek | null) {
 }
 
 export function DirectionsPeekHandle() {
+  const { t } = useI18n();
   const current = useSyncExternalStore(subscribe, () => peek, () => null);
   return (
     <View style={styles.wrap}>
@@ -49,7 +51,7 @@ export function DirectionsPeekHandle() {
           style={styles.row}
           onPress={current.onToggle}
           accessibilityRole="button"
-          accessibilityLabel={`${current.text}. ${current.collapsed ? 'Show' : 'Hide'} route details`}
+          accessibilityLabel={t(current.collapsed ? 'directions.peekShow' : 'directions.peekHide', { text: current.text })}
         >
           <Text style={styles.text} numberOfLines={1} ellipsizeMode="tail">{current.text}</Text>
           {current.collapsed ? (

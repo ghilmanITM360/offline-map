@@ -8,6 +8,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { X } from 'lucide-react-native';
 
 import { radii, spacing, staticColors, typography } from '../../../theme';
+import { useI18n } from '../../../i18n';
 
 interface SheetHeaderProps {
   title: string;
@@ -17,6 +18,7 @@ interface SheetHeaderProps {
 
 /** Shared sheet title row (Phase 8A task 6) — icon + title left, close button right. */
 export function SheetHeader({ title, icon, onClose }: SheetHeaderProps) {
+  const { t } = useI18n();
   return (
     <View style={styles.header}>
       <View style={styles.titleWrap}>
@@ -29,7 +31,7 @@ export function SheetHeader({ title, icon, onClose }: SheetHeaderProps) {
           onPress={onClose}
           hitSlop={12}
           accessibilityRole="button"
-          accessibilityLabel={`Close ${title}`}
+          accessibilityLabel={t('directions.closeSheet', { title })}
         >
           <X size={20} color={staticColors.iconMuted} />
         </Pressable>

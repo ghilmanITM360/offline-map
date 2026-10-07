@@ -30,8 +30,17 @@ import { RoutePointService } from '../services/RoutePointService';
 import { getRoutableOfficialGates } from '../data/ijtema/entryPolicy';
 import { createProductionOutsideRouteSource } from '../services/outsideRouting/ProductionOutsideRouteSource';
 import { OutsideRouteRequestCoordinator } from '../services/outsideRouting/OutsideRouteRequestCoordinator';
-import { formatLastKnownAge } from '../utils/formatLastKnownAge';
-import { CHOOSE_DESTINATION, CHOOSE_START, LOCATION_UNAVAILABLE, NAVIGATION_UNAVAILABLE, ROUTE_NOT_FOUND } from '../utils/routeCopy';
+import { t, tn } from '../i18n';
+import { localizeVenueName } from '../i18n/venueNames';
+
+/** "from 5 minutes ago": how old the saved location is, said in the app language. */
+function lastKnownAge(timestamp: string | null): string {
+  const ageMs = timestamp ? Date.now() - new Date(timestamp).getTime() : NaN;
+  if (!Number.isFinite(ageMs) || ageMs < 0) return t('directions.ageUnknown');
+  const minutes = Math.max(1, Math.round(ageMs / 60_000));
+  if (minutes < 60) return tn('directions.ageMinutes', minutes);
+  return tn('directions.ageHours', Math.round(minutes / 60));
+}
 
 const ROUTE_TIMEOUT_MS = 3500;
 const DIRECTIONS_RECALCULATE_ORIGIN_MOVEMENT_M = 20;
@@ -92,7 +101,7 @@ export function useDirectionsViewModel(destination: Place | null) {
   const routeTripKeyRef = useRef<string | null>(null);
   const outsideRequestCoordinatorRef = useRef(new OutsideRouteRequestCoordinator());
   routeRef.current = route;
-  const manualGateOptions = getRoutableOfficialGates().map((gate) => ({ gateId: gate.id, label: gate.name.en }));
+  const manualGateOptions = getRoutableOfficialGates().map((gate) => ({ gateId: gate.id, label: localizeVenueName(gate.name.en) }));
   const isV2Destination = Boolean(destination && destinationFromPlace(destination));
   const v2NavigationStartCheck = isV2Destination
     ? V2NavigationAdapter.canStartActiveNavigation({ route: route as any, destination })
@@ -144,7 +153,7 @@ export function useDirectionsViewModel(destination: Place | null) {
       ? EntryGateRoutingService.isInsideIjtemaArea(coordinate)
       : RoutingService.isInsideVenue(coordinate);
 
-  const rememberedLocationAgeLabel = formatLastKnownAge(lastKnownLocationUpdatedAt);
+  const rememberedLocationAgeLabel = lastKnownAge(lastKnownLocationUpdatedAt);
   const rememberedLocationAvailable = !!lastKnownLocation;
   const rememberedLocationInsideVenue = !!lastKnownLocation && isInsideVenueForDestination(lastKnownLocation);
   const currentRouteOriginInsideVenue = !!routeOriginLocation && isInsideVenueForDestination(routeOriginLocation);
@@ -185,22 +194,22 @@ export function useDirectionsViewModel(destination: Place | null) {
 
   const startSourceLabel =
     startSource === 'live_gps'
-      ? (currentLocation ? 'My current location' : 'Choose where to start')
+      ? (currentLocation ? t('directions.myCurrentLocation') : t('directions.chooseWhereToStart'))
       : startSource === 'device_last_known'
-      ? 'Earlier location'
+      ? t('directions.earlierLocation')
       : startSource === 'remembered_location'
-      ? `Earlier location (${rememberedLocationAgeLabel})`
-      : (manualStart?.name ?? 'Choose where to start');
+      ? t('directions.earlierLocationAge', { age: rememberedLocationAgeLabel })
+      : (manualStart ? localizeVenueName(manualStart.name) : t('directions.chooseWhereToStart'));
   const startSourceSupportingCopy =
     startSource === 'live_gps'
-      ? 'Using your current location.'
+      ? t('directions.usingCurrentLocation')
       : startSource === 'device_last_known'
-      ? "We can't find you right now. Showing where you were earlier."
+      ? t('directions.cantFindYouEarlier')
       : startSource === 'remembered_location'
-      ? `Using your location ${rememberedLocationAgeLabel}.`
+      ? t('directions.usingLocationAge', { age: rememberedLocationAgeLabel })
       : manualStart
-      ? `Starting from ${manualStart.name}.`
-      : 'Where are you starting from?';
+      ? t('directions.startingFrom', { name: localizeVenueName(manualStart.name) })
+      : t('directions.whereStarting');
   const isCurrentLocationStartActive = startSource === 'live_gps';
 
   // A planned/manual start only previews; live guidance needs a fresh precise fix. This turns that rule into
@@ -226,7 +235,7 @@ export function useDirectionsViewModel(destination: Place | null) {
   const calculateRoute = useCallback(async () => {
     if (!destination) {
       setLoadState('error');
-      setErrorMessage(CHOOSE_DESTINATION);
+      setErrorMessage(t('directions.chooseDestinationPrompt'));
       return;
     }
 
@@ -292,14 +301,14 @@ export function useDirectionsViewModel(destination: Place | null) {
           status: 'unavailable',
           route: null,
           instructions: [],
-          message: ROUTE_NOT_FOUND,
+          message: t('directions.routeNotFound'),
         };
       }
       if (requestHandle && !requestHandle.canCommit()) return;
 
       if (preview.status === 'disabled' || !MapFeatureFlagsService.useIjtemaV2Routing()) {
         setLoadState('error');
-        setErrorMessage(NAVIGATION_UNAVAILABLE);
+        setErrorMessage(t('directions.navigationUnavailable'));
         setRouteRefreshing(false);
         if (previousRoute) setLoadState('ready');
         else clearRoute();
@@ -310,7 +319,7 @@ export function useDirectionsViewModel(destination: Place | null) {
       if (preview.status !== 'ready' || !preview.route) {
         // A failed recalculation keeps the route on screen only for the same trip; a different start's route never stays "ready".
         setLoadState('error');
-        setErrorMessage(preview.message || ROUTE_NOT_FOUND);
+        setErrorMessage(preview.message || t('directions.routeNotFound'));
         setRouteRefreshing(false);
         if (previousRoute) setLoadState('ready');
         else clearRoute();
@@ -328,7 +337,7 @@ export function useDirectionsViewModel(destination: Place | null) {
       }
 
       const alt: RouteAlternative = {
-        label: 'Walking route',
+        label: t('directions.walkingRoute'),
         labelUr: 'پیدل راستہ',
         route: preview.route,
       };
@@ -365,7 +374,7 @@ export function useDirectionsViewModel(destination: Place | null) {
 
     if (startSource === 'live_gps' && !RoutingService.isInsideVenue(originCoord)) {
       setLoadState('needs_origin');
-      setErrorMessage('Choose a place inside Ijtema to start from.');
+      setErrorMessage(t('directions.insideIjtemaStart'));
       setRoute(null);
       setAlternatives([]);
       setInstructions([]);
@@ -375,7 +384,7 @@ export function useDirectionsViewModel(destination: Place | null) {
 
     if (startSource !== 'live_gps' && !RoutingService.isInsideVenue(originCoord)) {
       setLoadState('needs_origin');
-      setErrorMessage('Choose a place inside Ijtema to start from.');
+      setErrorMessage(t('directions.insideIjtemaStart'));
       setRoute(null);
       setAlternatives([]);
       setInstructions([]);
@@ -424,8 +433,8 @@ export function useDirectionsViewModel(destination: Place | null) {
         setLoadState('error');
         setErrorMessage(
           sameOnly
-            ? 'Start and destination are the same. Choose a different start point.'
-            : ROUTE_NOT_FOUND,
+            ? t('directions.sameStartDestination')
+            : t('directions.routeNotFound'),
         );
         setRoute(null);
         setAlternatives([]);
@@ -437,7 +446,7 @@ export function useDirectionsViewModel(destination: Place | null) {
       const generated = InstructionService.generateInstructions(best.nodes);
       if (generated.length === 0) {
         setLoadState('error');
-        setErrorMessage(ROUTE_NOT_FOUND);
+        setErrorMessage(t('directions.routeNotFound'));
         setRoute(null);
         setAlternatives([]);
         setInstructions([]);
@@ -461,11 +470,11 @@ export function useDirectionsViewModel(destination: Place | null) {
     } catch (error) {
       if ((error as Error).message === 'timeout') {
         setLoadState('error');
-        setErrorMessage('Could not calculate route. Choose a different start point.');
+        setErrorMessage(t('directions.routeTimeout'));
         return;
       }
       setLoadState('error');
-      setErrorMessage(ROUTE_NOT_FOUND);
+      setErrorMessage(t('directions.routeNotFound'));
     }
   }, [destination, isV2Destination, lastKnownLocation, manualGateId, manualStart, routeOriginLocation, setActiveRoute, setRouteAlternatives, setRouteInstructions, setSelectedRouteIndex, settings.walkingSpeed, startSource]);
 
@@ -503,13 +512,13 @@ export function useDirectionsViewModel(destination: Place | null) {
         if (!resolved.permissionState.granted && !resolved.permissionState.canAskAgain) {
           const opened = await LocationAccessService.openAppSettings();
           if (!opened) {
-            blockedMessage = 'Location is off for this app. Turn it on in Settings, then try again.';
+            blockedMessage = t('directions.locationOffForApp');
           }
         }
         setStartSource('manual_place');
         setIsEditingManualStart(true);
         setLoadState('needs_origin');
-        setErrorMessage(blockedMessage ?? resolved.message ?? `${LOCATION_UNAVAILABLE} ${CHOOSE_START}`);
+        setErrorMessage(blockedMessage ?? resolved.message ?? t('directions.locationUnavailableChoose'));
         return false;
       }
 
@@ -519,7 +528,7 @@ export function useDirectionsViewModel(destination: Place | null) {
         setStartSource('manual_place');
         setIsEditingManualStart(true);
         setLoadState('needs_origin');
-        setErrorMessage('Choose a place inside Ijtema to start from.');
+        setErrorMessage(t('directions.insideIjtemaStart'));
         return false;
       }
 
@@ -528,7 +537,7 @@ export function useDirectionsViewModel(destination: Place | null) {
       setManualStart(null);
       setErrorMessage(
         isV2Destination && !EntryGateRoutingService.isInsideIjtemaArea(resolved.coordinate)
-          ? "You're outside Ijtema. We'll guide you to the nearest gate."
+          ? t('directions.outsideGuideToGate')
           : null,
       );
       return true;
@@ -536,7 +545,7 @@ export function useDirectionsViewModel(destination: Place | null) {
       setStartSource('manual_place');
       setIsEditingManualStart(true);
       setLoadState('needs_origin');
-      setErrorMessage(`${LOCATION_UNAVAILABLE} ${CHOOSE_START}`);
+      setErrorMessage(t('directions.locationUnavailableChoose'));
       return false;
     }
   };
@@ -548,7 +557,7 @@ export function useDirectionsViewModel(destination: Place | null) {
       setStartSource('manual_place');
       setIsEditingManualStart(true);
       setLoadState('needs_origin');
-      setErrorMessage(`We don't have a saved location. ${CHOOSE_START}`);
+      setErrorMessage(t('directions.noSavedLocation'));
       return false;
     }
 
@@ -558,8 +567,8 @@ export function useDirectionsViewModel(destination: Place | null) {
     setManualStart(null);
     setErrorMessage(
       isInsideVenueForDestination(lastKnownLocation)
-        ? `Using your location ${formatLastKnownAge(lastKnownLocationUpdatedAt)}.`
-        : "You are outside Ijtema. We'll enter through nearest official gate.",
+        ? t('directions.usingLocationAge', { age: lastKnownAge(lastKnownLocationUpdatedAt) })
+        : t('directions.outsideEnterGate'),
     );
     return true;
   };
