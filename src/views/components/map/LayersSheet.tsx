@@ -11,6 +11,8 @@ import { Layers } from 'lucide-react-native';
 import { SheetHandle } from '../common/SheetHandle';
 import { SheetHeader, SHEET_CORNER_RADIUS } from '../common/SheetHeader';
 import { radii, shadows, spacing, staticColors } from '../../../theme';
+import { useI18n } from '../../../i18n';
+import { localizeVenueName } from '../../../i18n/venueNames';
 
 interface LayersSheetProps {
   visible: boolean;
@@ -62,6 +64,7 @@ export function LayersSheet({
   onToggleSpecialRoutes,
 }: LayersSheetProps) {
   const insets = useSafeAreaInsets();
+  const { t, dir } = useI18n();
 
   // Modal renders as its own native layer and already blocks touches from reaching the
   // MapView underneath — no extra interaction-lock prop needed here. The caller (HomeScreen)
@@ -69,26 +72,30 @@ export function LayersSheet({
   // belt-and-suspenders against any camera animation continuing behind the sheet.
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <Pressable style={styles.backdrop} onPress={onClose} />
-      <View style={[styles.sheet, { paddingBottom: Math.max(insets.bottom, 16) + 12 }]}>
-        <SheetHandle />
-        <SheetHeader title="Map Layers" icon={<Layers size={18} color="#202124" />} onClose={onClose} />
+      {/* A Modal is its own native root, so it does not inherit the app's layout direction. */}
+      <View style={[styles.modalRoot, { direction: dir }]}>
+        <Pressable style={styles.backdrop} onPress={onClose} />
+        <View style={[styles.sheet, { paddingBottom: Math.max(insets.bottom, 16) + 12 }]}>
+          <SheetHandle />
+          <SheetHeader title={t('map.layersTitle')} icon={<Layers size={18} color="#202124" />} onClose={onClose} />
 
-        <ScrollView bounces={false}>
-          <Text style={styles.sectionLabel}>Show on Map</Text>
-          <View style={styles.overlayGroup}>
-            <OverlayRow label="Blocks" value={showBlockPolygons} onChange={onToggleBlocks} />
-            <OverlayRow label="Gates" value={showGatesLayer} onChange={onToggleGates} />
-            <OverlayRow label="Rastas" value={showRastasLayer} onChange={onToggleRastas} />
-            <OverlayRow label="Shahr-e-Pindal" value={showSpecialRoutesLayer} onChange={onToggleSpecialRoutes} />
-          </View>
-        </ScrollView>
+          <ScrollView bounces={false}>
+            <Text style={styles.sectionLabel}>{t('map.showOnMap')}</Text>
+            <View style={styles.overlayGroup}>
+              <OverlayRow label={t('map.layerBlocks')} value={showBlockPolygons} onChange={onToggleBlocks} />
+              <OverlayRow label={t('map.layerGates')} value={showGatesLayer} onChange={onToggleGates} />
+              <OverlayRow label={t('map.layerRastas')} value={showRastasLayer} onChange={onToggleRastas} />
+              <OverlayRow label={localizeVenueName('Shahr-e-Pindal')} value={showSpecialRoutesLayer} onChange={onToggleSpecialRoutes} />
+            </View>
+          </ScrollView>
+        </View>
       </View>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
+  modalRoot: { flex: 1 },
   backdrop: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.35)',

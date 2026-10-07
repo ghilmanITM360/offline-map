@@ -11,6 +11,7 @@ import { mapControlStyles as styles } from './mapControlStyles';
 import { staticColors } from '../../../theme';
 import { CompassMode } from '../../../viewmodels/useCameraManager';
 import { useReducedMotion } from '../../../viewmodels/useReducedMotion';
+import { useI18n } from '../../../i18n';
 
 export interface MapControlsRecenter {
   /** 'active' = CameraManager is in FOLLOWING_USER mode (Google-Maps-style sustained
@@ -46,6 +47,7 @@ interface MapControlsProps {
  * spacing) — the caller only owns the stack's own absolute position (bottom/right
  * offset), not the layout of what's inside it. */
 export function MapControls({ variant, compassMode, onLayers, onCompassToggle, onZoomIn, onZoomOut, recenter }: MapControlsProps) {
+  const { t } = useI18n();
   const isHeadingFollow = compassMode === 'FOLLOW_HEADING';
 
   // Confirms the recenter tap actually resolved — the icon otherwise hard-cuts from a
@@ -79,7 +81,7 @@ export function MapControls({ variant, compassMode, onLayers, onCompassToggle, o
             onLayers?.();
           }}
           accessibilityRole="button"
-          accessibilityLabel="Map layers and filters"
+          accessibilityLabel={t('map.layersAndFilters')}
         >
           <Layers size={22} color={staticColors.iconMuted} />
         </Pressable>
@@ -90,7 +92,7 @@ export function MapControls({ variant, compassMode, onLayers, onCompassToggle, o
             style={styles.zoomButton}
             onPress={onZoomIn}
             accessibilityRole="button"
-            accessibilityLabel="Zoom in"
+            accessibilityLabel={t('map.zoomIn')}
           >
             <Plus size={22} color={staticColors.iconMuted} />
           </Pressable>
@@ -99,7 +101,7 @@ export function MapControls({ variant, compassMode, onLayers, onCompassToggle, o
             style={styles.zoomButton}
             onPress={onZoomOut}
             accessibilityRole="button"
-            accessibilityLabel="Zoom out"
+            accessibilityLabel={t('map.zoomOut')}
           >
             <Minus size={22} color={staticColors.iconMuted} />
           </Pressable>
@@ -109,7 +111,7 @@ export function MapControls({ variant, compassMode, onLayers, onCompassToggle, o
         style={[styles.controlButton, moreOpen && styles.moreButtonOpen]}
         onPress={() => setMoreOpen((open) => !open)}
         accessibilityRole="button"
-        accessibilityLabel="More map controls"
+        accessibilityLabel={t('map.moreControls')}
         accessibilityState={{ expanded: moreOpen }}
       >
         {/* A fold chevron, not an X: a close glyph among the map controls reads as Cancel route or Close place. */}
@@ -120,9 +122,7 @@ export function MapControls({ variant, compassMode, onLayers, onCompassToggle, o
         onPress={onCompassToggle}
         accessibilityRole="button"
         accessibilityLabel={
-          isHeadingFollow
-            ? 'Follow direction is on. The map turns to face the way you walk. Tap to keep north at the top.'
-            : 'Follow direction is off. Tap to turn the map to face the way you are moving.'
+          isHeadingFollow ? t('map.followOn') : t('map.followOff')
         }
       >
         {/* The icon carries the state (arrow = following, compass = north-up), not only its colour. */}
@@ -140,9 +140,7 @@ export function MapControls({ variant, compassMode, onLayers, onCompassToggle, o
             onPress={recenter.onPress}
             accessibilityRole="button"
             accessibilityLabel={
-              recenter.state === 'active'
-                ? 'Following my current location. Tap to re-center.'
-                : 'Center map on my current location'
+              recenter.state === 'active' ? t('map.recenterActive') : t('map.recenter')
             }
           >
             {recenter.state === 'loading' ? (

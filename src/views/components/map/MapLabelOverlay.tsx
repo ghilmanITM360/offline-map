@@ -8,6 +8,7 @@ import { LayoutChangeEvent, Pressable, StyleSheet, Text, View, ViewStyle } from 
 import type { MapCameraHandle } from '../mapgl/MapCameraHandle';
 
 import { mapLayerStyles as styles } from './mapLayerStyles';
+import { useI18n } from '../../../i18n';
 
 export type MapLabelKind = 'gate' | 'block' | 'rasta' | 'route' | 'user';
 export type MapLabelVariant = 'full' | 'compact' | 'number';
@@ -182,6 +183,7 @@ function getLabelStyles(item: MapLabelItem): { container: ViewStyle[]; text: any
  */
 export const MapLabelOverlay = React.forwardRef<MapLabelOverlayHandle, MapLabelOverlayProps>(
   function MapLabelOverlay({ mapRef, items, disableTouch, edgeInsets }, ref) {
+    const { isRTL } = useI18n();
     const [containerSize, setContainerSize] = useState<Size>({ width: 0, height: 0 });
     const [points, setPoints] = useState<Record<string, { x: number; y: number }>>({});
     const [measuredSizes, setMeasuredSizes] = useState<Record<string, Size>>({});
@@ -292,7 +294,7 @@ export const MapLabelOverlay = React.forwardRef<MapLabelOverlayHandle, MapLabelO
           }
 
           const labelStyles = getLabelStyles(item);
-          const spokenLabel = item.accessibilityLabel ?? (item.secondaryText ? `${item.text}, ${item.secondaryText}` : item.text);
+          const spokenLabel = item.accessibilityLabel ?? (item.secondaryText ? `${item.text}${isRTL ? '، ' : ', '}${item.secondaryText}` : item.text);
           const content = (
             <View style={labelStyles.container} onLayout={(e) => handleItemLayout(item.id, e)}>
               <Text style={labelStyles.text}>{item.text}</Text>
@@ -300,6 +302,7 @@ export const MapLabelOverlay = React.forwardRef<MapLabelOverlayHandle, MapLabelO
             </View>
           );
 
+          // Physical left/top on purpose: this is a projected map point (geography), not UI layout, so it never mirrors.
           const wrapperStyle = {
             position: 'absolute' as const,
             left: point.x - size.width / 2,

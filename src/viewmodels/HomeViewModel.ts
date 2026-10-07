@@ -17,14 +17,30 @@ import { EntryGateRoutingService } from '../services/EntryGateRoutingService';
 import { MapFeatureFlagsService } from '../services/MapFeatureFlagsService';
 import { IJTEMA_MAP_REGION } from '../data/ijtema';
 import { DEFAULT_MAP_ZOOM as DEFAULT_HOME_MAP_ZOOM, estimateZoomFromRegion } from '../utils/mapZoom';
-import { formatLastKnownAge } from '../utils/formatLastKnownAge';
-import { unavailableReasonCopy } from '../utils/unavailableReasonCopy';
+import { t, tn } from '../i18n';
+import { localizeVenueName } from '../i18n/venueNames';
+import type { LocationResolveResult } from '../services/LocationAccessService';
 import { useCameraManager, CompassMode } from './useCameraManager';
 
 // The sheet starts springing in as the camera ease is finishing, not after it, so selection feels like one motion.
 const SHEET_OVERLAP_FRACTION = 0.6;
 
 declare const __DEV__: boolean;
+
+/** "from 5 minutes ago" as a phrase that slots into the sentence around it (word order differs per language). */
+function lastKnownAgePhrase(timestamp: string | null): string {
+  const ageMs = timestamp ? Date.now() - new Date(timestamp).getTime() : NaN;
+  if (!Number.isFinite(ageMs) || ageMs < 0) return t('map.ageUnknown');
+  const minutes = Math.max(1, Math.round(ageMs / 60_000));
+  return minutes < 60 ? tn('map.ageMinutes', minutes) : tn('map.ageHours', Math.round(minutes / 60));
+}
+
+/** Why a location could not be found, in the chosen language. Chosen from the structured result, not the service's English text. */
+function locationFailureMessage({ permissionState }: Pick<LocationResolveResult, 'permissionState'>): string {
+  if (!permissionState.granted) return permissionState.canAskAgain ? t('map.locationAllow') : t('map.locationOffForApp');
+  if (permissionState.servicesState === 'disabled') return t('map.locationPhoneOff');
+  return t('map.cantFindYouBody');
+}
 
 function getHomeVenueStatus(coord: { latitude: number; longitude: number }): { insideVenue: boolean; insideBlock: string | null } {
   return MapFeatureFlagsService.useIjtemaV2Map()
@@ -176,7 +192,11 @@ export function useHomeViewModel({ isFocused = true }: { isFocused?: boolean } =
     if (!place.coordinate) {
       // Nothing for the camera to pan to — open the sheet right away so the
       // "place unavailable" info/alert isn't itself delayed.
-      Alert.alert('Place unavailable', unavailableReasonCopy(place.unavailableReason) ?? `${place.name} is not available on the map yet.`);
+      const name = localizeVenueName(place.name);
+      Alert.alert(
+        t('map.placeUnavailableTitle'),
+        place.unavailableReason ? t('map.placeNotReady', { name }) : t('map.placeUnavailableBody', { name }),
+      );
       openSheet();
       return;
     }
@@ -236,16 +256,13 @@ export function useHomeViewModel({ isFocused = true }: { isFocused?: boolean } =
         });
         const centered = recenterTo(resolved.coordinate);
         if (!centered) {
-          Alert.alert('Map is loading', 'Tap the location button again in a moment.');
+          Alert.alert(t('map.mapLoadingTitle'), t('map.mapLoadingBody'));
         }
 
         if (!isInsideHomeVenue(resolved.coordinate)) {
-          Alert.alert(
-            'You are outside Ijtema',
-            "We'll take you to the nearest gate when you ask for directions.",
-          );
+          Alert.alert(t('map.outsideTitle'), t('map.outsideBody'));
         } else if (resolved.source === 'device_last_known') {
-          Alert.alert('Showing where you were earlier', resolved.message ?? "We can't find you right now. The map shows where you were earlier.");
+          Alert.alert(t('map.earlierTitle'), t('map.earlierMessage'));
         }
         return centered;
       }
@@ -254,20 +271,20 @@ export function useHomeViewModel({ isFocused = true }: { isFocused?: boolean } =
         && (MapFeatureFlagsService.useIjtemaV2Map() || isInsideHomeVenue(lastKnownLocation));
       const actions = [
         {
-          text: 'Choose where to start',
+          text: t('map.chooseStartTitle'),
           style: 'default' as const,
           onPress: () => {
-            Alert.alert('Choose where to start', 'Tap a place, tap Directions, then tap the From row.');
+            Alert.alert(t('map.chooseStartTitle'), t('map.chooseStartBody'));
           },
         },
         ...(!resolved.permissionState.canAskAgain && !resolved.permissionState.granted
           ? [{
-              text: 'Open Settings',
+              text: t('map.openSettings'),
               onPress: () => {
                 void (async () => {
                   const opened = await LocationAccessService.openAppSettings();
                   if (!opened) {
-                    Alert.alert("Can't open Settings", "Open your phone's Settings and allow location for this app.");
+                    Alert.alert(t('map.cantOpenSettingsTitle'), t('map.cantOpenSettingsBody'));
                   }
                 })();
               },
@@ -275,33 +292,29 @@ export function useHomeViewModel({ isFocused = true }: { isFocused?: boolean } =
           : []),
         ...(canUseRemembered
           ? [{
-              text: 'Use earlier location',
+              text: t('map.useEarlierLocation'),
               onPress: () => {
                 setCurrentLocation(lastKnownLocation, 'remembered');
                 const centered = recenterTo(lastKnownLocation);
                 if (!centered) {
-                  Alert.alert('Map is loading', 'Tap the location button again in a moment.');
+                  Alert.alert(t('map.mapLoadingTitle'), t('map.mapLoadingBody'));
                   return;
                 }
                 if (!isInsideHomeVenue(lastKnownLocation)) {
                   Alert.alert(
-                    'Showing where you were earlier',
-                    `Showing your location ${formatLastKnownAge(lastKnownLocationUpdatedAt)}. We'll take you to the nearest gate when you ask for directions.`,
+                    t('map.earlierTitle'),
+                    t('map.earlierShownOutside', { age: lastKnownAgePhrase(lastKnownLocationUpdatedAt) }),
                   );
                   return;
                 }
-                Alert.alert('Showing where you were earlier', `Showing your location ${formatLastKnownAge(lastKnownLocationUpdatedAt)}.`);
+                Alert.alert(t('map.earlierTitle'), t('map.earlierShown', { age: lastKnownAgePhrase(lastKnownLocationUpdatedAt) }));
               },
             }]
           : []),
-        { text: 'OK', style: 'cancel' as const },
+        { text: t('map.ok'), style: 'cancel' as const },
       ];
 
-      Alert.alert(
-        "We can't find you",
-        resolved.message ?? "Choose where you're starting from in Directions.",
-        actions,
-      );
+      Alert.alert(t('map.cantFindYouTitle'), locationFailureMessage(resolved), actions);
       devLogControl('recenter', 'location_unavailable', {
         message: resolved.message ?? 'unavailable',
         canAskAgain: resolved.permissionState.canAskAgain,
@@ -310,7 +323,7 @@ export function useHomeViewModel({ isFocused = true }: { isFocused?: boolean } =
       return false;
     } catch {
       devLogControl('recenter', 'location_error');
-      Alert.alert("We can't find you", 'Please try again.');
+      Alert.alert(t('map.cantFindYouTitle'), t('map.tryAgainBody'));
       return false;
     }
   }, [cameraManager, lastKnownLocation, lastKnownLocationUpdatedAt, setCurrentLocation, setHasLocationPermission, setLocationPermissionPrecision, setSnappedLocation]);

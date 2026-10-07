@@ -9,6 +9,7 @@ import { MoreVertical } from 'lucide-react-native';
 import { useTheme } from '../../../services/useTheme';
 import { backChevron } from '../common/directionalIcons';
 import { shadows } from '../../../theme';
+import { useI18n } from '../../../i18n';
 
 /**
  * The Map's lightweight contextual top bar (#307): a way back to the Directory (the one place chooser), what the
@@ -25,6 +26,7 @@ export function MapTopBar({
   onMore: () => void;
 }) {
   const theme = useTheme();
+  const { t } = useI18n();
   const BackIcon = backChevron();
   return (
     <View style={styles.row} pointerEvents="box-none">
@@ -32,11 +34,11 @@ export function MapTopBar({
         onPress={onPlaces}
         style={[styles.pill, { backgroundColor: theme.searchBar }]}
         accessibilityRole="button"
-        accessibilityLabel="Places"
-        accessibilityHint="Back to the list of places"
+        accessibilityLabel={t('map.places')}
+        accessibilityHint={t('map.placesHint')}
       >
         <BackIcon size={22} color={theme.subtext} />
-        <Text style={[styles.pillText, { color: theme.text }]}>Places</Text>
+        <Text style={[styles.pillText, { color: theme.text }]}>{t('map.places')}</Text>
       </Pressable>
       {title ? (
         // Orientation for sighted users only: the sheet below already names the place or the route, so a screen
@@ -58,7 +60,7 @@ export function MapTopBar({
         onPress={onMore}
         style={[styles.menu, { backgroundColor: theme.searchBar }]}
         accessibilityRole="button"
-        accessibilityLabel="Open menu"
+        accessibilityLabel={t('map.openMenu')}
       >
         <MoreVertical size={24} color={theme.subtext} />
       </Pressable>
@@ -79,8 +81,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     minHeight: 48,
     minWidth: 48,
-    paddingLeft: 10,
-    paddingRight: 16,
+    paddingStart: 10,
+    paddingEnd: 16,
     borderRadius: 26,
     gap: 2,
     ...shadows.medium,

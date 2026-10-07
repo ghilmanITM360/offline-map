@@ -8,6 +8,7 @@ import { AccessibilityInfo, Animated, StyleSheet, Text } from 'react-native';
 
 import { staticColors } from '../../../theme';
 import { useReducedMotion } from '../../../viewmodels/useReducedMotion';
+import { useI18n } from '../../../i18n';
 
 const AUTO_DISMISS_MS = 3200;
 const FADE_MS = 220;
@@ -25,12 +26,13 @@ interface LocationTutorialTooltipProps {
 export function LocationTutorialTooltip({ onDismiss, bottomOffset }: LocationTutorialTooltipProps) {
   const opacity = useRef(new Animated.Value(0)).current;
   const reducedMotion = useReducedMotion();
+  const { t } = useI18n();
 
   // Same one-shot pattern as NavigationChromeV2's arrival announcement (#64): the tooltip
   // is pointerEvents="none" plain text with no focus/live-region wiring, so without this
   // TalkBack users get no signal it ever appeared.
   useEffect(() => {
-    AccessibilityInfo.announceForAccessibility("You're here. Your location is shown on the map.");
+    AccessibilityInfo.announceForAccessibility(t('map.hereAnnouncement'));
   }, []);
 
   useEffect(() => {
@@ -53,8 +55,8 @@ export function LocationTutorialTooltip({ onDismiss, bottomOffset }: LocationTut
 
   return (
     <Animated.View pointerEvents="none" style={[styles.wrap, { bottom: bottomOffset, opacity }]}>
-      <Text style={styles.title}>You're here</Text>
-      <Text style={styles.body}>Your location is shown on the map</Text>
+      <Text style={styles.title}>{t('map.hereTitle')}</Text>
+      <Text style={styles.body}>{t('map.hereBody')}</Text>
     </Animated.View>
   );
 }
@@ -62,8 +64,8 @@ export function LocationTutorialTooltip({ onDismiss, bottomOffset }: LocationTut
 const styles = StyleSheet.create({
   wrap: {
     position: 'absolute',
-    left: 16,
-    right: 16,
+    start: 16,
+    end: 16,
     backgroundColor: 'rgba(32,33,36,0.92)',
     borderRadius: 12,
     paddingVertical: 10,

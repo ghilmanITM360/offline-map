@@ -5,20 +5,24 @@
 
 import React from 'react';
 import { Linking, Pressable, StyleSheet, Text } from 'react-native';
+import { useI18n } from '../../../i18n';
 
 export const OSM_COPYRIGHT_URL = 'https://www.openstreetmap.org/copyright';
+// A legal credit (ODbL), shown exactly as required in every language: deliberately not a translated message.
+export const OSM_ATTRIBUTION_TEXT = '© OpenStreetMap contributors · ODbL';
 
 export function OsmAttribution({ visible, top }: { visible: boolean; top: number }) {
+  const { t } = useI18n();
   if (!visible) return null;
   return (
     <Pressable
       testID="osm-attribution"
       accessibilityRole="link"
-      accessibilityLabel="OpenStreetMap contributors and ODbL licence information"
+      accessibilityLabel={t('map.osmLabel')}
       onPress={() => { void Linking.openURL(OSM_COPYRIGHT_URL); }}
       style={[styles.container, { top }]}
     >
-      <Text style={styles.text}>© OpenStreetMap contributors · ODbL</Text>
+      <Text style={styles.text}>{OSM_ATTRIBUTION_TEXT}</Text>
     </Pressable>
   );
 }
@@ -26,7 +30,7 @@ export function OsmAttribution({ visible, top }: { visible: boolean; top: number
 const styles = StyleSheet.create({
   container: {
     position: 'absolute',
-    right: 8,
+    end: 8,
     zIndex: 25,
     borderRadius: 4,
     backgroundColor: 'rgba(255,255,255,0.9)',

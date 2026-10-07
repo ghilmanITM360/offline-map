@@ -38,7 +38,7 @@ import {
 import { useNavigation, useIsFocused, DrawerActions, CompositeNavigationProp } from '@react-navigation/native';
 import { DrawerNavigationProp, DrawerStatusContext } from '@react-navigation/drawer';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { getHomeRouteDiagnostics, useHomeViewModel } from '../../viewmodels/HomeViewModel';
+import { useHomeViewModel } from '../../viewmodels/HomeViewModel';
 import {
   computeMapControlsInset,
   resolveControlStackPlacement,
@@ -57,7 +57,7 @@ import { useTheme } from '../../services/useTheme';
 import { SHEET_CORNER_RADIUS } from '../components/common/SheetHeader';
 import { markerColors, markerSizes, shadows, staticColors } from '../../theme';
 import { getDistance } from 'geolib';
-import { GRAPH_VALIDATION, IJTEMA_DATA, LANDMARK_PLACES, MAP_BOUNDS } from '../../constants/data';
+import { IJTEMA_DATA, LANDMARK_PLACES, MAP_BOUNDS } from '../../constants/data';
 import { Coordinate, Place } from '../../models/types';
 import { PlaceDetailService } from '../../services/PlaceDetailService';
 import { FavoriteService } from '../../services/FavoriteService';
@@ -93,6 +93,9 @@ import { DirectionsSheetFooter } from '../components/map/DirectionsSheetFooter';
 import { resolveMapMarkerOwnership } from '../components/map/MapMarkerOwnership';
 import { LocationTutorialTooltip } from '../components/map/LocationTutorialTooltip';
 import { OsmAttribution } from '../components/map/OsmAttribution';
+import { DeveloperDiagnosticsBanner, DeveloperMapToggles } from '../components/map/DebugOverlay';
+import { useI18n } from '../../i18n';
+import { localizeVenueName } from '../../i18n/venueNames';
 import { resolveTapCandidate, TapCandidate } from '../../services/TapDisambiguationService';
 import { Z } from '../styles/zLayers';
 
@@ -150,7 +153,7 @@ function outsideRouteProvider(route: unknown): string | null {
 
 // Layers 48 + compass 48 + north-up badge + zoom pair 97 + recenter 56 + gaps; used only until onLayout measures the stack.
 const CONTROL_STACK_FALLBACK_HEIGHT = 300;
-const CONTROL_STACK_RIGHT = 12; // styles.controlStack.right
+const CONTROL_STACK_RIGHT = 12; // styles.controlStack.end
 const BANNER_CONTROL_GAP = 8;
 // Time after onMapReady at which the camera manager is told the initial region should be applied, in case the first
 // region-complete never arrives (on a loaded emulator it arrived about 6 s after onMapReady; the manager re-runs
@@ -158,6 +161,7 @@ const BANNER_CONTROL_GAP = 8;
 
 export function HomeScreen() {
   const nav = useNavigation<HomeScreenNavigationProp>();
+  const { t, locale, isRTL } = useI18n();
   // Home stays mounted under every other screen, and its bottom sheet is portal-hosted above
   // the whole navigator (App.tsx), so it would otherwise stay drawn, touchable and answering
   // hardware Back over the Directory, Settings, Help, About or an open drawer
@@ -506,9 +510,9 @@ export function HomeScreen() {
   const routeGuideOpen = useAppStore((s) => s.routeGuide !== null);
   const topBarTitle =
     mode === 'ROUTE_PREVIEW' || directionsDestination
-      ? routeGuideOpen ? 'Route guide' : 'Directions'
+      ? routeGuideOpen ? t('map.routeGuide') : t('map.directions')
       : mode === 'PLACE_SELECTED' || mode === 'DETAILS'
-      ? selectedPlace?.name ?? null
+      ? (selectedPlace ? localizeVenueName(selectedPlace.name) : null)
       : null;
 
   const startupCameraStillOwnsIntent = useCallback((requestGeneration: number, cameraIntentGeneration: number) => (
@@ -764,12 +768,19 @@ export function HomeScreen() {
   // Feeds the single shared MapLabelOverlay (see docs/ARCHITECTURE.md
   // Phase 5 for why label text moved out of Marker children). LOD text logic mirrors
   // what GateLayer computed inline before the refactor.
+  // The bilingual EN + UR badge is the English-language map: Roman Urdu stays Latin script, and Urdu already shows its own name.
+  const secondaryLabel = useCallback(
+    (name: Parameters<typeof MapLocalizationService.getSecondaryLabel>[0]) => (
+      locale === 'en' ? MapLocalizationService.getSecondaryLabel(name) : undefined
+    ),
+    [locale],
+  );
   const mapLabelItems = useMemo<MapLabelItem[]>(() => {
     if (showNavOverlay) {
       return navOverlay.mapLayers.gates.map((gate) => ({
         id: `nav_gate_${gate.id}`,
         coordinate: gate.coordinate,
-        text: gate.label.replace('Gate ', 'G'),
+        text: t('map.gateCompact', { number: gate.label.replace('Gate ', '') }),
         kind: 'gate' as const,
         navPreview: true,
         needsConnectorVerification: gate.needsConnectorVerification,
@@ -795,12 +806,12 @@ export function HomeScreen() {
       const gateNum = gate.label.replace('Gate ', '');
       const showFull = gate.isSelected || mapZoomLevel >= HIGH_ZOOM;
       const showCompact = !showFull && mapZoomLevel >= MEDIUM_ZOOM;
-      const displayLabel = showFull ? gate.label : showCompact ? `G${gateNum}` : gateNum;
+      const displayLabel = showFull ? localizeVenueName(gate.label) : showCompact ? t('map.gateCompact', { number: gateNum }) : gateNum;
       items.push({
         id: `gate_${gate.id}`,
         coordinate: gate.coordinate,
         text: displayLabel,
-        secondaryText: showFull ? MapLocalizationService.getSecondaryLabel(gate.name) : undefined,
+        secondaryText: showFull ? secondaryLabel(gate.name) : undefined,
         kind: 'gate',
         variant: showFull ? 'full' : showCompact ? 'compact' : 'number',
         isSelected: gate.isSelected,
@@ -809,7 +820,7 @@ export function HomeScreen() {
         zPriority: gate.isSelected ? 16 : gateFocused ? 14 : 12,
         // Full name even at low zoom ("12"/"G12"): this label is the gate's only accessible
         // node — GateLayer drops its Marker label whenever a label item exists.
-        accessibilityLabel: gate.label,
+        accessibilityLabel: localizeVenueName(gate.label),
         onPress: () => {
           const place = V2PlaceAdapter.getPlaceById(gate.id);
           if (!place) return;
@@ -823,8 +834,8 @@ export function HomeScreen() {
       items.push({
         id: `block_${block.id}`,
         coordinate: block.center,
-        text: block.label,
-        secondaryText: MapLocalizationService.getSecondaryLabel(block.name),
+        text: localizeVenueName(block.label),
+        secondaryText: secondaryLabel(block.name),
         kind: 'block',
         isSelected: block.isSelected,
         focused: blockFocused,
@@ -847,8 +858,8 @@ export function HomeScreen() {
         items.push({
           id: `rasta_${rasta.id}`,
           coordinate: rasta.labelCoordinate,
-          text: rasta.label,
-          secondaryText: MapLocalizationService.getSecondaryLabel(rasta.name),
+          text: localizeVenueName(rasta.label),
+          secondaryText: secondaryLabel(rasta.name),
           kind: 'rasta',
           isSelected: rasta.isSelected,
           focused: rastaFocused,
@@ -866,8 +877,8 @@ export function HomeScreen() {
         items.push({
           id: `route_${route.id}`,
           coordinate: route.labelCoordinate,
-          text: route.label,
-          secondaryText: MapLocalizationService.getSecondaryLabel(route.name),
+          text: localizeVenueName(route.label),
+          secondaryText: secondaryLabel(route.name),
           kind: 'route',
           isSelected: route.isSelected,
           focused: routeFocused,
@@ -883,6 +894,8 @@ export function HomeScreen() {
 
     return items;
   }, [
+    t,
+    secondaryLabel,
     showNavOverlay,
     navOverlay.mapLayers.gates,
     navOverlayV1.active,
@@ -927,9 +940,10 @@ export function HomeScreen() {
     // same position + destination through the ViewModel recommendation.
     return recommendPreviewEntryGate(currentLocation, selectedPlace) ?? null;
   }, [currentLocation, venueStatus.insideVenue, selectedPlace]);
-  const outsideBannerAccessibilityLabel = nearestEntryGate
-    ? `Outside Ijtema. Suggested entry through ${nearestEntryGate.name.en}. Final entry gate is confirmed when route preview is calculated.`
-    : 'Outside Ijtema. Suggested entry unavailable. Final entry gate is confirmed when route preview is calculated.';
+  const nearestEntryGateName = nearestEntryGate ? localizeVenueName(nearestEntryGate.name.en) : null;
+  const outsideBannerAccessibilityLabel = nearestEntryGateName
+    ? t('map.outsideBannerA11yWithGate', { gate: nearestEntryGateName })
+    : t('map.outsideBannerA11yNoGate');
   // The Block 2 opening view is a fallback, so the notice goes away as soon as a live location exists or the user moves on.
   const showFallbackNotice = !!fallbackNotice && !(currentLocation && currentLocationSource === 'live') && mode === 'EXPLORE';
   const topInsetBase = Math.max(insets.top, Platform.OS === 'android' ? StatusBar.currentHeight ?? 0 : 0);
@@ -1028,8 +1042,8 @@ export function HomeScreen() {
     : navOverlayV1.active
       ? navOverlayV1.bottomBarHeight
       : 0;
-  const mapLabelEdgeInsets = useMemo(
-    () => computeMapContentInsets({
+  const mapLabelEdgeInsets = useMemo(() => {
+    const insetsFromControls = computeMapContentInsets({
       mode,
       top: topOverlayHeight > 0 ? topOverlayHeight + 8 : 0,
       right: 80,
@@ -1038,9 +1052,13 @@ export function HomeScreen() {
       snapPoints: layoutSnapPoints,
       sheetIndex,
       navBarHeight: activeNavBottomBarHeight,
-    }),
-    [activeNavBottomBarHeight, insets.bottom, layoutSnapPoints, mode, sheetIndex, topOverlayHeight, windowHeight],
-  );
+    });
+    // The floating controls sit on the end edge, which is the physical left when the app is right-to-left. The map
+    // itself never mirrors; only the band that labels and the route fit keep clear of the controls follows them.
+    return isRTL
+      ? { ...insetsFromControls, left: insetsFromControls.right, right: insetsFromControls.left }
+      : insetsFromControls;
+  }, [activeNavBottomBarHeight, insets.bottom, isRTL, layoutSnapPoints, mode, sheetIndex, topOverlayHeight, windowHeight]);
   // The MapLibre camera has no native base padding, so the route fit reserves the sheet-covered band itself:
   // mapLabelEdgeInsets.bottom (the same obstruction the labels and attribution already avoid) plus a small margin.
   // Scheduled for the next rendered frame so the sheet has settled at its new snap before the fit is measured.
@@ -1051,7 +1069,7 @@ export function HomeScreen() {
       top: Math.max(mapLabelEdgeInsets.top, 90),
       right: Math.max(mapLabelEdgeInsets.right, 64),
       bottom: mapLabelEdgeInsets.bottom + ROUTE_FIT_BOTTOM_PADDING,
-      left: 64,
+      left: Math.max(mapLabelEdgeInsets.left, 64),
     });
   }, [activePreviewRoute, cameraManager, invalidateStartupCameraIntent, mapLabelEdgeInsets]);
   useEffect(() => {
@@ -1295,16 +1313,16 @@ export function HomeScreen() {
       currentLocation: state.currentLocation,
     });
     if (!startCheck.canStart) {
-      Alert.alert("Can't start yet", startCheck.message);
+      Alert.alert(t('map.cantStartTitle'), startCheck.message);
     }
-  }, [invalidateStartupCameraIntent]);
+  }, [invalidateStartupCameraIntent, t]);
 
   const handleClearPreviewRoute = useCallback(() => {
-    Alert.alert('Cancel route?', 'You will need to choose your destination again.', [
-      { text: 'Keep route', style: 'cancel' },
-      { text: 'Cancel route', style: 'destructive', onPress: () => clearRoutePlanner() },
+    Alert.alert(t('map.cancelRouteTitle'), t('map.cancelRouteBody'), [
+      { text: t('map.keepRoute'), style: 'cancel' },
+      { text: t('map.cancelRoute'), style: 'destructive', onPress: () => clearRoutePlanner() },
     ]);
-  }, [clearRoutePlanner]);
+  }, [clearRoutePlanner, t]);
 
   // The route-preview sheet closes itself after Start Navigation. Starting is not cancelling: once navigation is under
   // way the close is a no-op, so the "Cancel route?" confirmation never appears over live navigation (runtime finding).
@@ -1364,15 +1382,15 @@ export function HomeScreen() {
           {
             id: 'user_last_known',
             coordinate: rememberedLabelCoordinate,
-            text: 'earlier',
+            text: t('map.earlierCaption'),
             kind: 'user',
             zPriority: 40,
             yOffset: 26,
-            accessibilityLabel: 'Your earlier location',
+            accessibilityLabel: t('map.earlierA11y'),
           },
         ]
       : items;
-  }, [destinationPinVisible, mapLabelItems, rememberedLabelCoordinate]);
+  }, [destinationPinVisible, mapLabelItems, rememberedLabelCoordinate, t]);
 
   // MapLibre has no onMapReady: the style + archive finishing loading is the point the camera can be commanded.
   const handleMapReady = () => {
@@ -1535,10 +1553,16 @@ export function HomeScreen() {
 
   const openLayerOptions = () => setLayersSheetVisible(true);
 
+  const keyboardBehavior = Platform.OS === 'ios' ? 'padding' : 'height';
+  const mapAccessibility = mode === 'ROUTE_PREVIEW' || mode === 'NAVIGATION' || mode === 'ARRIVAL' ? 'no-hide-descendants' : 'auto';
+  const controlStackPointerEvents = controlStackHidden ? 'none' : 'auto';
+  const controlStackAccessibility = controlStackHidden ? 'no-hide-descendants' : 'auto';
+  const locationSheetMode = mode === 'DETAILS' ? 'details' : 'preview';
+
   return (
     <KeyboardAvoidingView
       style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      behavior={keyboardBehavior}
     >
       <View style={styles.container}>
         <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
@@ -1555,9 +1579,7 @@ export function HomeScreen() {
             // Route preview, navigation and arrival are exclusive workflows: the map precedes the portal-hosted
             // sheet in Android's accessibility tree, so TalkBack would walk the map before reaching the workflow.
             // Place Details keeps the map reachable because feature selection is still a valid action there.
-            importantForAccessibility={
-              mode === 'ROUTE_PREVIEW' || mode === 'NAVIGATION' || mode === 'ARRIVAL' ? 'no-hide-descendants' : 'auto'
-            }
+            importantForAccessibility={mapAccessibility}
             style={styles.map}
             archiveUri={basemapRejected ? null : basemap.uri}
             onLoadFailed={() => setBasemapRejected(true)}
@@ -1644,18 +1666,18 @@ export function HomeScreen() {
                 style={[
                   styles.mapWarningBanner,
                   styles.bannerStackItem,
-                  controlStackWidth > 0 && { marginRight: CONTROL_STACK_RIGHT + controlStackWidth + BANNER_CONTROL_GAP },
+                  controlStackWidth > 0 && { marginEnd: CONTROL_STACK_RIGHT + controlStackWidth + BANNER_CONTROL_GAP },
                 ]}
                 accessibilityLiveRegion="polite"
               >
-                <Text style={styles.mapWarningText}>{fallbackNotice}</Text>
+                <Text style={styles.mapWarningText}>{t('map.fallbackLocationNotice')}</Text>
                 <Pressable
                   onPress={() => handleOpenDirectoryFor('start')}
                   accessibilityRole="button"
-                  accessibilityLabel="Change place"
+                  accessibilityLabel={t('map.changePlace')}
                   style={styles.fallbackNoticeAction}
                 >
-                  <Text style={styles.fallbackNoticeActionText}>Change place</Text>
+                  <Text style={styles.fallbackNoticeActionText}>{t('map.changePlace')}</Text>
                 </Pressable>
               </View>
             )}
@@ -1676,16 +1698,16 @@ export function HomeScreen() {
                   accessibilityLabel={outsideBannerAccessibilityLabel}
                   style={styles.outsideVenueTextWrap}
                 >
-                  <Text style={styles.outsideVenueTitle}>Outside Ijtema</Text>
-                  <Text style={styles.outsideVenueSuggestion}>Suggested entry</Text>
+                  <Text style={styles.outsideVenueTitle}>{t('map.outsideBannerTitle')}</Text>
+                  <Text style={styles.outsideVenueSuggestion}>{t('map.suggestedEntry')}</Text>
                   <Text style={styles.outsideVenueGateText}>
-                    {nearestEntryGate?.name.en ?? 'No gate suggested yet'}
+                    {nearestEntryGateName ?? t('map.noGateSuggested')}
                   </Text>
                 </View>
                 <Pressable
                   style={styles.bannerCloseButton}
                   accessibilityRole="button"
-                  accessibilityLabel="Dismiss outside Ijtema entry suggestion"
+                  accessibilityLabel={t('map.dismissOutsideBanner')}
                   onPress={() => {
                     logHomeControl('outside_banner_close', 'dismissed');
                     setOutsideBannerDismissed(true);
@@ -1698,30 +1720,16 @@ export function HomeScreen() {
           </View>
         )}
 
-        {mode !== 'NAVIGATION' && __DEV__ && developerModeEnabled && showRouteDiagnostics && (
-          <View style={styles.diagnosticsBanner}>
-            <Text style={styles.diagnosticsText}>
-              {GRAPH_VALIDATION.isValid ? 'Graph validation: PASS' : 'Graph validation: FAIL'}
-            </Text>
-            {!GRAPH_VALIDATION.isValid && (
-              <Text style={styles.diagnosticsText} numberOfLines={2}>
-                {GRAPH_VALIDATION.errors[0]}
-              </Text>
-            )}
-            <Text style={styles.diagnosticsText} numberOfLines={1}>
-              {getHomeRouteDiagnostics().map((r) => `${r.from}->${r.to}:${r.success ? 'OK' : 'FAIL'}`).join(' | ')}
-            </Text>
-          </View>
-        )}
+        {mode !== 'NAVIGATION' && __DEV__ && developerModeEnabled && showRouteDiagnostics && <DeveloperDiagnosticsBanner />}
 
         {mode !== 'NAVIGATION' && (
           <>
             <ReanimatedView.View
               testID="map-control-stack"
               style={[styles.controlStack, controlStackStyle]}
-              pointerEvents={controlStackHidden ? 'none' : 'auto'}
+              pointerEvents={controlStackPointerEvents}
               accessibilityElementsHidden={controlStackHidden}
-              importantForAccessibility={controlStackHidden ? 'no-hide-descendants' : 'auto'}
+              importantForAccessibility={controlStackAccessibility}
               onLayout={(event) => {
                 setControlStackHeight(event.nativeEvent.layout.height);
                 setControlStackWidth(event.nativeEvent.layout.width);
@@ -1758,17 +1766,14 @@ export function HomeScreen() {
             )}
 
             {__DEV__ && developerModeEnabled && (
-              <View style={styles.debugCard}>
-                <Pressable style={styles.debugBtn} onPress={() => setShowGraphNodes(!showGraphNodes)}>
-                  <Text style={styles.debugBtnText}>Nodes {showGraphNodes ? 'ON' : 'OFF'}</Text>
-                </Pressable>
-                <Pressable style={styles.debugBtn} onPress={() => setShowRastaNames(!showRastaNames)}>
-                  <Text style={styles.debugBtnText}>Rasta Names {showRastaNames ? 'ON' : 'OFF'}</Text>
-                </Pressable>
-                <Pressable style={styles.debugBtn} onPress={() => setShowRouteDiagnostics(!showRouteDiagnostics)}>
-                  <Text style={styles.debugBtnText}>Diagnostics {showRouteDiagnostics ? 'ON' : 'OFF'}</Text>
-                </Pressable>
-              </View>
+              <DeveloperMapToggles
+                showGraphNodes={showGraphNodes}
+                onToggleGraphNodes={() => setShowGraphNodes(!showGraphNodes)}
+                showRastaNames={showRastaNames}
+                onToggleRastaNames={() => setShowRastaNames(!showRastaNames)}
+                showRouteDiagnostics={showRouteDiagnostics}
+                onToggleRouteDiagnostics={() => setShowRouteDiagnostics(!showRouteDiagnostics)}
+              />
             )}
           </>
         )}
@@ -1900,7 +1905,7 @@ export function HomeScreen() {
             />
           ) : selectedPlace ? (
             <LocationSheet
-              mode={mode === 'DETAILS' ? 'details' : 'preview'}
+              mode={locationSheetMode}
               place={selectedPlace}
               theme={theme}
               entryPoints={entryPoints}
@@ -1916,7 +1921,7 @@ export function HomeScreen() {
                   name: gate.name,
                   urduName: gate.urduName,
                   category: 'Gate',
-                  description: `${gate.name} entrance for Block 2 / Member Masjid.`,
+                  description: t('map.gateEntranceDescription', { name: localizeVenueName(gate.name) }),
                   coordinate: gate.coordinate,
                   routingNodeId: IJTEMA_DATA.nodes[gate.id]?.nearestRoadNode,
                   sourceVersion: 'v1',
@@ -1931,7 +1936,7 @@ export function HomeScreen() {
           ) : (
             <BottomSheetScrollView contentContainerStyle={styles.sheetContent}>
               <View style={styles.emptySheet}>
-                <Text style={styles.emptySheetText}>Tap a block or search to see details</Text>
+                <Text style={styles.emptySheetText}>{t('map.emptySheet')}</Text>
               </View>
             </BottomSheetScrollView>
           )}
@@ -1976,18 +1981,18 @@ const styles = StyleSheet.create({
   topOverlay: {
     position: 'absolute',
     top: 0,
-    left: 0,
-    right: 0,
+    start: 0,
+    end: 0,
     paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
     zIndex: Z.mapControls,
   },
-  navControls: { position: 'absolute', right: 16, zIndex: Z.mapControls },
+  navControls: { position: 'absolute', end: 16, zIndex: Z.mapControls },
   // Single bottom-anchored Layers/Compass/Zoom/Recenter stack (see MapControls) —
   // replaces the old separately-anchored rightControls (top) + bottomControls
   // (bottom) pair that could collide when a route-preview card shrank the gap
   // between them.
-  controlStack: { position: 'absolute', right: CONTROL_STACK_RIGHT, zIndex: Z.mapControls },
-  bannerStack: { position: 'absolute', left: 0, right: 0, zIndex: Z.mapControls },
+  controlStack: { position: 'absolute', end: CONTROL_STACK_RIGHT, zIndex: Z.mapControls },
+  bannerStack: { position: 'absolute', start: 0, end: 0, zIndex: Z.mapControls },
   bannerStackItem: { marginBottom: 8 },
   mapWarningBanner: {
     marginHorizontal: 12,
@@ -2000,12 +2005,12 @@ const styles = StyleSheet.create({
   fallbackNoticeAction: { minHeight: 44, justifyContent: 'center', alignSelf: 'flex-start' },
   fallbackNoticeActionText: { color: '#7C4A03', fontSize: 13, fontWeight: '700', textDecorationLine: 'underline' },
   outsideVenueBanner: {
-    marginLeft: 12,
-    marginRight: 76,
+    marginStart: 12,
+    marginEnd: 76,
     backgroundColor: staticColors.weakGpsBackground,
     borderRadius: 20,
-    paddingLeft: 14,
-    paddingRight: 8,
+    paddingStart: 14,
+    paddingEnd: 8,
     paddingVertical: 10,
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -2016,18 +2021,7 @@ const styles = StyleSheet.create({
   outsideVenueTitle: { color: '#FFFFFF', fontSize: 13, fontWeight: '700' },
   outsideVenueSuggestion: { color: '#FFFFFF', fontSize: 12, fontWeight: '600', marginTop: 2 },
   outsideVenueGateText: { color: '#FFFFFF', fontSize: 13, fontWeight: '600', flexShrink: 1 },
-  bannerCloseButton: { minWidth: 44, minHeight: 44, marginLeft: 4, alignItems: 'center', justifyContent: 'center' },
-  diagnosticsBanner: {
-    position: 'absolute',
-    top: 260,
-    left: 12,
-    right: 12,
-    backgroundColor: 'rgba(32,33,36,0.9)',
-    borderRadius: 8,
-    padding: 8,
-    zIndex: Z.mapControls,
-  },
-  diagnosticsText: { color: '#FFFFFF', fontSize: 11, marginBottom: 2 },
+  bannerCloseButton: { minWidth: 44, minHeight: 44, marginStart: 4, alignItems: 'center', justifyContent: 'center' },
   debugNode: {
     minWidth: 22,
     height: 22,
@@ -2055,20 +2049,6 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: staticColors.white,
   },
-  debugCard: {
-    position: 'absolute',
-    bottom: 96,
-    left: 12,
-    right: 12,
-    backgroundColor: 'rgba(32,33,36,0.88)',
-    borderRadius: 10,
-    padding: 6,
-    flexDirection: 'row',
-    gap: 6,
-    zIndex: Z.mapControls,
-  },
-  debugBtn: { backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4 },
-  debugBtnText: { color: '#FFFFFF', fontSize: 11, fontWeight: '600' },
   // Google Maps-style capsule handle — was width-only (36) with no explicit
   // height/radius, relying on the bottom-sheet library's own default bar shape.
   sheetSuppressed: { display: 'none' },
