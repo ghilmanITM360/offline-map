@@ -1,5 +1,7 @@
 # Master Ticket Matrix
 
+> **Historical snapshot (noted 2026-10-07): superseded by `docs/PROJECT_STATUS.md` and the topic docs listed in `README.md`.** Statements below describe the project as of the date it was written (older flows, dependencies and doc names may no longer exist) and are kept as evidence, not as current truth.
+
 Purpose: a single table proving every known piece of project work is trackable —
 mapped to an issue, a sub-issue, an explicit parent checklist, DONE evidence, a
 field-data blocker, an owner decision, or explicitly deferred/future scope.

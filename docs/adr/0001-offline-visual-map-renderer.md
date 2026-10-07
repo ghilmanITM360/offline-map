@@ -3,7 +3,8 @@
 - Status: Accepted (POC passed, EMULATOR VERIFIED)
 - Date: 2026-10-05
 - Issue: #140 (reopened — owner requirement changed)
-- Supersedes: the "visual background imagery may require internet" contract in `docs/OFFLINE_NAVIGATION_AND_ROUTING.md`
+- Supersedes: the earlier "visual background imagery may require internet" contract (that wording no longer exists in the docs)
+- Implementation status (noted 2026-10-07): implemented. The MapLibre renderer, bundled PMTiles basemap and design tokens shipped; `react-native-maps`, the Google Maps SDK and the Maps key were removed (#140). Current behavior and data: `docs/OFFLINE_MAP_AND_DATA.md`. The "Today" paragraph, the options table and the rollback plan below are the decision-time record and are not current state.
 
 ## Context
 

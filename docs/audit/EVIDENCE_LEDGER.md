@@ -1,5 +1,7 @@
 # Evidence Ledger
 
+> **Historical snapshot (noted 2026-10-07): superseded by `docs/PROJECT_STATUS.md` and the topic docs listed in `README.md`.** Statements below describe the project as of the date it was written (older flows, dependencies and doc names may no longer exist) and are kept as evidence, not as current truth.
+
 Purpose: let anyone return weeks later and immediately see *why* a claim in the
 2026-09-24 project-state snapshot (retired from the tree; see git history) was made, and at
 what exact commit. This ledger does not restate full reasoning — it points at

@@ -1,5 +1,7 @@
 # Core benchmark results — issue #119
 
+> **Historical snapshot (noted 2026-10-07): superseded by `docs/PROJECT_STATUS.md` and the topic docs listed in `README.md`.** Statements below describe the project as of the date it was written (older flows, dependencies and doc names may no longer exist) and are kept as evidence, not as current truth.
+
 **SOURCE/RUNTIME VERIFIED** — desktop Node/V8 measurements only. No performance budget or optimization decision is established; Android/Hermes, emulator, physical-device and field performance remain unverified.
 
 Measured 2026-09-30T16:33:43.057Z against production source HEAD `de8cc34978473ea96bf0ea6cfddf7caeb5edc71b` with the measurement-only harness in this change. Apple M1 Pro, 8 logical CPUs, arm64, darwin 25.5.0, Node v24.14.0, 16 GiB RAM. Machine load was uncontrolled; CPU temperature, clock and background work were not pinned.
