@@ -1,3 +1,4 @@
+import { PublicDestinationsService } from '../services/PublicDestinationsService';
 import { useI18n } from '../i18n/useI18n';
 /**
  * @license
@@ -111,7 +112,13 @@ export function useDirectionsViewModel(destination: Place | null) {
   const locationRequestRef = useRef(0);
   const routeRequestRef = useRef(0);
   const mountedRef = useRef(true);
+  const hypotheticalSelectionRef = useRef<{ generation: number; journeyId: number; intentId: number | null; destinationId: string } | null>(null);
+  const renderGeneration = journeyGenerationRef.current;
+  const renderJourneyId = useAppStore.getState().directoryJourneySerial;
+  const renderIntentId = useAppStore.getState().destinationJourneyIntent?.id ?? null;
+  const hypotheticalSelection = hypotheticalSelectionRef.current;
   const invalidateJourneyWork = () => {
+    hypotheticalSelectionRef.current = null;
     retireAutomaticIntent();
     locationAcquiringRef.current = false;
     if (mountedRef.current) { setLocationAcquiring(false); setStartAttempt('idle'); }
@@ -124,6 +131,7 @@ export function useDirectionsViewModel(destination: Place | null) {
   routeRef.current = route;
   const manualGateOptions = getRoutableOfficialGates().map((gate) => ({ gateId: gate.id, label: gate.name.en }));
   const isV2Destination = Boolean(destination && destinationFromPlace(destination));
+  const isPlaceStart = startSource === 'manual_place' || startSource === 'hypothetical_place';
   const v2NavigationStartCheck = isV2Destination
     ? V2NavigationAdapter.canStartActiveNavigation({ route: route as any, destination })
     : { canStart: Boolean(route), message: '' };
@@ -230,7 +238,8 @@ export function useDirectionsViewModel(destination: Place | null) {
     !!startCoordinateForOutsideCheck &&
     !EntryGateRoutingService.isInsideIjtemaArea(startCoordinateForOutsideCheck);
 
-  const startSourceLabel =
+  const startSourceLabel = startSource === 'hypothetical_place'
+    ? t('block2.fromPreview') :
     startSource === 'live_gps'
       ? (currentLocation ? 'My current location' : 'Choose where to start')
       : startSource === 'device_last_known'
@@ -238,7 +247,8 @@ export function useDirectionsViewModel(destination: Place | null) {
       : startSource === 'remembered_location'
       ? `Earlier location (${rememberedLocationAgeLabel})`
       : (manualStart?.name ?? 'Choose where to start');
-  const startSourceSupportingCopy =
+  const startSourceSupportingCopy = startSource === 'hypothetical_place'
+    ? t('block2.notice') :
     startSource === 'live_gps'
       ? 'Using your current location.'
       : startSource === 'device_last_known'
@@ -286,7 +296,7 @@ export function useDirectionsViewModel(destination: Place | null) {
     }
 
     const originCoord = resolveActiveOriginCoordinate();
-    if (!originCoord && !(isV2Destination && startSource === 'manual_place' && manualStart)) {
+    if (!originCoord && !(isV2Destination && isPlaceStart && manualStart)) {
       retireAutomaticIntent();
       setLoadState('needs_origin');
       setErrorMessage(null); // the FROM row already says "Choose where to start"
@@ -297,7 +307,7 @@ export function useDirectionsViewModel(destination: Place | null) {
       return;
     }
 
-    if (startSource === 'manual_place' && manualStart && manualStart.id === destination.id) {
+    if (isPlaceStart && manualStart && manualStart.id === destination.id) {
       setLoadState('same_place');
       setErrorMessage(null);
       setRouteRefreshing(false);
@@ -322,9 +332,9 @@ export function useDirectionsViewModel(destination: Place | null) {
         !EntryGateRoutingService.isInsideIjtemaArea(originCoord);
 
       const previewRequest = {
-        startPlace: startSource === 'manual_place' && !forceOutside ? manualStart : null,
+        startPlace: isPlaceStart && !forceOutside ? manualStart : null,
         destination,
-        currentLocation: startSource === 'manual_place' && !forceOutside ? null : originCoord ?? null,
+        currentLocation: isPlaceStart && !forceOutside ? null : originCoord ?? null,
         walkingSpeedMs: settings.walkingSpeed ?? 1.4,
         forceOutside,
         manualGateId: manualGateId ?? undefined,
@@ -402,7 +412,7 @@ export function useDirectionsViewModel(destination: Place | null) {
         setRouteInstructions(preview.instructions);
       }
       setRoutePlannerDest(destination);
-      setRoutePlannerOrigin(startSource === 'manual_place' ? manualStart : null);
+      setRoutePlannerOrigin(isPlaceStart ? manualStart : null);
       setLoadState('ready');
       setRouteRefreshing(false);
       requestHandle?.finish();
@@ -454,7 +464,7 @@ export function useDirectionsViewModel(destination: Place | null) {
       const routePromise = new Promise<RouteAlternative[]>((resolve) => {
         const walkingSpeedMs = settings.walkingSpeed ?? 1.4;
         const destNodeIds = RoutingService.resolveDestinationNodesFromPlace(destination, originCoord);
-        const startNodeIdOverride = startSource === 'manual_place' ? manualStart?.routingNodeId : undefined;
+        const startNodeIdOverride = isPlaceStart ? manualStart?.routingNodeId : undefined;
         const nodePlan = RoutingService.explainRouteNodeResolution(originCoord, destNodeIds, startNodeIdOverride);
         const hasNonSamePair = nodePlan.startNodeIds.some((startNodeId) =>
           nodePlan.targetNodeIds.some((destNodeId) => destNodeId !== startNodeId),
@@ -479,7 +489,7 @@ export function useDirectionsViewModel(destination: Place | null) {
 
       if (!best) {
         const destNodeIds = RoutingService.resolveDestinationNodesFromPlace(destination, originCoord);
-        const startNodeIdOverride = startSource === 'manual_place' ? manualStart?.routingNodeId : undefined;
+        const startNodeIdOverride = isPlaceStart ? manualStart?.routingNodeId : undefined;
         const nodePlan = RoutingService.explainRouteNodeResolution(originCoord, destNodeIds, startNodeIdOverride);
         const sameOnly =
           nodePlan.startNodeIds.length > 0 &&
@@ -521,7 +531,7 @@ export function useDirectionsViewModel(destination: Place | null) {
         setRouteInstructions(generated);
       }
       setRoutePlannerDest(destination);
-      setRoutePlannerOrigin(startSource === 'manual_place' ? manualStart : null);
+      setRoutePlannerOrigin(isPlaceStart ? manualStart : null);
       setLoadState('ready');
     } catch (error) {
       if (!canCommit()) return;
@@ -560,6 +570,33 @@ export function useDirectionsViewModel(destination: Place | null) {
     setIsEditingManualStart(false);
   };
 
+  const previewBlock2 = (): boolean => {
+    const state = useAppStore.getState();
+    const block2 = PublicDestinationsService.getByCategory('blocks').find((place) => place.id === 'B2');
+    if (!mountedRef.current || renderGeneration !== journeyGenerationRef.current || renderJourneyId !== state.directoryJourneySerial ||
+      renderIntentId !== (state.destinationJourneyIntent?.id ?? null) || !destination || !isV2Destination || state.routePlannerDest?.id !== destination.id ||
+      state.isNavigating || state.routeGuide || state.directoryPurpose || !block2 || block2.isStartRoutable === false) return false;
+    invalidateJourneyWork();
+    hypotheticalSelectionRef.current = { generation: journeyGenerationRef.current, journeyId: state.directoryJourneySerial,
+      intentId: state.destinationJourneyIntent?.id ?? null, destinationId: destination.id };
+    setManualStart(block2);
+    setRoutePlannerOrigin(block2);
+    setStartSource('hypothetical_place');
+    setIsEditingManualStart(false);
+    setErrorMessage(null);
+    return true;
+  };
+  const confirmBlock2 = (): boolean => {
+    const state = useAppStore.getState();
+    if (!mountedRef.current || !hypotheticalSelection || hypotheticalSelectionRef.current !== hypotheticalSelection ||
+      startSource !== 'hypothetical_place' || !manualStart || (!route && loadState !== 'same_place') ||
+      state.isNavigating || state.directoryPurpose || hypotheticalSelection.generation !== journeyGenerationRef.current ||
+      hypotheticalSelection.journeyId !== state.directoryJourneySerial || hypotheticalSelection.destinationId !== state.routePlannerDest?.id ||
+      hypotheticalSelection.intentId !== (state.destinationJourneyIntent?.id ?? null)) return false;
+    setManualStartPlace(manualStart);
+    return true;
+  };
+
   type ResolvedLocation = Awaited<ReturnType<typeof LocationAccessService.resolveCurrentLocation>>;
   const chooseCurrentLocationWith = async (resolve: () => Promise<ResolvedLocation>): Promise<boolean> => {
     const generation = journeyGenerationRef.current;
@@ -583,6 +620,7 @@ export function useDirectionsViewModel(destination: Place | null) {
         return false;
       }
 
+      hypotheticalSelectionRef.current = null;
       setCurrentLocation(resolved.coordinate, resolved.source ?? 'live');
       setRouteOriginLocation(resolved.coordinate);
       if (!isV2Destination && !RoutingService.isInsideVenue(resolved.coordinate)) {
@@ -748,7 +786,10 @@ export function useDirectionsViewModel(destination: Place | null) {
   const routeGuideRouteRef = useRef<RoutePreview | null>(null);
   const routeGuideActive = useAppStore((s) => s.routeGuide !== null);
   const startRouteGuide = () => {
-    if (!destination || !route) return;
+    const state = useAppStore.getState();
+    if (!mountedRef.current || renderGeneration !== journeyGenerationRef.current || hypotheticalSelectionRef.current ||
+      startSource === 'hypothetical_place' || !startable || !destination || !route || state.directoryPurpose ||
+      state.activeRoute !== route || state.routePlannerDest?.id !== destination.id) return;
     let steps: { text: string; distanceM: number }[];
     try {
       steps = V2NavigationAdapter.fromPreview({
@@ -786,6 +827,7 @@ export function useDirectionsViewModel(destination: Place | null) {
   return {
     ...manualLiveUpgrade,
     locationRecoveryAction, locationAcquiring, runLocationRecovery, cancelLocationRecovery,
+    previewBlock2, confirmBlock2,
     route,
     alternatives,
     selectedIndex,

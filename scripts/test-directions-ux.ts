@@ -30,8 +30,8 @@ assert(vm.includes('setLoadState(\'needs_origin\')'), 'Directions should avoid r
 // LocationNavigationCapability.ts) rather than its own inline union.
 assert(vm.includes('export type StartSource = NavigationStartSource;'), 'Directions StartSource must stay aliased to the single-owner NavigationStartSource type');
 assert(
-  navigationCapability.includes("export type NavigationStartSource = 'live_gps' | 'device_last_known' | 'remembered_location' | 'manual_place';"),
-  'NavigationStartSource should model live, device-cached, remembered, and manual start provenance explicitly',
+  navigationCapability.includes("export type NavigationStartSource = 'live_gps' | 'device_last_known' | 'remembered_location' | 'manual_place' | 'hypothetical_place';"),
+  'NavigationStartSource should model live, device-cached, remembered, manual, and hypothetical start provenance explicitly',
 );
 assert(
   vm.includes('startSourceSupportingCopy') && vm.includes('isCurrentLocationStartActive'),

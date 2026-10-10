@@ -8,7 +8,7 @@ import { t } from '../i18n/translate';
 import type { Coordinate } from '../models/types';
 import { classifyLiveFix, evaluateLocationCapability } from './LocationCapability';
 
-export type NavigationStartSource = 'live_gps' | 'device_last_known' | 'remembered_location' | 'manual_place';
+export type NavigationStartSource = 'live_gps' | 'device_last_known' | 'remembered_location' | 'manual_place' | 'hypothetical_place';
 
 interface NavigationLocationCapabilityInput {
   startSource: NavigationStartSource;
@@ -26,7 +26,7 @@ interface NavigationLocationCapability {
 export function evaluateNavigationLocationCapability(
   input: NavigationLocationCapabilityInput,
 ): NavigationLocationCapability {
-  if (input.startSource === 'manual_place') {
+  if (input.startSource === 'manual_place' || input.startSource === 'hypothetical_place') {
     return {
       canStart: false,
       message: 'Turn on your location to get live directions.',
