@@ -30,14 +30,14 @@
 - [x] Implement presentation-only repair; sheet movement changes padding only, not semantic camera target.
 - [x] Ensure live controls are visible immediately when setup leaves.
 - [x] Run focused and required full checks and independent review.
-- [ ] Commit/push/PR/green guarded merge.
+- [x] Commit/push/PR/green guarded merge (PR #361, canonical3671938).
 
 ### Task 2: Fresh-GPS destination fast path
 **Files:** pendingJourney store contract, Directory, Home, DirectionsViewModel, capability/authority integration tests.
 **Interfaces:** Unique runtime intent identity and eligibility snapshot travel with destination handoff; ViewModel consumes once, validates current route/facts, final guarded start remains authoritative.
-- [ ] Write fresh Block/Gate/Rasta success and stale/approximate/direct-guide/same-place refusal tests.
-- [ ] Write rapid A/B, cancel, revoked permission, rerender/hydration and manual-mode race tests.
-- [ ] Implement one owned attempt after route validation; keep failure/recovery panel visible.
+- [x] Write fresh Block/Gate/Rasta success and stale/approximate/direct-guide/same-place refusal tests.
+- [x] Write rapid A/B, cancel, revoked permission, rerender/hydration and manual-mode race tests.
+- [x] Implement one owned attempt after route validation; keep failure/recovery panel visible.
 - [ ] Validate/review/integrate without automatic process-death resume or active-trip replacement.
 
 ### Task 3: Journey continuity and contextual recovery
