@@ -53,7 +53,7 @@ describe('journey auto-start with the real view-model (#307)', () => {
     const onStartNavigation = jest.fn();
     useAppStore.setState({
       hasLocationPermission: true,
-      locationPermissionPrecision: 'fine',
+      locationPermissionPrecision: 'fine', locationServicesState: 'enabled',
       currentLocation: { latitude: 24.9693333, longitude: 67.0016944, accuracy: 5, observedAtMs: Date.now() },
       currentLocationSource: 'live',
     });

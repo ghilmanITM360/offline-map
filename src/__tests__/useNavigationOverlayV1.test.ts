@@ -1,3 +1,4 @@
+import { seedRunningNavigation } from './navigationFixture';
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -98,7 +99,7 @@ describe('useNavigationOverlayV1 — per-trip camera ownership', () => {
     };
     mockVm.route = FAKE_ROUTE;
     mockVm.snappedLocation = FAKE_ROUTE.coordinates[0];
-    useAppStore.getState().startNavigation(DESTINATION, FAKE_ROUTE as any, []);
+    seedRunningNavigation(DESTINATION, FAKE_ROUTE as any, []);
     const hook = await renderHook(() => useNavigationOverlayV1(props));
 
     expect(hook.result.current.isAutoFollowing).toBe(true);
@@ -120,7 +121,7 @@ describe('useNavigationOverlayV1 — per-trip camera ownership', () => {
     await hook.rerender(undefined);
     const nextRoute = { ...FAKE_ROUTE, id: 'route-v1-next' };
     mockVm.route = nextRoute;
-    await act(() => useAppStore.getState().startNavigation(DESTINATION, nextRoute as any, []));
+    await act(() => seedRunningNavigation(DESTINATION, nextRoute as any, []));
     await hook.rerender(undefined);
     expect(hook.result.current.isAutoFollowing).toBe(true);
   });
@@ -134,7 +135,7 @@ describe('useNavigationOverlayV1 — per-trip camera ownership', () => {
       userPulseAnim: {} as any, cameraManager,
     };
     mockVm.route = FAKE_ROUTE;
-    useAppStore.getState().startNavigation(DESTINATION, FAKE_ROUTE as any, []);
+    seedRunningNavigation(DESTINATION, FAKE_ROUTE as any, []);
     const hook = await renderHook(() => useNavigationOverlayV1(props));
     await waitFor(() => expect(cameraManager.fitRoute).toHaveBeenCalledTimes(1));
 
@@ -148,7 +149,7 @@ describe('useNavigationOverlayV1 — per-trip camera ownership', () => {
     mockVm.route = null;
     await hook.rerender(undefined);
     mockVm.route = { ...FAKE_ROUTE, id: 'trip-2-route' };
-    await act(() => useAppStore.getState().startNavigation(DESTINATION, mockVm.route as any, []));
+    await act(() => seedRunningNavigation(DESTINATION, mockVm.route as any, []));
     await hook.rerender(undefined);
     await waitFor(() => expect(cameraManager.fitRoute).toHaveBeenCalledTimes(2));
   });

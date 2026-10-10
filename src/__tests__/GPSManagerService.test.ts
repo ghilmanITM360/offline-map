@@ -112,3 +112,21 @@ it('preserves unknown native accuracy instead of publishing perfect accuracy', a
   const coordinate = await GPSManagerService.forceFix();
   expect(coordinate?.accuracy).toBeUndefined();
 });
+
+describe('GPS permission facts', () => {
+  it('reports revoked permission without requesting permission or watching', async () => {
+    const update = jest.fn();
+    GPSManagerService.setPermissionUpdater(update);
+    (Location.getForegroundPermissionsAsync as jest.Mock).mockResolvedValue({ status: 'denied', canAskAgain: false });
+    await GPSManagerService.start();
+    expect(update).toHaveBeenCalledWith(expect.objectContaining({ granted: false, precision: 'none', canAskAgain: false }));
+    expect(Location.watchPositionAsync).not.toHaveBeenCalled();
+    GPSManagerService.setPermissionUpdater(null);
+  });
+  it('forceFix refuses disabled services before acquiring a native fix', async () => {
+    (Location.getForegroundPermissionsAsync as jest.Mock).mockResolvedValue({ status: 'granted', canAskAgain: true, android: { accuracy: 'fine' } });
+    (Location.hasServicesEnabledAsync as jest.Mock).mockResolvedValue(false);
+    expect(await GPSManagerService.forceFix()).toBeNull();
+    expect(Location.getCurrentPositionAsync).not.toHaveBeenCalled();
+  });
+});

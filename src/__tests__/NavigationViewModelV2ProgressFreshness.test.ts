@@ -1,3 +1,4 @@
+import { seedRunningNavigation } from './navigationFixture';
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -67,7 +68,7 @@ beforeEach(() => {
   delete process.env.EXPO_PUBLIC_IJTEMA_ROUTING_PROXY_BASE_URL;
   process.env.EXPO_PUBLIC_USE_IJTEMA_V2_ROUTING = 'true';
   useAppStore.setState(initialStoreState, true);
-  useAppStore.getState().startNavigation(destinationPlace, sharedActiveRoute, sharedActiveRoute.instructions);
+  seedRunningNavigation(destinationPlace, sharedActiveRoute, sharedActiveRoute.instructions);
 });
 
 afterEach(() => {
@@ -127,6 +128,7 @@ describe('NavigationViewModelV2 progress freshness (NAV-P0-001)', () => {
     // Then a genuinely fresh, correct fix must be accepted and progress normally.
     await pushFix(hook, origin, { observedAtMs: Date.now() });
     expect(hook.result.current.remainingDistance).toBeLessThanOrEqual(initialRemaining);
+    expect(hook.result.current.gpsSignalState).toBe('GPS_GOOD');
   });
 
   test('CASE B: stale post-resume fix is rejected; a fresh post-resume fix reconciles progress', async () => {
@@ -138,6 +140,7 @@ describe('NavigationViewModelV2 progress freshness (NAV-P0-001)', () => {
     const remainingAfterFirstFix = hook.result.current.remainingDistance;
 
     await fireAppStateChange(spy, 'background');
+    jest.spyOn(Date, 'now').mockReturnValue(t0 + 15 * 60 * 1000);
     await fireAppStateChange(spy, 'active');
 
     // Historical backlog fix delivered right after resume (native timestamp from before the
@@ -196,7 +199,7 @@ describe('NavigationViewModelV2 progress freshness (NAV-P0-001)', () => {
     expect(hook.result.current.remainingDistance).toBeGreaterThan(initialRemaining * 0.9);
   });
 
-  test('a fix with no observedAtMs at all is not rejected (no timestamp evidence to reject on)', async () => {
+  test('a fix without an observation timestamp cannot advance progress or revive GPS', async () => {
     const hook = await renderHook(() => useNavigationViewModelV2());
     const initialRemaining = hook.result.current.remainingDistance;
 
@@ -207,6 +210,8 @@ describe('NavigationViewModelV2 progress freshness (NAV-P0-001)', () => {
       });
     });
 
-    expect(hook.result.current.remainingDistance).toBeLessThanOrEqual(initialRemaining);
+    expect(hook.result.current.remainingDistance).toBe(initialRemaining);
+    expect(hook.result.current.arrived).toBe(false);
+    expect(hook.result.current.gpsSignalState).toBe('GPS_LOST');
   });
 });

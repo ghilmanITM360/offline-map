@@ -58,6 +58,7 @@ export function useDirectionsViewModel(destination: Place | null) {
   const setCurrentLocation = useAppStore((s) => s.setCurrentLocation);
   const setHasLocationPermission = useAppStore((s) => s.setHasLocationPermission);
   const locationPermissionPrecision = useAppStore((s) => s.locationPermissionPrecision);
+  const locationServicesState = useAppStore((s) => s.locationServicesState);
   const hasLocationPermission = useAppStore((s) => s.hasLocationPermission);
   const setLocationPermissionPrecision = useAppStore((s) => s.setLocationPermissionPrecision);
   const settings = useAppStore((s) => s.settings);
@@ -237,7 +238,7 @@ export function useDirectionsViewModel(destination: Place | null) {
   });
 
   // The one authoritative journey state; the sheet renders from it and a start is offered only for a ready route.
-  const liveReady = hasLocationPermission && currentLocationSource === 'live' && navigationLocationCapability.canStart && !routeRefreshing;
+  const liveReady = locationServicesState === 'enabled' && hasLocationPermission && currentLocationSource === 'live' && navigationLocationCapability.canStart && !routeRefreshing;
   const journeyState = selectJourneyPresentationState({ loadState, startSource, liveReady, route: route as Parameters<typeof selectJourneyPresentationState>[0]['route'] });
   const startable = isJourneyStartable(journeyState);
 
@@ -535,6 +536,7 @@ export function useDirectionsViewModel(destination: Place | null) {
       if (!canCommit()) return false;
       setHasLocationPermission(resolved.permissionState.granted);
       setLocationPermissionPrecision(resolved.permissionState.precision);
+      useAppStore.getState().setLocationPermissionFacts(resolved.permissionState);
 
       if (!resolved.ok || !resolved.coordinate) {
         // Recovery is presented in context; Settings is opened only by an explicit action.
@@ -614,7 +616,7 @@ export function useDirectionsViewModel(destination: Place | null) {
     const state = useAppStore.getState();
     if (startAction.kind === 'start') {
       const capability = evaluateLocationCapability({
-        permission: { granted: state.hasLocationPermission, canAskAgain: false, precision: state.locationPermissionPrecision },
+        permission: { granted: state.hasLocationPermission, canAskAgain: false, precision: state.locationPermissionPrecision, servicesState: state.locationServicesState },
         liveFix: state.currentLocationSource === 'live' ? state.currentLocation : null,
       });
       if (capability.mode === 'live_navigation' && !manualStart && state.routePlannerDest?.id === destination?.id && state.activeRoute === route && !routeRefreshing) startNow();
@@ -630,6 +632,7 @@ export function useDirectionsViewModel(destination: Place | null) {
       if (!canCommit()) return;
       setHasLocationPermission(resolved.permissionState.granted);
       setLocationPermissionPrecision(resolved.permissionState.precision);
+      useAppStore.getState().setLocationPermissionFacts(resolved.permissionState);
       const capability = evaluateLocationCapability({ permission: resolved.permissionState, liveFix: resolved.source === 'live' ? resolved.coordinate : null });
       if (capability.liveBlocker === 'permission_blocked' || capability.liveBlocker === 'approximate_only' || capability.liveBlocker === 'precision_unknown') { setStartAttempt('settings'); return; }
       if (capability.liveBlocker === 'services_off') { setStartAttempt('services_off'); return; }

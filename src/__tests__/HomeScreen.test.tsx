@@ -1,3 +1,4 @@
+import { seedRunningNavigation } from './navigationFixture';
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -711,7 +712,7 @@ describe('HomeScreen — canonical bottom-sheet dismissal', () => {
       canStartNavigation: true,
       startNavigationDisabledReason: '',
     });
-    useAppStore.setState({ routePlannerDest: destination, activeRoute: previewRoute as any, currentLocation: { latitude: 24.9, longitude: 67.1, accuracy: 8, observedAtMs: Date.now() }, currentLocationSource: 'live', hasLocationPermission: true, locationPermissionPrecision: 'fine' });
+    useAppStore.setState({ routePlannerDest: destination, activeRoute: previewRoute as any, currentLocation: { latitude: 24.9, longitude: 67.1, accuracy: 8, observedAtMs: Date.now() }, currentLocationSource: 'live', hasLocationPermission: true, locationPermissionPrecision: 'fine', locationServicesState: 'enabled' });
     await render(<HomeScreen />);
 
     await userEvent.setup().press(await screen.findByText('Start Navigation'));
@@ -902,7 +903,7 @@ describe('HomeScreen — navigation completion cleanup', () => {
     await pressMapFeature('facility', 'LM_GATE_MAIN_NORTH');
 
     await act(async () => {
-      useAppStore.getState().startNavigation(v1Destination, v1Route as any, []);
+      seedRunningNavigation(v1Destination, v1Route as any, []);
     });
     await waitFor(() => expect(userDot()).not.toBeNull());
     // Navigation owns the pins (start + destination) and the single user dot; no browse selection pin or accuracy circle.
@@ -1407,7 +1408,7 @@ describe('HomeScreen — route preview "Start Navigation" (real handler wiring)'
     useAppStore.setState({
       routePlannerDest: destination,
       activeRoute: previewRoute,
-      currentLocation: { ...previewRoute.coordinates[0], accuracy: 8, observedAtMs: Date.now() }, currentLocationSource: 'live', hasLocationPermission: true, locationPermissionPrecision: 'fine',
+      currentLocation: { ...previewRoute.coordinates[0], accuracy: 8, observedAtMs: Date.now() }, currentLocationSource: 'live', hasLocationPermission: true, locationPermissionPrecision: 'fine', locationServicesState: 'enabled',
     });
 
     await render(<HomeScreen />);
@@ -1469,7 +1470,7 @@ describe('HomeScreen — route preview "Start Navigation" (real handler wiring)'
     useAppStore.setState({
       routePlannerDest: destination,
       activeRoute: previewRoute as any,
-      currentLocation: { latitude: 24.9, longitude: 67.1, accuracy: 8, observedAtMs: Date.now() }, currentLocationSource: 'live', hasLocationPermission: true, locationPermissionPrecision: 'fine',
+      currentLocation: { latitude: 24.9, longitude: 67.1, accuracy: 8, observedAtMs: Date.now() }, currentLocationSource: 'live', hasLocationPermission: true, locationPermissionPrecision: 'fine', locationServicesState: 'enabled',
     });
 
     // The route-preview sheet's "Start Navigation" button now lives inside LocationSheet's
@@ -1576,7 +1577,7 @@ describe('HomeScreen — route preview is a single surface (P0-2 consolidation)'
           coordinate: { latitude: 24.9, longitude: 67.1 },
         },
       } as any,
-      currentLocation: { latitude: 24.9, longitude: 67.1, accuracy: 8, observedAtMs: Date.now() }, currentLocationSource: 'live', hasLocationPermission: true, locationPermissionPrecision: 'fine',
+      currentLocation: { latitude: 24.9, longitude: 67.1, accuracy: 8, observedAtMs: Date.now() }, currentLocationSource: 'live', hasLocationPermission: true, locationPermissionPrecision: 'fine', locationServicesState: 'enabled',
     });
 
     await render(<HomeScreen />);
@@ -1647,7 +1648,7 @@ describe('HomeScreen — route preview is a single surface (P0-2 consolidation)'
       startNavigationDisabledReason: '',
     });
 
-    useAppStore.setState({ currentLocation: { latitude: 24.9, longitude: 67.1, accuracy: 8, observedAtMs: Date.now() }, currentLocationSource: 'live', hasLocationPermission: true, locationPermissionPrecision: 'fine' });
+    useAppStore.setState({ currentLocation: { latitude: 24.9, longitude: 67.1, accuracy: 8, observedAtMs: Date.now() }, currentLocationSource: 'live', hasLocationPermission: true, locationPermissionPrecision: 'fine', locationServicesState: 'enabled' });
 
     const user = userEvent.setup();
     await render(<HomeScreen />);
@@ -1905,7 +1906,7 @@ describe('HomeScreen — Start Navigation reads the store when it runs (#307)', 
     expect(firstStart).toBeDefined(); // captured while the store still had no preview route
 
     await act(async () => {
-      useAppStore.setState({ routePlannerDest: destination, activeRoute: previewRoute as never, currentLocation: { latitude: 24.9, longitude: 67.1, accuracy: 8, observedAtMs: Date.now() }, currentLocationSource: 'live', hasLocationPermission: true, locationPermissionPrecision: 'fine' });
+      useAppStore.setState({ routePlannerDest: destination, activeRoute: previewRoute as never, currentLocation: { latitude: 24.9, longitude: 67.1, accuracy: 8, observedAtMs: Date.now() }, currentLocationSource: 'live', hasLocationPermission: true, locationPermissionPrecision: 'fine', locationServicesState: 'enabled' });
     });
     await act(async () => firstStart!());
 
@@ -1968,7 +1969,7 @@ describe('HomeScreen — Directions sheet presentation contract', () => {
     ['Route Ready', async () => {
       mockedUseDirectionsViewModel.mockReturnValue(directionsVm(previewRoute));
       useHomeWithPlace();
-      useAppStore.setState({ routePlannerDest: destination, activeRoute: previewRoute as never, currentLocation: { latitude: 24.9, longitude: 67.1, accuracy: 8, observedAtMs: Date.now() }, currentLocationSource: 'live', hasLocationPermission: true, locationPermissionPrecision: 'fine' });
+      useAppStore.setState({ routePlannerDest: destination, activeRoute: previewRoute as never, currentLocation: { latitude: 24.9, longitude: 67.1, accuracy: 8, observedAtMs: Date.now() }, currentLocationSource: 'live', hasLocationPermission: true, locationPermissionPrecision: 'fine', locationServicesState: 'enabled' });
       await render(<HomeScreen />);
     }],
     ['manual Route Guide preview', async () => {

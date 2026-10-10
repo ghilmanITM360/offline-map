@@ -33,8 +33,15 @@ const place: Place = {
   coordinate: { latitude: 24.966, longitude: 67.004 },
   sourceVersion: 'v2',
 };
-const route = { sourceVersion: 'v2', polyline: [{ latitude: 24.9, longitude: 67.0 }] } as never;
+const route = { sourceVersion: 'v2', id: 'marker-preview', nodes: [], segments: [], coordinates: [{ latitude: 24.9762, longitude: 67.011 }, place.coordinate], totalDistance: 1200, estimatedTimeMin: 15, startLabel: 'Live location', destinationLabel: place.name } as never;
 const fix = { latitude: 24.9762, longitude: 67.011, accuracy: 5, observedAtMs: NOW };
+
+function startAuthorizedMarkerNavigation(...args: Parameters<ReturnType<typeof useAppStore.getState>['startNavigation']>) {
+  useAppStore.setState({ hasLocationPermission: true, locationPermissionPrecision: 'fine', locationServicesState: 'enabled', currentLocation: fix, currentLocationSource: 'live', routePlannerOrigin: null, routePlannerDest: args[0], activeRoute: route });
+  const activated = useAppStore.getState().startNavigation(...args);
+  expect(activated).toBe(true);
+}
+
 
 type Blob = { state: Record<string, unknown>; version: number };
 
@@ -76,7 +83,7 @@ describe('#139 Option B: when the marker is written and cleared', () => {
   });
 
   it('active navigation creates the marker', () => {
-    useAppStore.getState().startNavigation(place, route, []);
+    startAuthorizedMarkerNavigation(place, route, []);
     expect(useAppStore.getState().unfinishedJourney).toEqual(marker({ createdAt: NOW }));
   });
 
@@ -91,13 +98,13 @@ describe('#139 Option B: when the marker is written and cleared', () => {
   });
 
   it('explicit Exit (stopNavigation) clears it', () => {
-    useAppStore.getState().startNavigation(place, route, []);
+    startAuthorizedMarkerNavigation(place, route, []);
     useAppStore.getState().stopNavigation();
     expect(useAppStore.getState().unfinishedJourney).toBeNull();
   });
 
   it('clearUnfinishedJourney() clears it without touching the live session', () => {
-    useAppStore.getState().startNavigation(place, route, []);
+    startAuthorizedMarkerNavigation(place, route, []);
     useAppStore.getState().clearUnfinishedJourney();
     const s = useAppStore.getState();
     expect(s.unfinishedJourney).toBeNull();
@@ -106,7 +113,7 @@ describe('#139 Option B: when the marker is written and cleared', () => {
   });
 
   it('a destination without a usable id writes no marker', () => {
-    useAppStore.getState().startNavigation({ ...place, id: '' }, route, []);
+    startAuthorizedMarkerNavigation({ ...place, id: '' }, route, []);
     expect(useAppStore.getState().unfinishedJourney).toBeNull();
   });
 });
@@ -115,7 +122,7 @@ describe('#139 Option B: privacy (#145) - the persisted payload holds no locatio
   it('writes exactly four fields and no coordinate, route or movement data', () => {
     const rec = recordingStorage();
     useAppStore.persist.setOptions({ storage: rec.storage });
-    useAppStore.getState().startNavigation(place, route, [{ id: 'i1', text: 'Turn left' } as never]);
+    startAuthorizedMarkerNavigation(place, route, [{ id: 'i1', text: 'Turn left' } as never]);
     useAppStore.getState().setCurrentLocation(fix, 'live');
 
     const written = rec.lastWrite().state.unfinishedJourney as Record<string, unknown>;
@@ -131,7 +138,7 @@ describe('#139 Option B: hydration after process death', () => {
   it('the marker survives rehydration and is exposed', async () => {
     const rec = recordingStorage();
     useAppStore.persist.setOptions({ storage: rec.storage });
-    useAppStore.getState().startNavigation(place, route, []);
+    startAuthorizedMarkerNavigation(place, route, []);
     const written = rec.lastWrite();
 
     useAppStore.setState(initialStoreState, true);
@@ -179,7 +186,7 @@ describe('#139 Option B: hydration after process death', () => {
   });
 
   it('a stale blob rehydrated mid-journey cannot wipe the live journey marker', async () => {
-    useAppStore.getState().startNavigation(place, route, []);
+    startAuthorizedMarkerNavigation(place, route, []);
     useAppStore.persist.setOptions({
       storage: recordingStorage({ state: { unfinishedJourney: null }, version: 2 }).storage,
     });
@@ -250,7 +257,7 @@ describe('#139 Option B: recovery builds a NEW journey through the normal flow',
   });
 
   it('beginRecovery during a live journey is a no-op and keeps that journey marked', () => {
-    useAppStore.getState().startNavigation(place, route, []);
+    startAuthorizedMarkerNavigation(place, route, []);
     expect(useAppStore.getState().beginRecovery()).toBeNull();
     expect(useAppStore.getState().isNavigating).toBe(true);
     expect(useAppStore.getState().unfinishedJourney).not.toBeNull();
@@ -261,7 +268,7 @@ describe('#139 Option B: recovery builds a NEW journey through the normal flow',
     useAppStore.getState().beginRecovery();
 
     jest.spyOn(Date, 'now').mockReturnValue(NOW + 5_000);
-    useAppStore.getState().startNavigation(place, route, []);
+    startAuthorizedMarkerNavigation(place, route, []);
     const s = useAppStore.getState();
     expect(s.navigationSessionId).toBe(initialStoreState.navigationSessionId + 1);
     expect(s.reroutePending).toBe(false);

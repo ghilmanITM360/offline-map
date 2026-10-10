@@ -40,7 +40,7 @@ beforeEach(() => {
   jest.clearAllMocks();
   process.env.EXPO_PUBLIC_USE_IJTEMA_V2_ROUTING = 'true';
   useAppStore.setState(initialStoreState, true);
-  useAppStore.setState({ hasLocationPermission: true, locationPermissionPrecision: 'fine' });
+  useAppStore.setState({ hasLocationPermission: true, locationPermissionPrecision: 'fine', locationServicesState: 'enabled' });
   useAppStore.setState({
     currentLocation: { latitude: 24.9762, longitude: 67.011, accuracy: 10, observedAtMs: Date.now() },
     currentLocationSource: 'live',
@@ -162,7 +162,7 @@ describe('Directory is the single start chooser (Get Directions sheet)', () => {
       ok: true,
       coordinate,
       source: 'live',
-      permissionState: { granted: true, canAskAgain: true, status: 'granted', precision: 'fine' },
+      permissionState: { granted: true, canAskAgain: true, status: 'granted', precision: 'fine', servicesEnabled: true, servicesState: 'enabled' },
     } as never);
     await mount();
     await choose({ purpose: 'start', place: gate13 });
@@ -229,7 +229,7 @@ describe('Directory is the single start chooser (Get Directions sheet)', () => {
       ok: false,
       coordinate: null,
       message: 'Location unavailable. Choose where you are starting from.',
-      permissionState: { granted: true, canAskAgain: true, status: 'granted', precision: 'fine' },
+      permissionState: { granted: true, canAskAgain: true, status: 'granted', precision: 'fine', servicesEnabled: true, servicesState: 'enabled' },
     } as never);
     const user = userEvent.setup();
     await mount();

@@ -7,11 +7,10 @@ import React, { useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, Animated } from 'react-native';
 import { Map as MapIcon } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
-import * as Location from 'expo-location';
 import { useAppStore, waitForStoreHydration, type HydrationWaitOutcome } from '../../store/useAppStore';
 import { OnboardingStatusService } from '../../services/OnboardingStatusService';
 import { StartupManager } from '../../services/StartupManager';
-import { derivePrecision } from '../../services/LocationAccessService';
+import { LocationAccessService } from '../../services/LocationAccessService';
 import { RootStackParamList } from '../../navigation/RootNavigator';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { staticColors } from '../../theme';
@@ -55,11 +54,10 @@ export function SplashScreen() {
         return false;
       });
 
-      const permissionPromise = Location.getForegroundPermissionsAsync()
-        .then((result) => ({ granted: result.status === 'granted', precision: derivePrecision(result) }))
+      const permissionPromise = LocationAccessService.getPermissionState()
         .catch((error) => {
           console.error('[SplashScreen] Failed to read location permission status — assuming not granted.', error);
-          return { granted: false, precision: 'none' as const };
+          return { granted: false, precision: 'none' as const, canAskAgain: false, servicesState: 'unknown' as const };
         });
 
       // Run all checks in parallel
@@ -100,6 +98,7 @@ export function SplashScreen() {
       setHasLocationPermission(permissionGranted);
       // #307: approximate-only is a launch-time fact, not something to discover on the first Recenter.
       setLocationPermissionPrecision(permission.precision);
+      useAppStore.getState().setLocationPermissionFacts(permission);
 
       const { route } = StartupManager.resolve({ hasSeenWelcome });
       if (route === 'Welcome' && onboardingStatusReadFailed) {

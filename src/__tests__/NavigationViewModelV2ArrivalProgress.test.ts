@@ -1,3 +1,4 @@
+import { seedRunningNavigation } from './navigationFixture';
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -43,7 +44,7 @@ const route: V2ActiveRoute = {
 beforeEach(() => {
   useAppStore.setState(initialStoreState, true);
   useAppStore.setState({ settings: { ...initialStoreState.settings, autoReroute: false } });
-  useAppStore.getState().startNavigation(destination, route, route.instructions);
+  seedRunningNavigation(destination, route, route.instructions);
 });
 
 async function publish(coordinate: Coordinate) {
@@ -107,7 +108,7 @@ test('production-shaped final edge accepts proximity before the terminal arrival
       { ...lastInstruction, id: 'arrival', distance: 0, distanceM: 0 },
     ],
   };
-  useAppStore.getState().startNavigation(destination, productionRoute, productionRoute.instructions);
+  seedRunningNavigation(destination, productionRoute, productionRoute.instructions);
   const hook = await renderHook(() => useNavigationViewModelV2());
   await publish({ latitude: 24.966, longitude: 67.00405 });
   expect(hook.result.current.currentStepIndex).toBe(productionRoute.instructions.length - 2);

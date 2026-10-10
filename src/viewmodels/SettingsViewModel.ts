@@ -52,6 +52,7 @@ export function useSettingsViewModel() {
     setLocationPermissionState(state);
     setHasLocationPermission(state.granted);
     setLocationPermissionPrecision(state.precision);
+    useAppStore.getState().setLocationPermissionFacts(state);
     return state;
   }, [setHasLocationPermission, setLocationPermissionPrecision]);
 

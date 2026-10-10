@@ -4,6 +4,8 @@
  */
 
 import { create } from 'zustand';
+import { getDistance } from 'geolib';
+import { evaluateLocationCapability } from '../services/LocationCapability';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
@@ -117,6 +119,9 @@ interface AppState {
   // Independent of fix accuracy in meters — a fine-permission fix can still be a weak (>50m) fix.
   locationPermissionPrecision: 'fine' | 'coarse' | 'none';
   setLocationPermissionPrecision: (val: 'fine' | 'coarse' | 'none') => void;
+  locationServicesState: 'enabled' | 'disabled' | 'unknown';
+  locationPermissionCanAskAgain: boolean;
+  setLocationPermissionFacts: (facts: { granted: boolean; precision: 'fine' | 'coarse' | 'none'; canAskAgain: boolean; servicesState: 'enabled' | 'disabled' | 'unknown' }) => void;
   hasInternet: boolean;
   setHasInternet: (val: boolean) => void;
 
@@ -153,7 +158,7 @@ interface AppState {
   isNavigating: boolean;
   navigationSessionId: number;
   destination: Place | null;
-  startNavigation: (destination: Place, route?: RoutePreview | V2ActiveRoute | null, instructions?: Array<NavigationInstruction | V2NavigationInstruction>) => void;
+  startNavigation: (destination: Place, route?: RoutePreview | V2ActiveRoute | null, instructions?: Array<NavigationInstruction | V2NavigationInstruction>, publishedPreview?: RoutePreview | V2ActiveRoute | null) => boolean;
   stopNavigation: () => void;
   // #139 Option B: coordinate-free marker that survives process death (the ONLY navigation fact
   // that does). Set by startNavigation, cleared by stopNavigation / arrival / dismiss / recovery.
@@ -413,6 +418,9 @@ export const useAppStore = create<AppState>()(
       hasLocationPermission: false,
       setHasLocationPermission: (val) => set({ hasLocationPermission: val }),
       locationPermissionPrecision: 'none',
+      locationServicesState: 'unknown',
+      locationPermissionCanAskAgain: true,
+      setLocationPermissionFacts: (facts) => set({ hasLocationPermission: facts.granted, locationPermissionPrecision: facts.precision, locationPermissionCanAskAgain: facts.canAskAgain, locationServicesState: facts.servicesState }),
       setLocationPermissionPrecision: (val) => set({ locationPermissionPrecision: val }),
       hasInternet: true,
       setHasInternet: (val) => set({ hasInternet: val }),
@@ -427,16 +435,32 @@ export const useAppStore = create<AppState>()(
       isNavigating: false,
       navigationSessionId: 0,
       destination: null,
-      startNavigation: (dest, route = null, instructions = []) =>
-        set((state) => ({
+      startNavigation: (dest, route = null, instructions = [], publishedPreview = route) => {
+        const state = get();
+        const capability = evaluateLocationCapability({
+          permission: { granted: state.hasLocationPermission, precision: state.locationPermissionPrecision, canAskAgain: state.locationPermissionCanAskAgain, servicesState: state.locationServicesState },
+          liveFix: state.currentLocationSource === 'live' ? state.currentLocation : null,
+        });
+        // Composition is allowed only from the exact currently published preview; no caller can bypass live authority.
+        if (state.isNavigating || state.locationServicesState !== 'enabled' || capability.mode !== 'live_navigation' || state.routePlannerOrigin ||
+          !route || !publishedPreview || state.activeRoute !== publishedPreview || state.routePlannerDest?.id !== dest.id ||
+          !Array.isArray(publishedPreview.coordinates) || publishedPreview.coordinates.length < 2 || !publishedPreview.coordinates.every(isValidCoordinate) ||
+          !Array.isArray(route.coordinates) || route.coordinates.length !== publishedPreview.coordinates.length ||
+          !route.coordinates.every((point, index) => isValidCoordinate(point) && point.latitude === publishedPreview.coordinates[index].latitude && point.longitude === publishedPreview.coordinates[index].longitude) ||
+          !Number.isFinite(route.totalDistance) || route.totalDistance <= 0 ||
+          ('outsideRoute' in publishedPreview && publishedPreview.outsideRoute?.provider === 'direct-guide') ||
+          !state.currentLocation || getDistance(publishedPreview.coordinates[0], state.currentLocation) > 20) return false;
+        set({
           isNavigating: true,
           navigationSessionId: state.navigationSessionId + 1,
           destination: dest,
           activeRoute: route,
           routeInstructions: instructions,
           unfinishedJourney: createUnfinishedJourney(dest.id, Date.now()),
-          routeGuide: null, // live guidance supersedes the manual guide
-        })),
+          routeGuide: null,
+        });
+        return true;
+      },
       stopNavigation: () =>
         set({
           isNavigating: false,

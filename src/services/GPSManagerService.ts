@@ -8,6 +8,7 @@ import { AppState, AppStateStatus } from 'react-native';
 import { Coordinate } from '../models/types';
 import { NAVIGATION_WATCH_TIME_INTERVAL_MS } from '../constants/navigation';
 import { isValidCoordinate } from '../utils/isValidCoordinate';
+import { LocationAccessService, type LocationPermissionState } from './LocationAccessService';
 
 type LocationCallback = (coord: Coordinate) => void;
 type LocationTrackingMode = 'follow' | 'navigation';
@@ -31,10 +32,24 @@ class GPSManager {
   private reconcileAgain = false;
   /** Optional callback injected externally to update the global store. */
   private storeUpdater: LocationCallback | null = null;
+  private permissionUpdater: ((facts: LocationPermissionState) => void) | null = null;
+  private permissionReadGeneration = 0;
 
   /** Call once at app start to wire the GPS manager to the global store. */
   setStoreUpdater(cb: LocationCallback): void {
     this.storeUpdater = cb;
+  }
+
+  setPermissionUpdater(cb: ((facts: LocationPermissionState) => void) | null): void {
+    this.permissionUpdater = cb;
+  }
+
+  private async readPermissionFacts(): Promise<LocationPermissionState> {
+    const request = ++this.permissionReadGeneration;
+    const lifecycle = this.lifecycleGeneration;
+    const facts = await LocationAccessService.getPermissionState();
+    if (request === this.permissionReadGeneration && lifecycle === this.lifecycleGeneration && this.appState === 'active') this.permissionUpdater?.(facts);
+    return facts;
   }
 
   private getRequestedMode(): LocationTrackingMode | null {
@@ -110,13 +125,13 @@ class GPSManager {
 
     const generation = ++this.watchGeneration;
     const isCurrentWatch = () => generation === this.watchGeneration && this.appState === 'active';
-    const { status } = await Location.getForegroundPermissionsAsync();
-    if (status !== 'granted' || !isCurrentWatch()) return;
+    const facts = await this.readPermissionFacts();
+    if (!facts.granted || !isCurrentWatch()) return;
     // Services-off check (LOC-01/#45): watchPositionAsync's underlying FusedLocationProviderClient
     // request triggers a native Play Services "enable location" resolution dialog when services are
     // off. Each dismissal counts as an app resume, which re-runs reconcileSubscription() and calls
     // start() again — an unbounded dialog-reappears-on-dismiss loop. Bail out before the native call.
-    if (!(await Location.hasServicesEnabledAsync()) || !isCurrentWatch()) return;
+    if (facts.servicesState !== 'enabled' || !isCurrentWatch()) return;
 
     const nextSubscription = await Location.watchPositionAsync(
       this.getWatchOptions(mode),
@@ -178,9 +193,9 @@ class GPSManager {
     // this one-shot request, including a background/resume round trip.
     const generation = this.lifecycleGeneration;
     const isCurrentRequest = () => generation === this.lifecycleGeneration && this.appState === 'active';
-    const { status } = await Location.getForegroundPermissionsAsync();
-    if (status !== 'granted' || !isCurrentRequest()) return null;
     try {
+      const facts = await this.readPermissionFacts();
+      if (!facts.granted || facts.servicesState !== 'enabled' || !isCurrentRequest()) return null;
       const location = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
       if (!isCurrentRequest()) return null;
       return this.publishFix(location);

@@ -60,12 +60,14 @@ function MainDrawer() {
 }
 
 export function RootNavigator() {
-  const { setHasInternet, setCurrentLocation } = useAppStore();
+  const { setHasInternet, setCurrentLocation, setLocationPermissionFacts } = useAppStore();
 
   // Wire GPSManagerService store updater once — keeps the service decoupled
   useEffect(() => {
     GPSManagerService.setStoreUpdater(setCurrentLocation);
-  }, [setCurrentLocation]);
+    GPSManagerService.setPermissionUpdater(setLocationPermissionFacts);
+    return () => GPSManagerService.setPermissionUpdater(null);
+  }, [setCurrentLocation, setLocationPermissionFacts]);
 
   // Poll connectivity every 30s and update the global store
   useEffect(() => {

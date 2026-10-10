@@ -1,3 +1,4 @@
+import { seedRunningNavigation } from './navigationFixture';
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -519,7 +520,7 @@ describe('HomeScreen - launch camera (Google Maps principles, adapted for a venu
 
     await renderAndMapReady();
     await act(async () => {
-      useAppStore.getState().startNavigation(searchResultPlace, {
+      seedRunningNavigation(searchResultPlace, {
         id: 'route',
         routeId: 'route',
         sourceVersion: 'v2',

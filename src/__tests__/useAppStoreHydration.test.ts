@@ -1,3 +1,4 @@
+import { activatePublishedFixture } from './navigationFixture';
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -753,9 +754,8 @@ describe('persisted runtime isolation across hydration', () => {
   });
 
   it('preserves a current journey on repeated reads and respects navigation reset', async () => {
-    const location = { latitude: 24.96, longitude: 67.01 };
-    useAppStore.getState().setCurrentLocation(location);
-    useAppStore.getState().startNavigation({ id: 'B34', name: 'Block 34', category: 'Block', description: 'Block 34', coordinate: location, sourceVersion: 'v2' });
+    const origin = { latitude: 24.96, longitude: 67.01 };
+    const location = activatePublishedFixture({ id: 'B34', name: 'Block 34', category: 'Block', description: 'Block 34', coordinate: origin, sourceVersion: 'v2' }, origin);
     const session = useAppStore.getState().navigationSessionId;
     for (let attempt = 0; attempt < 2; attempt += 1) {
       const storage = controllableStorage();

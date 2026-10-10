@@ -1,3 +1,4 @@
+import { seedRunningNavigation } from './navigationFixture';
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -48,7 +49,7 @@ beforeEach(() => {
 
 describe('only the engine that owns the active session may arrive (#305)', () => {
   test('V1 stays idle during a V2 journey even when a fix lands on the destination', async () => {
-    useAppStore.getState().startNavigation(destination, v2Route, []);
+    seedRunningNavigation(destination, v2Route, []);
     const hook = await renderHook(() => useNavigationViewModel());
     await act(async () => publish(destinationCoordinate));
     expect(hook.result.current.arrived).toBe(false);
@@ -57,7 +58,7 @@ describe('only the engine that owns the active session may arrive (#305)', () =>
   });
 
   test('V1 does not publish a snapped position over a V2 journey', async () => {
-    useAppStore.getState().startNavigation(destination, v2Route, []);
+    seedRunningNavigation(destination, v2Route, []);
     useAppStore.setState({ snappedLocation: null });
     await renderHook(() => useNavigationViewModel());
     await act(async () => publish(destinationCoordinate));
@@ -65,14 +66,14 @@ describe('only the engine that owns the active session may arrive (#305)', () =>
   });
 
   test('V2 stays idle during a V1 journey even when a fix lands on the destination', async () => {
-    useAppStore.getState().startNavigation(destination, v1Route, []);
+    seedRunningNavigation(destination, v1Route, []);
     const hook = await renderHook(() => useNavigationViewModelV2());
     await act(async () => publish(destinationCoordinate));
     expect(hook.result.current.arrived).toBe(false);
   });
 
   test('V1 still arrives normally on a V1 journey', async () => {
-    useAppStore.getState().startNavigation(destination, v1Route, []);
+    seedRunningNavigation(destination, v1Route, []);
     const hook = await renderHook(() => useNavigationViewModel());
     await act(async () => publish({ latitude: 24.9661, longitude: 67.0041 }));
     expect(hook.result.current.arrived).toBe(true);
