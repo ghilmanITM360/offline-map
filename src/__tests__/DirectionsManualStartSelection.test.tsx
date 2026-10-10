@@ -40,6 +40,7 @@ beforeEach(() => {
   jest.clearAllMocks();
   process.env.EXPO_PUBLIC_USE_IJTEMA_V2_ROUTING = 'true';
   useAppStore.setState(initialStoreState, true);
+  useAppStore.setState({ hasLocationPermission: true, locationPermissionPrecision: 'fine' });
   useAppStore.setState({
     currentLocation: { latitude: 24.9762, longitude: 67.011, accuracy: 10, observedAtMs: Date.now() },
     currentLocationSource: 'live',

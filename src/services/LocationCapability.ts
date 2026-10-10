@@ -9,6 +9,8 @@
 // Whatever these facets say, the route guide (manual FROM + TO) is always available: location improves
 // navigation, it never gates route planning.
 
+import { t } from '../i18n/translate';
+import { isValidCoordinate } from '../utils/isValidCoordinate';
 import type { Coordinate } from '../models/types';
 
 export const MAX_LIVE_NAVIGATION_ACCURACY_M = 50;
@@ -24,6 +26,7 @@ export type LiveBlocker =
   | 'permission_needed'
   | 'permission_blocked'
   | 'approximate_only'
+  | 'precision_unknown'
   | 'services_off'
   | 'acquiring'
   | 'no_fix'
@@ -58,12 +61,14 @@ export function classifyLiveFix(coordinate: Coordinate | null, nowMs: number): E
   const observedAtMs = coordinate.observedAtMs;
   // A missing, future or non-finite observation cannot establish freshness; fail closed (also after a clock rollback).
   if (
-    observedAtMs == null || !Number.isFinite(observedAtMs) || !Number.isFinite(nowMs) ||
+    observedAtMs == null || observedAtMs <= 0 || !Number.isFinite(observedAtMs) || !Number.isFinite(nowMs) ||
     observedAtMs > nowMs || nowMs - observedAtMs > MAX_LIVE_FIX_AGE_MS
   ) {
     return 'stale';
   }
-  if ((coordinate.accuracy ?? Number.POSITIVE_INFINITY) > MAX_LIVE_NAVIGATION_ACCURACY_M) return 'unusable';
+  const accuracy = coordinate.accuracy;
+  if (!isValidCoordinate(coordinate) || accuracy == null || !Number.isFinite(accuracy) ||
+    accuracy < 0 || accuracy > MAX_LIVE_NAVIGATION_ACCURACY_M) return 'unusable';
   return 'usable';
 }
 
@@ -89,6 +94,7 @@ export function evaluateLocationCapability(input: {
   let liveBlocker: LiveBlocker | null = null;
   if (!permission.granted) liveBlocker = permission.canAskAgain ? 'permission_needed' : 'permission_blocked';
   else if (accuracy === 'approximate') liveBlocker = 'approximate_only';
+  else if (accuracy === 'unknown') liveBlocker = 'precision_unknown';
   else if (services === 'disabled') liveBlocker = 'services_off';
   else if (fix === 'acquiring') liveBlocker = 'acquiring';
   else if (fix === 'none') liveBlocker = 'no_fix';
@@ -114,6 +120,8 @@ export function liveBlockerMessage(blocker: LiveBlocker): string {
       return 'Show me the way as I walk.';
     case 'permission_blocked':
       return 'Location is turned off for this app. Allow it in Settings to follow your walk live.';
+    case 'precision_unknown':
+      return t('directions.precisionUnknown');
     case 'approximate_only':
       return 'Your phone is sharing only an approximate location. Allow precise location to follow your walk live.';
     case 'services_off':

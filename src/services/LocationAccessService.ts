@@ -32,7 +32,9 @@ export interface LocationPermissionState {
 export function derivePrecision(permission: Location.LocationPermissionResponse): LocationPermissionPrecision {
   if (permission.status !== 'granted') return 'none';
   const androidAccuracy = (permission as { android?: { accuracy?: LocationPermissionPrecision } }).android?.accuracy;
-  return androidAccuracy ?? 'fine';
+  if (Platform.OS === 'android') return androidAccuracy === 'fine' || androidAccuracy === 'coarse' ? androidAccuracy : 'none';
+  // Installed Expo 19 exposes iOS scope, not precision. Scope cannot prove precise authorization.
+  return 'none';
 }
 
 async function queryServicesState(): Promise<LocationServicesState> {
@@ -70,7 +72,7 @@ export class LocationAccessService {
   static async resolveCurrentLocation(allowPrompt = true): Promise<LocationResolveResult> {
     try {
       let permission = await Location.getForegroundPermissionsAsync();
-      if (permission.status !== 'granted' && allowPrompt) {
+      if (permission.status !== 'granted' && permission.canAskAgain && allowPrompt) {
         permission = await Location.requestForegroundPermissionsAsync();
       }
 
@@ -125,7 +127,7 @@ export class LocationAccessService {
             latitude: current.coords.latitude,
             longitude: current.coords.longitude,
             heading: current.coords.heading == null || current.coords.heading < 0 ? undefined : current.coords.heading,
-            accuracy: current.coords.accuracy ?? 0,
+            accuracy: current.coords.accuracy ?? undefined,
             ...(current.timestamp == null ? {} : { observedAtMs: current.timestamp }),
           },
           source: 'live',
@@ -144,7 +146,7 @@ export class LocationAccessService {
               latitude: lastKnown.coords.latitude,
               longitude: lastKnown.coords.longitude,
               heading: lastKnown.coords.heading == null || lastKnown.coords.heading < 0 ? undefined : lastKnown.coords.heading,
-              accuracy: lastKnown.coords.accuracy ?? 0,
+              accuracy: lastKnown.coords.accuracy ?? undefined,
               ...(lastKnown.timestamp == null ? {} : { observedAtMs: lastKnown.timestamp }),
             },
             source: 'device_last_known',

@@ -105,3 +105,10 @@ describe('GPSManagerService — malformed fixes (#147)', () => {
     GPSManagerService.removeListener(listener);
   });
 });
+
+it('preserves unknown native accuracy instead of publishing perfect accuracy', async () => {
+  (Location.getForegroundPermissionsAsync as jest.Mock).mockResolvedValue({ status: 'granted' });
+  (Location.getCurrentPositionAsync as jest.Mock).mockResolvedValue({ coords: { latitude: 24.96, longitude: 67.01, accuracy: null }, timestamp: Date.now() });
+  const coordinate = await GPSManagerService.forceFix();
+  expect(coordinate?.accuracy).toBeUndefined();
+});
