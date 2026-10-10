@@ -24,6 +24,7 @@ import {
   type V2DirectionsPreviewResult,
 } from '../services/V2DirectionsService';
 import { V2NavigationAdapter } from '../services/V2NavigationAdapter';
+import { startPreviewNavigationV2 } from './NavigationViewModelV2';
 import type { RoutePreviewV2 } from '../services/RoutingServiceV2';
 import { EntryGateRoutingService } from '../services/EntryGateRoutingService';
 import { RoutePointService } from '../services/RoutePointService';
@@ -88,6 +89,13 @@ export function useDirectionsViewModel(destination: Place | null) {
   // Outcome of the last "Use my location & start" press: 'failed' = no usable fix, 'settings' = the user must
   // allow (precise) location in system settings. Shown as one plain sentence under the primary action.
   const [startAttempt, setStartAttempt] = useState<'idle' | 'working' | 'failed' | 'settings' | 'services_off'>('idle');
+  const destinationIntentId = useAppStore((s) => s.destinationJourneyIntent?.id ?? null);
+  const ownedDestinationIntentRef = useRef<number | null>(null);
+  const retireAutomaticIntent = () => {
+    const id = ownedDestinationIntentRef.current;
+    if (id !== null) useAppStore.getState().retireDestinationIntent(id);
+    ownedDestinationIntentRef.current = null;
+  };
   const routeRef = useRef<RoutePreview | null>(null);
   // What the route on screen was calculated for. A failed recalculation may keep it only for the same trip.
   const routeTripKeyRef = useRef<string | null>(null);
@@ -96,6 +104,7 @@ export function useDirectionsViewModel(destination: Place | null) {
   const routeRequestRef = useRef(0);
   const mountedRef = useRef(true);
   const invalidateJourneyWork = () => {
+    retireAutomaticIntent();
     journeyGenerationRef.current += 1;
     locationRequestRef.current += 1;
     routeRequestRef.current += 1;
@@ -130,6 +139,8 @@ export function useDirectionsViewModel(destination: Place | null) {
     setManualGateId(null);
     setManualStart(null);
     const state = useAppStore.getState();
+    const intent = state.destinationJourneyIntent;
+    ownedDestinationIntentRef.current = intent && intent.destinationId === destination?.id ? intent.id : null;
     const live = usableLiveFix(state.currentLocation, state.currentLocationSource);
     setRouteOriginLocation(live);
     setStartSource(live ? 'live_gps' : 'manual_place');
@@ -140,7 +151,7 @@ export function useDirectionsViewModel(destination: Place | null) {
     setRoutePlannerOrigin(null);
     setRoutePlannerDest(destination);
     if (!state.isNavigating) { setActiveRoute(null); setRouteInstructions([]); }
-  }, [destination?.id]);
+  }, [destination?.id, destinationIntentId]);
 
   useEffect(() => {
     if (startSource !== 'live_gps' || !currentLocation || currentLocationSource !== 'live') return;
@@ -243,6 +254,7 @@ export function useDirectionsViewModel(destination: Place | null) {
   const startable = isJourneyStartable(journeyState);
 
   const clearRoute = () => {
+    retireAutomaticIntent();
     setRoute(null);
     setAlternatives([]);
     setInstructions([]);
@@ -252,7 +264,9 @@ export function useDirectionsViewModel(destination: Place | null) {
   const calculateRoute = useCallback(async () => {
     const generation = journeyGenerationRef.current;
     const request = ++routeRequestRef.current;
-    const canCommit = () => mountedRef.current && generation === journeyGenerationRef.current && request === routeRequestRef.current;
+    const intentId = ownedDestinationIntentRef.current;
+    const canCommit = () => mountedRef.current && generation === journeyGenerationRef.current && request === routeRequestRef.current &&
+      !useAppStore.getState().isNavigating && (intentId === null || useAppStore.getState().destinationJourneyIntent?.id === intentId);
     outsideRequestCoordinatorRef.current.cancelCurrent();
     if (!destination) {
       setLoadState('error');
@@ -262,6 +276,7 @@ export function useDirectionsViewModel(destination: Place | null) {
 
     const originCoord = resolveActiveOriginCoordinate();
     if (!originCoord && !(isV2Destination && startSource === 'manual_place' && manualStart)) {
+      retireAutomaticIntent();
       setLoadState('needs_origin');
       setErrorMessage(null); // the FROM row already says "Choose where to start"
       setRoute(null);
@@ -380,6 +395,14 @@ export function useDirectionsViewModel(destination: Place | null) {
       setLoadState('ready');
       setRouteRefreshing(false);
       requestHandle?.finish();
+      // Selection eligibility is captured at the tap, not when GPS later becomes available.
+      // Consume before the command so rerenders, retries and native echoes cannot repeat it.
+      const state = useAppStore.getState();
+      if (intentId !== null && state.destinationJourneyIntent?.destinationId === destination.id &&
+        startSource === 'live_gps' && !manualStart && canCommit() && state.consumeDestinationIntent(intentId)) {
+        const result = startPreviewNavigationV2({ route: preview.route, destination, startPlace: null, currentLocation: state.currentLocation });
+        if (!result.canStart) setStartAttempt('failed');
+      }
       return;
     }
 
@@ -499,7 +522,7 @@ export function useDirectionsViewModel(destination: Place | null) {
       setLoadState('error');
       setErrorMessage(ROUTE_NOT_FOUND);
     }
-  }, [destination, isV2Destination, lastKnownLocation, manualGateId, manualStart, routeOriginLocation, setActiveRoute, setRouteAlternatives, setRouteInstructions, setSelectedRouteIndex, settings.walkingSpeed, startSource]);
+  }, [destination, destinationIntentId, isV2Destination, lastKnownLocation, manualGateId, manualStart, routeOriginLocation?.latitude, routeOriginLocation?.longitude, setActiveRoute, setRouteAlternatives, setRouteInstructions, setSelectedRouteIndex, settings.walkingSpeed, startSource]);
 
   useEffect(() => {
     void calculateRoute();
@@ -571,8 +594,10 @@ export function useDirectionsViewModel(destination: Place | null) {
       return false;
     }
   };
-  const chooseCurrentLocation = async (): Promise<boolean> =>
-    chooseCurrentLocationWith(() => LocationAccessService.resolveCurrentLocation(true));
+  const chooseCurrentLocation = async (): Promise<boolean> => {
+    retireAutomaticIntent();
+    return chooseCurrentLocationWith(() => LocationAccessService.resolveCurrentLocation(true));
+  };
 
   const chooseRememberedLocation = (): boolean => {
     invalidateJourneyWork();
@@ -597,6 +622,7 @@ export function useDirectionsViewModel(destination: Place | null) {
   };
 
   const chooseManualStart = () => {
+    retireAutomaticIntent();
     // Opening a chooser cancels acquisition but preserves the current route until a new origin is selected.
     locationRequestRef.current += 1;
     setIsEditingManualStart(true);
@@ -613,6 +639,7 @@ export function useDirectionsViewModel(destination: Place | null) {
 
   /** Acquisition replaces the origin and previews the new route. Only another explicit Start may activate it. */
   const runStartAction = async (startNow: () => void) => {
+    retireAutomaticIntent();
     const state = useAppStore.getState();
     if (startAction.kind === 'start') {
       const capability = evaluateLocationCapability({

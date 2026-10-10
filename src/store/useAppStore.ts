@@ -38,8 +38,14 @@ export interface RouteGuideStep { text: string; distanceM: number }
  */
 export interface RouteGuideState { steps: RouteGuideStep[]; stepIndex: number }
 
-/** Runtime-only destination handoff. Home opens Directions; origin and activation remain explicit. */
+/** Runtime-only explicit destination handoff. Home opens Directions; activation policy is owned by its intent. */
 export interface PendingJourney { destination: Place }
+/** One explicit destination tap may authorize one guarded live attempt; never persisted or inferred from hydration. */
+export interface DestinationJourneyIntent {
+  id: number;
+  destinationId: string;
+  autoLive: 'eligible' | 'ineligible' | 'consumed';
+}
 /** What the Directory is being opened to choose; null = plain browsing. */
 export type DirectoryPurpose = 'start' | 'destination';
 /** A Directory answer. Quick start options carry no place: the initiator already owns the location. */
@@ -192,6 +198,10 @@ interface AppState {
   // directory screen may set this before HomeScreen has even mounted.
   pendingDirectorySelection: Place | null;
   setPendingDirectorySelection: (place: Place | null) => void;
+  destinationJourneyIntent: DestinationJourneyIntent | null;
+  destinationIntentSerial: number;
+  consumeDestinationIntent: (id: number) => boolean;
+  retireDestinationIntent: (id: number) => void;
   pendingJourney: PendingJourney | null;
   setPendingJourney: (journey: PendingJourney | null) => void;
   // The Directory is the one place chooser. An initiator (Get Directions) sets the purpose before opening it, the
@@ -506,10 +516,42 @@ export const useAppStore = create<AppState>()(
       // --- Locations directory hand-off ---
       pendingDirectorySelection: null,
       setPendingDirectorySelection: (place) => set({ pendingDirectorySelection: place }),
+      destinationJourneyIntent: null,
+      destinationIntentSerial: 0,
+      consumeDestinationIntent: (id) => {
+        const intent = get().destinationJourneyIntent;
+        if (!intent || intent.id !== id || intent.autoLive !== 'eligible') return false;
+        set({ destinationJourneyIntent: { ...intent, autoLive: 'consumed' } });
+        return true;
+      },
+      retireDestinationIntent: (id) => {
+        const intent = get().destinationJourneyIntent;
+        if (intent?.id === id && intent.autoLive !== 'consumed') {
+          set({ destinationJourneyIntent: { ...intent, autoLive: 'consumed' } });
+        }
+      },
       pendingJourney: null,
-      setPendingJourney: (journey) => set({ pendingJourney: journey }),
+      setPendingJourney: (journey) => {
+        if (!journey) { set({ pendingJourney: null }); return; } // Handoff consumption is not cancellation.
+        const state = get();
+        const capability = evaluateLocationCapability({
+          permission: { granted: state.hasLocationPermission, canAskAgain: state.locationPermissionCanAskAgain,
+            precision: state.locationPermissionPrecision, servicesState: state.locationServicesState },
+          liveFix: state.currentLocationSource === 'live' ? state.currentLocation : null,
+        });
+        const id = state.destinationIntentSerial + 1;
+        set({ pendingJourney: journey, destinationIntentSerial: id,
+          destinationJourneyIntent: { id, destinationId: journey.destination.id,
+            autoLive: !state.isNavigating && state.locationServicesState === 'enabled' && capability.mode === 'live_navigation'
+              ? 'eligible' : 'ineligible' } });
+      },
       directoryPurpose: null,
-      setDirectoryPurpose: (purpose) => set({ directoryPurpose: purpose }),
+      setDirectoryPurpose: (purpose) => {
+        const intent = get().destinationJourneyIntent;
+        // Opening either chooser withdraws the original tap's automatic activation authority.
+        set({ directoryPurpose: purpose,
+          ...(purpose && intent ? { destinationJourneyIntent: { ...intent, autoLive: 'consumed' as const } } : {}) });
+      },
       directoryChoice: null,
       setDirectoryChoice: (choice) => set({ directoryChoice: choice }),
 
@@ -520,6 +562,8 @@ export const useAppStore = create<AppState>()(
       setRoutePlannerDest: (place) => set({ routePlannerDest: place }),
       clearRoutePlanner: () =>
         set({
+          destinationJourneyIntent: null,
+          pendingJourney: null,
           routePlannerOrigin: null,
           routePlannerDest: null,
           routeAlternatives: [],
