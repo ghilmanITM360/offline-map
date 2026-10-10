@@ -116,14 +116,14 @@ describe('#139 recovery notice - actions', () => {
     expect(beginRecovery).toHaveBeenCalledTimes(1);
     expect(navigation.goBack).toHaveBeenCalledTimes(1);
     const state = useAppStore.getState();
-    expect(state.pendingJourney).toMatchObject({ destination: { id: firstBlock.id }, start: null, mode: 'live' });
+    expect(state.pendingJourney).toMatchObject({ destination: { id: firstBlock.id } });
     expect(state.pendingDirectorySelection).toBeNull();
     expect(state.isNavigating).toBe(false);
     expect(state.activeRoute).toBeNull();
     expect(state.unfinishedJourney).toBeNull();
   });
 
-  test('Get new route with no location asks where the user is starting from instead of guessing a start', async () => {
+  test('Get new route with no location opens destination preview without guessing a start', async () => {
     seedMarker(firstBlock.id);
     const navigation = mockNav(true);
     useAppStore.setState({ hasLocationPermission: false });
@@ -133,10 +133,9 @@ describe('#139 recovery notice - actions', () => {
       fireEvent.press(screen.getByRole('button', { name: 'Get new route' }));
     });
 
-    expect(screen.getByText(`To ${firstBlock.name}`)).toBeOnTheScreen();
-    expect(navigation.goBack).not.toHaveBeenCalled();
+    expect(useAppStore.getState().pendingJourney).toEqual({ destination: firstBlock });
+    expect(navigation.goBack).toHaveBeenCalledTimes(1);
     expect(useAppStore.getState().unfinishedJourney).toBeNull();
-    expect(useAppStore.getState().pendingJourney).toBeNull();
   });
 
   test('Get new route with an unresolvable destination still opens the map without a selection', async () => {
@@ -194,7 +193,7 @@ describe('#139 recovery notice - actions', () => {
     expect(screen.queryByLabelText(/resume/i)).not.toBeOnTheScreen();
   });
 
-  test('a normal destination tap still works while the notice is showing (it asks where to start)', async () => {
+  test('a normal destination tap opens preview while the recovery notice is showing', async () => {
     seedMarker('ZZ_UNKNOWN_DESTINATION_999');
     const navigation = mockNav(true);
     await render(<LocationsDirectoryScreen />);
@@ -206,8 +205,8 @@ describe('#139 recovery notice - actions', () => {
       fireEvent.press(await screen.findByLabelText('Block 24, Block'));
     });
 
-    expect(screen.getByText('To Block 24')).toBeOnTheScreen();
-    expect(navigation.goBack).not.toHaveBeenCalled();
+    expect(useAppStore.getState().pendingJourney?.destination.id).toBe('B24');
+    expect(navigation.goBack).toHaveBeenCalledTimes(1);
   });
 });
 

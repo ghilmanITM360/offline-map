@@ -174,3 +174,23 @@ describe('HomeViewModel committed location venue status', () => {
     });
   });
 });
+
+
+test('directions-only selection focuses destination without presenting a place sheet', async () => {
+  const hook = await renderHook(() => useHomeViewModel());
+  const destination: Place = { id: 'B1', name: 'Block 1', category: 'Block', description: '', coordinate: { latitude: 24.97, longitude: 67 }, sourceVersion: 'v2' };
+  const animateToRegion = jest.fn();
+  const present = jest.fn();
+  (hook.result.current.mapRef as { current: unknown }).current = { animateToRegion, animateCamera: jest.fn(), fitToCoordinates: jest.fn() };
+  (hook.result.current.bottomSheetRef as { current: unknown }).current = { present, snapToIndex: jest.fn() };
+  await act(() => {
+    hook.result.current.cameraManager.notifyNativeMapReady();
+    hook.result.current.cameraManager.notifyMapLayout(390, 844);
+  });
+  await act(() => hook.result.current.handlePlaceSelect(destination, { directionsOnly: true }));
+  expect(useAppStore.getState().selectedPlace).toEqual(destination);
+  expect(animateToRegion).toHaveBeenCalledTimes(1);
+  expect(animateToRegion.mock.calls[0][0].longitude).toBe(destination.coordinate!.longitude);
+  await act(async () => new Promise(resolve => setTimeout(resolve, 500)));
+  expect(present).not.toHaveBeenCalled();
+});

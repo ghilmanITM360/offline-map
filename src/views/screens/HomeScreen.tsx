@@ -1178,6 +1178,7 @@ export function HomeScreen() {
         : place.category === 'Block' && entryPoints[selectedEntryIdx]
         ? RoutePointService.enrichPlaceWithRoutingNode(place, entryPoints[selectedEntryIdx].nodeId)
         : place;
+    handlePlaceSelect(destination, { directionsOnly: true });
     // Switching the sheet from "place" to "route" identity re-presents/re-snaps an
     // already-open BottomSheetModal, which can fire a transient onDismiss for the old
     // identity. Arm the transition first so handleSheetDismiss recognizes that dismiss as expected instead of tearing
@@ -1210,38 +1211,23 @@ export function HomeScreen() {
   }, [armSheetTransition]);
 
   // #307: a destination tapped in the Directory means "take me here". Consume the journey once Home is focused and open
-  // Directions for it; the sheet applies the start and starts it (live from a fresh fix, or as a route guide). A trip
+  // Directions preview for it. Origin acquisition and activation require explicit actions. A trip
   // already under way is never silently replaced: the place is shown instead, like any other Directory pick.
   const pendingJourney = useAppStore((s) => s.pendingJourney);
   const setPendingJourney = useAppStore((s) => s.setPendingJourney);
   const addRecentSearchForJourney = useAppStore((s) => s.addRecentSearch);
-  const [journeyIntent, setJourneyIntent] = useState<{ mode: 'live' | 'guide'; start: Place | null } | null>(null);
   useEffect(() => {
     if (!pendingJourney || !isHomeFocused) return;
     setPendingJourney(null);
-    const { destination, start, mode } = pendingJourney;
+    const { destination } = pendingJourney;
     if (useAppStore.getState().isNavigating) {
       useAppStore.getState().setPendingDirectorySelection(destination);
       return;
     }
     addRecentSearchForJourney(destination);
-    setJourneyIntent({ mode, start });
     handleOpenDirections(destination);
     // handleOpenDirections is recreated every render; this intentionally runs once per journey.
   }, [pendingJourney, isHomeFocused]);
-  // The intent ends when Directions closes. Only a real open -> closed transition counts: on mount this effect runs
-  // after the consumption effect above with directionsDestination still null, and clearing then would drop the
-  // journey before the sheet ever saw it.
-  const directionsWereOpenRef = useRef(false);
-  useEffect(() => {
-    if (directionsDestination) {
-      directionsWereOpenRef.current = true;
-    } else if (directionsWereOpenRef.current) {
-      directionsWereOpenRef.current = false;
-      setJourneyIntent(null);
-    }
-  }, [directionsDestination]);
-
   // Get Directions asks the Directory (the one place chooser) for a start or destination; the choice comes back
   // through the store and Get Directions applies it. The sheet stays mounted, so its route intent is kept.
   const setDirectoryPurpose = useAppStore((s) => s.setDirectoryPurpose);
@@ -1893,7 +1879,6 @@ export function HomeScreen() {
               onRouteGuideStarted={handleRouteGuideStarted}
               sheetCollapsed={sheetIndex === 0}
               onToggleSheet={() => bottomSheetRef.current?.snapToIndex(sheetIndex === 0 ? 1 : 0)}
-              journey={journeyIntent}
               onCancelRoute={activePreviewRoute ? handleClearPreviewRoute : undefined}
               onChangeDestination={handleChangeDestination}
               onOpenDirectory={handleOpenDirectoryFor}

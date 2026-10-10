@@ -3,11 +3,10 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-// #307: the journey auto-start with the REAL DirectionsViewModel (the unit suite mocks it). A destination tapped in the
-// Directory with a chosen start must show that start as FROM, compute the route and open the route guide.
+// Real ViewModel integration: both manual and live routes preview before explicit activation.
 
 import React from 'react';
-import { render, screen, waitFor } from './test-utils';
+import { render, screen, waitFor, userEvent } from './test-utils';
 
 import { LocationSheet } from '../views/components/map/LocationSheet';
 import { DirectionsSheetFooter } from '../views/components/map/DirectionsSheetFooter';
@@ -35,21 +34,25 @@ beforeEach(() => {
 });
 
 describe('journey auto-start with the real view-model (#307)', () => {
-  test('guide: the chosen start becomes FROM, the route is found and the route guide opens', async () => {
+  test('manual start previews before explicit guide activation', async () => {
+    useAppStore.setState({ directoryChoice: { purpose: 'start', place: start } });
     await render(
       <>
         <LocationSheet mode="routePreview" destination={destination} onClose={jest.fn()} onStartNavigation={jest.fn()}
-          onOpenDirectory={jest.fn()} onViewRoute={jest.fn()} onChangeDestination={jest.fn()} journey={{ mode: 'guide', start }} />
+          onOpenDirectory={jest.fn()} onViewRoute={jest.fn()} onChangeDestination={jest.fn()} />
         <DirectionsSheetFooter animatedFooterPosition={{ value: 0, get: () => 0 } as never} />
       </>,
     );
 
-    await waitFor(() => expect(useAppStore.getState().routeGuide).not.toBeNull(), { timeout: 10_000 });
+    await screen.findByText('Route ready');
+    expect(useAppStore.getState().routeGuide).toBeNull();
+    await userEvent.setup().press(await screen.findByText('Start route'));
+    await waitFor(() => expect(useAppStore.getState().routeGuide).not.toBeNull());
     expect(screen.queryByText('Choose where to start')).not.toBeOnTheScreen();
     expect(useAppStore.getState().isNavigating).toBe(false);
   });
 
-  test('live: with permission and a fresh fix the journey starts navigation by itself', async () => {
+  test('fresh GPS shows preview and waits for explicit live Start', async () => {
     const onStartNavigation = jest.fn();
     useAppStore.setState({
       hasLocationPermission: true,
@@ -60,11 +63,14 @@ describe('journey auto-start with the real view-model (#307)', () => {
     await render(
       <>
         <LocationSheet mode="routePreview" destination={destination} onClose={jest.fn()} onStartNavigation={onStartNavigation}
-          onOpenDirectory={jest.fn()} onViewRoute={jest.fn()} onChangeDestination={jest.fn()} journey={{ mode: 'live', start: null }} />
+          onOpenDirectory={jest.fn()} onViewRoute={jest.fn()} onChangeDestination={jest.fn()} />
         <DirectionsSheetFooter animatedFooterPosition={{ value: 0, get: () => 0 } as never} />
       </>,
     );
 
-    await waitFor(() => expect(onStartNavigation).toHaveBeenCalledTimes(1), { timeout: 10_000 });
+    await screen.findByText('Ready to go');
+    expect(onStartNavigation).not.toHaveBeenCalled();
+    await userEvent.setup().press(await screen.findByText('Start Navigation'));
+    await waitFor(() => expect(onStartNavigation).toHaveBeenCalledTimes(1));
   });
 });

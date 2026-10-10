@@ -1726,7 +1726,7 @@ describe('HomeScreen — a journey handed over by the Directory (#307)', () => {
 
   test('consumes the journey, opens Directions for its destination and remembers it as a recent place', async () => {
     mockedUseDirectionsViewModel.mockReturnValue(idleDirectionsVm());
-    useAppStore.setState({ pendingJourney: { destination: gateResult, start: null, mode: 'live' } });
+    useAppStore.setState({ pendingJourney: { destination: gateResult } });
 
     await render(<HomeScreen />);
 
@@ -1734,23 +1734,24 @@ describe('HomeScreen — a journey handed over by the Directory (#307)', () => {
     expect(useAppStore.getState().pendingJourney).toBeNull();
     expect(mockedUseDirectionsViewModel).toHaveBeenCalledWith(expect.objectContaining({ id: gateResult.id }));
     expect(useAppStore.getState().recentSearches.map((p) => p.id)).toContain(gateResult.id);
+    expect(handlePlaceSelectSpy).toHaveBeenCalledWith(expect.objectContaining({ id: gateResult.id }));
   });
 
-  test('the chosen start reaches the sheet: it is applied as FROM (the intent must survive Home\'s own mount effects)', async () => {
+  test('destination handoff never silently applies a previous origin', async () => {
     const setManualStartPlace = jest.fn();
     mockedUseDirectionsViewModel.mockReturnValue({ ...idleDirectionsVm(), setManualStartPlace });
     const startPlace = { ...gateResult, id: 'B9', name: 'Block 9', category: 'Block' } as Place;
-    useAppStore.setState({ pendingJourney: { destination: gateResult, start: startPlace, mode: 'guide' } });
+    useAppStore.setState({ routePlannerOrigin: startPlace, pendingJourney: { destination: gateResult } });
 
     await render(<HomeScreen />);
 
     expect(await screen.findByText('Get Directions')).toBeOnTheScreen();
-    expect(setManualStartPlace).toHaveBeenCalledWith(startPlace);
+    expect(setManualStartPlace).not.toHaveBeenCalled();
   });
 
   test('while a journey is already being navigated it falls back to showing the place, never silently replacing the trip', async () => {
     mockedUseDirectionsViewModel.mockReturnValue(idleDirectionsVm());
-    useAppStore.setState({ isNavigating: true, pendingJourney: { destination: gateResult, start: null, mode: 'live' } });
+    useAppStore.setState({ isNavigating: true, pendingJourney: { destination: gateResult } });
 
     await render(<HomeScreen />);
 

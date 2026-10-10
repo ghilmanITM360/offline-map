@@ -3,11 +3,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { accuracyFacet, evaluateLocationCapability } from '../../services/LocationCapability';
-import { planDestinationTap } from '../../services/JourneyStartPlanner';
-import { LocationAccessService } from '../../services/LocationAccessService';
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Animated, BackHandler, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { accuracyFacet } from '../../services/LocationCapability';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { Alert, Animated, BackHandler, Keyboard, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -89,17 +87,12 @@ export function LocationsDirectoryScreen() {
   const lastKnownLocationUpdatedAt = useAppStore((s) => s.lastKnownLocationUpdatedAt);
   const setPendingDirectorySelection = useAppStore((s) => s.setPendingDirectorySelection);
   const setPendingJourney = useAppStore((s) => s.setPendingJourney);
-  const hasLocationPermission = useAppStore((s) => s.hasLocationPermission);
   // Set by Get Directions when it opens the Directory to choose a start or destination (null = plain browsing).
   // Read once at mount: this screen is pushed for one question, and clearing the store's copy on choose must not
   // flip the title back to "Find your way" while the screen is still animating out.
   const [storePurpose] = useState(() => useAppStore.getState().directoryPurpose);
-  // #307: a destination tapped with no usable location and no chosen start keeps the user here and asks where they
-  // start. Local to this screen instance: it is one question about one destination.
-  const [journeyDestination, setJourneyDestination] = useState<V2Place | null>(null);
-  const purpose = journeyDestination ? 'start' : storePurpose;
-  const mountedRef = useRef(true);
-  useEffect(() => () => { mountedRef.current = false; }, []);
+  const purpose = storePurpose;
+  const chooserDestination = useAppStore((state) => state.routePlannerDest);
   const setDirectoryPurpose = useAppStore((s) => s.setDirectoryPurpose);
   const setDirectoryChoice = useAppStore((s) => s.setDirectoryChoice);
   const recentSearches = useAppStore((s) => s.recentSearches);
@@ -150,6 +143,7 @@ export function LocationsDirectoryScreen() {
   const canUseLastKnown = !!lastKnownLocation;
 
   const goToMap = useCallback(() => {
+    Keyboard.dismiss();
     // Pushed from Home (reopened): back to the map, MapView never remounts. Reached at
     // launch via StartupManager (nothing to go back to): replace, matching how
     // Splash/Welcome/Permission hand off to their next screen.
@@ -172,26 +166,15 @@ export function LocationsDirectoryScreen() {
     [goToMap, setPendingDirectorySelection],
   );
 
-  // "Take me here" (#307): start the journey from where the user is, from a start they already chose, or ask where
-  // they start. A place that cannot be routed opens its details instead, where the sheet says why.
+  // Ordinary selection opens destination planning on the existing Map. Origin resolution stays there.
+  // Unavailable places retain their Details explanation.
   const takeMeTo = useCallback(
     (place: V2Place) => {
       if (place.isRoutable === false) {
         handleDetails(place);
         return;
       }
-      const state = useAppStore.getState();
-      const plan = planDestinationTap({
-        capability: evaluateLocationCapability({
-          permission: { granted: state.hasLocationPermission, canAskAgain: true, precision: state.locationPermissionPrecision },
-          liveFix: state.currentLocationSource === 'live' ? state.currentLocation : null,
-        }),
-      });
-      if (plan.kind === 'ask_start') {
-        setJourneyDestination(place);
-        return;
-      }
-      setPendingJourney({ destination: place, start: null, mode: 'live' });
+      setPendingJourney({ destination: place });
       goToMap();
     },
     [goToMap, handleDetails, setPendingJourney],
@@ -199,20 +182,6 @@ export function LocationsDirectoryScreen() {
 
   const handleSelect = useCallback(
     (place: V2Place) => {
-      if (journeyDestination) {
-        // Answering "Where are you starting from?" for the destination already tapped: a route guide from here.
-        if (place.isStartRoutable === false) {
-          Alert.alert(
-            'Place unavailable',
-            unavailableReasonCopy(place.unavailableReason) ?? `${place.name} is not available on the map yet.`,
-          );
-          return;
-        }
-        setPendingJourney({ destination: journeyDestination, start: place, mode: 'guide' });
-        setJourneyDestination(null);
-        goToMap();
-        return;
-      }
       if (storePurpose) {
         // An unavailable place is never a valid start or destination: say so and stay here.
         const usable = storePurpose === 'start' ? place.isStartRoutable !== false : place.isRoutable !== false;
@@ -231,38 +200,9 @@ export function LocationsDirectoryScreen() {
       // Plain browsing: a tap means "take me here" (#307).
       takeMeTo(place);
     },
-    [goToMap, journeyDestination, setDirectoryChoice, setDirectoryPurpose, setPendingJourney, storePurpose, takeMeTo],
+    [goToMap, setDirectoryChoice, setDirectoryPurpose, setPendingJourney, storePurpose, takeMeTo],
   );
 
-  // "Use my location" while asking where to start: the one place location is requested from the Directory, and only
-  // because the user chose it. A refusal keeps the question open; Settings opens only if they ask for it.
-  const handleUseMyLocation = useCallback(async () => {
-    const destination = journeyDestination;
-    if (!destination) return;
-    const resolved = await LocationAccessService.resolveCurrentLocation(true);
-    if (!mountedRef.current) return;
-    const { setHasLocationPermission, setLocationPermissionPrecision, setCurrentLocation } = useAppStore.getState();
-    setHasLocationPermission(resolved.permissionState.granted);
-    setLocationPermissionPrecision(resolved.permissionState.precision);
-    if (resolved.ok && resolved.source === 'live' && resolved.coordinate) {
-      setCurrentLocation(resolved.coordinate, 'live');
-      setPendingJourney({ destination, start: null, mode: 'live' });
-      setJourneyDestination(null);
-      goToMap();
-      return;
-    }
-    const blocked = !resolved.permissionState.granted && !resolved.permissionState.canAskAgain;
-    Alert.alert(
-      "Couldn't use your location",
-      resolved.message ?? 'Choose where you are starting from.',
-      blocked
-        ? [{ text: 'Not now', style: 'cancel' }, { text: 'Open Settings', onPress: () => { void LocationAccessService.openAppSettings(); } }]
-        : [{ text: 'OK' }],
-    );
-  }, [goToMap, journeyDestination, setPendingJourney]);
-
-  // #139 Option B: never resumes the old journey. "Get new route" consumes the marker and plans a fresh journey to the
-  // same destination exactly like a destination tap: live from the user's location, or ask where they start.
   const handleGetNewRoute = useCallback(() => {
     const place = beginRecovery();
     if (!place) {
@@ -288,13 +228,15 @@ export function LocationsDirectoryScreen() {
     [goToMap, setDirectoryChoice, setDirectoryPurpose],
   );
 
-  // Android back: dismiss active search/filter state first (mirrors HomeScreen's own
-  // SEARCH-mode back behavior), then fall through to the default stack behavior — exit
+  // Android Back cancels an explicit chooser first. Browsing clears search/filter state
+  // before falling through to the default stack behavior — exit
   // the app at initial launch, or pop back to the map when reopened from there.
   useEffect(() => {
     const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
-      if (journeyDestination) {
-        setJourneyDestination(null);
+      if (storePurpose) {
+        setDirectoryPurpose(null);
+        setDirectoryChoice(null);
+        goToMap();
         return true;
       }
       if (trimmedQuery.length > 0 || activeCategory) {
@@ -305,7 +247,7 @@ export function LocationsDirectoryScreen() {
       return false;
     });
     return () => subscription.remove();
-  }, [trimmedQuery, activeCategory, journeyDestination]);
+  }, [trimmedQuery, activeCategory, storePurpose, setDirectoryPurpose, setDirectoryChoice, goToMap]);
 
   const handleCategoryPress = (categoryId: DestinationCategoryId) => {
     setActiveCategory((current) => (current === categoryId ? null : categoryId));
@@ -363,7 +305,7 @@ export function LocationsDirectoryScreen() {
         </Text>
         <Pressable
           style={styles.viewMapButton}
-          onPress={journeyDestination ? () => setJourneyDestination(null) : goToMap}
+          onPress={() => { setDirectoryPurpose(null); setDirectoryChoice(null); goToMap(); }}
           accessibilityRole="button"
           accessibilityLabel={purpose ? 'Cancel and go back' : 'View map'}
         >
@@ -372,8 +314,8 @@ export function LocationsDirectoryScreen() {
         </Pressable>
       </View>
 
-      {journeyDestination ? (
-        <Text style={styles.journeyTo} accessibilityLiveRegion="polite">{`To ${journeyDestination.name}`}</Text>
+      {purpose === 'start' && chooserDestination ? (
+        <Text style={styles.journeyTo} accessibilityLiveRegion="polite">{`To ${chooserDestination.name}`}</Text>
       ) : null}
 
       <View style={styles.searchWrap}>
@@ -451,17 +393,7 @@ export function LocationsDirectoryScreen() {
           renderSearchResults()
         ) : (
           <>
-            {journeyDestination && !activeCategory && !hasLocationPermission && (
-              <View style={styles.quickStarts}>
-                <StartOptionCard
-                  icon={<LocateFixed size={26} color={directionsSheetColors.brand} />}
-                  title="Use my location"
-                  subtitle="Show me the way as I walk"
-                  onPress={() => { void handleUseMyLocation(); }}
-                />
-              </View>
-            )}
-            {!journeyDestination && purpose === 'start' && !activeCategory && (canUseCurrentLocation || canUseLastKnown) && (
+            {purpose === 'start' && !activeCategory && (canUseCurrentLocation || canUseLastKnown) && (
               <View style={styles.quickStarts}>
                 {canUseCurrentLocation && (
                   <StartOptionCard
