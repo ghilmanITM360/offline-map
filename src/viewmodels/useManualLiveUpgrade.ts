@@ -29,10 +29,11 @@ export function useManualLiveUpgrade(destination: Place | null, route: unknown, 
   const setUpgrade = (next: ManualLiveUpgrade) => { stateRef.current = next; setUpgradeState(next); };
   const generation = useRef(0);
   const presentationOwner = useRef(Symbol('manual-live-preview'));
-  const committed = useRef<Pick<ReturnType<typeof useAppStore.getState>, 'activeRoute' | 'routePlannerOrigin' | 'routePlannerDest'> | null>(null);
+  const committed = useRef<Pick<ReturnType<typeof useAppStore.getState>, 'activeRoute' | 'routePlannerOrigin' | 'routePlannerDest' | 'directoryRequestSerial'> | null>(null);
   const mounted = useRef(true);
   const coordinator = useRef(new OutsideRouteRequestCoordinator());
   const guideActive = useAppStore(s => s.routeGuide !== null);
+  const chooserSerial = useAppStore(s => s.directoryRequestSerial);
   const chooserPurpose = useAppStore(s => s.directoryPurpose);
   const cancelLiveUpgrade = () => {
     generation.current += 1;
@@ -45,7 +46,7 @@ export function useManualLiveUpgrade(destination: Place | null, route: unknown, 
     // A candidate belongs to exactly one committed manual trip.
   }, [destination?.id, route, manualStart?.id, manualGateId]);
   useEffect(() => { if (!guideActive) cancelLiveUpgrade(); }, [guideActive]);
-  useEffect(() => { if (chooserPurpose) cancelLiveUpgrade(); }, [chooserPurpose]);
+  useEffect(() => { cancelLiveUpgrade(); }, [chooserPurpose, chooserSerial]);
   useEffect(() => {
     mounted.current = true;
     return () => { mounted.current = false; generation.current += 1; coordinator.current.cancelCurrent(); clearManualLivePreview(presentationOwner.current); };
@@ -56,7 +57,7 @@ export function useManualLiveUpgrade(destination: Place | null, route: unknown, 
     if (intent) useAppStore.getState().retireDestinationIntent(intent.id);
     generation.current += 1;
     const state = useAppStore.getState();
-    committed.current = { activeRoute: state.activeRoute, routePlannerOrigin: state.routePlannerOrigin, routePlannerDest: state.routePlannerDest };
+    committed.current = { activeRoute: state.activeRoute, routePlannerOrigin: state.routePlannerOrigin, routePlannerDest: state.routePlannerDest, directoryRequestSerial: state.directoryRequestSerial };
     coordinator.current.cancelCurrent();
     setUpgrade({ phase: 'confirming' });
   };
@@ -64,7 +65,8 @@ export function useManualLiveUpgrade(destination: Place | null, route: unknown, 
     const state = useAppStore.getState();
     return mounted.current && !state.isNavigating && !state.directoryPurpose && state.routeGuide !== null &&
       committed.current !== null && state.activeRoute === committed.current.activeRoute &&
-      state.routePlannerOrigin === committed.current.routePlannerOrigin && state.routePlannerDest === committed.current.routePlannerDest;
+      state.routePlannerOrigin === committed.current.routePlannerOrigin && state.routePlannerDest === committed.current.routePlannerDest &&
+      state.directoryRequestSerial === committed.current.directoryRequestSerial;
   };
   const confirmLiveUpgrade = async () => {
     if (!destination || !manualStart || !['confirming', 'failed'].includes(stateRef.current.phase)) return;

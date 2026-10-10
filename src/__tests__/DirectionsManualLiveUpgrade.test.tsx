@@ -253,3 +253,18 @@ it('consecutive manual/live trips retire prior candidate commands', async () => 
   await act(async () => next.result.current.confirmLiveUpgrade());
   await act(() => expect(next.result.current.startUpgradedNavigation()).toBe(true));
 });
+
+it('ready upgrade loses authority when chooser opens and cancels before effects', async () => {
+  const hook = await manualGuide();
+  jest.spyOn(LocationAccessService, 'resolveCurrentLocation').mockResolvedValue(locationResult());
+  await act(() => hook.result.current.requestLiveUpgrade());
+  await act(async () => hook.result.current.confirmLiveUpgrade());
+  const startCandidate = hook.result.current.startUpgradedNavigation;
+  const guide = useAppStore.getState().routeGuide;
+  await act(() => {
+    useAppStore.getState().setDirectoryPurpose('start');
+    useAppStore.getState().setDirectoryPurpose(null);
+    expect(startCandidate()).toBe(false);
+  });
+  expect(useAppStore.getState().routeGuide).toBe(guide);
+});

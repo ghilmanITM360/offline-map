@@ -156,3 +156,67 @@ it('rendered acquisition can cancel while original step remains usable', async (
     expect(screen.queryByText('Live route preview')).not.toBeOnTheScreen();
   } finally { acquire.mockRestore(); }
 });
+
+it('missing origin exposes contextual location acquisition and cancellation', async () => {
+  let release!: (value: Awaited<ReturnType<typeof LocationAccessService.resolveCurrentLocation>>) => void;
+  const acquire = jest.spyOn(LocationAccessService, 'resolveCurrentLocation').mockImplementation(() => new Promise(resolve => { release = resolve; }));
+  try {
+    await render(<><LocationSheet mode="routePreview" destination={destination} onClose={jest.fn()} />
+      <DirectionsSheetFooter animatedFooterPosition={{ value: 0, get: () => 0 } as never} /></>);
+    const user = userEvent.setup();
+    await user.press(await screen.findByRole('button', { name: 'Use my location' }));
+    expect(acquire).toHaveBeenCalledTimes(1);
+    await user.press(await screen.findByRole('button', { name: 'Cancel location request' }));
+    await act(() => release({ ok: true, source: 'live', coordinate: { ...start.coordinate, accuracy: 5, observedAtMs: Date.now() }, permissionState: { granted: true, canAskAgain: true, status: 'granted' as never, precision: 'fine', servicesState: 'enabled', servicesEnabled: true }, message: null }));
+    expect(useAppStore.getState().currentLocation).toBeNull();
+    expect(useAppStore.getState().routePlannerDest?.id).toBe(destination.id);
+    expect(useAppStore.getState().isNavigating).toBe(false);
+  } finally { acquire.mockRestore(); }
+});
+
+it.each(['permission', 'services'] as const)('ready route exposes explicit %s Settings recovery without automatic acquisition', async mode => {
+  useAppStore.setState({ currentLocation: { ...start.coordinate, accuracy: 5, observedAtMs: Date.now() }, currentLocationSource: 'live', hasLocationPermission: true, locationPermissionPrecision: 'fine', locationServicesState: 'enabled' });
+  const app = jest.spyOn(LocationAccessService, 'openAppSettings').mockResolvedValue(true);
+  const services = jest.spyOn(LocationAccessService, 'openLocationSettings').mockResolvedValue(true);
+  const acquire = jest.spyOn(LocationAccessService, 'resolveCurrentLocation');
+  try {
+    await render(<><LocationSheet mode="routePreview" destination={destination} onClose={jest.fn()} />
+      <DirectionsSheetFooter animatedFooterPosition={{ value: 0, get: () => 0 } as never} /></>);
+    await screen.findByText('Ready to go');
+    const route = useAppStore.getState().activeRoute;
+    await act(() => useAppStore.setState(mode === 'permission' ? { hasLocationPermission: false, locationPermissionCanAskAgain: false } : { locationServicesState: 'disabled' }));
+    expect(app).not.toHaveBeenCalled();
+    expect(services).not.toHaveBeenCalled();
+    await userEvent.setup().press(await screen.findByRole('button', { name: mode === 'permission' ? 'Open app settings' : 'Enable phone Location Services' }));
+    expect(mode === 'permission' ? app : services).toHaveBeenCalledTimes(1);
+    expect(acquire).not.toHaveBeenCalled();
+    expect(useAppStore.getState().routePlannerDest?.id).toBe(destination.id);
+    expect(useAppStore.getState().activeRoute).toBe(route);
+    expect(useAppStore.getState().isNavigating).toBe(false);
+  } finally { app.mockRestore(); services.mockRestore(); acquire.mockRestore(); }
+});
+
+it('Settings recovery after denied upgrade preserves guide and never auto-starts', async () => {
+  const acquire = jest.spyOn(LocationAccessService, 'resolveCurrentLocation').mockResolvedValue({ ok: false, source: null, coordinate: null,
+    permissionState: { granted: false, canAskAgain: false, status: 'denied' as never, precision: 'none', servicesState: 'enabled', servicesEnabled: true }, message: 'Denied' });
+  const settings = jest.spyOn(LocationAccessService, 'openAppSettings').mockResolvedValue(true);
+  try {
+    useAppStore.setState({ directoryChoice: { purpose: 'start', place: start } });
+    await render(<><LocationSheet mode="routePreview" destination={destination} onClose={jest.fn()} />
+      <DirectionsSheetFooter animatedFooterPosition={{ value: 0, get: () => 0 } as never} /></>);
+    const user = userEvent.setup();
+    await user.press(await screen.findByText('Start route'));
+    await act(() => useAppStore.getState().setRouteGuideStep(1));
+    const guide = useAppStore.getState().routeGuide;
+    const route = useAppStore.getState().activeRoute;
+    await user.press(screen.getByRole('button', { name: 'Use my location to guide me' }));
+    await user.press(screen.getByRole('button', { name: 'Continue with location' }));
+    await user.press(await screen.findByRole('button', { name: 'Open app settings' }));
+    expect(settings).toHaveBeenCalledTimes(1);
+    expect(acquire).toHaveBeenCalledTimes(1);
+    expect(useAppStore.getState().routeGuide).toBe(guide);
+    expect(useAppStore.getState().activeRoute).toBe(route);
+    expect(useAppStore.getState().routePlannerDest?.id).toBe(destination.id);
+    expect(useAppStore.getState().isNavigating).toBe(false);
+  } finally { acquire.mockRestore(); settings.mockRestore(); }
+});

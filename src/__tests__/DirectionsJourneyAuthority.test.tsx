@@ -97,3 +97,62 @@ it.each(['clear', 'gate', 'manual', 'manual_picker'] as const)('duplicate %s sel
   expect(hook.result.current.routeRefreshing).toBe(false);
   expect(hook.result.current.isEditingManualStart).toBe(false);
 });
+
+it('opening a chooser immediately rejects a pending location response', async () => {
+  let finish!: (value: LocationResolveResult) => void;
+  jest.spyOn(LocationAccessService, 'resolveCurrentLocation').mockImplementation(() => new Promise(resolve => { finish = resolve; }));
+  const hook = await renderHook(() => useDirectionsViewModel(destination));
+  let pending!: Promise<boolean>;
+  await act(() => { pending = hook.result.current.chooseCurrentLocation(); });
+  await act(() => useAppStore.getState().setDirectoryPurpose('start'));
+  await act(async () => { finish(locationResult()); expect(await pending).toBe(false); });
+  expect(useAppStore.getState().currentLocation).toBeNull();
+});
+
+it.each([
+  [false, 'none', true, 'unknown', 'use_location'],
+  [false, 'none', false, 'enabled', 'app_settings'],
+  [true, 'coarse', true, 'enabled', 'precise_location'],
+  [true, 'fine', true, 'disabled', 'location_settings'],
+  [true, 'none', true, 'enabled', 'use_location'],
+] as const)('contextual recovery for permission=%s precision=%s services=%s', async (granted, precision, canAskAgain, servicesState, expected) => {
+  useAppStore.setState({ hasLocationPermission: granted, locationPermissionPrecision: precision, locationPermissionCanAskAgain: canAskAgain, locationServicesState: servicesState });
+  const hook = await renderHook(() => useDirectionsViewModel(destination));
+  expect(hook.result.current.locationRecoveryAction.kind).toBe(expected);
+  const app = jest.spyOn(LocationAccessService, 'openAppSettings').mockResolvedValue(true);
+  const services = jest.spyOn(LocationAccessService, 'openLocationSettings').mockResolvedValue(true);
+  expect(app).not.toHaveBeenCalled();
+  expect(services).not.toHaveBeenCalled();
+  if (expected === 'app_settings' || expected === 'precise_location' || expected === 'location_settings') {
+    await act(async () => hook.result.current.runLocationRecovery());
+    expect(expected === 'location_settings' ? services : app).toHaveBeenCalledTimes(1);
+    expect(useAppStore.getState().routePlannerDest?.id).toBe(destination.id);
+    expect(useAppStore.getState().isNavigating).toBe(false);
+  }
+});
+
+it('late location after chooser opens and cancels in one turn cannot alter journey', async () => {
+  let finish!: (value: LocationResolveResult) => void;
+  jest.spyOn(LocationAccessService, 'resolveCurrentLocation').mockImplementation(() => new Promise(resolve => { finish = resolve; }));
+  const hook = await renderHook(() => useDirectionsViewModel(destination));
+  let pending!: Promise<boolean>;
+  await act(() => { pending = hook.result.current.chooseCurrentLocation(); });
+  await act(() => { useAppStore.getState().setDirectoryPurpose('start'); useAppStore.getState().setDirectoryPurpose(null); });
+  await act(async () => { finish(locationResult()); expect(await pending).toBe(false); });
+  expect(useAppStore.getState().currentLocation).toBeNull();
+});
+
+it('chooser cancellation retires Start acquisition busy state', async () => {
+  useAppStore.setState({ currentLocation: locationResult().coordinate, currentLocationSource: 'live', hasLocationPermission: true, locationPermissionPrecision: 'fine', locationServicesState: 'enabled' });
+  const hook = await renderHook(() => useDirectionsViewModel(destination));
+  await waitFor(() => expect(hook.result.current.loadState).toBe('ready'));
+  await act(() => useAppStore.setState({ hasLocationPermission: false }));
+  let finish!: (value: LocationResolveResult) => void;
+  jest.spyOn(LocationAccessService, 'resolveCurrentLocation').mockImplementation(() => new Promise(resolve => { finish = resolve; }));
+  let pending!: Promise<void>;
+  await act(() => { pending = hook.result.current.runStartAction(jest.fn()); });
+  expect(hook.result.current.startAttempt).toBe('working');
+  await act(() => { useAppStore.getState().setDirectoryPurpose('start'); useAppStore.getState().setDirectoryPurpose(null); });
+  await act(async () => { finish(locationResult()); await pending; });
+  expect(hook.result.current.startAttempt).toBe('idle');
+});

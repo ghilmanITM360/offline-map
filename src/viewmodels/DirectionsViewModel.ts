@@ -1,3 +1,4 @@
+import { useI18n } from '../i18n/useI18n';
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -53,6 +54,12 @@ function usableLiveFix(
 }
 
 export function useDirectionsViewModel(destination: Place | null) {
+  const { t } = useI18n();
+  const directoryRequestSerial = useAppStore(s => s.directoryRequestSerial);
+  const locationCanAskAgain = useAppStore(s => s.locationPermissionCanAskAgain);
+  const [locationAcquiring, setLocationAcquiring] = useState(false);
+  const locationAcquiringRef = useRef(false);
+  const [locationAttempted, setLocationAttempted] = useState(false);
   const currentLocation = useAppStore((s) => s.currentLocation);
   const currentLocationSource = useAppStore((s) => s.currentLocationSource);
   const lastKnownLocation = useAppStore((s) => s.lastKnownLocation);
@@ -106,6 +113,8 @@ export function useDirectionsViewModel(destination: Place | null) {
   const mountedRef = useRef(true);
   const invalidateJourneyWork = () => {
     retireAutomaticIntent();
+    locationAcquiringRef.current = false;
+    if (mountedRef.current) { setLocationAcquiring(false); setStartAttempt('idle'); }
     journeyGenerationRef.current += 1;
     locationRequestRef.current += 1;
     routeRequestRef.current += 1;
@@ -146,6 +155,7 @@ export function useDirectionsViewModel(destination: Place | null) {
     setRouteOriginLocation(live);
     setStartSource(live ? 'live_gps' : 'manual_place');
     setStartAttempt('idle');
+    setLocationAttempted(false);
     setRoute(null);
     routeRef.current = null;
     routeTripKeyRef.current = null;
@@ -553,8 +563,12 @@ export function useDirectionsViewModel(destination: Place | null) {
   type ResolvedLocation = Awaited<ReturnType<typeof LocationAccessService.resolveCurrentLocation>>;
   const chooseCurrentLocationWith = async (resolve: () => Promise<ResolvedLocation>): Promise<boolean> => {
     const generation = journeyGenerationRef.current;
+    const chooserSerial = useAppStore.getState().directoryRequestSerial;
+    const intentId = useAppStore.getState().destinationJourneyIntent?.id ?? null;
     const request = ++locationRequestRef.current;
-    const canCommit = () => mountedRef.current && generation === journeyGenerationRef.current && request === locationRequestRef.current;
+    const canCommit = () => mountedRef.current && generation === journeyGenerationRef.current && request === locationRequestRef.current &&
+      !useAppStore.getState().directoryPurpose && useAppStore.getState().directoryRequestSerial === chooserSerial &&
+      (useAppStore.getState().destinationJourneyIntent?.id ?? null) === intentId && useAppStore.getState().routePlannerDest?.id === destination?.id;
     try {
       const resolved = await resolve();
       if (!canCommit()) return false;
@@ -597,7 +611,14 @@ export function useDirectionsViewModel(destination: Place | null) {
   };
   const chooseCurrentLocation = async (): Promise<boolean> => {
     retireAutomaticIntent();
-    return chooseCurrentLocationWith(() => LocationAccessService.resolveCurrentLocation(true));
+    locationAcquiringRef.current = true;
+    setLocationAcquiring(true);
+    setLocationAttempted(true);
+    const request = locationRequestRef.current + 1;
+    try { return await chooseCurrentLocationWith(() => LocationAccessService.resolveCurrentLocation(true)); }
+    finally {
+      if (request === locationRequestRef.current) { locationAcquiringRef.current = false; if (mountedRef.current) setLocationAcquiring(false); }
+    }
   };
 
   const chooseRememberedLocation = (): boolean => {
@@ -625,6 +646,9 @@ export function useDirectionsViewModel(destination: Place | null) {
   const chooseManualStart = () => {
     retireAutomaticIntent();
     // Opening a chooser cancels acquisition but preserves the current route until a new origin is selected.
+    locationAcquiringRef.current = false;
+    setLocationAcquiring(false);
+    setStartAttempt('idle');
     locationRequestRef.current += 1;
     setIsEditingManualStart(true);
     setErrorMessage(null);
@@ -641,6 +665,45 @@ export function useDirectionsViewModel(destination: Place | null) {
 
   const manualLiveUpgrade = useManualLiveUpgrade(destination, route, manualStart, manualGateId);
 
+  const recoveryCapability = evaluateLocationCapability({
+    permission: { granted: hasLocationPermission, precision: locationPermissionPrecision, canAskAgain: locationCanAskAgain, servicesState: locationServicesState },
+    liveFix: currentLocationSource === 'live' ? currentLocation : null,
+  });
+  const recoveryKind = recoveryCapability.liveBlocker === 'permission_blocked' ? 'app_settings'
+    : recoveryCapability.liveBlocker === 'approximate_only' ? 'precise_location'
+    : recoveryCapability.liveBlocker === 'services_off' ? 'location_settings' : 'use_location';
+  const locationRecoveryAction = { kind: recoveryKind, label: recoveryKind === 'app_settings' ? t('recovery.settings')
+    : recoveryKind === 'precise_location' ? t('recovery.precise')
+    : recoveryKind === 'location_settings' ? t('recovery.services') : t(locationAttempted || startAttempt === 'failed' || startAttempt === 'settings' || startAttempt === 'services_off' ? 'recovery.tryAgain' : 'recovery.useLocation') };
+  const cancelLocationRecovery = () => {
+    locationRequestRef.current += 1;
+    locationAcquiringRef.current = false;
+    setLocationAcquiring(false);
+    setStartAttempt('idle');
+  };
+  useLayoutEffect(() => {
+    locationRequestRef.current += 1;
+    locationAcquiringRef.current = false;
+    setLocationAcquiring(false);
+    setStartAttempt('idle');
+  }, [directoryRequestSerial]);
+  const runLocationRecovery = async () => {
+    if (locationAcquiringRef.current) return;
+    if (recoveryKind !== 'use_location') {
+      const generation = journeyGenerationRef.current;
+      const serial = useAppStore.getState().directoryRequestSerial;
+      const opened = recoveryKind === 'location_settings' ? await LocationAccessService.openLocationSettings() : await LocationAccessService.openAppSettings();
+      if (!opened && mountedRef.current && generation === journeyGenerationRef.current && serial === useAppStore.getState().directoryRequestSerial) setErrorMessage(t('recovery.settingsFailed'));
+      return;
+    }
+    if (useAppStore.getState().routeGuide) {
+      if (manualLiveUpgrade.upgrade.phase === 'failed') await manualLiveUpgrade.confirmLiveUpgrade();
+      else manualLiveUpgrade.requestLiveUpgrade();
+      return;
+    }
+    await chooseCurrentLocation();
+  };
+
   /** Acquisition replaces the origin and previews the new route. Only another explicit Start may activate it. */
   const runStartAction = async (startNow: () => void) => {
     retireAutomaticIntent();
@@ -656,8 +719,12 @@ export function useDirectionsViewModel(destination: Place | null) {
       return;
     }
     const generation = journeyGenerationRef.current;
+    const chooserSerial = useAppStore.getState().directoryRequestSerial;
+    const intentId = useAppStore.getState().destinationJourneyIntent?.id ?? null;
     const request = ++locationRequestRef.current;
-    const canCommit = () => mountedRef.current && generation === journeyGenerationRef.current && request === locationRequestRef.current;
+    const canCommit = () => mountedRef.current && generation === journeyGenerationRef.current && request === locationRequestRef.current &&
+      !useAppStore.getState().directoryPurpose && useAppStore.getState().directoryRequestSerial === chooserSerial &&
+      (useAppStore.getState().destinationJourneyIntent?.id ?? null) === intentId && useAppStore.getState().routePlannerDest?.id === destination?.id;
     setStartAttempt('working');
     try {
       const resolved = await LocationAccessService.resolveCurrentLocation(true);
@@ -718,6 +785,7 @@ export function useDirectionsViewModel(destination: Place | null) {
 
   return {
     ...manualLiveUpgrade,
+    locationRecoveryAction, locationAcquiring, runLocationRecovery, cancelLocationRecovery,
     route,
     alternatives,
     selectedIndex,
