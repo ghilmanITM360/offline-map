@@ -44,6 +44,7 @@ describe('evaluateNavigationLocationCapability', () => {
   it('LOC-09: keeps an approximate or weak fix preview-only', () => {
     expect(evaluateNavigationLocationCapability({
       startSource: 'live_gps',
+      precision: 'fine',
       coordinate: { latitude: 24.96, longitude: 67.01, accuracy: 500, observedAtMs: nowMs },
       nowMs,
     })).toEqual({
@@ -53,7 +54,7 @@ describe('evaluateNavigationLocationCapability', () => {
   });
 
   it('LOC-04: reports searching when permission and services may be ready but no fix exists', () => {
-    expect(evaluateNavigationLocationCapability({ startSource: 'live_gps', coordinate: null, nowMs })).toEqual({
+    expect(evaluateNavigationLocationCapability({ startSource: 'live_gps', precision: 'fine', coordinate: null, nowMs })).toEqual({
       canStart: false,
       message: 'Finding your location…',
     });
@@ -62,6 +63,7 @@ describe('evaluateNavigationLocationCapability', () => {
   it('LOC-05: rejects a stale live fix', () => {
     expect(evaluateNavigationLocationCapability({
       startSource: 'live_gps',
+      precision: 'fine',
       coordinate: { latitude: 24.96, longitude: 67.01, accuracy: 8, observedAtMs: nowMs - 30_001 },
       nowMs,
     })).toEqual({
@@ -73,6 +75,7 @@ describe('evaluateNavigationLocationCapability', () => {
   it('LOC-06: permits a fresh precise live fix', () => {
     expect(evaluateNavigationLocationCapability({
       startSource: 'live_gps',
+      precision: 'fine',
       coordinate: { latitude: 24.96, longitude: 67.01, accuracy: 8, observedAtMs: nowMs - 1_000 },
       nowMs,
     })).toEqual({ canStart: true, message: '' });
@@ -82,11 +85,13 @@ describe('evaluateNavigationLocationCapability', () => {
   it('#139: rejects an hours-old hydrated fix and a fix with no timestamp at all', () => {
     const stale = evaluateNavigationLocationCapability({
       startSource: 'live_gps',
+      precision: 'fine',
       coordinate: { latitude: 24.96, longitude: 67.01, accuracy: 8, observedAtMs: nowMs - 3_600_000 },
       nowMs,
     });
     const untimed = evaluateNavigationLocationCapability({
       startSource: 'live_gps',
+      precision: 'fine',
       coordinate: { latitude: 24.96, longitude: 67.01, accuracy: 8 },
       nowMs,
     });
@@ -101,6 +106,7 @@ describe('evaluateNavigationLocationCapability', () => {
   it('#139: the 30 s freshness boundary is inclusive', () => {
     expect(evaluateNavigationLocationCapability({
       startSource: 'live_gps',
+      precision: 'fine',
       coordinate: { latitude: 24.96, longitude: 67.01, accuracy: 8, observedAtMs: nowMs - 30_000 },
       nowMs,
     }).canStart).toBe(true);
@@ -115,6 +121,7 @@ describe('evaluateNavigationLocationCapability', () => {
   ])('rejects a live fix timestamp %s', (_label, observedAtMs) => {
     expect(evaluateNavigationLocationCapability({
       startSource: 'live_gps',
+      precision: 'fine',
       coordinate: { latitude: 24.96, longitude: 67.01, accuracy: 8, observedAtMs },
       nowMs,
     })).toEqual({
@@ -127,6 +134,7 @@ describe('evaluateNavigationLocationCapability', () => {
     'rejects an invalid current clock %s', (invalidNowMs) => {
       expect(evaluateNavigationLocationCapability({
         startSource: 'live_gps',
+      precision: 'fine',
         coordinate: { latitude: 24.96, longitude: 67.01, accuracy: 8, observedAtMs: nowMs },
         nowMs: invalidNowMs,
       }).canStart).toBe(false);
@@ -182,4 +190,8 @@ describe('resolveStartAction (zero-thinking start CTA)', () => {
       }
     }
   });
+});
+
+it.each([undefined, 'none'] as const)('unknown precision %s cannot authorize live navigation', precision => {
+  expect(evaluateNavigationLocationCapability({ startSource: 'live_gps', precision, coordinate: { latitude: 24.96, longitude: 67.01, accuracy: 5, observedAtMs: nowMs }, nowMs }).canStart).toBe(false);
 });

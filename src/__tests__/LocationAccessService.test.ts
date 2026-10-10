@@ -332,3 +332,22 @@ describe('LocationAccessService.resolveCurrentLocation — #89 bounded current-p
     expect(secondResult.coordinate).toMatchObject({ latitude: 24.98, longitude: 67.03 });
   });
 });
+
+describe('native adapter never invents GPS quality', () => {
+  it('keeps missing accuracy unknown', async () => {
+    (Location.getForegroundPermissionsAsync as jest.Mock).mockResolvedValue({ status: 'granted', canAskAgain: true, android: { accuracy: 'fine' } });
+    (Location.getCurrentPositionAsync as jest.Mock).mockResolvedValue({ coords: { latitude: 24.96, longitude: 67.01, accuracy: null }, timestamp: Date.now() });
+    const result = await LocationAccessService.resolveCurrentLocation(false);
+    expect(result.coordinate?.accuracy).toBeUndefined();
+  });
+  it('does not assume Android precise authorization when missing', async () => {
+    (Location.getForegroundPermissionsAsync as jest.Mock).mockResolvedValue({ status: 'granted', canAskAgain: true });
+    expect((await LocationAccessService.getPermissionState()).precision).toBe('none');
+  });
+  it('never prompts a permanently denied permission', async () => {
+    (Location.getForegroundPermissionsAsync as jest.Mock).mockResolvedValue({ status: 'denied', canAskAgain: false });
+    const result = await LocationAccessService.resolveCurrentLocation(true);
+    expect(result.ok).toBe(false);
+    expect(Location.requestForegroundPermissionsAsync).not.toHaveBeenCalled();
+  });
+});

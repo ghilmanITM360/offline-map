@@ -4,6 +4,7 @@
  */
 
 
+import { t } from '../i18n/translate';
 import type { Coordinate } from '../models/types';
 import { classifyLiveFix, evaluateLocationCapability } from './LocationCapability';
 
@@ -12,12 +13,7 @@ export type NavigationStartSource = 'live_gps' | 'device_last_known' | 'remember
 interface NavigationLocationCapabilityInput {
   startSource: NavigationStartSource;
   coordinate: Coordinate | null;
-  /**
-   * Android permission precision ('fine'/'coarse'/'none'). Optional so existing callers that
-   * don't yet track it keep working; omitted precision skips this gate (accuracy-based checks
-   * below still apply). Coarse permission is gated on its own — Android deliberately fuzzes
-   * coarse fixes, so a small reported accuracy number cannot be trusted to mean fine precision.
-   */
+  /** Fine authorization must be explicit; omitted precision fails closed. */
   precision?: 'fine' | 'coarse' | 'none';
   nowMs?: number;
 }
@@ -50,6 +46,8 @@ export function evaluateNavigationLocationCapability(
       message: 'Turn on exact location in Settings for live directions.',
     };
   }
+
+  if (input.precision !== 'fine') return { canStart: false, message: t('directions.precisionUnknown') };
 
   const fix = classifyLiveFix(input.coordinate, input.nowMs ?? Date.now());
   if (fix === 'none') {
@@ -115,6 +113,9 @@ export function resolveStartAction(input: StartActionInput): StartAction {
   }
   if (capability.liveBlocker === 'approximate_only') {
     return { kind: 'precise_location', primaryLabel: 'Turn on precise location', secondaryLabel: 'View route' };
+  }
+  if (capability.liveBlocker === 'precision_unknown') {
+    return { kind: 'use_location', primaryLabel: t('directions.checkLocation'), secondaryLabel: 'View route' };
   }
   if (capability.fix !== 'usable') {
     return { kind: 'use_location', primaryLabel: 'Use my location & start', secondaryLabel: 'View route' };

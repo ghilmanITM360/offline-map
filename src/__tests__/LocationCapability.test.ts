@@ -65,10 +65,11 @@ describe('evaluateLocationCapability keeps permission, accuracy, services and fi
     expect(c).toMatchObject({ accuracy: 'precise', fix: 'usable', liveBlocker: null, mode: 'live_navigation', routeGuideAvailable: true });
   });
 
-  it('accuracy not yet read (store default) does not block a usable fix but is not claimed precise', () => {
+  it('unknown precision never authorizes live navigation', () => {
     const c = evaluateLocationCapability({ permission: granted({ precision: 'none' }), liveFix: fix(), nowMs: NOW });
     expect(c.accuracy).toBe('unknown');
-    expect(c.liveBlocker).toBeNull();
+    expect(c.liveBlocker).toBe('precision_unknown');
+    expect(c.mode).toBe('route_guide');
   });
 
   it('route guide is available in every state', () => {
@@ -86,5 +87,18 @@ describe('liveBlockerMessage', () => {
       expect(m.length).toBeGreaterThan(8);
       expect(m).not.toMatch(/manual_place|capability|provider|fix\b|preview/i);
     }
+  });
+});
+
+// Invalid native sensor data must never grant live authority.
+describe('fail-closed native fix validation', () => {
+  it.each([NaN, Infinity, -Infinity, -1])('rejects invalid accuracy %s', accuracy => {
+    expect(classifyLiveFix(fix({ accuracy }), NOW)).toBe('unusable');
+  });
+  it.each([{ latitude: NaN }, { longitude: Infinity }, { latitude: 91 }, { longitude: -181 }])('rejects invalid geographic coordinates %p', coordinate => {
+    expect(classifyLiveFix(fix(coordinate), NOW)).toBe('unusable');
+  });
+  it('rejects zero observation time even when the clock is near epoch', () => {
+    expect(classifyLiveFix(fix({ observedAtMs: 0 }), 1000)).toBe('stale');
   });
 });
