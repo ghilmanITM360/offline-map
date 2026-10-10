@@ -49,7 +49,7 @@
   "views/screens/AppGuideScreen.tsx": 33,
   "views/screens/HelpScreen.tsx": 37,
   "views/screens/HomeScreen.tsx": 38,
-  "views/screens/LocationsDirectoryScreen.tsx": 40,
+  "views/screens/LocationsDirectoryScreen.tsx": 32,
   "views/screens/SettingsScreen.tsx": 33,
   "views/screens/SplashScreen.tsx": 2,
   "views/screens/WelcomeScreen.tsx": 9

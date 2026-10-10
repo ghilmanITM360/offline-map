@@ -158,7 +158,7 @@ export function useHomeViewModel({ isFocused = true }: { isFocused?: boolean } =
   // HomeScreen's BottomSheetModal onChange is the only writer and handlePlaceSelect
   // itself must read the pre-selection value synchronously.
   const isSheetOpenForReselection = Boolean(selectedPlace) && lastSheetIndexRef.current >= 1;
-  const handlePlaceSelect = (place: Place, opts?: { cameraAlreadyThere?: boolean }) => {
+  const handlePlaceSelect = (place: Place, opts?: { cameraAlreadyThere?: boolean; directionsOnly?: boolean }) => {
     const nextSnapIndex = isSheetOpenForReselection ? lastSheetIndexRef.current : 1;
     // 1. Selection highlight — set synchronously, before camera/sheet move, so the tapped
     // object's isSelected styling (RastaLayer/SpecialRouteLayer/BlockLayer/GateLayer) updates
@@ -168,6 +168,11 @@ export function useHomeViewModel({ isFocused = true }: { isFocused?: boolean } =
     setSearchQuery('');
     setSearchResults([]);
     cancelPendingSheetPresentation();
+    if (opts?.directionsOnly) {
+      // Directions owns sheet presentation; destination focus must work even without route geometry.
+      cameraManager.animateToPlace(place, 0.5, opts.cameraAlreadyThere ? 0 : undefined);
+      return;
+    }
     const openSheet = () => {
       sheetPresentTimerRef.current = null;
       bottomSheetRef.current?.present();

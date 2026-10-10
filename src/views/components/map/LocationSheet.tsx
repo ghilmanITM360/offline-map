@@ -129,7 +129,6 @@ export type LocationSheetProps =
       onRouteGuideStarted?: () => void;
       sheetCollapsed?: boolean;
       onToggleSheet?: () => void;
-      journey?: { mode: 'live' | 'guide'; start: Place | null } | null;
       /** Opens the Directory, the one place chooser, to pick a start (or destination); the choice comes
        * back through the store's directoryChoice. */
       onOpenDirectory?: (purpose: DirectoryPurpose) => void;
@@ -165,7 +164,6 @@ export function LocationSheet(props: LocationSheetProps) {
         onRouteGuideStarted={props.onRouteGuideStarted}
         sheetCollapsed={props.sheetCollapsed}
         onToggleSheet={props.onToggleSheet}
-        journey={props.journey}
         onCancelRoute={props.onCancelRoute}
         onChangeDestination={props.onChangeDestination}
         onOpenDirectory={props.onOpenDirectory}
@@ -216,7 +214,6 @@ function RoutePreviewSection({
   onRouteGuideStarted,
   sheetCollapsed,
   onToggleSheet,
-  journey,
 }: {
   destination: Place;
   onClose: () => void;
@@ -227,8 +224,6 @@ function RoutePreviewSection({
   /** Whether the sheet is at its lowest detent, and a way to fold/expand it from the peek handle. */
   sheetCollapsed?: boolean;
   onToggleSheet?: () => void;
-  /** The journey the Directory handed over (#307): the sheet applies its start and starts it by itself. */
-  journey?: { mode: 'live' | 'guide'; start: Place | null } | null;
   onCancelRoute?: () => void;
   onChangeDestination?: (place: Place) => void;
   onOpenDirectory?: (purpose: DirectoryPurpose) => void;
@@ -278,7 +273,6 @@ function RoutePreviewSection({
   const routeGuide = useAppStore((s) => s.routeGuide);
   // Home can start a preview only once BOTH the route and its destination are in the store (its start handler returns
   // silently otherwise); the view-model's own `ready` can be a render ahead of that (runtime race on the emulator).
-  const previewRoutePublished = useAppStore((s) => s.activeRoute !== null && s.routePlannerDest !== null);
   const setRouteGuideStep = useAppStore((s) => s.setRouteGuideStep);
   const endRouteGuide = useAppStore((s) => s.endRouteGuide);
   const isRouteGuideStart = startAction?.kind === 'route_guide';
@@ -338,9 +332,7 @@ function RoutePreviewSection({
   const showLoading = loadState === 'loading';
   const showError = journeyState === 'ROUTE_FAILURE';
   const showSamePlace = journeyState === 'SAME_PLACE';
-  // A journey that is still looking for the person's own location is not asking where they start (see below).
-  const [locatingForJourney, setLocatingForJourney] = useState(false);
-  const showNeedsStart = journeyState === 'NEEDS_START' && !showRouteReady && !locatingForJourney;
+  const showNeedsStart = journeyState === 'NEEDS_START' && !showRouteReady;
   const destinationCannotBeRouted =
     destination.isRoutable === false ||
     (destination.routingStatus !== undefined && destination.routingStatus !== 'routable');
@@ -445,45 +437,6 @@ function RoutePreviewSection({
   // A start that waits for a recomputed route must run the handler of the render that holds that route.
   const startNowRef = useRef(startNow);
   startNowRef.current = startNow;
-
-  // #307 journey auto-start. A destination tapped in the Directory means "take me here", so the sheet applies the
-  // chosen start and starts the journey once, without the Details -> Directions -> Route Ready -> Start taps.
-  // Live navigation still begins only from a fresh fix; if none can be found the usual manual-start UI stays.
-  const journeyStartAppliedRef = useRef(false);
-  useEffect(() => {
-    if (!journey?.start || journeyStartAppliedRef.current) return;
-    journeyStartAppliedRef.current = true;
-    setManualStartPlace(journey.start);
-  }, [journey, setManualStartPlace]);
-  const journeyDoneRef = useRef(false);
-  const journeyLocateRef = useRef(false);
-  useEffect(() => {
-    if (!journey || journeyDoneRef.current) return;
-    if (journey.mode === 'guide') {
-      if (loadState === 'ready' && startAction?.kind === 'route_guide') {
-        journeyDoneRef.current = true;
-        startRouteGuide();
-        onRouteGuideStarted?.();
-      }
-      return;
-    }
-    if (startAttempt === 'working') return;
-    if (loadState === 'needs_origin' && !journeyLocateRef.current) {
-      journeyLocateRef.current = true;
-      setLocatingForJourney(true);
-      void chooseCurrentLocation().then((found) => {
-        setLocatingForJourney(false);
-        if (!found) journeyDoneRef.current = true;
-      });
-      return;
-    }
-    if (loadState !== 'ready' || !startAction) return;
-    if (startAction.kind === 'start' && !previewRoutePublished) return; // retried when the route is published
-    journeyDoneRef.current = true;
-    if (startAction.kind === 'start') startNowRef.current();
-    else if (startAction.kind === 'use_location') void runStartAction(() => startNowRef.current());
-    // Anything else (permission, precision, services) is shown as its button; never auto-bounce to Settings.
-  }, [journey, loadState, startAction, startAttempt, startRouteGuide, onRouteGuideStarted, chooseCurrentLocation, runStartAction, previewRoutePublished]);
 
   const footerNode = footerVisible ? (
     <>

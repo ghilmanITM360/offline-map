@@ -38,11 +38,8 @@ export interface RouteGuideStep { text: string; distanceM: number }
  */
 export interface RouteGuideState { steps: RouteGuideStep[]; stepIndex: number }
 
-/**
- * A journey the Directory hands to Home (#307): "take me to `destination`". `live` starts from the user's real
- * location; `guide` is a route guide from the chosen `start`. Runtime only; Home consumes and clears it.
- */
-export interface PendingJourney { destination: Place; start: Place | null; mode: 'live' | 'guide' }
+/** Runtime-only destination handoff. Home opens Directions; origin and activation remain explicit. */
+export interface PendingJourney { destination: Place }
 /** What the Directory is being opened to choose; null = plain browsing. */
 export type DirectoryPurpose = 'start' | 'destination';
 /** A Directory answer. Quick start options carry no place: the initiator already owns the location. */
