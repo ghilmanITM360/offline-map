@@ -48,7 +48,7 @@ beforeEach(() => {
   delete process.env.EXPO_PUBLIC_IJTEMA_ROUTING_PROXY_BASE_URL;
   process.env.EXPO_PUBLIC_USE_IJTEMA_V2_ROUTING = 'true';
   useAppStore.setState(initialStoreState, true);
-  useAppStore.setState({ hasLocationPermission: true, locationPermissionPrecision: 'fine' });
+  useAppStore.setState({ hasLocationPermission: true, locationPermissionPrecision: 'fine', locationServicesState: 'enabled' });
   useAppStore.setState({
     currentLocation: fresh(origin),
     currentLocationSource: 'live',

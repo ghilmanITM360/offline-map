@@ -29,7 +29,7 @@ describe('V2 preview start ownership', () => {
 
   test('current authorized preview starts only with a fresh precise live fix', () => {
     const currentLocation = { ...preview.coordinates[0], accuracy: 8, observedAtMs: Date.now() };
-    useAppStore.setState({ currentLocation, currentLocationSource: 'live', hasLocationPermission: true, locationPermissionPrecision: 'fine', activeRoute: preview, routePlannerDest: destination, routePlannerOrigin: null });
+    useAppStore.setState({ currentLocation, currentLocationSource: 'live', hasLocationPermission: true, locationPermissionPrecision: 'fine', locationServicesState: 'enabled', activeRoute: preview, routePlannerDest: destination, routePlannerOrigin: null });
     expect(startPreview({ route: preview, destination, currentLocation }).canStart).toBe(true);
     expect((useAppStore.getState().activeRoute as V2ActiveRoute).origin.coordinate).toEqual(currentLocation);
   });
@@ -44,7 +44,7 @@ describe('V2 preview start ownership', () => {
     { routePlannerOrigin: start },
   ])('unsafe or replaced preview cannot mutate session: %p', override => {
     const currentLocation = { ...preview.coordinates[0], accuracy: 8, observedAtMs: Date.now() };
-    useAppStore.setState({ currentLocation, currentLocationSource: 'live', hasLocationPermission: true, locationPermissionPrecision: 'fine', activeRoute: preview, routePlannerDest: destination, routePlannerOrigin: null, ...override });
+    useAppStore.setState({ currentLocation, currentLocationSource: 'live', hasLocationPermission: true, locationPermissionPrecision: 'fine', locationServicesState: 'enabled', activeRoute: preview, routePlannerDest: destination, routePlannerOrigin: null, ...override });
     const before = useAppStore.getState();
     expect(startPreview({ route: preview, destination, currentLocation }).canStart).toBe(false);
     expect(useAppStore.getState()).toBe(before);
@@ -64,7 +64,7 @@ describe('V2 preview start ownership', () => {
       startResolution: { mode: 'outside', startType: 'selected_official_gate',
         coordinate: preview.coordinates[0], candidateNodes: [], gate } };
     const currentLocation = { ...outsidePreview.coordinates[0], accuracy: 8, observedAtMs: Date.now() };
-    useAppStore.setState({ currentLocation, currentLocationSource: 'live', hasLocationPermission: true, locationPermissionPrecision: 'fine', activeRoute: outsidePreview, routePlannerDest: destination, routePlannerOrigin: null });
+    useAppStore.setState({ currentLocation, currentLocationSource: 'live', hasLocationPermission: true, locationPermissionPrecision: 'fine', locationServicesState: 'enabled', activeRoute: outsidePreview, routePlannerDest: destination, routePlannerOrigin: null });
     expect(startPreview({ route: outsidePreview, destination, currentLocation }).canStart).toBe(true);
     const active = useAppStore.getState().activeRoute as V2ActiveRoute;
     expect(active.metadata).toMatchObject({ startedOutside: true, entryGateId: gate.id });

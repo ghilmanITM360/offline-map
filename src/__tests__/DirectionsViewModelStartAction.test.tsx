@@ -1,3 +1,4 @@
+import { seedRunningNavigation } from './navigationFixture';
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -152,7 +153,7 @@ describe('Start action for a chosen (manual) start', () => {
       startPlace: null,
       currentLocation: (preview as { coordinates: never[] }).coordinates[0],
     });
-    await act(async () => useAppStore.getState().startNavigation(destination, active, active.instructions));
+    await act(async () => seedRunningNavigation(destination, active, active.instructions));
     // The live fix keeps moving while the sheet is still unmounting: the origin changes and the route recomputes.
     await act(async () => hook.result.current.setManualStartPlace(V2PlaceAdapter.getPlaceById('B28')!));
     await new Promise((resolve) => setTimeout(resolve, 600));

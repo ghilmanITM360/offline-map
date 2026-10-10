@@ -1,3 +1,4 @@
+import { activatePublishedFixture } from './navigationFixture';
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -65,7 +66,7 @@ describe('#139 process death: nothing about an in-flight journey is persisted', 
     const rec = recordingStorage();
     useAppStore.persist.setOptions({ storage: rec.storage });
 
-    useAppStore.getState().startNavigation(place, { sourceVersion: 'v2' } as never, []);
+    activatePublishedFixture(place, fix);
     useAppStore.getState().setReroutePending(true);
     useAppStore.getState().setSelectedPlace(place);
     useAppStore.getState().setRoutePlannerOrigin(place);
@@ -80,7 +81,7 @@ describe('#139 process death: nothing about an in-flight journey is persisted', 
   it('rehydrating that blob yields a clean, non-navigating store', async () => {
     const rec = recordingStorage();
     useAppStore.persist.setOptions({ storage: rec.storage });
-    useAppStore.getState().startNavigation(place, { sourceVersion: 'v2' } as never, []);
+    activatePublishedFixture(place, fix);
     useAppStore.getState().setSelectedPlace(place);
     useAppStore.getState().setCurrentLocation(fix, 'live');
     const [, written] = rec.lastWrite();

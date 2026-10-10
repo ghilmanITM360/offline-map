@@ -24,6 +24,7 @@ import { EntryGateRoutingService } from '../services/EntryGateRoutingService';
 import { V2DirectionsService } from '../services/V2DirectionsService';
 import { evaluateLocationCapability } from '../services/LocationCapability';
 import { t } from '../i18n/translate';
+import { isValidCoordinate } from '../utils/isValidCoordinate';
 import { V2NavigationAdapter, isV2ActiveRoute } from '../services/V2NavigationAdapter';
 import { OutsideRouteRequestCoordinator } from '../services/outsideRouting/OutsideRouteRequestCoordinator';
 import { createProductionOutsideRouteSource } from '../services/outsideRouting/ProductionOutsideRouteSource';
@@ -42,6 +43,12 @@ import {
 import { ARRIVAL_THRESHOLD_METERS } from '../constants/navigation';
 import { STALE_FIX_CLOCK_TOLERANCE_MS } from '../constants/navigation';
 
+function currentLiveCapability() {
+  const state = useAppStore.getState();
+  const capability = evaluateLocationCapability({ permission: { granted: state.hasLocationPermission, canAskAgain: state.locationPermissionCanAskAgain, precision: state.locationPermissionPrecision, servicesState: state.locationServicesState }, liveFix: state.currentLocationSource === 'live' ? state.currentLocation : null });
+  return state.locationServicesState === 'enabled' ? capability : { ...capability, mode: 'route_guide' as const };
+}
+
 const REROUTE_COOLDOWN_MS = 25_000;
 const productionOutsideRouteSource = createProductionOutsideRouteSource();
 const AVAILABLE_OUTSIDE_GATES = getRoutableOfficialGates().map((gate) => ({
@@ -52,7 +59,6 @@ const AVAILABLE_OUTSIDE_GATES = getRoutableOfficialGates().map((gate) => ({
 interface RerouteOptions {
   manualGateId?: string;
   explicit?: boolean;
-  allowDirectGuide?: boolean;
 }
 
 function isArrived(route: V2ActiveRoute, coordinate: Coordinate | null, stepIndex: number): boolean {
@@ -108,7 +114,7 @@ export function startPreviewNavigationV2(input: NavigationPreviewStartInput) {
   if (!check.canStart || !input.route || !input.destination) return check;
   const state = useAppStore.getState();
   const capability = evaluateLocationCapability({
-    permission: { granted: state.hasLocationPermission, canAskAgain: false, precision: state.locationPermissionPrecision },
+    permission: { granted: state.hasLocationPermission, canAskAgain: false, precision: state.locationPermissionPrecision, servicesState: state.locationServicesState },
     liveFix: state.currentLocationSource === 'live' ? state.currentLocation : null,
   });
   // Only the currently published preview may authorize a live session. Manual and direct guides have no live authority.
@@ -128,8 +134,8 @@ export function startPreviewNavigationV2(input: NavigationPreviewStartInput) {
     startPlace: input.startPlace,
     currentLocation: state.currentLocation,
   });
-  useAppStore.getState().startNavigation(input.destination, route, route.instructions);
-  return check;
+  const activated = useAppStore.getState().startNavigation(input.destination, route, route.instructions, input.route);
+  return activated ? check : { canStart: false, message: t('directions.livePrerequisites') };
 }
 
 export function recommendPreviewEntryGate(coordinate: Coordinate, place: Place | null) {
@@ -142,6 +148,10 @@ export function useNavigationViewModelV2() {
   const isNavigating = useAppStore((s) => s.isNavigating);
   const routeInstructions = useAppStore((s) => s.routeInstructions);
   const currentLocation = useAppStore((s) => s.currentLocation);
+  const hasLocationPermission = useAppStore((s) => s.hasLocationPermission);
+  const locationPermissionPrecision = useAppStore((s) => s.locationPermissionPrecision);
+  const locationServicesState = useAppStore((s) => s.locationServicesState);
+  const currentLocationSource = useAppStore((s) => s.currentLocationSource);
   const settings = useAppStore((s) => s.settings);
   const isMuted = useAppStore((s) => s.isMuted);
   const setIsMuted = useAppStore((s) => s.setIsMuted);
@@ -338,8 +348,10 @@ export function useNavigationViewModelV2() {
   }, [route]);
 
   const attemptReroute = useCallback(async (coordinate: Coordinate, options: RerouteOptions = {}) => {
-    if (!route || (!settings.autoReroute && !options.explicit)) return;
+    if (!route || currentLiveCapability().mode !== 'live_navigation' || (!settings.autoReroute && !options.explicit)) return;
     if (!options.explicit && rerouteRequestInFlightRef.current) return;
+    const sessionAtRequest = useAppStore.getState().navigationSessionId;
+    const ownsSession = () => useAppStore.getState().navigationSessionId === sessionAtRequest && useAppStore.getState().isNavigating;
     const requestMarker = {};
     rerouteRequestInFlightRef.current = requestMarker;
     let outsideHandle: ReturnType<OutsideRouteRequestCoordinator['begin']> | null = null;
@@ -375,15 +387,12 @@ export function useNavigationViewModelV2() {
         if (
           !outsideHandle.canCommit() ||
           useAppStore.getState().activeRoute !== routeAtRequest ||
-          !useAppStore.getState().isNavigating
+          !ownsSession() || currentLiveCapability().mode !== 'live_navigation'
         ) {
           return;
         }
-        if (
-          candidate?.outsideRoute?.provider === 'direct-guide' &&
-          routeAtRequest.outsideRoute?.roadFollowing &&
-          !options.allowDirectGuide
-        ) {
+        // A direct guide cannot replace a live walking route, including explicit gate changes.
+        if (candidate?.outsideRoute?.provider === 'direct-guide') {
           candidate = null;
         }
       } else {
@@ -396,6 +405,8 @@ export function useNavigationViewModelV2() {
         });
         candidate = RoutingServiceV2.calculateRoute(rerouteRequest);
       }
+
+      if (currentLiveCapability().mode !== 'live_navigation' || !ownsSession() || useAppStore.getState().activeRoute !== routeAtRequest) return;
 
       if (!candidate) {
         lastRerouteAtRef.current = Date.now();
@@ -426,7 +437,7 @@ export function useNavigationViewModelV2() {
       outsideHandle?.finish();
     } catch {
       // #143: any throw in the reroute path must not leave "Rerouting…" stuck; keep the current route.
-      if (rerouteRequestInFlightRef.current === requestMarker) {
+      if (rerouteRequestInFlightRef.current === requestMarker && ownsSession() && currentLiveCapability().mode === 'live_navigation') {
         lastRerouteAtRef.current = Date.now();
         setRerouteStatusMessage(keepCurrentRouteAfterRerouteFailureV2(route).message);
         setReroutePending(false);
@@ -434,6 +445,7 @@ export function useNavigationViewModelV2() {
       outsideHandle?.finish();
     } finally {
       if (rerouteRequestInFlightRef.current === requestMarker) {
+        if (ownsSession()) setReroutePending(false);
         rerouteRequestInFlightRef.current = null;
       }
     }
@@ -456,14 +468,37 @@ export function useNavigationViewModelV2() {
     await attemptReroute(coordinate, {
       manualGateId: gateId,
       explicit: true,
-      allowDirectGuide: true,
     });
   }, [attemptReroute, currentLocation, snappedLocation]);
 
   useEffect(() => {
-    if (!route || !currentLocation) return;
+    if (!route) return;
+    if (!currentLocation) {
+      setGpsSignalState('GPS_LOST');
+      setIsWeakGps(false);
+      outsideRequestCoordinatorRef.current.cancelCurrent();
+      return;
+    }
 
-    const accuracyM = currentLocation.accuracy ?? 0;
+    const capability = currentLiveCapability();
+    if (capability.mode !== 'live_navigation') {
+      // Loss of authority freezes movement/arrival/reroute evidence while retaining the journey.
+      consecutiveOffRouteRef.current = 0;
+      offRouteStartRef.current = null;
+      offRouteAnchorRef.current = null;
+      outsideRequestCoordinatorRef.current.cancelCurrent();
+      const trustworthyWeakFix = capability.liveBlocker === 'weak_fix' && isValidCoordinate(currentLocation) &&
+        Number.isFinite(currentLocation.accuracy) && currentLocation.accuracy! >= 0 &&
+        currentLocation.observedAtMs! >= watcherGenerationBoundaryAtMsRef.current - STALE_FIX_CLOCK_TOLERANCE_MS;
+      setIsWeakGps(trustworthyWeakFix);
+      setGpsSignalState(trustworthyWeakFix ? 'GPS_WEAK' : 'GPS_LOST');
+      if (trustworthyWeakFix && !isSameGpsObservation(currentLocation, lastFreshnessFixLocationRef.current)) {
+        lastFreshnessFixLocationRef.current = currentLocation;
+        lastFixAtRef.current = Date.now();
+      }
+      return;
+    }
+    const accuracyM = currentLocation.accuracy!;
     // AUD-05: only a genuinely new GPS observation may advance freshness state — this effect can
     // re-run for unrelated reasons (see lastFreshnessFixLocationRef above) against the same
     // currentLocation, and that must be a no-op here, not a revival.
@@ -474,9 +509,7 @@ export function useNavigationViewModelV2() {
     // This is the actual runtime trigger for the confirmed progress/ETA/instruction corruption
     // defect: Android/Play Services can deliver a cached "last known location" as the very first
     // update after a location subscription (re)starts, and that fix was previously consumed
-    // immediately as this generation's live position. A fix with no observedAtMs at all (no
-    // timestamp evidence either way) is NOT rejected — there's no proof it's historical, and
-    // unconditionally dropping every first fix was explicitly rejected as a fix strategy (a
+    // immediately as this generation's live position. Missing observation timestamps are rejected by capability validation above. A
     // genuinely fresh first fix must be accepted immediately, not delayed to "hide" the bug).
     const isHistoricalFix =
       isNewFix &&
@@ -587,7 +620,7 @@ export function useNavigationViewModelV2() {
         void attemptReroute(currentLocation, { manualGateId: manualGateId ?? undefined });
       }
     }
-  }, [attemptReroute, currentLocation, currentStepIndex, etaMinutes, instructions, isMuted, manualGateId, route, settings.voiceInstructions, settings.walkingSpeed]);
+  }, [attemptReroute, currentLocation, currentLocationSource, hasLocationPermission, locationPermissionPrecision, locationServicesState, currentStepIndex, etaMinutes, instructions, isMuted, manualGateId, route, settings.voiceInstructions, settings.walkingSpeed]);
 
   // #139 Option B: a journey that reached its destination is finished, not "unfinished".
   useEffect(() => {

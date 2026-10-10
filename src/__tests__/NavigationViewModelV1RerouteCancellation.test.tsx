@@ -1,3 +1,4 @@
+import { seedRunningNavigation } from './navigationFixture';
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -44,7 +45,7 @@ async function walkOffRoute(startLat: number) {
 beforeEach(() => {
   useAppStore.setState(initialStoreState, true);
   useAppStore.setState({ currentLocation: origin, currentLocationSource: 'live' });
-  useAppStore.getState().startNavigation(destination);
+  seedRunningNavigation(destination);
 });
 
 describe('V1 queued reroute cancellation', () => {
@@ -71,7 +72,7 @@ describe('V1 queued reroute cancellation', () => {
     expect(useAppStore.getState().reroutePending).toBe(true);
     await act(async () => {
       useAppStore.getState().stopNavigation();
-      useAppStore.getState().startNavigation(destination);
+      seedRunningNavigation(destination);
     });
     routeSpy.mockClear();
     await act(async () => jest.advanceTimersByTime(300));
@@ -99,7 +100,7 @@ describe('V1 queued reroute cancellation', () => {
     expect(useAppStore.getState().reroutePending).toBe(true);
     routeSpy.mockClear();
     await act(async () => {
-      useAppStore.getState().startNavigation(destination);
+      seedRunningNavigation(destination);
       jest.advanceTimersByTime(300);
     });
     // Replacement initializes its own route once, without the retired reroute's snapped node.

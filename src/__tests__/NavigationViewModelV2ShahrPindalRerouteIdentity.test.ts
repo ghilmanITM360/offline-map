@@ -1,3 +1,4 @@
+import { seedRunningNavigation } from './navigationFixture';
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -62,8 +63,8 @@ function startVariant(variant: Variant) {
   const destination = placesByVariant[variant];
   const activeRoute = routesByVariant[variant];
   useAppStore.setState(initialStoreState, true);
-  useAppStore.getState().startNavigation(destination, activeRoute, activeRoute.instructions);
-  useAppStore.setState({ currentLocation: activeRoute.destination.coordinate, currentLocationSource: 'live' });
+  seedRunningNavigation(destination, activeRoute, activeRoute.instructions);
+  useAppStore.setState({ currentLocation: { ...activeRoute.destination.coordinate, accuracy: 5, observedAtMs: Date.now() }, currentLocationSource: 'live' });
   return { destination, activeRoute };
 }
 

@@ -1,3 +1,4 @@
+import { seedRunningNavigation } from './navigationFixture';
 import type { Place, V2ActiveRoute } from '../models/types';
 import { V2DirectionsService } from '../services/V2DirectionsService';
 import { V2NavigationAdapter } from '../services/V2NavigationAdapter';
@@ -26,7 +27,7 @@ beforeAll(async () => {
     request: {
       startPlace: null,
       destination,
-      currentLocation: origin,
+      currentLocation: { ...origin, accuracy: 5, observedAtMs: Date.now() },
       forceOutside: true,
       manualGateId: 'GATE_12',
     },
@@ -40,8 +41,8 @@ beforeAll(async () => {
 
 beforeEach(() => {
   useAppStore.setState(initialStoreState, true);
-  useAppStore.getState().startNavigation(destination, manualGateRoute, manualGateRoute.instructions);
-  useAppStore.setState({ currentLocation: origin, currentLocationSource: 'live' });
+  seedRunningNavigation(destination, manualGateRoute, manualGateRoute.instructions);
+  useAppStore.setState({ currentLocation: { ...origin, accuracy: 5, observedAtMs: Date.now() }, currentLocationSource: 'live' });
 });
 
 describe('NavigationViewModelV2 manual gate session intent', () => {
@@ -65,7 +66,7 @@ describe('NavigationViewModelV2 manual gate session intent', () => {
         longitude: 67.02,
         accuracy: 5,
       };
-      await act(async () => useAppStore.setState({ currentLocation: point, currentLocationSource: 'live' }));
+      await act(async () => useAppStore.setState({ currentLocation: { ...point, observedAtMs: Date.now() }, currentLocationSource: 'live' }));
     }
     await waitFor(() => expect(useAppStore.getState().reroutePending).toBe(false));
 
@@ -105,8 +106,8 @@ describe('NavigationViewModelV2 manual gate session intent', () => {
 
     await act(async () => {
       useAppStore.getState().stopNavigation();
-      useAppStore.getState().startNavigation(destination, automaticRoute, automaticRoute.instructions);
-      useAppStore.setState({ currentLocation: origin, currentLocationSource: 'live' });
+      seedRunningNavigation(destination, automaticRoute, automaticRoute.instructions);
+      useAppStore.setState({ currentLocation: { ...origin, accuracy: 5, observedAtMs: Date.now() }, currentLocationSource: 'live' });
     });
 
     expect(hook.result.current.manualGateId).toBeNull();

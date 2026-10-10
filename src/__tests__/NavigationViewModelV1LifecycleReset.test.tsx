@@ -1,3 +1,4 @@
+import { seedRunningNavigation } from './navigationFixture';
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -45,7 +46,7 @@ async function walkOffRoute(startLat: number) {
 beforeEach(() => {
   useAppStore.setState(initialStoreState, true);
   useAppStore.setState({ currentLocation: origin, currentLocationSource: 'live' });
-  useAppStore.getState().startNavigation(destination);
+  seedRunningNavigation(destination);
 });
 
 describe('NavigationViewModel (V1) lifecycle resets (#149)', () => {
@@ -83,7 +84,7 @@ describe('NavigationViewModel (V1) lifecycle resets (#149)', () => {
     if (restart === 'exit first') {
       await act(async () => useAppStore.getState().stopNavigation());
     }
-    await act(async () => useAppStore.getState().startNavigation(destination));
+    await act(async () => seedRunningNavigation(destination));
     routeSpy.mockClear();
 
     await walkOffRoute(24.992);
@@ -96,7 +97,7 @@ test('same-object restart clears the previous trip arrival latch', async () => {
   const hook = await renderHook(() => useNavigationViewModel());
   await act(async () => publish(block.center.latitude, block.center.longitude));
   expect(hook.result.current.arrived).toBe(true);
-  await act(async () => useAppStore.getState().startNavigation(destination));
+  await act(async () => seedRunningNavigation(destination));
   expect(hook.result.current.arrived).toBe(false);
 });
 
@@ -106,7 +107,7 @@ test('same-object restart calculates its route from the current origin', async (
   const newOrigin = { latitude: origin.latitude + 0.0001, longitude: origin.longitude };
   await act(async () => useAppStore.setState({ currentLocation: newOrigin }));
   routeSpy.mockClear();
-  await act(async () => useAppStore.getState().startNavigation(destination));
+  await act(async () => seedRunningNavigation(destination));
   expect(routeSpy).toHaveBeenCalledWith(newOrigin, expect.anything(), undefined, expect.any(Number));
   routeSpy.mockRestore();
 });

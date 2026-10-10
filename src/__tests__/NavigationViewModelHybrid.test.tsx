@@ -1,3 +1,4 @@
+import { seedRunningNavigation } from './navigationFixture';
 import type { Place, V2ActiveRoute } from '../models/types';
 import { LANDMARK_PLACES } from '../constants/data';
 import { V2DirectionsService } from '../services/V2DirectionsService';
@@ -49,7 +50,7 @@ beforeAll(async () => {
   sharedActiveRoute = V2NavigationAdapter.fromPreview({
     previewRoute: preview.route,
     destination,
-    currentLocation: origin,
+    currentLocation: { ...origin, accuracy: 5, observedAtMs: Date.now() },
   });
 });
 
@@ -57,8 +58,8 @@ beforeEach(() => {
   delete process.env.EXPO_PUBLIC_IJTEMA_ROUTING_PROXY_BASE_URL;
   process.env.EXPO_PUBLIC_USE_IJTEMA_V2_ROUTING = 'true';
   useAppStore.setState(initialStoreState, true);
-  useAppStore.getState().startNavigation(destination, sharedActiveRoute, sharedActiveRoute.instructions);
-  useAppStore.setState({ currentLocation: origin, currentLocationSource: 'live' });
+  seedRunningNavigation(destination, sharedActiveRoute, sharedActiveRoute.instructions);
+  useAppStore.setState({ currentLocation: { ...origin, accuracy: 5, observedAtMs: Date.now() }, currentLocationSource: 'live' });
 });
 
 describe('NavigationViewModelV2 hybrid rerouting', () => {
@@ -75,9 +76,9 @@ describe('NavigationViewModelV2 hybrid rerouting', () => {
       destination: facility,
       currentLocation: { latitude: 24.966, longitude: 67.004 },
     });
-    useAppStore.getState().startNavigation(facility, facilityRoute, facilityRoute.instructions);
+    seedRunningNavigation(facility, facilityRoute, facilityRoute.instructions);
     useAppStore.setState({
-      currentLocation: origin,
+      currentLocation: { ...origin, accuracy: 5, observedAtMs: Date.now() },
       currentLocationSource: 'live',
     });
     const previewSpy = jest.spyOn(V2DirectionsService, 'calculateHybridPreview');
@@ -177,7 +178,7 @@ describe('NavigationViewModelV2 hybrid rerouting', () => {
     ];
 
     for (const point of offRoutePoints) {
-      await act(async () => useAppStore.setState({ currentLocation: point, currentLocationSource: 'live' }));
+      await act(async () => useAppStore.setState({ currentLocation: { ...point, observedAtMs: Date.now() }, currentLocationSource: 'live' }));
     }
 
     expect(previewSpy).toHaveBeenCalledTimes(1);
@@ -203,7 +204,7 @@ describe('NavigationViewModelV2 hybrid rerouting', () => {
 
     for (let i = 0; i < steps; i++) {
       const point = { latitude: baseLat + (i * stepMeters) / metersPerDegLat, longitude, accuracy: 5 };
-      await act(async () => useAppStore.setState({ currentLocation: point, currentLocationSource: 'live' }));
+      await act(async () => useAppStore.setState({ currentLocation: { ...point, observedAtMs: Date.now() }, currentLocationSource: 'live' }));
     }
 
     expect(previewSpy).toHaveBeenCalledTimes(1);
@@ -225,11 +226,11 @@ describe('NavigationViewModelV2 hybrid rerouting', () => {
     // without itself crossing the 12m movement bar, so trip A never reroutes on its own.
     const metersPerDegLat = 111320;
     const tripAPoints = [
-      { latitude: 24.985, longitude: 67.02, accuracy: 5 },
-      { latitude: 24.985 + 2 / metersPerDegLat, longitude: 67.02, accuracy: 5 },
+      { latitude: 24.985, longitude: 67.02, accuracy: 5, observedAtMs: Date.now() },
+      { latitude: 24.985 + 2 / metersPerDegLat, longitude: 67.02, accuracy: 5, observedAtMs: Date.now() },
     ];
     for (const point of tripAPoints) {
-      await act(async () => useAppStore.setState({ currentLocation: point, currentLocationSource: 'live' }));
+      await act(async () => useAppStore.setState({ currentLocation: { ...point, observedAtMs: Date.now() }, currentLocationSource: 'live' }));
     }
 
     // End trip A and start a new trip on the SAME route/destination — same off-route geometry
@@ -239,7 +240,7 @@ describe('NavigationViewModelV2 hybrid rerouting', () => {
     // models a trip whose very first live fix is already off-route.
     await act(async () => useAppStore.getState().stopNavigation());
     await act(async () =>
-      useAppStore.getState().startNavigation(destination, sharedActiveRoute, sharedActiveRoute.instructions),
+      seedRunningNavigation(destination, sharedActiveRoute, sharedActiveRoute.instructions),
     );
 
     // One large off-route jump as the new trip's first fix — far enough from trip A's last
@@ -249,7 +250,7 @@ describe('NavigationViewModelV2 hybrid rerouting', () => {
     // shouldTriggerReroute conditions would be met.
     await act(async () =>
       useAppStore.setState({
-        currentLocation: { latitude: 24.99, longitude: 67.02, accuracy: 5 },
+        currentLocation: { latitude: 24.99, longitude: 67.02, accuracy: 5, observedAtMs: Date.now() },
         currentLocationSource: 'live',
       }),
     );
@@ -277,7 +278,7 @@ describe('NavigationViewModelV2 hybrid rerouting', () => {
     // Trip A: sustained off-route walking triggers a real reroute, setting lastRerouteAtRef.
     for (let i = 0; i < steps; i++) {
       const point = { latitude: 24.985 + (i * stepMeters) / metersPerDegLat, longitude, accuracy: 5 };
-      await act(async () => useAppStore.setState({ currentLocation: point, currentLocationSource: 'live' }));
+      await act(async () => useAppStore.setState({ currentLocation: { ...point, observedAtMs: Date.now() }, currentLocationSource: 'live' }));
     }
     expect(previewSpy).toHaveBeenCalledTimes(1);
     await waitFor(() => expect(useAppStore.getState().reroutePending).toBe(false));
@@ -286,17 +287,28 @@ describe('NavigationViewModelV2 hybrid rerouting', () => {
     // same route/destination.
     await act(async () => useAppStore.getState().stopNavigation());
     await act(async () =>
-      useAppStore.getState().startNavigation(destination, sharedActiveRoute, sharedActiveRoute.instructions),
+      seedRunningNavigation(destination, sharedActiveRoute, sharedActiveRoute.instructions),
     );
 
     // Trip B: an unrelated sustained off-route walk, far enough from trip A's off-route
     // corridor to be unambiguously a fresh episode, that should reroute on its own merits.
     for (let i = 0; i < steps; i++) {
       const point = { latitude: 24.992 + (i * stepMeters) / metersPerDegLat, longitude, accuracy: 5 };
-      await act(async () => useAppStore.setState({ currentLocation: point, currentLocationSource: 'live' }));
+      await act(async () => useAppStore.setState({ currentLocation: { ...point, observedAtMs: Date.now() }, currentLocationSource: 'live' }));
     }
 
     expect(previewSpy).toHaveBeenCalledTimes(2);
     previewSpy.mockRestore();
   });
+});
+
+test('a gate-change direct guide cannot replace active walking navigation', async () => {
+  const before = useAppStore.getState().activeRoute;
+  const fallback = { ...sharedActiveRoute, outsideRoute: { ...sharedActiveRoute.outsideRoute!, provider: 'direct-guide' as const, roadFollowing: false } };
+  jest.spyOn(V2DirectionsService, 'calculateHybridPreview').mockResolvedValueOnce({ status: 'ready', route: fallback, instructions: fallback.instructions, message: null });
+  const hook = await renderHook(() => useNavigationViewModelV2());
+  await act(() => hook.result.current.selectOutsideGate('GATE_12'));
+  expect(useAppStore.getState().activeRoute).toBe(before);
+  expect(useAppStore.getState().isNavigating).toBe(true);
+  expect(hook.result.current.rerouteStatusMessage).toBe('Keep following the current route.');
 });

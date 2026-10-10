@@ -4,6 +4,7 @@ import type { Coordinate } from '../models/types';
 import { GPSManagerService } from '../services/GPSManagerService';
 
 jest.mock('react-native', () => ({
+  Platform: { OS: 'android' },
   AppState: { currentState: 'active', addEventListener: jest.fn() },
 }));
 jest.mock('expo-location', () => ({

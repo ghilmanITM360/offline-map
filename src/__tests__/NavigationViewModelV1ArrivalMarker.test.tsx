@@ -1,3 +1,4 @@
+import { seedRunningNavigation } from './navigationFixture';
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -35,7 +36,7 @@ const publish = (latitude: number, longitude: number) =>
 beforeEach(() => {
   useAppStore.setState(initialStoreState, true);
   useAppStore.setState({ currentLocation: origin, currentLocationSource: 'live' });
-  useAppStore.getState().startNavigation(destination);
+  seedRunningNavigation(destination);
 });
 
 test('V1 arrival clears the unfinished-journey marker', async () => {

@@ -1,3 +1,4 @@
+import { seedRunningNavigation } from './navigationFixture';
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -48,7 +49,7 @@ beforeEach(() => {
   delete process.env.EXPO_PUBLIC_IJTEMA_ROUTING_PROXY_BASE_URL;
   process.env.EXPO_PUBLIC_USE_IJTEMA_V2_ROUTING = 'true';
   useAppStore.setState(initialStoreState, true);
-  useAppStore.getState().startNavigation(destinationPlace, sharedActiveRoute, sharedActiveRoute.instructions);
+  seedRunningNavigation(destinationPlace, sharedActiveRoute, sharedActiveRoute.instructions);
 });
 
 afterEach(() => {

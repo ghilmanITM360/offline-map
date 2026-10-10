@@ -1,0 +1,31 @@
+import { useAppStore } from '../store/useAppStore';
+import { V2PlaceAdapter } from '../services/V2PlaceAdapter';
+import { V2NavigationAdapter } from '../services/V2NavigationAdapter';
+import { useNavigationViewModelV2 } from '../viewmodels/NavigationViewModelV2';
+import type { RoutePreviewV2 } from '../services/RoutingServiceV2';
+import { act, renderHook } from './test-utils';
+const initial = useAppStore.getState();
+const to = V2PlaceAdapter.getPlaceById('B1')!;
+const from = V2PlaceAdapter.getPlaceById('GATE_13')!;
+const preview: RoutePreviewV2 = { id: 'live-authority', sourceVersion: 'v2', nodes: [], segments: [], coordinates: [from.coordinate, to.coordinate], totalDistance: 200, estimatedTimeMin: 3, startLabel: from.name, destinationLabel: to.name, instructions: [{ id: 'arrive', text: 'Arrive', distance: 0, type: 'arrival', coordinate: to.coordinate }] };
+beforeEach(() => {
+ useAppStore.setState(initial, true);
+ const fix = { ...from.coordinate, accuracy: 8, observedAtMs: Date.now() };
+ useAppStore.setState({ currentLocation: fix, currentLocationSource: 'live', locationServicesState: 'enabled', hasLocationPermission: true, locationPermissionPrecision: 'fine', activeRoute: preview, routePlannerDest: to });
+ const active = V2NavigationAdapter.fromPreview({ previewRoute: preview, destination: to, currentLocation: fix });
+ useAppStore.getState().startNavigation(to, active, active.instructions, preview);
+});
+it.each(['revoked', 'coarse', 'disabled', 'remembered', 'missing_time', 'missing_accuracy', 'negative_accuracy', 'future_time'] as const)('active %s cannot advance progress or arrival', async kind => {
+ const hook = await renderHook(() => useNavigationViewModelV2());
+ const before = hook.result.current.remainingDistance;
+ const fix = { ...to.coordinate, accuracy: 8 as number | undefined, observedAtMs: Date.now() as number | undefined };
+ if (kind === 'missing_time') fix.observedAtMs = undefined;
+ if (kind === 'future_time') fix.observedAtMs = Date.now() + 60000;
+ if (kind === 'missing_accuracy') fix.accuracy = undefined;
+ if (kind === 'negative_accuracy') fix.accuracy = -1;
+ await act(() => useAppStore.setState({ currentLocation: fix, currentLocationSource: kind === 'remembered' ? 'remembered' : 'live', ...(kind === 'revoked' ? { hasLocationPermission: false } : {}), ...(kind === 'coarse' ? { locationPermissionPrecision: 'coarse' as const } : {}), ...(kind === 'disabled' ? { locationServicesState: 'disabled' as const } : {}) }));
+ expect(hook.result.current.remainingDistance).toBe(before);
+ expect(hook.result.current.arrived).toBe(false);
+ expect(useAppStore.getState().isNavigating).toBe(true);
+ expect(useAppStore.getState().activeRoute).not.toBeNull();
+});

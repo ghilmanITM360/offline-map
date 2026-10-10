@@ -1,3 +1,4 @@
+import { activatePublishedFixture } from './navigationFixture';
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -69,7 +70,7 @@ describe('route guide state', () => {
     expect(useAppStore.getState().routeGuide).toBeNull();
 
     s.startRouteGuide(steps);
-    s.startNavigation(place, null, []);
+    activatePublishedFixture(place);
     expect(useAppStore.getState().routeGuide).toBeNull();
     expect(useAppStore.getState().isNavigating).toBe(true);
 

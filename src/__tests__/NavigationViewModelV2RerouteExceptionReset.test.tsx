@@ -1,3 +1,4 @@
+import { seedRunningNavigation } from './navigationFixture';
 import type { Place, V2ActiveRoute } from '../models/types';
 import { V2DirectionsService } from '../services/V2DirectionsService';
 import { V2NavigationAdapter } from '../services/V2NavigationAdapter';
@@ -35,8 +36,8 @@ beforeAll(async () => {
 
 beforeEach(() => {
   useAppStore.setState(initialStoreState, true);
-  useAppStore.getState().startNavigation(destination, activeRoute, activeRoute.instructions);
-  useAppStore.setState({ currentLocation: origin, currentLocationSource: 'live' });
+  seedRunningNavigation(destination, activeRoute, activeRoute.instructions);
+  useAppStore.setState({ currentLocation: { ...origin, accuracy: 5, observedAtMs: Date.now() }, currentLocationSource: 'live' });
 });
 
 describe('NavigationViewModelV2 reroute exception safety (#143)', () => {
@@ -49,7 +50,7 @@ describe('NavigationViewModelV2 reroute exception safety (#143)', () => {
 
     for (let index = 0; index < 18; index += 1) {
       const point = { latitude: 24.985 + (index * 2) / 111320, longitude: 67.02, accuracy: 5 };
-      await act(async () => useAppStore.setState({ currentLocation: point, currentLocationSource: 'live' }));
+      await act(async () => useAppStore.setState({ currentLocation: { ...point, observedAtMs: Date.now() }, currentLocationSource: 'live' }));
     }
 
     await waitFor(() => expect(V2NavigationAdapter.fromPreview).toHaveBeenCalled());

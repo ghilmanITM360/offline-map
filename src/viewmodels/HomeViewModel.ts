@@ -227,6 +227,7 @@ export function useHomeViewModel({ isFocused = true }: { isFocused?: boolean } =
       const resolved = await LocationAccessService.resolveCurrentLocation(true);
       setHasLocationPermission(resolved.permissionState.granted);
       setLocationPermissionPrecision(resolved.permissionState.precision);
+      useAppStore.getState().setLocationPermissionFacts(resolved.permissionState);
 
       if (resolved.ok && resolved.coordinate) {
         setCurrentLocation(resolved.coordinate, resolved.source ?? 'live');

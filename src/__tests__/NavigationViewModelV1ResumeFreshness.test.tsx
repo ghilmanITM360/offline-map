@@ -1,3 +1,4 @@
+import { seedRunningNavigation } from './navigationFixture';
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -61,7 +62,7 @@ beforeEach(() => {
   forceFixSpy = jest.spyOn(GPSManagerService, 'forceFix').mockResolvedValue(null);
   useAppStore.setState(initialStoreState, true);
   useAppStore.setState({ currentLocation: origin, currentLocationSource: 'live' });
-  useAppStore.getState().startNavigation(destination);
+  seedRunningNavigation(destination);
 });
 
 afterEach(() => {

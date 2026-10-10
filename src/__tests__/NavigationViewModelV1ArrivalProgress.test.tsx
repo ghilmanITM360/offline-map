@@ -1,3 +1,4 @@
+import { seedRunningNavigation } from './navigationFixture';
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -46,7 +47,7 @@ const publish = (c: Coordinate) =>
 beforeEach(() => {
   useAppStore.setState(initialStoreState, true);
   useAppStore.setState({ currentLocation: coordinates[0], currentLocationSource: 'live' });
-  useAppStore.getState().startNavigation(destination, route, []);
+  seedRunningNavigation(destination, route, []);
 });
 
 describe('V1 arrival requires route progress (#95)', () => {
@@ -74,7 +75,7 @@ describe('V1 arrival requires route progress (#95)', () => {
 
   test('declared totalDistance larger than the polyline length cannot make arrival impossible', async () => {
     // Graph edges can declare more length than their node-to-node geometry; progress is measured on the geometry.
-    useAppStore.getState().startNavigation(destination, { ...route, totalDistance: totalDistance + 45 }, []);
+    seedRunningNavigation(destination, { ...route, totalDistance: totalDistance + 45 }, []);
     const hook = await renderHook(() => useNavigationViewModel());
     for (const c of coordinates.slice(1)) {
       await act(async () => publish(c));
