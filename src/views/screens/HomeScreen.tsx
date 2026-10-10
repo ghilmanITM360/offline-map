@@ -4,6 +4,7 @@
  */
 
 import { resetToDirectoryAction } from '../../navigation/postJourney';
+import { useManualLivePreview } from '../../viewmodels/manualLivePreview';
 import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import ReanimatedView, { runOnJS, useAnimatedReaction, useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
 import {
@@ -699,12 +700,16 @@ export function HomeScreen() {
     return RoutePointService.getDestinationCoordinate(selectedPlace);
   }, [selectedPlace, entryPoints, selectedEntryIdx]);
 
+  const manualLivePreview = useManualLivePreview();
+  const presentationRoute = !isNavigating && manualLivePreview?.committedRoute === activeRoute &&
+    manualLivePreview.destinationId === routePlannerDest?.id && useAppStore.getState().routeGuide
+    ? manualLivePreview.route : activePreviewRoute;
   const { outside: previewOutsideLegCoordinates, inside: previewInsideLegCoordinates } = useMemo(
     () => V2MapRenderingService.splitOutsideInsideCoordinates(
-      activePreviewRoute?.coordinates ?? [],
-      activePreviewRoute?.outsideLegCoordinateCount,
+      presentationRoute?.coordinates ?? [],
+      presentationRoute?.outsideLegCoordinateCount,
     ),
-    [activePreviewRoute],
+    [presentationRoute],
   );
   const previewDestination = activePreviewRoute ? routePlannerDest : null;
   // Single route-preview surface: whichever of the two ways a route preview can start
@@ -715,7 +720,8 @@ export function HomeScreen() {
   const previewDestinationCoordinate = previewDestination
     ? V2PlaceAdapter.getMarkerCoordinate(previewDestination) ?? activePreviewRoute?.coordinates[activePreviewRoute.coordinates.length - 1] ?? null
     : null;
-  const previewStartCoordinate = activePreviewRoute
+  const previewStartCoordinate = manualLivePreview && presentationRoute === manualLivePreview.route
+    ? presentationRoute.coordinates[0] ?? null : activePreviewRoute
     ? routePlannerOrigin
       ? V2PlaceAdapter.getMarkerCoordinate(routePlannerOrigin) ?? activePreviewRoute.coordinates[0] ?? null
       : activePreviewRoute.startResolution?.coordinate ?? activePreviewRoute.coordinates[0] ?? null
@@ -725,8 +731,8 @@ export function HomeScreen() {
     routePlannerOrigin &&
     previewStartCoordinate
   );
-  const previewEntryGateId = activePreviewRoute?.startResolution?.mode === 'outside'
-    ? activePreviewRoute.startResolution.gate?.id ?? null
+  const previewEntryGateId = presentationRoute?.startResolution?.mode === 'outside'
+    ? presentationRoute.startResolution.gate?.id ?? null
     : null;
   const v2MapLayers = useMemo(
     () => V2MapRenderingService.getHomeLayers({
@@ -1065,21 +1071,21 @@ export function HomeScreen() {
   const previewInsetsRef = useRef(mapLabelEdgeInsets);
   previewInsetsRef.current = mapLabelEdgeInsets;
   const fitPreviewRoute = useCallback(() => {
-    if (!activePreviewRoute || activePreviewRoute.coordinates.length < 2) return;
+    if (!presentationRoute || presentationRoute.coordinates.length < 2) return;
     invalidateStartupCameraIntent();
     const viewportInsets = previewInsetsRef.current;
-    fitRoute(activePreviewRoute.coordinates, {
+    fitRoute(presentationRoute.coordinates, {
       top: Math.max(viewportInsets.top, 90),
       right: Math.max(viewportInsets.right, 64),
       bottom: viewportInsets.bottom + ROUTE_FIT_BOTTOM_PADDING,
       left: 64,
     });
-  }, [activePreviewRoute, fitRoute, invalidateStartupCameraIntent]);
+  }, [presentationRoute, fitRoute, invalidateStartupCameraIntent]);
   useEffect(() => {
-    if (!activePreviewRoute || activePreviewRoute.coordinates.length < 2) return;
+    if (!presentationRoute || presentationRoute.coordinates.length < 2) return;
     const frame = requestAnimationFrame(fitPreviewRoute);
     return () => cancelAnimationFrame(frame);
-  }, [activePreviewRoute, fitPreviewRoute]);
+  }, [presentationRoute, fitPreviewRoute]);
   // Starting the route guide re-frames the whole route once the sheet has settled (#307).
   const handleRouteGuideStarted = useCallback(() => {
     // The guide card needs the room: open the top detent so the step, Previous/Next and the live-guidance link all sit
@@ -1471,16 +1477,16 @@ export function HomeScreen() {
     [previewVisibleBlocks, previewVisibleGateMarkers, previewVisibleRastas, previewVisibleSpecialRoutes, selectedPlace?.id, showBlockPolygons, useV2Map, v2MapLayers.activeMapFilter, v2MapLayers.venueBoundary],
   );
   const previewRouteSpecs = useMemo<OverlaySpec[]>(
-    () => activePreviewRoute && activePreviewRoute.coordinates.length > 1
+    () => presentationRoute && presentationRoute.coordinates.length > 1
       ? buildRouteOverlay({
           outside: previewOutsideLegCoordinates,
-          roadFollowing: activePreviewRoute.outsideRoute?.roadFollowing ?? false,
+          roadFollowing: presentationRoute.outsideRoute?.roadFollowing ?? false,
           inside: previewInsideLegCoordinates,
           // Same geometry = same route: a re-fetch or re-render never replays the reveal, a new start or destination does.
-          revealKey: routeRevealKey(activePreviewRoute.coordinates),
+          revealKey: routeRevealKey(presentationRoute.coordinates),
         })
       : [],
-    [activePreviewRoute, previewInsideLegCoordinates, previewOutsideLegCoordinates],
+    [presentationRoute, previewInsideLegCoordinates, previewOutsideLegCoordinates],
   );
   // One ring pulse per chosen destination (a selected place, then the same place as the route-preview destination).
   const pulseTarget = activePreviewRoute

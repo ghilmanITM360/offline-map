@@ -59,6 +59,7 @@ import { publishDirectionsFooter, useDirectionsFooterHeight } from './Directions
 import { OutsideRouteStatusCard } from '../navigation/OutsideRouteStatusCard';
 import type { NormalizedOutsideCandidate } from '../../../models/outsideRouting';
 import { liveBlockerMessage } from '../../../services/LocationCapability';
+import { ManualLiveUpgradeCard } from './ManualLiveUpgradeCard';
 import { RouteGuideCard } from './RouteGuideCard';
 import { publishDirectionsPeek } from './DirectionsPeekHandle';
 
@@ -269,6 +270,7 @@ function RoutePreviewSection({
     startAttempt,
     runStartAction,
     startRouteGuide,
+    upgrade, confirmLiveUpgrade, cancelLiveUpgrade, startUpgradedNavigation,
   } = useDirectionsViewModel(destination);
   const routeGuide = useAppStore((s) => s.routeGuide);
   // Home can start a preview only once BOTH the route and its destination are in the store (its start handler returns
@@ -592,6 +594,8 @@ function RoutePreviewSection({
           {/* The heading scrolls with its content (#326): pinned, its title and subtitle outgrow the top detent on a
               320 dp window or at 200% font and leave the body no viewport. */}
           <View style={styles.directionsHeader}>{directionsHeader}</View>
+          {upgrade && upgrade.phase !== 'idle' && <ManualLiveUpgradeCard upgrade={upgrade} destination={destination.name}
+            onConfirm={() => void confirmLiveUpgrade()} onCancel={cancelLiveUpgrade} onStart={() => { startUpgradedNavigation(); }} />}
           {showRouteReady && routeGuide && (
             <RouteGuideCard
               guide={routeGuide}
@@ -599,7 +603,7 @@ function RoutePreviewSection({
               onNext={() => setRouteGuideStep(routeGuide.stepIndex + 1)}
               onLive={() => void runStartAction(() => startNowRef.current())}
               onEnd={endRouteGuide}
-              liveBusy={startAttempt === 'working'}
+              liveBusy={startAttempt === 'working' || (upgrade && upgrade.phase !== 'idle')}
               message={
                 startAttempt === 'settings'
                   ? 'Allow location in Settings, then try again.'
