@@ -7,12 +7,14 @@ import { Card } from '../common/Card';
 import { Button } from '../common/Button';
 
 /** Presentation only: the ViewModel owns acquisition, candidate routing and activation. */
-export function ManualLiveUpgradeCard({ upgrade, destination, onConfirm, onCancel, onStart }: {
+export function ManualLiveUpgradeCard({ upgrade, destination, onConfirm, onCancel, onStart, recoveryLabel, onRecover }: {
   upgrade: ManualLiveUpgrade;
   destination: string;
   onConfirm: () => void;
   onCancel: () => void;
   onStart: () => void;
+  recoveryLabel?: string;
+  onRecover?: () => void;
 }) {
   const { t, isRTL } = useI18n();
   if (upgrade.phase === 'idle') return null;
@@ -32,6 +34,7 @@ export function ManualLiveUpgradeCard({ upgrade, destination, onConfirm, onCance
         <Text style={textStyle}>{t('routeGuide.upgrade.summary', { minutes: upgrade.route.estimatedTimeMin, distance: upgrade.route.totalDistance })}</Text>
         <Button label={t('routeGuide.upgrade.start')} onPress={onStart} fullWidth />
       </> : !busy ? <Button label={t(upgrade.phase === 'failed' ? 'routeGuide.upgrade.retry' : 'routeGuide.upgrade.continue')} onPress={onConfirm} fullWidth /> : null}
+      {upgrade.phase === 'failed' && recoveryLabel && <Button label={recoveryLabel} variant="outline" onPress={onRecover} fullWidth />}
       <Button label={t('routeGuide.upgrade.cancel')} variant="outline" onPress={onCancel} fullWidth />
     </View>
   </Card>;

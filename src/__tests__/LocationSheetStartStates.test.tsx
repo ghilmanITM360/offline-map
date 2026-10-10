@@ -191,3 +191,14 @@ describe('outside the venue with only a straight-line guide', () => {
     expect(screen.queryByText(/Get to .* first/)).not.toBeOnTheScreen();
   });
 });
+
+it('retained ready-route retry shows acquisition progress and cancellation', async () => {
+  const cancel = jest.fn();
+  mockedVm.mockReturnValue(vm({ startSource: 'live_gps', startAction: { kind: 'use_location', primaryLabel: 'Use my location' },
+    startAttempt: 'failed', locationAcquiring: true,
+    locationRecoveryAction: { kind: 'use_location', label: 'Try location again' }, runLocationRecovery: jest.fn(), cancelLocationRecovery: cancel }));
+  await renderSheet();
+  expect(screen.getByRole('button', { name: 'Finding your location…' })).toBeDisabled();
+  await userEvent.setup().press(screen.getByRole('button', { name: 'Cancel location request' }));
+  expect(cancel).toHaveBeenCalledTimes(1);
+});

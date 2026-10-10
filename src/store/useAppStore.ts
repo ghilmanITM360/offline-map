@@ -209,6 +209,8 @@ interface AppState {
   // Directory shows that question and, instead of browsing, stores the chosen place in directoryChoice and returns;
   // the initiator consumes (and clears) the choice. Both are ephemeral and never persisted.
   directoryPurpose: DirectoryPurpose | null;
+  /** Runtime-only generation: an opened chooser permanently retires earlier location work. */
+  directoryRequestSerial: number;
   setDirectoryPurpose: (purpose: DirectoryPurpose | null) => void;
   directoryChoice: DirectoryChoice | null;
   setDirectoryChoice: (choice: DirectoryChoice | null) => void;
@@ -547,10 +549,12 @@ export const useAppStore = create<AppState>()(
               ? 'eligible' : 'ineligible' } });
       },
       directoryPurpose: null,
+      directoryRequestSerial: 0,
       setDirectoryPurpose: (purpose) => {
         const intent = get().destinationJourneyIntent;
         // Opening either chooser withdraws the original tap's automatic activation authority.
         set({ directoryPurpose: purpose,
+          directoryRequestSerial: get().directoryRequestSerial + (purpose ? 1 : 0),
           ...(purpose && intent ? { destinationJourneyIntent: { ...intent, autoLive: 'consumed' as const } } : {}) });
       },
       directoryChoice: null,

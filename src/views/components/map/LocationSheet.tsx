@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import { useI18n } from '../../../i18n/useI18n';
 import React, { useEffect, useRef, useState } from 'react';
 import {
   AccessibilityInfo,
@@ -243,6 +244,7 @@ function RoutePreviewSection({
   // the stale loadState==='error' and re-invoke calculateRoute concurrently.
   const retryInFlightRef = useRef(false);
 
+  const { t } = useI18n();
   const {
     route,
     startSource,
@@ -271,6 +273,7 @@ function RoutePreviewSection({
     runStartAction,
     startRouteGuide,
     upgrade, confirmLiveUpgrade, cancelLiveUpgrade, startUpgradedNavigation,
+    locationRecoveryAction, locationAcquiring, runLocationRecovery, cancelLocationRecovery,
   } = useDirectionsViewModel(destination);
   const routeGuide = useAppStore((s) => s.routeGuide);
   // Home can start a preview only once BOTH the route and its destination are in the store (its start handler returns
@@ -278,6 +281,7 @@ function RoutePreviewSection({
   const setRouteGuideStep = useAppStore((s) => s.setRouteGuideStep);
   const endRouteGuide = useAppStore((s) => s.endRouteGuide);
   const isRouteGuideStart = startAction?.kind === 'route_guide';
+  const readyRecovery = !isRouteGuideStart && locationRecoveryAction && (locationRecoveryAction.kind !== 'use_location' || !startAction);
 
   // The Directory is the only start chooser: Change Start always opens it in start mode. Current / last-known
   // are quick options there; it returns them through the store and the VM applies them like a picked place.
@@ -475,7 +479,12 @@ function RoutePreviewSection({
                 </>
               ))}
 
-            {showNeedsStart && <Button variant="brand" label="Choose start" onPress={handleChangeStart} />}
+            {showNeedsStart && <>
+              <Button variant="brand" label="Choose start" onPress={handleChangeStart} />
+              {locationRecoveryAction && <Button variant="outline" label={locationAcquiring ? t('recovery.acquiring') : locationRecoveryAction.label}
+                disabled={locationAcquiring} onPress={() => void runLocationRecovery()} />}
+              {locationAcquiring && <Button variant="outline" label={t('recovery.cancel')} onPress={cancelLocationRecovery} />}
+            </>}
 
             {showSamePlace && (
               <Button
@@ -492,8 +501,10 @@ function RoutePreviewSection({
                   variant="brand"
                   style={styles.cta}
                   label={
-                    startAttempt === 'working' && !isRouteGuideStart
+                    (startAttempt === 'working' || locationAcquiring) && !isRouteGuideStart
                       ? 'Finding your location…'
+                      : readyRecovery
+                      ? locationRecoveryAction.label
                       : startAction && startAction.kind !== 'start'
                       ? startAction.primaryLabel
                       : directGuide
@@ -513,16 +524,21 @@ function RoutePreviewSection({
                     )
                   }
                   trailingIcon={<ChevronEnd size={20} color={directionsSheetColors.brandText} />}
-                  disabled={(startAttempt === 'working' && !isRouteGuideStart) || (!startAction && !canStartNavigation)}
+                  disabled={((startAttempt === 'working' || locationAcquiring) && !isRouteGuideStart) || (!readyRecovery && !startAction && !canStartNavigation)}
                   onPress={() => {
                     if (isRouteGuideStart) {
                       startRouteGuide();
                       onRouteGuideStarted?.();
-                    } else if (startAction) void runStartAction(() => startNowRef.current());
+                    } else if (readyRecovery) void runLocationRecovery();
+                    else if (startAction) void runStartAction(() => startNowRef.current());
                     else startNow();
                   }}
                 />
                 {!compactFooter && secondaryLink}
+                {!isRouteGuideStart && !readyRecovery && locationRecoveryAction && startAttempt === 'failed' && !locationAcquiring &&
+                  <Button variant="outline" label={locationRecoveryAction.label} onPress={() => void runLocationRecovery()} />}
+                {!isRouteGuideStart && (startAttempt === 'working' || locationAcquiring) && cancelLocationRecovery &&
+                  <Button variant="outline" label={t('recovery.cancel')} onPress={cancelLocationRecovery} />}
                 {startAttempt === 'failed' || startAttempt === 'settings' || startAttempt === 'services_off' ? (
                   <Text accessibilityLiveRegion="polite" style={styles.footerReason}>
                     {startAttempt === 'settings'
@@ -595,7 +611,8 @@ function RoutePreviewSection({
               320 dp window or at 200% font and leave the body no viewport. */}
           <View style={styles.directionsHeader}>{directionsHeader}</View>
           {upgrade && upgrade.phase !== 'idle' && <ManualLiveUpgradeCard upgrade={upgrade} destination={destination.name}
-            onConfirm={() => void confirmLiveUpgrade()} onCancel={cancelLiveUpgrade} onStart={() => { startUpgradedNavigation(); }} />}
+            onConfirm={() => void confirmLiveUpgrade()} onCancel={cancelLiveUpgrade} onStart={() => { startUpgradedNavigation(); }}
+            recoveryLabel={locationRecoveryAction?.kind !== 'use_location' ? locationRecoveryAction?.label : undefined} onRecover={() => void runLocationRecovery()} />}
           {showRouteReady && routeGuide && (
             <RouteGuideCard
               guide={routeGuide}

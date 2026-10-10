@@ -94,7 +94,6 @@ describe('Directory is the single start chooser (Get Directions sheet)', () => {
     });
   const expectNoChooser = () => {
     expect(screen.queryByText('Choose start manually')).not.toBeOnTheScreen();
-    expect(screen.queryByText('Use my location')).not.toBeOnTheScreen();
     expect(screen.queryByText('Use earlier location')).not.toBeOnTheScreen();
   };
 
