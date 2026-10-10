@@ -365,6 +365,15 @@ export const navOverlayStyles = StyleSheet.create({
     borderRadius: 28,
     gap: 8,
   },
+  directionsButton: {
+    minHeight: 48,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 12,
+    backgroundColor: staticColors.neutralSurface,
+    borderRadius: 12,
+    padding: 12,
+  },
   exitText: {
     color: staticColors.textPrimary,
     fontSize: 16,

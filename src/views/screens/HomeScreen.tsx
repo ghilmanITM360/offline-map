@@ -621,7 +621,24 @@ export function HomeScreen() {
     resetDismissedSheetState(true);
   }, [clearSearch, isNavigating, resetDismissedSheetState]);
 
+  // A native hidden callback is presentation feedback, never permission to cancel a journey.
+  // Explicit cancellation and genuine live activation arm a null target before closing.
+  const recoverRequiredDirections = useCallback(() => {
+    if (
+      !currentSheetIdentityRef.current?.startsWith('route:') ||
+      useAppStore.getState().isNavigating ||
+      activeSheetTransitionRef.current?.toIdentity === null
+    ) return false;
+    sheetDismissHandledRef.current = false;
+    closingSheetIdentityRef.current = null;
+    setSheetIndex(0);
+    handleSheetIndexChange(0);
+    presentSheetForIdentity(0);
+    return true;
+  }, [handleSheetIndexChange, presentSheetForIdentity]);
+
   const handleSheetDismiss = useCallback(() => {
+    if (recoverRequiredDirections()) return;
     cancelPendingSheetPresentation();
     if (sheetDismissHandledRef.current) return;
 
@@ -651,7 +668,7 @@ export function HomeScreen() {
     // actually began closing may be reset; a newer selection owns the shared sheet now.
     if (currentSheetIdentityRef.current !== dismissedIdentity) return;
     resetDismissedSheetState(dismissedIdentity.startsWith('route:'));
-  }, [cancelPendingSheetPresentation, handleSheetIndexChange, resetDismissedSheetState]);
+  }, [cancelPendingSheetPresentation, handleSheetIndexChange, recoverRequiredDirections, resetDismissedSheetState]);
 
   useEffect(() => {
     setSelectedEntryIdx(0);
@@ -1044,16 +1061,20 @@ export function HomeScreen() {
   // The MapLibre camera has no native base padding, so the route fit reserves the sheet-covered band itself:
   // mapLabelEdgeInsets.bottom (the same obstruction the labels and attribution already avoid) plus a small margin.
   // Scheduled for the next rendered frame so the sheet has settled at its new snap before the fit is measured.
+  const fitRoute = cameraManager.fitRoute;
+  const previewInsetsRef = useRef(mapLabelEdgeInsets);
+  previewInsetsRef.current = mapLabelEdgeInsets;
   const fitPreviewRoute = useCallback(() => {
     if (!activePreviewRoute || activePreviewRoute.coordinates.length < 2) return;
     invalidateStartupCameraIntent();
-    cameraManager.fitRoute(activePreviewRoute.coordinates, {
-      top: Math.max(mapLabelEdgeInsets.top, 90),
-      right: Math.max(mapLabelEdgeInsets.right, 64),
-      bottom: mapLabelEdgeInsets.bottom + ROUTE_FIT_BOTTOM_PADDING,
+    const viewportInsets = previewInsetsRef.current;
+    fitRoute(activePreviewRoute.coordinates, {
+      top: Math.max(viewportInsets.top, 90),
+      right: Math.max(viewportInsets.right, 64),
+      bottom: viewportInsets.bottom + ROUTE_FIT_BOTTOM_PADDING,
       left: 64,
     });
-  }, [activePreviewRoute, cameraManager, invalidateStartupCameraIntent, mapLabelEdgeInsets]);
+  }, [activePreviewRoute, fitRoute, invalidateStartupCameraIntent]);
   useEffect(() => {
     if (!activePreviewRoute || activePreviewRoute.coordinates.length < 2) return;
     const frame = requestAnimationFrame(fitPreviewRoute);
@@ -1063,9 +1084,9 @@ export function HomeScreen() {
   const handleRouteGuideStarted = useCallback(() => {
     // The guide card needs the room: open the top detent so the step, Previous/Next and the live-guidance link all sit
     // above the navigation bar (at the middle detent "Next" was half clipped on the emulator). The route is re-framed
-    // by the preview-fit effect as the sheet's insets change.
-    // A request made while the sheet is still landing at the middle detent (the journey auto-starts the moment
-    // Directions opens) is swallowed by that animation, so it is repeated once when the sheet reports landing.
+    // after the explicit guide transition, using the latest viewport insets.
+    // A request made while the sheet is still landing at the middle detent can be swallowed
+    // by that animation, so repeat it once when the sheet reports landing.
     guideDetentPendingRef.current = true;
     bottomSheetRef.current?.snapToIndex(2);
     requestAnimationFrame(fitPreviewRoute);
@@ -1188,10 +1209,6 @@ export function HomeScreen() {
     presentSheetForIdentity(1);
   };
 
-  const handleCloseDirections = useCallback(() => {
-    setDirectionsDestination(null);
-  }, []);
-
   // "Change Destination" (LocationSheet's routePreview mode) — swaps the destination
   // in place instead of exiting route preview like the old onClose-only wiring did.
   // Reuses the exact same directionsDestination state handleOpenDirections already
@@ -1288,17 +1305,20 @@ export function HomeScreen() {
   const handleClearPreviewRoute = useCallback(() => {
     Alert.alert('Cancel route?', 'You will need to choose your destination again.', [
       { text: 'Keep route', style: 'cancel' },
-      { text: 'Cancel route', style: 'destructive', onPress: () => clearRoutePlanner() },
+      { text: 'Cancel route', style: 'destructive', onPress: () => {
+        clearRoutePlanner();
+        closeSheet();
+      } },
     ]);
-  }, [clearRoutePlanner]);
+  }, [clearRoutePlanner, closeSheet]);
 
-  // The route-preview sheet closes itself after Start Navigation. Starting is not cancelling: once navigation is under
-  // way the close is a no-op, so the "Cancel route?" confirmation never appears over live navigation (runtime finding).
+  // Back folds an expanded setup. At PEEK it offers explicit cancellation; native collapse
+  // never changes the journey. Active navigation owns its separate exit controls.
   const handleRoutePreviewClose = useCallback(() => {
     if (useAppStore.getState().isNavigating) return;
-    if (directionsDestination) handleCloseDirections();
+    if (sheetIndex > 0) bottomSheetRef.current?.snapToIndex(0);
     else handleClearPreviewRoute();
-  }, [directionsDestination, handleCloseDirections, handleClearPreviewRoute]);
+  }, [bottomSheetRef, sheetIndex, handleClearPreviewRoute]);
 
   // Mode-aware hardware back: steps back through the map surface one mode at a time
   // (Google Maps model — MAP is always the root, back never falls through to the
@@ -1317,8 +1337,7 @@ export function HomeScreen() {
         return true;
       }
       if (mode === 'ROUTE_PREVIEW') {
-        if (directionsDestination) handleCloseDirections();
-        else handleClearPreviewRoute();
+        handleRoutePreviewClose();
         return true;
       }
       if (mode === 'PLACE_SELECTED') {
@@ -1328,7 +1347,7 @@ export function HomeScreen() {
       return false;
     });
     return () => handler.remove();
-  }, [sheetSuppressed, mode, closeDetails, directionsDestination, handleCloseDirections, handleClearPreviewRoute, closeSheet]);
+  }, [sheetSuppressed, mode, closeDetails, handleRoutePreviewClose, closeSheet]);
 
   // A remembered (not live) position stays visibly remembered: the dot is dimmed and captioned "last known".
   const rememberedLabelCoordinate = currentLocationSource === 'remembered'
@@ -1576,9 +1595,8 @@ export function HomeScreen() {
             }}
             onFeaturePress={handleFeaturePress}
             onBackgroundPress={() => {
-              if (selectedPlace) {
-                closeSheet();
-              }
+              if (mode === 'ROUTE_PREVIEW') bottomSheetRef.current?.snapToIndex(0);
+              else if (selectedPlace && !showAnyNavOverlay) closeSheet();
             }}
           />
         )}
@@ -1837,6 +1855,7 @@ export function HomeScreen() {
             ...shadows.high,
           }}
           onChange={(index) => {
+            if (index < 0 && recoverRequiredDirections()) return;
             setSheetIndex(index);
             handleSheetIndexChange(index);
             if (guideDetentPendingRef.current) {
@@ -1879,7 +1898,7 @@ export function HomeScreen() {
               onRouteGuideStarted={handleRouteGuideStarted}
               sheetCollapsed={sheetIndex === 0}
               onToggleSheet={() => bottomSheetRef.current?.snapToIndex(sheetIndex === 0 ? 1 : 0)}
-              onCancelRoute={activePreviewRoute ? handleClearPreviewRoute : undefined}
+              onCancelRoute={handleClearPreviewRoute}
               onChangeDestination={handleChangeDestination}
               onOpenDirectory={handleOpenDirectoryFor}
             />

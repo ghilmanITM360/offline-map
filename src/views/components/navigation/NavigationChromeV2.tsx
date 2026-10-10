@@ -19,6 +19,8 @@ import { NAV_TOUCH_TARGET_HIT_SLOP, navOverlayStyles as styles } from './navOver
 import { OutsideRouteStatusCard } from './OutsideRouteStatusCard';
 import { outsideRouteMessage } from '../../../services/OutsideRouteLocalizationService';
 import { Button } from '../common/Button';
+import { ActiveDirectionsPanel } from './ActiveDirectionsPanel';
+import { useI18n } from '../../../i18n';
 
 const AnimatedSafeAreaView = Animated.createAnimatedComponent(SafeAreaView);
 
@@ -40,6 +42,8 @@ const OUTSIDE_PHASE_ENTRY_TOLERANCE_M = 15;
 
 export function NavigationChromeV2({ overlay, hasBaseMap }: { overlay: NavigationOverlayV2; hasBaseMap: boolean }) {
   const insets = useSafeAreaInsets();
+  const { t } = useI18n();
+  const [showDirections, setShowDirections] = useState(false);
   // Wrapped to three lines at large text, the status banners would run under the map control column on the right.
   const largeText = useWindowDimensions().fontScale >= 1.5;
   const {
@@ -261,7 +265,7 @@ export function NavigationChromeV2({ overlay, hasBaseMap }: { overlay: Navigatio
           style={[
             styles.bottomBar,
             { paddingBottom: Math.max(insets.bottom, 12) },
-            { opacity: mountAnim, transform: [{ translateY: mountAnim.interpolate({ inputRange: [0, 1], outputRange: [16, 0] }) }] },
+            // Durable controls are visible immediately when setup leaves; only the top maneuver animates.
           ]}
           onLayout={(e) => setBottomBarHeight(e.nativeEvent.layout.height)}
         >
@@ -287,6 +291,10 @@ export function NavigationChromeV2({ overlay, hasBaseMap }: { overlay: Navigatio
               <Text style={styles.exitText}>Exit</Text>
             </Pressable>
           </View>
+          <Pressable style={styles.directionsButton} onPress={() => setShowDirections(true)}
+            accessibilityRole="button" accessibilityLabel={t('navigation.directions')}>
+            <Text style={styles.exitText}>{t('navigation.directions')}</Text>
+          </Pressable>
         </Animated.View>
       )}
 
@@ -308,6 +316,9 @@ export function NavigationChromeV2({ overlay, hasBaseMap }: { overlay: Navigatio
           <LocateFixed size={20} color={staticColors.routeInside} />
         </Pressable>
       )}
+
+      <ActiveDirectionsPanel visible={showDirections && !arrived} destination={route.destination.label}
+        instructions={instructions} currentStepIndex={currentStepIndex} onClose={() => setShowDirections(false)} />
 
       <Modal
         testID="nav-arrival-modal"

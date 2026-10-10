@@ -11,7 +11,7 @@ import { act, fireEvent, render, screen, userEvent, waitFor } from './test-utils
 
 import { DrawerStatusContext } from '@react-navigation/drawer';
 import { HomeScreen } from '../views/screens/HomeScreen';
-import { facilityIds, hasSource, pinRoles, pressMapFeature, sourceFeatures, userDot } from './mapTestUtils';
+import { facilityIds, hasSource, pinRoles, pressMapFeature, pressEmptyMap, sourceFeatures, userDot } from './mapTestUtils';
 import { fullSheetHeight, MIN_BOTTOM_FLOOR, MIN_TOP_VISIBLE_MAP_FOR_ATTRIBUTION, OVERLAY_CONTROL_GAP } from '../viewmodels/useOverlayInsets';
 import { useHomeViewModel } from '../viewmodels/HomeViewModel';
 import { useDirectionsViewModel } from '../viewmodels/DirectionsViewModel';
@@ -120,6 +120,7 @@ const cameraFollowUserSpy = jest.fn();
 const cameraStopFollowingSpy = jest.fn();
 const cameraFitRouteSpy = jest.fn();
 const handleRecenterSpy = jest.fn();
+const setIsMapReadySpy = jest.fn();
 
 function useFakeHomeViewModel() {
   const [selectedPlace, setSelectedPlaceState] = React.useState<Place | null>(null);
@@ -178,7 +179,7 @@ function useFakeHomeViewModel() {
     isInsideVenue: () => true,
     venueStatus: { insideVenue: false, insideBlock: null },
     compassMode: 'NORTH_UP' as const,
-    setIsMapReady: jest.fn(),
+    setIsMapReady: setIsMapReadySpy,
     handlePlaceSelect,
     handleSheetIndexChange: jest.fn(),
     handleRecenter,
@@ -346,8 +347,8 @@ describe('HomeScreen — accessibility tree ownership (#128)', () => {
     await act(async () => {
       DeviceEventEmitter.emit('hardwareBackPress');
     });
-    expect(screen.queryByText('Get Directions')).not.toBeOnTheScreen();
-    expect(mapA11y()).toBe('auto');
+    expect(screen.getByText('Get Directions')).toBeOnTheScreen();
+    expect(mapA11y()).toBe('no-hide-descendants');
   });
 
   test('sheet container is not itself an accessibility stop that swallows its text', async () => {
@@ -435,7 +436,7 @@ describe('HomeScreen — hardware back button (mode-aware, Google Maps parity)',
     expect(screen.queryByText('Official entry / exit gate')).not.toBeOnTheScreen();
   });
 
-  test('hardware back press in ROUTE_PREVIEW mode returns to the place preview, not exit', async () => {
+  test('hardware back press in ROUTE_PREVIEW folds without exiting planning', async () => {
     mockedUseDirectionsViewModel.mockReturnValue({
       route: null,
       startSource: 'live_gps',
@@ -466,10 +467,7 @@ describe('HomeScreen — hardware back button (mode-aware, Google Maps parity)',
 
     await pressHardwareBack();
 
-    // One step back — to the place preview, not all the way to EXPLORE — mirrors
-    // exactly what the sheet's own visible "Get Directions" back chevron does.
-    expect(screen.queryByText('Get Directions')).not.toBeOnTheScreen();
-    expect(await screen.findByText('Main North Gate')).toBeOnTheScreen();
+    expect(screen.getByText('Get Directions')).toBeOnTheScreen();
     expect(setSelectedPlaceSpy).not.toHaveBeenCalledWith(null);
   });
 });
@@ -635,7 +633,7 @@ describe('HomeScreen — canonical bottom-sheet dismissal', () => {
     expect(setSelectedPlaceSpy).toHaveBeenCalledWith(null);
   });
 
-  test('pan-down route-preview dismissal clears planner and returns to Explore', async () => {
+  test('unexpected route-preview dismissal retains planner and recovers visible setup', async () => {
     mockedUseDirectionsViewModel.mockReturnValue({
       route: null,
       startSource: 'live_gps',
@@ -669,9 +667,9 @@ describe('HomeScreen — canonical bottom-sheet dismissal', () => {
 
     await dismissSheet();
 
-    expect(useAppStore.getState().routePlannerDest).toBeNull();
-    expect(setSelectedPlaceSpy).toHaveBeenCalledWith(null);
-    expect(screen.queryByText('Get Directions')).not.toBeOnTheScreen();
+    expect(useAppStore.getState().routePlannerDest).toBe(gateResult);
+    expect(setSelectedPlaceSpy).not.toHaveBeenCalledWith(null);
+    expect(screen.getByText('Get Directions')).toBeOnTheScreen();
   });
 
   test('programmatic close during Start Navigation does not clear the active route', async () => {
@@ -1213,7 +1211,7 @@ describe('HomeScreen — map attribution band', () => {
     expect(sheetProps.maxDynamicContentSize).toBe(Math.round(fullSheetHeight(height, TEST_TOP_INSET)));
   });
 
-  test('Route Preview camera fit reserves the sheet-covered band itself at the maximum sheet snap', async () => {
+  test('Route recalculation uses the current maximum sheet inset without fitting on detent movement', async () => {
     const previewRoute = {
       sourceVersion: 'v2' as const,
       coordinates: [
@@ -1268,9 +1266,9 @@ describe('HomeScreen — map attribution band', () => {
       sheetProps.onChange(2);
     });
 
-    // The sheet moves between snaps; the fit is deferred to the next rendered frame so it measures the settled
-    // sheet band rather than the previous one.
+    // Folding/expanding changes obstruction padding only. A newly calculated route owns a new fit.
     expect(cameraFitRouteSpy).not.toHaveBeenCalled();
+    await act(async () => useAppStore.setState({ activeRoute: { ...previewRoute } as never }));
     await act(async () => {
       scheduledFrames.splice(0).forEach((callback) => callback(performance.now()));
     });
@@ -2019,6 +2017,58 @@ describe('HomeScreen — Directions sheet presentation contract', () => {
     expect(handle.getByRole('button', { name: /Show route details/ })).toBeOnTheScreen();
     await landAt(2); // PEEK -> FULL (drag)
     expect(handle.getByRole('button', { name: /Hide route details/ })).toBeOnTheScreen();
+  });
+
+  test.each(directionsModes)('%s: unexpected hidden index and dismiss recover PEEK without clearing journey', async (_name, setup) => {
+    await setup();
+    const before = useAppStore.getState();
+    await act(async () => sheetProps().onChange(1));
+    sheetRef!.current!.snapToIndex.mockClear();
+    await act(async () => sheetProps().onChange(-1));
+    await act(async () => __getLastBottomSheetModalProps().onDismiss());
+    expect(sheetRef!.current!.snapToIndex).toHaveBeenCalledWith(0);
+    expect(useAppStore.getState().activeRoute).toBe(before.activeRoute);
+    expect(useAppStore.getState().routePlannerDest).toBe(before.routePlannerDest);
+    expect(useAppStore.getState().routeGuide).toBe(before.routeGuide);
+    expect(screen.getByTestId('directions-body')).toBeOnTheScreen();
+  });
+
+  test.each(directionsModes)('%s: Map background tap folds without cancelling route or guide', async (_name, setup) => {
+    await setup();
+    const before = useAppStore.getState();
+    await pressEmptyMap();
+    expect(sheetRef!.current!.snapToIndex).toHaveBeenCalledWith(0);
+    expect(useAppStore.getState().activeRoute).toBe(before.activeRoute);
+    expect(useAppStore.getState().routeGuide).toBe(before.routeGuide);
+    expect(screen.getByTestId('directions-body')).toBeOnTheScreen();
+  });
+
+  test('folding a route preview changes padding without refitting the semantic camera', async () => {
+    await modes[2][1]();
+    await act(async () => jest.advanceTimersByTime(32));
+    cameraFitRouteSpy.mockClear();
+    await act(async () => sheetProps().onChange(0));
+    await act(async () => jest.advanceTimersByTime(32));
+    expect(cameraFitRouteSpy).not.toHaveBeenCalled();
+  });
+
+  test('expanded Back folds to PEEK without abandoning the destination', async () => {
+    await modes[1][1]();
+    await act(async () => sheetProps().onChange(2));
+    sheetRef!.current!.snapToIndex.mockClear();
+    await act(async () => DeviceEventEmitter.emit('hardwareBackPress'));
+    expect(sheetRef!.current!.snapToIndex).toHaveBeenCalledWith(0);
+    expect(screen.getByTestId('directions-body')).toBeOnTheScreen();
+  });
+
+  test('revocation immediately before Start retains setup and the published preview', async () => {
+    await modes[2][1]();
+    const heldRoute = useAppStore.getState().activeRoute;
+    await act(async () => useAppStore.setState({ locationPermissionState: 'denied', locationPermissionPrecision: 'none' }));
+    await userEvent.setup().press(screen.getByRole('button', { name: 'Start Navigation' }));
+    expect(useAppStore.getState().isNavigating).toBe(false);
+    expect(useAppStore.getState().activeRoute).toBe(heldRoute);
+    expect(screen.getByTestId('directions-body')).toBeOnTheScreen();
   });
 
   const sheetRemoved = () => {
