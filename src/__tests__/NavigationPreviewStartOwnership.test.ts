@@ -21,21 +21,33 @@ const startPreview = startPreviewNavigationV2;
 afterEach(() => useAppStore.setState(initial, true));
 
 describe('V2 preview start ownership', () => {
-  test('manual Gate 13 start enters navigation without GPS and ignores an unrelated live fix', () => {
-    const check = startPreview({ route: preview, destination, startPlace: start,
-      currentLocation: { latitude: 0, longitude: 0 } });
-    const state = useAppStore.getState();
-    expect(check.canStart).toBe(true);
-    expect(state.isNavigating).toBe(true);
-    expect(state.destination?.id).toBe(destination.id);
-    expect((state.activeRoute as V2ActiveRoute).origin).toMatchObject({ type: 'official_gate', gateId: start.id });
-    expect(state.navigationSessionId).toBe(initial.navigationSessionId + 1);
+  test('manual start cannot create a live session even with an unrelated GPS fix', () => {
+    const before = useAppStore.getState();
+    expect(startPreview({ route: preview, destination, startPlace: start, currentLocation: { latitude: 0, longitude: 0 } }).canStart).toBe(false);
+    expect(useAppStore.getState()).toBe(before);
   });
 
-  test('current-location start retains the supplied origin', () => {
-    const currentLocation = { latitude: 24.964, longitude: 67.007 };
+  test('current authorized preview starts only with a fresh precise live fix', () => {
+    const currentLocation = { ...preview.coordinates[0], accuracy: 8, observedAtMs: Date.now() };
+    useAppStore.setState({ currentLocation, currentLocationSource: 'live', hasLocationPermission: true, locationPermissionPrecision: 'fine', activeRoute: preview, routePlannerDest: destination, routePlannerOrigin: null });
     expect(startPreview({ route: preview, destination, currentLocation }).canStart).toBe(true);
     expect((useAppStore.getState().activeRoute as V2ActiveRoute).origin.coordinate).toEqual(currentLocation);
+  });
+
+  test.each([
+    { hasLocationPermission: false },
+    { locationPermissionPrecision: 'none' as const },
+    { currentLocationSource: 'remembered' as const },
+    { currentLocation: { ...preview.coordinates[0], accuracy: 8, observedAtMs: Date.now() - 60000 } },
+    { routePlannerDest: start },
+    { activeRoute: { ...preview } },
+    { routePlannerOrigin: start },
+  ])('unsafe or replaced preview cannot mutate session: %p', override => {
+    const currentLocation = { ...preview.coordinates[0], accuracy: 8, observedAtMs: Date.now() };
+    useAppStore.setState({ currentLocation, currentLocationSource: 'live', hasLocationPermission: true, locationPermissionPrecision: 'fine', activeRoute: preview, routePlannerDest: destination, routePlannerOrigin: null, ...override });
+    const before = useAppStore.getState();
+    expect(startPreview({ route: preview, destination, currentLocation }).canStart).toBe(false);
+    expect(useAppStore.getState()).toBe(before);
   });
 
   test('invalid preview preserves the existing session and reports its existing failure message', () => {
@@ -48,10 +60,12 @@ describe('V2 preview start ownership', () => {
 
   test('outside preview retains its gate, composed geometry, distance and ETA', () => {
     const gate = IJTEMA_GATES.find(item => item.id === 'GATE_13')!;
-    const outsidePreview: RoutePreviewV2 = { ...preview, outsideLegCoordinateCount: 1,
+    const outsidePreview: RoutePreviewV2 = { ...preview, coordinates: [{ latitude: 24.9762, longitude: 67.011 }, ...preview.coordinates], outsideLegCoordinateCount: 2,
       startResolution: { mode: 'outside', startType: 'selected_official_gate',
         coordinate: preview.coordinates[0], candidateNodes: [], gate } };
-    expect(startPreview({ route: outsidePreview, destination }).canStart).toBe(true);
+    const currentLocation = { ...outsidePreview.coordinates[0], accuracy: 8, observedAtMs: Date.now() };
+    useAppStore.setState({ currentLocation, currentLocationSource: 'live', hasLocationPermission: true, locationPermissionPrecision: 'fine', activeRoute: outsidePreview, routePlannerDest: destination, routePlannerOrigin: null });
+    expect(startPreview({ route: outsidePreview, destination, currentLocation }).canStart).toBe(true);
     const active = useAppStore.getState().activeRoute as V2ActiveRoute;
     expect(active.metadata).toMatchObject({ startedOutside: true, entryGateId: gate.id });
     expect(active.coordinates).toEqual(outsidePreview.coordinates);

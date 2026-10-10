@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useLayoutEffect, useCallback, useRef } from 'react';
 import { getDistance } from 'geolib';
 import { useAppStore } from '../store/useAppStore';
 import { RoutingService } from '../services/RoutingService';
@@ -90,6 +90,16 @@ export function useDirectionsViewModel(destination: Place | null) {
   const routeRef = useRef<RoutePreview | null>(null);
   // What the route on screen was calculated for. A failed recalculation may keep it only for the same trip.
   const routeTripKeyRef = useRef<string | null>(null);
+  const journeyGenerationRef = useRef(0);
+  const locationRequestRef = useRef(0);
+  const routeRequestRef = useRef(0);
+  const mountedRef = useRef(true);
+  const invalidateJourneyWork = () => {
+    journeyGenerationRef.current += 1;
+    locationRequestRef.current += 1;
+    routeRequestRef.current += 1;
+    outsideRequestCoordinatorRef.current.cancelCurrent();
+  };
   const outsideRequestCoordinatorRef = useRef(new OutsideRouteRequestCoordinator());
   routeRef.current = route;
   const manualGateOptions = getRoutableOfficialGates().map((gate) => ({ gateId: gate.id, label: gate.name.en }));
@@ -109,12 +119,26 @@ export function useDirectionsViewModel(destination: Place | null) {
     }
   }, [routeOriginLocation, startSource]);
 
-  useEffect(() => () => outsideRequestCoordinatorRef.current.cancelCurrent(), []);
-
   useEffect(() => {
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; invalidateJourneyWork(); };
+  }, []);
+
+  useLayoutEffect(() => {
+    invalidateJourneyWork();
     setManualGateId(null);
-    // This journey starts from nothing but what it chooses itself: a start left in the store by an earlier trip is gone.
+    setManualStart(null);
+    const state = useAppStore.getState();
+    const live = usableLiveFix(state.currentLocation, state.currentLocationSource);
+    setRouteOriginLocation(live);
+    setStartSource(live ? 'live_gps' : 'manual_place');
+    setStartAttempt('idle');
+    setRoute(null);
+    routeRef.current = null;
+    routeTripKeyRef.current = null;
     setRoutePlannerOrigin(null);
+    setRoutePlannerDest(destination);
+    if (!state.isNavigating) { setActiveRoute(null); setRouteInstructions([]); }
   }, [destination?.id]);
 
   useEffect(() => {
@@ -209,11 +233,12 @@ export function useDirectionsViewModel(destination: Place | null) {
   const startAction = resolveStartAction({
     startSource,
     liveFix,
-    permission: { granted: hasLocationPermission || liveFix !== null, precision: locationPermissionPrecision },
+    permission: { granted: hasLocationPermission, precision: locationPermissionPrecision },
   });
 
   // The one authoritative journey state; the sheet renders from it and a start is offered only for a ready route.
-  const journeyState = selectJourneyPresentationState({ loadState, startSource, route: route as Parameters<typeof selectJourneyPresentationState>[0]['route'] });
+  const liveReady = hasLocationPermission && currentLocationSource === 'live' && navigationLocationCapability.canStart && !routeRefreshing;
+  const journeyState = selectJourneyPresentationState({ loadState, startSource, liveReady, route: route as Parameters<typeof selectJourneyPresentationState>[0]['route'] });
   const startable = isJourneyStartable(journeyState);
 
   const clearRoute = () => {
@@ -224,6 +249,10 @@ export function useDirectionsViewModel(destination: Place | null) {
   };
 
   const calculateRoute = useCallback(async () => {
+    const generation = journeyGenerationRef.current;
+    const request = ++routeRequestRef.current;
+    const canCommit = () => mountedRef.current && generation === journeyGenerationRef.current && request === routeRequestRef.current;
+    outsideRequestCoordinatorRef.current.cancelCurrent();
     if (!destination) {
       setLoadState('error');
       setErrorMessage(CHOOSE_DESTINATION);
@@ -295,7 +324,7 @@ export function useDirectionsViewModel(destination: Place | null) {
           message: ROUTE_NOT_FOUND,
         };
       }
-      if (requestHandle && !requestHandle.canCommit()) return;
+      if (!canCommit() || (requestHandle && !requestHandle.canCommit())) return;
 
       if (preview.status === 'disabled' || !MapFeatureFlagsService.useIjtemaV2Routing()) {
         setLoadState('error');
@@ -410,6 +439,7 @@ export function useDirectionsViewModel(destination: Place | null) {
       });
 
       const alts = await Promise.race([routePromise, timeoutPromise]);
+      if (!canCommit()) return;
       const best = alts[0]?.route ?? null;
 
       if (!best) {
@@ -459,6 +489,7 @@ export function useDirectionsViewModel(destination: Place | null) {
       setRoutePlannerOrigin(startSource === 'manual_place' ? manualStart : null);
       setLoadState('ready');
     } catch (error) {
+      if (!canCommit()) return;
       if ((error as Error).message === 'timeout') {
         setLoadState('error');
         setErrorMessage('Could not calculate route. Choose a different start point.');
@@ -486,6 +517,9 @@ export function useDirectionsViewModel(destination: Place | null) {
   };
 
   const setManualStartPlace = (start: Place) => {
+    if (manualStart === start && startSource === 'manual_place') { setIsEditingManualStart(false); return; }
+    invalidateJourneyWork();
+    setRoutePlannerOrigin(start);
     setStartSource('manual_place');
     setManualStart(start);
     setIsEditingManualStart(false);
@@ -493,23 +527,19 @@ export function useDirectionsViewModel(destination: Place | null) {
 
   type ResolvedLocation = Awaited<ReturnType<typeof LocationAccessService.resolveCurrentLocation>>;
   const chooseCurrentLocationWith = async (resolve: () => Promise<ResolvedLocation>): Promise<boolean> => {
+    const generation = journeyGenerationRef.current;
+    const request = ++locationRequestRef.current;
+    const canCommit = () => mountedRef.current && generation === journeyGenerationRef.current && request === locationRequestRef.current;
     try {
       const resolved = await resolve();
+      if (!canCommit()) return false;
       setHasLocationPermission(resolved.permissionState.granted);
       setLocationPermissionPrecision(resolved.permissionState.precision);
 
       if (!resolved.ok || !resolved.coordinate) {
-        let blockedMessage: string | null = null;
-        if (!resolved.permissionState.granted && !resolved.permissionState.canAskAgain) {
-          const opened = await LocationAccessService.openAppSettings();
-          if (!opened) {
-            blockedMessage = 'Location is off for this app. Turn it on in Settings, then try again.';
-          }
-        }
-        setStartSource('manual_place');
-        setIsEditingManualStart(true);
-        setLoadState('needs_origin');
-        setErrorMessage(blockedMessage ?? resolved.message ?? `${LOCATION_UNAVAILABLE} ${CHOOSE_START}`);
+        // Recovery is presented in context; Settings is opened only by an explicit action.
+        setErrorMessage(resolved.message ?? `${LOCATION_UNAVAILABLE} ${CHOOSE_START}`);
+        if (!manualStart) { setRouteOriginLocation(null); setStartSource('manual_place'); setIsEditingManualStart(true); setLoadState('needs_origin'); }
         return false;
       }
 
@@ -533,9 +563,8 @@ export function useDirectionsViewModel(destination: Place | null) {
       );
       return true;
     } catch {
-      setStartSource('manual_place');
-      setIsEditingManualStart(true);
-      setLoadState('needs_origin');
+      if (!canCommit()) return false;
+      if (!manualStart) { setRouteOriginLocation(null); setStartSource('manual_place'); setIsEditingManualStart(true); setLoadState('needs_origin'); }
       setErrorMessage(`${LOCATION_UNAVAILABLE} ${CHOOSE_START}`);
       return false;
     }
@@ -544,6 +573,7 @@ export function useDirectionsViewModel(destination: Place | null) {
     chooseCurrentLocationWith(() => LocationAccessService.resolveCurrentLocation(true));
 
   const chooseRememberedLocation = (): boolean => {
+    invalidateJourneyWork();
     if (!lastKnownLocation || (!isV2Destination && !RoutingService.isInsideVenue(lastKnownLocation))) {
       setStartSource('manual_place');
       setIsEditingManualStart(true);
@@ -565,80 +595,49 @@ export function useDirectionsViewModel(destination: Place | null) {
   };
 
   const chooseManualStart = () => {
-    setStartSource('manual_place');
+    // Opening a chooser cancels acquisition but preserves the current route until a new origin is selected.
+    locationRequestRef.current += 1;
     setIsEditingManualStart(true);
     setErrorMessage(null);
   };
 
   const selectManualGate = (gateId: string) => {
-    if (!manualGateOptions.some((gate) => gate.gateId === gateId)) return;
+    if (manualGateId === gateId || !manualGateOptions.some((gate) => gate.gateId === gateId)) return;
+    invalidateJourneyWork();
     setManualGateId(gateId);
   };
 
-  const clearManualGateSelection = () => setManualGateId(null);
+  const clearManualGateSelection = () => { if (manualGateId === null) return; invalidateJourneyWork(); setManualGateId(null); };
 
-  /**
-   * Navigation start the user asked for that is waiting on a route recomputed from their live fix: `route` is the
-   * stale route at press time, so only a different (recomputed) route may release it. Held in a ref: no render needed.
-   */
-  const pendingStartRef = useRef<{ go: () => void; staleRoute: unknown } | null>(null);
-  useEffect(() => {
-    const pending = pendingStartRef.current;
-    if (!pending) return;
-    if (loadState === 'error' || loadState === 'needs_origin') {
-      pendingStartRef.current = null;
-    } else if (loadState === 'ready' && route !== pending.staleRoute && startAction?.kind === 'start') {
-      pendingStartRef.current = null;
-      pending.go();
-    }
-  }, [loadState, route, startAction?.kind]);
-
-  /**
-   * Primary footer action. `startNow` begins navigation. A planned/manual start only previews, so every other state
-   * first gets a fresh live fix; a manual or saved start then switches to that fix (the FROM row says so) and
-   * navigation begins from the recomputed route.
-   */
+  /** Acquisition replaces the origin and previews the new route. Only another explicit Start may activate it. */
   const runStartAction = async (startNow: () => void) => {
-    if (startAction.kind === 'start') return startNow();
+    const state = useAppStore.getState();
+    if (startAction.kind === 'start') {
+      const capability = evaluateLocationCapability({
+        permission: { granted: state.hasLocationPermission, canAskAgain: false, precision: state.locationPermissionPrecision },
+        liveFix: state.currentLocationSource === 'live' ? state.currentLocation : null,
+      });
+      if (capability.mode === 'live_navigation' && !manualStart && state.routePlannerDest?.id === destination?.id && state.activeRoute === route && !routeRefreshing) startNow();
+      else setStartAttempt('failed');
+      return;
+    }
+    const generation = journeyGenerationRef.current;
+    const request = ++locationRequestRef.current;
+    const canCommit = () => mountedRef.current && generation === journeyGenerationRef.current && request === locationRequestRef.current;
     setStartAttempt('working');
     try {
       const resolved = await LocationAccessService.resolveCurrentLocation(true);
+      if (!canCommit()) return;
       setHasLocationPermission(resolved.permissionState.granted);
       setLocationPermissionPrecision(resolved.permissionState.precision);
-      const { permissionState } = resolved;
-      const blocker = evaluateLocationCapability({
-        permission: { granted: permissionState.granted, canAskAgain: permissionState.canAskAgain, precision: permissionState.precision, servicesState: permissionState.servicesState },
-        liveFix: resolved.source === 'live' ? resolved.coordinate : null,
-      }).liveBlocker;
-      if (blocker === 'permission_blocked' || blocker === 'approximate_only') {
-        await LocationAccessService.openAppSettings();
-        setStartAttempt('settings');
-        return;
-      }
-      if (blocker === 'services_off') {
-        await LocationAccessService.openLocationSettings();
-        setStartAttempt('services_off');
-        return;
-      }
-      if (!resolved.ok || resolved.source !== 'live' || !resolved.coordinate) {
-        setStartAttempt('failed');
-        return;
-      }
-      setStartAttempt('idle');
-      if (startSource !== 'live_gps') {
-        pendingStartRef.current = { go: startNow, staleRoute: route };
-        await chooseCurrentLocationWith(async () => resolved);
-        return;
-      }
-      setCurrentLocation(resolved.coordinate, 'live');
-      const next = resolveStartAction({
-        startSource,
-        liveFix: resolved.coordinate,
-        permission: { granted: true, precision: resolved.permissionState.precision },
-      });
-      if (next.kind === 'start') startNow();
+      const capability = evaluateLocationCapability({ permission: resolved.permissionState, liveFix: resolved.source === 'live' ? resolved.coordinate : null });
+      if (capability.liveBlocker === 'permission_blocked' || capability.liveBlocker === 'approximate_only' || capability.liveBlocker === 'precision_unknown') { setStartAttempt('settings'); return; }
+      if (capability.liveBlocker === 'services_off') { setStartAttempt('services_off'); return; }
+      if (!resolved.ok || capability.mode !== 'live_navigation') { setStartAttempt('failed'); return; }
+      await chooseCurrentLocationWith(async () => resolved);
+      if (mountedRef.current && generation === journeyGenerationRef.current) setStartAttempt('idle');
     } catch {
-      setStartAttempt('failed');
+      if (canCommit()) setStartAttempt('failed');
     }
   };
 

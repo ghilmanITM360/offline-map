@@ -22,6 +22,7 @@ const base = (over: Partial<JourneyPresentationInput>): JourneyPresentationInput
   loadState: 'ready',
   startSource: 'live_gps',
   route: walkingRoute,
+  liveReady: true,
   ...over,
 });
 const state = (over: Partial<JourneyPresentationInput>): JourneyPresentationState => selectJourneyPresentationState(base(over));
@@ -110,4 +111,9 @@ describe('selectJourneyPresentationState: contradictory combinations are impossi
     ];
     for (const s of all) expect(isJourneyStartable(s)).toBe(startable.has(s));
   });
+});
+
+test('a live source label never establishes readiness without current authority', () => {
+  expect(state({ liveReady: false })).toBe('NEEDS_START');
+  expect(selectJourneyPresentationState({ loadState: 'ready', startSource: 'live_gps', route: walkingRoute })).toBe('NEEDS_START');
 });

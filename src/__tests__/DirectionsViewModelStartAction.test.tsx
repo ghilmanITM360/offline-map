@@ -46,7 +46,7 @@ describe('Start action for a chosen (manual) start', () => {
     expect(hook.result.current.startAction?.kind).toBe('route_guide');
   });
 
-  test('3/9: a fresh precise fix replaces the manual start, then navigation starts from the recomputed route', async () => {
+  test('3/9: a fresh precise fix replaces the manual start, then shows the recomputed preview without starting navigation', async () => {
     const hook = await readyHook();
     const staleRoute = hook.result.current.route;
     jest.spyOn(LocationAccessService, 'resolveCurrentLocation').mockResolvedValue(
@@ -57,7 +57,8 @@ describe('Start action for a chosen (manual) start', () => {
     // The planned Block 27 start is never used as if it were live GPS: the start is now the fix itself.
     expect(hook.result.current.startSource).toBe('live_gps');
     expect(hook.result.current.manualStart).toBeNull();
-    await waitFor(() => expect(startNow).toHaveBeenCalledTimes(1), { timeout: 8_000 });
+    await waitFor(() => expect(hook.result.current.loadState).toBe('ready'), { timeout: 8_000 });
+    expect(startNow).not.toHaveBeenCalled();
     expect(hook.result.current.route).not.toBe(staleRoute);
   });
 
@@ -68,7 +69,7 @@ describe('Start action for a chosen (manual) start', () => {
     );
     const first = jest.fn();
     await act(async () => hook.result.current.runStartAction(first));
-    await waitFor(() => expect(first).toHaveBeenCalledTimes(1), { timeout: 8_000 });
+    expect(first).not.toHaveBeenCalled();
     await waitFor(() => expect(hook.result.current.startAction?.kind).toBe('start'));
     const second = jest.fn();
     await act(async () => hook.result.current.runStartAction(second));
@@ -87,7 +88,7 @@ describe('Start action for a chosen (manual) start', () => {
     const startNow = jest.fn();
     await act(async () => hook.result.current.runStartAction(startNow));
     expect(startNow).not.toHaveBeenCalled();
-    expect(open).toHaveBeenCalledTimes(1);
+    expect(open).not.toHaveBeenCalled();
     expect(hook.result.current.startAttempt).toBe('settings');
   });
 
@@ -104,7 +105,7 @@ describe('Start action for a chosen (manual) start', () => {
     expect(hook.result.current.startAction?.kind).toBe('route_guide');
   });
 
-  test('#307: device location services off is its own outcome and opens location settings, not app settings', async () => {
+  test('#307: device location services off is its own outcome and offers location settings without opening them', async () => {
     const hook = await readyHook();
     const openApp = jest.spyOn(LocationAccessService, 'openAppSettings').mockResolvedValue(true);
     const openLocation = jest.spyOn(LocationAccessService, 'openLocationSettings').mockResolvedValue(true);
@@ -114,7 +115,7 @@ describe('Start action for a chosen (manual) start', () => {
     const startNow = jest.fn();
     await act(async () => hook.result.current.runStartAction(startNow));
     expect(startNow).not.toHaveBeenCalled();
-    expect(openLocation).toHaveBeenCalledTimes(1);
+    expect(openLocation).not.toHaveBeenCalled();
     expect(openApp).not.toHaveBeenCalled();
     expect(hook.result.current.startAttempt).toBe('services_off');
     expect(hook.result.current.route).not.toBeNull(); // the route guide stays available
@@ -131,14 +132,14 @@ describe('Start action for a chosen (manual) start', () => {
     expect(hook.result.current.startAttempt).toBe('failed');
   });
 
-  test('permission blocked for good sends the user to system settings', async () => {
+  test('permission blocked for good offers settings without opening them', async () => {
     const hook = await readyHook();
     const open = jest.spyOn(LocationAccessService, 'openAppSettings').mockResolvedValue(true);
     jest.spyOn(LocationAccessService, 'resolveCurrentLocation').mockResolvedValue(
       resolved({ ok: false, source: null, permissionState: { ...granted, granted: false, canAskAgain: false, precision: 'none' } as never }),
     );
     await act(async () => hook.result.current.runStartAction(jest.fn()));
-    expect(open).toHaveBeenCalledTimes(1);
+    expect(open).not.toHaveBeenCalled();
     expect(hook.result.current.startAttempt).toBe('settings');
   });
 

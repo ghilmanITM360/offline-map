@@ -316,7 +316,7 @@ function RoutePreviewSection({
   const routeMeta = route as RoutePreviewWithV2Meta | null;
   const outsideRoute = routeMeta?.outsideRoute;
   // Everything below renders from the one journey state, never from coordinates, distances or provider names.
-  const journeyState = selectJourneyPresentationState({ loadState, startSource, route: routeMeta });
+  const journeyState = selectJourneyPresentationState({ loadState, startSource, liveReady: canStartNavigation, route: routeMeta });
   const outsideGuide = outsideGuideSummary(routeMeta as Parameters<typeof outsideGuideSummary>[0]);
   const entryGateName = routeMeta?.startResolution?.gate?.name?.en ?? null;
   const routeDistance = route ? InstructionService.formatDistance(route.totalDistance, distanceUnit) : null;
@@ -334,13 +334,13 @@ function RoutePreviewSection({
     ? 'Starting from the closest path.'
     : null;
 
-  const showRouteReady = isJourneyStartable(journeyState);
+  const showRouteReady = isJourneyStartable(journeyState) || (journeyState === 'NEEDS_START' && loadState === 'ready' && !!route);
   const showLoading = loadState === 'loading';
   const showError = journeyState === 'ROUTE_FAILURE';
   const showSamePlace = journeyState === 'SAME_PLACE';
   // A journey that is still looking for the person's own location is not asking where they start (see below).
   const [locatingForJourney, setLocatingForJourney] = useState(false);
-  const showNeedsStart = journeyState === 'NEEDS_START' && !locatingForJourney;
+  const showNeedsStart = journeyState === 'NEEDS_START' && !showRouteReady && !locatingForJourney;
   const destinationCannotBeRouted =
     destination.isRoutable === false ||
     (destination.routingStatus !== undefined && destination.routingStatus !== 'routable');

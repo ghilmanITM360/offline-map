@@ -711,7 +711,7 @@ describe('HomeScreen — canonical bottom-sheet dismissal', () => {
       canStartNavigation: true,
       startNavigationDisabledReason: '',
     });
-    useAppStore.setState({ routePlannerDest: destination, activeRoute: previewRoute as any, currentLocation: { latitude: 24.9, longitude: 67.1 } });
+    useAppStore.setState({ routePlannerDest: destination, activeRoute: previewRoute as any, currentLocation: { latitude: 24.9, longitude: 67.1, accuracy: 8, observedAtMs: Date.now() }, currentLocationSource: 'live', hasLocationPermission: true, locationPermissionPrecision: 'fine' });
     await render(<HomeScreen />);
 
     await userEvent.setup().press(await screen.findByText('Start Navigation'));
@@ -1407,7 +1407,7 @@ describe('HomeScreen — route preview "Start Navigation" (real handler wiring)'
     useAppStore.setState({
       routePlannerDest: destination,
       activeRoute: previewRoute,
-      currentLocation: previewRoute.coordinates[0],
+      currentLocation: { ...previewRoute.coordinates[0], accuracy: 8, observedAtMs: Date.now() }, currentLocationSource: 'live', hasLocationPermission: true, locationPermissionPrecision: 'fine',
     });
 
     await render(<HomeScreen />);
@@ -1469,7 +1469,7 @@ describe('HomeScreen — route preview "Start Navigation" (real handler wiring)'
     useAppStore.setState({
       routePlannerDest: destination,
       activeRoute: previewRoute as any,
-      currentLocation: { latitude: 24.9, longitude: 67.1 },
+      currentLocation: { latitude: 24.9, longitude: 67.1, accuracy: 8, observedAtMs: Date.now() }, currentLocationSource: 'live', hasLocationPermission: true, locationPermissionPrecision: 'fine',
     });
 
     // The route-preview sheet's "Start Navigation" button now lives inside LocationSheet's
@@ -1576,7 +1576,7 @@ describe('HomeScreen — route preview is a single surface (P0-2 consolidation)'
           coordinate: { latitude: 24.9, longitude: 67.1 },
         },
       } as any,
-      currentLocation: { latitude: 24.9, longitude: 67.1 },
+      currentLocation: { latitude: 24.9, longitude: 67.1, accuracy: 8, observedAtMs: Date.now() }, currentLocationSource: 'live', hasLocationPermission: true, locationPermissionPrecision: 'fine',
     });
 
     await render(<HomeScreen />);
@@ -1647,7 +1647,7 @@ describe('HomeScreen — route preview is a single surface (P0-2 consolidation)'
       startNavigationDisabledReason: '',
     });
 
-    useAppStore.setState({ currentLocation: { latitude: 24.9, longitude: 67.1 } });
+    useAppStore.setState({ currentLocation: { latitude: 24.9, longitude: 67.1, accuracy: 8, observedAtMs: Date.now() }, currentLocationSource: 'live', hasLocationPermission: true, locationPermissionPrecision: 'fine' });
 
     const user = userEvent.setup();
     await render(<HomeScreen />);
@@ -1905,7 +1905,7 @@ describe('HomeScreen — Start Navigation reads the store when it runs (#307)', 
     expect(firstStart).toBeDefined(); // captured while the store still had no preview route
 
     await act(async () => {
-      useAppStore.setState({ routePlannerDest: destination, activeRoute: previewRoute as never, currentLocation: { latitude: 24.9, longitude: 67.1 } });
+      useAppStore.setState({ routePlannerDest: destination, activeRoute: previewRoute as never, currentLocation: { latitude: 24.9, longitude: 67.1, accuracy: 8, observedAtMs: Date.now() }, currentLocationSource: 'live', hasLocationPermission: true, locationPermissionPrecision: 'fine' });
     });
     await act(async () => firstStart!());
 
@@ -1968,7 +1968,7 @@ describe('HomeScreen — Directions sheet presentation contract', () => {
     ['Route Ready', async () => {
       mockedUseDirectionsViewModel.mockReturnValue(directionsVm(previewRoute));
       useHomeWithPlace();
-      useAppStore.setState({ routePlannerDest: destination, activeRoute: previewRoute as never, currentLocation: { latitude: 24.9, longitude: 67.1 } });
+      useAppStore.setState({ routePlannerDest: destination, activeRoute: previewRoute as never, currentLocation: { latitude: 24.9, longitude: 67.1, accuracy: 8, observedAtMs: Date.now() }, currentLocationSource: 'live', hasLocationPermission: true, locationPermissionPrecision: 'fine' });
       await render(<HomeScreen />);
     }],
     ['manual Route Guide preview', async () => {

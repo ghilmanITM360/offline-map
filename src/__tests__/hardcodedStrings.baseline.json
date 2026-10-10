@@ -22,7 +22,7 @@
   "utils/placeShare.ts": 1,
   "utils/routeCopy.ts": 8,
   "utils/unavailableReasonCopy.ts": 1,
-  "viewmodels/DirectionsViewModel.ts": 14,
+  "viewmodels/DirectionsViewModel.ts": 13,
   "viewmodels/HomeViewModel.ts": 26,
   "viewmodels/NavigationViewModel.ts": 6,
   "viewmodels/SettingsViewModel.ts": 18,
