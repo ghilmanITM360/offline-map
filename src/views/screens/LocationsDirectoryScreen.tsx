@@ -3,8 +3,10 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import { restoreDirectoryOffset } from '../../utils/directoryScrollRestoration';
+import type { LayoutChangeEvent } from 'react-native';
 import { accuracyFacet } from '../../services/LocationCapability';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Animated, BackHandler, Keyboard, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -90,6 +92,7 @@ export function LocationsDirectoryScreen() {
   // Set by Get Directions when it opens the Directory to choose a start or destination (null = plain browsing).
   // Read once at mount: this screen is pushed for one question, and clearing the store's copy on choose must not
   // flip the title back to "Find your way" while the screen is still animating out.
+  const [request] = useState(() => useAppStore.getState().directoryRequest);
   const [storePurpose] = useState(() => useAppStore.getState().directoryPurpose);
   const purpose = storePurpose;
   const chooserDestination = useAppStore((state) => state.routePlannerDest);
@@ -103,10 +106,86 @@ export function LocationsDirectoryScreen() {
   const beginRecovery = useAppStore((s) => s.beginRecovery);
   const clearUnfinishedJourney = useAppStore((s) => s.clearUnfinishedJourney);
 
-  // Deliberately ephemeral component state — search text, category filter, and scroll
-  // position are not persisted (see brief: ephemeral directory UI).
-  const [query, setQuery] = useState('');
-  const [activeCategory, setActiveCategory] = useState<DestinationCategoryId | null>(null);
+  // Browsing survives temporary chooser visits in runtime memory only. Chooser filters stay private.
+  const [query, setQuery] = useState(() => storePurpose ? '' : useAppStore.getState().directoryBrowsing.query);
+  const [activeCategory, setActiveCategory] = useState<DestinationCategoryId | null>(() => {
+    const category = storePurpose ? null : useAppStore.getState().directoryBrowsing.category;
+    return PublicDestinationsService.getCategories().find((item) => item.id === category)?.id ?? null;
+  });
+  const browsingAnchor = useRef(useAppStore.getState().directoryBrowsing.anchor);
+  const saveBrowsing = (selectedId: string | null) => {
+    if (!storePurpose) useAppStore.getState().setDirectoryBrowsing({ ...useAppStore.getState().directoryBrowsing, query, category: activeCategory, selectedId, anchor: browsingAnchor.current });
+  };
+  const cancelChooser = () => {
+    if (!storePurpose) return true;
+    const state = useAppStore.getState();
+    if (!request || state.directoryRequest?.serial !== request.serial ||
+      state.directoryJourneySerial !== request.journeyId) return false;
+    state.cancelDirectoryRequest(request.serial);
+    return true;
+  };
+  useEffect(() => {
+    if (!storePurpose) useAppStore.getState().setDirectoryBrowsing({
+      ...useAppStore.getState().directoryBrowsing, query, category: activeCategory,
+    });
+  }, [query, activeCategory, storePurpose]);
+
+  const scrollRef = useRef<ScrollView>(null);
+  const geometry = useRef<Record<string, { y: number; parent: string | null }>>({});
+  const dimensions = useRef({ content: 0, viewport: 0 });
+  const restoring = useRef(!storePurpose);
+  const restorationFrame = useRef<number | null>(null);
+  const positions = () => {
+    const result: Record<string, number> = {};
+    const resolve = (key: string): number => {
+      const item = geometry.current[key];
+      return item ? item.y + (item.parent ? resolve(item.parent) : 0) : 0;
+    };
+    const visibleIds = new Set((trimmedQuery ? searchResults : categories
+      .filter((item) => !activeCategory || item.id === activeCategory)
+      .flatMap((item) => PublicDestinationsService.getByCategory(item.id))).map((place) => `place:${place.id}`));
+    if (!trimmedQuery && !activeCategory) for (const place of recentPlaces) visibleIds.add(`recent:${place.id}`);
+    for (const key of visibleIds) if (geometry.current[key]) result[key] = resolve(key);
+    return result;
+  };
+  const restoreScroll = () => {
+    if (!restoring.current || !dimensions.current.viewport || !dimensions.current.content) return;
+    if (restorationFrame.current !== null) cancelAnimationFrame(restorationFrame.current);
+    restorationFrame.current = requestAnimationFrame(() => {
+      restorationFrame.current = null;
+      if (!restoring.current) return;
+      const saved = useAppStore.getState().directoryBrowsing;
+      const anchor = saved.anchor;
+      scrollRef.current?.scrollTo({ y: restoreDirectoryOffset(anchor, positions(), dimensions.current.content, dimensions.current.viewport), animated: false });
+      restoring.current = false;
+    });
+  };
+  const trackLayout = (key: string, parent: string | null) => (event: LayoutChangeEvent) => {
+    geometry.current[key] = { y: event.nativeEvent.layout.y, parent };
+    restoreScroll();
+  };
+  useEffect(() => () => {
+    if (restorationFrame.current !== null) cancelAnimationFrame(restorationFrame.current);
+  }, []);
+  const resetScroll = () => {
+    restoring.current = false;
+    browsingAnchor.current = null;
+    scrollRef.current?.scrollTo({ y: 0, animated: false });
+    if (!storePurpose) useAppStore.getState().setDirectoryBrowsing({
+      ...useAppStore.getState().directoryBrowsing, anchor: null, selectedId: null,
+    });
+  };
+
+  const saveScroll = () => {
+    if (!storePurpose) useAppStore.getState().setDirectoryBrowsing({
+      ...useAppStore.getState().directoryBrowsing, anchor: browsingAnchor.current,
+    });
+  };
+  useEffect(() => () => {
+    if (!storePurpose) useAppStore.getState().setDirectoryBrowsing({
+      ...useAppStore.getState().directoryBrowsing, anchor: browsingAnchor.current,
+    });
+  }, [storePurpose]);
 
   const categories = useMemo(() => PublicDestinationsService.getCategories(), []);
   const trimmedQuery = query.trim();
@@ -155,15 +234,20 @@ export function LocationsDirectoryScreen() {
   }, [navigation]);
 
   // Leaving without choosing (Cancel, hardware back) must not leave the purpose behind for the next visit.
-  useEffect(() => () => setDirectoryPurpose(null), [setDirectoryPurpose]);
+  useEffect(() => () => {
+    // An outgoing chooser must never cancel a newer request or erase its submitted answer.
+    const state = useAppStore.getState();
+    if (request && state.directoryPurpose) state.cancelDirectoryRequest(request.serial);
+  }, [request]);
 
   // Details: show the place on the Map with its sheet (the old row-tap behavior), for people who want to look first.
   const handleDetails = useCallback(
     (place: V2Place) => {
+      saveBrowsing(place.id);
       setPendingDirectorySelection(place);
       goToMap();
     },
-    [goToMap, setPendingDirectorySelection],
+    [goToMap, setPendingDirectorySelection, query, activeCategory, storePurpose],
   );
 
   // Ordinary selection opens destination planning on the existing Map. Origin resolution stays there.
@@ -174,10 +258,11 @@ export function LocationsDirectoryScreen() {
         handleDetails(place);
         return;
       }
+      saveBrowsing(place.id);
       setPendingJourney({ destination: place });
       goToMap();
     },
-    [goToMap, handleDetails, setPendingJourney],
+    [goToMap, handleDetails, setPendingJourney, query, activeCategory, storePurpose],
   );
 
   const handleSelect = useCallback(
@@ -192,15 +277,15 @@ export function LocationsDirectoryScreen() {
           );
           return;
         }
-        setDirectoryChoice({ purpose: storePurpose, place });
-        setDirectoryPurpose(null);
+        if (!request) return;
+        if (!setDirectoryChoice({ purpose: storePurpose, place, request })) return;
         goToMap();
         return;
       }
       // Plain browsing: a tap means "take me here" (#307).
       takeMeTo(place);
     },
-    [goToMap, setDirectoryChoice, setDirectoryPurpose, setPendingJourney, storePurpose, takeMeTo],
+    [goToMap, setDirectoryChoice, setDirectoryPurpose, setPendingJourney, storePurpose, request, takeMeTo],
   );
 
   const handleGetNewRoute = useCallback(() => {
@@ -221,11 +306,11 @@ export function LocationsDirectoryScreen() {
 
   const handleQuickStart = useCallback(
     (quick: 'current_location' | 'last_known') => {
-      setDirectoryChoice({ purpose: 'start', quick });
-      setDirectoryPurpose(null);
+      if (!request) return;
+      if (!setDirectoryChoice({ purpose: 'start', quick, request })) return;
       goToMap();
     },
-    [goToMap, setDirectoryChoice, setDirectoryPurpose],
+    [goToMap, request, setDirectoryChoice, setDirectoryPurpose],
   );
 
   // Android Back cancels an explicit chooser first. Browsing clears search/filter state
@@ -234,9 +319,7 @@ export function LocationsDirectoryScreen() {
   useEffect(() => {
     const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
       if (storePurpose) {
-        setDirectoryPurpose(null);
-        setDirectoryChoice(null);
-        goToMap();
+        if (cancelChooser()) goToMap();
         return true;
       }
       if (trimmedQuery.length > 0 || activeCategory) {
@@ -250,6 +333,7 @@ export function LocationsDirectoryScreen() {
   }, [trimmedQuery, activeCategory, storePurpose, setDirectoryPurpose, setDirectoryChoice, goToMap]);
 
   const handleCategoryPress = (categoryId: DestinationCategoryId) => {
+    resetScroll();
     setActiveCategory((current) => (current === categoryId ? null : categoryId));
   };
 
@@ -258,16 +342,19 @@ export function LocationsDirectoryScreen() {
     return visibleCategories.map((category) => {
       const places = PublicDestinationsService.getByCategory(category.id);
       return (
-        <View key={category.id} style={styles.section}>
+        <View key={category.id} style={styles.section} onLayout={trackLayout(`section:${category.id}`, null)}>
           <Text style={styles.sectionTitle} accessibilityRole="header">
             {category.label} ({places.length})
           </Text>
           {category.id === 'blocks' ? (
-            <DestinationBlockGrid places={places} onPress={handleSelect} onDetails={purpose ? undefined : handleDetails} />
+            <View onLayout={trackLayout('blocks-grid', 'section:blocks')}>
+              <DestinationBlockGrid places={places} onPress={handleSelect} onDetails={purpose ? undefined : handleDetails}
+                onPlaceLayout={(id, event) => trackLayout(`place:${id}`, 'blocks-grid')(event)} />
+            </View>
           ) : (
-            <View style={styles.sectionRows}>
+            <View style={styles.sectionRows} onLayout={trackLayout(`rows:${category.id}`, `section:${category.id}`)}>
               {places.map((place) => (
-                <DestinationRow key={place.id} place={place} onPress={handleSelect} onDetails={purpose ? undefined : handleDetails} showCategory={false} />
+                <View key={place.id} onLayout={trackLayout(`place:${place.id}`, `rows:${category.id}`)}><DestinationRow place={place} onPress={handleSelect} onDetails={purpose ? undefined : handleDetails} showCategory={false} /></View>
               ))}
             </View>
           )}
@@ -286,9 +373,9 @@ export function LocationsDirectoryScreen() {
       );
     }
     return (
-      <View style={styles.sectionRows}>
+      <View style={styles.sectionRows} onLayout={trackLayout("search", null)}>
         {searchResults.map((place) => (
-          <DestinationRow key={place.id} place={place} onPress={handleSelect} onDetails={purpose ? undefined : handleDetails} />
+          <View key={place.id} testID={`directory-place-${place.id}`} onLayout={trackLayout(`place:${place.id}`, "search")}><DestinationRow place={place} onPress={handleSelect} onDetails={purpose ? undefined : handleDetails} /></View>
         ))}
       </View>
     );
@@ -305,7 +392,7 @@ export function LocationsDirectoryScreen() {
         </Text>
         <Pressable
           style={styles.viewMapButton}
-          onPress={() => { setDirectoryPurpose(null); setDirectoryChoice(null); goToMap(); }}
+          onPress={() => { if (cancelChooser()) goToMap(); }}
           accessibilityRole="button"
           accessibilityLabel={purpose ? 'Cancel and go back' : 'View map'}
         >
@@ -322,7 +409,7 @@ export function LocationsDirectoryScreen() {
         <Search size={18} color={staticColors.iconMuted} style={styles.searchIcon} />
         <SearchBarField
           value={query}
-          onChangeText={setQuery}
+          onChangeText={(value) => { resetScroll(); setQuery(value); }}
           // Same words as Home's search and this field's name. The old 31-character hint wrapped at 200% font
           // and the fixed-height field clipped it; Android's TextInput cannot ellipsize a placeholder.
           placeholder="Search destinations"
@@ -333,7 +420,7 @@ export function LocationsDirectoryScreen() {
         {query.length > 0 && (
           <Pressable
             style={styles.clearButton}
-            onPress={() => setQuery('')}
+            onPress={() => { resetScroll(); setQuery(''); }}
             accessibilityRole="button"
             accessibilityLabel="Clear search"
             hitSlop={8}
@@ -360,7 +447,21 @@ export function LocationsDirectoryScreen() {
         ))}
       </ScrollView>
 
-      <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+      <ScrollView ref={scrollRef} testID="directory-list" contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled"
+        onLayout={(event) => { dimensions.current.viewport = event.nativeEvent.layout.height; restoreScroll(); }}
+        onContentSizeChange={(_, height) => { dimensions.current.content = height; restoreScroll(); }}
+        onScrollBeginDrag={() => { restoring.current = false; }}
+        onScrollEndDrag={saveScroll}
+        onMomentumScrollEnd={saveScroll}
+        scrollEventThrottle={32}
+        onScroll={(event) => {
+          if (storePurpose || restoring.current) return;
+          const offset = event.nativeEvent.contentOffset.y;
+          const entries = Object.entries(positions()).filter(([key, y]) => (key.startsWith('place:') || key.startsWith('recent:')) && y <= offset)
+            .sort((left, right) => right[1] - left[1]);
+          const first = entries[0];
+          browsingAnchor.current = first ? { id: first[0], delta: offset - first[1] } : null;
+        }}>
         {unfinishedDestinationId !== null && !purpose && (
           <View style={styles.recoveryCard} accessibilityLiveRegion="polite">
             <Text style={styles.recoveryTitle}>Your last navigation didn't finish</Text>
@@ -414,7 +515,7 @@ export function LocationsDirectoryScreen() {
               </View>
             )}
             {!activeCategory && recentPlaces.length > 0 && (
-              <View style={styles.section}>
+              <View style={styles.section} testID="directory-recent" onLayout={trackLayout("recent", null)}>
                 <View style={styles.recentHeader}>
                   <Text style={[styles.sectionTitle, styles.recentTitle]} accessibilityRole="header">Recent</Text>
                   <Pressable
@@ -426,15 +527,16 @@ export function LocationsDirectoryScreen() {
                     <Text style={styles.recentClearLabel}>Clear</Text>
                   </Pressable>
                 </View>
-                <View style={styles.sectionRows}>
+                <View style={styles.sectionRows} testID="directory-recent-rows" onLayout={trackLayout("recent-rows", "recent")}>
                   {recentPlaces.map((place) => (
+                    <View key={place.id} testID={`directory-recent-${place.id}`} onLayout={trackLayout(`recent:${place.id}`, 'recent-rows')}>
                     <DestinationRow
-                      key={place.id}
                       place={place}
                       onPress={handleSelect}
                       onDetails={purpose ? undefined : handleDetails}
                       onRemove={(p) => removeRecentSearch(p.id)}
                     />
+                    </View>
                   ))}
                 </View>
               </View>

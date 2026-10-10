@@ -4,16 +4,17 @@
  */
 
 import React from 'react';
+import type { LayoutChangeEvent } from 'react-native';
 import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { V2Place } from '../../../models/types';
 import { usePressScale } from '../../../viewmodels/usePressScale';
 import { radii, spacing, staticColors } from '../../../theme';
 
-function BlockTile({ place, onPress, onDetails }: { place: V2Place; onPress: (place: V2Place) => void; onDetails?: (place: V2Place) => void }) {
+function BlockTile({ place, onPress, onDetails, onLayout }: { onLayout?: (event: LayoutChangeEvent) => void; place: V2Place; onPress: (place: V2Place) => void; onDetails?: (place: V2Place) => void }) {
   const { scale, onPressIn, onPressOut } = usePressScale(0.94);
   return (
-    <Animated.View style={[styles.tileWrap, { transform: [{ scale }] }]}>
+    <Animated.View onLayout={onLayout} style={[styles.tileWrap, { transform: [{ scale }] }]}>
       <Pressable
         style={({ pressed }) => [styles.tile, pressed && styles.tilePressed]}
         onPress={() => onPress(place)}
@@ -39,11 +40,11 @@ function BlockTile({ place, onPress, onDetails }: { place: V2Place; onPress: (pl
 
 /** Compact numbered tile grid for Blocks — the venue's own numbering system as the
  * screen's signature element, instead of 40+ full-width decorative cards. */
-export function DestinationBlockGrid({ places, onPress, onDetails }: { places: V2Place[]; onPress: (place: V2Place) => void; onDetails?: (place: V2Place) => void }) {
+export function DestinationBlockGrid({ places, onPress, onDetails, onPlaceLayout }: { onPlaceLayout?: (id: string, event: LayoutChangeEvent) => void; places: V2Place[]; onPress: (place: V2Place) => void; onDetails?: (place: V2Place) => void }) {
   return (
     <View style={styles.grid}>
       {places.map((place) => (
-        <BlockTile key={place.id} place={place} onPress={onPress} onDetails={onDetails} />
+        <BlockTile key={place.id} onLayout={onPlaceLayout ? (event) => onPlaceLayout(place.id, event) : undefined} place={place} onPress={onPress} onDetails={onDetails} />
       ))}
     </View>
   );

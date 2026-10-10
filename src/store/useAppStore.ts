@@ -49,9 +49,11 @@ export interface DestinationJourneyIntent {
 /** What the Directory is being opened to choose; null = plain browsing. */
 export type DirectoryPurpose = 'start' | 'destination';
 /** A Directory answer. Quick start options carry no place: the initiator already owns the location. */
-export type DirectoryChoice =
+export interface DirectoryRequest { serial: number; journeyId: number; destinationId: string; purpose: DirectoryPurpose }
+export interface DirectoryBrowsingState { query: string; category: string | null; selectedId: string | null; anchor: { id: string; delta: number } | null }
+export type DirectoryChoice = { request: DirectoryRequest } & (
   | { purpose: DirectoryPurpose; place: Place }
-  | { purpose: 'start'; quick: 'current_location' | 'last_known' };
+  | { purpose: 'start'; quick: 'current_location' | 'last_known' });
 
 function sanitizePersistedPlace(place: Place | null | undefined): Place | null {
   if (!place || typeof place !== 'object' || Array.isArray(place) || typeof place.id !== 'string') return null;
@@ -211,9 +213,15 @@ interface AppState {
   directoryPurpose: DirectoryPurpose | null;
   /** Runtime-only generation: an opened chooser permanently retires earlier location work. */
   directoryRequestSerial: number;
+  directoryJourneySerial: number;
+  directoryRequest: DirectoryRequest | null;
+  cancelDirectoryRequest: (serial: number) => void;
+  consumeDirectoryChoice: (choice: DirectoryChoice, destinationId: string) => boolean;
+  directoryBrowsing: DirectoryBrowsingState;
+  setDirectoryBrowsing: (state: DirectoryBrowsingState) => void;
   setDirectoryPurpose: (purpose: DirectoryPurpose | null) => void;
   directoryChoice: DirectoryChoice | null;
-  setDirectoryChoice: (choice: DirectoryChoice | null) => void;
+  setDirectoryChoice: (choice: DirectoryChoice | null) => boolean;
 
   // --- Route planner (From/To, Phase 3) ---
   routePlannerOrigin: Place | null;       // null = use current GPS
@@ -544,29 +552,71 @@ export const useAppStore = create<AppState>()(
         });
         const id = state.destinationIntentSerial + 1;
         set({ pendingJourney: journey, destinationIntentSerial: id,
+          directoryJourneySerial: state.directoryJourneySerial + 1,
+          directoryRequest: null, directoryChoice: null, directoryPurpose: null,
           destinationJourneyIntent: { id, destinationId: journey.destination.id,
             autoLive: !state.isNavigating && state.locationServicesState === 'enabled' && capability.mode === 'live_navigation'
               ? 'eligible' : 'ineligible' } });
       },
       directoryPurpose: null,
       directoryRequestSerial: 0,
+      directoryJourneySerial: 0,
+      directoryRequest: null,
+      directoryBrowsing: { query: '', category: null, selectedId: null, anchor: null },
+      setDirectoryBrowsing: (directoryBrowsing) => set({ directoryBrowsing }),
+      cancelDirectoryRequest: (serial) => {
+        if (get().directoryRequest?.serial === serial) {
+          set({ directoryRequest: null, directoryPurpose: null, directoryChoice: null });
+        }
+      },
       setDirectoryPurpose: (purpose) => {
-        const intent = get().destinationJourneyIntent;
-        // Opening either chooser withdraws the original tap's automatic activation authority.
-        set({ directoryPurpose: purpose,
-          directoryRequestSerial: get().directoryRequestSerial + (purpose ? 1 : 0),
+        const state = get();
+        const intent = state.destinationJourneyIntent;
+        const serial = state.directoryRequestSerial + (purpose ? 1 : 0);
+        set({ directoryPurpose: purpose, directoryChoice: null,
+          directoryRequestSerial: serial,
+          directoryRequest: purpose && state.routePlannerDest ? {
+            serial, journeyId: state.directoryJourneySerial,
+            destinationId: state.routePlannerDest.id, purpose,
+          } : null,
           ...(purpose && intent ? { destinationJourneyIntent: { ...intent, autoLive: 'consumed' as const } } : {}) });
       },
       directoryChoice: null,
-      setDirectoryChoice: (choice) => set({ directoryChoice: choice }),
+      setDirectoryChoice: (choice) => {
+        if (!choice) { set({ directoryChoice: null }); return true; }
+        const state = get();
+        const request = state.directoryRequest;
+        if (!request || !state.directoryPurpose || !choice.request ||
+          choice.request.serial !== request.serial || choice.request.journeyId !== request.journeyId ||
+          choice.request.destinationId !== request.destinationId || choice.request.purpose !== request.purpose ||
+          choice.purpose !== request.purpose || request.journeyId !== state.directoryJourneySerial ||
+          request.destinationId !== state.routePlannerDest?.id) return false;
+        set({ directoryChoice: choice, directoryPurpose: null });
+        return true;
+      },
+      consumeDirectoryChoice: (choice, destinationId) => {
+        const state = get();
+        if (state.directoryChoice !== choice || state.directoryRequest?.serial !== choice.request.serial ||
+          choice.request.journeyId !== state.directoryJourneySerial ||
+          choice.request.destinationId !== destinationId || state.routePlannerDest?.id !== destinationId) return false;
+        set({ directoryChoice: null, directoryRequest: null });
+        return true;
+      },
 
       // --- Route planner ---
       routePlannerOrigin: null,
       routePlannerDest: null,
       setRoutePlannerOrigin: (place) => set({ routePlannerOrigin: place }),
-      setRoutePlannerDest: (place) => set({ routePlannerDest: place }),
+      setRoutePlannerDest: (place) => set((state) => ({ routePlannerDest: place,
+        ...(state.routePlannerDest?.id !== place?.id ? {
+          directoryJourneySerial: state.directoryJourneySerial + 1,
+          directoryRequest: null, directoryChoice: null, directoryPurpose: null,
+        } : {}),
+      })),
       clearRoutePlanner: () =>
         set({
+          directoryJourneySerial: get().directoryJourneySerial + 1,
+          directoryRequest: null, directoryChoice: null, directoryPurpose: null,
           destinationJourneyIntent: null,
           pendingJourney: null,
           routePlannerOrigin: null,

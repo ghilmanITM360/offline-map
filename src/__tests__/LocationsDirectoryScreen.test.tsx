@@ -38,6 +38,7 @@ function mockNav(overrides: Partial<{ canGoBack: boolean }> = {}) {
 
 beforeEach(() => {
   useAppStore.setState(initialStoreState, true);
+  useAppStore.getState().setRoutePlannerDest(firstBlock);
   jest.clearAllMocks();
 });
 
@@ -346,7 +347,7 @@ describe('LocationsDirectoryScreen — choosing a start or destination for Get D
       fireEvent.press(screen.getByLabelText(`${firstGate.name}, Gate`));
     });
 
-    expect(useAppStore.getState().directoryChoice).toEqual({ purpose: 'start', place: firstGate });
+    expect(useAppStore.getState().directoryChoice).toMatchObject({ purpose: 'start', place: firstGate });
     expect(useAppStore.getState().directoryPurpose).toBeNull();
     expect(useAppStore.getState().pendingDirectorySelection).toBeNull();
     expect(navigation.goBack).toHaveBeenCalledTimes(1);
@@ -446,7 +447,7 @@ describe('LocationsDirectoryScreen — start quick options (#222)', () => {
     const navigation = await openForStart();
 
     await act(async () => fireEvent.press(screen.getByLabelText(/^Use my location/)));
-    expect(useAppStore.getState().directoryChoice).toEqual({ purpose: 'start', quick: 'current_location' });
+    expect(useAppStore.getState().directoryChoice).toMatchObject({ purpose: 'start', quick: 'current_location' });
     expect(useAppStore.getState().directoryPurpose).toBeNull();
     expect(navigation.goBack).toHaveBeenCalledTimes(1);
   });
@@ -456,7 +457,7 @@ describe('LocationsDirectoryScreen — start quick options (#222)', () => {
     await openForStart();
 
     await act(async () => fireEvent.press(screen.getByLabelText(/^Use earlier location/)));
-    expect(useAppStore.getState().directoryChoice).toEqual({ purpose: 'start', quick: 'last_known' });
+    expect(useAppStore.getState().directoryChoice).toMatchObject({ purpose: 'start', quick: 'last_known' });
   });
 });
 
@@ -512,7 +513,8 @@ test.each(['gates', 'rastas', 'special_routes'] as const)('%s uses the same dest
 
 test('origin chooser hardware Back cancels the question before clearing search', async () => {
   const navigation = mockNav({ canGoBack: true });
-  useAppStore.setState({ directoryPurpose: 'start', routePlannerDest: firstBlock });
+  useAppStore.getState().setRoutePlannerDest(firstBlock);
+  useAppStore.getState().setDirectoryPurpose('start');
   await render(<LocationsDirectoryScreen />);
   await act(() => fireEvent.changeText(screen.getByPlaceholderText('Search destinations'), '24'));
   await act(() => DeviceEventEmitter.emit('hardwareBackPress'));
@@ -520,4 +522,92 @@ test('origin chooser hardware Back cancels the question before clearing search',
   expect(useAppStore.getState().directoryPurpose).toBeNull();
   expect(useAppStore.getState().directoryChoice).toBeNull();
   expect(useAppStore.getState().routePlannerDest).toBe(firstBlock);
+});
+
+test('normal search/category survive temporary origin chooser and remount', async () => {
+  mockNav({ canGoBack: true });
+  const browse = await render(<LocationsDirectoryScreen />);
+  await fireEvent.changeText(screen.getByLabelText('Search destinations'), 'Block');
+  await fireEvent.press(screen.getByLabelText('Blocks'));
+  await fireEvent.press(screen.getByLabelText('Block 28, Block'));
+  await browse.unmount();
+  useAppStore.getState().setRoutePlannerDest(firstBlock);
+  useAppStore.getState().setDirectoryPurpose('start');
+  const chooser = await render(<LocationsDirectoryScreen />);
+  expect(screen.getByLabelText('Search destinations')).toHaveDisplayValue('');
+  await act(async () => fireEvent.press(screen.getByLabelText('Cancel and go back')));
+  await chooser.unmount();
+  await render(<LocationsDirectoryScreen />);
+  expect(screen.getByLabelText('Search destinations')).toHaveDisplayValue('Block');
+  expect(screen.getByLabelText('Blocks')).toBeSelected();
+  expect(useAppStore.getState().directoryBrowsing.selectedId).toBe('B28');
+});
+
+test('whitespace edit preserves measured unchanged search rows for scrolling', async () => {
+  mockNav();
+  await render(<LocationsDirectoryScreen />);
+  await act(() => fireEvent.changeText(screen.getByLabelText('Search destinations'), 'Block'));
+  const row = screen.getByTestId('directory-place-B28');
+  await act(() => fireEvent(row, 'layout', { nativeEvent: { layout: { y: 600 } } }));
+  await act(() => fireEvent.changeText(screen.getByLabelText('Search destinations'), 'Block '));
+  const list = screen.getByTestId('directory-list');
+  await fireEvent(list, 'scrollBeginDrag');
+  await fireEvent.scroll(list, { nativeEvent: { contentOffset: { y: 610 } } });
+  await fireEvent(list, 'scrollEndDrag');
+  expect(useAppStore.getState().directoryBrowsing.anchor).toMatchObject({ id: 'place:B28' });
+});
+
+test('Recent scroll stores its own occurrence instead of category duplicate', async () => {
+  mockNav();
+  useAppStore.getState().addRecentSearch(firstBlock);
+  await render(<LocationsDirectoryScreen />);
+  const list = screen.getByTestId('directory-list');
+  await fireEvent(screen.getByTestId('directory-recent'), 'layout', { nativeEvent: { layout: { y: 80 } } });
+  await fireEvent(screen.getByTestId('directory-recent-rows'), 'layout', { nativeEvent: { layout: { y: 0 } } });
+  await fireEvent(screen.getByTestId(`directory-recent-${firstBlock.id}`), 'layout', { nativeEvent: { layout: { y: 20 } } });
+  await fireEvent(list, 'scrollBeginDrag');
+  await fireEvent.scroll(list, { nativeEvent: { contentOffset: { y: 110 } } });
+  await fireEvent(list, 'scrollEndDrag');
+  expect(useAppStore.getState().directoryBrowsing.anchor).toEqual({ id: `recent:${firstBlock.id}`, delta: 10 });
+});
+
+test('retained origin chooser callback cannot answer newer same-destination journey', async () => {
+  const navigation = mockNav({ canGoBack: true });
+  useAppStore.getState().setPendingJourney({ destination: firstBlock });
+  useAppStore.getState().setDirectoryPurpose('start');
+  await render(<LocationsDirectoryScreen />);
+  await act(() => {
+    useAppStore.getState().setDirectoryPurpose(null);
+    useAppStore.getState().setPendingJourney({ destination: firstBlock });
+  });
+  await fireEvent.press(screen.getByLabelText(`${firstGate.name}, Gate`));
+  expect(useAppStore.getState().directoryChoice).toBeNull();
+  expect(useAppStore.getState().routePlannerOrigin).toBeNull();
+  expect(useAppStore.getState().pendingJourney?.destination).toBe(firstBlock);
+  expect(navigation.goBack).not.toHaveBeenCalled();
+});
+
+test('rapid chooser double tap returns one owned answer and one Map handoff', async () => {
+  const navigation = mockNav({ canGoBack: true });
+  useAppStore.getState().setDirectoryPurpose('start');
+  await render(<LocationsDirectoryScreen />);
+  const row = screen.getByLabelText(`${firstGate.name}, Gate`);
+  await fireEvent.press(row);
+  await fireEvent.press(row);
+  expect(useAppStore.getState().directoryChoice).toMatchObject({ purpose: 'start', place: firstGate });
+  expect(navigation.goBack).toHaveBeenCalledTimes(1);
+});
+
+test('retained Cancel cannot pop newer chooser or journey', async () => {
+  const navigation = mockNav({ canGoBack: true });
+  useAppStore.getState().setDirectoryPurpose('start');
+  await render(<LocationsDirectoryScreen />);
+  await act(() => {
+    useAppStore.getState().setPendingJourney({ destination: firstBlock });
+    useAppStore.getState().setDirectoryPurpose('start');
+  });
+  const current = useAppStore.getState().directoryRequest;
+  await fireEvent.press(screen.getByLabelText('Cancel and go back'));
+  expect(useAppStore.getState().directoryRequest).toBe(current);
+  expect(navigation.goBack).not.toHaveBeenCalled();
 });
