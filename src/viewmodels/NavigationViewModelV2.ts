@@ -22,6 +22,8 @@ import type { RoutePreviewV2 } from '../services/RoutingServiceV2';
 import { destinationFromPlace } from '../services/V2DirectionsService';
 import { EntryGateRoutingService } from '../services/EntryGateRoutingService';
 import { V2DirectionsService } from '../services/V2DirectionsService';
+import { evaluateLocationCapability } from '../services/LocationCapability';
+import { t } from '../i18n/translate';
 import { V2NavigationAdapter, isV2ActiveRoute } from '../services/V2NavigationAdapter';
 import { OutsideRouteRequestCoordinator } from '../services/outsideRouting/OutsideRouteRequestCoordinator';
 import { createProductionOutsideRouteSource } from '../services/outsideRouting/ProductionOutsideRouteSource';
@@ -104,11 +106,27 @@ export interface NavigationPreviewStartInput {
 export function startPreviewNavigationV2(input: NavigationPreviewStartInput) {
   const check = V2NavigationAdapter.canStartActiveNavigation(input);
   if (!check.canStart || !input.route || !input.destination) return check;
+  const state = useAppStore.getState();
+  const capability = evaluateLocationCapability({
+    permission: { granted: state.hasLocationPermission, canAskAgain: false, precision: state.locationPermissionPrecision },
+    liveFix: state.currentLocationSource === 'live' ? state.currentLocation : null,
+  });
+  // Only the currently published preview may authorize a live session. Manual and direct guides have no live authority.
+  if (input.startPlace || state.routePlannerOrigin || capability.mode !== 'live_navigation' ||
+    state.activeRoute !== input.route || state.routePlannerDest?.id !== input.destination.id ||
+    input.route.outsideRoute?.provider === 'direct-guide') {
+    return { canStart: false, message: t('directions.livePrerequisites') };
+  }
+  // Composed outside geometry starts at the attendee; startResolution may identify the entry gate.
+  const plannedOrigin = input.route.coordinates[0];
+  if (!state.currentLocation || getDistance(plannedOrigin, state.currentLocation) > 20) {
+    return { canStart: false, message: t('directions.refreshRoute') };
+  }
   const route = V2NavigationAdapter.fromPreview({
     previewRoute: input.route,
     destination: input.destination,
     startPlace: input.startPlace,
-    currentLocation: input.startPlace ? null : input.currentLocation,
+    currentLocation: state.currentLocation,
   });
   useAppStore.getState().startNavigation(input.destination, route, route.instructions);
   return check;

@@ -32,6 +32,8 @@ export interface JourneyPresentationInput {
   navigation?: 'none' | 'active' | 'arrived';
   loadState: 'idle' | 'loading' | 'ready' | 'error' | 'needs_origin' | 'same_place';
   startSource: NavigationStartSource;
+  /** Current journey capability, never inferred from a source label. Missing authority fails closed. */
+  liveReady?: boolean;
   route: { outsideRoute?: { provider: OutsideRouteProviderId } | null } | null;
 }
 
@@ -52,7 +54,9 @@ export function selectJourneyPresentationState(input: JourneyPresentationInput):
       // "Ready" without a route is not ready.
       if (!input.route) return 'ROUTE_FAILURE';
       if (input.route.outsideRoute?.provider === 'direct-guide') return 'OUTSIDE_VENUE_GUIDE';
-      return input.startSource === 'live_gps' ? 'LIVE_READY' : 'MANUAL_GUIDE_READY';
+      return input.startSource === 'live_gps'
+        ? input.liveReady === true ? 'LIVE_READY' : 'NEEDS_START'
+        : 'MANUAL_GUIDE_READY';
   }
 }
 
