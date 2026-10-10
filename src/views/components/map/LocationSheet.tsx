@@ -287,22 +287,21 @@ function RoutePreviewSection({
   // are quick options there; it returns them through the store and the VM applies them like a picked place.
   const handleChangeStart = () => onOpenDirectory?.('start');
   const directoryChoice = useAppStore((s) => s.directoryChoice);
-  const setDirectoryChoice = useAppStore((s) => s.setDirectoryChoice);
   useEffect(() => {
     if (directoryChoice?.purpose !== 'start') return;
-    setDirectoryChoice(null);
+    if (!useAppStore.getState().consumeDirectoryChoice(directoryChoice, destination.id)) return;
     if (!('quick' in directoryChoice)) setManualStartPlace(directoryChoice.place);
     else if (directoryChoice.quick === 'current_location') void chooseCurrentLocation();
     else chooseRememberedLocation();
-  }, [chooseCurrentLocation, chooseRememberedLocation, directoryChoice, setDirectoryChoice, setManualStartPlace]);
+  }, [chooseCurrentLocation, chooseRememberedLocation, directoryChoice, destination.id, setManualStartPlace]);
   // Same hand-off for "Change destination": the caller swaps its destination, which recalculates the route.
   useEffect(() => {
     if (directoryChoice?.purpose !== 'destination' || !('place' in directoryChoice)) return;
-    setDirectoryChoice(null);
+    if (!useAppStore.getState().consumeDirectoryChoice(directoryChoice, destination.id)) return;
     onChangeDestination?.(directoryChoice.place);
-  }, [directoryChoice, onChangeDestination, setDirectoryChoice]);
-  // A choice that arrives after the sheet is gone must not leak into a later journey.
-  useEffect(() => () => setDirectoryChoice(null), [setDirectoryChoice]);
+  }, [directoryChoice, destination.id, onChangeDestination]);
+  // Journey cancellation/replacement invalidates replies in the store. An outgoing sheet
+  // must not clear a newer sheet’s pending choice during unmount.
   const startIcon =
     startSource === 'remembered_location' || startSource === 'device_last_known' ? (
       <MapPin size={24} color={directionsSheetColors.brand} />

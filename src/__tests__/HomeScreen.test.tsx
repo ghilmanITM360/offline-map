@@ -1,3 +1,4 @@
+import { LANDMARK_PLACES } from '../constants/data';
 import { seedRunningNavigation } from './navigationFixture';
 /**
  * @license
@@ -820,7 +821,10 @@ describe('HomeScreen — canonical bottom-sheet dismissal', () => {
     const gate08 = SearchService.search('Gate 8').find((place) => place.name === 'Gate 08');
     expect(gate08).toBeDefined();
     await act(async () => {
-      useAppStore.getState().setDirectoryChoice({ purpose: 'destination', place: gate08! });
+      // Mocked DirectionsViewModel does not publish its destination as the real hook does.
+      useAppStore.getState().setRoutePlannerDest(LANDMARK_PLACES.find((place) => place.id === 'LM_GATE_MAIN_NORTH')!);
+      useAppStore.getState().setDirectoryPurpose('destination');
+      useAppStore.getState().setDirectoryChoice({ purpose: 'destination', place: gate08!, request: useAppStore.getState().directoryRequest! });
     });
     expect(await screen.findByText('Gate 08')).toBeOnTheScreen();
 
@@ -2176,4 +2180,18 @@ describe('HomeScreen — the route guide opens at the top detent (#307)', () => 
     expect(handleAtTop.snapToIndex).not.toHaveBeenCalled();
     spy.mockRestore();
   });
+});
+
+test('destination-less fallback Change place opens ordinary destination browsing', async () => {
+  const navigateSpy = jest.fn();
+  useNavigation.mockReturnValue({ navigate: navigateSpy, dispatch: jest.fn(), goBack: jest.fn() });
+  const { MapStartupController } = jest.requireActual('../services/MapStartupController');
+  const plan = jest.spyOn(MapStartupController, 'resolveReturningLaunchCamera').mockResolvedValue({ action: 'FIT_VENUE_BOUNDS', reason: 'no_gps' });
+  await render(<HomeScreen />);
+  await act(async () => fireEvent(screen.getByTestId('home-map-view', { includeHiddenElements: true }), 'didFinishLoadingMap'));
+  const change = await screen.findByLabelText('Change place');
+  await act(async () => fireEvent.press(change));
+  expect(navigateSpy).toHaveBeenCalledWith('LocationsDirectory');
+  expect(useAppStore.getState().directoryPurpose).toBeNull();
+  plan.mockRestore();
 });

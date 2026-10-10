@@ -90,7 +90,8 @@ describe('Directory is the single start chooser (Get Directions sheet)', () => {
   // What the Directory leaves in the store when the visitor picks something.
   const choose = (choice: NonNullable<ReturnType<typeof useAppStore.getState>['directoryChoice']>) =>
     act(async () => {
-      useAppStore.getState().setDirectoryChoice(choice);
+      useAppStore.getState().setDirectoryPurpose(choice.purpose);
+      useAppStore.getState().setDirectoryChoice({ ...choice, request: useAppStore.getState().directoryRequest! });
     });
   const expectNoChooser = () => {
     expect(screen.queryByText('Choose start manually')).not.toBeOnTheScreen();

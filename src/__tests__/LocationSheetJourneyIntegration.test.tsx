@@ -37,7 +37,9 @@ beforeEach(() => {
 
 describe('journey auto-start with the real view-model (#307)', () => {
   test('manual start previews before explicit guide activation', async () => {
-    useAppStore.setState({ directoryChoice: { purpose: 'start', place: start } });
+    useAppStore.getState().setRoutePlannerDest(destination);
+    useAppStore.getState().setDirectoryPurpose('start');
+    useAppStore.getState().setDirectoryChoice({ purpose: 'start', place: start, request: useAppStore.getState().directoryRequest! });
     await render(
       <>
         <LocationSheet mode="routePreview" destination={destination} onClose={jest.fn()} onStartNavigation={jest.fn()}
@@ -110,7 +112,9 @@ it.each(['cancel', 'start'] as const)('rendered manual upgrade confirms, preview
     permissionState: { granted: true, canAskAgain: true, status: 'granted' as never, precision: 'fine', servicesEnabled: true, servicesState: 'enabled' }, message: null,
   });
   try {
-    useAppStore.setState({ directoryChoice: { purpose: 'start', place: start } });
+    useAppStore.getState().setRoutePlannerDest(destination);
+    useAppStore.getState().setDirectoryPurpose('start');
+    useAppStore.getState().setDirectoryChoice({ purpose: 'start', place: start, request: useAppStore.getState().directoryRequest! });
     await render(<><LocationSheet mode="routePreview" destination={destination} onClose={jest.fn()} />
       <DirectionsSheetFooter animatedFooterPosition={{ value: 0, get: () => 0 } as never} /></>);
     const user = userEvent.setup();
@@ -139,7 +143,9 @@ it('rendered acquisition can cancel while original step remains usable', async (
   let release!: (value: Awaited<ReturnType<typeof LocationAccessService.resolveCurrentLocation>>) => void;
   const acquire = jest.spyOn(LocationAccessService, 'resolveCurrentLocation').mockImplementation(() => new Promise(resolve => { release = resolve; }));
   try {
-    useAppStore.setState({ directoryChoice: { purpose: 'start', place: start } });
+    useAppStore.getState().setRoutePlannerDest(destination);
+    useAppStore.getState().setDirectoryPurpose('start');
+    useAppStore.getState().setDirectoryChoice({ purpose: 'start', place: start, request: useAppStore.getState().directoryRequest! });
     await render(<><LocationSheet mode="routePreview" destination={destination} onClose={jest.fn()} />
       <DirectionsSheetFooter animatedFooterPosition={{ value: 0, get: () => 0 } as never} /></>);
     const user = userEvent.setup();
@@ -201,7 +207,9 @@ it('Settings recovery after denied upgrade preserves guide and never auto-starts
     permissionState: { granted: false, canAskAgain: false, status: 'denied' as never, precision: 'none', servicesState: 'enabled', servicesEnabled: true }, message: 'Denied' });
   const settings = jest.spyOn(LocationAccessService, 'openAppSettings').mockResolvedValue(true);
   try {
-    useAppStore.setState({ directoryChoice: { purpose: 'start', place: start } });
+    useAppStore.getState().setRoutePlannerDest(destination);
+    useAppStore.getState().setDirectoryPurpose('start');
+    useAppStore.getState().setDirectoryChoice({ purpose: 'start', place: start, request: useAppStore.getState().directoryRequest! });
     await render(<><LocationSheet mode="routePreview" destination={destination} onClose={jest.fn()} />
       <DirectionsSheetFooter animatedFooterPosition={{ value: 0, get: () => 0 } as never} /></>);
     const user = userEvent.setup();

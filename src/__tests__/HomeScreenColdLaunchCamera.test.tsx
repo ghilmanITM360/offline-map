@@ -856,13 +856,13 @@ describe('#222 Change place on the Block 2 notice', () => {
 
   beforeEach(() => navigate.mockClear());
 
-  test('the notice offers one Change place action that opens the Directory in start-selection mode', async () => {
+  test('the notice offers one Change place action that opens ordinary destination browsing', async () => {
     await openFallbackMap();
 
     fireEvent.press(screen.getByRole('button', { name: 'Change place' }));
 
     expect(navigate).toHaveBeenCalledWith('LocationsDirectory');
-    expect(useAppStore.getState().directoryPurpose).toBe('start');
+    expect(useAppStore.getState().directoryPurpose).toBeNull();
   });
 
   test('opening the chooser does not turn the Block 2 fallback into a location', async () => {
@@ -874,27 +874,28 @@ describe('#222 Change place on the Block 2 notice', () => {
     expect(useAppStore.getState().currentLocationSource).toBeNull();
   });
 
-  test('a place picked in start mode with no destination open returns normally: the place is selected on the Map', async () => {
+  test('an unowned start reply with no destination cannot change the Map', async () => {
     await openFallbackMap();
 
     await act(async () => {
-      useAppStore.setState({ directoryChoice: { purpose: 'start', place: searchResultPlace as any } });
+      useAppStore.getState().setDirectoryChoice({ purpose: 'start', place: searchResultPlace } as never);
     });
 
-    expect(useAppStore.getState().pendingDirectorySelection).toEqual(searchResultPlace);
+    expect(useAppStore.getState().pendingDirectorySelection).toBeNull();
     expect(useAppStore.getState().directoryChoice).toBeNull();
     expect(useAppStore.getState().currentLocation).toBeNull();
   });
 
-  test('the last-known quick option moves the camera only and does not become a location', async () => {
+  test('an unowned remembered-location reply cannot move the camera or become a location', async () => {
     await openFallbackMap();
     cameraAnimateToUserSpy.mockClear();
 
     await act(async () => {
-      useAppStore.setState({ lastKnownLocation: staleRememberedCoordinate, directoryChoice: { purpose: 'start', quick: 'last_known' } });
+      useAppStore.setState({ lastKnownLocation: staleRememberedCoordinate });
+      useAppStore.getState().setDirectoryChoice({ purpose: 'start', quick: 'last_known' } as never);
     });
 
-    expect(cameraAnimateToUserSpy).toHaveBeenCalledWith(staleRememberedCoordinate);
+    expect(cameraAnimateToUserSpy).not.toHaveBeenCalledWith(staleRememberedCoordinate);
     expect(useAppStore.getState().currentLocation).toBeNull();
     expect(useAppStore.getState().directoryChoice).toBeNull();
   });

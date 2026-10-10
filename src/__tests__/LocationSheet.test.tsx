@@ -131,6 +131,7 @@ let onCloseSpy: jest.Mock;
 beforeEach(() => {
   jest.clearAllMocks();
   onCloseSpy = jest.fn();
+  useAppStore.getState().setRoutePlannerDest(destination);
   mockedSearchServiceSearch.mockReturnValue([]);
   mockedUseReducedMotion.mockReturnValue(false);
 });
@@ -195,7 +196,8 @@ describe('LocationSheet (routePreview) — start option selection', () => {
     );
 
     await act(async () => {
-      useAppStore.getState().setDirectoryChoice({ purpose: 'start', quick: 'current_location' });
+      useAppStore.getState().setDirectoryPurpose('start');
+      useAppStore.getState().setDirectoryChoice({ purpose: 'start', quick: 'current_location', request: useAppStore.getState().directoryRequest! });
     });
 
     expect(chooseCurrentLocation).toHaveBeenCalledTimes(1);
@@ -212,7 +214,8 @@ describe('LocationSheet (routePreview) — start option selection', () => {
     );
 
     await act(async () => {
-      useAppStore.getState().setDirectoryChoice({ purpose: 'start', quick: 'last_known' });
+      useAppStore.getState().setDirectoryPurpose('start');
+      useAppStore.getState().setDirectoryChoice({ purpose: 'start', quick: 'last_known', request: useAppStore.getState().directoryRequest! });
     });
 
     expect(chooseRememberedLocation).toHaveBeenCalledTimes(1);
@@ -282,7 +285,8 @@ describe('LocationSheet (routePreview) — start chosen in the Directory', () =>
     );
 
     await act(async () => {
-      useAppStore.getState().setDirectoryChoice({ purpose: 'start', place: candidatePlace });
+      useAppStore.getState().setDirectoryPurpose('start');
+      useAppStore.getState().setDirectoryChoice({ purpose: 'start', place: candidatePlace, request: useAppStore.getState().directoryRequest! });
     });
 
     expect(setManualStartPlace).toHaveBeenCalledWith(candidatePlace);
@@ -331,7 +335,8 @@ describe('LocationSheet (routePreview) — change destination', () => {
     );
 
     await act(async () => {
-      useAppStore.getState().setDirectoryChoice({ purpose: 'destination', place: candidatePlace });
+      useAppStore.getState().setDirectoryPurpose('destination');
+      useAppStore.getState().setDirectoryChoice({ purpose: 'destination', place: candidatePlace, request: useAppStore.getState().directoryRequest! });
     });
 
     expect(onChangeDestination).toHaveBeenCalledWith(candidatePlace);

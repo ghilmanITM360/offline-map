@@ -1264,21 +1264,6 @@ export function HomeScreen() {
     if (selectedPlace) setFallbackNotice(null);
   }, [selectedPlace]);
 
-  // "Change place" on the Block 2 notice opens the Directory in start mode with no route sheet to take the answer.
-  // Without a destination the pick returns like any Directory pick (the place is selected on the Map); the quick
-  // options only move the camera. Nothing here writes a location.
-  const directoryChoice = useAppStore((s) => s.directoryChoice);
-  const setDirectoryChoice = useAppStore((s) => s.setDirectoryChoice);
-  const setPendingDirectorySelection = useAppStore((s) => s.setPendingDirectorySelection);
-  const lastKnownLocation = useAppStore((s) => s.lastKnownLocation);
-  useEffect(() => {
-    if (directoryChoice?.purpose !== 'start' || directionsDestination) return;
-    setDirectoryChoice(null);
-    if ('place' in directoryChoice) setPendingDirectorySelection(directoryChoice.place);
-    else if (directoryChoice.quick === 'current_location') void handleRecenterPress();
-    else if (lastKnownLocation) cameraManager.animateToUser(lastKnownLocation);
-  }, [cameraManager, directionsDestination, directoryChoice, handleRecenterPress, lastKnownLocation, setDirectoryChoice, setPendingDirectorySelection]);
-
   // Full reset to EXPLORE — replaces the two ad hoc `setSelectedPlace(null) +
   // bottomSheetRef.close()` call sites that existed independently before and didn't
   // account for detailsExpanded/arrived/directionsDestination.
@@ -1660,7 +1645,7 @@ export function HomeScreen() {
               >
                 <Text style={styles.mapWarningText}>{fallbackNotice}</Text>
                 <Pressable
-                  onPress={() => handleOpenDirectoryFor('start')}
+                  onPress={() => { setDirectoryPurpose(null); nav.navigate('LocationsDirectory'); }}
                   accessibilityRole="button"
                   accessibilityLabel="Change place"
                   style={styles.fallbackNoticeAction}
