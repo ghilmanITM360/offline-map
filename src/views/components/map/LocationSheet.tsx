@@ -274,6 +274,7 @@ function RoutePreviewSection({
     startRouteGuide,
     upgrade, confirmLiveUpgrade, cancelLiveUpgrade, startUpgradedNavigation,
     locationRecoveryAction, locationAcquiring, runLocationRecovery, cancelLocationRecovery,
+    previewBlock2, confirmBlock2,
   } = useDirectionsViewModel(destination);
   const routeGuide = useAppStore((s) => s.routeGuide);
   // Home can start a preview only once BOTH the route and its destination are in the store (its start handler returns
@@ -305,7 +306,7 @@ function RoutePreviewSection({
   const startIcon =
     startSource === 'remembered_location' || startSource === 'device_last_known' ? (
       <MapPin size={24} color={directionsSheetColors.brand} />
-    ) : startSource === 'manual_place' ? (
+    ) : (startSource === 'manual_place' || startSource === 'hypothetical_place') ? (
       <Navigation size={24} color={directionsSheetColors.brand} />
     ) : (
       <LocateFixed size={24} color={directionsSheetColors.brand} />
@@ -334,10 +335,13 @@ function RoutePreviewSection({
     : null;
 
   const showRouteReady = isJourneyStartable(journeyState) || (journeyState === 'NEEDS_START' && loadState === 'ready' && !!route);
+  const showPreviewRoute = showRouteReady || journeyState === 'HYPOTHETICAL_PREVIEW';
   const showLoading = loadState === 'loading';
   const showError = journeyState === 'ROUTE_FAILURE';
   const showSamePlace = journeyState === 'SAME_PLACE';
   const showNeedsStart = journeyState === 'NEEDS_START' && !showRouteReady;
+  const hypotheticalPreview = startSource === 'hypothetical_place';
+  const hypotheticalReady = hypotheticalPreview && (journeyState === 'HYPOTHETICAL_PREVIEW' || showSamePlace);
   const destinationCannotBeRouted =
     destination.isRoutable === false ||
     (destination.routingStatus !== undefined && destination.routingStatus !== 'routable');
@@ -392,7 +396,7 @@ function RoutePreviewSection({
         outsideRoute?.durationSeconds !== null ? routeEta : null,
         routeDistance,
       ].filter(Boolean).join(', ');
-  const routeSummary = showRouteReady ? (
+  const routeSummary = showPreviewRoute ? (
     <View style={styles.summary} accessible accessibilityLabel={routeSummaryLabel}>
       <Text style={styles.summaryLabel}>{readyHeadline}</Text>
       {directGuide ? (
@@ -424,7 +428,7 @@ function RoutePreviewSection({
       </Text>
     </Pressable>
   ) : null;
-  const footerVisible = (showLoading || showError || showSamePlace || showNeedsStart || showRouteReady) && !(showRouteReady && routeGuide);
+  const footerVisible = (showLoading || showError || showSamePlace || showNeedsStart || showRouteReady || hypotheticalReady) && !(showRouteReady && routeGuide);
   // The caption scrolls with the content: the pinned footer only has room for the route summary,
   // the action and its disabled reason (gorhom's visible area at the 50% snap is small).
 
@@ -480,6 +484,16 @@ function RoutePreviewSection({
 
             {showNeedsStart && <>
               <Button variant="brand" label="Choose start" onPress={handleChangeStart} />
+              {locationRecoveryAction && <Button variant="outline" label={locationAcquiring ? t('recovery.acquiring') : locationRecoveryAction.label}
+                disabled={locationAcquiring} onPress={() => void runLocationRecovery()} />}
+              {locationAcquiring && <Button variant="outline" label={t('recovery.cancel')} onPress={cancelLocationRecovery} />}
+              <Button variant="outline" label={t('block2.preview')} onPress={previewBlock2} disabled={locationAcquiring} />
+            </>}
+
+            {hypotheticalReady && <>
+              {!compactFooter && routeSummary}
+              <Button variant="brand" label={t('block2.confirm')} onPress={confirmBlock2} />
+              <Button variant="outline" label={t('block2.change')} onPress={handleChangeStart} />
               {locationRecoveryAction && <Button variant="outline" label={locationAcquiring ? t('recovery.acquiring') : locationRecoveryAction.label}
                 disabled={locationAcquiring} onPress={() => void runLocationRecovery()} />}
               {locationAcquiring && <Button variant="outline" label={t('recovery.cancel')} onPress={cancelLocationRecovery} />}
@@ -566,7 +580,7 @@ function RoutePreviewSection({
     ? `Next: ${guideStep.text}${guideStep.distanceM > 0 ? ` · ${InstructionService.formatDistance(guideStep.distanceM, distanceUnit)}` : ''}`
     : directGuide
     ? outsideGuideHeadline(guideGateName ?? 'the gate') // never the walking-looking total
-    : showRouteReady
+    : showPreviewRoute
     ? [outsideRoute?.durationSeconds !== null ? routeEta : null, routeDistance].filter(Boolean).join(' · ')
     : showLoading
     ? 'Finding your route…'
@@ -646,6 +660,11 @@ function RoutePreviewSection({
             </Card>
           )}
 
+          {hypotheticalPreview && (
+            <Card variant="neutral" style={styles.statusCard}>
+              <Text style={styles.statusText} accessibilityLiveRegion="polite">{t('block2.notice')}</Text>
+            </Card>
+          )}
           {showNeedsStart && (
             <Card variant="neutral" style={styles.statusCard}>
               <Text style={styles.statusTitle}>Where are you starting from?</Text>
@@ -702,10 +721,10 @@ function RoutePreviewSection({
             </Card>
           )}
 
-          {showRouteReady && (
+          {showPreviewRoute && (
             <View style={styles.readyBody}>
               {compactFooter && routeSummary}
-              {compactFooter && !routeGuide && secondaryLink}
+              {compactFooter && !routeGuide && !hypotheticalPreview && secondaryLink}
               {routeEntrySummary ? <Text style={styles.statusText}>{routeEntrySummary}</Text> : null}
 
               {outsideRoute && (

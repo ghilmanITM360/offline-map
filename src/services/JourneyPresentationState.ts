@@ -20,6 +20,7 @@ export type JourneyPresentationState =
   | 'CALCULATING'
   | 'NEEDS_START'
   | 'LIVE_READY'
+  | 'HYPOTHETICAL_PREVIEW'
   | 'MANUAL_GUIDE_READY'
   | 'OUTSIDE_VENUE_GUIDE'
   | 'ROUTE_FAILURE'
@@ -53,6 +54,7 @@ export function selectJourneyPresentationState(input: JourneyPresentationInput):
     case 'ready':
       // "Ready" without a route is not ready.
       if (!input.route) return 'ROUTE_FAILURE';
+      if (input.startSource === 'hypothetical_place') return 'HYPOTHETICAL_PREVIEW';
       if (input.route.outsideRoute?.provider === 'direct-guide') return 'OUTSIDE_VENUE_GUIDE';
       return input.startSource === 'live_gps'
         ? input.liveReady === true ? 'LIVE_READY' : 'NEEDS_START'
