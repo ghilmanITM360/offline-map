@@ -156,7 +156,8 @@ interface AppState {
   // Start must not publish a preview over the active route, #302; it runs while the sheet unmounts, so no
   // MapMode is available there) and HomeScreen.tsx's activePreviewRoute memo (MapMode
   // itself depends on activePreviewRoute, so that one consumer, structurally, cannot read mode
-  // without a circular dependency). See scripts/test-navigation-architecture-audit.ts Finding 6
+  // without a circular dependency). useManualLiveUpgrade.ts reads it for a synchronous final-command
+  // ownership check, before React effects can retire a candidate; it never derives navigation UI. See scripts/test-navigation-architecture-audit.ts Finding 6
   // for the regression guard enforcing this closed list — add a new direct reader there too.
   isNavigating: boolean;
   navigationSessionId: number;

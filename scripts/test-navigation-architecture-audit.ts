@@ -202,6 +202,7 @@ const base: MapModeInputs = {
     'src/viewmodels/DirectionsViewModel.ts',
     'src/viewmodels/HomeViewModel.ts',
     'src/viewmodels/NavigationViewModelV2.ts',
+    'src/viewmodels/useManualLiveUpgrade.ts',
     'src/views/screens/HomeScreen.tsx',
   ].sort();
 

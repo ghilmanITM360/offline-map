@@ -11,6 +11,7 @@ import { act, render, screen, waitFor, userEvent } from './test-utils';
 import { LocationSheet } from '../views/components/map/LocationSheet';
 import { DirectionsSheetFooter } from '../views/components/map/DirectionsSheetFooter';
 import { V2PlaceAdapter } from '../services/V2PlaceAdapter';
+import { LocationAccessService } from '../services/LocationAccessService';
 import { V2DirectionsService } from '../services/V2DirectionsService';
 import { useAppStore } from '../store/useAppStore';
 
@@ -101,4 +102,57 @@ test.each(['start', 'destination'] as const)('opening rendered %s chooser retire
     await act(async () => release(result));
     expect(useAppStore.getState().isNavigating).toBe(false);
   } finally { calculate.mockRestore(); }
+});
+
+it.each(['cancel', 'start'] as const)('rendered manual upgrade confirms, previews and explicitly handles %s', async action => {
+  const acquire = jest.spyOn(LocationAccessService, 'resolveCurrentLocation').mockResolvedValue({
+    ok: true, source: 'live', coordinate: { ...V2PlaceAdapter.getPlaceById('B27')!.coordinate, accuracy: 5, observedAtMs: Date.now() },
+    permissionState: { granted: true, canAskAgain: true, status: 'granted' as never, precision: 'fine', servicesEnabled: true, servicesState: 'enabled' }, message: null,
+  });
+  try {
+    useAppStore.setState({ directoryChoice: { purpose: 'start', place: start } });
+    await render(<><LocationSheet mode="routePreview" destination={destination} onClose={jest.fn()} />
+      <DirectionsSheetFooter animatedFooterPosition={{ value: 0, get: () => 0 } as never} /></>);
+    const user = userEvent.setup();
+    await user.press(await screen.findByText('Start route'));
+    await act(() => useAppStore.getState().setRouteGuideStep(1));
+    const original = { route: useAppStore.getState().activeRoute, guide: useAppStore.getState().routeGuide };
+    await user.press(screen.getByRole('button', { name: 'Use my location to guide me' }));
+    expect(await screen.findByText('Switch to live navigation?')).toBeOnTheScreen();
+    expect(acquire).not.toHaveBeenCalled();
+    await user.press(screen.getByRole('button', { name: 'Continue with location' }));
+    expect(await screen.findByText('Live route preview')).toBeOnTheScreen();
+    expect(useAppStore.getState().activeRoute).toBe(original.route);
+    expect(useAppStore.getState().routeGuide).toBe(original.guide);
+    expect(useAppStore.getState().isNavigating).toBe(false);
+    await user.press(screen.getByRole('button', { name: action === 'cancel' ? 'Keep route guide' : 'Start live navigation' }));
+    expect(useAppStore.getState().isNavigating).toBe(action === 'start');
+    if (action === 'cancel') {
+      expect(useAppStore.getState().activeRoute).toBe(original.route);
+      expect(useAppStore.getState().routeGuide).toBe(original.guide);
+      expect(useAppStore.getState().routeGuide?.stepIndex).toBe(1);
+    } else expect(useAppStore.getState().routeGuide).toBeNull();
+  } finally { acquire.mockRestore(); }
+});
+
+it('rendered acquisition can cancel while original step remains usable', async () => {
+  let release!: (value: Awaited<ReturnType<typeof LocationAccessService.resolveCurrentLocation>>) => void;
+  const acquire = jest.spyOn(LocationAccessService, 'resolveCurrentLocation').mockImplementation(() => new Promise(resolve => { release = resolve; }));
+  try {
+    useAppStore.setState({ directoryChoice: { purpose: 'start', place: start } });
+    await render(<><LocationSheet mode="routePreview" destination={destination} onClose={jest.fn()} />
+      <DirectionsSheetFooter animatedFooterPosition={{ value: 0, get: () => 0 } as never} /></>);
+    const user = userEvent.setup();
+    await user.press(await screen.findByText('Start route'));
+    const route = useAppStore.getState().activeRoute;
+    const guide = useAppStore.getState().routeGuide;
+    await user.press(screen.getByRole('button', { name: 'Use my location to guide me' }));
+    await user.press(screen.getByRole('button', { name: 'Continue with location' }));
+    expect((await screen.findAllByText('Finding your location…')).length).toBeGreaterThan(0);
+    await user.press(screen.getByRole('button', { name: 'Keep route guide' }));
+    await act(() => release({ ok: false, source: null, coordinate: null, permissionState: { granted: false, canAskAgain: false, status: 'denied' as never, precision: 'none', servicesState: 'disabled', servicesEnabled: false }, message: 'Denied' }));
+    expect(useAppStore.getState().activeRoute).toBe(route);
+    expect(useAppStore.getState().routeGuide).toBe(guide);
+    expect(screen.queryByText('Live route preview')).not.toBeOnTheScreen();
+  } finally { acquire.mockRestore(); }
 });

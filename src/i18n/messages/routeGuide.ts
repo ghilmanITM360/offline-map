@@ -1,12 +1,46 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
-
 import { defineMessages } from '../defineMessages';
 
 export default defineMessages({
-  en: {},
-  'ur-Latn': {},
-  ur: {},
+  'en': {
+    'routeGuide.upgrade.confirm': "Switch to live navigation?",
+    'routeGuide.upgrade.preserved': "Your route guide stays available until live navigation starts.",
+    'routeGuide.upgrade.continue': "Continue with location",
+    'routeGuide.upgrade.acquiring': "Finding your location…",
+    'routeGuide.upgrade.routing': "Preparing live route…",
+    'routeGuide.upgrade.preview': "Live route preview",
+    'routeGuide.upgrade.destination': "From your verified location to {destination}",
+    'routeGuide.upgrade.summary': "{minutes} min · {distance} m",
+    'routeGuide.upgrade.start': "Start live navigation",
+    'routeGuide.upgrade.cancel': "Keep route guide",
+    'routeGuide.upgrade.retry': "Try location again",
+    'routeGuide.upgrade.failed': "Could not start live navigation. Keep following your route guide.",
+  },
+  'ur-Latn': {
+    'routeGuide.upgrade.confirm': "Live rehnumai par jayein?",
+    'routeGuide.upgrade.preserved': "Live rehnumai shuru hone tak aap ki route guide mojood rahegi.",
+    'routeGuide.upgrade.continue': "Location ke saath jari rakhein",
+    'routeGuide.upgrade.acquiring': "Aap ki location talash ho rahi hai…",
+    'routeGuide.upgrade.routing': "Live rasta tayyar ho raha hai…",
+    'routeGuide.upgrade.preview': "Live raste ka jaiza",
+    'routeGuide.upgrade.destination': "Aap ki tasdeeq shuda location se {destination} tak",
+    'routeGuide.upgrade.summary': "{minutes} minute · {distance} meter",
+    'routeGuide.upgrade.start': "Live rehnumai shuru karein",
+    'routeGuide.upgrade.cancel': "Route guide rakhein",
+    'routeGuide.upgrade.retry': "Location dobara azmayein",
+    'routeGuide.upgrade.failed': "Live rehnumai shuru nahi ho saki. Route guide par chalte rahein.",
+  },
+  'ur': {
+    'routeGuide.upgrade.confirm': "لائیو رہنمائی پر جائیں؟",
+    'routeGuide.upgrade.preserved': "لائیو رہنمائی شروع ہونے تک آپ کی روٹ گائیڈ موجود رہے گی۔",
+    'routeGuide.upgrade.continue': "لوکیشن کے ساتھ جاری رکھیں",
+    'routeGuide.upgrade.acquiring': "آپ کی لوکیشن تلاش ہو رہی ہے…",
+    'routeGuide.upgrade.routing': "لائیو راستہ تیار ہو رہا ہے…",
+    'routeGuide.upgrade.preview': "لائیو راستے کا جائزہ",
+    'routeGuide.upgrade.destination': "آپ کی تصدیق شدہ لوکیشن سے {destination} تک",
+    'routeGuide.upgrade.summary': "{minutes} منٹ · {distance} میٹر",
+    'routeGuide.upgrade.start': "لائیو رہنمائی شروع کریں",
+    'routeGuide.upgrade.cancel': "روٹ گائیڈ رکھیں",
+    'routeGuide.upgrade.retry': "لوکیشن دوبارہ آزمائیں",
+    'routeGuide.upgrade.failed': "لائیو رہنمائی شروع نہیں ہو سکی۔ روٹ گائیڈ پر چلتے رہیں۔",
+  },
 });

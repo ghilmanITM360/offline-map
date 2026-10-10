@@ -24,6 +24,7 @@ import {
   type V2DirectionsPreviewResult,
 } from '../services/V2DirectionsService';
 import { V2NavigationAdapter } from '../services/V2NavigationAdapter';
+import { useManualLiveUpgrade } from './useManualLiveUpgrade';
 import { startPreviewNavigationV2 } from './NavigationViewModelV2';
 import type { RoutePreviewV2 } from '../services/RoutingServiceV2';
 import { EntryGateRoutingService } from '../services/EntryGateRoutingService';
@@ -522,7 +523,7 @@ export function useDirectionsViewModel(destination: Place | null) {
       setLoadState('error');
       setErrorMessage(ROUTE_NOT_FOUND);
     }
-  }, [destination, destinationIntentId, isV2Destination, lastKnownLocation, manualGateId, manualStart, routeOriginLocation?.latitude, routeOriginLocation?.longitude, setActiveRoute, setRouteAlternatives, setRouteInstructions, setSelectedRouteIndex, settings.walkingSpeed, startSource]);
+  }, [destination, destinationIntentId, isV2Destination, startSource === 'remembered_location' ? lastKnownLocation : null, manualGateId, manualStart, routeOriginLocation?.latitude, routeOriginLocation?.longitude, setActiveRoute, setRouteAlternatives, setRouteInstructions, setSelectedRouteIndex, settings.walkingSpeed, startSource]);
 
   useEffect(() => {
     void calculateRoute();
@@ -631,16 +632,20 @@ export function useDirectionsViewModel(destination: Place | null) {
 
   const selectManualGate = (gateId: string) => {
     if (manualGateId === gateId || !manualGateOptions.some((gate) => gate.gateId === gateId)) return;
+    manualLiveUpgrade.cancelLiveUpgrade();
     invalidateJourneyWork();
     setManualGateId(gateId);
   };
 
-  const clearManualGateSelection = () => { if (manualGateId === null) return; invalidateJourneyWork(); setManualGateId(null); };
+  const clearManualGateSelection = () => { if (manualGateId === null) return; manualLiveUpgrade.cancelLiveUpgrade(); invalidateJourneyWork(); setManualGateId(null); };
+
+  const manualLiveUpgrade = useManualLiveUpgrade(destination, route, manualStart, manualGateId);
 
   /** Acquisition replaces the origin and previews the new route. Only another explicit Start may activate it. */
   const runStartAction = async (startNow: () => void) => {
     retireAutomaticIntent();
     const state = useAppStore.getState();
+    if (state.routeGuide && manualStart) { manualLiveUpgrade.requestLiveUpgrade(); return; }
     if (startAction.kind === 'start') {
       const capability = evaluateLocationCapability({
         permission: { granted: state.hasLocationPermission, canAskAgain: false, precision: state.locationPermissionPrecision, servicesState: state.locationServicesState },
@@ -712,6 +717,7 @@ export function useDirectionsViewModel(destination: Place | null) {
   };
 
   return {
+    ...manualLiveUpgrade,
     route,
     alternatives,
     selectedIndex,
