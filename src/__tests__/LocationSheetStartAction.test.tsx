@@ -79,7 +79,7 @@ describe('Route-ready start action (no dead Start button)', () => {
     expect(screen.getByRole('button', { name: 'Turn on location & start' })).toBeEnabled();
   });
 
-  test('live start with a fresh fix: "Ready to go" with a plain Start Navigation that begins navigation and closes the sheet', async () => {
+  test('live start with a fresh fix: "Ready to go" with a plain Start Navigation that requests navigation without dismissing setup itself', async () => {
     runStartAction.mockImplementation((startNow: () => void) => startNow());
     mockedVm.mockReturnValue(vm({ kind: 'start', primaryLabel: 'Start Navigation', title: 'Ready to go' }, { canStartNavigation: true, startNavigationDisabledReason: '' }));
     const user = userEvent.setup();
@@ -88,7 +88,7 @@ describe('Route-ready start action (no dead Start button)', () => {
     expect(screen.getByText('Ready to go')).toBeOnTheScreen();
     await user.press(screen.getByRole('button', { name: 'Start Navigation' }));
     expect(onStartNavigation).toHaveBeenCalledTimes(1);
-    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(onClose).not.toHaveBeenCalled();
   });
 
   test('a failed attempt shows one short recovery sentence and keeps the action available', async () => {

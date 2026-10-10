@@ -533,7 +533,7 @@ describe('LocationSheet (routePreview) — route ready CTA', () => {
     expect(screen.getByText('4 min')).toBeOnTheScreen();
   });
 
-  test('pressing "Start Navigation" invokes onStartNavigation and closes the sheet for a v2 destination', async () => {
+  test('pressing "Start Navigation" invokes onStartNavigation without independently closing setup for a v2 destination', async () => {
     mockedUseDirectionsViewModel.mockReturnValue(
       baseViewModel({
         loadState: 'ready',
@@ -559,7 +559,7 @@ describe('LocationSheet (routePreview) — route ready CTA', () => {
     await user.press(screen.getByText('Start Navigation'));
 
     expect(onStartNavigation).toHaveBeenCalledTimes(1);
-    expect(onCloseSpy).toHaveBeenCalledTimes(1);
+    expect(onCloseSpy).not.toHaveBeenCalled();
   });
 
   test('pressing "Cancel Route" invokes onCancelRoute when provided', async () => {
@@ -593,7 +593,7 @@ describe('LocationSheet (routePreview) — route ready CTA', () => {
   // Regression: a legacy (v1) destination used to have no working navigation entry point at
   // all — the primary button unconditionally closed the sheet. Now that navigation always runs
   // in-place (no separate NavigationScreen), v1 must behave like v2: start, then reveal the map.
-  test('pressing "Start Navigation" starts navigation for a legacy (v1) destination and reveals the map', async () => {
+  test('pressing "Start Navigation" requests navigation for a legacy (v1) destination without independently closing setup', async () => {
     const handleStartNavigation = jest.fn();
     mockedUseDirectionsViewModel.mockReturnValue(
       baseViewModel({
@@ -613,7 +613,7 @@ describe('LocationSheet (routePreview) — route ready CTA', () => {
     await user.press(screen.getByText('Start Navigation'));
 
     expect(handleStartNavigation).toHaveBeenCalledTimes(1);
-    expect(onCloseSpy).toHaveBeenCalledTimes(1);
+    expect(onCloseSpy).not.toHaveBeenCalled();
   });
 
   test('shows an error state with a retry button that invokes calculateRoute', async () => {

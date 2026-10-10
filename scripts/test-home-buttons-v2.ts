@@ -20,7 +20,7 @@ assert(homeScreenSource.includes('Directions'), 'Home selected-place action must
 // LocationSheet's routePreview mode, rendered via HomeScreen's routePreviewSheetDestination —
 // not a separate floating card on HomeScreen itself.
 assert(homeScreenSource.includes('routePreviewSheetDestination'), 'Home must resolve a single route-preview destination feeding LocationSheet routePreview mode.');
-assert(homeScreenSource.includes('onCancelRoute={activePreviewRoute ? handleClearPreviewRoute : undefined}'), 'Home must wire Cancel Route into LocationSheet when a preview exists.');
+assert(homeScreenSource.includes('onCancelRoute={handleClearPreviewRoute}'), 'Home must wire explicit Cancel Route into every Directions context, including unresolved setup.');
 assert(homeScreenSource.includes('onStartNavigation={handleStartPreviewNavigation}'), 'Home must wire Start Navigation into LocationSheet.');
 assert(locationSheetSource.includes('Cancel Route'), 'LocationSheet routePreview mode must expose Cancel Route button when preview exists.');
 assert(locationSheetSource.includes('Start Navigation'), 'LocationSheet routePreview mode must expose Start Navigation button when preview exists.');

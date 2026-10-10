@@ -432,7 +432,8 @@ function RoutePreviewSection({
       // v1: starts the in-place NavigationOverlayV1 via the store; no screen navigation either way.
       handleStartNavigation();
     }
-    onClose();
+    // Home replaces setup only after the store confirms actual navigation. A rejected
+    // activation leaves the route and recovery controls visible.
   };
   // A start that waits for a recomputed route must run the handler of the render that holds that route.
   const startNowRef = useRef(startNow);

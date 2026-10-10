@@ -12,6 +12,7 @@ import { NAV_TOUCH_TARGET_HIT_SLOP } from '../views/components/navigation/navOve
 import { NAV_TRANSITION_TIMINGS } from '../constants/navigationTransitions';
 import type { NavigationOverlayV2 } from '../viewmodels/useNavigationOverlayV2';
 import type { V2ActiveRoute } from '../models/types';
+import { useLocaleStore } from '../i18n/localeStore';
 
 jest.useFakeTimers();
 
@@ -592,4 +593,52 @@ describe('NavigationChromeV2 — reduced motion (#100)', () => {
 
     expect(screen.getByText('Finding a new way…')).toBeOnTheScreen();
   });
+});
+
+
+describe('NavigationChromeV2 — complete directions access', () => {
+  test.each([
+    { gpsSignalState: 'GPS_LOST', snappedLocation: null },
+    { reroutePending: true },
+    { instructions: [] },
+  ] as Partial<NavigationOverlayV2>[])('Directions remains reachable during degraded active state %j', async (state) => {
+    const overlay = baseOverlay(state);
+    await render(<NavigationChromeV2 overlay={overlay} hasBaseMap />);
+    const user = userEvent.setup();
+    expect(screen.getByRole('button', { name: 'Directions' })).toBeVisible();
+    await user.press(screen.getByRole('button', { name: 'Directions' }));
+    expect(screen.getByRole('button', { name: 'Close directions' })).toBeOnTheScreen();
+    await user.press(screen.getByRole('button', { name: 'Close directions' }));
+    expect(screen.getByRole('button', { name: 'Directions' })).toBeOnTheScreen();
+    expect(overlay.requestNavigationExit).not.toHaveBeenCalled();
+    expect(overlay.setIsAutoFollowing).not.toHaveBeenCalled();
+  });
+
+  test('expanded directions follow current reroute instructions and highlight the actual active step', async () => {
+    const overlay = baseOverlay();
+    const view = await render(<NavigationChromeV2 overlay={overlay} hasBaseMap />);
+    await userEvent.setup().press(screen.getByRole('button', { name: 'Directions' }));
+    expect(screen.getByText('Head toward Gate 8')).toBeOnTheScreen();
+    const step = { ...route.instructions[0], id: 'replacement', text: 'Walk along Rasta 2' };
+    await view.rerender(<NavigationChromeV2 overlay={baseOverlay({ instructions: [step] })} hasBaseMap />);
+    expect(screen.getByText('Walk along Rasta 2')).toBeOnTheScreen();
+    expect(screen.queryByText('Head toward Gate 8')).not.toBeOnTheScreen();
+  });
+});
+
+
+test('active Directions control updates language while closed and preserves instruction geography in Urdu', async () => {
+  const overlay = baseOverlay();
+  await render(<NavigationChromeV2 overlay={overlay} hasBaseMap />);
+  try {
+    await act(async () => useLocaleStore.setState({ locale: 'ur-Latn' }));
+    expect(screen.getByRole('button', { name: 'Raste ki hidayaat' })).toBeVisible();
+    await act(async () => useLocaleStore.setState({ locale: 'ur' }));
+    await userEvent.setup().press(screen.getByRole('button', { name: 'راستے کی ہدایات' }));
+    expect(screen.getByRole('button', { name: 'ہدایات بند کریں' })).toBeVisible();
+    expect(screen.getByText('Head toward Gate 8')).toBeOnTheScreen();
+    expect(overlay.setIsAutoFollowing).not.toHaveBeenCalled();
+  } finally {
+    await act(async () => useLocaleStore.setState({ locale: 'en' }));
+  }
 });
