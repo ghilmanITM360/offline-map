@@ -1,46 +1,41 @@
 # Project Status
 
-Current snapshot only. This file is replaced on each update, not appended to — history lives in git and the issue tracker, not here.
+Current snapshot. Historical evidence is preserved in [the prior status](history/2026-10-06-project-status.md) and Git history; it does not certify this candidate.
 
-**Last updated:** 2026-10-06
-**Canonical branch:** `integration/ijtema-clean-baseline`
-**Verified code baseline:** `6494092` (merge of PR #324), the last commit that changed source. Commits that only change documentation are not re-measured; anything that changes source or `android/` requires re-running the baseline below.
-**Current milestone:** **Android APK Acceptance** — a fully tested, stable Android APK. Store/Play publishing, production signing and legal/store submission are out of this milestone (see `KNOWN_LIMITATIONS_AND_OWNER_ACTIONS.md`).
+**Updated:** 2026-10-11. **Canonical:** `integration/ijtema-clean-baseline`. **Verified source:** `c833814dec839f1cca249c25f760c232cd351b3d`, integrated as `b36e1e4ba7eebacf89f6db4bccb237014da95ce3` through #369, with identical trees.
 
-## Where the product is
+**Current milestone: Phase A software stabilization — INCOMPLETE.** SDK extraction and Muslim Ummah development remain gated until software fixes, validation, relevant-branch reconciliation and safe single-checkout consolidation finish. Production/native/field acceptance has not been established.
 
-- The map is fully offline (bundled, hash-verified PMTiles basemap; ADR 0001). Core navigation needs no network and no Google key.
-- Launch is Splash -> Welcome (first time only) -> Directory. Location is never a launch gate. The Directory is the one place chooser; a tap means "take me here" (live navigation, Route Guide, or a contextual "Where are you starting from?").
-- Route Guide (manual FROM + TO, no location needed) and Live Navigation (fresh, precise fix) are separate modes; the app never fakes a position. Behaviour: [`PRODUCT_AND_USER_FLOWS.md`](PRODUCT_AND_USER_FLOWS.md). Data kept across launches: [`DATA_RETENTION.md`](DATA_RETENTION.md). Basemap: [`OFFLINE_BASEMAP.md`](OFFLINE_BASEMAP.md).
-- Journey-flow finalization (#307) merged as PRs #308–#324.
+## Integrated continuation work
 
-## Test baseline (SOURCE/RUNTIME VERIFIED on `6494092` plus the cleanup PR that carries this file, 2026-10-06)
+PRs #357–366 preserve GPS quality, journey identity, activation/cancellation, destination-first Map setup, Directions PEEK/reopen, fresh-GPS automatic activation, explicit manual upgrades, permission recovery, generation-bound Directory choices/browsing restoration and hypothetical Block 2. This campaign additionally integrated:
 
-- `npm run typecheck` — clean
-- `npm run lint` — 0 errors, 1 warning (unused `eslint-disable` in the generated `markerImages.generated.ts`)
-- `npm run test:components` (Jest, `--runInBand`) — **130 suites / 1216 tests, all passing**
-- `npm test` — passes (106 script steps)
-- `git diff --check` — clean
+- #367: Directory three-language labels, spoken actions, RTL, localized names and Roman Urdu search aliases.
+- #368: manual Route Guide controls/counts and Directions Back labels/direction.
+- #369: recovered #355 app-shell localization, preserving newer permission safeguards and correcting Help policy. #355 is closed as superseded; original branch/commits remain preserved.
 
-## Evidence levels
+Whole navigation preview/error/instruction/arrival localization and remaining focus/accessibility work are unfinished. Existing catalogs remain the only translation system. Scanner counts are a ratchet, not proof of complete localization.
 
-- **EMULATOR VERIFIED** (API 36, release-like arm64 APK, test-signed, see #135): fresh install -> Welcome -> Directory; no-location Directory -> Block 2 -> start Block 9 -> Route Guide opens at the top detent with step, Previous/Next and the live-guidance link above the navigation bar; live auto-start with an injected fix; arrival -> Done -> Directory; process death -> recovery card; airplane-mode launch.
-- **Not verified on any device:** real TalkBack speech (only the accessibility tree was inspected), RTL, reduced motion, gesture-vs-three-button matrix beyond spot checks, corrupt-basemap recovery on a device (unit-tested only), real GPS, battery/thermal. PHYSICAL DEVICE REQUIRED / FIELD REQUIRED.
+## Executed source checks
 
-## Open issues
+Against the verified source above:
 
-- **#135** — Final Android APK Acceptance (physical-device gate)
-- **#46** — Physical Ijtima walking acceptance test (FIELD REQUIRED); **#43**, **#44** (gate survey), **#116** (Mimbar survey, zero prior data, do not fabricate) — FIELD REQUIRED
-- **#307** — journey-flow finalization tracker; closes after the owner reviews the final APK
-- **#123** — Google walking-routes proxy not deployed (owner); **#161** — provider endpoint joins in journey cost, source/contract evidence only until #123
-- **#117** — retire or reconcile legacy v1 dataset (P2, data)
-- **#134** (future SDK, do not implement), **#136** (crowd-flow, not planned)
-- Trackers: **#63** (Production Readiness), **#122** (Offline-First)
+- `npm run typecheck`: PASS.
+- `npm run lint`: PASS, 0 errors / 1 existing generated markerImages warning.
+- `npm test`: PASS, 106 command headings.
+- `npm run test:components -- --runInBand`: PASS, 157 suites / 1,556 tests, 55.704 s.
+- `git diff --check`: PASS.
+- Four required routing commands: PASS separately; `test:all-gates-v2` reports 16 PASS / 2 field BLOCKED / 0 FAIL. Existing provider fixture warning: 789.1 m sanity cap. Existing act and Node-only hydration warnings remain.
+- [Exact-head CI](https://github.com/ghilmanITM360/offline-map/actions/runs/38129234889): PASS.
 
-## Owner blockers (cannot be closed by an agent)
+[UX evidence matrix](UX_ACCEPTANCE_EVIDENCE.md): 23 automated behavior PASS / 5 NOT VERIFIED. Every row separately marks native/emulator/physical/field acceptance unverified. UX-09 uses guarded automatic activation for a fresh-GPS new destination; manual upgrade still requires confirmation, replacement preview and explicit Start.
 
-Production signing / Play App Signing, store submission and legal copy (Future Deployment); #123 proxy deployment; #136; #133 admin-data questionnaire.
+## Remaining gates
 
-## Testing APK
+- Complete journey localization/accessibility and missing acceptance evidence; retain source/manual/upgrade guards.
+- Finish evidence-based cleanup, current documentation reconciliation and safe branch/worktree consolidation. One active checkout has **not** been achieved. Unknown drafts, ignored files, recovery archives and active processes must be preserved before any removal.
+- Dependency audit: 66 package findings, 13 moderate / 52 high / 1 critical. [Complete package-level triage](DEPENDENCY_SECURITY_STATUS.md) and [#370](https://github.com/ghilmanITM360/offline-map/issues/370) record consumers, exposure and deferrals. Tooling vulnerabilities remain; no zero-vulnerability or release-exception claim for these new findings.
+- Current emulator campaign unavailable: no attached adb device; prior boot attempt was disk-blocked. Native Settings/GPS, audible TalkBack/VoiceOver, Urdu review, actual 320dp/200% rendering, airplane-mode runtime and physical walking remain unverified for this candidate.
+- Gates 18/19 (#43/#44), venue walking (#46), Mimbar ground truth (#116) remain field-required; proxy deployment (#123) remains an owner/external gate. No field issue closes on software tests.
 
-Build evidence for the current test APK (commit, command, size, SHA-256, signing) is recorded on #135 — an APK's checksum cannot be committed into the commit it is built from. The APK is signed with the public Android debug key (`-PallowInsecureReleaseSigning=true`): testing only, never distributable.
+No APK, store/registry publication or production deployment was performed by this campaign. Older APKs and historical emulator claims cannot certify this source revision.

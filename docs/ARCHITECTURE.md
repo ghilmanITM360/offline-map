@@ -6,7 +6,7 @@ MVVM: Views render and forward actions only. ViewModels own route lifecycle, ret
 
 ## v1 / v2 dual system
 
-The codebase permanently carries two parallel implementations, selected by feature flags (`EXPO_PUBLIC_USE_IJTEMA_V2_*`) plus a per-route `sourceVersion` tag:
+The codebase currently carries two version-tagged implementations, selected by feature flags (`EXPO_PUBLIC_USE_IJTEMA_V2_*`) plus a per-route `sourceVersion` tag:
 
 - **v1**: `src/constants/data.ts`, array/lookup-based, coordinates as `{lat, lng}`, routing via `RoutingService` (with its own private `pointInPolygon`). Rollback path only — not the active runtime.
 - **v2**: `src/data/ijtema/*`, graph-based (`graphBuilder.ts`), coordinates as `{latitude, longitude}` at the UI boundary, routing via `RoutingServiceV2` and `OutsideStreetRoutingService`.
