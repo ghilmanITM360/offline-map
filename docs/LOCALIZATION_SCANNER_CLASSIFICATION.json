@@ -1,0 +1,752 @@
+{
+  "measuredCount": 82,
+  "files": 15,
+  "method": "scripts/hardcoded-strings.ts scanAll; every literal classified without exclusions or artificial zero baseline",
+  "findings": [
+    {
+      "file": "src/services/InstructionService.ts",
+      "symbol": "generateInstructions / landmark names",
+      "findingIndex": 0,
+      "literal": "Member Masjid south-west gate",
+      "classification": "USER-VISIBLE",
+      "action": "Resolved at existing locale display boundary; canonical English generated instruction/name remains compatibility data.",
+      "unresolved": false
+    },
+    {
+      "file": "src/services/InstructionService.ts",
+      "symbol": "generateInstructions / landmark names",
+      "findingIndex": 1,
+      "literal": "Member Masjid south-east gate",
+      "classification": "USER-VISIBLE",
+      "action": "Resolved at existing locale display boundary; canonical English generated instruction/name remains compatibility data.",
+      "unresolved": false
+    },
+    {
+      "file": "src/services/InstructionService.ts",
+      "symbol": "generateInstructions / landmark names",
+      "findingIndex": 2,
+      "literal": "Member Masjid north-west gate",
+      "classification": "USER-VISIBLE",
+      "action": "Resolved at existing locale display boundary; canonical English generated instruction/name remains compatibility data.",
+      "unresolved": false
+    },
+    {
+      "file": "src/services/InstructionService.ts",
+      "symbol": "generateInstructions / landmark names",
+      "findingIndex": 3,
+      "literal": "Member Masjid north-east gate",
+      "classification": "USER-VISIBLE",
+      "action": "Resolved at existing locale display boundary; canonical English generated instruction/name remains compatibility data.",
+      "unresolved": false
+    },
+    {
+      "file": "src/services/InstructionService.ts",
+      "symbol": "generateInstructions / landmark names",
+      "findingIndex": 4,
+      "literal": "You have reached .",
+      "classification": "USER-VISIBLE",
+      "action": "Resolved at existing locale display boundary; canonical English generated instruction/name remains compatibility data.",
+      "unresolved": false
+    },
+    {
+      "file": "src/services/InstructionService.ts",
+      "symbol": "generateInstructions / landmark names",
+      "findingIndex": 5,
+      "literal": "the path",
+      "classification": "USER-VISIBLE",
+      "action": "Resolved at existing locale display boundary; canonical English generated instruction/name remains compatibility data.",
+      "unresolved": false
+    },
+    {
+      "file": "src/services/InstructionService.ts",
+      "symbol": "generateInstructions / landmark names",
+      "findingIndex": 6,
+      "literal": "the junction",
+      "classification": "USER-VISIBLE",
+      "action": "Resolved at existing locale display boundary; canonical English generated instruction/name remains compatibility data.",
+      "unresolved": false
+    },
+    {
+      "file": "src/services/PlaceDetailService.ts",
+      "symbol": "getBlockGates",
+      "findingIndex": 0,
+      "literal": "North Entrance",
+      "classification": "USER-VISIBLE",
+      "action": "Resolved at existing locale display boundary; canonical English generated instruction/name remains compatibility data.",
+      "unresolved": false
+    },
+    {
+      "file": "src/services/PlaceDetailService.ts",
+      "symbol": "getBlockGates",
+      "findingIndex": 1,
+      "literal": "South Entrance",
+      "classification": "USER-VISIBLE",
+      "action": "Resolved at existing locale display boundary; canonical English generated instruction/name remains compatibility data.",
+      "unresolved": false
+    },
+    {
+      "file": "src/services/PlaceDetailService.ts",
+      "symbol": "getBlockGates",
+      "findingIndex": 2,
+      "literal": "East Entrance",
+      "classification": "USER-VISIBLE",
+      "action": "Resolved at existing locale display boundary; canonical English generated instruction/name remains compatibility data.",
+      "unresolved": false
+    },
+    {
+      "file": "src/services/PlaceDetailService.ts",
+      "symbol": "getBlockGates",
+      "findingIndex": 3,
+      "literal": "West Entrance",
+      "classification": "USER-VISIBLE",
+      "action": "Resolved at existing locale display boundary; canonical English generated instruction/name remains compatibility data.",
+      "unresolved": false
+    },
+    {
+      "file": "src/services/PublicDestinationsService.ts",
+      "symbol": "category metadata",
+      "findingIndex": 0,
+      "literal": "Blocks",
+      "classification": "PROTOCOL/IDENTIFIER",
+      "action": "Keep search aliases or unused category metadata; Directory labels render categoryLabel by stable category ID.",
+      "unresolved": false
+    },
+    {
+      "file": "src/services/PublicDestinationsService.ts",
+      "symbol": "category metadata",
+      "findingIndex": 1,
+      "literal": "Gates",
+      "classification": "PROTOCOL/IDENTIFIER",
+      "action": "Keep search aliases or unused category metadata; Directory labels render categoryLabel by stable category ID.",
+      "unresolved": false
+    },
+    {
+      "file": "src/services/PublicDestinationsService.ts",
+      "symbol": "category metadata",
+      "findingIndex": 2,
+      "literal": "Rastas",
+      "classification": "PROTOCOL/IDENTIFIER",
+      "action": "Keep search aliases or unused category metadata; Directory labels render categoryLabel by stable category ID.",
+      "unresolved": false
+    },
+    {
+      "file": "src/services/PublicDestinationsService.ts",
+      "symbol": "category metadata",
+      "findingIndex": 3,
+      "literal": "Shahr-e-Pindal",
+      "classification": "PROTOCOL/IDENTIFIER",
+      "action": "Keep search aliases or unused category metadata; Directory labels render categoryLabel by stable category ID.",
+      "unresolved": false
+    },
+    {
+      "file": "src/services/RoutingService.ts",
+      "symbol": "calculateRoutes",
+      "findingIndex": 0,
+      "literal": "Fastest",
+      "classification": "TECHNICAL INTERNAL",
+      "action": "Legacy alternative labels retained; current journey selects geometry, no alternative-label rendering consumer.",
+      "unresolved": false
+    },
+    {
+      "file": "src/services/RoutingService.ts",
+      "symbol": "calculateRoutes",
+      "findingIndex": 1,
+      "literal": "Shortest",
+      "classification": "TECHNICAL INTERNAL",
+      "action": "Legacy alternative labels retained; current journey selects geometry, no alternative-label rendering consumer.",
+      "unresolved": false
+    },
+    {
+      "file": "src/services/RoutingService.ts",
+      "symbol": "calculateRoutes",
+      "findingIndex": 2,
+      "literal": "Alternative",
+      "classification": "TECHNICAL INTERNAL",
+      "action": "Legacy alternative labels retained; current journey selects geometry, no alternative-label rendering consumer.",
+      "unresolved": false
+    },
+    {
+      "file": "src/services/RoutingServiceV2.ts",
+      "symbol": "instructionTextForEdge / start resolution / build instructions",
+      "findingIndex": 0,
+      "literal": "the route",
+      "classification": "USER-VISIBLE",
+      "action": "Resolved at existing locale display boundary; canonical English generated instruction/name remains compatibility data.",
+      "unresolved": false
+    },
+    {
+      "file": "src/services/RoutingServiceV2.ts",
+      "symbol": "instructionTextForEdge / start resolution / build instructions",
+      "findingIndex": 1,
+      "literal": "central junction",
+      "classification": "USER-VISIBLE",
+      "action": "Resolved at existing locale display boundary; canonical English generated instruction/name remains compatibility data.",
+      "unresolved": false
+    },
+    {
+      "file": "src/services/RoutingServiceV2.ts",
+      "symbol": "instructionTextForEdge / start resolution / build instructions",
+      "findingIndex": 2,
+      "literal": "Continue from",
+      "classification": "USER-VISIBLE",
+      "action": "Resolved at existing locale display boundary; canonical English generated instruction/name remains compatibility data.",
+      "unresolved": false
+    },
+    {
+      "file": "src/services/RoutingServiceV2.ts",
+      "symbol": "instructionTextForEdge / start resolution / build instructions",
+      "findingIndex": 3,
+      "literal": "Continue to",
+      "classification": "USER-VISIBLE",
+      "action": "Resolved at existing locale display boundary; canonical English generated instruction/name remains compatibility data.",
+      "unresolved": false
+    },
+    {
+      "file": "src/services/RoutingServiceV2.ts",
+      "symbol": "instructionTextForEdge / start resolution / build instructions",
+      "findingIndex": 4,
+      "literal": "Keep walking",
+      "classification": "USER-VISIBLE",
+      "action": "Resolved at existing locale display boundary; canonical English generated instruction/name remains compatibility data.",
+      "unresolved": false
+    },
+    {
+      "file": "src/services/RoutingServiceV2.ts",
+      "symbol": "instructionTextForEdge / start resolution / build instructions",
+      "findingIndex": 5,
+      "literal": "Continue through the junction",
+      "classification": "USER-VISIBLE",
+      "action": "Resolved at existing locale display boundary; canonical English generated instruction/name remains compatibility data.",
+      "unresolved": false
+    },
+    {
+      "file": "src/services/RoutingServiceV2.ts",
+      "symbol": "instructionTextForEdge / start resolution / build instructions",
+      "findingIndex": 6,
+      "literal": "Continue on",
+      "classification": "USER-VISIBLE",
+      "action": "Resolved at existing locale display boundary; canonical English generated instruction/name remains compatibility data.",
+      "unresolved": false
+    },
+    {
+      "file": "src/services/RoutingServiceV2.ts",
+      "symbol": "instructionTextForEdge / start resolution / build instructions",
+      "findingIndex": 7,
+      "literal": "Start from .",
+      "classification": "USER-VISIBLE",
+      "action": "Resolved at existing locale display boundary; canonical English generated instruction/name remains compatibility data.",
+      "unresolved": false
+    },
+    {
+      "file": "src/services/RoutingServiceV2.ts",
+      "symbol": "instructionTextForEdge / start resolution / build instructions",
+      "findingIndex": 8,
+      "literal": "for meters.",
+      "classification": "USER-VISIBLE",
+      "action": "Resolved at existing locale display boundary; canonical English generated instruction/name remains compatibility data.",
+      "unresolved": false
+    },
+    {
+      "file": "src/services/RoutingServiceV2.ts",
+      "symbol": "instructionTextForEdge / start resolution / build instructions",
+      "findingIndex": 9,
+      "literal": "You have reached .",
+      "classification": "USER-VISIBLE",
+      "action": "Resolved at existing locale display boundary; canonical English generated instruction/name remains compatibility data.",
+      "unresolved": false
+    },
+    {
+      "file": "src/services/RoutingServiceV2.ts",
+      "symbol": "instructionTextForEdge / start resolution / build instructions",
+      "findingIndex": 10,
+      "literal": "Official entry gate",
+      "classification": "TECHNICAL INTERNAL",
+      "action": "Canonical route-start metadata; current journey UI renders localized start-source context, not raw route label.",
+      "unresolved": false
+    },
+    {
+      "file": "src/services/RoutingServiceV2.ts",
+      "symbol": "instructionTextForEdge / start resolution / build instructions",
+      "findingIndex": 11,
+      "literal": "Current location",
+      "classification": "TECHNICAL INTERNAL",
+      "action": "Canonical route-start metadata; current journey UI renders localized start-source context, not raw route label.",
+      "unresolved": false
+    },
+    {
+      "file": "src/services/RoutingServiceV2.ts",
+      "symbol": "instructionTextForEdge / start resolution / build instructions",
+      "findingIndex": 12,
+      "literal": "Enter through .",
+      "classification": "USER-VISIBLE",
+      "action": "Resolved at existing locale display boundary; canonical English generated instruction/name remains compatibility data.",
+      "unresolved": false
+    },
+    {
+      "file": "src/services/RoutingServiceV2.ts",
+      "symbol": "instructionTextForEdge / start resolution / build instructions",
+      "findingIndex": 13,
+      "literal": "Walk meters to enter through .",
+      "classification": "USER-VISIBLE",
+      "action": "Resolved at existing locale display boundary; canonical English generated instruction/name remains compatibility data.",
+      "unresolved": false
+    },
+    {
+      "file": "src/services/SearchService.ts",
+      "symbol": "category metadata / lexical aliases",
+      "findingIndex": 0,
+      "literal": "All",
+      "classification": "PROTOCOL/IDENTIFIER",
+      "action": "Keep search aliases or unused category metadata; Directory labels render categoryLabel by stable category ID.",
+      "unresolved": false
+    },
+    {
+      "file": "src/services/SearchService.ts",
+      "symbol": "category metadata / lexical aliases",
+      "findingIndex": 1,
+      "literal": "Blocks",
+      "classification": "PROTOCOL/IDENTIFIER",
+      "action": "Keep search aliases or unused category metadata; Directory labels render categoryLabel by stable category ID.",
+      "unresolved": false
+    },
+    {
+      "file": "src/services/SearchService.ts",
+      "symbol": "category metadata / lexical aliases",
+      "findingIndex": 2,
+      "literal": "Rastas",
+      "classification": "PROTOCOL/IDENTIFIER",
+      "action": "Keep search aliases or unused category metadata; Directory labels render categoryLabel by stable category ID.",
+      "unresolved": false
+    },
+    {
+      "file": "src/services/SearchService.ts",
+      "symbol": "category metadata / lexical aliases",
+      "findingIndex": 3,
+      "literal": "Gates",
+      "classification": "PROTOCOL/IDENTIFIER",
+      "action": "Keep search aliases or unused category metadata; Directory labels render categoryLabel by stable category ID.",
+      "unresolved": false
+    },
+    {
+      "file": "src/services/SearchService.ts",
+      "symbol": "category metadata / lexical aliases",
+      "findingIndex": 4,
+      "literal": "Pindal",
+      "classification": "PROTOCOL/IDENTIFIER",
+      "action": "Keep search aliases or unused category metadata; Directory labels render categoryLabel by stable category ID.",
+      "unresolved": false
+    },
+    {
+      "file": "src/services/SearchService.ts",
+      "symbol": "category metadata / lexical aliases",
+      "findingIndex": 5,
+      "literal": "Masjids",
+      "classification": "PROTOCOL/IDENTIFIER",
+      "action": "Keep search aliases or unused category metadata; Directory labels render categoryLabel by stable category ID.",
+      "unresolved": false
+    },
+    {
+      "file": "src/services/SearchService.ts",
+      "symbol": "category metadata / lexical aliases",
+      "findingIndex": 6,
+      "literal": "Terminals",
+      "classification": "PROTOCOL/IDENTIFIER",
+      "action": "Keep search aliases or unused category metadata; Directory labels render categoryLabel by stable category ID.",
+      "unresolved": false
+    },
+    {
+      "file": "src/services/SearchService.ts",
+      "symbol": "category metadata / lexical aliases",
+      "findingIndex": 7,
+      "literal": "Help",
+      "classification": "PROTOCOL/IDENTIFIER",
+      "action": "Keep search aliases or unused category metadata; Directory labels render categoryLabel by stable category ID.",
+      "unresolved": false
+    },
+    {
+      "file": "src/services/SearchService.ts",
+      "symbol": "category metadata / lexical aliases",
+      "findingIndex": 8,
+      "literal": "first aid",
+      "classification": "PROTOCOL/IDENTIFIER",
+      "action": "Keep search aliases or unused category metadata; Directory labels render categoryLabel by stable category ID.",
+      "unresolved": false
+    },
+    {
+      "file": "src/services/SearchService.ts",
+      "symbol": "category metadata / lexical aliases",
+      "findingIndex": 9,
+      "literal": "masjid gate",
+      "classification": "PROTOCOL/IDENTIFIER",
+      "action": "Keep search aliases or unused category metadata; Directory labels render categoryLabel by stable category ID.",
+      "unresolved": false
+    },
+    {
+      "file": "src/services/StreetInstructionService.ts",
+      "symbol": "generateInstructions",
+      "findingIndex": 0,
+      "literal": "Continue straight",
+      "classification": "USER-VISIBLE",
+      "action": "Resolved at existing locale display boundary; canonical English generated instruction/name remains compatibility data.",
+      "unresolved": false
+    },
+    {
+      "file": "src/services/V2DirectionsService.ts",
+      "symbol": "composeOutsideInstructions",
+      "findingIndex": 0,
+      "literal": "Walk toward .",
+      "classification": "USER-VISIBLE",
+      "action": "Resolved at existing locale display boundary; canonical English generated instruction/name remains compatibility data.",
+      "unresolved": false
+    },
+    {
+      "file": "src/utils/placeShare.ts",
+      "symbol": "DEFAULT_SHARE_PREFIX",
+      "findingIndex": 0,
+      "literal": "Karachi Ijtema",
+      "classification": "TECHNICAL INTERNAL",
+      "action": "Compatibility default export; actual share title/prefix resolved at call time through catalogs.",
+      "unresolved": false
+    },
+    {
+      "file": "src/viewmodels/NavigationViewModel.ts",
+      "symbol": "GPS_STALE_MESSAGE",
+      "findingIndex": 0,
+      "literal": "Finding your location…",
+      "classification": "TECHNICAL INTERNAL",
+      "action": "Canonical English comparison sentinel; visible status resolves typed key in current locale.",
+      "unresolved": false
+    },
+    {
+      "file": "src/views/components/common/SearchBarField.tsx",
+      "symbol": "SearchBarField",
+      "findingIndex": 0,
+      "literal": "transparent",
+      "classification": "FALSE POSITIVE",
+      "action": "Keep native style, accessibility enum or component variant literal.",
+      "unresolved": false
+    },
+    {
+      "file": "src/views/components/map/LocationSheet.tsx",
+      "symbol": "LocationSheet",
+      "findingIndex": 0,
+      "literal": "padding",
+      "classification": "FALSE POSITIVE",
+      "action": "Keep native style, accessibility enum or component variant literal.",
+      "unresolved": false
+    },
+    {
+      "file": "src/views/components/map/LocationSheet.tsx",
+      "symbol": "LocationSheet",
+      "findingIndex": 1,
+      "literal": "warning",
+      "classification": "FALSE POSITIVE",
+      "action": "Keep native style, accessibility enum or component variant literal.",
+      "unresolved": false
+    },
+    {
+      "file": "src/views/components/map/LocationSheet.tsx",
+      "symbol": "LocationSheet",
+      "findingIndex": 2,
+      "literal": "neutral",
+      "classification": "FALSE POSITIVE",
+      "action": "Keep native style, accessibility enum or component variant literal.",
+      "unresolved": false
+    },
+    {
+      "file": "src/views/components/map/LocationSheet.tsx",
+      "symbol": "LocationSheet",
+      "findingIndex": 3,
+      "literal": "outline",
+      "classification": "FALSE POSITIVE",
+      "action": "Keep native style, accessibility enum or component variant literal.",
+      "unresolved": false
+    },
+    {
+      "file": "src/views/components/map/LocationSheet.tsx",
+      "symbol": "LocationSheet",
+      "findingIndex": 4,
+      "literal": "brandTint",
+      "classification": "FALSE POSITIVE",
+      "action": "Keep native style, accessibility enum or component variant literal.",
+      "unresolved": false
+    },
+    {
+      "file": "src/views/components/map/LocationSheet.tsx",
+      "symbol": "LocationSheet",
+      "findingIndex": 5,
+      "literal": "brandTint",
+      "classification": "FALSE POSITIVE",
+      "action": "Keep native style, accessibility enum or component variant literal.",
+      "unresolved": false
+    },
+    {
+      "file": "src/views/components/map/LocationSheet.tsx",
+      "symbol": "LocationSheet",
+      "findingIndex": 6,
+      "literal": "outline",
+      "classification": "FALSE POSITIVE",
+      "action": "Keep native style, accessibility enum or component variant literal.",
+      "unresolved": false
+    },
+    {
+      "file": "src/views/components/map/LocationSheet.tsx",
+      "symbol": "LocationSheet",
+      "findingIndex": 7,
+      "literal": "Member Masjid Gate",
+      "classification": "PROTOCOL/IDENTIFIER",
+      "action": "Canonical name matching before localizeVenueName; never rendered raw.",
+      "unresolved": false
+    },
+    {
+      "file": "src/views/components/map/LocationSheet.tsx",
+      "symbol": "LocationSheet",
+      "findingIndex": 8,
+      "literal": "none",
+      "classification": "FALSE POSITIVE",
+      "action": "Keep native style, accessibility enum or component variant literal.",
+      "unresolved": false
+    },
+    {
+      "file": "src/views/components/map/OsmAttribution.tsx",
+      "symbol": "OsmAttribution",
+      "findingIndex": 0,
+      "literal": "© OpenStreetMap contributors · ODbL",
+      "classification": "TECHNICAL INTERNAL",
+      "action": "Intentional legal attribution credit preserving OpenStreetMap/ODbL names; accessibility label localized.",
+      "unresolved": false
+    },
+    {
+      "file": "src/views/components/navigation/NavigationChromeV2.tsx",
+      "symbol": "NavigationChromeV2",
+      "findingIndex": 0,
+      "literal": "secondary",
+      "classification": "FALSE POSITIVE",
+      "action": "Keep native style, accessibility enum or component variant literal.",
+      "unresolved": false
+    },
+    {
+      "file": "src/views/components/navigation/NavigationChromeV2.tsx",
+      "symbol": "NavigationChromeV2",
+      "findingIndex": 1,
+      "literal": "outline",
+      "classification": "FALSE POSITIVE",
+      "action": "Keep native style, accessibility enum or component variant literal.",
+      "unresolved": false
+    },
+    {
+      "file": "src/views/screens/HomeScreen.tsx",
+      "symbol": "HomeScreen",
+      "findingIndex": 0,
+      "literal": "padding",
+      "classification": "FALSE POSITIVE",
+      "action": "Keep native style, accessibility enum or component variant literal.",
+      "unresolved": false
+    },
+    {
+      "file": "src/views/screens/HomeScreen.tsx",
+      "symbol": "HomeScreen",
+      "findingIndex": 1,
+      "literal": "height",
+      "classification": "FALSE POSITIVE",
+      "action": "Keep native style, accessibility enum or component variant literal.",
+      "unresolved": false
+    },
+    {
+      "file": "src/views/screens/HomeScreen.tsx",
+      "symbol": "HomeScreen",
+      "findingIndex": 2,
+      "literal": "no-hide-descendants",
+      "classification": "FALSE POSITIVE",
+      "action": "Keep native style, accessibility enum or component variant literal.",
+      "unresolved": false
+    },
+    {
+      "file": "src/views/screens/HomeScreen.tsx",
+      "symbol": "HomeScreen",
+      "findingIndex": 3,
+      "literal": "auto",
+      "classification": "FALSE POSITIVE",
+      "action": "Keep native style, accessibility enum or component variant literal.",
+      "unresolved": false
+    },
+    {
+      "file": "src/views/screens/HomeScreen.tsx",
+      "symbol": "HomeScreen",
+      "findingIndex": 4,
+      "literal": "Graph validation: PASS",
+      "classification": "DEBUG/LOGGING",
+      "action": "Developer-mode diagnostics only, not attendee journey.",
+      "unresolved": false
+    },
+    {
+      "file": "src/views/screens/HomeScreen.tsx",
+      "symbol": "HomeScreen",
+      "findingIndex": 5,
+      "literal": "Graph validation: FAIL",
+      "classification": "DEBUG/LOGGING",
+      "action": "Developer-mode diagnostics only, not attendee journey.",
+      "unresolved": false
+    },
+    {
+      "file": "src/views/screens/HomeScreen.tsx",
+      "symbol": "HomeScreen",
+      "findingIndex": 6,
+      "literal": "none",
+      "classification": "FALSE POSITIVE",
+      "action": "Keep native style, accessibility enum or component variant literal.",
+      "unresolved": false
+    },
+    {
+      "file": "src/views/screens/HomeScreen.tsx",
+      "symbol": "HomeScreen",
+      "findingIndex": 7,
+      "literal": "auto",
+      "classification": "FALSE POSITIVE",
+      "action": "Keep native style, accessibility enum or component variant literal.",
+      "unresolved": false
+    },
+    {
+      "file": "src/views/screens/HomeScreen.tsx",
+      "symbol": "HomeScreen",
+      "findingIndex": 8,
+      "literal": "no-hide-descendants",
+      "classification": "FALSE POSITIVE",
+      "action": "Keep native style, accessibility enum or component variant literal.",
+      "unresolved": false
+    },
+    {
+      "file": "src/views/screens/HomeScreen.tsx",
+      "symbol": "HomeScreen",
+      "findingIndex": 9,
+      "literal": "auto",
+      "classification": "FALSE POSITIVE",
+      "action": "Keep native style, accessibility enum or component variant literal.",
+      "unresolved": false
+    },
+    {
+      "file": "src/views/screens/HomeScreen.tsx",
+      "symbol": "HomeScreen",
+      "findingIndex": 10,
+      "literal": "Nodes",
+      "classification": "DEBUG/LOGGING",
+      "action": "Developer-mode diagnostics only, not attendee journey.",
+      "unresolved": false
+    },
+    {
+      "file": "src/views/screens/HomeScreen.tsx",
+      "symbol": "HomeScreen",
+      "findingIndex": 11,
+      "literal": "ON",
+      "classification": "DEBUG/LOGGING",
+      "action": "Developer-mode diagnostics only, not attendee journey.",
+      "unresolved": false
+    },
+    {
+      "file": "src/views/screens/HomeScreen.tsx",
+      "symbol": "HomeScreen",
+      "findingIndex": 12,
+      "literal": "OFF",
+      "classification": "DEBUG/LOGGING",
+      "action": "Developer-mode diagnostics only, not attendee journey.",
+      "unresolved": false
+    },
+    {
+      "file": "src/views/screens/HomeScreen.tsx",
+      "symbol": "HomeScreen",
+      "findingIndex": 13,
+      "literal": "Rasta Names",
+      "classification": "DEBUG/LOGGING",
+      "action": "Developer-mode diagnostics only, not attendee journey.",
+      "unresolved": false
+    },
+    {
+      "file": "src/views/screens/HomeScreen.tsx",
+      "symbol": "HomeScreen",
+      "findingIndex": 14,
+      "literal": "ON",
+      "classification": "DEBUG/LOGGING",
+      "action": "Developer-mode diagnostics only, not attendee journey.",
+      "unresolved": false
+    },
+    {
+      "file": "src/views/screens/HomeScreen.tsx",
+      "symbol": "HomeScreen",
+      "findingIndex": 15,
+      "literal": "OFF",
+      "classification": "DEBUG/LOGGING",
+      "action": "Developer-mode diagnostics only, not attendee journey.",
+      "unresolved": false
+    },
+    {
+      "file": "src/views/screens/HomeScreen.tsx",
+      "symbol": "HomeScreen",
+      "findingIndex": 16,
+      "literal": "Diagnostics",
+      "classification": "DEBUG/LOGGING",
+      "action": "Developer-mode diagnostics only, not attendee journey.",
+      "unresolved": false
+    },
+    {
+      "file": "src/views/screens/HomeScreen.tsx",
+      "symbol": "HomeScreen",
+      "findingIndex": 17,
+      "literal": "ON",
+      "classification": "DEBUG/LOGGING",
+      "action": "Developer-mode diagnostics only, not attendee journey.",
+      "unresolved": false
+    },
+    {
+      "file": "src/views/screens/HomeScreen.tsx",
+      "symbol": "HomeScreen",
+      "findingIndex": 18,
+      "literal": "OFF",
+      "classification": "DEBUG/LOGGING",
+      "action": "Developer-mode diagnostics only, not attendee journey.",
+      "unresolved": false
+    },
+    {
+      "file": "src/views/screens/HomeScreen.tsx",
+      "symbol": "HomeScreen",
+      "findingIndex": 19,
+      "literal": "details",
+      "classification": "FALSE POSITIVE",
+      "action": "Keep native style, accessibility enum or component variant literal.",
+      "unresolved": false
+    },
+    {
+      "file": "src/views/screens/HomeScreen.tsx",
+      "symbol": "HomeScreen",
+      "findingIndex": 20,
+      "literal": "preview",
+      "classification": "FALSE POSITIVE",
+      "action": "Keep native style, accessibility enum or component variant literal.",
+      "unresolved": false
+    },
+    {
+      "file": "src/views/screens/HomeScreen.tsx",
+      "symbol": "HomeScreen",
+      "findingIndex": 21,
+      "literal": "Block 2",
+      "classification": "USER-VISIBLE",
+      "action": "Canonical name passed to localizeVenueName for entrance description; identifier unchanged.",
+      "unresolved": false
+    },
+    {
+      "file": "src/views/screens/HomeScreen.tsx",
+      "symbol": "HomeScreen",
+      "findingIndex": 22,
+      "literal": "Member Masjid",
+      "classification": "USER-VISIBLE",
+      "action": "Canonical name passed to localizeVenueName for entrance description; identifier unchanged.",
+      "unresolved": false
+    }
+  ],
+  "outsideScanner": [
+    {
+      "classification": "PROVIDER-GENERATED",
+      "source": "Google walking proxy maneuver instruction text",
+      "action": "Unknown provider prose retained verbatim when semantic metadata unavailable; no fabricated translation or geometry. Locale projection only for app-generated typed maneuvers. Native language quality remains unverified."
+    }
+  ]
+}

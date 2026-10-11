@@ -4,17 +4,19 @@
  */
 
 import React from 'react';
+import { useI18n } from '../../../i18n';
 import { Linking, Pressable, StyleSheet, Text } from 'react-native';
 
 export const OSM_COPYRIGHT_URL = 'https://www.openstreetmap.org/copyright';
 
 export function OsmAttribution({ visible, top }: { visible: boolean; top: number }) {
+  const { t } = useI18n();
   if (!visible) return null;
   return (
     <Pressable
       testID="osm-attribution"
       accessibilityRole="link"
-      accessibilityLabel="OpenStreetMap contributors and ODbL licence information"
+      accessibilityLabel={t('common.osmLicence')}
       onPress={() => { void Linking.openURL(OSM_COPYRIGHT_URL); }}
       style={[styles.container, { top }]}
     >

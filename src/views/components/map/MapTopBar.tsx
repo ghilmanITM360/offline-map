@@ -1,3 +1,4 @@
+import { useI18n } from '../../../i18n/useI18n';
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -24,19 +25,20 @@ export function MapTopBar({
   onPlaces: () => void;
   onMore: () => void;
 }) {
+  const { t, isRTL } = useI18n();
   const theme = useTheme();
   const BackIcon = backChevron();
   return (
-    <View style={styles.row} pointerEvents="box-none">
+    <View style={[styles.row, { flexDirection: isRTL ? 'row-reverse' : 'row' }]} pointerEvents="box-none">
       <Pressable
         onPress={onPlaces}
         style={[styles.pill, { backgroundColor: theme.searchBar }]}
         accessibilityRole="button"
-        accessibilityLabel="Places"
-        accessibilityHint="Back to the list of places"
+        accessibilityLabel={t('journeyControls.places')}
+        accessibilityHint={t('journeyControls.backPlaces')}
       >
         <BackIcon size={22} color={theme.subtext} />
-        <Text style={[styles.pillText, { color: theme.text }]}>Places</Text>
+        <Text style={[styles.pillText, { color: theme.text }]}>{t('journeyControls.places')}</Text>
       </Pressable>
       {title ? (
         // Orientation for sighted users only: the sheet below already names the place or the route, so a screen
@@ -58,7 +60,7 @@ export function MapTopBar({
         onPress={onMore}
         style={[styles.menu, { backgroundColor: theme.searchBar }]}
         accessibilityRole="button"
-        accessibilityLabel="Open menu"
+        accessibilityLabel={t('journeyControls.menu')}
       >
         <MoreVertical size={24} color={theme.subtext} />
       </Pressable>

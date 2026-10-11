@@ -20,10 +20,12 @@ import places from './places';
 import recovery from './recovery';
 import routeGuide from './routeGuide';
 import settings from './settings';
+import instructions from './instructions';
+import journeyMessages from './journeyMessages';
 
 /** One file per area, so areas can be worked on side by side. Register a new area here. */
 export const MESSAGE_AREAS = {
-  about, arrival, common, directions, directory, drawer, errors, help, map,
+  about, arrival, common, directions, directory, drawer, errors, help, map, instructions, journeyMessages,
   navigation, onboarding, place, places, recovery, routeGuide, settings,
 };
 

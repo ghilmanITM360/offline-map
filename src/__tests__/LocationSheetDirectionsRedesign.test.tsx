@@ -129,7 +129,7 @@ describe('Get Directions redesign — structure and semantics', () => {
     mockedVm.mockReturnValue(vm());
     await renderSheet();
     const scroll = within(screen.getByTestId('sheet-scroll'));
-    expect(scroll.getByRole('header', { name: 'Get Directions' })).toBeOnTheScreen();
+    expect(scroll.getByRole('header', { name: /^Get Directions\. Directions for / })).toBeOnTheScreen();
     expect(scroll.getByRole('button', { name: 'Back' })).toBeOnTheScreen();
   });
 
@@ -152,7 +152,7 @@ describe('Get Directions redesign — structure and semantics', () => {
     mockedVm.mockReturnValue(vm());
     await renderSheet();
 
-    expect(screen.getByRole('header', { name: 'Get Directions' })).toBeOnTheScreen();
+    expect(screen.getByRole('header', { name: /^Get Directions\. Directions for / })).toBeOnTheScreen();
     expect(screen.getByRole('button', { name: /^From .*Change start\.$/ })).toBeOnTheScreen();
     expect(screen.getByRole('button', { name: /^To .*Change destination\.$/ })).toBeOnTheScreen();
     expect(screen.getByText('Plan your walking route inside Ijtema')).toBeOnTheScreen();

@@ -1,6 +1,7 @@
 import { strict as assert } from 'node:assert';
 import { readFileSync } from 'node:fs';
 
+import { translate } from '../src/i18n/translate';
 import { EntryGateRoutingService } from '../src/services/EntryGateRoutingService';
 
 // The banner names the route-consistent recommended gate, but only as a provisional
@@ -19,15 +20,16 @@ assert(
   'Home must compute the outside-venue banner gate through the shared, route-consistent gate selector',
 );
 assert(
-  home.includes('Suggested entry') && home.includes('nearestEntryGate.name.en'),
+  home.includes("t('journeyHome.suggested')") && home.includes('nearestEntryGate.name.en'),
   'Outside-venue banner must name the actual suggested gate in its own text surface',
 );
 assert(
-  home.includes('No gate suggested yet'),
+  home.includes("t('journeyHome.noGate')"),
   'Outside-venue banner must have a sane fallback when no routable gate is found',
 );
 assert(
-  home.includes('Final entry gate is confirmed when route preview is calculated.'),
+  home.includes("t('journeyHome.outsideAnnouncement',") &&
+    translate('en', 'journeyHome.outsideAnnouncement', { gate: 'Gate 12' }).includes('Final entry gate is confirmed when route preview is calculated.'),
   'Outside-venue banner must describe its gate recommendation as provisional',
 );
 assert(
@@ -35,7 +37,7 @@ assert(
   'Outside-venue gate identity must not use single-line tail truncation',
 );
 assert(home.includes('accessibilityRole="button"'), 'Outside-venue close action must expose button role');
-assert(home.includes('Dismiss outside Ijtema entry suggestion'), 'Outside-venue close action must expose meaningful accessibility label');
+assert(home.includes("t('journeyHome.dismissOutside')"), 'Outside-venue close action must expose meaningful accessibility label');
 
 // Compact "floating notification" sizing: smaller than the old 48px two-line card, pill-shaped.
 // Scoped to the banner's own style block — other UI (e.g. accessible touch targets

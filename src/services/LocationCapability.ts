@@ -117,22 +117,22 @@ export function evaluateLocationCapability(input: {
 export function liveBlockerMessage(blocker: LiveBlocker): string {
   switch (blocker) {
     case 'permission_needed':
-      return 'Show me the way as I walk.';
+      return t('capability.permissionNeeded');
     case 'permission_blocked':
-      return 'Location is turned off for this app. Allow it in Settings to follow your walk live.';
+      return t('capability.permissionBlocked');
     case 'precision_unknown':
       return t('directions.precisionUnknown');
     case 'approximate_only':
-      return 'Your phone is sharing only an approximate location. Allow precise location to follow your walk live.';
+      return t('capability.approximateOnly');
     case 'services_off':
-      return 'Location is turned off on this phone. Turn it on to follow your walk live.';
+      return t('capability.servicesOff');
     case 'acquiring':
-      return 'Finding your location…';
+      return t('capability.acquiring');
     case 'no_fix':
-      return "Couldn't find your location yet.";
+      return t('capability.noFix');
     case 'stale_fix':
-      return 'Your location is out of date. Waiting for a new one…';
+      return t('capability.staleFix');
     case 'weak_fix':
-      return 'Your location is not accurate enough yet.';
+      return t('capability.weakFix');
   }
 }

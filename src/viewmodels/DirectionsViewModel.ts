@@ -1,3 +1,6 @@
+import { messages, type MessageKey } from '../i18n/messages';
+import type { TParams } from '../i18n/translate';
+import { localizeVenueName } from '../i18n/venueNames';
 import { PublicDestinationsService } from '../services/PublicDestinationsService';
 import { useI18n } from '../i18n/useI18n';
 /**
@@ -35,7 +38,7 @@ import { getRoutableOfficialGates } from '../data/ijtema/entryPolicy';
 import { createProductionOutsideRouteSource } from '../services/outsideRouting/ProductionOutsideRouteSource';
 import { OutsideRouteRequestCoordinator } from '../services/outsideRouting/OutsideRouteRequestCoordinator';
 import { formatLastKnownAge } from '../utils/formatLastKnownAge';
-import { CHOOSE_DESTINATION, CHOOSE_START, LOCATION_UNAVAILABLE, NAVIGATION_UNAVAILABLE, ROUTE_NOT_FOUND } from '../utils/routeCopy';
+import { CHOOSE_DESTINATION, NAVIGATION_UNAVAILABLE, ROUTE_NOT_FOUND } from '../utils/routeCopy';
 
 const ROUTE_TIMEOUT_MS = 3500;
 const DIRECTIONS_RECALCULATE_ORIGIN_MOVEMENT_M = 20;
@@ -55,7 +58,7 @@ function usableLiveFix(
 }
 
 export function useDirectionsViewModel(destination: Place | null) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const directoryRequestSerial = useAppStore(s => s.directoryRequestSerial);
   const locationCanAskAgain = useAppStore(s => s.locationPermissionCanAskAgain);
   const [locationAcquiring, setLocationAcquiring] = useState(false);
@@ -87,7 +90,16 @@ export function useDirectionsViewModel(destination: Place | null) {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [instructions, setInstructions] = useState<Instruction[]>([]);
   const [loadState, setLoadState] = useState<RouteLoadState>('idle');
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [errorCopy, setErrorCopy] = useState<{ key: MessageKey; params?: TParams } | { text: string } | null>(null);
+  // Service copy is a compatibility boundary; recognize only exact existing catalog entries.
+  // Generated/parameterized errors use typed keys below, rather than storing translated snapshots.
+  const setErrorMessage = useCallback((copy: string | { key: MessageKey; params?: TParams } | null) => {
+    if (typeof copy !== 'string') { setErrorCopy(copy); return; }
+    const key = (Object.keys(messages.en) as MessageKey[]).find(candidate =>
+      Object.values(messages).some(table => table[candidate] === copy));
+    setErrorCopy(key ? { key } : { text: copy });
+  }, []);
+  const errorMessage = errorCopy ? 'key' in errorCopy ? t(errorCopy.key, errorCopy.key === 'directions.usingAge' ? { age: formatLastKnownAge(lastKnownLocationUpdatedAt) } : errorCopy.params ? Object.fromEntries(Object.entries(errorCopy.params).map(([key, value]) => [key, typeof value === 'string' ? localizeVenueName(value, locale) : value])) : undefined) : errorCopy.text : null;
   const [manualStart, setManualStart] = useState<Place | null>(null);
   const [initialLiveFix] = useState(() => usableLiveFix(currentLocation, currentLocationSource));
   const [startSource, setStartSource] = useState<StartSource>(initialLiveFix ? 'live_gps' : 'manual_place');
@@ -241,23 +253,23 @@ export function useDirectionsViewModel(destination: Place | null) {
   const startSourceLabel = startSource === 'hypothetical_place'
     ? t('block2.fromPreview') :
     startSource === 'live_gps'
-      ? (currentLocation ? 'My current location' : 'Choose where to start')
+      ? (currentLocation ? t('directions.current') : t('directions.chooseOrigin'))
       : startSource === 'device_last_known'
-      ? 'Earlier location'
+      ? t('directions.earlier')
       : startSource === 'remembered_location'
-      ? `Earlier location (${rememberedLocationAgeLabel})`
-      : (manualStart?.name ?? 'Choose where to start');
+      ? t('directions.earlierAge', { age: rememberedLocationAgeLabel })
+      : (manualStart ? localizeVenueName(manualStart.name, locale) : t('directions.chooseOrigin'));
   const startSourceSupportingCopy = startSource === 'hypothetical_place'
     ? t('block2.notice') :
     startSource === 'live_gps'
-      ? 'Using your current location.'
+      ? t('directions.usingCurrent')
       : startSource === 'device_last_known'
-      ? "We can't find you right now. Showing where you were earlier."
+      ? t('directions.usingEarlier')
       : startSource === 'remembered_location'
-      ? `Using your location ${rememberedLocationAgeLabel}.`
+      ? t('directions.usingAge', { age: rememberedLocationAgeLabel })
       : manualStart
-      ? `Starting from ${manualStart.name}.`
-      : 'Where are you starting from?';
+      ? t('directions.startingAt', { name: localizeVenueName(manualStart.name, locale) })
+      : t('directions.whereStart');
   const isCurrentLocationStartActive = startSource === 'live_gps';
 
   // A planned/manual start only previews; live guidance needs a fresh precise fix. This turns that rule into
@@ -291,7 +303,7 @@ export function useDirectionsViewModel(destination: Place | null) {
     outsideRequestCoordinatorRef.current.cancelCurrent();
     if (!destination) {
       setLoadState('error');
-      setErrorMessage(CHOOSE_DESTINATION);
+      setErrorMessage(CHOOSE_DESTINATION());
       return;
     }
 
@@ -358,14 +370,14 @@ export function useDirectionsViewModel(destination: Place | null) {
           status: 'unavailable',
           route: null,
           instructions: [],
-          message: ROUTE_NOT_FOUND,
+          message: ROUTE_NOT_FOUND(),
         };
       }
       if (!canCommit() || (requestHandle && !requestHandle.canCommit())) return;
 
       if (preview.status === 'disabled' || !MapFeatureFlagsService.useIjtemaV2Routing()) {
         setLoadState('error');
-        setErrorMessage(NAVIGATION_UNAVAILABLE);
+        setErrorMessage(NAVIGATION_UNAVAILABLE());
         setRouteRefreshing(false);
         if (previousRoute) setLoadState('ready');
         else clearRoute();
@@ -376,7 +388,7 @@ export function useDirectionsViewModel(destination: Place | null) {
       if (preview.status !== 'ready' || !preview.route) {
         // A failed recalculation keeps the route on screen only for the same trip; a different start's route never stays "ready".
         setLoadState('error');
-        setErrorMessage(preview.message || ROUTE_NOT_FOUND);
+        setErrorMessage(preview.messageDescriptor ?? (preview.message || ROUTE_NOT_FOUND()));
         setRouteRefreshing(false);
         if (previousRoute) setLoadState('ready');
         else clearRoute();
@@ -394,7 +406,7 @@ export function useDirectionsViewModel(destination: Place | null) {
       }
 
       const alt: RouteAlternative = {
-        label: 'Walking route',
+        label: t('directions.walkingRoute'),
         labelUr: 'پیدل راستہ',
         route: preview.route,
       };
@@ -439,7 +451,7 @@ export function useDirectionsViewModel(destination: Place | null) {
 
     if (startSource === 'live_gps' && !RoutingService.isInsideVenue(originCoord)) {
       setLoadState('needs_origin');
-      setErrorMessage('Choose a place inside Ijtema to start from.');
+      setErrorMessage({ key: 'directions.insideStart' });
       setRoute(null);
       setAlternatives([]);
       setInstructions([]);
@@ -449,7 +461,7 @@ export function useDirectionsViewModel(destination: Place | null) {
 
     if (startSource !== 'live_gps' && !RoutingService.isInsideVenue(originCoord)) {
       setLoadState('needs_origin');
-      setErrorMessage('Choose a place inside Ijtema to start from.');
+      setErrorMessage({ key: 'directions.insideStart' });
       setRoute(null);
       setAlternatives([]);
       setInstructions([]);
@@ -499,8 +511,8 @@ export function useDirectionsViewModel(destination: Place | null) {
         setLoadState('error');
         setErrorMessage(
           sameOnly
-            ? 'Start and destination are the same. Choose a different start point.'
-            : ROUTE_NOT_FOUND,
+            ? { key: 'directions.differentStart' }
+            : ROUTE_NOT_FOUND(),
         );
         setRoute(null);
         setAlternatives([]);
@@ -512,7 +524,7 @@ export function useDirectionsViewModel(destination: Place | null) {
       const generated = InstructionService.generateInstructions(best.nodes);
       if (generated.length === 0) {
         setLoadState('error');
-        setErrorMessage(ROUTE_NOT_FOUND);
+        setErrorMessage(ROUTE_NOT_FOUND());
         setRoute(null);
         setAlternatives([]);
         setInstructions([]);
@@ -537,11 +549,11 @@ export function useDirectionsViewModel(destination: Place | null) {
       if (!canCommit()) return;
       if ((error as Error).message === 'timeout') {
         setLoadState('error');
-        setErrorMessage('Could not calculate route. Choose a different start point.');
+        setErrorMessage({ key: 'directions.calculationFailed' });
         return;
       }
       setLoadState('error');
-      setErrorMessage(ROUTE_NOT_FOUND);
+      setErrorMessage(ROUTE_NOT_FOUND());
     }
   }, [destination, destinationIntentId, isV2Destination, startSource === 'remembered_location' ? lastKnownLocation : null, manualGateId, manualStart, routeOriginLocation?.latitude, routeOriginLocation?.longitude, setActiveRoute, setRouteAlternatives, setRouteInstructions, setSelectedRouteIndex, settings.walkingSpeed, startSource]);
 
@@ -615,7 +627,7 @@ export function useDirectionsViewModel(destination: Place | null) {
 
       if (!resolved.ok || !resolved.coordinate) {
         // Recovery is presented in context; Settings is opened only by an explicit action.
-        setErrorMessage(resolved.message ?? `${LOCATION_UNAVAILABLE} ${CHOOSE_START}`);
+        setErrorMessage(resolved.message ?? { key: 'directions.locationChoose' });
         if (!manualStart) { setRouteOriginLocation(null); setStartSource('manual_place'); setIsEditingManualStart(true); setLoadState('needs_origin'); }
         return false;
       }
@@ -627,7 +639,7 @@ export function useDirectionsViewModel(destination: Place | null) {
         setStartSource('manual_place');
         setIsEditingManualStart(true);
         setLoadState('needs_origin');
-        setErrorMessage('Choose a place inside Ijtema to start from.');
+        setErrorMessage({ key: 'directions.insideStart' });
         return false;
       }
 
@@ -636,14 +648,14 @@ export function useDirectionsViewModel(destination: Place | null) {
       setManualStart(null);
       setErrorMessage(
         isV2Destination && !EntryGateRoutingService.isInsideIjtemaArea(resolved.coordinate)
-          ? "You're outside Ijtema. We'll guide you to the nearest gate."
+          ? { key: 'directions.outsideGate' }
           : null,
       );
       return true;
     } catch {
       if (!canCommit()) return false;
       if (!manualStart) { setRouteOriginLocation(null); setStartSource('manual_place'); setIsEditingManualStart(true); setLoadState('needs_origin'); }
-      setErrorMessage(`${LOCATION_UNAVAILABLE} ${CHOOSE_START}`);
+      setErrorMessage({ key: 'directions.locationChoose' });
       return false;
     }
   };
@@ -665,7 +677,7 @@ export function useDirectionsViewModel(destination: Place | null) {
       setStartSource('manual_place');
       setIsEditingManualStart(true);
       setLoadState('needs_origin');
-      setErrorMessage(`We don't have a saved location. ${CHOOSE_START}`);
+      setErrorMessage({ key: 'directions.noSaved' });
       return false;
     }
 
@@ -675,8 +687,8 @@ export function useDirectionsViewModel(destination: Place | null) {
     setManualStart(null);
     setErrorMessage(
       isInsideVenueForDestination(lastKnownLocation)
-        ? `Using your location ${formatLastKnownAge(lastKnownLocationUpdatedAt)}.`
-        : "You are outside Ijtema. We'll enter through nearest official gate.",
+        ? { key: 'directions.usingAge', params: { age: formatLastKnownAge(lastKnownLocationUpdatedAt) } }
+        : { key: 'directions.outsideGate' },
     );
     return true;
   };
@@ -790,16 +802,16 @@ export function useDirectionsViewModel(destination: Place | null) {
     if (!mountedRef.current || renderGeneration !== journeyGenerationRef.current || hypotheticalSelectionRef.current ||
       startSource === 'hypothetical_place' || !startable || !destination || !route || state.directoryPurpose ||
       state.activeRoute !== route || state.routePlannerDest?.id !== destination.id) return;
-    let steps: { text: string; distanceM: number }[];
+    let steps: import('../store/useAppStore').RouteGuideStep[];
     try {
       steps = V2NavigationAdapter.fromPreview({
         previewRoute: route as unknown as RoutePreviewV2,
         destination,
         startPlace: manualStart,
         currentLocation: null,
-      }).instructions.map((step) => ({ text: step.text, distanceM: step.distanceM }));
+      }).instructions.map((step) => ({ text: step.text, semantic: step.semantic, distanceM: step.distanceM }));
     } catch {
-      steps = instructions.map((step) => ({ text: step.text, distanceM: step.distance }));
+      steps = instructions.map((step) => ({ text: step.text, semantic: step.semantic, distanceM: step.distance }));
     }
     routeGuideRouteRef.current = route;
     useAppStore.getState().startRouteGuide(steps);

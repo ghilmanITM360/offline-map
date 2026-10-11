@@ -7,6 +7,8 @@ import { defineMessages } from '../defineMessages';
 
 export default defineMessages({
   en: {
+    'common.osmLicence': 'OpenStreetMap contributors and ODbL licence information',
+    "common.closeSheet": "Close {title}",
     'common.appName': 'Ijtema Map',
     'common.appFullName': 'Karachi Ijtema Navigation',
     'common.back': 'Back',
@@ -21,6 +23,8 @@ export default defineMessages({
     'common.stop': 'Stop',
   },
   'ur-Latn': {
+    'common.osmLicence': 'OpenStreetMap ke shirkat karne walon aur ODbL license ki maloomat',
+    "common.closeSheet": "{title} band karein",
     'common.appName': 'Ijtema Map',
     'common.appFullName': 'Karachi Ijtema Navigation',
     'common.back': 'Wapas',
@@ -35,6 +39,8 @@ export default defineMessages({
     'common.stop': 'Rokein',
   },
   ur: {
+    'common.osmLicence': 'OpenStreetMap کے معاونین اور ODbL لائسنس کی معلومات',
+    "common.closeSheet": "{title} بند کریں",
     'common.appName': 'اجتماع میپ',
     'common.appFullName': 'کراچی اجتماع نیویگیشن',
     'common.back': 'واپس',

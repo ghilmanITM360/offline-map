@@ -21,5 +21,14 @@ export function localizeVenueName(name: string, locale: Locale = getLocale()): s
   }
   const direction = /^Shahr-e-Pindal (North|South|West)$/i.exec(name);
   if (direction) return translate(locale, `places.${direction[1].toLowerCase() as 'north' | 'south' | 'west'}`);
+  const entrance = /^(North|South|East|West) Entrance(?: (\d+))?$/i.exec(name);
+  if (entrance) return translate(locale, `journeyResidual.${entrance[1].toLowerCase()}Entrance${entrance[2] ? 'Number' : ''}`, entrance[2] ? { number: entrance[2] } : undefined);
+  const rastaEnd = /^(North|South|East|West) Rasta-(\d+) End$/i.exec(name);
+  if (rastaEnd) return translate(locale, `journeyNames.${rastaEnd[1].toLowerCase()}RastaEnd`, { number: rastaEnd[2] });
+  const memberGate = /^Member Masjid Gate (C\d+)$/i.exec(name);
+  if (memberGate) return translate(locale, 'journeyNames.memberGateCode', { code: memberGate[1] });
+  // Canonical name identity stays in data and search. Exact catalog matches localize known venue names only.
+  const fixedNames = ['journeyNames.mainMasjid', 'journeyNames.northMasjid', 'journeyNames.mainNorthGate', 'journeyNames.mainSouthGate', 'journeyNames.eastGate', 'journeyNames.food', 'journeyNames.northWater', 'journeyNames.southWater', 'journeyNames.medical', 'journeyNames.lostFound', 'journeyNames.volunteer', 'journeyNames.northTerminal', 'journeyNames.southTerminal', 'journeyNames.parking', 'journeyNames.northEast', 'journeyNames.southEast', 'journeyNames.eastMid', 'journeyNames.memberMasjid', 'journeyNames.memberGate'];
+  for (const key of fixedNames) if (name === translate('en', key)) return translate(locale, key);
   return name;
 }

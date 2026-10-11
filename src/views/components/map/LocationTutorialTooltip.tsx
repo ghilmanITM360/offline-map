@@ -1,3 +1,4 @@
+import { useI18n } from '../../../i18n/useI18n';
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -23,6 +24,7 @@ interface LocationTutorialTooltipProps {
  * successful location follow. Non-blocking (pointerEvents="none"), auto-dismisses, and
  * is gated by the persisted hasSeenLocationTutorial flag so it never appears again. */
 export function LocationTutorialTooltip({ onDismiss, bottomOffset }: LocationTutorialTooltipProps) {
+  const { t, isRTL } = useI18n();
   const opacity = useRef(new Animated.Value(0)).current;
   const reducedMotion = useReducedMotion();
 
@@ -30,7 +32,7 @@ export function LocationTutorialTooltip({ onDismiss, bottomOffset }: LocationTut
   // is pointerEvents="none" plain text with no focus/live-region wiring, so without this
   // TalkBack users get no signal it ever appeared.
   useEffect(() => {
-    AccessibilityInfo.announceForAccessibility("You're here. Your location is shown on the map.");
+    AccessibilityInfo.announceForAccessibility(t('journeyControls.hereAnnouncement'));
   }, []);
 
   useEffect(() => {
@@ -53,8 +55,8 @@ export function LocationTutorialTooltip({ onDismiss, bottomOffset }: LocationTut
 
   return (
     <Animated.View pointerEvents="none" style={[styles.wrap, { bottom: bottomOffset, opacity }]}>
-      <Text style={styles.title}>You're here</Text>
-      <Text style={styles.body}>Your location is shown on the map</Text>
+      <Text style={[styles.title, { textAlign: isRTL ? 'right' : 'left' }]}>{t('journeyControls.here')}</Text>
+      <Text style={[styles.body, { textAlign: isRTL ? 'right' : 'left' }]}>{t('journeyControls.hereBody')}</Text>
     </Animated.View>
   );
 }

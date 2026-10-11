@@ -1,6 +1,10 @@
 import { strict as assert } from 'node:assert';
 import { readFileSync } from 'node:fs';
 
+import { useLocaleStore } from '../src/i18n/localeStore';
+import { translate } from '../src/i18n/translate';
+import { LOCALE_CODES } from '../src/i18n/types';
+
 import { SearchService } from '../src/services/SearchService';
 import { V2DirectionsService } from '../src/services/V2DirectionsService';
 
@@ -28,11 +32,11 @@ assert(
   'Directions viewmodel must stop forcing outside users to choose an inside-only start.',
 );
 assert(
-  directionsServiceSource.includes("Directions to this gate aren't ready yet."),
+  directionsServiceSource.includes("t('navigation.gateNotReady')"),
   'V2 directions service must expose missing-coordinate gate message.',
 );
 assert(
-  directionsServiceSource.includes("Directions to this gate aren't ready. Choose another gate."),
+  directionsServiceSource.includes("t('journeyCopy.gateUnavailable')"),
   'V2 directions service must expose disconnected-gate message.',
 );
 assert(
@@ -99,7 +103,7 @@ const disconnectedGatePreview = V2DirectionsService.calculatePreview({
 assert.equal(disconnectedGatePreview.status, 'unavailable', 'Gate 18 must stay blocked.');
 assert.equal(
   disconnectedGatePreview.message,
-  "Directions to this gate aren't ready. Choose another gate.",
+  translate('en', 'journeyCopy.gateUnavailable'),
   'Gate 18 must show disconnected-gate user copy.',
 );
 
@@ -111,5 +115,37 @@ const missingGatePreview = V2DirectionsService.calculatePreview({
 });
 assert.equal(missingGatePreview.status, 'ready', 'Gate 15 must route when selected explicitly.');
 assert.equal(missingGatePreview.route?.startLabel, 'Gate 15', 'Gate 15 preview must keep friendly gate label.');
+
+
+
+// Both unavailable classifications must preserve their safety state in every locale.
+// Plain Node has no native storage; isolate persistence without mocking routing.
+const originalStorage = useLocaleStore.persist.getOptions().storage;
+useLocaleStore.persist.setOptions({ storage: { getItem: () => null, setItem: () => undefined, removeItem: () => undefined } });
+const originalLocale = useLocaleStore.getState().locale;
+try {
+  for (const locale of LOCALE_CODES) {
+    useLocaleStore.getState().setLocale(locale);
+    for (const [routingStatus, key] of [
+      ['missing_coordinate', 'navigation.gateNotReady'],
+      ['needs_connector_verification', 'journeyCopy.gateUnavailable'],
+    ] as const) {
+      const preview = V2DirectionsService.calculatePreview({
+        startPlace: { ...gate18, routingStatus, isStartRoutable: false, isRoutable: false },
+        destination: block1,
+        currentLocation: null,
+        walkingSpeedMs: 1.4,
+      });
+      assert.equal(preview.status, 'unavailable');
+      assert.equal(preview.route, null, 'Unavailable gate must never invent route geometry.');
+      assert.deepEqual(preview.instructions, [], 'Unavailable gate must never invent walking instructions.');
+      assert.equal(preview.message, translate(locale, key), `${routingStatus} must use ${locale} catalog copy.`);
+      assert.notEqual(preview.message, key, 'Message lookup must resolve a catalog entry.');
+    }
+  }
+} finally {
+  useLocaleStore.getState().setLocale(originalLocale);
+  useLocaleStore.persist.setOptions({ storage: originalStorage });
+}
 
 console.log('Outside location routing v2 checks passed.');

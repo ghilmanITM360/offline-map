@@ -130,7 +130,7 @@ describe('Route guide card', () => {
     open();
     await renderSheet();
     const scroll = within(screen.getByTestId('sheet-scroll'));
-    expect(scroll.getByRole('header', { name: 'Route guide' })).toBeOnTheScreen();
+    expect(scroll.getByRole('header', { name: /^Route guide\. Directions for / })).toBeOnTheScreen();
     expect(scroll.getByRole('button', { name: 'Back' })).toBeOnTheScreen();
   });
 

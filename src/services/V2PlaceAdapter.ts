@@ -1,3 +1,4 @@
+import { translate } from '../i18n/translate';
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -43,12 +44,13 @@ const hasConnectedSpecialRoutePath = (route: SpecialRoute): boolean => {
   );
 };
 
+// Cached place records keep canonical English copy; unavailableReasonCopy resolves these catalog templates at display time.
 const gateUnavailableReason = (gate: Gate): string | undefined => {
   if (gate.routingStatus === 'missing_coordinate' || !gate.coordinate) {
-    return `${gate.name.en} is missing a verified coordinate and cannot be used for routing yet.`;
+    return translate('en', 'journeyResidual.missingCoordinate', { place: gate.name.en });
   }
   if (!hasGraphConnection(gate.id)) {
-    return `${gate.name.en} needs connector verification before routing.`;
+    return translate('en', 'journeyResidual.connector', { place: gate.name.en });
   }
   return undefined;
 };
@@ -60,7 +62,7 @@ const gateUnavailableReason = (gate: Gate): string | undefined => {
  * this must never block or alter routing, only inform the user on selection.
  */
 const gateVerificationWarning = (gate: Gate): string | undefined =>
-  gate.status === 'needs_verification' ? 'Directions to this gate may be less exact.' : undefined;
+  gate.status === 'needs_verification' ? translate('en', 'journeyResidual.verification') : undefined;
 
 /**
  * Blocks whose entry node sits on (or is graph-adjacent to) one of the given path point
@@ -102,7 +104,7 @@ export class V2PlaceAdapter {
       urduName: block.name.ur,
       secondaryLabel: block.name.romanUrdu,
       category: 'Block',
-      description: `${block.name.en} of Karachi Ijtema ground.`,
+      description: translate('en', 'journeyResidual.block', { place: block.name.en }),
       coordinate: toAppCoordinate(block.center),
       polygon: block.polygon.map(toAppCoordinate),
       routingNodeId: entryNodeIds[0],
@@ -131,7 +133,7 @@ export class V2PlaceAdapter {
       urduName: gate.name.ur,
       secondaryLabel: gate.name.romanUrdu,
       category: 'Gate',
-      description: unavailableReason ?? `Official Ijtema entry / exit gate — ${gate.name.en}.`,
+      description: unavailableReason ?? translate('en', 'journeyResidual.gate', { place: gate.name.en }),
       coordinate: gate.coordinate ? toAppCoordinate(gate.coordinate) : (undefined as unknown as Coordinate),
       routingNodeId: isConnected ? gate.id : undefined,
       resolvedRoutingNodeId: isConnected ? gate.id : undefined,
@@ -157,7 +159,7 @@ export class V2PlaceAdapter {
       urduName: rasta.name.ur,
       secondaryLabel: rasta.name.romanUrdu,
       category: 'Rasta',
-      description: `Walking path — ${rasta.name.en}.`,
+      description: translate('en', 'journeyResidual.rasta', { place: rasta.name.en }),
       coordinate: toAppCoordinate(firstPoint.coordinate),
       polyline: rasta.points.map((point) => toAppCoordinate(point.coordinate)),
       routingNodeId: firstPoint.id,
@@ -183,8 +185,8 @@ export class V2PlaceAdapter {
       secondaryLabel: route.name.romanUrdu,
       category: 'SpecialRoute',
       description: isConnected
-        ? `${route.name.en} walking corridor.`
-        : `${route.name.en} isn't ready for directions yet.`,
+        ? translate('en', 'journeyResidual.corridor', { place: route.name.en })
+        : translate('en', 'journeyResidual.notReady', { place: route.name.en }),
       coordinate: toAppCoordinate(firstPoint.coordinate),
       polyline: route.points.map((point) => toAppCoordinate(point.coordinate)),
       routingNodeId: firstPoint.id,
@@ -194,7 +196,7 @@ export class V2PlaceAdapter {
       routingStatus,
       isRoutable: isConnected,
       isStartRoutable: isConnected,
-      unavailableReason: isConnected ? undefined : `${route.name.en} needs connector verification before routing.`,
+      unavailableReason: isConnected ? undefined : translate('en', 'journeyResidual.connector', { place: route.name.en }),
       developerLabel: options.developerMode ? route.points.map((point) => point.id).join(', ') : undefined,
       connectedBlockNames: findConnectedBlockNames(route.points.map((point) => point.id)),
     };

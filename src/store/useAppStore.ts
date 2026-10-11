@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import type { SemanticInstruction } from '../i18n/instructions';
 import { create } from 'zustand';
 import { getDistance } from 'geolib';
 import { evaluateLocationCapability } from '../services/LocationCapability';
@@ -30,7 +31,7 @@ import { UnfinishedJourney, createUnfinishedJourney, parseUnfinishedJourney } fr
 export type RouteSelectionMode = 'idle' | 'selectingStart' | 'selectingDestination';
 
 /** One instruction the user reads in the Route Guide. */
-export interface RouteGuideStep { text: string; distanceM: number }
+export interface RouteGuideStep { text: string; distanceM: number; semantic?: SemanticInstruction }
 /**
  * Route Guide (#307): the honest manual mode. The user follows a chosen FROM -> TO route by reading steps.
  * It is NOT a navigation session: no live position, progress, reroute or arrival, so it never sets
@@ -159,8 +160,11 @@ interface AppState {
   // MapMode is available there) and HomeScreen.tsx's activePreviewRoute memo (MapMode
   // itself depends on activePreviewRoute, so that one consumer, structurally, cannot read mode
   // without a circular dependency). useManualLiveUpgrade.ts reads it for a synchronous final-command
-  // ownership check, before React effects can retire a candidate; it never derives navigation UI. See scripts/test-navigation-architecture-audit.ts Finding 6
-  // for the regression guard enforcing this closed list — add a new direct reader there too.
+  // ownership check, before React effects can retire a candidate; it never derives navigation UI.
+  // NavigationViewModel (v1) also reads it atomically before locale-triggered speech to
+  // reject inactive or superseded engine ownership; it does not derive navigation UI.
+  // See scripts/test-navigation-architecture-audit.ts Finding 6 for the regression guard
+  // enforcing this closed list — add a new direct reader there too.
   isNavigating: boolean;
   navigationSessionId: number;
   destination: Place | null;

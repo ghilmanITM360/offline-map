@@ -201,6 +201,7 @@ const base: MapModeInputs = {
   const sanctionedDirectReaders = [
     'src/viewmodels/DirectionsViewModel.ts',
     'src/viewmodels/HomeViewModel.ts',
+    'src/viewmodels/NavigationViewModel.ts',
     'src/viewmodels/NavigationViewModelV2.ts',
     'src/viewmodels/useManualLiveUpgrade.ts',
     'src/views/screens/HomeScreen.tsx',

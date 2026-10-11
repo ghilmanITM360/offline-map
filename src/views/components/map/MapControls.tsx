@@ -1,3 +1,4 @@
+import { useI18n } from '../../../i18n/useI18n';
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -21,7 +22,7 @@ export interface MapControlsRecenter {
 }
 
 interface MapControlsProps {
-  /** 'browse' also offers Layers under "More map controls"; 'nav' omits it
+  /** 'browse' also offers Layers under t('journeyControls.more'); 'nav' omits it
    * (no layer switching while actively navigating, per Phase 2's control-stack scoping). */
   variant: 'browse' | 'nav';
   /** NORTH_UP (resting, neutral icon) vs FOLLOW_HEADING (bearing tracks device compass,
@@ -46,6 +47,7 @@ interface MapControlsProps {
  * spacing) — the caller only owns the stack's own absolute position (bottom/right
  * offset), not the layout of what's inside it. */
 export function MapControls({ variant, compassMode, onLayers, onCompassToggle, onZoomIn, onZoomOut, recenter }: MapControlsProps) {
+  const { t } = useI18n();
   const isHeadingFollow = compassMode === 'FOLLOW_HEADING';
 
   // Confirms the recenter tap actually resolved — the icon otherwise hard-cuts from a
@@ -66,7 +68,7 @@ export function MapControls({ variant, compassMode, onLayers, onCompassToggle, o
   }, [recenter?.state, reducedMotion, successScale]);
 
   // Only what people use constantly stays in view: direction and recenter. Layers and zoom (pinch also zooms) live
-  // behind one "More map controls" button, and stay real buttons so TalkBack / keyboard users can zoom.
+  // behind one t('journeyControls.more') button, and stay real buttons so TalkBack / keyboard users can zoom.
   const [moreOpen, setMoreOpen] = useState(false);
 
   return (
@@ -79,7 +81,7 @@ export function MapControls({ variant, compassMode, onLayers, onCompassToggle, o
             onLayers?.();
           }}
           accessibilityRole="button"
-          accessibilityLabel="Map layers and filters"
+          accessibilityLabel={t('journeyControls.layers')}
         >
           <Layers size={22} color={staticColors.iconMuted} />
         </Pressable>
@@ -90,7 +92,7 @@ export function MapControls({ variant, compassMode, onLayers, onCompassToggle, o
             style={styles.zoomButton}
             onPress={onZoomIn}
             accessibilityRole="button"
-            accessibilityLabel="Zoom in"
+            accessibilityLabel={t('journeyControls.zoomIn')}
           >
             <Plus size={22} color={staticColors.iconMuted} />
           </Pressable>
@@ -99,7 +101,7 @@ export function MapControls({ variant, compassMode, onLayers, onCompassToggle, o
             style={styles.zoomButton}
             onPress={onZoomOut}
             accessibilityRole="button"
-            accessibilityLabel="Zoom out"
+            accessibilityLabel={t('journeyControls.zoomOut')}
           >
             <Minus size={22} color={staticColors.iconMuted} />
           </Pressable>
@@ -109,7 +111,7 @@ export function MapControls({ variant, compassMode, onLayers, onCompassToggle, o
         style={[styles.controlButton, moreOpen && styles.moreButtonOpen]}
         onPress={() => setMoreOpen((open) => !open)}
         accessibilityRole="button"
-        accessibilityLabel="More map controls"
+        accessibilityLabel={t('journeyControls.more')}
         accessibilityState={{ expanded: moreOpen }}
       >
         {/* A fold chevron, not an X: a close glyph among the map controls reads as Cancel route or Close place. */}
@@ -121,8 +123,8 @@ export function MapControls({ variant, compassMode, onLayers, onCompassToggle, o
         accessibilityRole="button"
         accessibilityLabel={
           isHeadingFollow
-            ? 'Follow direction is on. The map turns to face the way you walk. Tap to keep north at the top.'
-            : 'Follow direction is off. Tap to turn the map to face the way you are moving.'
+            ? t('journeyControls.headingOn')
+            : t('journeyControls.headingOff')
         }
       >
         {/* The icon carries the state (arrow = following, compass = north-up), not only its colour. */}
@@ -141,8 +143,8 @@ export function MapControls({ variant, compassMode, onLayers, onCompassToggle, o
             accessibilityRole="button"
             accessibilityLabel={
               recenter.state === 'active'
-                ? 'Following my current location. Tap to re-center.'
-                : 'Center map on my current location'
+                ? t('journeyControls.following')
+                : t('journeyControls.center')
             }
           >
             {recenter.state === 'loading' ? (

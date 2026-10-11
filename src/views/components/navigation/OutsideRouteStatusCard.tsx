@@ -1,3 +1,4 @@
+import { useI18n } from '../../../i18n/useI18n';
 import { StyleSheet, Text, View } from 'react-native';
 import { AlertTriangle, Route } from 'lucide-react-native';
 
@@ -24,6 +25,8 @@ export function OutsideRouteStatusCard({
   onRetry,
   onChooseGate,
 }: OutsideRouteStatusCardProps) {
+  const { t, locale, isRTL } = useI18n();
+  const direction = { textAlign: isRTL ? 'right' as const : 'left' as const, writingDirection: isRTL ? 'rtl' as const : 'ltr' as const };
   const directGuide = route.provider === 'direct-guide';
   const googleFallback = route.provider === 'offline-osm' && route.fallbackHistory.some((failure) => failure.provider === 'google');
 
@@ -31,41 +34,40 @@ export function OutsideRouteStatusCard({
     <View
       style={[styles.container, directGuide && styles.directContainer]}
     >
-      <View style={styles.titleRow}>
+      <View style={[styles.titleRow, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
         {directGuide
           ? <AlertTriangle size={20} color={staticColors.warningText} />
           : <Route size={20} color={directionsSheetColors.brand} />}
-        <Text style={[styles.providerLabel, directGuide && styles.directTitle]}>
+        <Text style={[styles.providerLabel, direction, directGuide && styles.directTitle]}>
           {directGuide
-            ? outsideRouteMessage('direct.notRoadRoute')
-            : outsideRouteProviderLabel(route.provider)}
+            ? outsideRouteMessage('direct.notRoadRoute', locale)
+            : outsideRouteProviderLabel(route.provider, locale)}
         </Text>
       </View>
 
-      {!directGuide && <Text style={styles.gateText}>Entry: {gateLabel}</Text>}
+      {!directGuide && <Text style={[styles.gateText, direction]}>{t('outside.entry', { gate: gateLabel })}</Text>}
 
       {googleFallback && (
-        <Text style={styles.fallbackText}>{outsideRouteMessage('fallback.googleUnavailable')}</Text>
+        <Text style={[styles.fallbackText, direction]}>{outsideRouteMessage('fallback.googleUnavailable', locale)}</Text>
       )}
 
       {directGuide && (
         <>
           <Text
-            style={styles.warningEnglish}
+            style={[styles.warningEnglish, direction]}
             accessibilityRole="alert"
             accessibilityLiveRegion="polite"
           >
-            {outsideRouteMessage('direct.warning')}
+            {outsideRouteMessage('direct.warning', locale)}
           </Text>
-          <Text style={styles.warningUrdu}>{outsideRouteMessage('direct.warning', 'ur')}</Text>
-          <Text style={styles.gateText}>Selected gate: {gateLabel}</Text>
-          {retrying && <Text style={styles.retryingText}>{outsideRouteMessage('retrying')}</Text>}
+          <Text style={[styles.gateText, direction]}>{t('outside.selectedGate', { gate: gateLabel })}</Text>
+          {retrying && <Text style={[styles.retryingText, direction]}>{outsideRouteMessage('retrying', locale)}</Text>}
           <View style={styles.actions}>
             {onRetry && (
               <Button
                 variant="brandTint"
-                label={outsideRouteMessage('action.retryRoadRoute')}
-                accessibilityLabel={outsideRouteMessage('action.retryRoadRoute')}
+                label={outsideRouteMessage('action.retryRoadRoute', locale)}
+                accessibilityLabel={outsideRouteMessage('action.retryRoadRoute', locale)}
                 disabled={retrying}
                 onPress={onRetry}
               />
@@ -73,8 +75,8 @@ export function OutsideRouteStatusCard({
             {onChooseGate && (
               <Button
                 variant="outline"
-                label={outsideRouteMessage('action.chooseGate')}
-                accessibilityLabel={outsideRouteMessage('action.chooseGate')}
+                label={outsideRouteMessage('action.chooseGate', locale)}
+                accessibilityLabel={outsideRouteMessage('action.chooseGate', locale)}
                 onPress={onChooseGate}
               />
             )}

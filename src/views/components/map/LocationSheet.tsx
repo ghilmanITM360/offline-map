@@ -3,6 +3,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import { localizeInstruction } from '../../../i18n/instructions';
+import { localizeVenueName } from '../../../i18n/venueNames';
+import { useAccessibilityFocus } from '../../hooks/useAccessibilityFocus';
 import type { MessageKey } from '../../../i18n/messages';
 import { useI18n } from '../../../i18n/useI18n';
 import React, { useEffect, useRef, useState } from 'react';
@@ -245,7 +248,7 @@ function RoutePreviewSection({
   // the stale loadState==='error' and re-invoke calculateRoute concurrently.
   const retryInFlightRef = useRef(false);
 
-  const { t, dir } = useI18n();
+  const { t, dir, locale } = useI18n();
   const {
     route,
     startSource,
@@ -319,7 +322,8 @@ function RoutePreviewSection({
   // Everything below renders from the one journey state, never from coordinates, distances or provider names.
   const journeyState = selectJourneyPresentationState({ loadState, startSource, liveReady: canStartNavigation, route: routeMeta });
   const outsideGuide = outsideGuideSummary(routeMeta as Parameters<typeof outsideGuideSummary>[0]);
-  const entryGateName = routeMeta?.startResolution?.gate?.name?.en ?? null;
+  const entryGateNameEn = routeMeta?.startResolution?.gate?.name?.en ?? null;
+  const entryGateName = entryGateNameEn ? localizeVenueName(entryGateNameEn, locale) : null;
   const routeDistance = route ? InstructionService.formatDistance(route.totalDistance, distanceUnit) : null;
   const routeEta = route ? InstructionService.formatDuration(route.estimatedTimeMin) : null;
   const routeStatusMessage = outsideStart
@@ -367,13 +371,13 @@ function RoutePreviewSection({
     if (isJourneyStartable(journeyState) && route) {
       AccessibilityInfo.announceForAccessibility(
         directGuide
-          ? `${outsideGuideHeadline(guideGateName ?? t('directions.gate'))}. ${OUTSIDE_GUIDE_SCOPE}`
+          ? `${outsideGuideHeadline(guideGateName ?? t('directions.gate'))}. ${OUTSIDE_GUIDE_SCOPE()}`
           : [t('directions.ready'), routeEntrySummary, routeDistance].filter(Boolean).join('. ') + '.',
       );
     } else if (loadState === 'error' && errorMessage) {
       AccessibilityInfo.announceForAccessibility(errorMessage);
     } else if (loadState === 'same_place') {
-      AccessibilityInfo.announceForAccessibility(SAME_PLACE);
+      AccessibilityInfo.announceForAccessibility(SAME_PLACE());
     }
   }, [loadState]);
 
@@ -384,14 +388,14 @@ function RoutePreviewSection({
 
   // One TalkBack stop ("Route ready, 13 min, 1.1 km") instead of three that Android sorts apart.
   const guideGateName = outsideGuide
-    ? entryGateName ?? V2PlaceAdapter.getPlaceById(outsideGuide.gateId)?.name ?? outsideGuide.gateId.replace('GATE_', 'Gate ')
+    ? entryGateName ?? localizeVenueName(V2PlaceAdapter.getPlaceById(outsideGuide.gateId)?.name ?? outsideGuide.gateId.replace('GATE_', 'Gate '), locale)
     : null;
   const guideDistance = outsideGuide ? t('directions.straightDistance', { distance: InstructionService.formatDistance(outsideGuide.straightLineDistanceM, distanceUnit) }) : null;
   const readyHeadline = directGuide
     ? outsideGuideHeadline(guideGateName ?? t('directions.gate'))
     : startAction?.kind === 'start' ? t('directions.readyToGo') : t('directions.ready');
   const routeSummaryLabel = directGuide
-    ? `${readyHeadline}, ${guideDistance}. ${OUTSIDE_GUIDE_SCOPE}`
+    ? `${readyHeadline}, ${guideDistance}. ${OUTSIDE_GUIDE_SCOPE()}`
     : [
         readyHeadline,
         outsideRoute?.durationSeconds !== null ? routeEta : null,
@@ -403,7 +407,7 @@ function RoutePreviewSection({
       {directGuide ? (
         <>
           <Text style={styles.routeHeroDistance}>{guideDistance}</Text>
-          <Text style={styles.statusText}>{OUTSIDE_GUIDE_SCOPE}</Text>
+          <Text style={styles.statusText}>{OUTSIDE_GUIDE_SCOPE()}</Text>
         </>
       ) : (
         <View style={styles.routeHeroRow}>
@@ -578,14 +582,14 @@ function RoutePreviewSection({
   // The collapsed sheet's peek (#307): where the journey stands, so a folded sheet never goes silent.
   const guideStep = routeGuide?.steps[routeGuide.stepIndex];
   const peekText = guideStep
-    ? `${t('directions.nextStep', { step: guideStep.text })}${guideStep.distanceM > 0 ? ` · ${InstructionService.formatDistance(guideStep.distanceM, distanceUnit)}` : ''}`
+    ? `${t('directions.nextStep', { step: localizeInstruction(guideStep, locale) })}${guideStep.distanceM > 0 ? ` · ${InstructionService.formatDistance(guideStep.distanceM, distanceUnit)}` : ''}`
     : directGuide
     ? outsideGuideHeadline(guideGateName ?? t('directions.gate')) // never the walking-looking total
     : showPreviewRoute
     ? [outsideRoute?.durationSeconds !== null ? routeEta : null, routeDistance].filter(Boolean).join(' · ')
     : showLoading
     ? t('directions.findingRoute')
-    : t('directions.peek', { from: startSourceLabel, to: destination.name });
+    : t('directions.peek', { from: startSourceLabel, to: localizeVenueName(destination.name, locale) });
   useEffect(() => {
     publishDirectionsPeek({ text: peekText, collapsed: sheetCollapsed ?? false, onToggle: onToggleSheet });
   }, [peekText, sheetCollapsed, onToggleSheet]);
@@ -596,6 +600,8 @@ function RoutePreviewSection({
       title={routeGuide ? t('directions.guideTitle') : t('directions.title')}
       subtitle={routeGuide ? t('directions.guideNotice') : t('directions.subtitle')}
       onBack={onClose}
+      focusKey={upgrade && upgrade.phase !== 'idle' ? null : `${destination.id}:${useAppStore.getState().directoryJourneySerial}:${journeyState}:${routeGuide ? 'guide' : 'setup'}`}
+      accessibilityContext={t('directions.destinationContext', { destination: localizeVenueName(destination.name, locale), stage: showNeedsStart ? t('directions.whereStart') : routeGuide ? t('directions.guideTitle') : showError ? errorMessage || ROUTE_NOT_FOUND() : showSamePlace ? SAME_PLACE() : readyHeadline })}
     />
   );
 
@@ -624,7 +630,7 @@ function RoutePreviewSection({
           {/* The heading scrolls with its content (#326): pinned, its title and subtitle outgrow the top detent on a
               320 dp window or at 200% font and leave the body no viewport. */}
           <View style={styles.directionsHeader}>{directionsHeader}</View>
-          {upgrade && upgrade.phase !== 'idle' && <ManualLiveUpgradeCard upgrade={upgrade} destination={destination.name}
+          {upgrade && upgrade.phase !== 'idle' && <ManualLiveUpgradeCard upgrade={upgrade} destination={localizeVenueName(destination.name, locale)}
             onConfirm={() => void confirmLiveUpgrade()} onCancel={cancelLiveUpgrade} onStart={() => { startUpgradedNavigation(); }}
             recoveryLabel={locationRecoveryAction?.kind !== 'use_location' ? locationRecoveryAction?.label : undefined} onRecover={() => void runLocationRecovery()} />}
           {showRouteReady && routeGuide && (
@@ -651,13 +657,13 @@ function RoutePreviewSection({
           <FadeContent transitionKey={`status-${loadState}`}>
           {showError && (
             <Card variant="error" style={styles.statusCard}>
-              <Text style={[styles.statusTitle, styles.statusTitleError]}>{errorMessage || ROUTE_NOT_FOUND}</Text>
+              <Text style={[styles.statusTitle, styles.statusTitleError]}>{errorMessage || ROUTE_NOT_FOUND()}</Text>
             </Card>
           )}
 
           {showSamePlace && (
             <Card variant="neutral" style={styles.statusCard}>
-              <Text style={styles.statusTitle}>{SAME_PLACE}</Text>
+              <Text style={styles.statusTitle}>{SAME_PLACE()}</Text>
             </Card>
           )}
 
@@ -690,10 +696,10 @@ function RoutePreviewSection({
               }}
               to={{
                 label: t('directions.to'),
-                name: destination.name,
+                name: localizeVenueName(destination.name, locale),
                 detail: placeCategoryLabel(destination.category),
                 icon: <MapPin size={24} color={directionsSheetColors.brand} />,
-                actionAccessibilityLabel: t('directions.changeTo', { name: destination.name }),
+                actionAccessibilityLabel: t('directions.changeTo', { name: localizeVenueName(destination.name, locale) }),
                 onAction: onChangeDestination && onOpenDirectory ? () => onOpenDirectory('destination') : onClose,
               }}
             >
@@ -701,7 +707,7 @@ function RoutePreviewSection({
                 <Card variant="warning" style={styles.statusCard}>
                   <Text style={[styles.statusTitle, styles.statusTitleWarning]}>{t('directions.headsUp')}</Text>
                   <Text style={styles.statusText}>
-                    {destination.verificationWarning ?? unavailableReasonCopy(destination.unavailableReason)}
+                    {unavailableReasonCopy(destination.verificationWarning) ?? unavailableReasonCopy(destination.unavailableReason)}
                   </Text>
                 </Card>
               )}
@@ -732,7 +738,7 @@ function RoutePreviewSection({
               {outsideRoute && (
                 <OutsideRouteStatusCard
                   route={outsideRoute}
-                  gateLabel={V2PlaceAdapter.getPlaceById(outsideRoute.gateId)?.name ?? outsideRoute.gateId.replace('GATE_', 'Gate ')}
+                  gateLabel={localizeVenueName(V2PlaceAdapter.getPlaceById(outsideRoute.gateId)?.name ?? outsideRoute.gateId.replace('GATE_', 'Gate '), locale)}
                   retrying={routeRefreshing}
                   onRetry={outsideRoute.provider === 'direct-guide' ? () => void retryOutsideRoute() : undefined}
                   onChooseGate={outsideRoute.provider === 'direct-guide' ? () => setShowGateOptions(true) : undefined}
@@ -759,8 +765,8 @@ function RoutePreviewSection({
                     <Button
                       key={gate.gateId}
                       variant={manualGateId === gate.gateId ? 'brandTint' : 'outline'}
-                      label={gate.label}
-                      accessibilityLabel={t('directions.useGate', { gate: gate.label })}
+                      label={localizeVenueName(gate.label, locale)}
+                      accessibilityLabel={t('directions.useGate', { gate: localizeVenueName(gate.label, locale) })}
                       accessibilityState={{ selected: manualGateId === gate.gateId }}
                       onPress={() => {
                         selectManualGate(gate.gateId);
@@ -792,9 +798,10 @@ function RoutePreviewSection({
 }
 
 function PlaceSection(props: Extract<LocationSheetProps, { mode: 'preview' | 'details' }>) {
-  const { t, dir } = useI18n();
+  const { t, dir, locale } = useI18n();
   const BackIcon = backChevron();
   const facilityKey = facilityTypeKey(props.place);
+  const { ref: placeHeading } = useAccessibilityFocus(`place:${props.place.id}:${props.mode}`);
   const insets = useSafeAreaInsets();
   const {
     mode,
@@ -833,7 +840,7 @@ function PlaceSection(props: Extract<LocationSheetProps, { mode: 'preview' | 'de
             </Pressable>
           )}
           <View style={{ flex: 1 }}>
-            <Text style={[sheetStyles.placeName, { color: theme.text }]}>{place.name}</Text>
+            <Text ref={placeHeading} accessibilityRole="header" style={[sheetStyles.placeName, { color: theme.text }]}>{localizeVenueName(place.name, locale)}</Text>
             {place.urduName && (
               <Text style={[sheetStyles.placeUrdu, { color: theme.primary }]}>{place.urduName}</Text>
             )}
@@ -866,7 +873,7 @@ function PlaceSection(props: Extract<LocationSheetProps, { mode: 'preview' | 'de
         {(place.verificationWarning || place.unavailableReason) && (
           <View style={sheetStyles.placeWarningBanner}>
             <Text style={sheetStyles.placeWarningBannerText}>
-              {place.verificationWarning ?? unavailableReasonCopy(place.unavailableReason)}
+              {unavailableReasonCopy(place.verificationWarning) ?? unavailableReasonCopy(place.unavailableReason)}
             </Text>
           </View>
         )}
@@ -908,7 +915,7 @@ function PlaceSection(props: Extract<LocationSheetProps, { mode: 'preview' | 'de
                   ]}
                   onPress={() => onSelectEntryIdx(idx)}
                   accessibilityRole="button"
-                  accessibilityLabel={t('place.entranceSpoken', { number: idx + 1, name: ep.friendlyName })}
+                  accessibilityLabel={t('place.entranceSpoken', { number: idx + 1, name: localizeVenueName(ep.friendlyName, locale) })}
                   accessibilityState={{ selected: selectedEntryIdx === idx }}
                 >
                   <Text
@@ -925,7 +932,7 @@ function PlaceSection(props: Extract<LocationSheetProps, { mode: 'preview' | 'de
                       selectedEntryIdx === idx && sheetStyles.entranceChipTextActive,
                     ]}
                   >
-                    {ep.friendlyName}
+                    {localizeVenueName(ep.friendlyName, locale)}
                   </Text>
                   <Text style={sheetStyles.entranceUrdu}>{ep.urduName}</Text>
                 </Pressable>
@@ -944,10 +951,10 @@ function PlaceSection(props: Extract<LocationSheetProps, { mode: 'preview' | 'de
                   style={sheetStyles.gateChip}
                   onPress={() => onSelectGate(gate)}
                   accessibilityRole="button"
-                  accessibilityLabel={gate.name.replace('Member Masjid Gate ', 'Gate ')}
+                  accessibilityLabel={localizeVenueName(gate.name.replace('Member Masjid Gate ', 'Gate '), locale)}
                 >
                   {__DEV__ && developerModeEnabled && <Text style={sheetStyles.entranceNodeText}>{gate.id}</Text>}
-                  <Text style={sheetStyles.entranceChipText}>{gate.name.replace('Member Masjid Gate ', 'Gate ')}</Text>
+                  <Text style={sheetStyles.entranceChipText}>{localizeVenueName(gate.name.replace('Member Masjid Gate ', 'Gate '), locale)}</Text>
                   {gate.urduName && <Text style={sheetStyles.entranceUrdu}>{gate.urduName}</Text>}
                 </Pressable>
               ))}
@@ -961,7 +968,7 @@ function PlaceSection(props: Extract<LocationSheetProps, { mode: 'preview' | 'de
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
               {place.connectedBlockNames!.map((name) => (
                 <View key={name} style={sheetStyles.entranceChip}>
-                  <Text style={sheetStyles.entranceChipText}>{name}</Text>
+                  <Text style={sheetStyles.entranceChipText}>{localizeVenueName(name, locale)}</Text>
                 </View>
               ))}
             </ScrollView>
@@ -1000,7 +1007,7 @@ function PlaceSection(props: Extract<LocationSheetProps, { mode: 'preview' | 'de
             onPress={() => {
               const share = buildPlaceShareMessage(place);
               if (!share) {
-                Alert.alert(t('place.unavailable'), unavailableReasonCopy(place.unavailableReason) ?? t('place.notOnMap', { name: place.name }));
+                Alert.alert(t('place.unavailable'), unavailableReasonCopy(place.unavailableReason) ?? t('place.notOnMap', { name: localizeVenueName(place.name, locale) }));
                 return;
               }
               Share.share({ title: share.title, message: share.message }).catch(() => Alert.alert(t('place.shareError'), t('place.tryAgain')));

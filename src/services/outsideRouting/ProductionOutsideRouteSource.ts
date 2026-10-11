@@ -49,6 +49,7 @@ function normalizedSteps(
     durationSeconds: null,
     coordinate: step.coordinate,
     instruction: step.text,
+    semantic: step.semantic,
     roadName: step.roadName,
   }));
 }

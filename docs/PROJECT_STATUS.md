@@ -14,7 +14,7 @@ PRs #357–366 preserve GPS quality, journey identity, activation/cancellation, 
 - #368: manual Route Guide controls/counts and Directions Back labels/direction.
 - #369: recovered #355 app-shell localization, preserving newer permission safeguards and correcting Help policy. #355 is closed as superseded; original branch/commits remain preserved.
 
-Whole navigation preview/error/instruction/arrival localization and remaining focus/accessibility work are unfinished. Existing catalogs remain the only translation system. Scanner counts are a ratchet, not proof of complete localization.
+PR #372 integrated LocationSheet localization at canonical `600180e151092bbb9bbe0ceaa3fe645583ff25a7`. Guidance continuation localizes generated app instructions, journey/recovery/error/arrival copy, navigation chrome and legacy descriptions through the existing catalogs, with stage-owned accessibility focus. Locale changes retain geometry, manual steps and speech ownership. Scanner measures 82 literals across 15 files, all classified in [the inventory](LOCALIZATION_SCANNER_CLASSIFICATION.json); counts are not proof of native translation quality. Unknown provider prose remains verbatim when semantic metadata is absent. Native focus, Urdu review and large-font layout remain unverified.
 
 ## Executed source checks
 
@@ -28,7 +28,7 @@ Against the verified source above:
 - Four required routing commands: PASS separately; `test:all-gates-v2` reports 16 PASS / 2 field BLOCKED / 0 FAIL. Existing provider fixture warning: 789.1 m sanity cap. Existing act and Node-only hydration warnings remain.
 - [Exact-head CI](https://github.com/ghilmanITM360/offline-map/actions/runs/38129234889): PASS.
 
-[UX evidence matrix](UX_ACCEPTANCE_EVIDENCE.md): 23 automated behavior PASS / 5 NOT VERIFIED. Every row separately marks native/emulator/physical/field acceptance unverified. UX-09 uses guarded automatic activation for a fresh-GPS new destination; manual upgrade still requires confirmation, replacement preview and explicit Start.
+[UX evidence matrix](UX_ACCEPTANCE_EVIDENCE.md): 24 automated behavior PASS / 4 NOT VERIFIED. Every row separately marks native/emulator/physical/field acceptance unverified. UX-09 uses guarded automatic activation for a fresh-GPS new destination; manual upgrade still requires confirmation, replacement preview and explicit Start.
 
 ## Remaining gates
 
@@ -39,3 +39,7 @@ Against the verified source above:
 - Gates 18/19 (#43/#44), venue walking (#46), Mimbar ground truth (#116) remain field-required; proxy deployment (#123) remains an owner/external gate. No field issue closes on software tests.
 
 No APK, store/registry publication or production deployment was performed by this campaign. Older APKs and historical emulator claims cannot certify this source revision.
+
+## Guidance continuation gate
+
+The guidance branch is validated and reviewed before integration; its exact head, CI and merge are reported in the PR and chat. Source tests cover deep-scroll Directory-to-Map, parameterized error localization, locale-switched active guidance/speech, focus stage ownership, manual guide preservation and stale cancellation alerts. Phase A remains incomplete until one clean main checkout exists. No worktree or branch is disposable merely because its source is old; preserve unique/dirty/ignored evidence and open PRs #178/#179. No SDK branch, APK or deployment is authorized by this continuation.

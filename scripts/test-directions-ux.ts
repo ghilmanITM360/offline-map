@@ -7,7 +7,7 @@ const navigationCapability = readFileSync('src/services/LocationNavigationCapabi
 
 assert(screen.includes("t('directions.title'"), 'Directions screen must use layman-friendly heading');
 assert(screen.includes("t('directions.changeTo'"), 'Directions screen must show a tappable destination row');
-assert(vm.includes("'Choose where to start'"), 'The FROM row must focus on start selection');
+assert(vm.includes("t('directions.chooseOrigin')"), 'The FROM row must focus on start selection');
 const directoryScreen = readFileSync('src/views/screens/LocationsDirectoryScreen.tsx', 'utf8');
 assert(directoryScreen.includes("t('directory.current')"), 'Directory must include current-location action');
 assert(directoryScreen.includes("t('directory.earlier')"), 'Directory should use clear last-known location labeling');
@@ -24,7 +24,7 @@ assert(screen.includes("t('directions.findingRoute'"), 'Directions screen should
 
 assert(vm.includes('ROUTE_TIMEOUT_MS'), 'Directions route calculation should include timeout');
 assert(vm.includes('forceOutside'), 'Directions should pass outside start mode into v2 preview service');
-assert(vm.includes('Start and destination are the same'), 'Directions should handle same start/destination case');
+assert(vm.includes("'directions.differentStart'"), 'Directions should handle same start/destination case');
 assert(vm.includes('setLoadState(\'needs_origin\')'), 'Directions should avoid routing without a valid origin');
 // StartSource is now a re-export of the single-owner NavigationStartSource type (see
 // LocationNavigationCapability.ts) rather than its own inline union.

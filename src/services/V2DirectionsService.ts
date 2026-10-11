@@ -1,8 +1,12 @@
+import type { MessageKey } from '../i18n/messages';
+import type { TParams } from '../i18n/translate';
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import { t } from '../i18n/translate';
+import { localizeVenueName } from '../i18n/venueNames';
 import { IJTEMA_DATA, LANDMARK_NEAREST_NODE, LANDMARK_PLACES } from '../constants/data';
 import { findNearestGraphNode, IJTEMA_NAVIGATION_GRAPH_V2 } from '../data/ijtema';
 import { NavigationInstruction, Place } from '../models/types';
@@ -40,6 +44,7 @@ export interface V2DirectionsPreviewResult {
   route: RoutePreviewV2 | null;
   instructions: NavigationInstruction[];
   message: string;
+  messageDescriptor?: { key: MessageKey; params?: TParams };
 }
 
 export interface V2HybridDirectionsPreviewInput {
@@ -51,15 +56,15 @@ export interface V2HybridDirectionsPreviewInput {
 
 function routeMessageForUnavailablePlace(place: Place): string {
   if (place.routingStatus === 'missing_coordinate') {
-    if (place.category === 'Gate') return "Directions to this gate aren't ready yet.";
-    return "Directions to this place aren't ready yet.";
+    if (place.category === 'Gate') return t('navigation.gateNotReady');
+    return t('navigation.placeNotReady');
   }
   if (place.routingStatus === 'needs_connector_verification') {
-    if (place.category === 'Gate') return "Directions to this gate aren't ready. Choose another gate.";
-    return "Directions to this place aren't ready yet.";
+    if (place.category === 'Gate') return t('journeyCopy.gateUnavailable');
+    return t('navigation.placeNotReady');
   }
-  if (place.routingStatus === 'visual_only') return "Directions to this place aren't ready yet.";
-  return place.unavailableReason ?? ROUTE_NOT_FOUND;
+  if (place.routingStatus === 'visual_only') return t('navigation.placeNotReady');
+  return place.unavailableReason ?? ROUTE_NOT_FOUND();
 }
 
 export function destinationFromPlace(place: Place): RoutingDestinationV2 | null {
@@ -118,6 +123,7 @@ function composeOutsideInstructions(
     const gateLabelUr = gate?.name.ur ?? gateLabelEn;
     return [{
       id: 'outside-direct-guide',
+      semantic: { key: 'instructions.direct', params: { name: gateLabelEn }, urduNames: { name: gateLabelUr } },
       text: `Walk toward ${gateLabelEn}.`,
       urduText: `دکھائی گئی سیدھی سمت میں ${gateLabelUr} کی طرف جائیں۔`,
       distance: route.distanceM,
@@ -130,6 +136,7 @@ function composeOutsideInstructions(
     ...route.steps.map((step): NavigationInstruction => ({
       id: `outside-${step.id}`,
       text: step.instruction,
+      semantic: step.semantic,
       distance: step.distanceM,
       type: instructionType(step.maneuver),
       coordinate: step.coordinate,
@@ -152,7 +159,7 @@ export class V2DirectionsService {
         status: 'disabled',
         route: null,
         instructions: [],
-        message: NAVIGATION_UNAVAILABLE,
+        message: NAVIGATION_UNAVAILABLE(),
       };
     }
     const destination = destinationFromPlace(request.destination);
@@ -161,11 +168,11 @@ export class V2DirectionsService {
         status: 'unavailable',
         route: null,
         instructions: [],
-        message: ROUTE_NOT_FOUND,
+        message: ROUTE_NOT_FOUND(),
       };
     }
     if (input.signal.aborted) {
-      return { status: 'unavailable', route: null, instructions: [], message: ROUTE_NOT_FOUND };
+      return { status: 'unavailable', route: null, instructions: [], message: ROUTE_NOT_FOUND() };
     }
 
     const plan = RoutingServiceV2.prepareOutsideRoutingPlan({
@@ -179,7 +186,7 @@ export class V2DirectionsService {
         status: 'unavailable',
         route: null,
         instructions: [],
-        message: ROUTE_NOT_FOUND,
+        message: ROUTE_NOT_FOUND(),
       };
     }
 
@@ -201,8 +208,8 @@ export class V2DirectionsService {
         route: null,
         instructions: [],
         message: attempt.failure.code === 'cancelled'
-          ? 'Outside route request was cancelled.'
-          : 'Road routing is unavailable for this request.',
+          ? t('navigation.cancelled')
+          : t('navigation.roadUnavailable'),
       };
     }
     try {
@@ -212,11 +219,11 @@ export class V2DirectionsService {
         status: 'unavailable',
         route: null,
         instructions: [],
-        message: ROUTE_NOT_FOUND,
+        message: ROUTE_NOT_FOUND(),
       };
     }
     if (input.signal.aborted) {
-      return { status: 'unavailable', route: null, instructions: [], message: ROUTE_NOT_FOUND };
+      return { status: 'unavailable', route: null, instructions: [], message: ROUTE_NOT_FOUND() };
     }
 
     const finalized = RoutingServiceV2.finalizeOutsideRoutingPlan({
@@ -231,7 +238,7 @@ export class V2DirectionsService {
         status: 'unavailable',
         route: null,
         instructions: [],
-        message: ROUTE_NOT_FOUND,
+        message: ROUTE_NOT_FOUND(),
       };
     }
     const selectedOutcome = attempt.candidateSet.outcomes.find(
@@ -250,7 +257,7 @@ export class V2DirectionsService {
         status: 'unavailable',
         route: null,
         instructions: [],
-        message: ROUTE_NOT_FOUND,
+        message: ROUTE_NOT_FOUND(),
       };
     }
     const instructions = composeOutsideInstructions(selectedOutsideRoute, finalized.instructions);
@@ -269,7 +276,7 @@ export class V2DirectionsService {
         status: 'disabled',
         route: null,
         instructions: [],
-        message: NAVIGATION_UNAVAILABLE,
+        message: NAVIGATION_UNAVAILABLE(),
       };
     }
 
@@ -279,7 +286,8 @@ export class V2DirectionsService {
         status: 'unavailable',
         route: null,
         instructions: [],
-        message: `Directions to ${request.destination.name} aren't ready yet.`,
+        message: t('navigation.placeDirectionsNotReady', {name: localizeVenueName(request.destination.name)}),
+        messageDescriptor: { key: 'navigation.placeDirectionsNotReady', params: { name: request.destination.name } },
       };
     }
 
@@ -314,7 +322,7 @@ export class V2DirectionsService {
         status: 'unavailable',
         route: null,
         instructions: [],
-        message: CHOOSE_START,
+        message: CHOOSE_START(),
       };
     }
 
@@ -329,7 +337,7 @@ export class V2DirectionsService {
         status: 'unavailable',
         route: null,
         instructions: [],
-        message: ROUTE_NOT_FOUND,
+        message: ROUTE_NOT_FOUND(),
       };
     }
 

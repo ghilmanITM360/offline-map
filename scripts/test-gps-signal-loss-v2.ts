@@ -166,11 +166,11 @@ assert(
 // building a new UI surface, and the pre-existing weak-GPS banner block is left untouched.
 assert(
   navigationChromeSource.includes("gpsSignalState === 'GPS_LOST'") &&
-    navigationChromeSource.includes("We can't find you. Move to an open area."),
+    navigationChromeSource.includes("t('navigation.lost')"),
   'NavigationChromeV2 must show a plain "can\'t find you" message when gpsSignalState is GPS_LOST',
 );
 const gpsLostBannerStart = navigationChromeSource.indexOf("gpsSignalState === 'GPS_LOST'");
-const gpsLostBannerSnippet = navigationChromeSource.slice(gpsLostBannerStart, gpsLostBannerStart + 200);
+const gpsLostBannerSnippet = navigationChromeSource.slice(gpsLostBannerStart, gpsLostBannerStart + 350);
 assert(
   gpsLostBannerSnippet.includes('styles.weakGpsBanner') && gpsLostBannerSnippet.includes('styles.weakGpsText'),
   'The GPS_LOST banner must reuse the existing weak-GPS banner styles rather than introducing a new UI surface',
@@ -180,7 +180,7 @@ assert(
 // independent `&&` block. Its text/styles are otherwise unchanged (asserted above).
 assert(
   navigationChromeSource.includes(') : isWeakGps ? (') &&
-    navigationChromeSource.includes('Weak signal. Directions may be slow.'),
+    navigationChromeSource.includes("t('navigation.weak')"),
   'The pre-existing weak-GPS banner content must remain, as the next branch of the GPS_LOST priority ternary',
 );
 

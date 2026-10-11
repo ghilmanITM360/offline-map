@@ -1,3 +1,4 @@
+import { useAccessibilityFocus } from '../../hooks/useAccessibilityFocus';
 import React from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import type { ManualLiveUpgrade } from '../../../viewmodels/useManualLiveUpgrade';
@@ -17,6 +18,7 @@ export function ManualLiveUpgradeCard({ upgrade, destination, onConfirm, onCance
   onRecover?: () => void;
 }) {
   const { t, isRTL } = useI18n();
+  const { ref } = useAccessibilityFocus(upgrade.phase === 'idle' ? null : `manual-upgrade:${upgrade.phase}`);
   if (upgrade.phase === 'idle') return null;
   const busy = upgrade.phase === 'acquiring' || upgrade.phase === 'routing';
   const title = upgrade.phase === 'confirming' ? t('routeGuide.upgrade.confirm')
@@ -26,7 +28,7 @@ export function ManualLiveUpgradeCard({ upgrade, destination, onConfirm, onCance
   const textStyle = [styles.text, { textAlign: isRTL ? 'right' as const : 'left' as const, writingDirection: isRTL ? 'rtl' as const : 'ltr' as const }];
   return <Card variant="neutral">
     <View style={styles.content}>
-      <Text accessibilityRole="header" accessibilityLiveRegion="polite" style={[textStyle, styles.title]}>{title}</Text>
+      <Text ref={ref} accessibilityRole="header" accessibilityLiveRegion="polite" style={[textStyle, styles.title]}>{title}</Text>
       <Text style={textStyle}>{t('routeGuide.upgrade.preserved')}</Text>
       {busy ? <ActivityIndicator accessibilityLabel={title} color={directionsSheetColors.brand} /> : null}
       {upgrade.phase === 'preview' ? <>

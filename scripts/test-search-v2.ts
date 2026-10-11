@@ -70,7 +70,7 @@ withFlags({ EXPO_PUBLIC_USE_IJTEMA_V2_MAP: 'true' }, () => {
   assert.equal(gate18?.id, 'GATE_18', 'Search must find provided but disconnected Gate 18');
   assert.equal(gate18.isRoutable, false, 'Disconnected Gate 18 must not route silently');
   assert.equal(gate18.isStartRoutable, false, 'Disconnected Gate 18 must not be start-routable');
-  assert(gate18.unavailableReason?.includes('connector verification'), 'Disconnected Gate 18 must explain connector verification');
+  assert(gate18.unavailableReason?.includes('not ready yet'), 'Disconnected Gate 18 must explain unavailable directions');
   assert.equal(IJTEMA_NAVIGATION_GRAPH_V2.adjacency.GATE_18?.length ?? 0, 0, 'Gate 18 fixture must remain disconnected until verified');
 
   const rasta09 = SearchService.search('Rasta 09')[0];

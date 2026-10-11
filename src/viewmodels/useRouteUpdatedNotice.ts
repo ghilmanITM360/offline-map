@@ -4,16 +4,24 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef } from 'react';
+import type { Dispatch, SetStateAction } from 'react';
+import type { MessageKey } from '../i18n/messages';
+import { t, translate } from '../i18n/translate';
+import type { TParams } from '../i18n/translate';
+import type { Locale } from '../i18n/types';
 
-export const ROUTE_UPDATED_MESSAGE = 'Route updated';
+/** Generated status retains meaning; provider prose retains its original text. */
+export type NavigationStatusCopy = string | { key: MessageKey; params?: TParams } | null;
+
+export function resolveNavigationStatus(copy: NavigationStatusCopy, locale: Locale): string | null {
+  return typeof copy === 'object' && copy !== null ? translate(locale, copy.key, copy.params) : copy;
+}
+
+export const ROUTE_UPDATED_MESSAGE = () => t('journeyCopy.updated');
 export const ROUTE_UPDATED_VISIBLE_MS = 4000;
 
-/**
- * Says "Route updated" for a few seconds after a reroute is accepted, through the navigation chrome's existing
- * live-region status slot. A long route's new geometry can land outside the navigation camera, so the user
- * otherwise has no sign that anything changed. Clears only its own message, so a newer status is never erased.
- */
-export function useRouteUpdatedNotice(setMessage: (update: (previous: string | null) => string | null) => void) {
+/** Locale changes only project copy. The original announcement identity and deadline stay intact. */
+export function useRouteUpdatedNotice(setMessage: Dispatch<SetStateAction<NavigationStatusCopy>>) {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const cancel = useCallback(() => {
     if (timerRef.current) clearTimeout(timerRef.current);
@@ -22,12 +30,12 @@ export function useRouteUpdatedNotice(setMessage: (update: (previous: string | n
   useEffect(() => cancel, [cancel]);
   const announce = useCallback(() => {
     cancel();
-    setMessage(() => ROUTE_UPDATED_MESSAGE);
+    const notice = { key: 'journeyCopy.updated' } as const;
+    setMessage(notice);
     timerRef.current = setTimeout(() => {
       timerRef.current = null;
-      setMessage((previous) => (previous === ROUTE_UPDATED_MESSAGE ? null : previous));
+      setMessage(previous => previous === notice ? null : previous);
     }, ROUTE_UPDATED_VISIBLE_MS);
   }, [cancel, setMessage]);
-  // Stable identity: callers list it in hook dependencies and must not be re-created on every render.
   return useMemo(() => ({ announce, cancel }), [announce, cancel]);
 }

@@ -1,3 +1,5 @@
+import { t } from '../i18n/translate';
+import { localizeVenueName } from '../i18n/venueNames';
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -176,7 +178,7 @@ export class EntryGateRoutingService {
           coordinate: appCoordinate,
           candidateNodes: [],
           gate,
-          error: `${gate?.name.en ?? options.manualGateId} is not routable because its coordinate is missing or unavailable.`,
+          error: t('journeyResidual.gateMissing', { place: localizeVenueName(gate?.name.en ?? options.manualGateId) }),
         };
       }
 
@@ -187,7 +189,7 @@ export class EntryGateRoutingService {
           coordinate: appCoordinate,
           candidateNodes: [],
           gate,
-          error: `${gate.name.en} is not connected to the internal Ijtema graph yet.`,
+          error: t('journeyResidual.gateDisconnected', { place: localizeVenueName(gate.name.en) }),
         };
       }
 
@@ -213,7 +215,7 @@ export class EntryGateRoutingService {
           startType: 'unresolved',
           coordinate: appCoordinate,
           candidateNodes: [],
-          error: 'No routable official entry gate is available for this outside location.',
+          error: t('journeyResidual.noOutsideGate'),
         };
       }
 
@@ -238,7 +240,7 @@ export class EntryGateRoutingService {
         startType: 'unresolved',
         coordinate: appCoordinate,
         candidateNodes: [],
-        error: 'No internal graph node is available for this inside location.',
+        error: t('journeyResidual.noInsideNode'),
       };
     }
 

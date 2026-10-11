@@ -2,6 +2,9 @@
  * @license
  * SPDX-License-Identifier: Apache-2.0
  */
+
+import { useAccessibilityFocus } from '../../hooks/useAccessibilityFocus';
+import { localizeInstruction } from '../../../i18n/instructions';
 import React from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -17,12 +20,13 @@ export function ActiveDirectionsPanel({ visible, destination, instructions, curr
   currentStepIndex: number;
   onClose: () => void;
 }) {
+  const { ref: headingRef } = useAccessibilityFocus(visible ? "active-directions" : null);
   const { t, isRTL } = useI18n();
   const textDirection = { writingDirection: isRTL ? 'rtl' as const : 'ltr' as const, textAlign: isRTL ? 'right' as const : 'left' as const };
   return (
     <Modal visible={visible} animationType="none" onRequestClose={onClose}>
       <SafeAreaView style={styles.panel} accessibilityViewIsModal>
-        <Text style={[styles.title, textDirection]} accessibilityRole="header">{t('navigation.directions')}</Text>
+        <Text ref={headingRef} style={[styles.title, textDirection]} accessibilityRole="header">{t('navigation.directions')}</Text>
         <Text style={[styles.destination, textDirection]}>{destination}</Text>
         <Pressable accessibilityRole="button" accessibilityLabel={t('navigation.closeDirections')}
           onPress={onClose} style={styles.close}>
@@ -34,7 +38,7 @@ export function ActiveDirectionsPanel({ visible, destination, instructions, curr
               <View key={`${step.id}:${index}`} style={[styles.step, index === currentStepIndex && styles.current]}
                 accessibilityState={{ selected: index === currentStepIndex }}>
                 {index === currentStepIndex && <Text style={[styles.currentLabel, textDirection]}>{t('navigation.currentStep')}</Text>}
-                <Text style={[styles.stepText, textDirection]}>{step.text}</Text>
+                <Text style={[styles.stepText, textDirection]}>{localizeInstruction(step)}</Text>
               </View>
             ))}
         </ScrollView>

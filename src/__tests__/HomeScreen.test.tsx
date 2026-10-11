@@ -1,3 +1,4 @@
+import { useLocaleStore, translate } from '../i18n';
 import { LANDMARK_PLACES } from '../constants/data';
 import { seedRunningNavigation } from './navigationFixture';
 /**
@@ -387,7 +388,7 @@ describe('HomeScreen — accessibility tree ownership (#128)', () => {
     await pressMapFeature('facility', 'LM_GATE_MAIN_NORTH');
     await user.press(await screen.findByText('Directions'));
 
-    expect(await screen.findByRole('header', { name: 'Get Directions' })).toBeOnTheScreen();
+    expect(await screen.findByRole('header', { name: /^Get Directions\. Directions for / })).toBeOnTheScreen();
   });
 });
 
@@ -2194,4 +2195,39 @@ test('destination-less fallback Change place opens ordinary destination browsing
   expect(navigateSpy).toHaveBeenCalledWith('LocationsDirectory');
   expect(useAppStore.getState().directoryPurpose).toBeNull();
   plan.mockRestore();
+});
+
+describe('HomeScreen — preview cancellation ownership', () => {
+  test.each(['replacement', 'live'] as const)('old cancel confirmation cannot clear %s journey', async (transition) => {
+    const sheet = require('../views/components/map/LocationSheet') as typeof import('../views/components/map/LocationSheet');
+    const actual = sheet.LocationSheet;
+    let close: (() => void) | undefined;
+    const spy = jest.spyOn(sheet, 'LocationSheet').mockImplementation(((props: { mode: string; onClose?: () => void }) => {
+      if (props.mode === 'routePreview') close = props.onClose;
+      return (actual as unknown as (p: unknown) => React.ReactElement)(props);
+    }) as never);
+    const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+    mockedUseHomeViewModel.mockImplementation(() => ({ ...useFakeHomeViewModel(), selectedPlace: gateResult }));
+    mockedUseDirectionsViewModel.mockReturnValue({ route: null, startSource: 'none', loadState: 'idle',
+      errorMessage: null, manualStart: null, chooseManualStart: jest.fn(), chooseCurrentLocation: jest.fn(),
+      chooseRememberedLocation: jest.fn(), calculateRoute: jest.fn(), setIsEditingManualStart: jest.fn(),
+      setManualStartPlace: jest.fn(), canStartNavigation: false });
+    await render(<HomeScreen />);
+    await userEvent.setup().press(screen.getByText('Directions'));
+    await act(() => __getLastBottomSheetModalProps().onChange(0));
+    await act(() => useLocaleStore.setState({ locale: 'ur' }));
+    await act(() => close?.());
+    expect(alert.mock.calls.at(-1)?.[0]).toBe(translate('ur', 'journeyHome.cancelTitle'));
+    await act(() => useLocaleStore.setState({ locale: 'en' }));
+    const cancel = alert.mock.calls.at(-1)?.[2]?.find(button => button.style === 'destructive')?.onPress;
+    expect(cancel).toBeDefined();
+    await act(() => {
+      if (transition === 'live') useAppStore.setState({ routePlannerDest: block2Result, isNavigating: true });
+      else useAppStore.getState().setRoutePlannerDest(block2Result);
+    });
+    await act(() => cancel?.());
+    expect(useAppStore.getState().routePlannerDest).toBe(block2Result);
+    if (transition === 'live') expect(useAppStore.getState().isNavigating).toBe(true);
+    spy.mockRestore(); alert.mockRestore();
+  });
 });

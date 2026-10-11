@@ -7,6 +7,7 @@ import { defineMessages } from '../defineMessages';
 
 export default defineMessages({
   "en": {
+    "place.sharePrefix": "Karachi Ijtema",
     "place.close": "Close",
     "place.directions": "Directions",
     "place.officialGate": "Official entry / exit gate",
@@ -45,6 +46,7 @@ export default defineMessages({
     "place.landmark": "Landmark",
   },
   "ur-Latn": {
+    "place.sharePrefix": "Karachi Ijtema",
     "place.close": "Band karein",
     "place.directions": "Rasta",
     "place.officialGate": "Rasmi dakhla / nikasi gate",
@@ -83,6 +85,7 @@ export default defineMessages({
     "place.landmark": "Nishani",
   },
   "ur": {
+    "place.sharePrefix": "کراچی اجتماع",
     "place.close": "بند کریں",
     "place.directions": "راستہ",
     "place.officialGate": "سرکاری داخلی / خارجی گیٹ",
