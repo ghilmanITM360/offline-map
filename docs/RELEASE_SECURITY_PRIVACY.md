@@ -36,7 +36,7 @@ Mobile never holds a Routes API credential — only an optional proxy base URL. 
 
 ## Dependency security
 
-18 production-install advisories (9 high, 9 moderate) are accepted as a documented release exception — all trace to `image-size`/`postcss`/`uuid` inside Metro/`@expo/config-plugins` build tooling, never shipped in the compiled app, independently re-verified against current source (#62, closed). Review date 2026-12-31, or sooner if an Expo SDK migration is independently scheduled. See `docs/PROJECT_STATUS.md` for current issue state.
+The fresh unchanged-lockfile audit reports 66 package findings (13 moderate, 52 high, 1 critical). All package entries are mapped to 8 vulnerable roots and 12 advisories in [DEPENDENCY_SECURITY_STATUS.md](DEPENDENCY_SECURITY_STATUS.md), with actual tooling consumers and explicit deferral rationale. [#370](https://github.com/ghilmanITM360/offline-map/issues/370) tracks compatible maintenance. The old #62 acceptance covered an earlier 18-finding production-install audit and does not certify these newly reported groups. No mobile exploit chain was established by this source audit, but build/development vulnerabilities remain real and native bundle/exploit verification remains unperformed. No blind audit fix or framework upgrade was applied.
 
 ## Privacy / legal content
 

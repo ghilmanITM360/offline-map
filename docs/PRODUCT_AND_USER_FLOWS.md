@@ -1,11 +1,11 @@
 # Product and User Flows
 
-How the app behaves today. Source of truth is the code; this explains it. Statements are SOURCE/RUNTIME level unless marked.
+How the app behaves today. Source of truth is the code; this explains it. Statements describe source and automated behavior unless separately cited. Native runtime verification for the current candidate remains unperformed.
 
 ## Principles
 
 1. **The Directory is the one place chooser.** Finding or changing a place happens there; the Map shows and navigates.
-2. **Location improves navigation, it never blocks route planning.** Without location the user still gets a full Route Guide.
+2. **Location improves navigation, it never blocks route planning.** Without location, a valid route and explicit current-journey manual origin allow Route Guide.
 3. **No fake position.** A chosen FROM is never written into `currentLocation`; live guidance needs a real, fresh, usable fix.
 4. **Everything core works offline.** Launch, Directory, Map, internal routing and the Route Guide need no network.
 
@@ -24,14 +24,14 @@ How the app behaves today. Source of truth is the code; this explains it. Statem
 
 ## Choosing a destination (Directory)
 
-A tap on a destination means **take me here** (`LocationsDirectoryScreen.takeMeTo`, `planDestinationTap`):
+A tap on a destination creates a new runtime journey identity and opens its destination panel on Map (`LocationsDirectoryScreen.takeMeTo`):
 
 | Situation | Result |
 |---|---|
 | A. Fresh usable live location | Map opens and live navigation starts by itself (fresh fix only) |
-| B. Permission and precise accuracy fine, no fix yet | Map opens and finds the location (bounded); on failure the usual "choose where to start" UI stays |
+| B. Permission granted, no usable fix | Map opens with destination context; origin resolution offers contextual location acquisition or manual selection |
 | C. No usable location, a start left over from an earlier journey | Never reused: same as D. A start counts only if it is a fresh live fix or was chosen for **this** journey |
-| D. No usable location, no start | Stay in the Directory: "Where are you starting from?" / "To <place>". Picking a place starts a Route Guide. "Use my location" is the one contextual permission request |
+| D. No usable location, no start | Map opens with the destination. Choose a starting point, use location, or preview hypothetically from Block 2. A valid explicit manual origin enables Route Preview then Route Guide |
 | E. Permission refused | Respected. Declining the prompt keeps the question open; Settings opens only after an explicit "Open Settings" on a permanent block |
 
 - Approximate-only location is never treated as live. A destination that cannot be routed opens its details instead.
@@ -49,15 +49,21 @@ A tap on a destination means **take me here** (`LocationsDirectoryScreen.takeMeT
 | State | `isNavigating`, recovery marker, nav engines | `routeGuide {steps, stepIndex}` in the store: runtime only, not persisted, no marker |
 
 - A start the user chose or saved offers **Start route** (Route Guide); **Use my location for live guidance** is the secondary. The Route Guide card shows "Your position isn't tracked. Use the steps to find your way.", Step N of M, Previous/Next, and End route guide.
-- Upgrading to live reuses the fresh-fix flow: acquire a real fix, recompute from the real position, start navigation, and the guide closes.
-- The capability model (`LocationCapability`) keeps permission, accuracy authorization (precise/approximate), device services and fix quality separate. Live guidance is available only with no blocker; the Route Guide is always available.
+- Upgrading an existing guide requires user confirmation, fresh acquisition, private replacement calculation, replacement preview and explicit Start live navigation. Failure or cancellation preserves the original guide, start, destination, route and selected step. This differs from guarded automatic activation after a new destination tap.
+- The capability model (`LocationCapability`) keeps permission, accuracy authorization (precise/approximate), device services and fix quality separate. Live guidance is available only with no blocker; a valid route and explicit current-journey manual origin enable Route Guide.
+
+## Temporary Directory chooser and Block 2
+
+An origin chooser is owned by journey identity, destination, purpose and request generation. Cancel/Back invalidates that request and returns to the same Map journey. A late response cannot affect a newer journey, even for the same destination. Normal browsing retains query/category, selected item and a stable-ID/geometry scroll anchor; chooser filters stay private. Changed datasets resolve a safe clamped position rather than blindly replaying a pixel offset. Logical native accessibility focus remains unfinished.
+
+Block 2 is resolved from canonical venue data and remains explicitly hypothetical until the user confirms being there. It never writes currentLocation or authorizes movement, route progress, rerouting, GPS arrival or automatic live navigation. Confirmation creates a current-journey manual origin, not a GPS observation. New journeys do not reuse the preview; Block 2 to Block 2 is SAME_PLACE. Later GPS acquisition follows a truthful current-location path.
 
 ## The Map
 
 - **Top bar:** `<- Places` (pushes the Directory over the Map; Back returns), what the map shows (place name, Directions, Route guide), and the menu (Settings, Help, About). No search, no browse chips, no bottom navigation. Absent in live navigation and arrival.
 - **One map, one sheet:** Directions, route preview, the Route Guide, live navigation and arrival are modes of `HomeScreen`, not screens. `LocationSheet` has `details`, `preview` and `routePreview` modes.
 - **Directions handle:** the sheet's handle is always a tappable peek (state line + chevron, >= 48 dp) that expands the sheet when collapsed and folds it when open. The collapsed detent is computed to clear the system navigation bar, so the peek is never behind it. The handle is never swapped, which keeps the sheet's detent index in sync.
-- **Route Guide placement:** the guide card (step, Previous/Next, "Use my location for live guidance", "End route guide") lives in the sheet's scrollable body, so it stays reachable on short screens, at large font and behind a three-button bar. Starting the guide opens the sheet at its top detent so the step, Previous/Next and the live-guidance link sit above the navigation bar (End route guide is one scroll away). The request is repeated once the sheet reports landing, because the journey auto-starts while the sheet is still opening.
+- **Route Guide placement:** the guide card (step, Previous/Next, "Use my location for live guidance", "End route guide") lives in the sheet's scrollable body, so it stays reachable on short screens, at large font and behind a three-button bar. Explicitly activating the guide requests the top detent so its controls can be reached. The expansion request is repeated after the sheet reports landing to handle sheet-opening timing; this does not authorize automatic manual-guide activation. Actual native geometry and large-font reachability remain unverified for this candidate.
 - **Map controls** (Direction, Recenter, More = Layers and Zoom) control the map only; journey actions live in the sheet they belong to (Cancel Route, End route guide, Close).
 - **Camera on entry:** a destination or route owns the camera; otherwise a live fix shows the venue overview with the user marker, and no usable location shows the Block 2 anchor with "Location unavailable. Showing Block 2." A persisted last-known location never moves the camera on its own.
 
