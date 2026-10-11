@@ -16,7 +16,7 @@ assert(
   'Directions screen must not reject outside remembered location.',
 );
 assert(
-  directionsScreenSource.includes("We'll take you to the nearest open gate first"),
+  directionsScreenSource.includes("t('directions.gateFirst')"),
   'Directions screen must explain destination-aware official-gate entry for outside starts.',
 );
 assert(

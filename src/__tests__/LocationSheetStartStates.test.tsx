@@ -9,13 +9,14 @@
 // view model (`loadState`), nothing here infers a start from coordinates.
 
 import React from 'react';
-import { render, screen, userEvent } from './test-utils';
+import { act, render, screen, userEvent } from './test-utils';
 
 import { DirectionsPeekHandle } from '../views/components/map/DirectionsPeekHandle';
 import { LocationSheet } from '../views/components/map/LocationSheet';
 import { DirectionsSheetFooter } from '../views/components/map/DirectionsSheetFooter';
 import { useDirectionsViewModel } from '../viewmodels/DirectionsViewModel';
 import { useAppStore } from '../store/useAppStore';
+import { useLocaleStore } from '../i18n';
 import type { Place } from '../models/types';
 
 jest.mock('@gorhom/bottom-sheet', () => {
@@ -59,6 +60,7 @@ const renderSheet = () =>
   );
 
 beforeEach(() => {
+  useLocaleStore.setState({ locale: 'en' });
   jest.clearAllMocks();
   useAppStore.setState(initialStoreState, true);
   mockedVm.mockReturnValue(vm());
@@ -201,4 +203,20 @@ it('retained ready-route retry shows acquisition progress and cancellation', asy
   expect(screen.getByRole('button', { name: 'Finding your location…' })).toBeDisabled();
   await userEvent.setup().press(screen.getByRole('button', { name: 'Cancel location request' }));
   expect(cancel).toHaveBeenCalledTimes(1);
+});
+
+afterEach(() => useLocaleStore.setState({ locale: 'en' }));
+test('origin chooser updates labels and presentation direction without requesting a route', async () => {
+  const calculateRoute = jest.fn();
+  mockedVm.mockReturnValue(vm({ loadState: 'needs_origin', route: null, startAction: null,
+    startSource: 'manual_place', manualStart: null, calculateRoute }));
+  await renderSheet();
+  await act(() => useLocaleStore.setState({ locale: 'ur' }));
+  expect(screen.getByRole('button', { name: 'شروع کی جگہ چنیں' })).toBeVisible();
+  expect(screen.getByText('آپ کہاں سے شروع کر رہے ہیں؟')).toBeOnTheScreen();
+  expect(screen.getByTestId('directions-body')).toHaveStyle({ direction: 'rtl' });
+  expect(calculateRoute).not.toHaveBeenCalled();
+  await act(() => useLocaleStore.setState({ locale: 'ur-Latn' }));
+  expect(screen.getByRole('button', { name: 'Shuru ki jagah chunein' })).toBeVisible();
+  expect(screen.getByTestId('directions-body')).toHaveStyle({ direction: 'ltr' });
 });

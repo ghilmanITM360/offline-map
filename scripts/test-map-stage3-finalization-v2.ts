@@ -117,12 +117,12 @@ assert(
 );
 assert(types.includes('connectedBlockNames?: string[];'), 'PlaceCommon must declare the connectedBlockNames field.');
 assert(
-  locationSheet.includes("place.category === 'Rasta' ? 'Connected Blocks' : 'Connected Areas'"),
+  locationSheet.includes("place.category === 'Rasta' ? 'place.blocks' : 'place.areas'"),
   'LocationSheet must show a Rasta\'s connected blocks and a Pindal/SpecialRoute\'s connected areas using the same real data.',
 );
-assert(locationSheet.includes('function facilityTypeLabel(place: Place)'), 'LocationSheet must derive a facility type label for Masjid/Landmark places.');
+assert(locationSheet.includes('function facilityTypeKey(place: Place)'), 'LocationSheet must derive a facility type label for Masjid/Landmark places.');
 assert(
-  locationSheet.includes("if (place.id.startsWith('LM_FOOD')) return 'Food & refreshments point';"),
+  locationSheet.includes("if (place.id.startsWith('LM_FOOD')) return 'place.food';"),
   'Facility type label must use the LM_FOOD id-prefix categorization, not invent a new one.',
 );
 
