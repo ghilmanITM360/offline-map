@@ -1,3 +1,4 @@
+import { useAccessibilityFocus } from '../hooks/useAccessibilityFocus';
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -98,6 +99,7 @@ export function LocationsDirectoryScreen() {
   const [request] = useState(() => useAppStore.getState().directoryRequest);
   const [storePurpose] = useState(() => useAppStore.getState().directoryPurpose);
   const purpose = storePurpose;
+  const { ref: chooserHeading } = useAccessibilityFocus(purpose ? `chooser:${purpose}:${request?.serial ?? 'none'}` : null);
   const chooserDestination = useAppStore((state) => state.routePlannerDest);
   const setDirectoryPurpose = useAppStore((s) => s.setDirectoryPurpose);
   const setDirectoryChoice = useAppStore((s) => s.setDirectoryChoice);
@@ -390,7 +392,7 @@ export function LocationsDirectoryScreen() {
         {/* Short title (was two lines: a long question plus a subtitle that just repeated what the
             search placeholder already says). It may wrap: at 200% font on a 320 dp window one line
             truncated to "Find your…" beside the Map pill (#128 A). */}
-        <Text style={styles.title} accessibilityRole="header">
+        <Text ref={chooserHeading} style={styles.title} accessibilityRole="header">
           {t(purpose === 'start' ? 'directory.originHeading' : purpose === 'destination' ? 'directory.destinationHeading' : 'directory.heading')}
         </Text>
         <Pressable

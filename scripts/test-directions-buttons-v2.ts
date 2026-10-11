@@ -7,7 +7,7 @@ const homeScreenSource = readFileSync('src/views/screens/HomeScreen.tsx', 'utf8'
 
 assert(directionsScreenSource.includes("t('directions.title'"), 'Directions header must say Get Directions.');
 assert(directionsScreenSource.includes("t('directions.changeTo'"), 'Directions screen must show a tappable destination row.');
-assert(directionsViewModelSource.includes("'Choose where to start'"), 'The FROM row must state the start-selection task plainly.');
+assert(directionsViewModelSource.includes("t('directions.chooseOrigin')"), 'The FROM row must state the start-selection task plainly.');
 // #222: every start change opens the Directory; the current-location / last-known quick options live there.
 const directoryScreenSource = readFileSync('src/views/screens/LocationsDirectoryScreen.tsx', 'utf8');
 assert(directionsScreenSource.includes("onOpenDirectory?.('start')"), 'Directions screen must hand every start change to the Directory.');

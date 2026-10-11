@@ -1,3 +1,4 @@
+import type { SemanticInstruction } from '../i18n/instructions';
 import type { Coordinate } from './types';
 
 export type OutsideRouteProviderId = 'google' | 'offline-osm' | 'direct-guide';
@@ -38,6 +39,7 @@ export interface NormalizedWalkingStep {
   durationSeconds: number | null;
   coordinate: Coordinate;
   instruction: string;
+  semantic?: SemanticInstruction;
   roadName?: string;
 }
 

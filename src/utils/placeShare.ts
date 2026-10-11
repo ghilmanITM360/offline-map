@@ -3,9 +3,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import { getLocale, t } from '../i18n';
+import { localizeVenueName } from '../i18n/venueNames';
 import type { Place } from '../models/types';
 
-/** Default share heading; pass a translated string from the caller once the app is localized. */
+/** Canonical English brand name retained for compatibility; the share default uses current locale. */
 export const DEFAULT_SHARE_PREFIX = 'Karachi Ijtema';
 
 /**
@@ -19,12 +21,13 @@ export const DEFAULT_SHARE_PREFIX = 'Karachi Ijtema';
  */
 export function buildPlaceShareMessage(
   place: Place,
-  prefix: string = DEFAULT_SHARE_PREFIX,
+  prefix: string = t('place.sharePrefix'),
 ): { title: string; message: string; url: string } | null {
   const c = place.coordinate;
   if (!c || !Number.isFinite(c.latitude) || !Number.isFinite(c.longitude)) return null;
   const lat = c.latitude.toFixed(6);
   const lon = c.longitude.toFixed(6);
   const url = `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lon}#map=19/${lat}/${lon}`;
-  return { title: place.name, message: `📍 ${place.name} — ${prefix}\n${url}`, url };
+  const name = localizeVenueName(place.name, getLocale());
+  return { title: name, message: `📍 ${name} — ${prefix}\n${url}`, url };
 }

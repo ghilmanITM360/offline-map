@@ -1,3 +1,4 @@
+import { t } from '../i18n/translate';
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -187,7 +188,7 @@ export function keepCurrentRouteAfterRerouteFailureV2(route: V2ActiveRoute): {
 } {
   return {
     route,
-    message: 'Keep following the current route.',
+    message: t('navigation.keepRoute'),
   };
 }
 

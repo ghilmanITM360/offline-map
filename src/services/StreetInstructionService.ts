@@ -133,6 +133,7 @@ export function generateStreetInstructions(
     instructions.push({
       id: `v2-street-step-${i}`,
       text,
+      semantic: { key: isFirstHop ? "instructions.streetFirst" : maneuver === "straight" ? "instructions.streetContinue" : "instructions.streetTurn", params: { distance: distanceM, road: name ?? "", name: gateLabel.en }, maneuver, arrivalName: isLastHop ? gateLabel.en : undefined, urduNames: { name: gateLabel.ur } },
       urduText,
       distance: distanceM,
       distanceM,

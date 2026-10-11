@@ -3,11 +3,14 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import { localizeInstruction } from '../i18n/instructions';
+import { getLocale, useLocaleStore } from '../i18n/localeStore';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AppState, AppStateStatus } from 'react-native';
 import { getDistance } from 'geolib';
 import { useAppStore } from '../store/useAppStore';
-import { useRouteUpdatedNotice } from './useRouteUpdatedNotice';
+import { resolveNavigationStatus, useRouteUpdatedNotice } from './useRouteUpdatedNotice';
+import type { NavigationStatusCopy } from './useRouteUpdatedNotice';
 import { VoiceService } from '../services/VoiceService';
 import {
   Coordinate,
@@ -37,7 +40,6 @@ import {
   evaluateRerouteEvidenceV2,
   GPS_LOST_TIMEOUT_MS,
   GpsSignalStateV2,
-  keepCurrentRouteAfterRerouteFailureV2,
   shouldIgnorePoorAccuracyMovementV2,
 } from '../services/V2NavigationRuntimeService';
 import { ARRIVAL_THRESHOLD_METERS } from '../constants/navigation';
@@ -143,6 +145,7 @@ export function recommendPreviewEntryGate(coordinate: Coordinate, place: Place |
 }
 
 export function useNavigationViewModelV2() {
+  const locale = useLocaleStore((state) => state.locale);
   const destinationFromStore = useAppStore((s) => s.destination);
   const activeRoute = useAppStore((s) => s.activeRoute);
   const isNavigating = useAppStore((s) => s.isNavigating);
@@ -184,7 +187,7 @@ export function useNavigationViewModelV2() {
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [arrived, setArrived] = useState(false);
   const [isWeakGps, setIsWeakGps] = useState(false);
-  const [rerouteStatusMessage, setRerouteStatusMessage] = useState<string | null>(null);
+  const [rerouteStatusCopy, setRerouteStatusMessage] = useState<NavigationStatusCopy>(null);
   const routeUpdatedNotice = useRouteUpdatedNotice(setRerouteStatusMessage);
   const [gpsSignalState, setGpsSignalState] = useState<GpsSignalStateV2>('GPS_GOOD');
   const [manualGateId, setManualGateId] = useState<string | null>(null);
@@ -410,8 +413,7 @@ export function useNavigationViewModelV2() {
 
       if (!candidate) {
         lastRerouteAtRef.current = Date.now();
-        const failure = keepCurrentRouteAfterRerouteFailureV2(routeAtRequest);
-        setRerouteStatusMessage(failure.message);
+        setRerouteStatusMessage({ key: 'navigation.keepRoute' });
         setReroutePending(false);
         outsideHandle?.finish();
         return;
@@ -439,7 +441,7 @@ export function useNavigationViewModelV2() {
       // #143: any throw in the reroute path must not leave "Rerouting…" stuck; keep the current route.
       if (rerouteRequestInFlightRef.current === requestMarker && ownsSession() && currentLiveCapability().mode === 'live_navigation') {
         lastRerouteAtRef.current = Date.now();
-        setRerouteStatusMessage(keepCurrentRouteAfterRerouteFailureV2(route).message);
+        setRerouteStatusMessage({ key: 'navigation.keepRoute' });
         setReroutePending(false);
       }
       outsideHandle?.finish();
@@ -578,7 +580,7 @@ export function useNavigationViewModelV2() {
     const currentInstruction = instructions[nextIndex];
     if (settings.voiceInstructions && !isMuted && currentInstruction && currentInstruction.id !== lastSpokenInstructionIdRef.current) {
       lastSpokenInstructionIdRef.current = currentInstruction.id;
-      VoiceService.speakInstruction(currentInstruction.spokenText ?? currentInstruction.text, settings.language);
+      VoiceService.speakInstruction(localizeInstruction(currentInstruction), getLocale() === "ur" ? "ur" : "en");
     }
 
     const thresholdM = RerouteService.getDynamicOffRouteThresholdMeters(accuracyM);
@@ -636,12 +638,26 @@ export function useNavigationViewModelV2() {
     setArrived(false);
   }, [stopNavigation]);
 
+  const previousSpeechLocaleRef = useRef(locale);
+  useEffect(() => {
+    if (previousSpeechLocaleRef.current === locale) return;
+    previousSpeechLocaleRef.current = locale;
+    const owner = useAppStore.getState();
+    if (!owner.isNavigating || owner.navigationSessionId !== navigationSessionId ||
+      !route || owner.activeRoute !== route || !isV2ActiveRoute(owner.activeRoute)) return;
+    VoiceService.stop();
+    const step = instructions[currentStepIndex];
+    if (route && step && !isMuted && settings.voiceInstructions) {
+      VoiceService.speakInstruction(localizeInstruction(step, locale), locale === 'ur' ? 'ur' : 'en');
+    }
+  }, [locale, instructions, currentStepIndex, isMuted, settings.voiceInstructions, route, navigationSessionId]);
+
   return {
     destination,
     currentLocation,
     snappedLocation,
     route,
-    instructions,
+    instructions: instructions.map((step) => ({ ...step, text: localizeInstruction(step, locale) })),
     currentStepIndex,
     isMuted,
     setIsMuted,
@@ -652,7 +668,7 @@ export function useNavigationViewModelV2() {
     reroutePending,
     isWeakGps,
     gpsSignalState,
-    rerouteStatusMessage,
+    rerouteStatusMessage: resolveNavigationStatus(rerouteStatusCopy, locale),
     manualGateId,
     availableOutsideGates: AVAILABLE_OUTSIDE_GATES,
     retryOutsideRoute,

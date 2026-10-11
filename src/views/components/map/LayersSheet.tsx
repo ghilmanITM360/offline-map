@@ -1,3 +1,4 @@
+import { useI18n } from '../../../i18n/useI18n';
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -26,9 +27,10 @@ interface LayersSheetProps {
 }
 
 function OverlayRow({ label, value, onChange }: { label: string; value: boolean; onChange: (val: boolean) => void }) {
+  const { isRTL } = useI18n();
   return (
     <Pressable
-      style={styles.row}
+      style={[styles.row, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}
       onPress={() => onChange(!value)}
       accessibilityRole="switch"
       accessibilityLabel={label}
@@ -61,6 +63,7 @@ export function LayersSheet({
   showSpecialRoutesLayer,
   onToggleSpecialRoutes,
 }: LayersSheetProps) {
+  const { t, isRTL } = useI18n();
   const insets = useSafeAreaInsets();
 
   // Modal renders as its own native layer and already blocks touches from reaching the
@@ -72,15 +75,15 @@ export function LayersSheet({
       <Pressable style={styles.backdrop} onPress={onClose} />
       <View style={[styles.sheet, { paddingBottom: Math.max(insets.bottom, 16) + 12 }]}>
         <SheetHandle />
-        <SheetHeader title="Map Layers" icon={<Layers size={18} color="#202124" />} onClose={onClose} />
+        <SheetHeader title={t('journeyControls.layersTitle')} icon={<Layers size={18} color="#202124" />} onClose={onClose} />
 
         <ScrollView bounces={false}>
-          <Text style={styles.sectionLabel}>Show on Map</Text>
+          <Text style={[styles.sectionLabel, { textAlign: isRTL ? 'right' : 'left' }]}>{t('journeyControls.showMap')}</Text>
           <View style={styles.overlayGroup}>
-            <OverlayRow label="Blocks" value={showBlockPolygons} onChange={onToggleBlocks} />
-            <OverlayRow label="Gates" value={showGatesLayer} onChange={onToggleGates} />
-            <OverlayRow label="Rastas" value={showRastasLayer} onChange={onToggleRastas} />
-            <OverlayRow label="Shahr-e-Pindal" value={showSpecialRoutesLayer} onChange={onToggleSpecialRoutes} />
+            <OverlayRow label={t('journeyControls.blocks')} value={showBlockPolygons} onChange={onToggleBlocks} />
+            <OverlayRow label={t('journeyControls.gates')} value={showGatesLayer} onChange={onToggleGates} />
+            <OverlayRow label={t('journeyControls.rastas')} value={showRastasLayer} onChange={onToggleRastas} />
+            <OverlayRow label={t('journeyControls.pindal')} value={showSpecialRoutesLayer} onChange={onToggleSpecialRoutes} />
           </View>
         </ScrollView>
       </View>

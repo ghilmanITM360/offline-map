@@ -1,3 +1,6 @@
+import React from 'react';
+import { ActiveDirectionsPanel } from '../views/components/navigation/ActiveDirectionsPanel';
+import { localizeInstruction } from '../i18n/instructions';
 import { seedRunningNavigation } from './navigationFixture';
 import type { Place, V2ActiveRoute } from '../models/types';
 import { LANDMARK_PLACES } from '../constants/data';
@@ -6,7 +9,7 @@ import { V2NavigationAdapter } from '../services/V2NavigationAdapter';
 import { createProductionOutsideRouteSource } from '../services/outsideRouting/ProductionOutsideRouteSource';
 import { useAppStore } from '../store/useAppStore';
 import { useNavigationViewModelV2 } from '../viewmodels/NavigationViewModelV2';
-import { act, renderHook, waitFor } from './test-utils';
+import { act, render, renderHook, screen, waitFor } from './test-utils';
 
 const initialStoreState = useAppStore.getState();
 const origin = { latitude: 24.9762, longitude: 67.011 };
@@ -312,3 +315,162 @@ test('a gate-change direct guide cannot replace active walking navigation', asyn
   expect(useAppStore.getState().isNavigating).toBe(true);
   expect(hook.result.current.rerouteStatusMessage).toBe('Keep following the current route.');
 });
+
+test('changing locale updates visible and spoken generated steps without rerouting or advancing progress', async () => {
+  const { useLocaleStore } = require('../i18n/localeStore');
+  const { VoiceService } = require('../services/VoiceService');
+  useLocaleStore.getState().setLocale('en');
+  const previewSpy = jest.spyOn(V2DirectionsService, 'calculateHybridPreview');
+  const speechSpy = jest.spyOn(VoiceService, 'speakInstruction');
+  const hook = await renderHook(() => useNavigationViewModelV2());
+  const before = useAppStore.getState().activeRoute;
+  const index = hook.result.current.currentStepIndex;
+  previewSpy.mockClear();
+  speechSpy.mockClear();
+  await act(async () => { useLocaleStore.getState().setLocale('ur-Latn'); });
+  expect(useAppStore.getState().activeRoute).toBe(before);
+  expect(hook.result.current.currentStepIndex).toBe(index);
+  expect(previewSpy).not.toHaveBeenCalled();
+  expect(hook.result.current.instructions[index].text).toMatch(/chalein|murein|shuru/i);
+  expect(speechSpy).toHaveBeenCalledWith(hook.result.current.instructions[index].text, 'en');
+  await act(async () => { useLocaleStore.getState().setLocale('ur'); });
+  expect(speechSpy).toHaveBeenLastCalledWith(expect.stringMatching(/[\u0600-\u06ff]/), 'ur');
+  await act(async () => { useLocaleStore.getState().setLocale('en'); });
+  previewSpy.mockRestore();
+  speechSpy.mockRestore();
+});
+
+test('when both navigation hooks are mounted only the active engine replaces locale speech', async () => {
+  const { useNavigationViewModel } = require('../viewmodels/NavigationViewModel');
+  const { useLocaleStore } = require('../i18n/localeStore');
+  const { VoiceService } = require('../services/VoiceService');
+  useLocaleStore.getState().setLocale('en');
+  const stopSpy = jest.spyOn(VoiceService, 'stop');
+  const speechSpy = jest.spyOn(VoiceService, 'speakInstruction');
+  const hook = await renderHook(() => ({
+    v2: useNavigationViewModelV2(),
+    v1: useNavigationViewModel(),
+  }));
+  stopSpy.mockClear();
+  speechSpy.mockClear();
+  await act(async () => { useLocaleStore.getState().setLocale('ur'); });
+  expect(stopSpy).toHaveBeenCalledTimes(1);
+  expect(speechSpy).toHaveBeenCalledTimes(1);
+  expect(speechSpy).toHaveBeenCalledWith(hook.result.current.v2.instructions[hook.result.current.v2.currentStepIndex].text, 'ur');
+  expect(stopSpy.mock.invocationCallOrder[0]).toBeLessThan(speechSpy.mock.invocationCallOrder[0]);
+  await act(async () => { useAppStore.getState().stopNavigation(); });
+  stopSpy.mockClear();
+  speechSpy.mockClear();
+  await act(async () => { useLocaleStore.getState().setLocale('ur-Latn'); });
+  expect(stopSpy).not.toHaveBeenCalled();
+  expect(speechSpy).not.toHaveBeenCalled();
+  await act(async () => { useLocaleStore.getState().setLocale('en'); });
+  stopSpy.mockRestore();
+  speechSpy.mockRestore();
+});
+
+test('a retained legacy route cannot speak after ownership moves to V2', async () => {
+  const { useNavigationViewModel } = require('../viewmodels/NavigationViewModel');
+  const { useLocaleStore } = require('../i18n/localeStore');
+  const { VoiceService } = require('../services/VoiceService');
+  useLocaleStore.getState().setLocale('en');
+  const legacySteps = sharedActiveRoute.instructions.map(step => ({
+    ...step, text: 'Stale legacy guidance',
+    semantic: { key: 'instructions.start' as const, params: {name: 'stale legacy route'} },
+  }));
+  seedRunningNavigation(destination, {...sharedActiveRoute, sourceVersion: 'v1'}, legacySteps);
+  const hook = await renderHook(() => ({v2: useNavigationViewModelV2(), v1: useNavigationViewModel()}));
+  expect(hook.result.current.v1.instructions[0].text).toBe('Stale legacy guidance');
+  await act(async () => { seedRunningNavigation(destination, sharedActiveRoute, sharedActiveRoute.instructions); });
+  const stopSpy = jest.spyOn(VoiceService, 'stop');
+  const speechSpy = jest.spyOn(VoiceService, 'speakInstruction');
+  await act(async () => { useLocaleStore.getState().setLocale('ur-Latn'); });
+  expect(stopSpy).toHaveBeenCalledTimes(1);
+  expect(speechSpy).toHaveBeenCalledTimes(1);
+  expect(speechSpy).toHaveBeenCalledWith(hook.result.current.v2.instructions[hook.result.current.v2.currentStepIndex].text, 'en');
+  expect(speechSpy.mock.calls.flat().join(' ')).not.toContain('stale legacy route');
+  await act(async () => { useLocaleStore.getState().setLocale('en'); });
+  stopSpy.mockRestore();
+  speechSpy.mockRestore();
+});
+
+const keepRouteCopy = {
+  en: 'Keep following the current route.',
+  'ur-Latn': 'Maujooda raste par chalte rahein.',
+  ur: 'موجودہ راستے پر چلتے رہیں۔',
+} as const;
+
+test.each([
+  ['en', 'unavailable'], ['ur-Latn', 'unavailable'], ['ur', 'unavailable'],
+  ['en', 'exception'], ['ur-Latn', 'exception'], ['ur', 'exception'],
+] as const)('reroute %s/%s retains a locale-reactive status without recalculating or changing progress', async (initialLocale, failureMode) => {
+  const { useLocaleStore } = require('../i18n/localeStore');
+  useLocaleStore.getState().setLocale(initialLocale);
+  const calculate = jest.spyOn(V2DirectionsService, 'calculateHybridPreview');
+  if (failureMode === 'exception') calculate.mockRejectedValueOnce(new Error('Provider unavailable'));
+  else calculate.mockResolvedValueOnce({status: 'unavailable', route: null, instructions: [], message: 'Provider unavailable'});
+  const hook = await renderHook(() => useNavigationViewModelV2());
+  const before = useAppStore.getState().activeRoute;
+  const index = hook.result.current.currentStepIndex;
+  await act(() => hook.result.current.retryOutsideRoute());
+  expect(hook.result.current.rerouteStatusMessage).toBe(keepRouteCopy[initialLocale]);
+  const calls = calculate.mock.calls.length;
+  for (const locale of ['en', 'ur', 'ur-Latn'] as const) {
+    await act(async () => { useLocaleStore.getState().setLocale(locale); });
+    expect(hook.result.current.rerouteStatusMessage).toBe(keepRouteCopy[locale]);
+    expect(useAppStore.getState().activeRoute).toBe(before);
+    expect(hook.result.current.currentStepIndex).toBe(index);
+    expect(calculate).toHaveBeenCalledTimes(calls);
+  }
+  await act(async () => { useLocaleStore.getState().setLocale('en'); });
+  calculate.mockRestore();
+});
+
+test.each(['en', 'ur', 'ur-Latn'] as const)(
+  'the active directions panel and owning voice engine follow locale changes from %s without a new route',
+  async initialLocale => {
+    const { useNavigationViewModel } = require('../viewmodels/NavigationViewModel');
+    const { useLocaleStore } = require('../i18n/localeStore');
+    const { VoiceService } = require('../services/VoiceService');
+    useLocaleStore.getState().setLocale(initialLocale);
+    function ActiveProbe() {
+      const v2 = useNavigationViewModelV2();
+      useNavigationViewModel(); // The same engine-mount order as Home.
+      return <ActiveDirectionsPanel visible destination={destination.name}
+        instructions={v2.instructions} currentStepIndex={v2.currentStepIndex} onClose={() => undefined} />;
+    }
+    const calculate = jest.spyOn(V2DirectionsService, 'calculateHybridPreview');
+    await render(<ActiveProbe />);
+    const before = useAppStore.getState().activeRoute;
+    const session = useAppStore.getState().navigationSessionId;
+    const step = sharedActiveRoute.instructions[0];
+    const calls = calculate.mock.calls.length;
+    expect(screen.getByText(localizeInstruction(step, initialLocale))).toBeOnTheScreen();
+    const stop = jest.spyOn(VoiceService, 'stop');
+    const speak = jest.spyOn(VoiceService, 'speakInstruction');
+    let previous = initialLocale;
+    for (const locale of ['en', 'ur', 'ur-Latn'] as const) {
+      stop.mockClear();
+      speak.mockClear();
+      await act(async () => { useLocaleStore.getState().setLocale(locale); });
+      const visibleText = localizeInstruction(step, locale);
+      expect(screen.getByText(visibleText)).toBeOnTheScreen();
+      if (locale === previous) {
+        expect(stop).not.toHaveBeenCalled();
+        expect(speak).not.toHaveBeenCalled();
+      } else {
+        expect(stop).toHaveBeenCalledTimes(1);
+        expect(speak).toHaveBeenCalledTimes(1);
+        expect(speak).toHaveBeenCalledWith(visibleText, locale === 'ur' ? 'ur' : 'en');
+      }
+      expect(useAppStore.getState().activeRoute).toBe(before);
+      expect(useAppStore.getState().navigationSessionId).toBe(session);
+      expect(calculate).toHaveBeenCalledTimes(calls);
+      previous = locale;
+    }
+    await act(async () => { useLocaleStore.getState().setLocale('en'); });
+    stop.mockRestore();
+    speak.mockRestore();
+    calculate.mockRestore();
+  },
+);

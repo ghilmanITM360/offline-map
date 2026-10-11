@@ -3,10 +3,16 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import { t } from '../i18n/translate';
+import type { MessageKey } from '../i18n/messages';
+import { localizeVenueName } from '../i18n/venueNames';
+import { localizeInstruction } from '../i18n/instructions';
+import { getLocale, useLocaleStore } from '../i18n/localeStore';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { AppState } from 'react-native';
 import { useAppStore } from '../store/useAppStore';
-import { useRouteUpdatedNotice } from './useRouteUpdatedNotice';
+import { resolveNavigationStatus, useRouteUpdatedNotice } from './useRouteUpdatedNotice';
+import type { NavigationStatusCopy } from './useRouteUpdatedNotice';
 import { RoutingService } from '../services/RoutingService';
 import { InstructionService, Instruction } from '../services/InstructionService';
 import { SnapToRoadService } from '../services/SnapToRoadService';
@@ -27,6 +33,7 @@ const WEAK_GPS_THRESHOLD_M = 50;
 const GPS_STALE_MESSAGE = 'Finding your location…';
 
 export function useNavigationViewModel() {
+  const locale = useLocaleStore((state) => state.locale);
   const {
     destination,
     navigationSessionId,
@@ -49,7 +56,10 @@ export function useNavigationViewModel() {
   const [remainingDistance, setRemainingDistance] = useState(0);
   const [arrived, setArrived] = useState(false);
   const [isWeakGps, setIsWeakGps] = useState(false);
-  const [rerouteStatusMessage, setRerouteStatusMessage] = useState<string | null>(null);
+  const [rerouteStatusCopy, setRerouteStatusMessage] = useState<NavigationStatusCopy>(null);
+  // Lifecycle comparisons keep their English contract; the returned presentation follows the current locale.
+  const rerouteStatusMessage = resolveNavigationStatus(rerouteStatusCopy, 'en');
+  const setGeneratedRerouteStatus = (key: MessageKey) => setRerouteStatusMessage({ key });
   const routeUpdatedNotice = useRouteUpdatedNotice(setRerouteStatusMessage);
 
   // Refs to avoid stale closures inside the GPS callback
@@ -137,7 +147,7 @@ export function useNavigationViewModel() {
       if (settingsRef.current.voiceInstructions) {
         const isMutedNow = useAppStore.getState().isMuted;
         if (!isMutedNow && generated[0]) {
-          VoiceService.speak(generated[0].text, settingsRef.current.language);
+          VoiceService.speak(localizeInstruction(generated[0]), getLocale() === "ur" ? "ur" : "en");
         }
       }
       return;
@@ -170,7 +180,7 @@ export function useNavigationViewModel() {
       if (!settingsRef.current.voiceInstructions) return;
       const isMutedNow = useAppStore.getState().isMuted;
       if (!isMutedNow && generated[0]) {
-        VoiceService.speak(generated[0].text, settingsRef.current.language);
+        VoiceService.speak(localizeInstruction(generated[0]), getLocale() === "ur" ? "ur" : "en");
       }
     }
   }, [destination, navigationSessionId, routePlannerOrigin, activeRoute, routeInstructions]); // intentionally excludes current GPS ticks
@@ -198,7 +208,7 @@ export function useNavigationViewModel() {
       latestGpsAccuracyRef.current = gpsAccuracy;
       setIsWeakGps(gpsAccuracy > WEAK_GPS_THRESHOLD_M);
       if (holdRouteForWeakGps) {
-        setRerouteStatusMessage('Weak signal. Keep walking the way shown.');
+        setGeneratedRerouteStatus('navigation.weakRoute');
       } else if (rerouteStatusMessage === 'Weak signal. Keep walking the way shown.') {
         setRerouteStatusMessage(null);
       }
@@ -239,7 +249,7 @@ export function useNavigationViewModel() {
             setCurrentStepIndex(next);
             currentStepIndexRef.current = next;
             if (!isMuted && currentSettings.voiceInstructions && steps[next]) { // fixed: respect voice settings for step advancement prompts
-              VoiceService.speak(steps[next].text, currentSettings.language);
+              VoiceService.speak(localizeInstruction(steps[next]), getLocale() === "ur" ? "ur" : "en");
             }
           }
         }
@@ -275,10 +285,8 @@ export function useNavigationViewModel() {
           useAppStore.getState().clearUnfinishedJourney(); // #139 Option B: arrival finishes the journey
           if (!isMuted && currentSettings.voiceInstructions) { // fixed: respect voice settings for arrival prompts
             VoiceService.speak(
-              currentSettings.language === 'ur'
-                ? `${dest.name} پہنچ گئے۔`
-                : `You have arrived at ${dest.name}.`,
-              currentSettings.language
+              t('navigation.arrivedAnnouncement', { name: localizeVenueName(dest.name) }),
+              getLocale() === 'ur' ? 'ur' : 'en'
             );
           }
           return;
@@ -340,7 +348,7 @@ export function useNavigationViewModel() {
             !shouldTrigger ||
             (offRouteDurationMs < OFF_ROUTE_PENDING_MS && consecutiveOffRouteCountRef.current < OFF_ROUTE_CONSECUTIVE_REQUIRED)
           ) {
-            setRerouteStatusMessage("You may be off the route. Keep walking and we'll fix it.");
+            setGeneratedRerouteStatus('navigation.offRoute');
             return;
           }
 
@@ -349,7 +357,7 @@ export function useNavigationViewModel() {
           const rerouteSessionId = useAppStore.getState().navigationSessionId;
           setReroutePending(true);
           routeUpdatedNotice.cancel();
-          setRerouteStatusMessage('Finding a new way…');
+          setGeneratedRerouteStatus('navigation.rerouting');
           rerouteTimerRef.current = setTimeout(() => {
             const currentSession = useAppStore.getState();
             if (
@@ -390,16 +398,14 @@ export function useNavigationViewModel() {
               lastAcceptedLocationRef.current = resolvedStart.snappedCoordinate;
               if (!isMuted && settingsRef.current.voiceInstructions) {
                 VoiceService.speak(
-                  settingsRef.current.language === 'ur'
-                    ? 'راستہ دوبارہ بن رہا ہے۔ چلتے رہیں۔'
-                    : 'Finding a new way. Please keep walking.',
-                  settingsRef.current.language,
+                  t('navigation.rerouting'),
+                  getLocale() === 'ur' ? 'ur' : 'en',
                 );
               }
               if (resolvedStart.warning) setRerouteStatusMessage(resolvedStart.warning);
               else routeUpdatedNotice.announce();
             } else {
-              setRerouteStatusMessage('Keep following the current route.');
+              setGeneratedRerouteStatus('navigation.keepRoute');
             }
             setReroutePending(false);
           }, 250);
@@ -428,7 +434,7 @@ export function useNavigationViewModel() {
     const subscription = AppState.addEventListener('change', (nextState) => {
       if (nextState !== 'active') return;
       if (lastFixAtRef.current == null || Date.now() - lastFixAtRef.current >= GPS_LOST_TIMEOUT_MS) {
-        setRerouteStatusMessage(GPS_STALE_MESSAGE);
+        setGeneratedRerouteStatus('recovery.acquiring');
       }
       watcherBoundaryAtMsRef.current = Date.now();
       void GPSManagerService.forceFix();
@@ -477,12 +483,27 @@ export function useNavigationViewModel() {
     }
   };
 
+  const previousSpeechLocaleRef = useRef(locale);
+  useEffect(() => {
+    if (previousSpeechLocaleRef.current === locale) return;
+    previousSpeechLocaleRef.current = locale;
+    const owner = useAppStore.getState();
+    if (!owner.isNavigating || owner.navigationSessionId !== navigationSessionId ||
+      (owner.activeRoute as { sourceVersion?: string } | null)?.sourceVersion === 'v2' ||
+      routeRef.current !== route || instructionsRef.current !== instructions) return;
+    VoiceService.stop();
+    const step = instructions[currentStepIndex];
+    if (route && step && !isMuted && settings.voiceInstructions) {
+      VoiceService.speakInstruction(localizeInstruction(step, locale), locale === 'ur' ? 'ur' : 'en');
+    }
+  }, [locale, instructions, currentStepIndex, isMuted, settings.voiceInstructions, route, navigationSessionId]);
+
   return {
     destination,
     currentLocation,
     snappedLocation,
     route,
-    instructions,
+    instructions: instructions.map((step) => ({ ...step, text: localizeInstruction(step, locale) })),
     currentStepIndex,
     isMuted,
     setIsMuted: setMuteState,
@@ -490,7 +511,7 @@ export function useNavigationViewModel() {
     arrived,
     reroutePending,
     isWeakGps,
-    rerouteStatusMessage,
+    rerouteStatusMessage: resolveNavigationStatus(rerouteStatusCopy, locale),
     handleExit,
   };
 }

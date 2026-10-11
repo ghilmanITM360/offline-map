@@ -1,3 +1,4 @@
+import { translate } from '../i18n/translate';
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -199,7 +200,7 @@ export class SearchService {
           id: rastaName,
           name: rastaName,
           category: 'Rasta',
-          description: `Base walking path: ${rastaName}`,
+          description: translate('en', 'journeyResidual.legacyRasta', { place: rastaName }),
           coordinate: { latitude: node.lat, longitude: node.lng },
           routingNodeId: preferredNodeId,
           resolvedRoutingNodeId: preferredNodeId,
@@ -222,7 +223,7 @@ export class SearchService {
         results.push({
           ...place,
           category: 'Masjid',
-          description: `${place.name} (Member Masjid area)`,
+          description: translate('en', 'journeyResidual.legacyMasjid', { place: place.name }),
         });
       });
     } else if (cat === 'terminals') {
@@ -288,7 +289,7 @@ export class SearchService {
       name: `Block ${num}`,
       urduName: block.urduName,
       category: 'Block',
-      description: `Block ${num} — part of Karachi Ijtema ground.`,
+      description: translate('en', 'journeyResidual.legacyBlock', { place: `Block ${num}` }),
       coordinate: block.center,
       aliases: block.aliases,
       sourceVersion: 'v1',
@@ -301,13 +302,13 @@ export class SearchService {
 
     if (node.type === 'gate') {
       category = 'Gate';
-      description = `Entry / exit gate — ${node.name ?? id}`;
+      description = translate('en', 'journeyResidual.legacyGate', { place: node.name ?? id });
     } else if (node.type === 'masjid') {
       category = 'Masjid';
-      description = `Prayer area — ${node.name ?? id}`;
+      description = translate('en', 'journeyResidual.legacyPrayer', { place: node.name ?? id });
     } else if (node.type === 'intersection') {
       category = 'Intersection';
-      description = `Graph intersection ${id}`;
+      description = translate('en', 'journeyResidual.legacyJunction', { place: id });
     } else if (node.type === 'road_end') {
       category = 'RoadEndpoint';
       description = node.name ?? id;

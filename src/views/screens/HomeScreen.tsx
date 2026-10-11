@@ -1,3 +1,5 @@
+import { useI18n } from '../../i18n/useI18n';
+import { localizeVenueName } from '../../i18n/venueNames';
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -158,6 +160,7 @@ const BANNER_CONTROL_GAP = 8;
 // an early move again when it does).
 
 export function HomeScreen() {
+  const { t, locale, isRTL } = useI18n();
   const nav = useNavigation<HomeScreenNavigationProp>();
   // Home stays mounted under every other screen, and its bottom sheet is portal-hosted above
   // the whole navigator (App.tsx), so it would otherwise stay drawn, touchable and answering
@@ -507,9 +510,9 @@ export function HomeScreen() {
   const routeGuideOpen = useAppStore((s) => s.routeGuide !== null);
   const topBarTitle =
     mode === 'ROUTE_PREVIEW' || directionsDestination
-      ? routeGuideOpen ? 'Route guide' : 'Directions'
+      ? routeGuideOpen ? t('journeyHome.routeGuide') : t('journeyHome.directions')
       : mode === 'PLACE_SELECTED' || mode === 'DETAILS'
-      ? selectedPlace?.name ?? null
+      ? selectedPlace ? localizeVenueName(selectedPlace.name, locale) : null
       : null;
 
   const startupCameraStillOwnsIntent = useCallback((requestGeneration: number, cameraIntentGeneration: number) => (
@@ -713,7 +716,7 @@ export function HomeScreen() {
   );
   const previewDestination = activePreviewRoute ? routePlannerDest : null;
   // Single route-preview surface: whichever of the two ways a route preview can start
-  // (explicit "Directions" tap -> directionsDestination, or a v2 route already resolved
+  // (explicit t('journeyHome.directions') tap -> directionsDestination, or a v2 route already resolved
   // in the store this session -> activePreviewRoute/previewDestination; a route never survives a relaunch)
   // resolves to the same destination shown in the same LocationSheet routePreview mode.
   const routePreviewSheetDestination = directionsDestination ?? previewDestination;
@@ -951,8 +954,8 @@ export function HomeScreen() {
     return recommendPreviewEntryGate(currentLocation, selectedPlace) ?? null;
   }, [currentLocation, venueStatus.insideVenue, selectedPlace]);
   const outsideBannerAccessibilityLabel = nearestEntryGate
-    ? `Outside Ijtema. Suggested entry through ${nearestEntryGate.name.en}. Final entry gate is confirmed when route preview is calculated.`
-    : 'Outside Ijtema. Suggested entry unavailable. Final entry gate is confirmed when route preview is calculated.';
+    ? t('journeyHome.outsideAnnouncement', { gate: localizeVenueName(nearestEntryGate.name.en, locale) })
+    : t('journeyHome.noEntryAnnouncement');
   // The Block 2 opening view is a fallback, so the notice goes away as soon as a live location exists or the user moves on.
   const showFallbackNotice = !!fallbackNotice && !(currentLocation && currentLocationSource === 'live') && mode === 'EXPLORE';
   const topInsetBase = Math.max(insets.top, Platform.OS === 'android' ? StatusBar.currentHeight ?? 0 : 0);
@@ -1149,7 +1152,7 @@ export function HomeScreen() {
 
   // The route-preview sheet is the single surface for a resolved preview route — no
   // separate floating card. This opens it automatically whenever a route becomes active
-  // without the user having explicitly tapped "Directions" (e.g. a promoted/restored
+  // without the user having explicitly tapped t('journeyHome.directions') (e.g. a promoted/restored
   // route-planner state), the same trigger the old floating card relied on to appear.
   useEffect(() => {
     if (!activePreviewRoute || directionsDestination) return;
@@ -1289,19 +1292,22 @@ export function HomeScreen() {
       currentLocation: state.currentLocation,
     });
     if (!startCheck.canStart) {
-      Alert.alert("Can't start yet", startCheck.message);
+      Alert.alert(t('journeyHome.cantStart'), startCheck.message);
     }
-  }, [invalidateStartupCameraIntent]);
+  }, [invalidateStartupCameraIntent, t]);
 
   const handleClearPreviewRoute = useCallback(() => {
-    Alert.alert('Cancel route?', 'You will need to choose your destination again.', [
-      { text: 'Keep route', style: 'cancel' },
-      { text: 'Cancel route', style: 'destructive', onPress: () => {
+    const journeySerial = useAppStore.getState().directoryJourneySerial;
+    Alert.alert(t('journeyHome.cancelTitle'), t('journeyHome.cancelBody'), [
+      { text: t('journeyHome.keep'), style: 'cancel' },
+      { text: t('journeyHome.cancel'), style: 'destructive', onPress: () => {
+        const state = useAppStore.getState();
+        if (state.isNavigating || state.directoryJourneySerial !== journeySerial) return;
         clearRoutePlanner();
         closeSheet();
       } },
     ]);
-  }, [clearRoutePlanner, closeSheet]);
+  }, [clearRoutePlanner, closeSheet, t]);
 
   // Back folds an expanded setup. At PEEK it offers explicit cancellation; native collapse
   // never changes the journey. Active navigation owns its separate exit controls.
@@ -1360,15 +1366,15 @@ export function HomeScreen() {
           {
             id: 'user_last_known',
             coordinate: rememberedLabelCoordinate,
-            text: 'earlier',
+            text: t('journeyHome.earlier'),
             kind: 'user',
             zPriority: 40,
             yOffset: 26,
-            accessibilityLabel: 'Your earlier location',
+            accessibilityLabel: t('journeyHome.earlierLabel'),
           },
         ]
       : items;
-  }, [destinationPinVisible, mapLabelItems, rememberedLabelCoordinate]);
+  }, [destinationPinVisible, mapLabelItems, rememberedLabelCoordinate, t]);
 
   // MapLibre has no onMapReady: the style + archive finishing loading is the point the camera can be commanded.
   const handleMapReady = () => {
@@ -1647,10 +1653,10 @@ export function HomeScreen() {
                 <Pressable
                   onPress={() => { setDirectoryPurpose(null); nav.navigate('LocationsDirectory'); }}
                   accessibilityRole="button"
-                  accessibilityLabel="Change place"
+                  accessibilityLabel={t('journeyHome.changePlace')}
                   style={styles.fallbackNoticeAction}
                 >
-                  <Text style={styles.fallbackNoticeActionText}>Change place</Text>
+                  <Text style={styles.fallbackNoticeActionText}>{t('journeyHome.changePlace')}</Text>
                 </Pressable>
               </View>
             )}
@@ -1671,16 +1677,16 @@ export function HomeScreen() {
                   accessibilityLabel={outsideBannerAccessibilityLabel}
                   style={styles.outsideVenueTextWrap}
                 >
-                  <Text style={styles.outsideVenueTitle}>Outside Ijtema</Text>
-                  <Text style={styles.outsideVenueSuggestion}>Suggested entry</Text>
-                  <Text style={styles.outsideVenueGateText}>
-                    {nearestEntryGate?.name.en ?? 'No gate suggested yet'}
+                  <Text style={[styles.outsideVenueTitle, { textAlign: isRTL ? 'right' : 'left', writingDirection: isRTL ? 'rtl' : 'ltr' }]}>{t('journeyHome.outside')}</Text>
+                  <Text style={[styles.outsideVenueSuggestion, { textAlign: isRTL ? 'right' : 'left', writingDirection: isRTL ? 'rtl' : 'ltr' }]}>{t('journeyHome.suggested')}</Text>
+                  <Text style={[styles.outsideVenueGateText, { textAlign: isRTL ? 'right' : 'left', writingDirection: isRTL ? 'rtl' : 'ltr' }]}>
+                    {nearestEntryGate ? localizeVenueName(nearestEntryGate.name.en, locale) : t('journeyHome.noGate')}
                   </Text>
                 </View>
                 <Pressable
                   style={styles.bannerCloseButton}
                   accessibilityRole="button"
-                  accessibilityLabel="Dismiss outside Ijtema entry suggestion"
+                  accessibilityLabel={t('journeyHome.dismissOutside')}
                   onPress={() => {
                     logHomeControl('outside_banner_close', 'dismissed');
                     setOutsideBannerDismissed(true);
@@ -1704,7 +1710,7 @@ export function HomeScreen() {
               </Text>
             )}
             <Text style={styles.diagnosticsText} numberOfLines={1}>
-              {getHomeRouteDiagnostics().map((r) => `${r.from}->${r.to}:${r.success ? 'OK' : 'FAIL'}`).join(' | ')}
+              {getHomeRouteDiagnostics().map((r) => `${r.from}->${r.to}:${r.success ? t('journeyHome.ok') : 'FAIL'}`).join(' | ')}
             </Text>
           </View>
         )}
@@ -1911,7 +1917,7 @@ export function HomeScreen() {
                   name: gate.name,
                   urduName: gate.urduName,
                   category: 'Gate',
-                  description: `${gate.name} entrance for Block 2 / Member Masjid.`,
+                  description: t('journeyHome.entranceDescription', { gate: localizeVenueName(gate.name, locale), block: localizeVenueName('Block 2', locale), masjid: localizeVenueName('Member Masjid', locale) }),
                   coordinate: gate.coordinate,
                   routingNodeId: IJTEMA_DATA.nodes[gate.id]?.nearestRoadNode,
                   sourceVersion: 'v1',
@@ -1926,7 +1932,7 @@ export function HomeScreen() {
           ) : (
             <BottomSheetScrollView contentContainerStyle={styles.sheetContent}>
               <View style={styles.emptySheet}>
-                <Text style={styles.emptySheetText}>Tap a block or search to see details</Text>
+                <Text style={[styles.emptySheetText, { textAlign: isRTL ? 'right' : 'left', writingDirection: isRTL ? 'rtl' : 'ltr' }]}>{t('journeyHome.empty')}</Text>
               </View>
             </BottomSheetScrollView>
           )}

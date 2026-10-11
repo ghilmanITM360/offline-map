@@ -54,7 +54,7 @@ A tap on a destination creates a new runtime journey identity and opens its dest
 
 ## Temporary Directory chooser and Block 2
 
-An origin chooser is owned by journey identity, destination, purpose and request generation. Cancel/Back invalidates that request and returns to the same Map journey. A late response cannot affect a newer journey, even for the same destination. Normal browsing retains query/category, selected item and a stable-ID/geometry scroll anchor; chooser filters stay private. Changed datasets resolve a safe clamped position rather than blindly replaying a pixel offset. Logical native accessibility focus remains unfinished.
+An origin chooser is owned by journey identity, destination, purpose and request generation. Cancel/Back invalidates that request and returns to the same Map journey. A late response cannot affect a newer journey, even for the same destination. Normal browsing retains query/category, selected item and a stable-ID/geometry scroll anchor; chooser filters stay private. Changed datasets resolve a safe clamped position rather than blindly replaying a pixel offset. Logical focus is requested once per destination, origin chooser, guidance, upgrade or recovery stage using React Native 0.81.5 sendAccessibilityEvent(ref, "focus"); hidden stages and unmount cancel pending requests. Component tests verify ownership and no rerender loop. Audible native TalkBack/VoiceOver remains unverified.
 
 Block 2 is resolved from canonical venue data and remains explicitly hypothetical until the user confirms being there. It never writes currentLocation or authorizes movement, route progress, rerouting, GPS arrival or automatic live navigation. Confirmation creates a current-journey manual origin, not a GPS observation. New journeys do not reuse the preview; Block 2 to Block 2 is SAME_PLACE. Later GPS acquisition follows a truthful current-location path.
 
@@ -77,3 +77,9 @@ Block 2 is resolved from canonical venue data and remains explicitly hypothetica
 Start-source (GPS, search, map tap, remembered state) never changes routing policy: every outside coordinate goes through `prepareOutsideRoutingPlan` -> provider fallback -> `finalizeOutsideRoutingPlan` (`docs/OFFLINE_NAVIGATION_AND_ROUTING.md`). A manual gate selection stays authoritative across an automatic reroute.
 
 Active navigation and arrival have two presentations, `NavigationChromeV1`/`NavigationMapLayersV1` (legacy Block destinations) and `NavigationChromeV2`/`NavigationMapLayersV2` (Gate/facility destinations); only one renders, chosen by `sourceVersion`. A navigation or arrival UI change must land in both, or state why one is exempt (NAV-004 in `docs/KNOWN_LIMITATIONS_AND_OWNER_ACTIONS.md`).
+
+## Locale projection and guidance
+
+English and Roman Urdu remain LTR; Urdu panels and spoken labels use reactive RTL context without mirroring map coordinates. Generated internal, OSM and direct-guide steps carry typed semantic metadata and render through the existing catalog. Language switches retain route geometry, active session, manual guide step and route-update expiry. Unknown provider prose stays verbatim when no safe semantic translation exists; proper names and route identifiers are never guessed. Legacy descriptions translate at display time, keeping search-index identity stable. See [scanner classification](LOCALIZATION_SCANNER_CLASSIFICATION.json).
+
+Cancellation confirmations retain journey ownership and cannot erase a replacement journey or active navigation. Accessibility focus tests establish JavaScript requests, not native audible delivery or 200% layout certification.

@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import type { SemanticInstruction } from '../i18n/instructions';
 export interface Coordinate {
   latitude: number;
   longitude: number;
@@ -194,6 +195,7 @@ export interface RouteSegment {
 export interface NavigationInstruction {
   id: string;
   text: string;
+  semantic?: SemanticInstruction;
   urduText?: string;
   distance: number;
   type: 'straight' | 'left' | 'right' | 'arrival';

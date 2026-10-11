@@ -1,16 +1,18 @@
 # UX-01–28 evidence reconciliation (Phase A)
 
-Validated source: `c833814dec839f1cca249c25f760c232cd351b3d`, integrated as canonical `b36e1e4ba7eebacf89f6db4bccb237014da95ce3` through PR #369. Trees are identical. Executed component campaign: 157 suites / 1,556 tests PASS; `npm test`: 106 command headings PASS. Evidence references are repository-relative. Earlier matrix mapping was established on the Directory slice and all cited tests also ran in this later full campaign. [Exact-head CI](https://github.com/ghilmanITM360/offline-map/actions/runs/38129234889) passed.
+Historical validated source: `c833814dec839f1cca249c25f760c232cd351b3d`, integrated as canonical `b36e1e4ba7eebacf89f6db4bccb237014da95ce3` through PR #369. Trees are identical. Executed component campaign: 157 suites / 1,556 tests PASS; `npm test`: 106 command headings PASS. Evidence references are repository-relative. Earlier matrix mapping was established on the Directory slice and all cited tests also ran in this later full campaign. [Exact-head CI](https://github.com/ghilmanITM360/offline-map/actions/runs/38129234889) passed.
 
 PASS below means the cited automated behavior passed, not full native acceptance. Native/emulator/physical/field verification remains NOT VERIFIED for every row. Gate 18 and Gate 19 remain physically BLOCKED. This matrix maps actual executed assertions; it does not upgrade source evidence to native acceptance.
+
+Current guidance continuation adds automated UX-01 evidence: **24 automated PASS / 4 NOT VERIFIED** (UX-21/25/26/27). This is not native acceptance. Final campaign and feature head are recorded in the PR and progress ledger.
 
 ## UX-01 — Deep-scroll Block selection
 
 Expected: Map opens with visible destination panel
 
-Observed: Stable anchors, restoration and selection handoff pass independently. No executed deep-scroll gesture followed through to visible Map panel.
+Observed: Executed Directory+Home component flow supplies measured row/content geometry, scroll offset 2600, selects Block 28 and observes its visible Directions panel on Map. Stable scroll anchor and journey ownership survive; no usable GPS does not auto-start navigation. Native finger gesture remains unverified.
 
-Evidence: `DirectoryScrollRestoration.test.ts:2; LocationsDirectoryScreen.test.tsx:159,527,560`. Category: automated source/JavaScript/component. Status: **NOT VERIFIED**. Runtime status: **NOT VERIFIED (native/emulator/physical/field)**.
+Evidence: `DirectoryDeepScrollJourney.test.tsx; DirectoryScrollRestoration.test.ts:2; LocationsDirectoryScreen.test.tsx:159,527,560`. Category: automated source/JavaScript/component. Status: **PASS**. Runtime status: **NOT VERIFIED (native/emulator/physical/field)**.
 
 ## UX-02 — Filtered/search Block selection
 
@@ -230,9 +232,9 @@ Evidence: `DirectoryChoiceOwnership.test.ts:13,22,30,44,62; LocationsDirectorySc
 
 ## Remaining evidence gaps
 
-- UX-01 needs actual deep-scroll selection and visible destination-panel observation in one executed flow. Stable anchor unit tests alone do not prove that gesture.
+- UX-01 now has one executed deep-scroll Directory-to-Map component flow. Native finger scrolling and destination-panel rendering still need runtime observation.
 - UX-21 needs native snap/drag/reopen sequence; current component tests prove button behavior.
 - UX-25 needs airplane-mode native rendering and manual-route exercise, not source provenance alone.
 - UX-26 needs native 320dp and 200% font screenshots/control traversal.
-- UX-27 needs whole-journey translation completion, native Urdu review, mixed-script rendering and audible TalkBack. Directory slice cannot establish whole journey.
+- UX-27 needs whole-journey translation completion, native Urdu review, mixed-script rendering and audible TalkBack. Generated app instructions and journey panels now have three-locale component coverage; unknown provider prose remains verbatim when semantic metadata is absent. Native typography and speech are still unverified.
 - Existing explicit-Start tests without destination-selection intent are valid fallback coverage; do not mistake their names for superseded UX-09 policy. `DestinationLiveIntent.test.tsx:45` is fast-path authority evidence.

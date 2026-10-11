@@ -642,3 +642,12 @@ test('active Directions control updates language while closed and preserves inst
     await act(async () => useLocaleStore.setState({ locale: 'en' }));
   }
 });
+
+test('locale changes translate navigation controls without changing the active step', async () => {
+  useLocaleStore.getState().setLocale('en');
+  await render(<NavigationChromeV2 overlay={baseOverlay()} hasBaseMap />);
+  await act(async () => { useLocaleStore.getState().setLocale('ur-Latn'); });
+  expect(screen.getByRole('button', {name: 'Rehnumai band karein'})).toBeOnTheScreen();
+  expect(screen.getByText('Seedha chalein')).toBeOnTheScreen();
+  await act(async () => { useLocaleStore.getState().setLocale('en'); });
+});

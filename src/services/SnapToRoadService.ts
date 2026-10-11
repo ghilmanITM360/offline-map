@@ -1,3 +1,4 @@
+import { t } from '../i18n/translate';
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -105,7 +106,7 @@ export class SnapToRoadService {
       snappedCoordinate: this.nodeToCoordinate(nodeId, coord),
       insideVenue,
       insideBlockId: null,
-      warning: 'You are outside Ijtema.',
+      warning: t('journeyResidual.outside'),
     };
   }
 

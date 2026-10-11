@@ -4,6 +4,9 @@ import { screen, userEvent } from '@testing-library/react-native';
 import type { NormalizedOutsideCandidate } from '../models/outsideRouting';
 import { OutsideRouteStatusCard } from '../views/components/navigation/OutsideRouteStatusCard';
 import { render } from './test-utils';
+import { useLocaleStore } from '../i18n/localeStore';
+import { translate } from '../i18n/translate';
+afterEach(() => useLocaleStore.getState().setLocale('en'));
 
 function route(overrides: Partial<NormalizedOutsideCandidate> = {}): NormalizedOutsideCandidate {
   return {
@@ -52,7 +55,8 @@ describe('OutsideRouteStatusCard', () => {
     expect(screen.getByText('Using a simpler route. It may be less exact.')).toBeOnTheScreen();
   });
 
-  test('renders direct guide as bilingual alert with retry and manual-gate actions', async () => {
+  test.each(['en', 'ur-Latn', 'ur'] as const)('renders direct guide safety alert and actions in %s', async (locale) => {
+    useLocaleStore.getState().setLocale(locale);
     const onRetry = jest.fn();
     const onChooseGate = jest.fn();
     const user = userEvent.setup();
@@ -72,14 +76,13 @@ describe('OutsideRouteStatusCard', () => {
     />);
 
     expect(screen.getByRole('alert')).toBeOnTheScreen();
-    expect(screen.getByText('Straight-line guide, not a road route')).toBeOnTheScreen();
-    expect(screen.getByText("We can't find a road route. The arrow points straight to the gate and may not follow walkable roads. Look around as you walk.")).toBeOnTheScreen();
-    expect(screen.getByText('سڑک کا راستہ نہیں مل سکا۔ تیر سیدھا گیٹ کی طرف اشارہ کرتا ہے اور ضروری نہیں کہ پیدل چلنے کے راستوں پر ہو۔ چلتے وقت اردگرد دیکھ لیں۔')).toBeOnTheScreen();
+    expect(screen.getByText(translate(locale, 'outside.direct.notRoadRoute'))).toBeOnTheScreen();
+    expect(screen.getByText(translate(locale, 'outside.direct.warning'))).toBeOnTheScreen();
     expect(screen.queryByText(/turn (left|right)/i)).not.toBeOnTheScreen();
     expect(screen.queryByText(/continue ahead/i)).not.toBeOnTheScreen();
 
-    await user.press(screen.getByRole('button', { name: 'Try again' }));
-    await user.press(screen.getByRole('button', { name: 'Choose another gate' }));
+    await user.press(screen.getByRole('button', { name: translate(locale, 'outside.action.retryRoadRoute') }));
+    await user.press(screen.getByRole('button', { name: translate(locale, 'outside.action.chooseGate') }));
     expect(onRetry).toHaveBeenCalledTimes(1);
     expect(onChooseGate).toHaveBeenCalledTimes(1);
   });

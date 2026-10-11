@@ -29,19 +29,19 @@ assert(
   'Home current-location action should fetch latest GPS and persist the location source',
 );
 assert(
-  homeVm.includes('Use earlier location'),
+  homeVm.includes("t('journeyHome.useEarlier')"),
   'Home current-location failure should offer remembered-location fallback',
 );
 assert(
-  homeVm.includes("text: 'Choose where to start'") && homeVm.includes("onPress: () =>"),
+  homeVm.includes("text: t('journeyHome.chooseStart')") && homeVm.includes("onPress: () =>"),
   'Home current-location failure action should not include a dead \"Choose where to start\" option',
 );
 assert(
-  homeVm.includes('You are outside Ijtema'),
+  homeVm.includes("t('journeyHome.locationAgeOutside'"),
   'Home current-location action should explain outside-venue fallback',
 );
 assert(
-  homeScreen.includes('recommendPreviewEntryGate(currentLocation, selectedPlace)') && readFileSync('src/viewmodels/NavigationViewModelV2.ts', 'utf8').includes('return RoutingServiceV2.recommendOutsideEntryGate') && homeScreen.includes('Suggested entry') && homeScreen.includes('nearestEntryGate.name.en'),
+  homeScreen.includes('recommendPreviewEntryGate(currentLocation, selectedPlace)') && readFileSync('src/viewmodels/NavigationViewModelV2.ts', 'utf8').includes('return RoutingServiceV2.recommendOutsideEntryGate') && homeScreen.includes("t('journeyHome.suggested'") && homeScreen.includes('nearestEntryGate.name.en'),
   'Home outside-area banner should name actual suggested gate, not a generic message',
 );
 
@@ -58,7 +58,7 @@ assert(
   'Directions should expose remembered-location fallback state',
 );
 assert(
-  directionsVm.includes('forceOutside') && directionsVm.includes("We'll guide you to the nearest gate."),
+  directionsVm.includes('forceOutside') && directionsVm.includes("key: 'directions.outsideGate'"),
   'Directions should accept outside starts and route through nearest official gate',
 );
 

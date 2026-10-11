@@ -1,3 +1,4 @@
+import { translate } from '../i18n/translate';
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -46,7 +47,7 @@ export type EntryCameraPlan =
     }
   | { kind: 'FALLBACK_ANCHOR'; anchor: { id: 'B2'; name: string; coordinate: Coordinate }; notice: string };
 
-export const FALLBACK_LOCATION_NOTICE = "We can't find where you are. Showing the main area.";
+export const FALLBACK_LOCATION_NOTICE = () => translate('en', 'journeyResidual.fallback');
 
 const RETURNING_LAUNCH_RESOLVE_TIMEOUT_MS = 4000;
 
@@ -134,7 +135,7 @@ export class MapStartupController {
     return {
       kind: 'FALLBACK_ANCHOR',
       anchor: { id: 'B2', name: block2.name.en, coordinate: { latitude: block2.center.lat, longitude: block2.center.lng } },
-      notice: FALLBACK_LOCATION_NOTICE,
+      notice: FALLBACK_LOCATION_NOTICE(),
     };
   }
 

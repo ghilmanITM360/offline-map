@@ -356,6 +356,7 @@ const generateInstructions = (path: ShortestPathResult, destinationLabel: string
 
   instructions.push({
     id: 'v2-start',
+    semantic: { key: 'instructions.start', params: { name: friendlyNodeName(path.nodes[0]) }, urduNames: { name: firstNode?.name.ur ?? friendlyNodeName(path.nodes[0]) } },
     text: `Start from ${friendlyNodeName(path.nodes[0])}.`,
     urduText: `${firstNode?.name.ur ?? friendlyNodeName(path.nodes[0])} سے شروع کریں۔`,
     distance: 0,
@@ -373,6 +374,7 @@ const generateInstructions = (path: ShortestPathResult, destinationLabel: string
         : 'straight';
     instructions.push({
       id: `v2-step-${index + 1}`,
+      semantic: { key: edge.pathType === "gate_connector" ? "instructions.edgeFrom" : edge.pathType === "block_connector" ? "instructions.edgeTo" : edge.pathType === "perimeter_connector" ? "instructions.edgeWalk" : edge.pathType === "intersection_connector" || edge.pathType === "central_connector" ? "instructions.edgeJunction" : "instructions.edgeOn", params: { road: edge.name.en, distance: Math.round(edge.distanceM) }, urduNames: { road: edge.name.ur ?? edge.name.en } },
       text: `${instructionTextForEdge(edge)} for ${Math.round(edge.distanceM)} meters.`,
       urduText: `${instructionUrduForEdge(edge)} (${Math.round(edge.distanceM)} میٹر)۔`,
       distance: edge.distanceM,
@@ -385,6 +387,7 @@ const generateInstructions = (path: ShortestPathResult, destinationLabel: string
   const finalNode = IJTEMA_NAVIGATION_GRAPH_V2.nodes[path.nodes[path.nodes.length - 1]];
   instructions.push({
     id: 'v2-arrival',
+    semantic: { key: 'instructions.arrival', params: { name: destinationLabel } },
     text: `You have reached ${destinationLabel}.`,
     urduText: `آپ ${destinationLabel} پہنچ گئے ہیں۔`,
     distance: 0,
@@ -569,6 +572,7 @@ const renumberAndRewriteEntry = (
     id: instruction.id === 'v2-start' ? 'v2-entry-start' : instruction.id.replace(/^v2-step-(\d+)$/, (_match, step) => `v2-step-${Number(step) + outsideStepCount}`),
     ...(index === 0
       ? {
+          semantic: { key: "instructions.entry", params: { name: gateLabel.en }, urduNames: { name: gateLabel.ur } },
           text: `Enter through ${gateLabel.en}.`,
           urduText: `${gateLabel.ur} سے داخل ہوں۔`,
         }
@@ -607,6 +611,7 @@ const prependOutsideApproachInstruction = (
   return [
     {
       id: 'v2-outside-approach',
+      semantic: { key: "instructions.approach", params: { distance: selected.startConnectorDistanceM, name: gateLabel.en }, urduNames: { name: gateLabel.ur } },
       text: `Walk ${selected.startConnectorDistanceM} meters to enter through ${gateLabel.en}.`,
       urduText: `${gateLabel.ur} سے داخل ہونے کے لیے ${selected.startConnectorDistanceM} میٹر چلیں۔`,
       distance: selected.startConnectorDistanceM,

@@ -7,6 +7,7 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { ChevronLeft, ChevronRight, RefreshCw } from 'lucide-react-native';
 
+import { useAccessibilityFocus } from '../../hooks/useAccessibilityFocus';
 import { directionsSheetColors as c } from '../../../theme';
 import { isRtl, useI18n } from '../../../i18n';
 
@@ -23,11 +24,16 @@ export function DirectionsHeader({
   title,
   subtitle,
   onBack,
+  focusKey = null,
+  accessibilityContext,
 }: {
   title: string;
   subtitle: string;
   onBack: () => void;
+  focusKey?: string | null;
+  accessibilityContext?: string;
 }) {
+  const { ref } = useAccessibilityFocus(focusKey);
   const { t, isRTL, dir } = useI18n();
   const BackIcon = isRTL ? ChevronRight : ChevronLeft;
   return (
@@ -43,7 +49,7 @@ export function DirectionsHeader({
         </View>
       </Pressable>
       <View style={styles.headerText}>
-        <Text accessibilityRole="header" style={styles.title}>
+        <Text ref={ref} accessibilityRole="header" accessibilityLabel={accessibilityContext ? `${title}. ${accessibilityContext}` : undefined} style={styles.title}>
           {title}
         </Text>
         <Text style={styles.subtitle}>{subtitle}</Text>

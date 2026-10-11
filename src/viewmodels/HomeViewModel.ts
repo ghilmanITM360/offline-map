@@ -1,3 +1,5 @@
+import { t } from '../i18n/translate';
+import { localizeVenueName } from '../i18n/venueNames';
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -181,7 +183,7 @@ export function useHomeViewModel({ isFocused = true }: { isFocused?: boolean } =
     if (!place.coordinate) {
       // Nothing for the camera to pan to — open the sheet right away so the
       // "place unavailable" info/alert isn't itself delayed.
-      Alert.alert('Place unavailable', unavailableReasonCopy(place.unavailableReason) ?? `${place.name} is not available on the map yet.`);
+      Alert.alert(t('journeyHome.placeUnavailable'), unavailableReasonCopy(place.unavailableReason) ?? t('journeyHome.placeMapUnavailable', { place: localizeVenueName(place.name) }));
       openSheet();
       return;
     }
@@ -242,16 +244,16 @@ export function useHomeViewModel({ isFocused = true }: { isFocused?: boolean } =
         });
         const centered = recenterTo(resolved.coordinate);
         if (!centered) {
-          Alert.alert('Map is loading', 'Tap the location button again in a moment.');
+          Alert.alert(t('journeyHome.mapLoading'), t('journeyHome.locationAgain'));
         }
 
         if (!isInsideHomeVenue(resolved.coordinate)) {
           Alert.alert(
-            'You are outside Ijtema',
-            "We'll take you to the nearest gate when you ask for directions.",
+            t('journeyHome.outsideTitle'),
+            t('journeyHome.outsideBody'),
           );
         } else if (resolved.source === 'device_last_known') {
-          Alert.alert('Showing where you were earlier', resolved.message ?? "We can't find you right now. The map shows where you were earlier.");
+          Alert.alert(t('journeyHome.earlierTitle'), resolved.message ?? t('journeyHome.earlierBody'));
         }
         return centered;
       }
@@ -260,20 +262,20 @@ export function useHomeViewModel({ isFocused = true }: { isFocused?: boolean } =
         && (MapFeatureFlagsService.useIjtemaV2Map() || isInsideHomeVenue(lastKnownLocation));
       const actions = [
         {
-          text: 'Choose where to start',
+          text: t('journeyHome.chooseStart'),
           style: 'default' as const,
           onPress: () => {
-            Alert.alert('Choose where to start', 'Tap a place, tap Directions, then tap the From row.');
+            Alert.alert(t('journeyHome.chooseStart'), t('journeyHome.chooseHelp'));
           },
         },
         ...(!resolved.permissionState.canAskAgain && !resolved.permissionState.granted
           ? [{
-              text: 'Open Settings',
+              text: t('journeyHome.openSettings'),
               onPress: () => {
                 void (async () => {
                   const opened = await LocationAccessService.openAppSettings();
                   if (!opened) {
-                    Alert.alert("Can't open Settings", "Open your phone's Settings and allow location for this app.");
+                    Alert.alert(t('journeyHome.settingsFailed'), t('journeyHome.settingsHelp'));
                   }
                 })();
               },
@@ -281,31 +283,31 @@ export function useHomeViewModel({ isFocused = true }: { isFocused?: boolean } =
           : []),
         ...(canUseRemembered
           ? [{
-              text: 'Use earlier location',
+              text: t('journeyHome.useEarlier'),
               onPress: () => {
                 setCurrentLocation(lastKnownLocation, 'remembered');
                 const centered = recenterTo(lastKnownLocation);
                 if (!centered) {
-                  Alert.alert('Map is loading', 'Tap the location button again in a moment.');
+                  Alert.alert(t('journeyHome.mapLoading'), t('journeyHome.locationAgain'));
                   return;
                 }
                 if (!isInsideHomeVenue(lastKnownLocation)) {
                   Alert.alert(
-                    'Showing where you were earlier',
-                    `Showing your location ${formatLastKnownAge(lastKnownLocationUpdatedAt)}. We'll take you to the nearest gate when you ask for directions.`,
+                    t('journeyHome.earlierTitle'),
+                    t('journeyHome.locationAgeOutside', { age: formatLastKnownAge(lastKnownLocationUpdatedAt) }),
                   );
                   return;
                 }
-                Alert.alert('Showing where you were earlier', `Showing your location ${formatLastKnownAge(lastKnownLocationUpdatedAt)}.`);
+                Alert.alert(t('journeyHome.earlierTitle'), t('journeyHome.locationAge', { age: formatLastKnownAge(lastKnownLocationUpdatedAt) }));
               },
             }]
           : []),
-        { text: 'OK', style: 'cancel' as const },
+        { text: t('journeyHome.ok'), style: 'cancel' as const },
       ];
 
       Alert.alert(
-        "We can't find you",
-        resolved.message ?? "Choose where you're starting from in Directions.",
+        t('journeyHome.notFound'),
+        resolved.message ?? t('journeyHome.startDirections'),
         actions,
       );
       devLogControl('recenter', 'location_unavailable', {
@@ -316,7 +318,7 @@ export function useHomeViewModel({ isFocused = true }: { isFocused?: boolean } =
       return false;
     } catch {
       devLogControl('recenter', 'location_error');
-      Alert.alert("We can't find you", 'Please try again.');
+      Alert.alert(t('journeyHome.notFound'), t('journeyHome.tryAgain'));
       return false;
     }
   }, [cameraManager, lastKnownLocation, lastKnownLocationUpdatedAt, setCurrentLocation, setHasLocationPermission, setLocationPermissionPrecision, setSnappedLocation]);

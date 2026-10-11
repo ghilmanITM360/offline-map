@@ -1,17 +1,10 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
+import { t } from '../i18n/translate';
 
-/**
- * The plain sentences a route problem is shown as. One place, so services, view models and screens never
- * invent their own wording (or let a developer message such as a feature-flag name reach the screen).
- */
-export const ROUTE_NOT_FOUND = "We couldn't find a walking route.";
-export const CHOOSE_START = "Choose where you're starting from.";
-export const CHOOSE_DESTINATION = 'Choose a place to go to.';
-export const SAME_PLACE = 'Start and destination are the same place.';
-export const LOCATION_UNAVAILABLE = "Your location isn't available.";
-export const NAVIGATION_UNAVAILABLE = "Directions aren't available right now.";
-export const OUTSIDE_GUIDE_SCOPE = 'This app guides you inside the Ijtema area.';
-export const outsideGuideHeadline = (gate: string) => `Get to ${gate} first`;
+export const ROUTE_NOT_FOUND = () => t('journeyCopy.routeNotFound');
+export const CHOOSE_START = () => t('journeyCopy.chooseStart');
+export const CHOOSE_DESTINATION = () => t('journeyCopy.chooseDestination');
+export const SAME_PLACE = () => t('journeyCopy.samePlace');
+export const LOCATION_UNAVAILABLE = () => t('journeyCopy.locationUnavailable');
+export const NAVIGATION_UNAVAILABLE = () => t('journeyCopy.navigationUnavailable');
+export const OUTSIDE_GUIDE_SCOPE = () => t('journeyCopy.outsideScope');
+export const outsideGuideHeadline = (gate: string) => t('journeyCopy.gateFirst', { gate });

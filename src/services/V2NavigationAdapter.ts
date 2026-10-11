@@ -1,3 +1,4 @@
+import { t } from '../i18n/translate';
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -37,7 +38,7 @@ export interface V2NavigationStartCheck {
 }
 
 const RAW_ID_PATTERN = /\b(?:P\d+|S\d+|T\d+|C\d+|R\d+-\d+|SPNP-\d+|SPSP-\d+|SPWP-\d+|B\d+_C\d+)\b/;
-const GATE_CONNECTOR_VERIFICATION_MESSAGE = "Directions to this gate aren't ready. Choose another gate.";
+const gateConnectorVerificationMessage = () => t('journeyCopy.gateUnavailable');
 
 function nodeCoordinate(nodeId: string): Coordinate | null {
   const node = IJTEMA_NAVIGATION_GRAPH_V2.nodes[nodeId];
@@ -140,10 +141,10 @@ function activeInstructions(previewRoute: RoutePreviewV2): V2NavigationInstructi
     searchFrom = routeIndex;
     return {
       ...instruction,
-      text: instruction.text.replace(RAW_ID_PATTERN, 'route point'),
+      text: instruction.text.replace(RAW_ID_PATTERN, t('journeyCopy.point')),
       distanceM: instruction.distance,
       routeIndex,
-      spokenText: instruction.text.replace(RAW_ID_PATTERN, 'route point'),
+      spokenText: instruction.text.replace(RAW_ID_PATTERN, t('journeyCopy.point')),
       developerLabel: developerNode,
     };
   });
@@ -158,28 +159,28 @@ export class V2NavigationAdapter {
     if (!MapFeatureFlagsService.useIjtemaV2Map()) {
       return {
         canStart: false,
-        message: NAVIGATION_UNAVAILABLE,
+        message: NAVIGATION_UNAVAILABLE(),
       };
     }
 
     if (!MapFeatureFlagsService.useIjtemaV2Routing()) {
       return {
         canStart: false,
-        message: NAVIGATION_UNAVAILABLE,
+        message: NAVIGATION_UNAVAILABLE(),
       };
     }
 
     if (!MapFeatureFlagsService.useIjtemaV2Navigation()) {
       return {
         canStart: false,
-        message: NAVIGATION_UNAVAILABLE,
+        message: NAVIGATION_UNAVAILABLE(),
       };
     }
 
     if (!input.destination || !destinationFromPlace(input.destination)) {
       return {
         canStart: false,
-        message: CHOOSE_DESTINATION,
+        message: CHOOSE_DESTINATION(),
       };
     }
 
@@ -187,19 +188,19 @@ export class V2NavigationAdapter {
       if (input.destination.category === 'Gate' && input.destination.routingStatus === 'needs_connector_verification') {
         return {
           canStart: false,
-          message: GATE_CONNECTOR_VERIFICATION_MESSAGE,
+          message: gateConnectorVerificationMessage(),
         };
       }
       return {
         canStart: false,
-        message: input.destination.unavailableReason ?? `${input.destination.name} is not available for navigation yet.`,
+        message: input.destination.unavailableReason ?? t('journeyCopy.placeUnavailable', { place: input.destination.name }),
       };
     }
 
     if (!input.route || input.route.coordinates.length < 2 || input.route.totalDistance <= 0) {
       return {
         canStart: false,
-        message: ROUTE_NOT_FOUND,
+        message: ROUTE_NOT_FOUND(),
       };
     }
 
@@ -226,7 +227,7 @@ export class V2NavigationAdapter {
         to,
         distanceM: edge?.distanceM ?? input.previewRoute.segments[index]?.distance ?? 0,
         pathType: edge?.pathType ?? (input.previewRoute.segments[index]?.isRasta ? 'rasta' : 'connector'),
-        label: edge?.name.en ?? input.previewRoute.segments[index]?.name ?? 'Ijtema route',
+        label: edge?.name.en ?? input.previewRoute.segments[index]?.name ?? t('journeyCopy.routeName'),
       };
     });
 

@@ -1,6 +1,6 @@
 # Complete package-level dependency triage
 
-Current tracking: [#370](https://github.com/ghilmanITM360/offline-map/issues/370), superseding reliance on the older exception in #62. Audited lockfile is unchanged by PRs #367–369.
+Current tracking: [#370](https://github.com/ghilmanITM360/offline-map/issues/370), superseding reliance on the older exception in #62. Audited lockfile is unchanged by PRs #367–372 and the guidance localization continuation. Fresh 2026-10-11 npm audit remains 66 findings: 13 moderate, 52 high, 1 critical. No package or native dependency upgrade is included. Issue #370 remains open; inventory is not remediation.
 
 ## Scope and result
 

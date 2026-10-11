@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import { localizeInstruction } from '../../../i18n/instructions';
 import React from 'react';
 import { useI18n } from '../../../i18n';
 import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
@@ -48,9 +49,9 @@ export function RouteGuideCard({
   return (
     <View testID="route-guide-card" style={[styles.card, { direction: dir }]}>
       <View style={styles.step} accessible accessibilityLiveRegion="polite"
-        accessibilityLabel={t('routeGuide.stepSummary', { count, instruction: step.text, distance: distance ? `, ${distance}` : '' })}>
+        accessibilityLabel={t('routeGuide.stepSummary', { count, instruction: localizeInstruction(step), distance: distance ? `, ${distance}` : '' })}>
         <Text style={styles.stepCount}>{count}</Text>
-        <Text style={styles.stepText}>{step.text}</Text>
+        <Text style={styles.stepText}>{localizeInstruction(step)}</Text>
         {distance ? <Text style={styles.stepDistance}>{distance}</Text> : null}
       </View>
 

@@ -1,3 +1,4 @@
+import { useI18n } from '../../../i18n/useI18n';
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -40,16 +41,17 @@ export function publishDirectionsPeek(next: DirectionsPeek | null) {
 }
 
 export function DirectionsPeekHandle() {
+  const { t, isRTL } = useI18n();
   const current = useSyncExternalStore(subscribe, () => peek, () => null);
   return (
     <View style={styles.wrap}>
       <View style={styles.pill} />
       {current ? (
         <Pressable
-          style={styles.row}
+          style={[styles.row, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}
           onPress={current.onToggle}
           accessibilityRole="button"
-          accessibilityLabel={`${current.text}. ${current.collapsed ? 'Show' : 'Hide'} route details`}
+          accessibilityLabel={t(current.collapsed ? 'journeyControls.showDetails' : 'journeyControls.hideDetails', { summary: current.text })}
         >
           <Text style={styles.text} numberOfLines={1} ellipsizeMode="tail">{current.text}</Text>
           {current.collapsed ? (

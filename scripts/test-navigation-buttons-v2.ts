@@ -78,7 +78,7 @@ assert(
   // #66: isWeakGps/rerouteStatusMessage moved from independent `&&` blocks into one
   // priority ternary (see test-gps-signal-loss-v2.ts) — same content, no longer stackable.
   navigationChromeSource.includes(') : isWeakGps ? (') &&
-    navigationChromeSource.includes('Weak signal. Directions may be slow.'),
+    navigationChromeSource.includes("t('navigation.weak')"),
   'Navigation v2 weak GPS banner must stay visible from view model state.',
 );
 assert(
@@ -88,7 +88,7 @@ assert(
 );
 assert(
   navigationChromeSource.includes('{reroutePending ? (') &&
-    navigationChromeSource.includes('<Text style={styles.rerouteText}>Finding a new way…</Text>'),
+    navigationChromeSource.includes("<Text style={styles.rerouteText}>{t('navigation.rerouting')}</Text>"),
   'Navigation v2 reroute pending state must stay visible.',
 );
 
@@ -98,7 +98,7 @@ for (const field of ['reroutePending', 'isWeakGps', 'rerouteStatusMessage']) {
     `NavigationChromeV2 must destructure ${field} from the overlay.`,
   );
   assert(
-    navigationVmReturnSource.includes(`${field},`),
+    new RegExp(`\\b${field}\\s*[:,]`).test(navigationVmReturnSource),
     `Navigation v2 view model must return ${field}.`,
   );
 }
@@ -109,7 +109,7 @@ assert(
 );
 
 assert(
-  navigationViewModelSource.includes('setRerouteStatusMessage(failure.message);'),
+  navigationViewModelSource.includes("setRerouteStatusMessage({ key: 'navigation.keepRoute' });"),
   'Navigation v2 view model must keep reroute failure status wiring.',
 );
 assert(

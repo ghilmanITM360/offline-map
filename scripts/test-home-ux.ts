@@ -13,7 +13,7 @@ assert(!home.includes('Preview Route'), 'Home screen should use Directions label
 assert(!home.includes('Use GPS'), 'Home screen should not show old Use GPS label');
 assert(home.includes('Directions'), 'Home screen should expose Directions CTA');
 assert(home.includes('LayersSheet') && home.includes('openLayerOptions'), 'Home screen should wire a map layer chooser sheet');
-assert(layersSheet.includes('Map Layers'), 'Layers sheet should be titled Map Layers');
+assert(layersSheet.includes("t('journeyControls.layersTitle')"), 'Layers sheet should be titled Map Layers');
 assert(!home.includes("Alert.alert('Map Layers'"), 'Layers control should be a bottom sheet, not a native Alert action sheet');
 assert(!home.includes('Voice Search'), 'Home should hide voice-search action until it is fully implemented');
 assert(home.includes('handleCompassToggle'), 'Home compass control should call compass toggle handler');

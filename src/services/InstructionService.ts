@@ -3,6 +3,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import { translate } from '../i18n/translate';
+import { getLocale } from '../i18n/localeStore';
+import { localizeInstructionName } from '../i18n/instructions';
 import { IJTEMA_DATA } from '../constants/data';
 import { getRhumbLineBearing } from 'geolib';
 import { NavigationInstruction } from '../models/types';
@@ -99,6 +102,7 @@ export class InstructionService {
       instructions.push({
         id: `inst_${i}`,
         text,
+        semantic: { key: i === 0 ? "instructions.legacyStart" : type === "left" ? "instructions.legacyLeft" : type === "right" ? "instructions.legacyRight" : "instructions.legacyContinue", params: { road: edgeName, distance, name: i > 0 && type !== "straight" ? this.getFriendlyName(currentId, "en") : nextName }, urduNames: { name: i > 0 && type !== "straight" ? this.getFriendlyName(currentId, "ur") : nextNameUr } },
         urduText,
         distance,
         type,
@@ -117,6 +121,7 @@ export class InstructionService {
     instructions.push({
       id: `inst_${nodeIds.length - 1}`,
       text: `You have reached ${destName}.`,
+      semantic: { key: "instructions.arrival", params: { name: destName }, urduNames: { name: destNameUr } },
       urduText: `${destNameUr} پہنچ گئے`,
       distance: 0,
       type: 'arrival',
@@ -171,12 +176,11 @@ export class InstructionService {
    * not a new instruction field.
    */
   static maneuverLabel(type: NavigationInstruction['type']): string {
-    switch (type) {
-      case 'left': return 'Left Turn';
-      case 'right': return 'Right Turn';
-      case 'arrival': return 'Arrive';
-      default: return 'Continue Straight';
-    }
+    const keys = {
+      left: 'instructions.labelLeft', right: 'instructions.labelRight',
+      arrival: 'instructions.labelArrival', straight: 'instructions.labelStraight',
+    } as const;
+    return translate(getLocale(), keys[type] ?? keys.straight);
   }
 
   /**
@@ -185,16 +189,23 @@ export class InstructionService {
    * "Continue Straight" followed by "Continue ahead" said the same thing twice.
    */
   static stepRoadLine(step: Pick<NavigationInstruction, 'type' | 'roadName'>, destinationName?: string | null): string {
-    if (step.type === 'arrival') return destinationName?.trim() || 'Your destination';
-    return step.roadName?.trim() || '';
+    if (step.type === 'arrival') return destinationName?.trim() ? localizeInstructionName(destinationName.trim()) : translate(getLocale(), 'instructions.yourDestination');
+    return localizeInstructionName(step.roadName?.trim() || '');
   }
 
   /** Short next-step preview: "Then: Left Turn onto Rasta 05" / "Then: Arrive at Gate 8". */
   static nextStepPreview(step: Pick<NavigationInstruction, 'type' | 'roadName'>, destinationName?: string | null): string {
-    const label = `Then: ${InstructionService.maneuverLabel(step.type)}`;
-    if (step.type === 'arrival') return `${label} at ${destinationName?.trim() || 'destination'}`;
+    const locale = getLocale();
+    const maneuver = InstructionService.maneuverLabel(step.type);
+    if (step.type === 'arrival') {
+      return translate(locale, 'instructions.previewArrival', {
+        maneuver, name: localizeInstructionName(destinationName?.trim() || 'destination'),
+      });
+    }
     const road = step.roadName?.trim();
-    return road ? `${label} onto ${road}` : label;
+    return road
+      ? translate(locale, 'instructions.previewRoad', { maneuver, name: localizeInstructionName(road) })
+      : translate(locale, 'instructions.preview', { maneuver });
   }
 
   /**
@@ -224,10 +235,12 @@ export class InstructionService {
   static formatDuration(minutes: number): string {
     const wholeMinutes = Math.round(minutes);
     if (wholeMinutes < 60) {
-      return `${wholeMinutes} min`;
+      return translate(getLocale(), "instructions.durationMinutes", { minutes: wholeMinutes });
     }
     const hours = Math.floor(wholeMinutes / 60);
     const remainingMinutes = wholeMinutes % 60;
-    return remainingMinutes > 0 ? `${hours} hr ${remainingMinutes} min` : `${hours} hr`;
+    return remainingMinutes > 0
+      ? translate(getLocale(), "instructions.durationHoursMinutes", { hours, minutes: remainingMinutes })
+      : translate(getLocale(), "instructions.durationHours", { hours });
   }
 }
