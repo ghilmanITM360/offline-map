@@ -2,6 +2,15 @@ import { defineMessages } from '../defineMessages';
 
 export default defineMessages({
   'en': {
+    "routeGuide.stepCount": "Step {step} of {total}",
+    "routeGuide.stepSummary": "{count}. {instruction}{distance}",
+    "routeGuide.previous": "Previous",
+    "routeGuide.previousStep": "Previous step",
+    "routeGuide.next": "Next",
+    "routeGuide.nextStep": "Next step",
+    "routeGuide.useLocation": "Use my location to guide me",
+    "routeGuide.end": "End route guide",
+
     'routeGuide.upgrade.confirm': "Switch to live navigation?",
     'routeGuide.upgrade.preserved': "Your route guide stays available until live navigation starts.",
     'routeGuide.upgrade.continue': "Continue with location",
@@ -16,6 +25,15 @@ export default defineMessages({
     'routeGuide.upgrade.failed': "Could not start live navigation. Keep following your route guide.",
   },
   'ur-Latn': {
+    "routeGuide.stepCount": "Qadam {step} az {total}",
+    "routeGuide.stepSummary": "{count}. {instruction}{distance}",
+    "routeGuide.previous": "Pichla",
+    "routeGuide.previousStep": "Pichla qadam",
+    "routeGuide.next": "Agla",
+    "routeGuide.nextStep": "Agla qadam",
+    "routeGuide.useLocation": "Meri location se rehnumai karein",
+    "routeGuide.end": "Route guide khatam karein",
+
     'routeGuide.upgrade.confirm': "Live rehnumai par jayein?",
     'routeGuide.upgrade.preserved': "Live rehnumai shuru hone tak aap ki route guide mojood rahegi.",
     'routeGuide.upgrade.continue': "Location ke saath jari rakhein",
@@ -30,6 +48,15 @@ export default defineMessages({
     'routeGuide.upgrade.failed': "Live rehnumai shuru nahi ho saki. Route guide par chalte rahein.",
   },
   'ur': {
+    "routeGuide.stepCount": "قدم {step} از {total}",
+    "routeGuide.stepSummary": "{count}۔ {instruction}{distance}",
+    "routeGuide.previous": "پچھلا",
+    "routeGuide.previousStep": "پچھلا قدم",
+    "routeGuide.next": "اگلا",
+    "routeGuide.nextStep": "اگلا قدم",
+    "routeGuide.useLocation": "میری لوکیشن سے رہنمائی کریں",
+    "routeGuide.end": "روٹ گائیڈ ختم کریں",
+
     'routeGuide.upgrade.confirm': "لائیو رہنمائی پر جائیں؟",
     'routeGuide.upgrade.preserved': "لائیو رہنمائی شروع ہونے تک آپ کی روٹ گائیڈ موجود رہے گی۔",
     'routeGuide.upgrade.continue': "لوکیشن کے ساتھ جاری رکھیں",

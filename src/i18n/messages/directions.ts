@@ -7,6 +7,7 @@ import { defineMessages } from '../defineMessages';
 
 export default defineMessages({
   en: {
+    "directions.back": "Back",
     'block2.preview': "Preview from Block 2",
     'block2.fromPreview': "Block 2 — Preview",
     'block2.notice': "This route starts at Block 2 for preview purposes. Your actual location is not being tracked.",
@@ -19,6 +20,7 @@ export default defineMessages({
     'directions.checkLocation': 'Use my location',
   },
   'ur-Latn': {
+    "directions.back": "Wapas",
     'block2.preview': "Block 2 se rasta dekhein",
     'block2.fromPreview': "Block 2 — Sirf rasta dekhne ke liye",
     'block2.notice': "Yeh rasta sirf dekhne ke liye Block 2 se shuru hota hai. Aap ki asal location track nahi ho rahi.",
@@ -31,6 +33,7 @@ export default defineMessages({
     'directions.checkLocation': 'Meri location istemal karein',
   },
   ur: {
+    "directions.back": "واپس",
     'block2.preview': "بلاک 2 سے راستہ دیکھیں",
     'block2.fromPreview': "بلاک 2 — صرف راستہ دیکھنے کے لیے",
     'block2.notice': "یہ راستہ صرف دیکھنے کے لیے بلاک 2 سے شروع ہوتا ہے۔ آپ کی اصل لوکیشن ٹریک نہیں کی جا رہی۔",

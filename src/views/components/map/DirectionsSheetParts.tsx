@@ -8,7 +8,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { ChevronLeft, ChevronRight, RefreshCw } from 'lucide-react-native';
 
 import { directionsSheetColors as c } from '../../../theme';
-import { isRtl } from '../../../i18n';
+import { isRtl, useI18n } from '../../../i18n';
 
 /**
  * Presentational pieces of the Get Directions sheet (#177). They hold no route, GPS or
@@ -28,14 +28,15 @@ export function DirectionsHeader({
   subtitle: string;
   onBack: () => void;
 }) {
-  const BackIcon = isRtl() ? ChevronRight : ChevronLeft;
+  const { t, isRTL, dir } = useI18n();
+  const BackIcon = isRTL ? ChevronRight : ChevronLeft;
   return (
-    <View style={styles.header}>
+    <View style={[styles.header, { direction: dir }]}>
       <Pressable
         onPress={onBack}
         style={styles.backHit}
         accessibilityRole="button"
-        accessibilityLabel="Back"
+        accessibilityLabel={t('directions.back')}
       >
         <View style={styles.backCircle}>
           <BackIcon size={24} color={c.headingText} />
