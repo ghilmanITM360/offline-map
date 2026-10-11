@@ -30,7 +30,7 @@ export function SettingsScreen() {
   const navigation = useNavigation<any>();
   const BackIcon = backChevron();
   const theme = useTheme();
-  const { t, locale, setLocale } = useI18n();
+  const { t, locale, setLocale, isRTL } = useI18n();
   const developerModeEnabled = useAppStore((s) => s.developerModeEnabled);
   const setDeveloperModeEnabled = useAppStore((s) => s.setDeveloperModeEnabled);
   const [versionTapCount, setVersionTapCount] = useState(0);
@@ -67,7 +67,7 @@ export function SettingsScreen() {
   }: SettingItemProps) => {
     const isToggle = type === 'toggle';
     const rowPressHandler = isToggle ? onToggle : onPress;
-    const accessibleLabel = description ? `${label}, ${description}` : label;
+    const accessibleLabel = description ? t('common.labelWithHint', { label, hint: description }) : label;
     return (
       <Pressable
         android_ripple={{ color: `${theme.primary}22` }}
@@ -125,8 +125,8 @@ export function SettingsScreen() {
       setDeveloperModeEnabled(nextEnabled);
       setVersionTapCount(0);
       Alert.alert(
-        nextEnabled ? 'Developer mode enabled' : 'Developer mode disabled',
-        nextEnabled ? 'Debug overlays and controls are now available in development builds.' : 'Debug overlays are now hidden.',
+        t(nextEnabled ? 'settings.developerEnabledTitle' : 'settings.developerDisabledTitle'),
+        t(nextEnabled ? 'settings.developerEnabledBody' : 'settings.developerDisabledBody'),
       );
       return;
     }
@@ -144,24 +144,29 @@ export function SettingsScreen() {
   }, [refreshLocationPermissionState]);
 
   // One plain state word, said once. "Manage" opens the permission prompt or the phone's own settings as needed.
-  const locationState = (() => {
-    if (!locationPermissionState || locationPermissionState.servicesState === 'unknown') return 'Checking';
-    return locationPermissionState.granted && locationPermissionState.servicesState !== 'disabled' ? 'On' : 'Off';
-  })();
+  const locationHint = t(
+    !locationPermissionState || locationPermissionState.servicesState === 'unknown'
+      ? 'settings.locationHintChecking'
+      : locationPermissionState.granted && locationPermissionState.servicesState !== 'disabled'
+        ? 'settings.locationHintOn'
+        : 'settings.locationHintOff',
+  );
+  // Arabic-script letters must stay joined, so the small-caps letter spacing is Latin-only.
+  const sectionTitleStyle = [styles.sectionTitle, isRTL && styles.sectionTitleRtl];
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
       <View style={[styles.header, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
-        <Pressable onPress={() => navigation.canGoBack() ? navigation.goBack() : navigation.navigate('Home')} style={styles.backButton} hitSlop={12} accessibilityRole="button" accessibilityLabel="Back">
+        <Pressable onPress={() => navigation.canGoBack() ? navigation.goBack() : navigation.navigate('Home')} style={styles.backButton} hitSlop={12} accessibilityRole="button" accessibilityLabel={t('common.back')}>
           <BackIcon size={28} color={theme.text} />
         </Pressable>
-        <Text style={[styles.headerTitle, { color: theme.text }]}>Settings</Text>
+        <Text style={[styles.headerTitle, { color: theme.text }]}>{t('settings.title')}</Text>
       </View>
 
       <ScrollView style={styles.content}>
 
         <View style={[styles.section, { backgroundColor: theme.card, borderColor: theme.border }]}>
-          <Text style={[styles.sectionTitle, { color: theme.primary }]}>{t('settings.language')}</Text>
+          <Text style={[sectionTitleStyle, { color: theme.primary }]}>{t('settings.language')}</Text>
           {LOCALE_CODES.map((code) => (
             <Pressable
               key={code}
@@ -179,18 +184,18 @@ export function SettingsScreen() {
         </View>
 
         <View style={[styles.section, { backgroundColor: theme.card, borderColor: theme.border }]}>
-          <Text style={[styles.sectionTitle, { color: theme.primary }]}>Navigation</Text>
+          <Text style={[sectionTitleStyle, { color: theme.primary }]}>{t('settings.sectionNavigation')}</Text>
           <SettingItem
             icon={Volume2}
-            label="Voice Instructions"
+            label={t('settings.voiceInstructions')}
             value={settings.voiceInstructions}
             onToggle={() => handleToggle('voiceInstructions')}
-            description="Speaks each turn aloud"
+            description={t('settings.voiceInstructionsHint')}
           />
           <SettingItem
             icon={Info}
-            label="Distance Unit"
-            value={settings.distanceUnit === 'meters' ? 'Meters' : 'Feet'}
+            label={t('settings.distanceUnit')}
+            value={settings.distanceUnit === 'meters' ? t('settings.unitMeters') : t('settings.unitFeet')}
             type="text"
             onPress={() =>
               updateSettingValue(
@@ -198,88 +203,88 @@ export function SettingsScreen() {
                 settings.distanceUnit === 'meters' ? 'feet' : 'meters'
               )
             }
-            description="Meters or feet"
+            description={t('settings.distanceUnitHint')}
           />
         </View>
 
         <View style={[styles.section, { backgroundColor: theme.card, borderColor: theme.border }]}>
-          <Text style={[styles.sectionTitle, { color: theme.primary }]}>Location</Text>
+          <Text style={[sectionTitleStyle, { color: theme.primary }]}>{t('settings.sectionLocation')}</Text>
           <SettingItem
             icon={Shield}
-            label="Location"
-            value="Manage"
+            label={t('settings.location')}
+            value={t('settings.locationManage')}
             type="text"
             onPress={handleReRequestPermission}
-            description={`${locationState}. Used for live guidance.`}
+            description={locationHint}
           />
         </View>
 
         <View style={[styles.section, { backgroundColor: theme.card, borderColor: theme.border }]}>
-          <Text style={[styles.sectionTitle, { color: theme.primary }]}>Privacy</Text>
+          <Text style={[sectionTitleStyle, { color: theme.primary }]}>{t('settings.sectionPrivacy')}</Text>
           <SettingItem
             icon={Trash2}
-            label="Clear Recent Searches"
-            value="Clear"
+            label={t('settings.clearRecent')}
+            value={t('common.clear')}
             type="text"
             onPress={() => handleClearLocalData('recentSearches')}
-            description="Kept on this device for up to 30 days"
+            description={t('settings.clearRecentHint')}
           />
           <SettingItem
             icon={Trash2}
-            label="Clear Saved Location"
-            value="Clear"
+            label={t('settings.clearSaved')}
+            value={t('common.clear')}
             type="text"
             onPress={() => handleClearLocalData('savedLocation')}
-            description="Your saved location, kept for up to 24 hours"
+            description={t('settings.clearSavedHint')}
           />
           <SettingItem
             icon={Trash2}
-            label="Clear unfinished journey"
-            value="Clear"
+            label={t('settings.clearJourney')}
+            value={t('common.clear')}
             type="text"
             onPress={() => handleClearLocalData('navigationRecovery')}
-            description="Removes the reminder for your last unfinished route."
+            description={t('settings.clearJourneyHint')}
           />
         </View>
 
         <View style={[styles.section, { backgroundColor: theme.card, borderColor: theme.border }]}>
-          <Text style={[styles.sectionTitle, { color: theme.primary }]}>Help</Text>
+          <Text style={[sectionTitleStyle, { color: theme.primary }]}>{t('settings.sectionHelp')}</Text>
           <SettingItem
             icon={BookOpen}
-            label="App Guide"
-            value="Open"
+            label={t('settings.appGuide')}
+            value={t('settings.open')}
             type="text"
             onPress={() => navigation.navigate('AppGuide')}
-            description="Learn how to find places and follow directions."
+            description={t('settings.appGuideHint')}
           />
           <SettingItem
             icon={Info}
-            label="About Ijtema Map"
-            value="Open"
+            label={t('settings.aboutApp')}
+            value={t('settings.open')}
             type="text"
             onPress={() => navigation.navigate('About')}
-            description="Version, privacy and terms"
+            description={t('settings.aboutHint')}
           />
           {__DEV__ && (
             <SettingItem
               icon={Shield}
-              label="Developer Mode"
+              label={t('settings.developerMode')}
               value={developerModeEnabled}
               onToggle={() => setDeveloperModeEnabled(!developerModeEnabled)}
-              description="Show graph/debug overlays and diagnostics"
+              description={t('settings.developerModeHint')}
             />
           )}
         </View>
 
         <View style={styles.footer}>
           <Pressable onPress={handleVersionTap}>
-            <Text style={[styles.version, { color: theme.subtext }]}>Version 1.0.0</Text>
+            <Text style={[styles.version, { color: theme.subtext }]}>{t('settings.version', { version: '1.0.0' })}</Text>
           </Pressable>
           <Text style={[styles.copyright, { color: theme.subtext }]}>
-            © 2026 Karachi Ijtema Navigation
+            {t('settings.copyright')}
           </Text>
           <Text style={[styles.credits, { color: theme.subtext }]}>
-            Developed for the benefit of all pilgrims
+            {t('settings.credits')}
           </Text>
         </View>
       </ScrollView>
@@ -297,7 +302,7 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   backButton: { padding: 4 },
-  headerTitle: { fontSize: 20, fontWeight: 'bold', marginLeft: 16 },
+  headerTitle: { fontSize: 20, fontWeight: 'bold', marginStart: 16 },
   content: { flex: 1 },
   section: {
     marginTop: 12,
@@ -308,12 +313,13 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 12,
     fontWeight: '700',
-    marginLeft: 16,
+    marginStart: 16,
     marginTop: 4,
     marginBottom: 8,
     textTransform: 'uppercase',
     letterSpacing: 1,
   },
+  sectionTitleRtl: { letterSpacing: 0 },
   settingItem: {
     paddingVertical: 12,
     paddingHorizontal: 16,
@@ -326,11 +332,11 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   settingLabelContainer: { flexDirection: 'row', alignItems: 'center', flex: 1 },
-  textContainer: { marginLeft: 16, flex: 1 },
+  textContainer: { marginStart: 16, flex: 1 },
   settingLabel: { fontSize: 16, fontWeight: '500' },
   settingDescription: { fontSize: 12, marginTop: 2 },
   languageRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: 48 },
-  settingValue: { fontSize: 14, fontWeight: '600', maxWidth: 132, textAlign: 'right' },
+  settingValue: { fontSize: 14, fontWeight: '600', maxWidth: 132, textAlign: 'auto' },
   footer: { padding: 32, alignItems: 'center' },
   version: { fontSize: 14, fontWeight: '500' },
   copyright: { fontSize: 12, marginTop: 4 },
