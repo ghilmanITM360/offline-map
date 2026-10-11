@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import { localizeVenueName } from '../i18n/venueNames';
 import { IJTEMA_DATA, LANDMARK_PLACES } from '../constants/data';
 import { Place } from '../models/types';
 import { FuzzySearchService } from './FuzzySearchService';
@@ -356,7 +357,7 @@ export class SearchService {
 
     const results: V2Place[] = [];
     for (const place of places) {
-      const aliases = place.aliases ?? [];
+      const aliases = [...(place.aliases ?? []), localizeVenueName(place.name, 'ur-Latn')];
       const isMissingGate = place.category === 'Gate' && place.routingStatus === 'missing_coordinate';
       const gateNumber = place.category === 'Gate' ? Number(place.id.replace('GATE_', '')) : null;
       const blockNumber = place.category === 'Block' ? Number(place.id.replace('B', '')) : null;
@@ -383,7 +384,7 @@ export class SearchService {
     }
 
     const matchPriority = (place: V2Place): number => {
-      const aliases = place.aliases ?? [];
+      const aliases = [...(place.aliases ?? []), localizeVenueName(place.name, 'ur-Latn')];
       const normalizedUrduName = place.urduName ? normalizeUrdu(place.urduName).toLowerCase() : '';
       const normalizedAliases = aliases.map((alias) => normalizeUrdu(alias).toLowerCase());
 

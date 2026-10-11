@@ -11,8 +11,8 @@ assert(directionsViewModelSource.includes("'Choose where to start'"), 'The FROM 
 // #222: every start change opens the Directory; the current-location / last-known quick options live there.
 const directoryScreenSource = readFileSync('src/views/screens/LocationsDirectoryScreen.tsx', 'utf8');
 assert(directionsScreenSource.includes("onOpenDirectory?.('start')"), 'Directions screen must hand every start change to the Directory.');
-assert(directoryScreenSource.includes('Use my location'), 'Directory must keep the current-location start quick option.');
-assert(directoryScreenSource.includes('Use earlier location'), 'Directory must keep the remembered-location quick option.');
+assert(directoryScreenSource.includes("t('directory.current')"), 'Directory must keep the current-location start quick option.');
+assert(directoryScreenSource.includes("t('directory.earlier')"), 'Directory must keep the remembered-location quick option.');
 assert(directionsScreenSource.includes('Change destination.'), 'Directions screen must let user change destination.');
 assert(directionsScreenSource.includes('Finding your route'), 'Directions screen must show provider-neutral calculating status copy.');
 assert(directionsScreenSource.includes('Route ready'), 'Directions screen must show success status copy.');

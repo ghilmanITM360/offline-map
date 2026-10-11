@@ -30,7 +30,7 @@ const homeScreenSource = readFileSync('src/views/screens/HomeScreen.tsx', 'utf8'
 
 // #222: the start chooser is the Directory; the sheet only opens it.
 const directoryScreen = readFileSync('src/views/screens/LocationsDirectoryScreen.tsx', 'utf8');
-assert(directoryScreen.includes('Use my location'), 'Directory should offer current-location start action');
+assert(directoryScreen.includes("t('directory.current')"), 'Directory should offer current-location start action');
 assert(directions.includes("onOpenDirectory?.('start')"), 'Directions should keep the Directory as the manual-start fallback');
 assert(navVm.includes('REROUTE_COOLDOWN_MS'), 'Navigation should include reroute cooldown to avoid loops');
 assert(navVm.includes('OFF_ROUTE_CONSECUTIVE_REQUIRED'), 'Navigation should require consecutive off-route samples before rerouting');

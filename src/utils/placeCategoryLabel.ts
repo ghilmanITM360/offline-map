@@ -3,12 +3,10 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-// Raw `Place.category` values are data enums, not copy. Only SpecialRoute differs from its
-// enum spelling — the Directory has always called it Shahr-e-Pindal.
-const CATEGORY_LABEL: Record<string, string> = {
-  SpecialRoute: 'Shahr-e-Pindal',
-};
-
+import { getLocale } from '../i18n/localeStore';
+import { translate } from '../i18n/translate';
+const categories = ['Block', 'Gate', 'Rasta', 'SpecialRoute', 'MemberMasjidGate', 'Facility'] as const;
 export function placeCategoryLabel(category: string): string {
-  return CATEGORY_LABEL[category] ?? category;
+  const known = categories.find(value => value === category);
+  return known ? translate(getLocale(), `places.${known}`) : category;
 }
