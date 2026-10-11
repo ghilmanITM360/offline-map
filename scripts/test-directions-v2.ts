@@ -10,9 +10,9 @@ const directionsScreenSource = readFileSync('src/views/components/map/LocationSh
 const homeScreenSource = readFileSync('src/views/screens/HomeScreen.tsx', 'utf8');
 const homeViewModelSource = readFileSync('src/viewmodels/HomeViewModel.ts', 'utf8');
 
-assert(directionsScreenSource.includes('Get Directions'), 'Directions screen must use layman-friendly heading');
-assert(directionsScreenSource.includes('Start Navigation'), 'Directions screen must expose a Start Navigation CTA that reveals the map in place');
-assert(directionsScreenSource.includes('Route ready'), 'Directions screen must show route-ready summary');
+assert(directionsScreenSource.includes("t('directions.title'"), 'Directions screen must use layman-friendly heading');
+assert(directionsScreenSource.includes("t('directions.startNavigation'"), 'Directions screen must expose a Start Navigation CTA that reveals the map in place');
+assert(directionsScreenSource.includes("t('directions.ready'"), 'Directions screen must show route-ready summary');
 assert(!directionsScreenSource.includes('Could not calculate a v2 route. The selected gate or place may need connector verification.'), 'Directions screen must not show generic v2 route error copy');
 assert(homeScreenSource.includes("selectedPlace.sourceVersion !== 'v2'"), 'Home screen must not show old entry chips for v2 blocks');
 assert(homeViewModelSource.includes('if (!place.coordinate)'), 'Home selection must guard unavailable v2 places with no coordinate');

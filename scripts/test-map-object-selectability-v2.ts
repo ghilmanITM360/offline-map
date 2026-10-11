@@ -67,11 +67,11 @@ assert(
 assert(placeAdapter.includes('gateNumber: gate.number'), 'V2PlaceAdapter.gateToPlace must surface the gate number from source data.');
 assert(placeAdapter.includes('isMajorGate: MAJOR_GATE_IDS.has(gate.id)'), 'V2PlaceAdapter.gateToPlace must surface whether this is a major/recommended gate, data-driven from MAJOR_GATE_IDS.');
 assert(
-  locationSheet.includes("place.category === 'Gate'") && locationSheet.includes('Official entry / exit gate'),
+  locationSheet.includes("place.category === 'Gate'") && locationSheet.includes("'place.officialGate'"),
   'LocationSheet must show gate role information (entry/exit + recommended-entry-point hint) beyond just name/category.',
 );
 assert(
-  locationSheet.includes('Official entry / exit gate · Recommended entry point'),
+  locationSheet.includes("'place.majorGate'"),
   'LocationSheet must distinguish major/recommended gates from regular gates using real data, not hardcoded per-gate text.',
 );
 

@@ -111,8 +111,8 @@ assert(
   'Directions should support keyboard-safe scrolling',
 );
 assert(
-  directionsScreen.includes('Get Directions') &&
-    directionsScreen.includes('Start Navigation') &&
+  directionsScreen.includes("t('directions.title'") &&
+    directionsScreen.includes("t('directions.startNavigation'") &&
     directionsScreen.includes("onOpenDirectory?.('start')"),
   'Directions should use layman-friendly start-selection flow',
 );

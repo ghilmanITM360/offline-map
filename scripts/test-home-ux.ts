@@ -34,7 +34,7 @@ assert(
 // Category browsing moved to LocationsDirectoryScreen (PublicDestinationsService.getCategories(),
 // itself data-driven, not hardcoded) — Home keeps a single chip that opens it.
 assert(home.includes("nav.navigate('LocationsDirectory')"), 'Home hands off to the data-driven Locations Directory (arrival Done, start/destination changes), not hardcoded category chips');
-assert(locationSheet.includes('Member Masjid Gates'), 'Block detail sheet should show Member Masjid gates');
+assert(locationSheet.includes("'place.memberGates'"), 'Block detail sheet should show Member Masjid gates');
 assert(home.includes('buildMarkerOverlay('), 'Home should render the user dot through the shared marker overlay');
 assert(searchService.includes("{ id: 'gates', label: 'Gates' }"), 'Search categories should include Gates');
 assert(searchService.includes("{ id: 'masjids', label: 'Masjids' }"), 'Search categories should include Masjids');

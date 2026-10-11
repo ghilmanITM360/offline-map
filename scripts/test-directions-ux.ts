@@ -5,8 +5,8 @@ const screen = readFileSync('src/views/components/map/LocationSheet.tsx', 'utf8'
 const vm = readFileSync('src/viewmodels/DirectionsViewModel.ts', 'utf8');
 const navigationCapability = readFileSync('src/services/LocationNavigationCapability.ts', 'utf8');
 
-assert(screen.includes('Get Directions'), 'Directions screen must use layman-friendly heading');
-assert(screen.includes('Change destination.'), 'Directions screen must show a tappable destination row');
+assert(screen.includes("t('directions.title'"), 'Directions screen must use layman-friendly heading');
+assert(screen.includes("t('directions.changeTo'"), 'Directions screen must show a tappable destination row');
 assert(vm.includes("'Choose where to start'"), 'The FROM row must focus on start selection');
 const directoryScreen = readFileSync('src/views/screens/LocationsDirectoryScreen.tsx', 'utf8');
 assert(directoryScreen.includes("t('directory.current')"), 'Directory must include current-location action');
@@ -18,9 +18,9 @@ assert(directoryScreen.includes('canUseLastKnown'), 'Directory should show the l
 assert(screen.includes('Change destination'), 'Directions screen must include destination change action');
 assert(screen.includes('ScrollView'), 'Directions screen should use scroll layout');
 assert(screen.includes('paddingBottom'), 'Directions screen should add bottom padding for safe area');
-assert(screen.includes('Start Navigation'), 'Directions screen should expose a Start Navigation CTA once a route is ready');
-assert(screen.includes('Route ready'), 'Directions screen should show route-ready summary');
-assert(screen.includes('Finding your route…'), 'Directions screen should show provider-neutral calculating state clearly');
+assert(screen.includes("t('directions.startNavigation'"), 'Directions screen should expose a Start Navigation CTA once a route is ready');
+assert(screen.includes("t('directions.ready'"), 'Directions screen should show route-ready summary');
+assert(screen.includes("t('directions.findingRoute'"), 'Directions screen should show provider-neutral calculating state clearly');
 
 assert(vm.includes('ROUTE_TIMEOUT_MS'), 'Directions route calculation should include timeout');
 assert(vm.includes('forceOutside'), 'Directions should pass outside start mode into v2 preview service');

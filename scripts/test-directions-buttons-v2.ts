@@ -5,18 +5,18 @@ const directionsScreenSource = readFileSync('src/views/components/map/LocationSh
 const directionsViewModelSource = readFileSync('src/viewmodels/DirectionsViewModel.ts', 'utf8');
 const homeScreenSource = readFileSync('src/views/screens/HomeScreen.tsx', 'utf8');
 
-assert(directionsScreenSource.includes('Get Directions'), 'Directions header must say Get Directions.');
-assert(directionsScreenSource.includes('Change destination.'), 'Directions screen must show a tappable destination row.');
+assert(directionsScreenSource.includes("t('directions.title'"), 'Directions header must say Get Directions.');
+assert(directionsScreenSource.includes("t('directions.changeTo'"), 'Directions screen must show a tappable destination row.');
 assert(directionsViewModelSource.includes("'Choose where to start'"), 'The FROM row must state the start-selection task plainly.');
 // #222: every start change opens the Directory; the current-location / last-known quick options live there.
 const directoryScreenSource = readFileSync('src/views/screens/LocationsDirectoryScreen.tsx', 'utf8');
 assert(directionsScreenSource.includes("onOpenDirectory?.('start')"), 'Directions screen must hand every start change to the Directory.');
 assert(directoryScreenSource.includes("t('directory.current')"), 'Directory must keep the current-location start quick option.');
 assert(directoryScreenSource.includes("t('directory.earlier')"), 'Directory must keep the remembered-location quick option.');
-assert(directionsScreenSource.includes('Change destination.'), 'Directions screen must let user change destination.');
-assert(directionsScreenSource.includes('Finding your route'), 'Directions screen must show provider-neutral calculating status copy.');
-assert(directionsScreenSource.includes('Route ready'), 'Directions screen must show success status copy.');
-assert(directionsScreenSource.includes('Start Navigation'), 'Directions screen must expose a Start Navigation CTA.');
+assert(directionsScreenSource.includes("t('directions.changeTo'"), 'Directions screen must let user change destination.');
+assert(directionsScreenSource.includes("t('directions.findingRoute'"), 'Directions screen must show provider-neutral calculating status copy.');
+assert(directionsScreenSource.includes("t('directions.ready'"), 'Directions screen must show success status copy.');
+assert(directionsScreenSource.includes("t('directions.startNavigation'"), 'Directions screen must expose a Start Navigation CTA.');
 assert(
   !directionsScreenSource.includes('Last known location is outside Ijtema and cannot be used for routing.'),
   'Directions screen must stop rejecting outside remembered location.',
@@ -34,7 +34,7 @@ assert(
 // NavigationScreen either way (v1 or v2) — starting navigation always just
 // reveals the map, and the in-place NavigationOverlayV1/V2 takes over from there.
 assert(
-  directionsScreenSource.includes('Start Navigation'),
+  directionsScreenSource.includes("t('directions.startNavigation'"),
   'Directions screen must expose a Start Navigation CTA for legacy destinations.',
 );
 assert(

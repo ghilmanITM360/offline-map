@@ -22,9 +22,9 @@ assert(homeScreenSource.includes('Directions'), 'Home selected-place action must
 assert(homeScreenSource.includes('routePreviewSheetDestination'), 'Home must resolve a single route-preview destination feeding LocationSheet routePreview mode.');
 assert(homeScreenSource.includes('onCancelRoute={handleClearPreviewRoute}'), 'Home must wire explicit Cancel Route into every Directions context, including unresolved setup.');
 assert(homeScreenSource.includes('onStartNavigation={handleStartPreviewNavigation}'), 'Home must wire Start Navigation into LocationSheet.');
-assert(locationSheetSource.includes('Cancel Route'), 'LocationSheet routePreview mode must expose Cancel Route button when preview exists.');
-assert(locationSheetSource.includes('Start Navigation'), 'LocationSheet routePreview mode must expose Start Navigation button when preview exists.');
-assert(locationSheetSource.includes('Change start.'), 'LocationSheet routePreview mode must expose a tappable start row when preview exists.');
+assert(locationSheetSource.includes("t('directions.cancelRoute'"), 'LocationSheet routePreview mode must expose Cancel Route button when preview exists.');
+assert(locationSheetSource.includes("t('directions.startNavigation'"), 'LocationSheet routePreview mode must expose Start Navigation button when preview exists.');
+assert(locationSheetSource.includes("t('directions.changeFrom'"), 'LocationSheet routePreview mode must expose a tappable start row when preview exists.');
 assert(homeScreenSource.includes('BackHandler.addEventListener'), 'Android back on Home must still work.');
 
 console.log('Home buttons v2 checks passed.');

@@ -24,23 +24,23 @@ assert(
 // LocationSheet.tsx (see scripts/test-map-controls-v2.ts for the corresponding HomeScreen-side
 // checks that the old floating card/its styles are gone).
 assert(
-  directionsScreenSource.includes('Start Navigation'),
+  directionsScreenSource.includes("t('directions.startNavigation'"),
   'LocationSheet routePreview mode must expose Start Navigation.',
 );
 assert(
-  directionsScreenSource.includes('Cancel Route'),
+  directionsScreenSource.includes("t('directions.cancelRoute'"),
   'LocationSheet routePreview mode must expose Cancel Route action (confirm-gated destructive action, via onCancelRoute).',
 );
 assert(
-  directionsScreenSource.includes('Change start.'),
+  directionsScreenSource.includes("t('directions.changeFrom'"),
   'LocationSheet routePreview mode must expose the tappable start row.',
 );
 assert(
-  directionsScreenSource.includes('Go in through'),
+  directionsScreenSource.includes("t('directions.enterGate'"),
   'LocationSheet routePreview mode must explain entry gate.',
 );
 assert(
-  directionsScreenSource.includes('Outside Ijtema'),
+  directionsScreenSource.includes("t('directions.outside'"),
   'LocationSheet routePreview mode must explain outside-user route mode.',
 );
 assert(
