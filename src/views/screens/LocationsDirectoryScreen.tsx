@@ -3,6 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import { useI18n } from '../../i18n/useI18n';
+import { localizeVenueName } from '../../i18n/venueNames';
 import { restoreDirectoryOffset } from '../../utils/directoryScrollRestoration';
 import type { LayoutChangeEvent } from 'react-native';
 import { accuracyFacet } from '../../services/LocationCapability';
@@ -19,7 +21,6 @@ import { V2Place } from '../../models/types';
 import { DestinationCategoryId, PublicDestinationsService } from '../../services/PublicDestinationsService';
 import { V2PlaceAdapter } from '../../services/V2PlaceAdapter';
 import { usePressScale } from '../../viewmodels/usePressScale';
-import { unavailableReasonCopy } from '../../utils/unavailableReasonCopy';
 import { SearchBarField } from '../components/common/SearchBarField';
 import { DestinationRow } from '../components/directory/DestinationRow';
 import { DestinationBlockGrid } from '../components/directory/DestinationBlockGrid';
@@ -81,6 +82,8 @@ type Nav = NativeStackNavigationProp<RootStackParamList, 'LocationsDirectory'>;
  * selectedPlace, starts navigation, or moves the camera itself.
  */
 export function LocationsDirectoryScreen() {
+  const { t, locale, isRTL } = useI18n();
+  const categoryLabel = (id: DestinationCategoryId) => t(`directory.${id}`);
   const navigation = useNavigation<Nav>();
   const currentLocation = useAppStore((s) => s.currentLocation);
   const currentLocationSource = useAppStore((s) => s.currentLocationSource);
@@ -210,11 +213,11 @@ export function LocationsDirectoryScreen() {
   }, [recentSearches]);
 
   const confirmClearRecent = useCallback(() => {
-    Alert.alert('Clear recent places?', 'Places you opened recently will be removed from this list.', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Clear', style: 'destructive', onPress: clearRecentSearches },
+    Alert.alert(t('directory.clearTitle'), t('directory.clearBody'), [
+      { text: t('directory.cancel'), style: 'cancel' },
+      { text: t('directory.clear'), style: 'destructive', onPress: clearRecentSearches },
     ]);
-  }, [clearRecentSearches]);
+  }, [clearRecentSearches, t]);
 
   // Start-only quick options, shown only when the location behind them is usable.
   const canUseCurrentLocation =
@@ -272,8 +275,8 @@ export function LocationsDirectoryScreen() {
         const usable = storePurpose === 'start' ? place.isStartRoutable !== false : place.isRoutable !== false;
         if (!usable) {
           Alert.alert(
-            'Place unavailable',
-            unavailableReasonCopy(place.unavailableReason) ?? `${place.name} is not available on the map yet.`,
+            t('directory.unavailableTitle'),
+            t('directory.unavailableBody', { place: localizeVenueName(place.name, locale) }),
           );
           return;
         }
@@ -285,7 +288,7 @@ export function LocationsDirectoryScreen() {
       // Plain browsing: a tap means "take me here" (#307).
       takeMeTo(place);
     },
-    [goToMap, setDirectoryChoice, setDirectoryPurpose, setPendingJourney, storePurpose, request, takeMeTo],
+    [goToMap, setDirectoryChoice, setDirectoryPurpose, setPendingJourney, storePurpose, request, takeMeTo, t, locale],
   );
 
   const handleGetNewRoute = useCallback(() => {
@@ -344,7 +347,7 @@ export function LocationsDirectoryScreen() {
       return (
         <View key={category.id} style={styles.section} onLayout={trackLayout(`section:${category.id}`, null)}>
           <Text style={styles.sectionTitle} accessibilityRole="header">
-            {category.label} ({places.length})
+            {categoryLabel(category.id)} ({places.length})
           </Text>
           {category.id === 'blocks' ? (
             <View onLayout={trackLayout('blocks-grid', 'section:blocks')}>
@@ -367,8 +370,8 @@ export function LocationsDirectoryScreen() {
     if (searchResults.length === 0) {
       return (
         <View style={styles.emptyState} accessibilityLiveRegion="polite">
-          <Text style={styles.emptyTitle}>{`No matches for "${trimmedQuery}"`}</Text>
-          <Text style={styles.emptyHint}>Try a block or gate number, like 24 or Gate 15.</Text>
+          <Text style={styles.emptyTitle}>{t('directory.noMatches', { query: trimmedQuery })}</Text>
+          <Text style={styles.emptyHint}>{t('directory.searchHint')}</Text>
         </View>
       );
     }
@@ -382,27 +385,27 @@ export function LocationsDirectoryScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+    <SafeAreaView testID="directory-screen" style={[styles.container, { direction: isRTL ? 'rtl' : 'ltr' }]} edges={['top', 'left', 'right']}>
       <View style={styles.header}>
         {/* Short title (was two lines: a long question plus a subtitle that just repeated what the
             search placeholder already says). It may wrap: at 200% font on a 320 dp window one line
             truncated to "Find your…" beside the Map pill (#128 A). */}
         <Text style={styles.title} accessibilityRole="header">
-          {purpose === 'start' ? 'Where are you starting from?' : purpose === 'destination' ? 'Where do you want to go?' : 'Find your way'}
+          {t(purpose === 'start' ? 'directory.originHeading' : purpose === 'destination' ? 'directory.destinationHeading' : 'directory.heading')}
         </Text>
         <Pressable
           style={styles.viewMapButton}
           onPress={() => { if (cancelChooser()) goToMap(); }}
           accessibilityRole="button"
-          accessibilityLabel={purpose ? 'Cancel and go back' : 'View map'}
+          accessibilityLabel={t(purpose ? 'directory.cancelBack' : 'directory.viewMap')}
         >
           {purpose ? <X size={18} color={staticColors.info} /> : <MapIcon size={18} color={staticColors.info} />}
-          <Text style={styles.viewMapLabel}>{purpose ? 'Cancel' : 'Map'}</Text>
+          <Text style={styles.viewMapLabel}>{t(purpose ? 'directory.cancel' : 'directory.map')}</Text>
         </Pressable>
       </View>
 
       {purpose === 'start' && chooserDestination ? (
-        <Text style={styles.journeyTo} accessibilityLiveRegion="polite">{`To ${chooserDestination.name}`}</Text>
+        <Text style={styles.journeyTo} accessibilityLiveRegion="polite">{t('directory.journeyTo', { destination: localizeVenueName(chooserDestination.name, locale) })}</Text>
       ) : null}
 
       <View style={styles.searchWrap}>
@@ -412,9 +415,9 @@ export function LocationsDirectoryScreen() {
           onChangeText={(value) => { resetScroll(); setQuery(value); }}
           // Same words as Home's search and this field's name. The old 31-character hint wrapped at 200% font
           // and the fixed-height field clipped it; Android's TextInput cannot ellipsize a placeholder.
-          placeholder="Search destinations"
+          placeholder={t('directory.search')}
           style={[styles.searchInput, query.length > 0 && styles.searchInputWithClear]}
-          accessibilityLabel="Search destinations"
+          accessibilityLabel={t('directory.search')}
           autoCorrect={false}
         />
         {query.length > 0 && (
@@ -422,7 +425,7 @@ export function LocationsDirectoryScreen() {
             style={styles.clearButton}
             onPress={() => { resetScroll(); setQuery(''); }}
             accessibilityRole="button"
-            accessibilityLabel="Clear search"
+            accessibilityLabel={t('directory.clearSearch')}
             hitSlop={8}
           >
             <X size={18} color={staticColors.iconMuted} />
@@ -439,7 +442,7 @@ export function LocationsDirectoryScreen() {
         {categories.map((category) => (
           <CategoryChip
             key={category.id}
-            label={category.label}
+            label={categoryLabel(category.id)}
             active={activeCategory === category.id}
             accent={CATEGORY_ACCENT[category.id]}
             onPress={() => handleCategoryPress(category.id)}
@@ -464,28 +467,28 @@ export function LocationsDirectoryScreen() {
         }}>
         {unfinishedDestinationId !== null && !purpose && (
           <View style={styles.recoveryCard} accessibilityLiveRegion="polite">
-            <Text style={styles.recoveryTitle}>Your last navigation didn't finish</Text>
+            <Text style={styles.recoveryTitle}>{t('directory.recoveryTitle')}</Text>
             <Text style={styles.recoveryBody}>
               {unfinishedDestinationName
-                ? `You were heading to ${unfinishedDestinationName}. Want a new route from where you are now?`
-                : "Your last navigation didn't finish. Want a new route from where you are now?"}
+                ? t('directory.recoveryTo', { destination: localizeVenueName(unfinishedDestinationName, locale) })
+                : t('directory.recoveryBody')}
             </Text>
             <View style={styles.recoveryActions}>
               <Pressable
                 style={[styles.recoveryButton, styles.recoveryPrimary]}
                 onPress={handleGetNewRoute}
                 accessibilityRole="button"
-                accessibilityLabel="Get new route"
+                accessibilityLabel={t('directory.newRoute')}
               >
-                <Text style={styles.recoveryPrimaryLabel}>Get new route</Text>
+                <Text style={styles.recoveryPrimaryLabel}>{t('directory.newRoute')}</Text>
               </Pressable>
               <Pressable
                 style={styles.recoveryButton}
                 onPress={clearUnfinishedJourney}
                 accessibilityRole="button"
-                accessibilityLabel="Dismiss"
+                accessibilityLabel={t('directory.dismiss')}
               >
-                <Text style={styles.recoverySecondaryLabel}>Dismiss</Text>
+                <Text style={styles.recoverySecondaryLabel}>{t('directory.dismiss')}</Text>
               </Pressable>
             </View>
           </View>
@@ -499,16 +502,16 @@ export function LocationsDirectoryScreen() {
                 {canUseCurrentLocation && (
                   <StartOptionCard
                     icon={<LocateFixed size={26} color={directionsSheetColors.brand} />}
-                    title="Use my location"
-                    subtitle="We pick the nearest gate for you"
+                    title={t('directory.current')}
+                    subtitle={t('directory.currentHint')}
                     onPress={() => handleQuickStart('current_location')}
                   />
                 )}
                 {canUseLastKnown && (
                   <StartOptionCard
                     icon={<MapPin size={26} color={directionsSheetColors.brand} />}
-                    title="Use earlier location"
-                    subtitle={`Saved ${formatLastKnownAge(lastKnownLocationUpdatedAt)}`}
+                    title={t('directory.earlier')}
+                    subtitle={t('directory.savedAge', { age: formatLastKnownAge(lastKnownLocationUpdatedAt) })}
                     onPress={() => handleQuickStart('last_known')}
                   />
                 )}
@@ -517,14 +520,14 @@ export function LocationsDirectoryScreen() {
             {!activeCategory && recentPlaces.length > 0 && (
               <View style={styles.section} testID="directory-recent" onLayout={trackLayout("recent", null)}>
                 <View style={styles.recentHeader}>
-                  <Text style={[styles.sectionTitle, styles.recentTitle]} accessibilityRole="header">Recent</Text>
+                  <Text style={[styles.sectionTitle, styles.recentTitle]} accessibilityRole="header">{t('directory.recent')}</Text>
                   <Pressable
                     style={styles.recentClear}
                     onPress={confirmClearRecent}
                     accessibilityRole="button"
-                    accessibilityLabel="Clear recent places"
+                    accessibilityLabel={t('directory.clearRecent')}
                   >
-                    <Text style={styles.recentClearLabel}>Clear</Text>
+                    <Text style={styles.recentClearLabel}>{t('directory.clear')}</Text>
                   </Pressable>
                 </View>
                 <View style={styles.sectionRows} testID="directory-recent-rows" onLayout={trackLayout("recent-rows", "recent")}>
