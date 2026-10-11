@@ -11,6 +11,7 @@ import { useNavigation } from '@react-navigation/native';
 import { backChevron } from '../components/common/directionalIcons';
 import { BASEMAP_ATTRIBUTION } from '../components/mapgl/basemapStyle';
 import { OSM_COPYRIGHT_URL } from '../components/map/OsmAttribution';
+import { useI18n } from '../../i18n';
 
 const PRIVACY_POLICY_URL = 'TODO_PRIVACY_POLICY_URL'; // fixed: replace placeholder privacy URL with an explicit TODO constant
 const TERMS_OF_SERVICE_URL = 'TODO_TERMS_OF_SERVICE_URL'; // fixed: replace placeholder terms URL with an explicit TODO constant
@@ -18,31 +19,33 @@ const TERMS_OF_SERVICE_URL = 'TODO_TERMS_OF_SERVICE_URL'; // fixed: replace plac
 export function AboutScreen() {
   const navigation = useNavigation();
   const BackIcon = backChevron();
+  const { t, isRTL } = useI18n();
+  const sectionTitleStyle = [styles.sectionTitle, isRTL && styles.sectionTitleRtl];
 
   const openExternalUrl = async (url: string) => {
     if (!url.startsWith('http')) {
-      Alert.alert("This link isn't ready", 'Please try again later.'); // fixed: handle TODO URLs without throwing
+      Alert.alert(t('errors.linkNotReadyTitle'), t('errors.tryAgainLater')); // fixed: handle TODO URLs without throwing
       return;
     }
     try {
       const supported = await Linking.canOpenURL(url);
       if (!supported) {
-        Alert.alert("Can't open this link", "This phone can't open it."); // fixed: guard unsupported URLs
+        Alert.alert(t('errors.linkCantOpenTitle'), t('errors.linkUnsupportedBody')); // fixed: guard unsupported URLs
         return;
       }
       await Linking.openURL(url); // fixed: await the promise so errors can be caught
     } catch {
-      Alert.alert("Can't open this link", 'Please try again later.'); // fixed: surface linking failures instead of silently rejecting
+      Alert.alert(t('errors.linkCantOpenTitle'), t('errors.tryAgainLater')); // fixed: surface linking failures instead of silently rejecting
     }
   };
 
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <Pressable onPress={() => navigation.canGoBack() ? navigation.goBack() : navigation.navigate('Home' as never)} style={styles.backButton} hitSlop={12} accessibilityRole="button" accessibilityLabel="Back">
+        <Pressable onPress={() => navigation.canGoBack() ? navigation.goBack() : navigation.navigate('Home' as never)} style={styles.backButton} hitSlop={12} accessibilityRole="button" accessibilityLabel={t('common.back')}>
           <BackIcon size={28} color="#333" />
         </Pressable>
-        <Text style={styles.headerTitle}>About App</Text>
+        <Text style={styles.headerTitle}>{t('about.title')}</Text>
       </View>
 
       <ScrollView style={styles.content}>
@@ -53,64 +56,60 @@ export function AboutScreen() {
               style={styles.logo}
             />
           </View>
-          <Text style={styles.appName}>Karachi Ijtema Navigation</Text>
-          <Text style={styles.version}>Version 1.0.0</Text>
+          <Text style={styles.appName}>{t('common.appFullName')}</Text>
+          <Text style={styles.version}>{t('about.version', { version: '1.0.0' })}</Text>
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Our Mission</Text>
+          <Text style={sectionTitleStyle}>{t('about.missionTitle')}</Text>
           <View style={styles.card}>
             <Heart size={24} color="#E91E63" style={styles.cardIcon} />
-            <Text style={styles.cardText}>
-              This app is a humble effort to assist the millions of pilgrims attending the Karachi Ijtema. 
-              Our goal is to give clear directions so everyone can find their way easily
-              within the vast grounds.
-            </Text>
+            <Text style={styles.cardText}>{t('about.missionBody')}</Text>
           </View>
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Key Features</Text>
+          <Text style={sectionTitleStyle}>{t('about.featuresTitle')}</Text>
           <View style={styles.featureList}>
             <View style={styles.featureItem}>
               <View style={styles.dot} />
-              <Text style={styles.featureText}>Find blocks, gates and routes inside Ijtema</Text>
+              <Text style={styles.featureText}>{t('about.featureFind')}</Text>
             </View>
             <View style={styles.featureItem}>
               <View style={styles.dot} />
-              <Text style={styles.featureText}>Detailed Block & Gate Information</Text>
+              <Text style={styles.featureText}>{t('about.featureDetails')}</Text>
             </View>
             <View style={styles.featureItem}>
               <View style={styles.dot} />
-              <Text style={styles.featureText}>Urdu & English place names and voice guidance</Text>
+              <Text style={styles.featureText}>{t('about.featureLanguages')}</Text>
             </View>
             <View style={styles.featureItem}>
               <View style={styles.dot} />
-              <Text style={styles.featureText}>Shows you the way as you walk</Text>
+              <Text style={styles.featureText}>{t('about.featureWalk')}</Text>
             </View>
           </View>
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Legal & Privacy</Text>
+          <Text style={sectionTitleStyle}>{t('about.legalTitle')}</Text>
           <Pressable
             style={styles.linkItem}
             onPress={() => { void openExternalUrl(PRIVACY_POLICY_URL); }}
             accessibilityRole="button"
-            accessibilityLabel="Privacy Policy"
+            accessibilityLabel={t('about.privacyPolicy')}
           >
             <Shield size={20} color="#666" />
-            <Text style={styles.linkText}>Privacy Policy</Text>
+            <Text style={styles.linkText}>{t('about.privacyPolicy')}</Text>
             <ExternalLink size={16} color="#AAA" />
           </Pressable>
           <Pressable
             style={styles.linkItem}
             onPress={() => { void openExternalUrl(TERMS_OF_SERVICE_URL); }}
             accessibilityRole="button"
-            accessibilityLabel="Terms of Service"
+            accessibilityLabel={t('about.termsOfService')}
           >
             <FileText size={20} color="#666" />
-            <Text style={styles.linkText}>Terms of Service</Text>
+            <Text style={styles.linkText}>{t('about.termsOfService')}</Text>
             <ExternalLink size={16} color="#AAA" />
           </Pressable>
           {/* The map's own attribution control is covered while the Directions sheet is expanded to full height, so it is
@@ -119,17 +118,17 @@ export function AboutScreen() {
             style={styles.linkItem}
             onPress={() => { void openExternalUrl(OSM_COPYRIGHT_URL); }}
             accessibilityRole="button"
-            accessibilityLabel={`Map data, ${BASEMAP_ATTRIBUTION}`}
+            accessibilityLabel={t('about.mapDataLabel', { attribution: BASEMAP_ATTRIBUTION })}
           >
             <MapIcon size={20} color="#666" />
-            <Text style={styles.linkText}>Map data {BASEMAP_ATTRIBUTION}</Text>
+            <Text style={styles.linkText}>{t('about.mapData', { attribution: BASEMAP_ATTRIBUTION })}</Text>
             <ExternalLink size={16} color="#AAA" />
           </Pressable>
         </View>
 
         <View style={styles.footer}>
-          <Text style={styles.footerText}>Made with ❤️ for the Ummah</Text>
-          <Text style={styles.footerSubText}>© 2026 Karachi Ijtema Navigation Team</Text>
+          <Text style={styles.footerText}>{t('about.madeWith')}</Text>
+          <Text style={styles.footerSubText}>{t('about.copyright')}</Text>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -158,7 +157,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    marginLeft: 16,
+    marginStart: 16,
     color: '#333',
   },
   content: {
@@ -211,6 +210,9 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 1,
   },
+  sectionTitleRtl: {
+    letterSpacing: 0, // Arabic-script letters must stay joined
+  },
   card: {
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
@@ -223,7 +225,7 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
   },
   cardIcon: {
-    marginRight: 12,
+    marginEnd: 12,
     marginTop: 2,
   },
   cardText: {
@@ -248,7 +250,7 @@ const styles = StyleSheet.create({
     height: 8,
     borderRadius: 4,
     backgroundColor: '#2E7D32',
-    marginRight: 12,
+    marginEnd: 12,
   },
   featureText: {
     fontSize: 15,
@@ -266,7 +268,7 @@ const styles = StyleSheet.create({
   linkText: {
     fontSize: 16,
     color: '#333',
-    marginLeft: 12,
+    marginStart: 12,
     flex: 1,
   },
   footer: {

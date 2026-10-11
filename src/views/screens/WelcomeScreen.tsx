@@ -9,15 +9,17 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Map as MapIcon, MapPin, Navigation, Footprints } from 'lucide-react-native';
 import { useWelcomeViewModel } from '../../viewmodels/WelcomeViewModel';
+import { MessageKey, useI18n } from '../../i18n';
 
-const BENEFITS = [
-  { icon: MapPin, text: 'See where you are' },
-  { icon: Navigation, text: 'Navigate to blocks and gates' },
-  { icon: Footprints, text: 'Get walking directions' },
+const BENEFITS: { icon: typeof MapPin; textKey: MessageKey }[] = [
+  { icon: MapPin, textKey: 'onboarding.benefitSeeYou' },
+  { icon: Navigation, textKey: 'onboarding.benefitNavigate' },
+  { icon: Footprints, textKey: 'onboarding.benefitWalk' },
 ];
 
 export function WelcomeScreen() {
   const navigation = useNavigation<any>();
+  const { t } = useI18n();
   const route = useRoute<any>();
   const onboardingStatusReadFailed = Boolean(route.params?.onboardingStatusReadFailed);
   const { continueFromWelcome } = useWelcomeViewModel();
@@ -29,35 +31,30 @@ export function WelcomeScreen() {
           <View style={styles.iconContainer}>
             <MapIcon size={64} color="#2E7D32" />
           </View>
-          <Text style={styles.title}>Welcome to Ijtema Map</Text>
-          <Text style={styles.urduTitle}>اجتماع میپ میں خوش آمدید</Text>
+          <Text style={styles.title}>{t('onboarding.welcomeTitle')}</Text>
           {onboardingStatusReadFailed && (
-            <Text style={styles.notice}>Welcome back.</Text>
+            <Text style={styles.notice}>{t('onboarding.welcomeBack')}</Text>
           )}
-          <Text style={styles.description}>
-            Find blocks, gates, and routes easily.
-          </Text>
+          <Text style={styles.description}>{t('onboarding.welcomeDescription')}</Text>
 
           <View style={styles.featureList}>
-            {BENEFITS.map(({ icon: Icon, text }) => (
-              <View key={text} style={styles.featureItem}>
+            {BENEFITS.map(({ icon: Icon, textKey }) => (
+              <View key={textKey} style={styles.featureItem}>
                 <Icon size={24} color="#2E7D32" />
-                <Text style={styles.featureText}>{text}</Text>
+                <Text style={styles.featureText}>{t(textKey)}</Text>
               </View>
             ))}
           </View>
 
-          <Text style={styles.optionalNote}>
-            Location is optional. You can turn it on later.
-          </Text>
+          <Text style={styles.optionalNote}>{t('onboarding.locationOptional')}</Text>
 
           <Pressable
             style={styles.button}
             onPress={() => continueFromWelcome(navigation)}
             accessibilityRole="button"
-            accessibilityLabel="Continue"
+            accessibilityLabel={t('onboarding.continue')}
           >
-            <Text style={styles.buttonText}>Continue</Text>
+            <Text style={styles.buttonText}>{t('onboarding.continue')}</Text>
           </Pressable>
         </View>
       </ScrollView>
@@ -92,12 +89,6 @@ const styles = StyleSheet.create({
     fontSize: 26,
     fontWeight: 'bold',
     color: '#333',
-    textAlign: 'center',
-    marginBottom: 6,
-  },
-  urduTitle: {
-    fontSize: 17,
-    color: '#2E7D32',
     textAlign: 'center',
     marginBottom: 18,
   },
@@ -134,7 +125,8 @@ const styles = StyleSheet.create({
   featureText: {
     fontSize: 16,
     color: '#444',
-    marginLeft: 15,
+    marginStart: 15,
+    flex: 1, // long translations wrap instead of running off the screen
   },
   button: {
     backgroundColor: '#2E7D32',

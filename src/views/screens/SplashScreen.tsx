@@ -14,11 +14,13 @@ import { LocationAccessService } from '../../services/LocationAccessService';
 import { RootStackParamList } from '../../navigation/RootNavigator';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { staticColors } from '../../theme';
+import { useI18n } from '../../i18n';
 
 export const SPLASH_BACKGROUND_COLOR = staticColors.arrivalGreen;
 
 export function SplashScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const { t } = useI18n();
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const { setHasLocationPermission, setLocationPermissionPrecision } = useAppStore();
   const isMountedRef = useRef(true); // fixed: guard navigation and state writes after unmount
@@ -133,9 +135,8 @@ export function SplashScreen() {
         <View style={styles.logoContainer}>
           <MapIcon size={60} color={staticColors.white} />
         </View>
-        <Text style={styles.title}>Ijtema Map</Text>
-        <Text style={styles.urduTitle}>اجتماع میپ</Text>
-        <Text style={styles.subtitle}>Find your way at Ijtema</Text>
+        <Text style={styles.title}>{t('common.appName')}</Text>
+        <Text style={styles.subtitle}>{t('onboarding.splashTagline')}</Text>
       </Animated.View>
     </View>
   );
@@ -165,12 +166,6 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: staticColors.white,
     letterSpacing: 1,
-  },
-  urduTitle: {
-    fontSize: 22,
-    color: staticColors.lightGreenSubtext,
-    marginTop: 4,
-    letterSpacing: 0.5,
   },
   subtitle: {
     fontSize: 15,

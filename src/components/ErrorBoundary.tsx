@@ -5,6 +5,7 @@
 
 import React from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
+import { t } from '../i18n';
 import * as Updates from 'expo-updates'; // fixed: allow the fallback UI to restart the app safely
 
 type ErrorBoundaryProps = {
@@ -43,15 +44,15 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
     return (
       <View style={styles.container}>
         <View style={styles.card}>
-          <Text style={styles.title}>Something went wrong.</Text>
-          <Text style={styles.message}>Please restart the app to continue using Karachi Ijtema Navigation.</Text>
+          <Text style={styles.title}>{t('errors.somethingWrong')}</Text>
+          <Text style={styles.message}>{t('errors.restartMessage', { app: t('common.appFullName') })}</Text>
           <Pressable
             style={styles.button}
             onPress={() => { void this.handleRestart(); }} // fixed: expose a one-tap recovery action from the fallback UI
             accessibilityRole="button" // fixed: expose the restart control correctly to assistive technologies
-            accessibilityLabel="Restart app" // fixed: provide an accessible label for the recovery action
+            accessibilityLabel={t('errors.restartApp')} // fixed: provide an accessible label for the recovery action
           >
-            <Text style={styles.buttonText}>Restart</Text>
+            <Text style={styles.buttonText}>{t('errors.restart')}</Text>
           </Pressable>
         </View>
       </View>

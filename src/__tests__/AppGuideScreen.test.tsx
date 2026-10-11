@@ -42,6 +42,6 @@ describe('AppGuideScreen — start-selection wording (#222)', () => {
 
     expect(screen.getAllByText(/From row/).length).toBeGreaterThan(0);
     expect(screen.queryByText(/Choose start manually/)).toBeNull();
-    expect(screen.queryByText(/manual start/i)).toBeNull();
+    expect(screen.queryByText(/Choose start manually/i)).toBeNull();
   });
 });

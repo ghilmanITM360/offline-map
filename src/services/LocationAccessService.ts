@@ -6,6 +6,7 @@
 import { Linking, Platform } from 'react-native';
 import * as Location from 'expo-location';
 import { Coordinate, LocationSource } from '../models/types';
+import { t } from '../i18n';
 
 const DEVICE_LAST_KNOWN_MAX_AGE_MS = 30_000;
 const DEVICE_LAST_KNOWN_REQUIRED_ACCURACY_M = 50;
@@ -92,9 +93,7 @@ export class LocationAccessService {
           coordinate: null,
           source: null,
           permissionState,
-          message: permissionState.canAskAgain
-            ? 'Allow location to see where you are.'
-            : 'Location is off for this app. Turn it on in Settings.',
+          message: permissionState.canAskAgain ? t('errors.locationAllowToSee') : t('errors.locationOffForApp'),
         };
       }
 
@@ -107,7 +106,7 @@ export class LocationAccessService {
           coordinate: null,
           source: null,
           permissionState,
-          message: "Your phone's location is off. Turn it on, then try again.",
+          message: t('errors.phoneLocationOff'),
         };
       }
 
@@ -151,7 +150,7 @@ export class LocationAccessService {
             },
             source: 'device_last_known',
             permissionState,
-            message: "We can't find you right now. Showing where you were earlier.",
+            message: t('errors.locationEarlier'),
           };
         }
         return {
@@ -159,7 +158,7 @@ export class LocationAccessService {
           coordinate: null,
           source: null,
           permissionState,
-          message: "We can't find you. Choose where you're starting from.",
+          message: t('errors.locationNotFound'),
         };
       }
     } catch {
@@ -176,7 +175,7 @@ export class LocationAccessService {
         coordinate: null,
         source: null,
         permissionState,
-        message: "We can't find your location right now. Please try again.",
+        message: t('errors.locationNotFoundTryAgain'),
       };
     }
   }

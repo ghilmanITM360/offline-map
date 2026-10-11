@@ -9,20 +9,22 @@ import { DrawerContentComponentProps, DrawerContentScrollView } from '@react-nav
 import { Search, Settings, HelpCircle, Map as MapIcon } from 'lucide-react-native';
 import { useTheme } from '../../services/useTheme'; // fixed: use theme-safe colors for icons and badges
 import { staticColors } from '../../theme';
+import { MessageKey, useI18n } from '../../i18n';
 
 const DRAWER_ICON_COLOR_KEY = 'subtext'; // fixed: centralize drawer icon color selection for future theming changes
 
 // Home was only the plain map (a tap on the scrim already returns to it), so it is not an entry. About and the
 // version live in Settings; Help carries no feedback form, so it is named for what it is.
-const MENU_ITEMS = [
+const MENU_ITEMS: { labelKey: MessageKey; icon: typeof Search; route: string }[] = [
   // The Directory is the one place chooser; the map itself carries no search or browse controls.
-  { label: 'Find a place', icon: Search, route: 'LocationsDirectory' },
-  { label: 'Settings', icon: Settings, route: 'Settings' },
-  { label: 'Help', icon: HelpCircle, route: 'Help' },
+  { labelKey: 'drawer.findPlace', icon: Search, route: 'LocationsDirectory' },
+  { labelKey: 'drawer.settings', icon: Settings, route: 'Settings' },
+  { labelKey: 'drawer.help', icon: HelpCircle, route: 'Help' },
 ];
 
 export function CustomDrawer(props: DrawerContentComponentProps) {
   const theme = useTheme(); // fixed: source icon and badge colors from the active theme
+  const { t } = useI18n();
 
   return (
     <View style={styles.container}>
@@ -31,8 +33,8 @@ export function CustomDrawer(props: DrawerContentComponentProps) {
           <MapIcon size={32} color={staticColors.white} />
         </View>
         <View style={styles.headerText}>
-          <Text style={styles.title}>Ijtema Map</Text>
-          <Text style={styles.subtitle}>Find your way</Text>
+          <Text style={styles.title}>{t('common.appName')}</Text>
+          <Text style={styles.subtitle}>{t('drawer.tagline')}</Text>
         </View>
       </View>
 
@@ -44,10 +46,10 @@ export function CustomDrawer(props: DrawerContentComponentProps) {
               style={styles.menuItem}
               onPress={() => props.navigation.navigate(item.route as never)} // fixed: keep drawer-native navigation for actual drawer routes
               accessibilityRole="button" // fixed: expose drawer menu items correctly to assistive technologies
-              accessibilityLabel={item.label} // fixed: use the menu label as the accessible action name
+              accessibilityLabel={t(item.labelKey)} // fixed: use the menu label as the accessible action name
             >
               <item.icon size={22} color={theme[DRAWER_ICON_COLOR_KEY]} />
-              <Text style={styles.menuItemLabel}>{item.label}</Text>
+              <Text style={styles.menuItemLabel}>{t(item.labelKey)}</Text>
             </Pressable>
           ))}
         </View>
@@ -78,7 +80,7 @@ const styles = StyleSheet.create({
   },
   headerText: {
     flex: 1, // shrinks and wraps at large text instead of running past the drawer's edge
-    marginLeft: 16,
+    marginStart: 16,
   },
   title: {
     fontSize: 20,
@@ -106,6 +108,6 @@ const styles = StyleSheet.create({
     flex: 1, // wraps at large text instead of overflowing
     fontSize: 16,
     color: staticColors.drawerText,
-    marginLeft: 16,
+    marginStart: 16,
   },
 });

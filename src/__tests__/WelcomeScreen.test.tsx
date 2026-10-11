@@ -24,11 +24,10 @@ beforeEach(() => {
 });
 
 describe('WelcomeScreen (#159 WEL-007)', () => {
-  test('renders the bilingual title and the three benefits', async () => {
+  test('renders the title and the three benefits', async () => {
     await render(<WelcomeScreen />);
 
     expect(screen.getByText('Welcome to Ijtema Map')).toBeOnTheScreen();
-    expect(screen.getByText('اجتماع میپ میں خوش آمدید')).toBeOnTheScreen();
     expect(screen.getByText('See where you are')).toBeOnTheScreen();
     expect(screen.getByText('Navigate to blocks and gates')).toBeOnTheScreen();
     expect(screen.queryByText(/offline|internet/i)).not.toBeOnTheScreen();

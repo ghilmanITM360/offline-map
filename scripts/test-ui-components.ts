@@ -1,5 +1,6 @@
 import { strict as assert } from 'node:assert';
 import { readFileSync } from 'node:fs';
+import { messages } from '../src/i18n/messages';
 
 const home = readFileSync('src/views/screens/HomeScreen.tsx', 'utf8');
 const directions = readFileSync('src/views/components/map/LocationSheet.tsx', 'utf8');
@@ -76,13 +77,13 @@ assert(
 assert(settings.includes('disabled={!isToggle && !onPress}'), 'Settings info-only rows must be disabled');
 assert(settings.includes('numberOfLines={1}') && settings.includes('ellipsizeMode="tail"'), 'Settings labels/values must constrain long text');
 assert(!settings.includes('Delete Map Data') && !settings.includes('Update Map'), 'Settings must not offer map download/delete: the map ships with the app (#140)');
-assert(settings.includes('App Guide') && settings.includes("navigation.navigate('AppGuide')"), 'Settings App Guide row must navigate');
+assert(settings.includes("t('settings.appGuide')") && settings.includes("navigation.navigate('AppGuide')"), 'Settings App Guide row must navigate');
 
 assert(guide.includes('ScrollView'), 'App Guide must be scrollable');
-assert(guide.includes('Location Problems') && !guide.includes('Offline Maps'), 'App Guide must cover location problems and carry no offline section');
-assert(guide.includes('nearest gate') && guide.includes("If a gate isn't ready"), 'App Guide must explain nearest-gate entry and what to do when a gate is not ready');
+assert(guide.includes('help.guideLocationTitle') && !guide.includes('Offline Maps'), 'App Guide must cover location problems and carry no offline section');
+assert(guide.includes('help.guideStartSectionBody') && messages.en['help.guideStartSectionBody'].includes('complete walking journey') && messages.en['help.guideTroubleBody'].includes("If a gate isn't ready"), 'App Guide must explain complete-journey gate entry and what to do when a gate is not ready');
 
 assert(drawer.includes('accessibilityRole="button"'), 'Drawer items must expose button role');
-assert(drawer.includes("label: 'Find a place'") && drawer.includes("label: 'Settings'") && drawer.includes("label: 'Help'"), 'Drawer must expose core app navigation items');
+assert(drawer.includes("labelKey: 'drawer.findPlace'") && drawer.includes("labelKey: 'drawer.settings'") && drawer.includes("labelKey: 'drawer.help'"), 'Drawer must expose core app navigation items');
 
 console.log('UI component source checks passed.');

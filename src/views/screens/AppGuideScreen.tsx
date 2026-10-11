@@ -21,101 +21,27 @@ import {
 } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
 import { backChevron } from '../components/common/directionalIcons';
+import { MessageKey, useI18n } from '../../i18n';
 
 type GuideSection = {
   key: string;
   icon: React.ComponentType<{ size?: number; color?: string }>;
-  title: string;
-  urduTitle: string;
-  body: string;
+  titleKey: MessageKey;
+  bodyKey: MessageKey;
 };
 
 const GUIDE_SECTIONS: GuideSection[] = [
-  {
-    key: 'welcome',
-    icon: Navigation,
-    title: '1. Welcome',
-    urduTitle: '۱۔ خوش آمدید',
-    body: 'Ijtema Map helps you find your way on foot inside the Karachi Ijtema ground.',
-  },
-  {
-    key: 'search',
-    icon: Search,
-    title: '2. Search Places',
-    urduTitle: '۲۔ تلاش کریں',
-    body: 'Search for a block, gate, rasta, masjid or help point. Tap a place to see it on the map.',
-  },
-  {
-    key: 'destination',
-    icon: MapPin,
-    title: '3. Choose Destination',
-    urduTitle: '۳۔ منزل منتخب کریں',
-    body: 'Tap a place, then tap Directions. A red marker shows where you are going.',
-  },
-  {
-    key: 'start',
-    icon: LocateFixed,
-    title: '4. Choose Where You Start',
-    urduTitle: '۴۔ آغاز کا مقام',
-    body:
-      'In Directions, tap the From row. Choose Use my location, or pick a gate, block or rasta yourself. If you are outside Ijtema, we guide you to the nearest gate first.',
-  },
-  {
-    key: 'directions',
-    icon: Route,
-    title: '5. Directions Screen',
-    urduTitle: '۵۔ ڈائریکشن اسکرین',
-    body:
-      'Directions shows From and To. Tap either one to change it. When a route is found you see the time and distance. Tap Start Navigation to be guided as you walk. If you picked your own start, tap Start route to follow the steps one by one.',
-  },
-  {
-    key: 'navigation',
-    icon: Navigation,
-    title: '6. While You Walk',
-    urduTitle: '۶۔ چلتے وقت',
-    body:
-      'Blue marker: you. Green marker: where you start. Red marker: where you are going. Follow the card at the top for the next turn. If you go the wrong way, we find a new way.',
-  },
-  {
-    key: 'controls',
-    icon: Layers,
-    title: '7. Map Controls',
-    urduTitle: '۷۔ نقشہ کنٹرولز',
-    body:
-      'Follow direction turns the map the way you walk; tap it again to keep north at the top. Recenter brings the map back to you. More map controls has layers and zoom. You can also pinch to zoom.',
-  },
-  {
-    key: 'settings',
-    icon: Settings,
-    title: '8. Settings Meaning',
-    urduTitle: '۸۔ سیٹنگز کی وضاحت',
-    body:
-      'In Settings you can turn spoken directions on or off, choose meters or feet, and clear what the app remembers on your phone. Location shows whether live guidance is on.',
-  },
-  {
-    key: 'gps',
-    icon: TriangleAlert,
-    title: '9. Location Problems',
-    urduTitle: '۹۔ لوکیشن کے مسائل',
-    body:
-      "If we can't find you, stand in an open area and wait a moment. If location is off, turn it on in Settings. You can always choose where you are starting from instead.",
-  },
-  {
-    key: 'safety',
-    icon: Shield,
-    title: '10. Safety Tips',
-    urduTitle: '۱۰۔ حفاظتی ہدایات',
-    body:
-      'Keep your phone charged. Stop walking before you read the screen. In a heavy crowd, follow volunteers and announcements first.',
-  },
-  {
-    key: 'troubleshoot',
-    icon: LifeBuoy,
-    title: '11. Troubleshooting',
-    urduTitle: '۱۱۔ مسئلہ حل',
-    body:
-      "Map looks empty: close and reopen the app. No route found: tap Try again or choose another start. Can't find you: choose where you're starting from. If a gate isn't ready, choose another gate.",
-  },
+  { key: 'welcome', icon: Navigation, titleKey: 'help.guideWelcomeTitle', bodyKey: 'help.guideWelcomeBody' },
+  { key: 'search', icon: Search, titleKey: 'help.guideSearchTitle', bodyKey: 'help.guideSearchBody' },
+  { key: 'destination', icon: MapPin, titleKey: 'help.guideDestinationTitle', bodyKey: 'help.guideDestinationBody' },
+  { key: 'start', icon: LocateFixed, titleKey: 'help.guideStartSectionTitle', bodyKey: 'help.guideStartSectionBody' },
+  { key: 'directions', icon: Route, titleKey: 'help.guideDirectionsTitle', bodyKey: 'help.guideDirectionsBody' },
+  { key: 'navigation', icon: Navigation, titleKey: 'help.guideWalkTitle', bodyKey: 'help.guideWalkBody' },
+  { key: 'controls', icon: Layers, titleKey: 'help.guideControlsTitle', bodyKey: 'help.guideControlsBody' },
+  { key: 'settings', icon: Settings, titleKey: 'help.guideSettingsTitle', bodyKey: 'help.guideSettingsBody' },
+  { key: 'gps', icon: TriangleAlert, titleKey: 'help.guideLocationTitle', bodyKey: 'help.guideLocationBody' },
+  { key: 'safety', icon: Shield, titleKey: 'help.guideSafetyTitle', bodyKey: 'help.guideSafetyBody' },
+  { key: 'troubleshoot', icon: LifeBuoy, titleKey: 'help.guideTroubleTitle', bodyKey: 'help.guideTroubleBody' },
 ];
 
 function LegendDot({ color }: { color: string }) {
@@ -125,6 +51,7 @@ function LegendDot({ color }: { color: string }) {
 export function AppGuideScreen() {
   const navigation = useNavigation<any>();
   const BackIcon = backChevron();
+  const { t } = useI18n();
 
   return (
     <SafeAreaView style={styles.container}>
@@ -134,37 +61,37 @@ export function AppGuideScreen() {
           style={styles.backButton}
           hitSlop={12}
           accessibilityRole="button"
-          accessibilityLabel="Back"
+          accessibilityLabel={t('common.back')}
         >
           <BackIcon size={26} color="#202124" />
         </Pressable>
-        <Text style={styles.headerTitle}>App Guide</Text>
+        <Text style={styles.headerTitle}>{t('help.guideTitle')}</Text>
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.subtitle}>How to use the app • ایپ گائیڈ</Text>
+        <Text style={styles.subtitle}>{t('help.guideSubtitle')}</Text>
 
         <View style={styles.quickCard}>
-          <Text style={styles.quickTitle}>Quick Marker Legend</Text>
+          <Text style={styles.quickTitle}>{t('help.guideLegendTitle')}</Text>
           <View style={styles.legendRow}>
             <LegendDot color="#1A73E8" />
-            <Text style={styles.legendText}>Blue: you</Text>
+            <Text style={styles.legendText}>{t('help.guideLegendYou')}</Text>
           </View>
           <View style={styles.legendRow}>
             <LegendDot color="#2E7D32" />
-            <Text style={styles.legendText}>Green: where you start</Text>
+            <Text style={styles.legendText}>{t('help.guideLegendStart')}</Text>
           </View>
           <View style={styles.legendRow}>
             <LegendDot color="#EA4335" />
-            <Text style={styles.legendText}>Red: where you are going</Text>
+            <Text style={styles.legendText}>{t('help.guideLegendDestination')}</Text>
           </View>
         </View>
 
         <View style={styles.quickCard}>
-          <Text style={styles.quickTitle}>Where You Start</Text>
-          <Text style={styles.quickBody}>Use my location: we show the way from where you stand.</Text>
-          <Text style={styles.quickBody}>Use earlier location: from where you were a little while ago.</Text>
-          <Text style={styles.quickBody}>Pick a place: choose a gate, block or rasta yourself.</Text>
+          <Text style={styles.quickTitle}>{t('help.guideStartTitle')}</Text>
+          <Text style={styles.quickBody}>{t('help.guideStartMyLocation')}</Text>
+          <Text style={styles.quickBody}>{t('help.guideStartEarlier')}</Text>
+          <Text style={styles.quickBody}>{t('help.guideStartPick')}</Text>
         </View>
 
         {GUIDE_SECTIONS.map((section) => {
@@ -176,11 +103,10 @@ export function AppGuideScreen() {
                   <Icon size={18} color="#2E7D32" />
                 </View>
                 <View style={styles.titleWrap}>
-                  <Text style={styles.cardTitle}>{section.title}</Text>
-                  <Text style={styles.cardUrdu}>{section.urduTitle}</Text>
+                  <Text style={styles.cardTitle}>{t(section.titleKey)}</Text>
                 </View>
               </View>
-              <Text style={styles.cardBody}>{section.body}</Text>
+              <Text style={styles.cardBody}>{t(section.bodyKey)}</Text>
             </View>
           );
         })}
@@ -202,7 +128,7 @@ const styles = StyleSheet.create({
   },
   backButton: { padding: 6 },
   headerTitle: {
-    marginLeft: 8,
+    marginStart: 8,
     color: '#202124',
     fontSize: 20,
     fontWeight: '700',
@@ -269,17 +195,12 @@ const styles = StyleSheet.create({
   },
   titleWrap: {
     flex: 1,
-    marginLeft: 8,
+    marginStart: 8,
   },
   cardTitle: {
     fontSize: 14,
     fontWeight: '700',
     color: '#1F2937',
-  },
-  cardUrdu: {
-    fontSize: 12,
-    color: '#2E7D32',
-    marginTop: 2,
   },
   cardBody: {
     fontSize: 13,

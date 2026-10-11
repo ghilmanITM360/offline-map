@@ -83,7 +83,7 @@ assert(
   'Settings should refresh permission state when app returns to foreground',
 );
 assert(
-  settingsScreen.includes('label="Location"') && settingsScreen.includes('value="Manage"') && !settingsScreen.includes('Not allowed'),
+  settingsScreen.includes("label={t('settings.location')}") && settingsScreen.includes("value={t('settings.locationManage')}") && !settingsScreen.includes('Not allowed'),
   'Settings Location should be one plain On/Off row with a Manage action',
 );
 assert(
@@ -94,8 +94,8 @@ assert(!settingsScreen.includes('Dark Mode'), 'Dark Mode should be hidden until 
 for (const removed of ['Voice Language', 'Auto-follow Location', 'North-up Map', 'Fix my route automatically', 'Walking Speed']) {
   assert(!settingsScreen.includes(`label="${removed}"`), `Settings must not offer ${removed}: an attendee cannot meaningfully use it`);
 }
-assert(settingsScreen.includes('Voice Instructions'), 'Settings should expose the voice directions toggle');
-assert(settingsScreen.includes('Distance Unit'), 'Settings should expose Distance Unit selector');
+assert(settingsScreen.includes("t('settings.voiceInstructions')"), 'Settings should expose the voice directions toggle');
+assert(settingsScreen.includes("t('settings.distanceUnit')"), 'Settings should expose Distance Unit selector');
 
 assert(
   appStore.includes('lastKnownLocationUpdatedAt') && appStore.includes('currentLocationSource'),
@@ -182,8 +182,8 @@ assert(
 assert(rootNavigator.includes("name=\"AppGuide\""), 'App Guide route should be registered');
 assert(!customDrawer.includes("label: 'Home'"), 'Drawer must not list Home: it was only the plain map');
 assert(!customDrawer.includes("label: 'Offline Maps'"), 'Drawer must not offer Offline Maps: the map ships with the app (#140)');
-assert(customDrawer.includes("label: 'Settings'"), 'Drawer should include Settings');
-assert(customDrawer.includes("label: 'Help'") && !customDrawer.includes('Feedback'), 'Drawer should say Help: there is no feedback form');
+assert(customDrawer.includes("labelKey: 'drawer.settings'"), 'Drawer should include Settings');
+assert(customDrawer.includes("labelKey: 'drawer.help'") && !customDrawer.includes('Feedback'), 'Drawer should say Help: there is no feedback form');
 assert(!customDrawer.includes("label: 'About Ijtema Map'"), 'About lives in Settings, not the drawer');
 assert(!customDrawer.includes("label: 'Saved Blocks'"), 'Drawer should hide Saved Blocks until implemented');
 assert(!customDrawer.includes("label: 'Recent Searches'"), 'Drawer should hide Recent Searches until implemented');
