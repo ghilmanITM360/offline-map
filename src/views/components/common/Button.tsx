@@ -103,6 +103,8 @@ const styles = StyleSheet.create({
   },
   label: {
     ...typography.sheet.button,
+    flexShrink: 1,
+    textAlign: 'center',
   },
   disabled: {
     opacity: 0.5,
