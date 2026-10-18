@@ -181,6 +181,23 @@ describe('resolveStartAction (zero-thinking start CTA)', () => {
     expect(resolveStartAction({ ...base, startSource: 'live_gps', liveFix: nearFix })).toMatchObject({ kind: 'start', primaryLabel: 'Start Navigation' });
   });
 
+  it('A1-10: a live-GPS start whose only route is a direct guide is a route guide in every location state, never a live Start', () => {
+    const live = { ...base, startSource: 'live_gps', directGuide: true } as const;
+    const cases = [
+      { liveFix: nearFix, permission: base.permission },
+      { liveFix: null, permission: base.permission },
+      { liveFix: null, permission: { granted: false, precision: 'none' } as const },
+      { liveFix: nearFix, permission: { granted: true, precision: 'coarse' } as const },
+    ];
+    for (const input of cases) {
+      const action = resolveStartAction({ ...live, ...input });
+      expect(action).toMatchObject({ kind: 'route_guide', primaryLabel: 'Start route' });
+      // The fix is already live and outside the venue: asking for "my location" again cannot produce a walking route.
+      expect(action.secondaryLabel).toBeUndefined();
+    }
+    expect(resolveStartAction({ ...live, directGuide: false, liveFix: nearFix }).kind).toBe('start');
+  });
+
   it('every state keeps the primary enabled and never mentions technical wording', () => {
     for (const startSource of ['manual_place', 'live_gps'] as const) {
       for (const liveFix of [null, nearFix]) {

@@ -27,7 +27,8 @@ export function RouteGuideCard({
   guide: RouteGuideState;
   onPrevious: () => void;
   onNext: () => void;
-  onLive: () => void;
+  /** Omitted when live guidance cannot help (the live position is already known and there is no walking route). */
+  onLive?: () => void;
   onEnd: () => void;
   liveBusy?: boolean;
   /** One plain sentence when a live attempt could not start. */
@@ -78,10 +79,12 @@ export function RouteGuideCard({
         />
       </View>
 
-      <Pressable style={styles.link} onPress={onLive} disabled={liveBusy} accessibilityRole="button"
-        accessibilityLabel={t('routeGuide.useLocation')}>
-        <Text style={styles.linkText}>{liveBusy ? t('routeGuide.upgrade.acquiring') : t('routeGuide.useLocation')}</Text>
-      </Pressable>
+      {onLive && (
+        <Pressable style={styles.link} onPress={onLive} disabled={liveBusy} accessibilityRole="button"
+          accessibilityLabel={t('routeGuide.useLocation')}>
+          <Text style={styles.linkText}>{liveBusy ? t('routeGuide.upgrade.acquiring') : t('routeGuide.useLocation')}</Text>
+        </Pressable>
+      )}
       {message ? <Text accessibilityLiveRegion="polite" style={styles.caption}>{message}</Text> : null}
       <Pressable style={styles.link} onPress={onEnd} accessibilityRole="button" accessibilityLabel={t('routeGuide.end')}>
         <Text style={styles.endText}>{t('routeGuide.end')}</Text>

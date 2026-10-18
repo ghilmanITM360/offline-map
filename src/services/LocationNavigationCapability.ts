@@ -90,6 +90,8 @@ interface StartActionInput {
   /** Only a genuinely live fix; remembered / last-known / manual positions must not be passed here. */
   liveFix: Coordinate | null;
   permission: { granted: boolean; precision: 'fine' | 'coarse' | 'none' };
+  /** The route is only a straight-line direct guide (OUTSIDE_VENUE_GUIDE): there is no walking route to follow live. */
+  directGuide?: boolean;
   nowMs?: number;
 }
 
@@ -103,6 +105,9 @@ export function resolveStartAction(input: StartActionInput): StartAction {
   if (input.startSource !== 'live_gps') {
     return { kind: 'route_guide', primaryLabel: t('capability.startRoute'), secondaryLabel: t('capability.guideLocation') };
   }
+  // A1-10: a direct guide is a labelled guide, never live walking navigation (the engine refuses it), so it is read
+  // as a route guide whatever the location state. The fix is already live and outside: asking for it again adds nothing.
+  if (input.directGuide) return { kind: 'route_guide', primaryLabel: t('capability.startRoute') };
   const capability = evaluateLocationCapability({
     permission: { granted: input.permission.granted, canAskAgain: true, precision: input.permission.precision },
     liveFix: input.liveFix,

@@ -462,7 +462,9 @@ describe('LocationSheet (routePreview) — route ready CTA', () => {
     await renderWithFooter(<LocationSheet mode="routePreview" destination={v2Destination} onClose={onCloseSpy} />);
 
     expect(screen.getByText('Straight-line guide, not a road route')).toBeOnTheScreen();
-    expect(screen.getByText('Start walking')).toBeOnTheScreen();
+    // A1-10: a direct guide is never offered as live walking, even when the view model supplies no start action.
+    expect(screen.getByText('Start route')).toBeOnTheScreen();
+    expect(screen.queryByText('Start walking')).not.toBeOnTheScreen();
     expect(screen.getByText('Selected gate: Gate 05')).toBeOnTheScreen();
     expect(screen.queryByText('4 min')).not.toBeOnTheScreen();
     await user.press(screen.getByRole('button', { name: 'Try again' }));
