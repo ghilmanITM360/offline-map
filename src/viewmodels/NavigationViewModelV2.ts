@@ -190,6 +190,9 @@ export function useNavigationViewModelV2() {
   const [stepOwner, setStepOwner] = useState<{ route: V2ActiveRoute | null; index: number }>({ route: null, index: 0 });
   const currentStepIndex = route && stepOwner.route === route ? stepOwner.index : 0;
   const [arrived, setArrived] = useState(false);
+  // A5-02: arrival is the engine's authority boundary, not only a UI latch. Once set, nothing may reroute or replace
+  // the completed route (progress and the route's own closing step still update) until Exit or a new session.
+  const arrivedRef = useRef(false);
   const [isWeakGps, setIsWeakGps] = useState(false);
   const [rerouteStatusCopy, setRerouteStatusMessage] = useState<NavigationStatusCopy>(null);
   const routeUpdatedNotice = useRouteUpdatedNotice(setRerouteStatusMessage);
@@ -254,6 +257,7 @@ export function useNavigationViewModelV2() {
     // previous trip would survive exit and immediately re-trigger MapMode.ARRIVAL the next
     // time navigation starts, before any GPS update has run to correct it.
     setArrived(false);
+    arrivedRef.current = false;
     if (!route) return;
     setRemainingDistance(route.totalDistanceM);
     setEtaMinutes(route.etaMinutes);
@@ -357,7 +361,7 @@ export function useNavigationViewModelV2() {
   }, [route]);
 
   const attemptReroute = useCallback(async (coordinate: Coordinate, options: RerouteOptions = {}) => {
-    if (!route || currentLiveCapability().mode !== 'live_navigation' || (!settings.autoReroute && !options.explicit)) return;
+    if (!route || arrivedRef.current || currentLiveCapability().mode !== 'live_navigation' || (!settings.autoReroute && !options.explicit)) return;
     if (!options.explicit && rerouteRequestInFlightRef.current) return;
     const sessionAtRequest = useAppStore.getState().navigationSessionId;
     const ownsSession = () => useAppStore.getState().navigationSessionId === sessionAtRequest && useAppStore.getState().isNavigating;
@@ -415,7 +419,7 @@ export function useNavigationViewModelV2() {
         candidate = RoutingServiceV2.calculateRoute(rerouteRequest);
       }
 
-      if (currentLiveCapability().mode !== 'live_navigation' || !ownsSession() || useAppStore.getState().activeRoute !== routeAtRequest) return;
+      if (arrivedRef.current || currentLiveCapability().mode !== 'live_navigation' || !ownsSession() || useAppStore.getState().activeRoute !== routeAtRequest) return;
 
       if (!candidate) {
         lastRerouteAtRef.current = Date.now();
@@ -577,7 +581,13 @@ export function useNavigationViewModelV2() {
     const nextIndex = guidance.stepIndex;
     // #95: latched for the session (reset on trip start/exit) — a later noisy fix just outside the
     // threshold must not un-report arrival and flip the UI back out of the completion overlay.
-    if (isArrived(route, currentLocation, nextIndex)) setArrived(true);
+    if (!arrivedRef.current && isArrived(route, currentLocation, nextIndex)) {
+      arrivedRef.current = true;
+      setArrived(true);
+      // A5-02: a reroute still computing for this journey must not commit over the completed route.
+      outsideRequestCoordinatorRef.current.cancelCurrent();
+      setReroutePending(false);
+    }
     if (nextIndex !== currentStepIndex) {
       setStepOwner({ route, index: nextIndex });
     }
@@ -592,6 +602,9 @@ export function useNavigationViewModelV2() {
       lastSpokenInstructionIdRef.current = currentInstruction.id;
       VoiceService.speakInstruction(localizeInstruction(currentInstruction), getLocale() === "ur" ? "ur" : "en");
     }
+
+    // A5-02: no off-route evidence, hence no reroute, once arrived.
+    if (arrivedRef.current) return;
 
     const thresholdM = RerouteService.getDynamicOffRouteThresholdMeters(accuracyM);
     if (route.outsideRoute?.provider === 'direct-guide' && !EntryGateRoutingService.isInsideIjtemaArea(currentLocation)) {
@@ -646,6 +659,7 @@ export function useNavigationViewModelV2() {
     // the NEXT trip, leaving it stale `true` (and deriveMapMode forcing ARRIVAL mode over
     // Directory) for the whole gap between this Done/Exit and that next Start Navigation.
     setArrived(false);
+    arrivedRef.current = false;
   }, [stopNavigation]);
 
   const previousSpeechLocaleRef = useRef(locale);
