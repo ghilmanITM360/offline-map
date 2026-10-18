@@ -41,11 +41,20 @@ export interface RouteGuideState { steps: RouteGuideStep[]; stepIndex: number }
 
 /** Runtime-only explicit destination handoff. Home opens Directions; activation policy is owned by its intent. */
 export interface PendingJourney { destination: Place }
-/** One explicit destination tap may authorize one guarded live attempt; never persisted or inferred from hydration. */
+/**
+ * One explicit destination tap may authorize one guarded live attempt; never persisted or inferred from hydration.
+ * - eligible: a fresh usable live fix existed at the tap.
+ * - pending_fix: permission is granted, precise and services are on, but there was no fresh usable fix at the tap
+ *   (cold launch, or a stationary phone whose fix aged out). The tap authorizes ONE bounded, cancellable acquisition.
+ * - acquiring: that single acquisition has begun (it can never begin twice).
+ * - ineligible: live navigation cannot be authorized (permission, precision, services, or already navigating).
+ * - consumed: spent or withdrawn; nothing can revive it.
+ * Only a fix that passes the live-eligibility rules can move acquiring -> eligible.
+ */
 export interface DestinationJourneyIntent {
   id: number;
   destinationId: string;
-  autoLive: 'eligible' | 'ineligible' | 'consumed';
+  autoLive: 'eligible' | 'pending_fix' | 'acquiring' | 'ineligible' | 'consumed';
 }
 /** What the Directory is being opened to choose; null = plain browsing. */
 export type DirectoryPurpose = 'start' | 'destination';
@@ -208,6 +217,10 @@ interface AppState {
   destinationJourneyIntent: DestinationJourneyIntent | null;
   destinationIntentSerial: number;
   consumeDestinationIntent: (id: number) => boolean;
+  /** pending_fix -> acquiring, once per intent. False when the intent is gone, replaced, or not acquirable. */
+  beginDestinationIntentAcquisition: (id: number) => boolean;
+  /** acquiring -> eligible after a verified fresh live fix. False when the intent was withdrawn meanwhile. */
+  promoteDestinationIntent: (id: number) => boolean;
   retireDestinationIntent: (id: number) => void;
   pendingJourney: PendingJourney | null;
   setPendingJourney: (journey: PendingJourney | null) => void;
@@ -539,6 +552,18 @@ export const useAppStore = create<AppState>()(
         set({ destinationJourneyIntent: { ...intent, autoLive: 'consumed' } });
         return true;
       },
+      beginDestinationIntentAcquisition: (id) => {
+        const intent = get().destinationJourneyIntent;
+        if (!intent || intent.id !== id || intent.autoLive !== 'pending_fix') return false;
+        set({ destinationJourneyIntent: { ...intent, autoLive: 'acquiring' } });
+        return true;
+      },
+      promoteDestinationIntent: (id) => {
+        const intent = get().destinationJourneyIntent;
+        if (!intent || intent.id !== id || intent.autoLive !== 'acquiring') return false;
+        set({ destinationJourneyIntent: { ...intent, autoLive: 'eligible' } });
+        return true;
+      },
       retireDestinationIntent: (id) => {
         const intent = get().destinationJourneyIntent;
         if (intent?.id === id && intent.autoLive !== 'consumed') {
@@ -559,8 +584,11 @@ export const useAppStore = create<AppState>()(
           directoryJourneySerial: state.directoryJourneySerial + 1,
           directoryRequest: null, directoryChoice: null, directoryPurpose: null,
           destinationJourneyIntent: { id, destinationId: journey.destination.id,
-            autoLive: !state.isNavigating && state.locationServicesState === 'enabled' && capability.mode === 'live_navigation'
-              ? 'eligible' : 'ineligible' } });
+            autoLive: state.isNavigating || state.locationServicesState !== 'enabled' ? 'ineligible'
+              : capability.mode === 'live_navigation' ? 'eligible'
+              // Permission, precision and services are all fine; only the fix is missing, stale or weak.
+              : capability.liveBlocker === 'no_fix' || capability.liveBlocker === 'stale_fix' || capability.liveBlocker === 'weak_fix' ? 'pending_fix'
+              : 'ineligible' } });
       },
       directoryPurpose: null,
       directoryRequestSerial: 0,
