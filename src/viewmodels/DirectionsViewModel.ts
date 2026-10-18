@@ -272,6 +272,11 @@ export function useDirectionsViewModel(destination: Place | null) {
       : t('directions.whereStart');
   const isCurrentLocationStartActive = startSource === 'live_gps';
 
+  // The one authoritative journey state; the sheet renders from it and a start is offered only for a ready route.
+  const liveReady = locationServicesState === 'enabled' && hasLocationPermission && currentLocationSource === 'live' && navigationLocationCapability.canStart && !routeRefreshing;
+  const journeyState = selectJourneyPresentationState({ loadState, startSource, liveReady, route: route as Parameters<typeof selectJourneyPresentationState>[0]['route'] });
+  const startable = isJourneyStartable(journeyState);
+
   // A planned/manual start only previews; live guidance needs a fresh precise fix. This turns that rule into
   // one enabled primary action so the user is never left on a dead Start button.
   const liveFix = currentLocationSource === 'live' ? currentLocation : null;
@@ -279,12 +284,8 @@ export function useDirectionsViewModel(destination: Place | null) {
     startSource,
     liveFix,
     permission: { granted: hasLocationPermission, precision: locationPermissionPrecision },
+    directGuide: journeyState === 'OUTSIDE_VENUE_GUIDE',
   });
-
-  // The one authoritative journey state; the sheet renders from it and a start is offered only for a ready route.
-  const liveReady = locationServicesState === 'enabled' && hasLocationPermission && currentLocationSource === 'live' && navigationLocationCapability.canStart && !routeRefreshing;
-  const journeyState = selectJourneyPresentationState({ loadState, startSource, liveReady, route: route as Parameters<typeof selectJourneyPresentationState>[0]['route'] });
-  const startable = isJourneyStartable(journeyState);
 
   const clearRoute = () => {
     retireAutomaticIntent();
@@ -433,8 +434,11 @@ export function useDirectionsViewModel(destination: Place | null) {
       const state = useAppStore.getState();
       if (intentId !== null && state.destinationJourneyIntent?.destinationId === destination.id &&
         startSource === 'live_gps' && !manualStart && canCommit() && state.consumeDestinationIntent(intentId)) {
-        const result = startPreviewNavigationV2({ route: preview.route, destination, startPlace: null, currentLocation: state.currentLocation });
-        if (!result.canStart) setStartAttempt('failed');
+        // A1-10: a direct guide has no live authority; the intent is consumed, but refusing it is not a failed location.
+        if (preview.route.outsideRoute?.provider !== 'direct-guide') {
+          const result = startPreviewNavigationV2({ route: preview.route, destination, startPlace: null, currentLocation: state.currentLocation });
+          if (!result.canStart) setStartAttempt('failed');
+        }
       }
       return;
     }

@@ -526,12 +526,12 @@ function RoutePreviewSection({
                       : startAction && startAction.kind !== 'start'
                       ? startAction.primaryLabel
                       : directGuide
-                      ? t('directions.startWalking')
+                      ? t('capability.startRoute')
                       : t('directions.startNavigation')
                   }
                   accessibilityLabel={
                     !startAction && !canStartNavigation && startNavigationDisabledReason
-                      ? `${directGuide ? t('directions.startWalking') : t('directions.startNavigation')}. ${startNavigationDisabledReason}`
+                      ? `${directGuide ? t('capability.startRoute') : t('directions.startNavigation')}. ${startNavigationDisabledReason}`
                       : undefined
                   }
                   icon={
@@ -638,7 +638,8 @@ function RoutePreviewSection({
               guide={routeGuide}
               onPrevious={() => setRouteGuideStep(routeGuide.stepIndex - 1)}
               onNext={() => setRouteGuideStep(routeGuide.stepIndex + 1)}
-              onLive={() => void runStartAction(() => startNowRef.current())}
+              // A1-10: a live origin outside the venue is already known; re-acquiring it cannot yield a walking route.
+              onLive={directGuide && startSource === 'live_gps' ? undefined : () => void runStartAction(() => startNowRef.current())}
               onEnd={endRouteGuide}
               liveBusy={startAttempt === 'working' || (upgrade && upgrade.phase !== 'idle')}
               message={

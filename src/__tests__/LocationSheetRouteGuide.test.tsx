@@ -109,6 +109,38 @@ describe('Start route (route ready, chosen FROM + TO)', () => {
   });
 });
 
+describe('Route guide card for a direct guide', () => {
+  const directGuideRoute = {
+    ...route, totalDistance: 13_100,
+    startResolution: { gate: { name: { en: 'Gate 12' } } },
+    outsideRoute: { provider: 'direct-guide', gateId: 'GATE_12', distanceM: 12_800, durationSeconds: null, distanceKind: 'direct-distance', roadFollowing: false, fallbackHistory: [], warnings: [] },
+  };
+  const open = () => useAppStore.setState({ routeGuide: { steps, stepIndex: 0 } });
+  const renderGuide = () => render(
+    <LocationSheet mode="routePreview" destination={destination} onClose={jest.fn()} onStartNavigation={jest.fn()}
+      onOpenDirectory={jest.fn()} onViewRoute={jest.fn()} onChangeDestination={jest.fn()} />,
+  );
+
+  // A1-10: the live fix is already outside the venue, so "Use my location" cannot turn the direct guide into a walk.
+  test('from a live origin the guide offers no "Use my location" link, only the steps and End', async () => {
+    mockedVm.mockReturnValue(vm({ route: directGuideRoute, startSource: 'live_gps', manualStart: null, isOutsideStart: true }));
+    open();
+    await renderGuide();
+
+    expect(screen.getByRole('button', { name: 'Next step' })).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: 'End route guide' })).toBeOnTheScreen();
+    expect(screen.queryByRole('button', { name: 'Use my location to guide me' })).not.toBeOnTheScreen();
+  });
+
+  test('from a chosen or remembered outside start the link stays: the user may be somewhere else', async () => {
+    mockedVm.mockReturnValue(vm({ route: directGuideRoute, startSource: 'remembered_location', manualStart: null, isOutsideStart: true }));
+    open();
+    await renderGuide();
+
+    expect(screen.getByRole('button', { name: 'Use my location to guide me' })).toBeOnTheScreen();
+  });
+});
+
 describe('Route guide card', () => {
   const open = () => useAppStore.setState({ routeGuide: { steps, stepIndex: 0 } });
 

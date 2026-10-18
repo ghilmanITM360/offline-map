@@ -142,7 +142,8 @@ describe('outside the venue with only a straight-line guide', () => {
     outsideRoute: { provider: 'direct-guide', gateId: 'GATE_12', distanceM: 12_800, durationSeconds: null, distanceKind: 'direct-distance', roadFollowing: false, fallbackHistory: [], warnings: [] },
   };
   const outsideVm = (over: Record<string, unknown> = {}) =>
-    vm({ route: outsideRoute, startSource: 'live_gps', isOutsideStart: true, startAction: { kind: 'start', primaryLabel: 'Start Navigation', title: 'Ready to go' }, canStartNavigation: true, ...over });
+    // A1-10: with only a direct guide the view model offers the route guide, not a live Start (resolveStartAction).
+    vm({ route: outsideRoute, startSource: 'live_gps', isOutsideStart: true, startAction: { kind: 'route_guide', primaryLabel: 'Start route' }, canStartNavigation: true, ...over });
 
   test('says to get to the gate first, never "Route ready", and gives the straight-line distance only', async () => {
     mockedVm.mockReturnValue(outsideVm());
@@ -174,6 +175,27 @@ describe('outside the venue with only a straight-line guide', () => {
     expect(screen.getAllByText('Get to Gate 12 first').length).toBeGreaterThan(0);
     expect(screen.queryByText('13.1 km')).not.toBeOnTheScreen();
     expect(screen.queryByText(/^13\.1 km/)).not.toBeOnTheScreen();
+  });
+
+  test('A1-10: a live fix outside offers Start route, never Start walking, and starts the route guide', async () => {
+    const outside = outsideVm();
+    mockedVm.mockReturnValue(outside);
+    const onStartNavigation = jest.fn();
+    const user = userEvent.setup();
+    await render(
+      <>
+        <LocationSheet mode="routePreview" destination={destination} onClose={jest.fn()} onStartNavigation={onStartNavigation}
+          onOpenDirectory={onOpenDirectory} onViewRoute={jest.fn()} onChangeDestination={jest.fn()} />
+        <DirectionsSheetFooter animatedFooterPosition={{ value: 0, get: () => 0 } as never} />
+      </>,
+    );
+
+    expect(screen.queryByRole('button', { name: /Start walking|Start Navigation/ })).not.toBeOnTheScreen();
+    await user.press(screen.getByRole('button', { name: 'Start route' }));
+
+    expect(outside.startRouteGuide).toHaveBeenCalledTimes(1);
+    expect(outside.runStartAction).not.toHaveBeenCalled();
+    expect(onStartNavigation).not.toHaveBeenCalled();
   });
 
   test('a chosen start outside is the same guide, not a route guide of a walking route', async () => {
