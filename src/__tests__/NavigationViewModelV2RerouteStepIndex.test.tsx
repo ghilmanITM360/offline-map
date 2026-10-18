@@ -187,6 +187,24 @@ describe('A5-01 successful reroute gives guidance that belongs to the replacemen
     expect(speakSpy).toHaveBeenLastCalledWith('B step 1', 'en');
   });
 
+  test('10: a locale change after a reroute re-speaks the replacement route\'s current step', async () => {
+    const { useLocaleStore } = require('../i18n/localeStore');
+    jest.spyOn(VoiceService, 'stop').mockImplementation(() => undefined as never);
+    const oldRoute = buildOldRoute('OLD');
+    stubHybrid(replacement.fourStepsRightFirst); stubAdapterPassThrough();
+    const { hook } = await mountOnOldRoute(oldRoute, fixAtOldStep3);
+    await act(() => hook.result.current.retryOutsideRoute());
+    await waitFor(() => expect(hook.result.current.route?.routeId).toBe('B'));
+    speakSpy.mockClear();
+
+    try {
+      await act(async () => { useLocaleStore.getState().setLocale('ur'); });
+      expect(speakSpy).toHaveBeenLastCalledWith('B step 1', 'ur');
+    } finally {
+      await act(async () => { useLocaleStore.getState().setLocale('en'); });
+    }
+  });
+
   test('9: arrival is not inferred from the previous route\'s final-step index', async () => {
     const oldRoute = buildOldRoute('OLD');
     const stub = stubHybrid(replacement.loopPassingDestination); stubAdapterPassThrough();
@@ -312,7 +330,7 @@ describe('A5-01 guidance is untouched unless a replacement is actually committed
   test('7: a new navigation session starts at its own first step, never the last session\'s index', async () => {
     const oldRoute = buildOldRoute('OLD');
     const nextJourney = buildOldRoute('NEXT');
-    const { hook } = await mountOnOldRoute(oldRoute, fixAtOldStep3);
+    const { hook, renders } = await mountOnOldRoute(oldRoute, fixAtOldStep3);
     expect(hook.result.current.currentStepIndex).toBe(3);
 
     await act(async () => useAppStore.getState().stopNavigation());
@@ -325,6 +343,8 @@ describe('A5-01 guidance is untouched unless a replacement is actually committed
     expect(hook.result.current.currentStepIndex).toBe(0);
     expect(hook.result.current.instructions[0].text).toBe('NEXT step 1');
     expect(speakSpy.mock.calls.map(([text]) => text)).not.toContain('NEXT step 4');
+    // Not even a transient render pairs the new session's route with the last session's index.
+    expect(renders.find((entry) => entry.routeId === 'NEXT')).toEqual({ routeId: 'NEXT', index: 0 });
   });
 
   test('8: losing GPS while a reroute is computing leaves the old route and step index intact', async () => {
@@ -355,6 +375,10 @@ describe('A5-01 guidance is untouched unless a replacement is actually committed
 });
 
 describe('A5-01 through the real hybrid router and adapter', () => {
+  const proxyBefore = process.env.EXPO_PUBLIC_IJTEMA_ROUTING_PROXY_BASE_URL;
+  const routingBefore = process.env.EXPO_PUBLIC_USE_IJTEMA_V2_ROUTING;
+  let envRestore: () => void = () => undefined;
+  afterAll(() => envRestore());
   const origin = { latitude: 24.9762, longitude: 67.011 };
   const realDestination: Place = {
     id: 'B34', name: 'Block 34', category: 'Block', description: 'Block 34',
@@ -364,6 +388,10 @@ describe('A5-01 through the real hybrid router and adapter', () => {
   test('a real reroute after several completed steps re-derives guidance from the new route', async () => {
     delete process.env.EXPO_PUBLIC_IJTEMA_ROUTING_PROXY_BASE_URL;
     process.env.EXPO_PUBLIC_USE_IJTEMA_V2_ROUTING = 'true';
+    envRestore = () => {
+      if (proxyBefore === undefined) delete process.env.EXPO_PUBLIC_IJTEMA_ROUTING_PROXY_BASE_URL; else process.env.EXPO_PUBLIC_IJTEMA_ROUTING_PROXY_BASE_URL = proxyBefore;
+      if (routingBefore === undefined) delete process.env.EXPO_PUBLIC_USE_IJTEMA_V2_ROUTING; else process.env.EXPO_PUBLIC_USE_IJTEMA_V2_ROUTING = routingBefore;
+    };
     const preview = await V2DirectionsService.calculateHybridPreview({
       request: { startPlace: null, destination: realDestination, currentLocation: origin, forceOutside: true },
       token: { requestId: 'a501-initial', requestVersion: 1 },
