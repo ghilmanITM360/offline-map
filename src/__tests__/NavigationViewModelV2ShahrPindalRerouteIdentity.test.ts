@@ -4,6 +4,7 @@ import { seedRunningNavigation } from './navigationFixture';
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import { getDistance } from 'geolib';
 import type { Place, V2ActiveRoute } from '../models/types';
 import { SearchService } from '../services/SearchService';
 import { V2DirectionsService } from '../services/V2DirectionsService';
@@ -23,6 +24,7 @@ import { act, renderHook, waitFor } from './test-utils';
 
 const initialStoreState = useAppStore.getState();
 const gate08 = SearchService.search('Gate 08')[0];
+const inVenueWalker = (SearchService.search('Block 1')[0] as Place).coordinate;
 
 const VARIANTS = ['North', 'South', 'West'] as const;
 type Variant = (typeof VARIANTS)[number];
@@ -64,7 +66,10 @@ function startVariant(variant: Variant) {
   const activeRoute = routesByVariant[variant];
   useAppStore.setState(initialStoreState, true);
   seedRunningNavigation(destination, activeRoute, activeRoute.instructions);
-  useAppStore.setState({ currentLocation: { ...activeRoute.destination.coordinate, accuracy: 5, observedAtMs: Date.now() }, currentLocationSource: 'live' });
+  // An in-venue walker well outside the 20 m arrival radius: a fix on the destination would be an arrival (A5-02),
+  // which forbids reroutes.
+  expect(getDistance(inVenueWalker, activeRoute.destination.coordinate)).toBeGreaterThan(50);
+  useAppStore.setState({ currentLocation: { ...inVenueWalker, accuracy: 5, observedAtMs: Date.now() }, currentLocationSource: 'live' });
   return { destination, activeRoute };
 }
 
