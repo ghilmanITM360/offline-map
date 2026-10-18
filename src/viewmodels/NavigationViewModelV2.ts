@@ -184,7 +184,11 @@ export function useNavigationViewModelV2() {
   const [remainingDistance, setRemainingDistance] = useState(route?.totalDistanceM ?? 0);
   const [maneuverDistance, setManeuverDistance] = useState(route?.instructions[0]?.distanceM ?? 0);
   const [etaMinutes, setEtaMinutes] = useState(route?.etaMinutes ?? 0);
-  const [currentStepIndex, setCurrentStepIndex] = useState(0);
+  // A5-01: the active instruction index belongs to the route it was derived from. Guidance scans forward
+  // from it, so a replacement route (a new object after a reroute, likewise a new trip's route) must read
+  // as step 0 in the very render that installs it — a stale index skips its first steps or lands on "arrive".
+  const [stepOwner, setStepOwner] = useState<{ route: V2ActiveRoute | null; index: number }>({ route: null, index: 0 });
+  const currentStepIndex = route && stepOwner.route === route ? stepOwner.index : 0;
   const [arrived, setArrived] = useState(false);
   const [isWeakGps, setIsWeakGps] = useState(false);
   const [rerouteStatusCopy, setRerouteStatusMessage] = useState<NavigationStatusCopy>(null);
@@ -236,6 +240,8 @@ export function useNavigationViewModelV2() {
   const consecutiveOffRouteRef = useRef(0);
   const lastRerouteAtRef = useRef(0);
   const lastSpokenInstructionIdRef = useRef<string | null>(null);
+  // A5-01: instruction ids repeat across routes ("v2-step-N"), so "already spoken" is scoped to the route it was spoken on.
+  const lastSpokenRouteRef = useRef<V2ActiveRoute | null>(null);
   const outsideRequestCoordinatorRef = useRef(new OutsideRouteRequestCoordinator());
   const rerouteRequestInFlightRef = useRef<object | null>(null);
   const handleLiveLocation = useCallback(() => {
@@ -253,7 +259,7 @@ export function useNavigationViewModelV2() {
     setEtaMinutes(route.etaMinutes);
     setSnappedLocation(route.origin.coordinate);
     const initialGuidance = calculateLiveManeuverDistanceV2({ route, currentStepIndex: 0, progressMeters: 0 });
-    setCurrentStepIndex(initialGuidance.stepIndex);
+    setStepOwner({ route, index: initialGuidance.stepIndex });
     setManeuverDistance(initialGuidance.maneuverDistanceM);
     progressRef.current = 0;
     // NAV-P0-001: a new trip is a new watcher generation — any fix whose native timestamp
@@ -573,11 +579,15 @@ export function useNavigationViewModelV2() {
     // threshold must not un-report arrival and flip the UI back out of the completion overlay.
     if (isArrived(route, currentLocation, nextIndex)) setArrived(true);
     if (nextIndex !== currentStepIndex) {
-      setCurrentStepIndex(nextIndex);
+      setStepOwner({ route, index: nextIndex });
     }
     setManeuverDistance(guidance.maneuverDistanceM);
 
     const currentInstruction = instructions[nextIndex];
+    if (lastSpokenRouteRef.current !== route) {
+      lastSpokenRouteRef.current = route;
+      lastSpokenInstructionIdRef.current = null;
+    }
     if (settings.voiceInstructions && !isMuted && currentInstruction && currentInstruction.id !== lastSpokenInstructionIdRef.current) {
       lastSpokenInstructionIdRef.current = currentInstruction.id;
       VoiceService.speakInstruction(localizeInstruction(currentInstruction), getLocale() === "ur" ? "ur" : "en");
@@ -597,7 +607,7 @@ export function useNavigationViewModelV2() {
 
     // #60: this effect can re-run against the exact same currentLocation for reasons unrelated
     // to a new GPS fix (see the AUD-05 isNewFix note above — e.g. this same effect's own
-    // setCurrentStepIndex/setEtaMinutes calls are themselves in its dependency array). Without
+    // setStepOwner/setEtaMinutes calls are themselves in its dependency array). Without
     // gating on isNewFix, each such re-run would double/triple-count one physical fix as
     // several "consecutive off-route fixes", inflating evidence out of proportion to real
     // GPS cadence — a false-positive risk equivalent to jitter.
