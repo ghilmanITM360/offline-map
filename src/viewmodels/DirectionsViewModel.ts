@@ -9,6 +9,7 @@ import { useI18n } from '../i18n/useI18n';
  */
 
 import { useState, useEffect, useLayoutEffect, useCallback, useRef } from 'react';
+import { AppState } from 'react-native';
 import { getDistance } from 'geolib';
 import { useAppStore } from '../store/useAppStore';
 import { RoutingService } from '../services/RoutingService';
@@ -295,6 +296,61 @@ export function useDirectionsViewModel(destination: Place | null) {
     setRouteAlternatives([]);
   };
 
+  // A1-08: the destination tap authorized ONE bounded acquisition when permission/precision/services were fine but no fresh
+  // fix existed (cold launch, or an aged-out stationary fix). It never prompts, is cancelled by anything that withdraws or
+  // replaces the intent (chooser, manual start, cancel, destination switch, unmount, backgrounding) and can begin once. Only
+  // a fix that passes the unchanged live-eligibility rules promotes the intent; calculateRoute then starts navigation through
+  // the same guarded path as a warm tap. Anything else retires the intent and leaves the manual-start fallback as it was.
+  const acquireFixForIntent = async (intentId: number) => {
+    if (!destination || !useAppStore.getState().beginDestinationIntentAcquisition(intentId)) return;
+    const generation = journeyGenerationRef.current;
+    const request = ++locationRequestRef.current;
+    const stillOwns = () => {
+      const state = useAppStore.getState();
+      return mountedRef.current && generation === journeyGenerationRef.current && request === locationRequestRef.current &&
+        ownedDestinationIntentRef.current === intentId && state.destinationJourneyIntent?.id === intentId &&
+        state.destinationJourneyIntent.autoLive === 'acquiring' && !state.directoryPurpose && !state.isNavigating &&
+        state.routePlannerDest?.id === destination.id;
+    };
+    const cancel = () => {
+      // The listener outlives a superseded request until the native call settles; it may only cancel its own.
+      if (request !== locationRequestRef.current) return;
+      locationRequestRef.current += 1;
+      useAppStore.getState().retireDestinationIntent(intentId);
+      if (ownedDestinationIntentRef.current === intentId) ownedDestinationIntentRef.current = null;
+      locationAcquiringRef.current = false;
+      if (mountedRef.current) setLocationAcquiring(false);
+    };
+    const appState = AppState.addEventListener('change', (next) => { if (next !== 'active') cancel(); });
+    locationAcquiringRef.current = true;
+    setLocationAcquiring(true);
+    try {
+      const resolved = await LocationAccessService.resolveCurrentLocation(false);
+      if (!stillOwns()) return;
+      // A native throw is reported as "denied, services unknown": not a real reading, so it must not demote the stored facts.
+      if (resolved.ok || resolved.permissionState.servicesState !== 'unknown') useAppStore.getState().setLocationPermissionFacts(resolved.permissionState);
+      const fix = resolved.ok && resolved.source === 'live' ? resolved.coordinate : null;
+      const capability = evaluateLocationCapability({
+        permission: { granted: resolved.permissionState.granted, canAskAgain: resolved.permissionState.canAskAgain,
+          precision: resolved.permissionState.precision, servicesState: resolved.permissionState.servicesState },
+        liveFix: fix,
+      });
+      if (!fix || capability.mode !== 'live_navigation' || resolved.permissionState.servicesState !== 'enabled') { retireAutomaticIntent(); return; }
+      setCurrentLocation(fix, 'live');
+      if (!useAppStore.getState().promoteDestinationIntent(intentId)) return;
+      setRouteOriginLocation(fix);
+      setStartSource('live_gps');
+      setIsEditingManualStart(false);
+      setManualStart(null);
+      setLoadState('loading');
+    } catch {
+      if (stillOwns()) retireAutomaticIntent();
+    } finally {
+      appState.remove();
+      if (request === locationRequestRef.current) { locationAcquiringRef.current = false; if (mountedRef.current) setLocationAcquiring(false); }
+    }
+  };
+
   const calculateRoute = useCallback(async () => {
     const generation = journeyGenerationRef.current;
     const request = ++routeRequestRef.current;
@@ -310,7 +366,11 @@ export function useDirectionsViewModel(destination: Place | null) {
 
     const originCoord = resolveActiveOriginCoordinate();
     if (!originCoord && !(isV2Destination && isPlaceStart && manualStart)) {
-      retireAutomaticIntent();
+      const ownedIntent = intentId === null ? null : useAppStore.getState().destinationJourneyIntent;
+      const acquirable = isV2Destination && ownedIntent?.id === intentId && ownedIntent.destinationId === destination.id &&
+        (ownedIntent.autoLive === 'pending_fix' || ownedIntent.autoLive === 'acquiring');
+      if (acquirable) void acquireFixForIntent(intentId as number);
+      else retireAutomaticIntent();
       setLoadState('needs_origin');
       setErrorMessage(null); // the FROM row already says "Choose where to start"
       setRoute(null);
@@ -435,7 +495,8 @@ export function useDirectionsViewModel(destination: Place | null) {
       if (intentId !== null && state.destinationJourneyIntent?.destinationId === destination.id &&
         startSource === 'live_gps' && !manualStart && canCommit() && state.consumeDestinationIntent(intentId)) {
         // A1-10: a direct guide has no live authority; the intent is consumed, but refusing it is not a failed location.
-        if (preview.route.outsideRoute?.provider !== 'direct-guide') {
+        // A1-08: the intent is spent either way; services must still read 'enabled' (never 'unknown') at the moment of start.
+        if (state.locationServicesState === 'enabled' && preview.route.outsideRoute?.provider !== 'direct-guide') {
           const result = startPreviewNavigationV2({ route: preview.route, destination, startPlace: null, currentLocation: state.currentLocation });
           if (!result.canStart) setStartAttempt('failed');
         }
@@ -730,6 +791,7 @@ export function useDirectionsViewModel(destination: Place | null) {
     : recoveryKind === 'precise_location' ? t('recovery.precise')
     : recoveryKind === 'location_settings' ? t('recovery.services') : t(locationAttempted || startAttempt === 'failed' || startAttempt === 'settings' || startAttempt === 'services_off' ? 'recovery.tryAgain' : 'recovery.useLocation') };
   const cancelLocationRecovery = () => {
+    retireAutomaticIntent();
     locationRequestRef.current += 1;
     locationAcquiringRef.current = false;
     setLocationAcquiring(false);
@@ -768,9 +830,15 @@ export function useDirectionsViewModel(destination: Place | null) {
         permission: { granted: state.hasLocationPermission, canAskAgain: false, precision: state.locationPermissionPrecision, servicesState: state.locationServicesState },
         liveFix: state.currentLocationSource === 'live' ? state.currentLocation : null,
       });
-      if (capability.mode === 'live_navigation' && !manualStart && state.routePlannerDest?.id === destination?.id && state.activeRoute === route && !routeRefreshing) startNow();
-      else setStartAttempt('failed');
-      return;
+      if (capability.mode === 'live_navigation' && !manualStart && state.routePlannerDest?.id === destination?.id && state.activeRoute === route && !routeRefreshing) {
+        startNow();
+        return;
+      }
+      // A1-08: the fix aged out after the primary action rendered (a stationary phone delivers no new fixes). That is
+      // recoverable: fall through to the same acquisition as "Use my location", which refreshes the origin and previews the
+      // route again. Eligibility is unchanged and a changed origin never starts silently; only another explicit Start does.
+      const staleFix = !manualStart && (capability.liveBlocker === 'no_fix' || capability.liveBlocker === 'stale_fix' || capability.liveBlocker === 'weak_fix');
+      if (!staleFix) { setStartAttempt('failed'); return; }
     }
     const generation = journeyGenerationRef.current;
     const chooserSerial = useAppStore.getState().directoryRequestSerial;
