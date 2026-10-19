@@ -113,6 +113,21 @@ export function withFullDetent(snapPoints: readonly string[], containerHeight: n
   return next;
 }
 
+/** Grows the middle detent until it holds the drag handle and the whole pinned footer, so the primary actions are
+ * not behind the system bar at that detent. On a short container (320 dp, 200% font) the 79% share is smaller than three
+ * stacked buttons. `footerHeight` already includes the bottom inset. Apply after withFullDetent: it never passes just
+ * under the top detent, and never shrinks the middle one. */
+export function withFooterFitDetent(snapPoints: readonly string[], containerHeight: number, footerHeight: number): string[] {
+  if (containerHeight <= 0 || footerHeight <= 0 || snapPoints.length < 3) return [...snapPoints];
+  const middle = parseFloat(snapPoints[1]);
+  const top = parseFloat(snapPoints[snapPoints.length - 1]);
+  if (!Number.isFinite(middle) || !Number.isFinite(top)) return [...snapPoints];
+  const fit = ((footerHeight + DIRECTIONS_PEEK_HEIGHT_DP) / containerHeight) * 100;
+  const next = [...snapPoints];
+  next[1] = `${Math.min(Math.max(middle, Math.ceil(fit)), top - 1)}%`;
+  return next;
+}
+
 export function insetAwareSnapPoints(
   snapPoints: readonly string[],
   containerHeight: number,

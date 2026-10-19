@@ -50,6 +50,7 @@ import {
   fullSheetHeight,
   insetAwareSnapPoints,
   routePreviewSnapPoints,
+  withFooterFitDetent,
   withFullDetent,
   MIN_TOP_VISIBLE_MAP_FOR_ATTRIBUTION,
   MIN_TOP_VISIBLE_MAP_FOR_ROUTE_PREVIEW,
@@ -93,7 +94,7 @@ import { placeFocusRegion } from '../../viewmodels/useCameraManager';
 import { NavigationChromeV2 } from '../components/navigation/NavigationChromeV2';
 import { NavigationChromeV1 } from '../components/navigation/NavigationChromeV1';
 import { LocationSheet } from '../components/map/LocationSheet';
-import { DirectionsSheetFooter } from '../components/map/DirectionsSheetFooter';
+import { DirectionsSheetFooter, useDirectionsFooterHeight } from '../components/map/DirectionsSheetFooter';
 import { resolveMapMarkerOwnership } from '../components/map/MapMarkerOwnership';
 import { LocationTutorialTooltip } from '../components/map/LocationTutorialTooltip';
 import { OsmAttribution } from '../components/map/OsmAttribution';
@@ -984,16 +985,17 @@ export function HomeScreen() {
   // top overlay were cut out of that container. Collapsed and middle detents are unchanged; every mode and both the
   // drag and snapToIndex(2) reach this same detent.
   const fullSheetPx = Math.round(fullSheetHeight(windowHeight, topInsetBase));
-  const snapPoints = useMemo(
-    () => withFullDetent(
+  const directionsFooterHeight = useDirectionsFooterHeight();
+  const snapPoints = useMemo(() => {
+    const full = withFullDetent(
       mode === 'ROUTE_PREVIEW'
         ? layoutSnapPoints
         : insetAwareSnapPoints(layoutSnapPoints, sheetContainerHeight, insets.bottom, fontScale),
       sheetContainerHeight,
       fullSheetPx,
-    ),
-    [mode, layoutSnapPoints, sheetContainerHeight, insets.bottom, fontScale, fullSheetPx],
-  );
+    );
+    return mode === 'ROUTE_PREVIEW' ? withFooterFitDetent(full, sheetContainerHeight, directionsFooterHeight) : full;
+  }, [mode, layoutSnapPoints, sheetContainerHeight, insets.bottom, fontScale, fullSheetPx, directionsFooterHeight]);
   // The reserved top band is applied here, as pixel heights of the sheet's container (window minus the band),
   // instead of as gorhom's `topInset`. gorhom derives its container height from `topInset` only when the sheet
   // mounts and never recomputes it for a later change, so a mode switch while the sheet stays presented

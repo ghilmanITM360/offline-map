@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { routePreviewSnapPoints,
+import { routePreviewSnapPoints, withFooterFitDetent,
   computeMapContentInsets,
   computeMapControlsInset,
   computeMaxSheetOcclusionForAttribution,
@@ -356,5 +356,25 @@ describe('routePreviewSnapPoints (#307, EMU-N1): Directions detents must clear t
   it('never exceeds the middle detent on a very short container', () => {
     const [collapsed] = routePreviewSnapPoints(200, 60);
     expect(parseFloat(collapsed)).toBeLessThan(79);
+  });
+});
+
+describe('withFooterFitDetent (EMU-N3): the middle Directions detent holds the pinned footer', () => {
+  it('leaves the declared detents alone when the footer already fits (normal font)', () => {
+    expect(withFooterFitDetent(['25%', '79%', '287%'], 480, 130)).toEqual(['25%', '79%', '287%']);
+  });
+
+  it('grows the middle detent on a 320 dp window at 200% font (230 dp container, ~190 dp footer)', () => {
+    const [, middle] = withFooterFitDetent(['40%', '79%', '287%'], 230, 190);
+    expect((parseFloat(middle) / 100) * 230).toBeGreaterThanOrEqual(190 + 72);
+  });
+
+  it('stays below the top detent when the footer cannot fit', () => {
+    const [, middle, top] = withFooterFitDetent(['40%', '79%', '92%'], 230, 400);
+    expect(parseFloat(middle)).toBeLessThan(parseFloat(top));
+  });
+
+  it('ignores an unmeasured footer', () => {
+    expect(withFooterFitDetent(['15%', '79%', '92%'], 480, 0)).toEqual(['15%', '79%', '92%']);
   });
 });
