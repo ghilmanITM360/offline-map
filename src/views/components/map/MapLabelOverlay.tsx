@@ -8,6 +8,7 @@ import { LayoutChangeEvent, Pressable, StyleSheet, Text, View, ViewStyle } from 
 import type { MapCameraHandle } from '../mapgl/MapCameraHandle';
 
 import { mapLayerStyles as styles } from './mapLayerStyles';
+import { PhysicalLayer } from './PhysicalLayer';
 
 export type MapLabelKind = 'gate' | 'block' | 'rasta' | 'route' | 'user';
 export type MapLabelVariant = 'full' | 'compact' | 'number';
@@ -268,7 +269,7 @@ export const MapLabelOverlay = React.forwardRef<MapLabelOverlayHandle, MapLabelO
     }, []);
 
     return (
-      <View
+      <PhysicalLayer
         testID="map-label-overlay"
         style={StyleSheet.absoluteFillObject}
         pointerEvents="box-none"
@@ -295,8 +296,8 @@ export const MapLabelOverlay = React.forwardRef<MapLabelOverlayHandle, MapLabelO
           const spokenLabel = item.accessibilityLabel ?? (item.secondaryText ? `${item.text}, ${item.secondaryText}` : item.text);
           const content = (
             <View style={labelStyles.container} onLayout={(e) => handleItemLayout(item.id, e)}>
-              <Text style={labelStyles.text}>{item.text}</Text>
-              {item.secondaryText && <Text style={labelStyles.secondary}>{item.secondaryText}</Text>}
+              <Text style={[labelStyles.text, { writingDirection: 'auto' }]}>{item.text}</Text>
+              {item.secondaryText && <Text style={[labelStyles.secondary, { writingDirection: 'auto' }]}>{item.secondaryText}</Text>}
             </View>
           );
 
@@ -333,7 +334,7 @@ export const MapLabelOverlay = React.forwardRef<MapLabelOverlayHandle, MapLabelO
             </View>
           );
         })}
-      </View>
+      </PhysicalLayer>
     );
   },
 );

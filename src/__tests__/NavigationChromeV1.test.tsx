@@ -4,7 +4,7 @@
  */
 
 import React from 'react';
-import { AccessibilityInfo } from 'react-native';
+import { AccessibilityInfo, StyleSheet } from 'react-native';
 import { render, screen, userEvent, within } from './test-utils';
 
 import { NavigationChromeV1 } from '../views/components/navigation/NavigationChromeV1';
@@ -74,6 +74,7 @@ describe('NavigationChromeV1 — Exit/recenter/mute touch targets', () => {
     expect(screen.getByTestId('nav-exit-button').props.hitSlop).toEqual(NAV_TOUCH_TARGET_HIT_SLOP);
     expect(screen.getByTestId('nav-mute-toggle').props.hitSlop).toEqual(NAV_TOUCH_TARGET_HIT_SLOP);
     expect(screen.getByTestId('nav-recenter-button').props.hitSlop).toEqual(NAV_TOUCH_TARGET_HIT_SLOP);
+    expect(StyleSheet.flatten(screen.getByTestId('nav-recenter-button').props.style)).toMatchObject({ direction: 'ltr', right: 16 });
   });
 
   test('renders active navigation state (instruction + trip info)', async () => {

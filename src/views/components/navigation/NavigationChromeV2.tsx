@@ -23,6 +23,7 @@ import { outsideRouteMessage } from '../../../services/OutsideRouteLocalizationS
 import { Button } from '../common/Button';
 import { ActiveDirectionsPanel } from './ActiveDirectionsPanel';
 import { useI18n } from '../../../i18n';
+import { physicalLayerStyle } from '../map/PhysicalLayer';
 
 const AnimatedSafeAreaView = Animated.createAnimatedComponent(SafeAreaView);
 
@@ -306,6 +307,7 @@ export function NavigationChromeV2({ overlay, hasBaseMap }: { overlay: Navigatio
           testID="nav-recenter-button"
           style={[
             styles.recenterButton,
+            physicalLayerStyle,
             // resolveNavBarHeight only adds insets.bottom for the pre-layout fallback —
             // once bottomBarHeight is measured it already bakes insets.bottom in (it's
             // the bar's own paddingBottom), so it isn't double-counted here.

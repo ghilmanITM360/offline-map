@@ -462,6 +462,7 @@ describe('NavigationChromeV2 — Exit/recenter/mute touch targets', () => {
     expect(screen.getByTestId('nav-exit-button').props.hitSlop).toEqual(NAV_TOUCH_TARGET_HIT_SLOP);
     expect(screen.getByTestId('nav-mute-toggle').props.hitSlop).toEqual(NAV_TOUCH_TARGET_HIT_SLOP);
     expect(screen.getByTestId('nav-recenter-button').props.hitSlop).toEqual(NAV_TOUCH_TARGET_HIT_SLOP);
+    expect(StyleSheet.flatten(screen.getByTestId('nav-recenter-button').props.style)).toMatchObject({ direction: 'ltr', right: 16 });
   });
 
   test('pressing Exit requests confirmation instead of stopping directly', async () => {

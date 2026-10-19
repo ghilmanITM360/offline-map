@@ -4,9 +4,11 @@
  */
 
 import React from 'react';
+import { StyleSheet, View } from 'react-native';
 import { act, fireEvent, render, screen, waitFor } from './test-utils';
 
 import { MapLabelItem, MapLabelOverlay, MapLabelOverlayHandle } from '../views/components/map/MapLabelOverlay';
+import { useLocaleStore } from '../i18n';
 
 /** A minimal MapView-ref stand-in — MapLabelOverlay only ever calls
  * pointForCoordinate on it, so a real MapView mock/render isn't needed. */
@@ -36,11 +38,49 @@ async function flush(ms = 50) {
 }
 
 describe('MapLabelOverlay', () => {
+  beforeEach(() => {
+    useLocaleStore.setState({ locale: 'en' });
+  });
+
   // Defensive: if a spy-installing test fails mid-assertion, its cleanup lines (e.g.
   // rafSpy.mockRestore()) never run — restoreAllMocks() here guarantees later tests never
   // inherit a stubbed requestAnimationFrame/console.error from an earlier failure.
   afterEach(() => {
     jest.restoreAllMocks();
+  });
+
+  it.each([
+    ['ur', 'rtl'],
+    ['en', 'ltr'],
+    ['ur-Latn', 'ltr'],
+  ] as const)('keeps projected coordinates physical for %s while text chooses its own direction', async (locale, appDirection) => {
+    useLocaleStore.setState({ locale });
+    const pointForCoordinate = jest.fn(() => Promise.resolve({ x: 120, y: 80 }));
+    await render(
+      <View style={{ direction: appDirection }}>
+        <MapLabelOverlay mapRef={makeMapRef(pointForCoordinate)} items={[gateItem()]} />
+      </View>,
+    );
+
+    const overlay = screen.getByTestId('map-label-overlay');
+    const label = await screen.findByText('Gate 08');
+    expect(StyleSheet.flatten(overlay.props.style).direction).toBe('ltr');
+    expect(StyleSheet.flatten(label.parent?.parent?.props.style)).toMatchObject({ left: 66, top: 63 });
+    expect(StyleSheet.flatten(label.props.style).writingDirection).toBe('auto');
+  });
+
+  it('lets each line in a bilingual label derive its own script direction', async () => {
+    useLocaleStore.setState({ locale: 'ur-Latn' });
+    const pointForCoordinate = jest.fn(() => Promise.resolve({ x: 120, y: 80 }));
+    await render(
+      <MapLabelOverlay
+        mapRef={makeMapRef(pointForCoordinate)}
+        items={[gateItem({ text: 'Gate 08', secondaryText: 'گیٹ 08' })]}
+      />,
+    );
+
+    expect(StyleSheet.flatten((await screen.findByText('Gate 08')).props.style).writingDirection).toBe('auto');
+    expect(StyleSheet.flatten(screen.getByText('گیٹ 08').props.style).writingDirection).toBe('auto');
   });
 
   it('#208 blank screen: a label whose coordinate makes the native call throw is skipped, not fatal', async () => {

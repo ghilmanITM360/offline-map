@@ -7,7 +7,7 @@ import { seedRunningNavigation } from './navigationFixture';
  */
 
 import React from 'react';
-import { Alert, Animated, DeviceEventEmitter, Dimensions } from 'react-native';
+import { Alert, Animated, DeviceEventEmitter, Dimensions, StyleSheet } from 'react-native';
 import { getAnimatedStyle } from 'react-native-reanimated';
 import { act, fireEvent, render, screen, userEvent, waitFor } from './test-utils';
 
@@ -594,6 +594,7 @@ describe('HomeScreen — canonical bottom-sheet dismissal', () => {
 
     const { height } = Dimensions.get('window');
     const stackNode = () => screen.getByTestId('map-control-stack', { includeHiddenElements: true });
+    expect(StyleSheet.flatten(stackNode().props.style).direction).toBe('ltr');
     const stackBottom = () => getAnimatedStyle(stackNode()).bottom;
     const sheet = __getLastBottomSheetModalProps() as unknown as { animatedPosition: { value: number } };
 

@@ -78,6 +78,7 @@ import { MapLocalizationService } from '../../services/MapLocalizationService';
 import { V2PlaceAdapter } from '../../services/V2PlaceAdapter';
 import { IJTEMA_MAP_REGION } from '../../data/ijtema';
 import { MapLabelOverlay, MapLabelItem, MapLabelOverlayHandle, hangSelectedLabelsBelowPin } from '../components/map/MapLabelOverlay';
+import { physicalLayerStyle } from '../components/map/PhysicalLayer';
 import { MapControls, MapControlsRecenter } from '../components/map/MapControls';
 import { DirectionsPeekHandle } from '../components/map/DirectionsPeekHandle';
 import { MapTopBar } from '../components/map/MapTopBar';
@@ -1719,7 +1720,7 @@ export function HomeScreen() {
           <>
             <ReanimatedView.View
               testID="map-control-stack"
-              style={[styles.controlStack, controlStackStyle]}
+              style={[styles.controlStack, physicalLayerStyle, controlStackStyle]}
               pointerEvents={controlStackHidden ? 'none' : 'auto'}
               accessibilityElementsHidden={controlStackHidden}
               importantForAccessibility={controlStackHidden ? 'no-hide-descendants' : 'auto'}
@@ -1778,6 +1779,7 @@ export function HomeScreen() {
           <View
             style={[
               styles.navControls,
+              physicalLayerStyle,
               // Stacks above the recenter button (NavigationChromeV1/V2), which itself
               // stacks above the trip-info bar — same shared calculation both chrome
               // components use for their own recenter button, so the two can't drift apart.

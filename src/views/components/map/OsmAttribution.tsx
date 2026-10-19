@@ -6,6 +6,7 @@
 import React from 'react';
 import { useI18n } from '../../../i18n';
 import { Linking, Pressable, StyleSheet, Text } from 'react-native';
+import { physicalLayerStyle } from './PhysicalLayer';
 
 export const OSM_COPYRIGHT_URL = 'https://www.openstreetmap.org/copyright';
 
@@ -18,7 +19,7 @@ export function OsmAttribution({ visible, top }: { visible: boolean; top: number
       accessibilityRole="link"
       accessibilityLabel={t('common.osmLicence')}
       onPress={() => { void Linking.openURL(OSM_COPYRIGHT_URL); }}
-      style={[styles.container, { top }]}
+      style={[styles.container, physicalLayerStyle, { top }]}
     >
       <Text style={styles.text}>© OpenStreetMap contributors · ODbL</Text>
     </Pressable>

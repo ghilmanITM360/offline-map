@@ -17,6 +17,7 @@ import { NAV_TRANSITION_TIMINGS } from '../../../constants/navigationTransitions
 import { NavigationOverlayV1 } from '../../../viewmodels/useNavigationOverlayV1';
 import { computeNavRecenterInset, resolveNavBarHeight } from '../../../viewmodels/useOverlayInsets';
 import { NAV_TOUCH_TARGET_HIT_SLOP, navOverlayStyles as styles } from './navOverlayStyles';
+import { physicalLayerStyle } from '../map/PhysicalLayer';
 
 const AnimatedSafeAreaView = Animated.createAnimatedComponent(SafeAreaView);
 
@@ -197,6 +198,7 @@ export function NavigationChromeV1({ overlay, hasBaseMap }: { overlay: Navigatio
           testID="nav-recenter-button"
           style={[
             styles.recenterButton,
+            physicalLayerStyle,
             { bottom: computeNavRecenterInset(resolveNavBarHeight(bottomBarHeight, insets.bottom)) },
           ]}
           onPress={() => setIsAutoFollowing(true)}

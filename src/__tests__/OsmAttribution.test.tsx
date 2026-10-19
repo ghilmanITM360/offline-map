@@ -1,5 +1,5 @@
 import React from 'react';
-import { Linking, View } from 'react-native';
+import { Linking, StyleSheet, View } from 'react-native';
 import { fireEvent, render, screen } from './test-utils';
 import { OsmAttribution } from '../views/components/map/OsmAttribution';
 
@@ -13,6 +13,7 @@ describe('OSM attribution', () => {
     const openSpy = jest.spyOn(Linking, 'openURL').mockResolvedValue();
     await render(<View><OsmAttribution visible top={100} /></View>);
     expect(screen.getByText('© OpenStreetMap contributors · ODbL')).toBeOnTheScreen();
+    expect(StyleSheet.flatten(screen.getByTestId('osm-attribution').props.style)).toMatchObject({ direction: 'ltr', right: 8, top: 100 });
     fireEvent.press(screen.getByTestId('osm-attribution'));
     expect(openSpy).toHaveBeenCalledWith('https://www.openstreetmap.org/copyright');
   });
