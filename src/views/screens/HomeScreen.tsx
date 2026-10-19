@@ -79,7 +79,7 @@ import { MapLocalizationService } from '../../services/MapLocalizationService';
 import { V2PlaceAdapter } from '../../services/V2PlaceAdapter';
 import { IJTEMA_MAP_REGION } from '../../data/ijtema';
 import { MapLabelOverlay, MapLabelItem, MapLabelOverlayHandle, hangSelectedLabelsBelowPin } from '../components/map/MapLabelOverlay';
-import { physicalLayerStyle } from '../components/map/PhysicalLayer';
+import { physicalLayerStyle, physicalMarginLeft, physicalMarginRight, physicalRight } from '../components/map/PhysicalLayer';
 import { MapControls, MapControlsRecenter } from '../components/map/MapControls';
 import { DirectionsPeekHandle } from '../components/map/DirectionsPeekHandle';
 import { MapTopBar } from '../components/map/MapTopBar';
@@ -1648,7 +1648,7 @@ export function HomeScreen() {
                 style={[
                   styles.mapWarningBanner,
                   styles.bannerStackItem,
-                  controlStackWidth > 0 && { marginRight: CONTROL_STACK_RIGHT + controlStackWidth + BANNER_CONTROL_GAP },
+                  controlStackWidth > 0 && physicalMarginRight(CONTROL_STACK_RIGHT + controlStackWidth + BANNER_CONTROL_GAP),
                 ]}
                 accessibilityLiveRegion="polite"
               >
@@ -1668,6 +1668,8 @@ export function HomeScreen() {
               <Animated.View
                 style={[
                   styles.outsideVenueBanner,
+                  physicalMarginLeft(12),
+                  physicalMarginRight(76), // clears the control column
                   styles.bannerStackItem,
                   {
                     opacity: warningAnim,
@@ -1722,7 +1724,7 @@ export function HomeScreen() {
           <>
             <ReanimatedView.View
               testID="map-control-stack"
-              style={[styles.controlStack, physicalLayerStyle, controlStackStyle]}
+              style={[styles.controlStack, physicalLayerStyle, physicalRight(CONTROL_STACK_RIGHT), controlStackStyle]}
               pointerEvents={controlStackHidden ? 'none' : 'auto'}
               accessibilityElementsHidden={controlStackHidden}
               importantForAccessibility={controlStackHidden ? 'no-hide-descendants' : 'auto'}
@@ -1782,6 +1784,7 @@ export function HomeScreen() {
             style={[
               styles.navControls,
               physicalLayerStyle,
+              physicalRight(16),
               // Stacks above the recenter button (NavigationChromeV1/V2), which itself
               // stacks above the trip-info bar — same shared calculation both chrome
               // components use for their own recenter button, so the two can't drift apart.
@@ -1986,12 +1989,12 @@ const styles = StyleSheet.create({
     paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
     zIndex: Z.mapControls,
   },
-  navControls: { position: 'absolute', right: 16, zIndex: Z.mapControls },
+  navControls: { position: 'absolute', zIndex: Z.mapControls },
   // Single bottom-anchored Layers/Compass/Zoom/Recenter stack (see MapControls) —
   // replaces the old separately-anchored rightControls (top) + bottomControls
   // (bottom) pair that could collide when a route-preview card shrank the gap
   // between them.
-  controlStack: { position: 'absolute', right: CONTROL_STACK_RIGHT, zIndex: Z.mapControls },
+  controlStack: { position: 'absolute', zIndex: Z.mapControls },
   bannerStack: { position: 'absolute', left: 0, right: 0, zIndex: Z.mapControls },
   bannerStackItem: { marginBottom: 8 },
   mapWarningBanner: {
@@ -2005,8 +2008,6 @@ const styles = StyleSheet.create({
   fallbackNoticeAction: { minHeight: 44, justifyContent: 'center', alignSelf: 'flex-start' },
   fallbackNoticeActionText: { color: '#7C4A03', fontSize: 13, fontWeight: '700', textDecorationLine: 'underline' },
   outsideVenueBanner: {
-    marginLeft: 12,
-    marginRight: 76,
     backgroundColor: staticColors.weakGpsBackground,
     borderRadius: 20,
     paddingLeft: 14,

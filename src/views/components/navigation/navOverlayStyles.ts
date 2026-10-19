@@ -74,7 +74,6 @@ export const navOverlayStyles = StyleSheet.create({
   },
   recenterButton: {
     position: 'absolute',
-    right: 16,
     width: 48,
     height: 48,
     borderRadius: 24,
@@ -201,8 +200,6 @@ export const navOverlayStyles = StyleSheet.create({
     paddingTop: 8,
     gap: 8,
   },
-  // The map control column is a 56 dp circle at right: 12.
-  topStatusStackClearOfControls: { marginEnd: 72 },
   outsideStatusCardWrap: {
     marginHorizontal: 12,
   },

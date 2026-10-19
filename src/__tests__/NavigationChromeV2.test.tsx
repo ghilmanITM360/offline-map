@@ -224,7 +224,7 @@ describe('NavigationChromeV2 — direct outside guide', () => {
     Dimensions.set({ window: { width: 320, height: 711, scale: 2, fontScale } });
     await render(<NavigationChromeV2 overlay={baseOverlay({ gpsSignalState: 'GPS_LOST' })} hasBaseMap />);
     const stack = StyleSheet.flatten(screen.getByTestId('navigation-subordinate-surfaces').props.style);
-    expect(stack.marginEnd ?? 0).toBe(margin);
+    expect(stack.marginRight ?? 0).toBe(margin);
     Dimensions.set({ window: { width: 390, height: 844, scale: 2, fontScale: 1 } });
   });
 
