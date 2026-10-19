@@ -3,12 +3,21 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+// Host facade for the live-navigation start gate and start action. Decisions come from the shared domain layer
+// (future @muslim-ummah/offline-navigation); this module supplies the wall clock when `nowMs` is omitted and
+// turns each decision into localized copy.
 
 import { t } from '../i18n/translate';
 import type { Coordinate } from '../models/types';
-import { classifyLiveFix, evaluateLocationCapability } from './LocationCapability';
+import {
+  evaluateNavigationStart,
+  resolveStartActionKind,
+  type NavigationStartBlock,
+  type NavigationStartSource,
+  type StartActionKind,
+} from '../../packages/offline-navigation/src/domain/journey/NavigationStartPolicy';
 
-export type NavigationStartSource = 'live_gps' | 'device_last_known' | 'remembered_location' | 'manual_place' | 'hypothetical_place';
+export type { NavigationStartSource, StartActionKind };
 
 interface NavigationLocationCapabilityInput {
   startSource: NavigationStartSource;
@@ -23,58 +32,22 @@ interface NavigationLocationCapability {
   message: string;
 }
 
+const BLOCK_MESSAGE: Record<NavigationStartBlock, () => string> = {
+  manual_start: () => t('capability.manualLive'),
+  saved_start: () => t('capability.savedLive'),
+  approximate_precision: () => t('capability.exactLive'),
+  precision_unknown: () => t('directions.precisionUnknown'),
+  no_fix: () => t('capability.acquiring'),
+  stale_fix: () => t('capability.acquiring'),
+  weak_fix: () => t('capability.openArea'),
+};
+
 export function evaluateNavigationLocationCapability(
   input: NavigationLocationCapabilityInput,
 ): NavigationLocationCapability {
-  if (input.startSource === 'manual_place' || input.startSource === 'hypothetical_place') {
-    return {
-      canStart: false,
-      message: t('capability.manualLive'),
-    };
-  }
-
-  if (input.startSource === 'remembered_location' || input.startSource === 'device_last_known') {
-    return {
-      canStart: false,
-      message: t('capability.savedLive'),
-    };
-  }
-
-  if (input.precision === 'coarse') {
-    return {
-      canStart: false,
-      message: t('capability.exactLive'),
-    };
-  }
-
-  if (input.precision !== 'fine') return { canStart: false, message: t('directions.precisionUnknown') };
-
-  const fix = classifyLiveFix(input.coordinate, input.nowMs ?? Date.now());
-  if (fix === 'none') {
-    return {
-      canStart: false,
-      message: t('capability.acquiring'),
-    };
-  }
-
-  if (fix === 'unusable') {
-    return {
-      canStart: false,
-      message: t('capability.openArea'),
-    };
-  }
-
-  if (fix === 'stale') {
-    return {
-      canStart: false,
-      message: t('capability.acquiring'),
-    };
-  }
-
-  return { canStart: true, message: '' };
+  const decision = evaluateNavigationStart({ ...input, nowMs: input.nowMs ?? Date.now() });
+  return { canStart: decision.canStart, message: decision.block ? BLOCK_MESSAGE[decision.block]() : '' };
 }
-
-export type StartActionKind = 'start' | 'use_location' | 'turn_on_location' | 'precise_location' | 'route_guide';
 
 export interface StartAction {
   kind: StartActionKind;
@@ -100,30 +73,20 @@ interface StartActionInput {
  * A planned/manual start is a route preview; live guidance still needs a fresh precise fix.
  */
 export function resolveStartAction(input: StartActionInput): StartAction {
-  // A start the user chose or saved is a route guide: location never gates route planning (#307). Live guidance
-  // stays one tap away and begins from a fresh fix, never from the planned place.
-  if (input.startSource !== 'live_gps') {
-    return { kind: 'route_guide', primaryLabel: t('capability.startRoute'), secondaryLabel: t('capability.guideLocation') };
+  const { kind, precisionUnknown } = resolveStartActionKind({ ...input, nowMs: input.nowMs ?? Date.now() });
+  switch (kind) {
+    case 'route_guide':
+      // A start the user chose or saved offers live guidance one tap away; a direct guide (A1-10) or a live start does not.
+      return input.startSource !== 'live_gps'
+        ? { kind, primaryLabel: t('capability.startRoute'), secondaryLabel: t('capability.guideLocation') }
+        : { kind, primaryLabel: t('capability.startRoute') };
+    case 'turn_on_location':
+      return { kind, primaryLabel: t('capability.turnOnStart'), secondaryLabel: t('capability.viewRoute') };
+    case 'precise_location':
+      return { kind, primaryLabel: t('capability.precise'), secondaryLabel: t('capability.viewRoute') };
+    case 'use_location':
+      return { kind, primaryLabel: precisionUnknown ? t('directions.checkLocation') : t('capability.useStart'), secondaryLabel: t('capability.viewRoute') };
+    case 'start':
+      return { kind, primaryLabel: t('capability.startNavigation'), title: t('capability.ready') };
   }
-  // A1-10: a direct guide is a labelled guide, never live walking navigation (the engine refuses it), so it is read
-  // as a route guide whatever the location state. The fix is already live and outside: asking for it again adds nothing.
-  if (input.directGuide) return { kind: 'route_guide', primaryLabel: t('capability.startRoute') };
-  const capability = evaluateLocationCapability({
-    permission: { granted: input.permission.granted, canAskAgain: true, precision: input.permission.precision },
-    liveFix: input.liveFix,
-    nowMs: input.nowMs,
-  });
-  if (capability.permission === 'denied') {
-    return { kind: 'turn_on_location', primaryLabel: t('capability.turnOnStart'), secondaryLabel: t('capability.viewRoute') };
-  }
-  if (capability.liveBlocker === 'approximate_only') {
-    return { kind: 'precise_location', primaryLabel: t('capability.precise'), secondaryLabel: t('capability.viewRoute') };
-  }
-  if (capability.liveBlocker === 'precision_unknown') {
-    return { kind: 'use_location', primaryLabel: t('directions.checkLocation'), secondaryLabel: t('capability.viewRoute') };
-  }
-  if (capability.fix !== 'usable') {
-    return { kind: 'use_location', primaryLabel: t('capability.useStart'), secondaryLabel: t('capability.viewRoute') };
-  }
-  return { kind: 'start', primaryLabel: t('capability.startNavigation'), title: t('capability.ready') };
 }

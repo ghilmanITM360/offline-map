@@ -1,7 +1,7 @@
 // B2a extraction gate: golden parity, Dijkstra differential, edge cases, re-exports, module independence.
 import { strict as assert } from 'node:assert';
 import { readdirSync, readFileSync, statSync } from 'node:fs';
-import { join } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import * as sharedAStar from '../packages/offline-navigation/src/domain/algorithms/AStar';
 import * as sharedHeap from '../packages/offline-navigation/src/domain/algorithms/MinHeap';
 import * as legacyAStar from '../src/utils/AStar';
@@ -150,7 +150,11 @@ for (const f of ['AStar', 'MinHeap']) {
   assert.deepEqual(hits(/\bfunction\s+runAStar\b/), [`${ALGO_DIR}/AStar.ts`]);
   assert.deepEqual(hits(/\bfunction\s+reconstructAStarPath\b/), [`${ALGO_DIR}/AStar.ts`]);
   // Package domain must not reach into the app.
-  for (const p of walk('packages')) for (const spec of importsOf(p)) assert.ok(spec.startsWith('./'), `${p} imports ${spec}`);
+  // Relative imports may cross domain subfolders (e.g. ../geo) but never leave the domain root.
+  const domainRoot = resolve('packages/offline-navigation/src/domain');
+  for (const p of walk('packages')) for (const spec of importsOf(p)) {
+    assert.ok(spec.startsWith('.') && resolve(dirname(p), spec).startsWith(domainRoot), `${p} imports ${spec}`);
+  }
 }
 
 console.log(JSON.stringify({ name: 'astar-extraction', seededComparisons: comparisons, status: 'PASS' }));

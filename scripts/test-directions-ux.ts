@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 
 const screen = readFileSync('src/views/components/map/LocationSheet.tsx', 'utf8');
 const vm = readFileSync('src/viewmodels/DirectionsViewModel.ts', 'utf8');
-const navigationCapability = readFileSync('src/services/LocationNavigationCapability.ts', 'utf8');
+const navigationCapability = readFileSync('packages/offline-navigation/src/domain/journey/NavigationStartPolicy.ts', 'utf8');
 
 assert(screen.includes("t('directions.title'"), 'Directions screen must use layman-friendly heading');
 assert(screen.includes("t('directions.changeTo'"), 'Directions screen must show a tappable destination row');

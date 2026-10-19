@@ -7,6 +7,16 @@ import type { SemanticInstruction } from '../i18n/instructions';
 import { create } from 'zustand';
 import { getDistance } from 'geolib';
 import { evaluateLocationCapability } from '../services/LocationCapability';
+import {
+  consumeIntent,
+  decideAutoLive,
+  isAnswerCurrent,
+  isQueuedAnswerConsumable,
+  retireIntent,
+  type DestinationJourneyIntent,
+  type DirectoryPurpose,
+  type DirectoryRequest,
+} from '../../packages/offline-navigation/src/domain/journey/DestinationJourneyPolicy';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
@@ -42,15 +52,11 @@ export interface RouteGuideState { steps: RouteGuideStep[]; stepIndex: number }
 /** Runtime-only explicit destination handoff. Home opens Directions; activation policy is owned by its intent. */
 export interface PendingJourney { destination: Place }
 /** One explicit destination tap may authorize one guarded live attempt; never persisted or inferred from hydration. */
-export interface DestinationJourneyIntent {
-  id: number;
-  destinationId: string;
-  autoLive: 'eligible' | 'ineligible' | 'consumed';
-}
+export type { DestinationJourneyIntent };
 /** What the Directory is being opened to choose; null = plain browsing. */
-export type DirectoryPurpose = 'start' | 'destination';
+export type { DirectoryPurpose };
 /** A Directory answer. Quick start options carry no place: the initiator already owns the location. */
-export interface DirectoryRequest { serial: number; journeyId: number; destinationId: string; purpose: DirectoryPurpose }
+export type { DirectoryRequest };
 export interface DirectoryBrowsingState { query: string; category: string | null; selectedId: string | null; anchor: { id: string; delta: number } | null }
 export type DirectoryChoice = { request: DirectoryRequest } & (
   | { purpose: DirectoryPurpose; place: Place }
@@ -534,16 +540,14 @@ export const useAppStore = create<AppState>()(
       destinationJourneyIntent: null,
       destinationIntentSerial: 0,
       consumeDestinationIntent: (id) => {
-        const intent = get().destinationJourneyIntent;
-        if (!intent || intent.id !== id || intent.autoLive !== 'eligible') return false;
-        set({ destinationJourneyIntent: { ...intent, autoLive: 'consumed' } });
+        const spent = consumeIntent(get().destinationJourneyIntent, id);
+        if (!spent) return false;
+        set({ destinationJourneyIntent: spent });
         return true;
       },
       retireDestinationIntent: (id) => {
-        const intent = get().destinationJourneyIntent;
-        if (intent?.id === id && intent.autoLive !== 'consumed') {
-          set({ destinationJourneyIntent: { ...intent, autoLive: 'consumed' } });
-        }
+        const spent = retireIntent(get().destinationJourneyIntent, id);
+        if (spent) set({ destinationJourneyIntent: spent });
       },
       pendingJourney: null,
       setPendingJourney: (journey) => {
@@ -559,8 +563,8 @@ export const useAppStore = create<AppState>()(
           directoryJourneySerial: state.directoryJourneySerial + 1,
           directoryRequest: null, directoryChoice: null, directoryPurpose: null,
           destinationJourneyIntent: { id, destinationId: journey.destination.id,
-            autoLive: !state.isNavigating && state.locationServicesState === 'enabled' && capability.mode === 'live_navigation'
-              ? 'eligible' : 'ineligible' } });
+            autoLive: decideAutoLive({ isNavigating: state.isNavigating, servicesState: state.locationServicesState,
+              capabilityMode: capability.mode }) } });
       },
       directoryPurpose: null,
       directoryRequestSerial: 0,
@@ -590,19 +594,15 @@ export const useAppStore = create<AppState>()(
         if (!choice) { set({ directoryChoice: null }); return true; }
         const state = get();
         const request = state.directoryRequest;
-        if (!request || !state.directoryPurpose || !choice.request ||
-          choice.request.serial !== request.serial || choice.request.journeyId !== request.journeyId ||
-          choice.request.destinationId !== request.destinationId || choice.request.purpose !== request.purpose ||
-          choice.purpose !== request.purpose || request.journeyId !== state.directoryJourneySerial ||
-          request.destinationId !== state.routePlannerDest?.id) return false;
+        if (!isAnswerCurrent({ answer: choice, request, purpose: state.directoryPurpose,
+          journeyId: state.directoryJourneySerial, destinationId: state.routePlannerDest?.id })) return false;
         set({ directoryChoice: choice, directoryPurpose: null });
         return true;
       },
       consumeDirectoryChoice: (choice, destinationId) => {
         const state = get();
-        if (state.directoryChoice !== choice || state.directoryRequest?.serial !== choice.request.serial ||
-          choice.request.journeyId !== state.directoryJourneySerial ||
-          choice.request.destinationId !== destinationId || state.routePlannerDest?.id !== destinationId) return false;
+        if (!isQueuedAnswerConsumable({ queued: state.directoryChoice, answer: choice, request: state.directoryRequest,
+          journeyId: state.directoryJourneySerial, destinationId, plannerDestinationId: state.routePlannerDest?.id })) return false;
         set({ directoryChoice: null, directoryRequest: null });
         return true;
       },
