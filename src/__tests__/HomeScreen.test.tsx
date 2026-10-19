@@ -14,7 +14,7 @@ import { act, fireEvent, render, screen, userEvent, waitFor } from './test-utils
 import { DrawerStatusContext } from '@react-navigation/drawer';
 import { HomeScreen } from '../views/screens/HomeScreen';
 import { facilityIds, hasSource, pinRoles, pressMapFeature, pressEmptyMap, sourceFeatures, userDot } from './mapTestUtils';
-import { fullSheetHeight, MIN_BOTTOM_FLOOR, MIN_TOP_VISIBLE_MAP_FOR_ATTRIBUTION, OVERLAY_CONTROL_GAP } from '../viewmodels/useOverlayInsets';
+import { fullSheetHeight, routePreviewSnapPoints, MIN_BOTTOM_FLOOR, MIN_TOP_VISIBLE_MAP_FOR_ATTRIBUTION, OVERLAY_CONTROL_GAP } from '../viewmodels/useOverlayInsets';
 import { useHomeViewModel } from '../viewmodels/HomeViewModel';
 import { useDirectionsViewModel } from '../viewmodels/DirectionsViewModel';
 import { useAppStore } from '../store/useAppStore';
@@ -522,11 +522,12 @@ describe('HomeScreen — Get Directions sheet detents (#177)', () => {
     const routeContainer = height - MIN_TOP_VISIBLE_MAP_FOR_ROUTE_PREVIEW;
     const routeProps = __getLastBottomSheetModalProps() as unknown as { snapPoints: number[]; topInset?: number };
     expect(routeProps.topInset).toBeUndefined();
-    // Collapsed and middle detents keep their meaning; the top one is the same FULL as the place sheet's, so a
-    // programmatic snapToIndex(2) and a drag to the top land in exactly the same place.
+    // The collapsed detent keeps its meaning; the middle one is the 79% share lifted by the bottom system inset
+    // (EMU-N1) so the Route Guide controls clear the navigation bar. The top one is the same FULL as the place
+    // sheet's, so a programmatic snapToIndex(2) and a drag to the top land in exactly the same place.
     expect(routeProps.snapPoints).toEqual([
       Math.round(0.15 * routeContainer),
-      Math.round(0.79 * routeContainer),
+      Math.round((parseFloat(routePreviewSnapPoints(routeContainer, TEST_BOTTOM_INSET)[1]) / 100) * routeContainer),
       Math.round(fullSheetHeight(height, TEST_TOP_INSET)),
     ]);
     expect(routeProps.snapPoints[2]).toBe(placeProps.snapPoints[2]);

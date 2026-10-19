@@ -378,3 +378,18 @@ describe('withFooterFitDetent (EMU-N3): the middle Directions detent holds the p
     expect(withFooterFitDetent(['15%', '79%', '92%'], 480, 0)).toEqual(['15%', '79%', '92%']);
   });
 });
+
+describe('Route Preview detents: EMU-N1 inset lift composed with EMU-N3 footer fit', () => {
+  const compose = (container: number, bottomInset: number, footer: number) =>
+    withFooterFitDetent(routePreviewSnapPoints(container, bottomInset), container, footer);
+
+  it('keeps the inset-lifted partial detent when the footer already fits (3-button bar, normal font)', () => {
+    expect(compose(800, 48, 130)[1]).toBe('85%');
+  });
+
+  it('clamps the fitted partial detent exactly one point under FULL and keeps the detents ordered', () => {
+    const [collapsed, middle, top] = compose(230, 48, 190);
+    expect(parseFloat(middle)).toBe(parseFloat(top) - 1);
+    expect(parseFloat(collapsed)).toBeLessThan(parseFloat(middle));
+  });
+});
