@@ -4,6 +4,7 @@
  */
 
 import { getRhumbLineBearing } from 'geolib';
+import { IJTEMA_VENUE_SOURCE } from '../data/ijtema/venueAdapter';
 import {
   Block,
   Coordinate as V2Coordinate,
@@ -491,8 +492,8 @@ const resolveDestinationCandidates = (destination: RoutingDestinationV2): RouteC
 };
 
 const heuristicCostM = (fromNodeId: string, toNodeId: string): number => {
-  const from = IJTEMA_NAVIGATION_GRAPH_V2.nodes[fromNodeId];
-  const to = IJTEMA_NAVIGATION_GRAPH_V2.nodes[toNodeId];
+  const from = IJTEMA_VENUE_SOURCE.graph.getNode(fromNodeId);
+  const to = IJTEMA_VENUE_SOURCE.graph.getNode(toNodeId);
   if (!from || !to) return 0;
   return distanceMeters(from.coordinate, to.coordinate);
 };
@@ -502,7 +503,7 @@ const heuristicCostM = (fromNodeId: string, toNodeId: string): number => {
 // anywhere in the v2 graph today — so haversine-based heuristics below stay
 // admissible.
 const internalGraphNeighbors = (nodeId: string): AStarNeighbor<GraphEdge>[] =>
-  (IJTEMA_NAVIGATION_GRAPH_V2.adjacency[nodeId] ?? []).map((edge) => ({
+  IJTEMA_VENUE_SOURCE.graph.edgesFrom(nodeId).map((edge) => ({
     to: edge.to,
     weight: edge.distanceM * (edge.weightMultiplier ?? 1),
     edge,
