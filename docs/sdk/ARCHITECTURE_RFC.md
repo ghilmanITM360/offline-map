@@ -24,8 +24,8 @@ Choose a private npm-workspace TypeScript React Native library `@muslim-ummah/of
 
 ```mermaid
 flowchart TD
-  Directory[LocationsDirectoryScreen] --> Planner[JourneyStartPlanner]
-  Planner --> Store[useAppStore runtime journey authority]
+  Directory[LocationsDirectoryScreen] --> Store[useAppStore.setPendingJourney runtime journey authority]
+  Store --> Policy[Pure journey policy: capability, intent eligibility, request freshness]
   Home[HomeScreen / LocationSheet] --> Directions[DirectionsViewModel]
   Directions --> Dispatch[V2DirectionsService]
   Dispatch --> Hybrid[HybridOutsideRouteOrchestrator]

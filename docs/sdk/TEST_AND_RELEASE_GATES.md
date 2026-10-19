@@ -6,7 +6,7 @@ B1 evidence: docs-only source/config inspection; no new runtime acceptance. Phas
 
 | Preserved invariant | Proposed proof and current seam |
 | --- | --- |
-| Fresh usable GPS → destination → route → guarded automatic live | JourneyStartPlanner, LocationCapability and LocationSheet tests: origin must belong to current journey; require usable fix at commit. |
+| Fresh usable GPS → destination → route → guarded automatic live | PendingJourneyState, DestinationLiveIntent, LocationCapability, JourneyPolicyCharacterization and LocationSheet tests: origin must belong to current journey; require usable fix at commit. |
 | No usable GPS → origin resolution → preview → explicit manual | JourneyPresentationState/routeGuide store tests: no watcher/reroute/arrival in manual mode. |
 | Block2 hypothetical until confirmation | Origin/planner policy tests: no live/manual authorization from preview alone. |
 | Manual-to-live replacement preview and rollback | useManualLiveUpgrade/manualLivePreview: failed upgrade keeps guide; stale preview cannot commit. |
