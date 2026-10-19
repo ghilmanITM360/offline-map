@@ -335,16 +335,22 @@ describe('resolveControlStackPlacement — follows the real sheet top (#208 F1)'
 });
 
 
-describe('routePreviewSnapPoints (#307): the collapsed Directions detent must clear the system navigation bar', () => {
-  it('keeps the 15% detent when it already clears the bar and the peek', () => {
+describe('routePreviewSnapPoints (#307, EMU-N1): Directions detents must clear the system navigation bar', () => {
+  it('keeps the existing detents with gesture navigation and no bottom inset', () => {
     expect(routePreviewSnapPoints(900, 0)).toEqual(['15%', '79%', '92%']);
   });
 
-  it('grows the collapsed detent on a three-button bar so the peek row is above it (914 dp window, 48 dp bar)', () => {
+  it('lifts collapsed and partial on a three-button bar while leaving full unchanged', () => {
     const [collapsed, middle, top] = routePreviewSnapPoints(480, 48);
     expect(parseFloat(collapsed)).toBeGreaterThanOrEqual(((48 + 72) / 480) * 100);
-    expect(middle).toBe('79%');
+    expect(parseFloat(middle)).toBeCloseTo(79 + (48 / 480) * 100, 1);
     expect(top).toBe('92%');
+  });
+
+  it('adds only the actual inset at partial so a minimal gesture inset does not create excess space', () => {
+    const [, noInset] = routePreviewSnapPoints(640, 0);
+    const [, gestureInset] = routePreviewSnapPoints(640, 8);
+    expect(parseFloat(gestureInset) - parseFloat(noInset)).toBeCloseTo((8 / 640) * 100, 1);
   });
 
   it('never exceeds the middle detent on a very short container', () => {

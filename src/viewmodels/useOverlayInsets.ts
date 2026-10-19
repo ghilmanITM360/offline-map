@@ -76,13 +76,17 @@ export const DIRECTIONS_PEEK_HEIGHT_DP = 72;
 /**
  * Route preview detents (#307). The collapsed one holds the peek row, so it must clear the system navigation bar:
  * the sheet's container runs to the window bottom, behind the bar, and a bare 15% (~72 dp) left only a sliver above a
- * 48 dp three-button bar. The middle and top detents keep their meaning.
+ * 48 dp three-button bar. The partial detent is lifted by the same inset so its visible
+ * viewport does not lose the Route Guide controls behind that bar. The full detent keeps
+ * its meaning; content and pinned footers already apply their own safe-area padding.
  */
 export function routePreviewSnapPoints(containerHeight: number, bottomInset: number): string[] {
   if (containerHeight <= 0) return ['15%', '79%', '92%'];
-  const needed = ((bottomInset + DIRECTIONS_PEEK_HEIGHT_DP) / containerHeight) * 100;
+  const safeBottom = Math.max(bottomInset, 0);
+  const needed = ((safeBottom + DIRECTIONS_PEEK_HEIGHT_DP) / containerHeight) * 100;
   const collapsed = Math.min(Math.max(15, Math.ceil(needed)), 40);
-  return [`${collapsed}%`, '79%', '92%'];
+  const partial = Math.min(79 + (safeBottom / containerHeight) * 100, 91);
+  return [`${collapsed}%`, `${Math.round(partial * 10) / 10}%`, '92%'];
 }
 
 // A sliver of map kept above the FULL sheet, below the status bar, so it still reads as a sheet you can drag down.
