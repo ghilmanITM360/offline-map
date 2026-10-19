@@ -4,6 +4,8 @@ import { strict as assert } from 'node:assert';
 import { MinHeap } from '../../packages/offline-navigation/src/domain/algorithms/MinHeap';
 import { reconstructAStarPath, runAStar, type AStarNeighbor } from '../../packages/offline-navigation/src/domain/algorithms/AStar';
 import * as journey from '../../packages/offline-navigation/src/domain/journey';
+import { findVenuePath, validateVenueGraph } from '../../packages/offline-navigation/src/domain/venue';
+import { createSyntheticVenue } from './syntheticVenue';
 
 const {
   MAX_LIVE_FIX_AGE_MS, evaluateLocationCapability, evaluateNavigationStart, resolveStartActionKind,
@@ -183,9 +185,23 @@ check('decision outputs are copy-free codes (snake_case / UPPER_SNAKE identifier
   for (const c of codes) assert.match(c!, /^[a-z]+(_[a-z]+)*$|^[A-Z]+(_[A-Z]+)*$/);
 });
 
+// ---- Venue contract: synthetic non-Ijtema venue through the real domain (B3a) ----
+check('synthetic venue: lookup, shortest route via A*, one-way edge, unreachable, structurally valid', () => {
+  const v = createSyntheticVenue();
+  assert.deepEqual(validateVenueGraph(v.graph), []);
+  assert.equal(v.getPlace('lobby')!.nodeIds[0], 'n/1');
+  const p = findVenuePath(v.graph, 'n/1', 'n/5')!;
+  assert.deepEqual(p.nodes, ['n/1', 'n/2', 'n/3', 'n/5']);
+  assert.equal(p.costM, 56 + 61 + 120);
+  assert.equal(findVenuePath(v.graph, 'n/5', 'n/1'), undefined); // 3->5 is one-way
+  assert.equal(findVenuePath(v.graph, 'n/1', 'island'), undefined);
+  assert.equal(findVenuePath(v.graph, 'n/1', 'GATE_01'), undefined);
+  assert.equal(findVenuePath(v.graph, 'n/1', 'n/1')!.costM, 0);
+});
+
 // ---- Runtime dependency graph: everything loaded must be the emitted domain itself ----
 check('loaded module graph contains only emitted domain files (so no node_modules, RN, Expo, Zustand or app code)', () => {
-  const loaded = Object.keys(require.cache).filter((f) => f !== __filename);
+  const loaded = Object.keys(require.cache).filter((f) => f !== __filename && !f.endsWith('/syntheticVenue.js'));
   assert.ok(loaded.length >= 7, `unexpectedly small module graph: ${loaded.length}`);
   for (const f of loaded) {
     assert.match(f, /\/packages\/offline-navigation\/src\/domain\//, `non-domain module loaded: ${f}`);
