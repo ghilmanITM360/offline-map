@@ -8,8 +8,9 @@ import { createStreetRoutingGraph, getIjtemaStreetRoutingGraph } from '../src/da
 import { findNearestStreetNode, getStreetNavigationGraph } from '../src/data/ijtema/streetGraphBuilder';
 import { DISTANCE_SANITY_CAP_RATIO, isWithinStreetGraphRadius, selectStreetGraphOutsidePath } from '../src/services/OutsideStreetRoutingService';
 import { createProductionOutsideRouteSource } from '../src/services/outsideRouting/ProductionOutsideRouteSource';
+import { RoutingServiceV2 } from '../src/services/RoutingServiceV2';
 import { haversineM } from '../src/utils/SpatialGrid';
-import { streetGraphA, streetGraphB } from './sdk-headless/syntheticStreets';
+import { createSyntheticStreetGraph, streetGraphA, streetGraphB } from './sdk-headless/syntheticStreets';
 
 const raw = getStreetNavigationGraph();
 const street = getIjtemaStreetRoutingGraph();
@@ -102,6 +103,53 @@ const run = async () => {
     // The Ijtema adapter reads its own graph's metadata, not the bundled singleton's.
     const moved = createStreetRoutingGraph({ ...raw, metadata: { ...raw.metadata, centerLat: 0, centerLng: 0.001 } });
     assert.deepEqual([centreA, ijtema].map((p) => isWithinStreetGraphRadius(p, moved)), [true, false]);
+  });
+
+  await check('B3d-B: production outside paths route on the supplied street graph only (no Ijtema fallback)', async () => {
+    const gate = IJTEMA_GATES.find((g) => g.id === 'GATE_12')!.coordinate!;
+    const origin = { latitude: 24.9762, longitude: 67.011 };
+    // A private one-street graph between the same origin and GATE_12, deliberately unlike the Ijtema streets.
+    const own = createSyntheticStreetGraph({
+      nodes: [{ id: 's', lat: origin.latitude, lng: origin.longitude }, { id: 'g', lat: gate.lat, lng: gate.lng }],
+      ways: [{ from: 's', to: 'g', distanceM: 777, name: 'Own Rd' }],
+      connectors: { GATE_12: { nodeId: 'g', distanceM: 0 } },
+      coverage: { lat: origin.latitude, lng: origin.longitude, radiusM: 5000 },
+    });
+    const a = streetGraphA();
+    const b = streetGraphB();
+    const snapshot = JSON.stringify([own.input, a.input, b.input]);
+
+    const viaDefault = RoutingServiceV2.resolveOfflineOsmOutsideCandidate(origin, 'GATE_12');
+    assert.ok(viaDefault && viaDefault.outsideDistanceM !== 777);
+    assert.deepEqual(RoutingServiceV2.resolveOfflineOsmOutsideCandidate(origin, 'GATE_12', street), viaDefault);
+    assert.equal(RoutingServiceV2.resolveOfflineOsmOutsideCandidate(origin, 'GATE_12', own.graph)?.outsideDistanceM, 777);
+    assert.ok(own.reads.edgesFrom > 0, 'the supplied graph was actually searched');
+    // Neither synthetic graph covers Karachi, so both must refuse rather than quietly use the bundled graph.
+    for (const g of [a, b]) assert.equal(RoutingServiceV2.resolveOfflineOsmOutsideCandidate(origin, 'GATE_12', g.graph), null);
+    // Graph A covers its own centre but has no GATE_12 connector: still no route, not an Ijtema one.
+    assert.equal(RoutingServiceV2.resolveOfflineOsmOutsideCandidate({ latitude: 0, longitude: 0.001 }, 'GATE_12', a.graph), null);
+
+    const realFetch = globalThis.fetch;
+    let fetches = 0;
+    globalThis.fetch = (async () => { fetches++; throw new TypeError('Network request failed'); }) as typeof fetch;
+    try {
+      const request = () => ({
+        token: { requestId: 'b3d-b', requestVersion: 1 },
+        origin,
+        gates: [{ gateId: 'GATE_12', gateCoordinate: { latitude: gate.lat, longitude: gate.lng }, routeTargetCoordinate: { latitude: gate.lat, longitude: gate.lng } }],
+        signal: new AbortController().signal,
+      });
+      const ownRoute = await createProductionOutsideRouteSource({ streetGraph: own.graph }).routeToGates(request());
+      assert.equal(ownRoute.status === 'success' && ownRoute.candidateSet.provider, 'offline-osm');
+      const outcome = ownRoute.status === 'success' ? ownRoute.candidateSet.outcomes[0] : undefined;
+      assert.equal(outcome?.status === 'routed' && outcome.routes[0].distanceM, 777);
+      const uncovered = await createProductionOutsideRouteSource({ streetGraph: b.graph }).routeToGates(request());
+      assert.notEqual(uncovered.status === 'success' && uncovered.candidateSet.provider, 'offline-osm', 'graph B falls to the direct guide');
+      assert.equal(fetches, 0);
+    } finally {
+      globalThis.fetch = realFetch;
+    }
+    assert.equal(JSON.stringify([own.input, a.input, b.input]), snapshot);
   });
 
   await check('default outside route is offline: OSM street graph wins with every network call failing', async () => {

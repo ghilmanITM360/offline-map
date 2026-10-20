@@ -3,7 +3,9 @@ import type {
   OutsideRouteCandidateSource,
   OutsideWalkingManeuver,
 } from '../../models/outsideRouting';
+import type { StreetRoutingGraph } from '../../../packages/offline-navigation/src/domain/street';
 import { IJTEMA_GATES } from '../../data/ijtema';
+import { getIjtemaStreetRoutingGraph } from '../../data/ijtema/streetAdapter';
 import { RoutingServiceV2 } from '../RoutingServiceV2';
 import { generateStreetInstructions } from '../StreetInstructionService';
 import { isWithinStreetGraphRadius } from '../OutsideStreetRoutingService';
@@ -17,6 +19,8 @@ export interface ProductionOutsideRouteSourceOptions {
   googleProxyBaseUrl?: string;
   googleTimeoutMs?: number;
   enableGoogleDiagnosticProxy?: boolean;
+  /** Street graph for the offline OSM leg; defaults to the bundled Ijtema graph, loaded on first route request. */
+  streetGraph?: StreetRoutingGraph;
 }
 
 function maneuver(type: string): OutsideWalkingManeuver {
@@ -67,11 +71,12 @@ export function createProductionOutsideRouteSource(
   });
   const osm = new OfflineOsmWalkingRouteProvider({
     resolveGateRoute: (request, gate) => {
+      const streetGraph = options.streetGraph ?? getIjtemaStreetRoutingGraph();
       const v2Origin = { lat: request.origin.latitude, lng: request.origin.longitude };
-      if (!isWithinStreetGraphRadius(v2Origin)) {
+      if (!isWithinStreetGraphRadius(v2Origin, streetGraph)) {
         return { status: 'failure', reason: 'outside-coverage', retryable: false };
       }
-      const candidate = RoutingServiceV2.resolveOfflineOsmOutsideCandidate(request.origin, gate.gateId);
+      const candidate = RoutingServiceV2.resolveOfflineOsmOutsideCandidate(request.origin, gate.gateId, streetGraph);
       if (!candidate?.outsideCoordinates) return { status: 'unreachable', reason: 'no-route' };
       const gateRecord = IJTEMA_GATES.find((entry) => entry.id === gate.gateId);
       const gateLabelEn = gateRecord?.name.en ?? gate.gateId.replace('GATE_', 'Gate ');

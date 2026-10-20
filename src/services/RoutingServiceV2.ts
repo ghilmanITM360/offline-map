@@ -5,7 +5,9 @@
 
 import { getRhumbLineBearing } from 'geolib';
 import { IJTEMA_VENUE_SOURCE } from '../data/ijtema/venueAdapter';
+import { getIjtemaStreetRoutingGraph } from '../data/ijtema/streetAdapter';
 import { findBestSeededVenuePath, findBestVenuePath } from '../../packages/offline-navigation/src/domain/venue';
+import type { StreetRoutingGraph } from '../../packages/offline-navigation/src/domain/street';
 import {
   Block,
   Coordinate as V2Coordinate,
@@ -737,6 +739,7 @@ const selectOutsidePathViaBeeline = (
 const selectOutsidePathViaStreetGraph = (
   start: Extract<RoutingStartV2, { type: 'outside_coordinate' }>,
   destinationNodeIds: string[],
+  streetGraph: StreetRoutingGraph,
 ): SelectedRoutePath | undefined => {
   const gates = start.manualGateId
     ? IJTEMA_GATES.filter((gate) => gate.id === start.manualGateId)
@@ -754,7 +757,7 @@ const selectOutsidePathViaStreetGraph = (
 
   const extraCostByGateId = new Map(reachableGates.map((gate) => [gate.id, internalPathByGateId.get(gate.id)!.costM]));
 
-  const streetResult = selectStreetGraphOutsidePath(appToV2Coordinate(start.coordinate), reachableGates, extraCostByGateId);
+  const streetResult = selectStreetGraphOutsidePath(appToV2Coordinate(start.coordinate), reachableGates, extraCostByGateId, streetGraph);
   if (!streetResult) return undefined;
 
   const internalPath = internalPathByGateId.get(streetResult.gate.id);
@@ -801,8 +804,10 @@ const selectOutsidePath = (
   start: Extract<RoutingStartV2, { type: 'outside_coordinate' }>,
   destinationNodeIds: string[],
 ): SelectedRoutePath | undefined => {
-  if (MapFeatureFlagsService.useOutsideStreetGraph() && isWithinStreetGraphRadius(appToV2Coordinate(start.coordinate))) {
-    const streetPath = selectOutsidePathViaStreetGraph(start, destinationNodeIds);
+  // The Ijtema street graph is bound here, the host composition point, and only once the flag is on (lazy load).
+  const streetGraph = MapFeatureFlagsService.useOutsideStreetGraph() ? getIjtemaStreetRoutingGraph() : undefined;
+  if (streetGraph && isWithinStreetGraphRadius(appToV2Coordinate(start.coordinate), streetGraph)) {
+    const streetPath = selectOutsidePathViaStreetGraph(start, destinationNodeIds, streetGraph);
     if (streetPath) return streetPath;
     // Street-graph routing found nothing usable (e.g. a locally disconnected
     // pocket) — beeline is always available offline, so fall through rather
@@ -1090,15 +1095,22 @@ export class RoutingServiceV2 {
    * graph's own connector into `outsideDistanceM` — rather than exposing it
    * a second time as `connectorCostM` — is what keeps this path from
    * double-counting it.
+   *
+   * `streetGraph` defaults to the bundled Ijtema graph, resolved only after the gate check.
    */
-  static resolveOfflineOsmOutsideCandidate(userCoordinate: AppCoordinate, gateId: string): OfflineOsmOutsideCandidate | null {
+  static resolveOfflineOsmOutsideCandidate(
+    userCoordinate: AppCoordinate,
+    gateId: string,
+    streetGraph?: StreetRoutingGraph,
+  ): OfflineOsmOutsideCandidate | null {
     const gate = getGate(gateId);
     if (!gate || !gate.coordinate) return null;
 
+    const graph = streetGraph ?? getIjtemaStreetRoutingGraph();
     const v2Coordinate = appToV2Coordinate(userCoordinate);
-    if (!isWithinStreetGraphRadius(v2Coordinate)) return null;
+    if (!isWithinStreetGraphRadius(v2Coordinate, graph)) return null;
 
-    const result = selectStreetGraphOutsidePath(v2Coordinate, [gate]);
+    const result = selectStreetGraphOutsidePath(v2Coordinate, [gate], undefined, graph);
     if (!result) return null;
 
     return {

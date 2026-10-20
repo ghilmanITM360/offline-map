@@ -47,5 +47,12 @@ Default order is OSM walking route, then the labelled direct guide. Google is pr
 
 ## Deferred (next seam)
 
-- `isWithinStreetGraphRadius` and `RoutingServiceV2` outside paths still bind the Ijtema graph implicitly. Next: a coverage accessor on the contract and an injected street graph for `RoutingServiceV2`.
+- ~~`isWithinStreetGraphRadius` and `RoutingServiceV2` outside paths still bind the Ijtema graph implicitly.~~ Done:
+  - B3d-A (`f9c8fac`) added `StreetRoutingGraph.covers(point)`.
+  - B3d-B passes one explicit graph to both the coverage check and the search:
+    - `selectOutsidePath` binds Ijtema lazily, and only when the flag is on.
+    - `resolveOfflineOsmOutsideCandidate(..., streetGraph?)` and `createProductionOutsideRouteSource({ streetGraph })` take the graph explicitly.
+    - Synthetic-graph isolation is in `test:street-graph-contract`.
+    - A 5,418-case before/after differential is byte-identical to `f9c8fac`. The original 8,034-case script was not available on this machine.
+- `OutsideStreetRoutingService` still defaults its `streetGraph` parameters to Ijtema. Make them required once every caller passes a graph.
 - `ProductionOutsideRouteSource` gate labels/instructions, orchestrator wiring, V1 consumers, and the RN controller/UI.
