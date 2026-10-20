@@ -43,4 +43,9 @@ export interface StreetRoutingGraph<E extends StreetEdge = StreetEdge, N extends
   nearestNode(point: StreetPoint): { node: N; distanceM: number } | undefined;
   /** Connector for a host-defined place ID, or undefined when that place has none. */
   connectorFor(placeId: string): StreetConnector | undefined;
+  /**
+   * B3d-A: true when the point lies inside the area this graph was extracted for, i.e. where routing on it is
+   * meaningful. Outside it the host falls back (e.g. to a beeline); the graph decides its own boundary.
+   */
+  covers(point: StreetPoint): boolean;
 }

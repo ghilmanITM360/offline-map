@@ -6,8 +6,10 @@ import { findStreetRouteToTargets } from '../packages/offline-navigation/src/dom
 import { IJTEMA_GATES } from '../src/data/ijtema/gates';
 import { createStreetRoutingGraph, getIjtemaStreetRoutingGraph } from '../src/data/ijtema/streetAdapter';
 import { findNearestStreetNode, getStreetNavigationGraph } from '../src/data/ijtema/streetGraphBuilder';
-import { DISTANCE_SANITY_CAP_RATIO, selectStreetGraphOutsidePath } from '../src/services/OutsideStreetRoutingService';
+import { DISTANCE_SANITY_CAP_RATIO, isWithinStreetGraphRadius, selectStreetGraphOutsidePath } from '../src/services/OutsideStreetRoutingService';
 import { createProductionOutsideRouteSource } from '../src/services/outsideRouting/ProductionOutsideRouteSource';
+import { haversineM } from '../src/utils/SpatialGrid';
+import { streetGraphA, streetGraphB } from './sdk-headless/syntheticStreets';
 
 const raw = getStreetNavigationGraph();
 const street = getIjtemaStreetRoutingGraph();
@@ -60,6 +62,46 @@ const run = async () => {
     }
     // Pinned from the pre-extraction service at e79cd0b (same 12 origins, all gates with a coordinate).
     assert.equal(hash.digest('hex'), PINNED_ROUTES_SHA256);
+  });
+
+  await check('B3d-A: Ijtema coverage is bit-identical to the pre-B3d-A metadata radius test', () => {
+    const { centerLat, centerLng, radiusM } = raw.metadata;
+    const own = createStreetRoutingGraph(raw);
+    const degPerM = 1 / 111_320;
+    let inside = 0;
+    for (let i = 0; i < 400; i++) {
+      // Rings straddling the boundary (0.5x .. 1.5x radius) plus a few points within a millimetre of it.
+      const scale = i < 360 ? 0.5 + (i % 40) / 39 : 1 + ((i % 2 ? 1 : -1) * 1e-3) / radiusM;
+      const bearing = (i * 137.508 * Math.PI) / 180;
+      const p = Object.freeze({
+        lat: centerLat + Math.cos(bearing) * radiusM * scale * degPerM,
+        lng: centerLng + (Math.sin(bearing) * radiusM * scale * degPerM) / Math.cos((centerLat * Math.PI) / 180),
+      });
+      const before = haversineM(p.lat, p.lng, centerLat, centerLng) <= radiusM; // the exact pre-B3d-A expression
+      assert.equal(isWithinStreetGraphRadius(p), before, `point ${i}`);
+      assert.equal(isWithinStreetGraphRadius(p, street), before);
+      assert.equal(isWithinStreetGraphRadius(p, own), before);
+      if (before) inside++;
+    }
+    assert.ok(inside > 50 && inside < 350, `boundary sample is two-sided (${inside} inside)`);
+  });
+
+  await check('B3d-A: coverage comes only from the supplied graph (synthetic isolation, no global fallback, no mutation)', () => {
+    const a = streetGraphA();
+    const b = streetGraphB();
+    const snapshot = JSON.stringify([a.input, b.input]);
+    const centreA = Object.freeze({ lat: 0, lng: 0.001 });
+    const centreB = Object.freeze({ lat: 1, lng: 1 });
+    const ijtema = Object.freeze({ lat: raw.metadata.centerLat, lng: raw.metadata.centerLng });
+    assert.deepEqual([centreA, centreB, ijtema].map((p) => isWithinStreetGraphRadius(p, a.graph)), [true, false, false]);
+    assert.deepEqual([centreA, centreB, ijtema].map((p) => isWithinStreetGraphRadius(p, b.graph)), [false, true, false]);
+    assert.deepEqual([centreA, centreB, ijtema].map((p) => isWithinStreetGraphRadius(p)), [false, false, true]);
+    assert.equal(isWithinStreetGraphRadius({ lat: 1, lng: 1.0028 }, b.graph), false, 'graph B uses its own 300 m radius');
+    assert.equal(isWithinStreetGraphRadius({ lat: 0, lng: 0.005 }, a.graph), true, 'graph A uses its own 500 m radius (~445 m out)');
+    assert.equal(JSON.stringify([a.input, b.input]), snapshot);
+    // The Ijtema adapter reads its own graph's metadata, not the bundled singleton's.
+    const moved = createStreetRoutingGraph({ ...raw, metadata: { ...raw.metadata, centerLat: 0, centerLng: 0.001 } });
+    assert.deepEqual([centreA, ijtema].map((p) => isWithinStreetGraphRadius(p, moved)), [true, false]);
   });
 
   await check('default outside route is offline: OSM street graph wins with every network call failing', async () => {

@@ -6,8 +6,6 @@
 import { Coordinate, Gate } from '../data/ijtema/types';
 import { findStreetRouteToTargets, StreetRoutingGraph } from '../../packages/offline-navigation/src/domain/street';
 import { getIjtemaStreetRoutingGraph } from '../data/ijtema/streetAdapter';
-import { getStreetNavigationGraph } from '../data/ijtema/streetGraphBuilder';
-import { haversineM } from '../utils/SpatialGrid';
 
 /**
  * Applies only to the graph-routed street-graph segment of an outside leg,
@@ -108,13 +106,12 @@ export const selectStreetGraphOutsidePath = (
 };
 
 /**
- * True when `coordinate` falls inside the bundled street-graph's extraction
- * radius (its metadata records the exact center/radius the OSM extract used)
- * — the boundary between "route on the street graph" and "beeline fallback"
- * per Decision 1 in docs/OFFLINE_NAVIGATION_AND_ROUTING.md.
+ * True when `coordinate` falls inside `streetGraph`'s coverage (for the
+ * bundled Ijtema graph: the exact center/radius the OSM extract used) — the
+ * boundary between "route on the street graph" and "beeline fallback" per
+ * Decision 1 in docs/OFFLINE_NAVIGATION_AND_ROUTING.md.
  */
-export const isWithinStreetGraphRadius = (coordinate: Coordinate): boolean => {
-  const { metadata } = getStreetNavigationGraph();
-  const distanceM = haversineM(coordinate.lat, coordinate.lng, metadata.centerLat, metadata.centerLng);
-  return distanceM <= metadata.radiusM;
-};
+export const isWithinStreetGraphRadius = (
+  coordinate: Coordinate,
+  streetGraph: StreetRoutingGraph = getIjtemaStreetRoutingGraph(),
+): boolean => streetGraph.covers(coordinate);

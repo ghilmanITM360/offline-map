@@ -4,7 +4,7 @@
  */
 
 import type { StreetRoutingGraph } from '../../../packages/offline-navigation/src/domain/street';
-import { SpatialGrid } from '../../utils/SpatialGrid';
+import { haversineM, SpatialGrid } from '../../utils/SpatialGrid';
 import { findNearestStreetNode, getStreetNavigationGraph } from './streetGraphBuilder';
 import type { StreetGraphEdge, StreetGraphNode, StreetNavigationGraph } from './streetGraphTypes';
 
@@ -30,6 +30,8 @@ export const createStreetRoutingGraph = (
   edgesFrom: (id) => (own(graph.adjacency, id) ? graph.adjacency[id] : []),
   nearestNode,
   connectorFor: (placeId) => (own(graph.gateConnectors, placeId) ? graph.gateConnectors[placeId] : undefined),
+  // The extraction radius recorded in the graph's own metadata (Decision 1 in docs/OFFLINE_NAVIGATION_AND_ROUTING.md).
+  covers: (point) => haversineM(point.lat, point.lng, graph.metadata.centerLat, graph.metadata.centerLng) <= graph.metadata.radiusM,
 });
 
 let ijtemaStreetGraph: StreetRoutingGraph<StreetGraphEdge, StreetGraphNode> | undefined;

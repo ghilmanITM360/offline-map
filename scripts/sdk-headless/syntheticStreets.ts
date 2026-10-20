@@ -1,6 +1,6 @@
 // B3c: two small, deliberately different street graphs for exercising the real extracted street routing.
 // Each graph is built from frozen inputs into its own closure; nothing is shared or cached across graphs.
-import { SpatialGrid } from '../../packages/offline-navigation/src/domain/geo/SpatialGrid';
+import { haversineM, SpatialGrid } from '../../packages/offline-navigation/src/domain/geo/SpatialGrid';
 import type { StreetConnector, StreetEdge, StreetNode, StreetRoutingGraph } from '../../packages/offline-navigation/src/domain/street';
 
 interface Way { from: string; to: string; distanceM: number; oneWay?: boolean; geometry?: { lat: number; lng: number }[]; name?: string }
@@ -14,7 +14,7 @@ const deepFreeze = <T>(value: T): T => {
 };
 
 /** Returns the graph plus how often each accessor was hit, to prove which graph a calculation actually read. */
-export const createSyntheticStreetGraph = (spec: { nodes: StreetNode[]; ways: Way[]; connectors: Record<string, StreetConnector> }) => {
+export const createSyntheticStreetGraph = (spec: { nodes: StreetNode[]; ways: Way[]; connectors: Record<string, StreetConnector>; coverage: { lat: number; lng: number; radiusM: number } }) => {
   const input = deepFreeze(spec);
   const nodes = new Map(input.nodes.map((n) => [n.id, n]));
   const adjacency = new Map<string, StreetEdge[]>();
@@ -33,6 +33,7 @@ export const createSyntheticStreetGraph = (spec: { nodes: StreetNode[]; ways: Wa
       return hit && { node: nodes.get(hit.point.id)!, distanceM: hit.distanceM };
     },
     connectorFor: (placeId) => (Object.prototype.hasOwnProperty.call(input.connectors, placeId) ? input.connectors[placeId] : undefined),
+    covers: (p) => haversineM(p.lat, p.lng, input.coverage.lat, input.coverage.lng) <= input.coverage.radiusM,
   };
   return { graph, reads, input };
 };
@@ -50,6 +51,7 @@ export const streetGraphA = () => createSyntheticStreetGraph({
     { from: 'a4', to: 'a3', distanceM: 200, oneWay: true },
   ],
   connectors: { P: { nodeId: 'a3', distanceM: 10 }, Q: { nodeId: 'a4', distanceM: 5 }, Lost: { nodeId: 'a9', distanceM: 1 } },
+  coverage: { lat: 0, lng: 0.001, radiusM: 500 },
 });
 
 // Graph B: same node id 'x' but elsewhere and wired differently; x -> b2 is one-way.
@@ -60,4 +62,5 @@ export const streetGraphB = () => createSyntheticStreetGraph({
     { from: 'x', to: 'b3', distanceM: 120 },
   ],
   connectors: { P: { nodeId: 'b2', distanceM: 7 }, R: { nodeId: 'b3', distanceM: 3 } },
+  coverage: { lat: 1, lng: 1, radiusM: 300 },
 });
