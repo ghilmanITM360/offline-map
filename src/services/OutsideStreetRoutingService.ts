@@ -85,6 +85,8 @@ export const selectStreetGraphOutsidePath = (
   userCoordinate: Coordinate,
   candidateGates: Gate[],
   extraCostByGateId?: Map<string, number>,
+  // Host-owned default: this wrapper applies Ijtema gate policy, so the bundled Ijtema graph is its natural default.
+  // Production callers (RoutingServiceV2, ProductionOutsideRouteSource) always pass the graph they bound.
   streetGraph: StreetRoutingGraph = getIjtemaStreetRoutingGraph(),
 ): StreetOutsidePathResult | undefined => {
   // Gate eligibility, the verification penalty and the gate-number tie-break are Ijtema policy, so they are
@@ -109,9 +111,8 @@ export const selectStreetGraphOutsidePath = (
  * True when `coordinate` falls inside `streetGraph`'s coverage (for the
  * bundled Ijtema graph: the exact center/radius the OSM extract used) — the
  * boundary between "route on the street graph" and "beeline fallback" per
- * Decision 1 in docs/OFFLINE_NAVIGATION_AND_ROUTING.md.
+ * Decision 1 in docs/OFFLINE_NAVIGATION_AND_ROUTING.md. The graph is required:
+ * coverage is venue-neutral, so there is no implicit Ijtema fallback here.
  */
-export const isWithinStreetGraphRadius = (
-  coordinate: Coordinate,
-  streetGraph: StreetRoutingGraph = getIjtemaStreetRoutingGraph(),
-): boolean => streetGraph.covers(coordinate);
+export const isWithinStreetGraphRadius = (coordinate: Coordinate, streetGraph: StreetRoutingGraph): boolean =>
+  streetGraph.covers(coordinate);

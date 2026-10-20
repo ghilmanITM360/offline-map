@@ -7,6 +7,7 @@ import { IJTEMA_GATES } from '../src/data/ijtema/gates';
 import { createStreetRoutingGraph, getIjtemaStreetRoutingGraph } from '../src/data/ijtema/streetAdapter';
 import { findNearestStreetNode, getStreetNavigationGraph } from '../src/data/ijtema/streetGraphBuilder';
 import { DISTANCE_SANITY_CAP_RATIO, isWithinStreetGraphRadius, selectStreetGraphOutsidePath } from '../src/services/OutsideStreetRoutingService';
+import type { Gate } from '../src/data/ijtema/types';
 import { createProductionOutsideRouteSource } from '../src/services/outsideRouting/ProductionOutsideRouteSource';
 import { RoutingServiceV2 } from '../src/services/RoutingServiceV2';
 import { haversineM } from '../src/utils/SpatialGrid';
@@ -79,8 +80,7 @@ const run = async () => {
         lng: centerLng + (Math.sin(bearing) * radiusM * scale * degPerM) / Math.cos((centerLat * Math.PI) / 180),
       });
       const before = haversineM(p.lat, p.lng, centerLat, centerLng) <= radiusM; // the exact pre-B3d-A expression
-      assert.equal(isWithinStreetGraphRadius(p), before, `point ${i}`);
-      assert.equal(isWithinStreetGraphRadius(p, street), before);
+      assert.equal(isWithinStreetGraphRadius(p, street), before, `point ${i}`);
       assert.equal(isWithinStreetGraphRadius(p, own), before);
       if (before) inside++;
     }
@@ -96,7 +96,7 @@ const run = async () => {
     const ijtema = Object.freeze({ lat: raw.metadata.centerLat, lng: raw.metadata.centerLng });
     assert.deepEqual([centreA, centreB, ijtema].map((p) => isWithinStreetGraphRadius(p, a.graph)), [true, false, false]);
     assert.deepEqual([centreA, centreB, ijtema].map((p) => isWithinStreetGraphRadius(p, b.graph)), [false, true, false]);
-    assert.deepEqual([centreA, centreB, ijtema].map((p) => isWithinStreetGraphRadius(p)), [false, false, true]);
+    assert.deepEqual([centreA, centreB, ijtema].map((p) => isWithinStreetGraphRadius(p, street)), [false, false, true]);
     assert.equal(isWithinStreetGraphRadius({ lat: 1, lng: 1.0028 }, b.graph), false, 'graph B uses its own 300 m radius');
     assert.equal(isWithinStreetGraphRadius({ lat: 0, lng: 0.005 }, a.graph), true, 'graph A uses its own 500 m radius (~445 m out)');
     assert.equal(JSON.stringify([a.input, b.input]), snapshot);
@@ -150,6 +150,92 @@ const run = async () => {
       globalThis.fetch = realFetch;
     }
     assert.equal(JSON.stringify([own.input, a.input, b.input]), snapshot);
+  });
+
+  await check('B3d-C: interleaved graphs stay isolated; the Ijtema default lives only in the host wrapper', async () => {
+    // Synthetic gates keyed to graph A/B connectors; same id P exists in both graphs at different nodes.
+    const template = IJTEMA_GATES[0];
+    const gate = (id: string, number: number, lat: number, lng: number, status: Gate['status'] = 'provided') =>
+      Object.freeze({ ...template, id, number, status, coordinate: Object.freeze({ lat, lng }) }) as unknown as Gate;
+    const gatesA = Object.freeze([gate('P', 1, 0, 0.002), gate('Q', 2, 0.001, 0.001, 'needs_verification'), gate('Lost', 3, 0.01, 0.01)]);
+    const gatesB = Object.freeze([gate('P', 1, 1, 1.001), gate('R', 2, 1.001, 1)]);
+    const originA = Object.freeze({ lat: 0, lng: 0 });
+    const originB = Object.freeze({ lat: 1, lng: 1 });
+    const ijtemaOrigin = Object.freeze({ lat: raw.metadata.centerLat, lng: raw.metadata.centerLng });
+    const ijtemaGates = Object.freeze(IJTEMA_GATES.filter((g) => g.coordinate));
+    const run = (a: ReturnType<typeof streetGraphA>, b: ReturnType<typeof streetGraphB>) => [
+      selectStreetGraphOutsidePath(originA, [...gatesA], undefined, a.graph),
+      isWithinStreetGraphRadius(originB, a.graph),
+      selectStreetGraphOutsidePath(originB, [...gatesB], undefined, b.graph),
+      selectStreetGraphOutsidePath(originA, [...gatesA], undefined, b.graph),
+      isWithinStreetGraphRadius(originB, b.graph),
+      selectStreetGraphOutsidePath(originB, [...gatesB], new Map([['R', 1000]]), b.graph),
+      selectStreetGraphOutsidePath(originA, [...gatesA], new Map([['P', 1000]]), a.graph),
+    ];
+    // Fresh graph instances; isolation itself is pinned by the hard-coded outcomes below.
+    const isolatedA = streetGraphA();
+    const isolatedB = streetGraphB();
+    const expected = [
+      selectStreetGraphOutsidePath(originA, [...gatesA], undefined, isolatedA.graph),
+      isWithinStreetGraphRadius(originB, isolatedA.graph),
+      selectStreetGraphOutsidePath(originB, [...gatesB], undefined, isolatedB.graph),
+      selectStreetGraphOutsidePath(originA, [...gatesA], undefined, isolatedB.graph),
+      isWithinStreetGraphRadius(originB, isolatedB.graph),
+      selectStreetGraphOutsidePath(originB, [...gatesB], new Map([['R', 1000]]), isolatedB.graph),
+      selectStreetGraphOutsidePath(originA, [...gatesA], new Map([['P', 1000]]), isolatedA.graph),
+    ];
+    const a = streetGraphA();
+    const b = streetGraphB();
+    const snapshot = JSON.stringify([a.input, b.input, gatesA, gatesB]);
+    const ijtemaBefore = selectStreetGraphOutsidePath(ijtemaOrigin, [...ijtemaGates]);
+    const got = run(a, b);
+    assert.deepEqual(got, expected);
+    assert.deepEqual(run(a, b), got, 'repeat run is stable');
+    assert.deepEqual(selectStreetGraphOutsidePath(ijtemaOrigin, [...ijtemaGates]), ijtemaBefore, 'Ijtema default unaffected by synthetic calls');
+    assert.deepEqual(selectStreetGraphOutsidePath(ijtemaOrigin, [...ijtemaGates], undefined, street), ijtemaBefore);
+    const pick = (r: unknown) => {
+      const route = r as ReturnType<typeof selectStreetGraphOutsidePath>;
+      return route && [route.gate.id, route.totalDistanceM];
+    };
+    // A: P 310 m beats Q 205 m + 120 m verification penalty, until P costs +1000. B: R (123 m) unless it costs +1000.
+    // Graph B cannot route graph A's origin even though it also has a gate P: no fallback to A or Ijtema.
+    assert.deepEqual([got[0], got[2], got[3], got[5], got[6]].map(pick), [['P', 310], ['R', 123], undefined, ['P', 507], ['Q', 205]]);
+    assert.deepEqual([got[1], got[4]], [false, true]);
+    assert.equal(JSON.stringify([a.input, b.input, gatesA, gatesB]), snapshot, 'frozen inputs untouched');
+
+    // Provider order is unchanged with an injected graph: Google (diagnostic only) -> offline OSM -> direct guide.
+    const realFetch = globalThis.fetch;
+    let fetches = 0;
+    globalThis.fetch = (async () => { fetches++; throw new TypeError('Network request failed'); }) as typeof fetch;
+    try {
+      const target = IJTEMA_GATES.find((g) => g.id === 'GATE_12')!.coordinate!;
+      const origin = { latitude: 24.9762, longitude: 67.011 };
+      const own = createSyntheticStreetGraph({
+        nodes: [{ id: 's', lat: origin.latitude, lng: origin.longitude }, { id: 'g', lat: target.lat, lng: target.lng }],
+        ways: [{ from: 's', to: 'g', distanceM: 777 }],
+        connectors: { GATE_12: { nodeId: 'g', distanceM: 0 } },
+        coverage: { lat: origin.latitude, lng: origin.longitude, radiusM: 5000 },
+      });
+      const to = { latitude: target.lat, longitude: target.lng };
+      const provider = async (graph: typeof a.graph, google: boolean) => {
+        const r = await createProductionOutsideRouteSource({
+          streetGraph: graph, googleProxyBaseUrl: 'https://routing.example.test', enableGoogleDiagnosticProxy: google,
+        }).routeToGates({
+          token: { requestId: 'b3d-c', requestVersion: 1 },
+          origin,
+          gates: [{ gateId: 'GATE_12', gateCoordinate: to, routeTargetCoordinate: to }],
+          signal: new AbortController().signal,
+        });
+        return r.status === 'success' ? r.candidateSet.provider : r.status;
+      };
+      assert.equal(await provider(own.graph, false), 'offline-osm');
+      assert.equal(fetches, 0);
+      assert.equal(await provider(own.graph, true), 'offline-osm');
+      assert.ok(fetches > 0, 'Google is still tried first when the diagnostic is on');
+      assert.equal(await provider(b.graph, false), 'direct-guide', 'uncovered graph falls through to the direct guide');
+    } finally {
+      globalThis.fetch = realFetch;
+    }
   });
 
   await check('default outside route is offline: OSM street graph wins with every network call failing', async () => {

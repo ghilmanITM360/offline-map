@@ -1,5 +1,6 @@
 import { strict as assert } from 'node:assert';
 import { IJTEMA_GATES } from '../src/data/ijtema/gates';
+import { getIjtemaStreetRoutingGraph } from '../src/data/ijtema/streetAdapter';
 import { getStreetNavigationGraph } from '../src/data/ijtema/streetGraphBuilder';
 import {
   DISTANCE_SANITY_CAP_RATIO,
@@ -8,6 +9,7 @@ import {
 } from '../src/services/OutsideStreetRoutingService';
 import { haversineM } from '../src/utils/SpatialGrid';
 
+const ijtemaStreet = getIjtemaStreetRoutingGraph();
 const routableGates = IJTEMA_GATES.filter(
   (gate) => gate.coordinate && gate.routingStatus === 'routable' && gate.canStartRouteFromOutside,
 );
@@ -15,10 +17,10 @@ const routableGates = IJTEMA_GATES.filter(
 // ─── isWithinStreetGraphRadius ──────────────────────────────────────────────
 {
   const { metadata } = getStreetNavigationGraph();
-  assert.equal(isWithinStreetGraphRadius({ lat: metadata.centerLat, lng: metadata.centerLng }), true);
+  assert.equal(isWithinStreetGraphRadius({ lat: metadata.centerLat, lng: metadata.centerLng }, ijtemaStreet), true);
 
   // A point far outside the radius (roughly 20km north) must be outside.
-  assert.equal(isWithinStreetGraphRadius({ lat: metadata.centerLat + 0.2, lng: metadata.centerLng }), false);
+  assert.equal(isWithinStreetGraphRadius({ lat: metadata.centerLat + 0.2, lng: metadata.centerLng }, ijtemaStreet), false);
 }
 
 // ─── Basic pathfinding: a point near a known gate should route to a nearby gate ──
@@ -28,7 +30,7 @@ const routableGates = IJTEMA_GATES.filter(
 
   // Nudge slightly off the gate's exact coordinate (still well within the street graph).
   const nearGate05 = { lat: gate05.coordinate!.lat + 0.0015, lng: gate05.coordinate!.lng + 0.0015 };
-  assert.equal(isWithinStreetGraphRadius(nearGate05), true, 'test point must be within the bundled radius');
+  assert.equal(isWithinStreetGraphRadius(nearGate05, ijtemaStreet), true, 'test point must be within the bundled radius');
 
   const result = selectStreetGraphOutsidePath(nearGate05, routableGates);
   assert.ok(result, 'expected a street-graph path to be found near a known gate');
@@ -50,7 +52,7 @@ const routableGates = IJTEMA_GATES.filter(
   let sanityCapFlagged = 0;
   for (const gate of routableGates) {
     const probe = { lat: gate.coordinate!.lat + 0.001, lng: gate.coordinate!.lng + 0.001 };
-    if (!isWithinStreetGraphRadius(probe)) continue; // some gates may sit near the radius edge
+    if (!isWithinStreetGraphRadius(probe, ijtemaStreet)) continue; // some gates may sit near the radius edge
 
     const result = selectStreetGraphOutsidePath(probe, routableGates);
     assert.ok(result, `expected a street-graph path to be found near ${gate.id}`);

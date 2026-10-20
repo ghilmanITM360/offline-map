@@ -30,7 +30,7 @@ Recomputed from source: 7,952 nodes and 11,987 edges, all `direction: 'both'` (0
 |---|---|---|---|---|---|---|---|
 | `findStreetRouteToTargets` (domain) | explicit `StreetRoutingGraph` | none | none | none | none | is the seam | `test:sdk-headless`, `test:street-graph-contract` |
 | `selectStreetGraphOutsidePath` | adapter (default) or injected | gates, penalty, tie-break | none | none | adapter singleton | optional graph param | `test:outside-street-routing-v2`, `test:street-gate-penalty-parity-v2`, `test:outside-street-gate-selection-cost-v2` |
-| `isWithinStreetGraphRadius` | `getStreetNavigationGraph().metadata` | Ijtema extract radius | none | none | builder singleton | not yet | `test:outside-street-routing-v2` |
+| `isWithinStreetGraphRadius` | explicit `StreetRoutingGraph` (required since B3d-C) | none | none | none | none | `graph.covers` | `test:outside-street-routing-v2`, `test:street-graph-contract` |
 | `RoutingServiceV2.selectOutsidePath` | via wrapper | `IJTEMA_GATES`, internal costs | `EXPO_PUBLIC_USE_IJTEMA_OUTSIDE_STREET_GRAPH` (default on; off = beeline) | none | - | not yet | `test:outside-street-graph-integration-v2` |
 | `RoutingServiceV2.resolveOfflineOsmOutsideCandidate` | via wrapper | gate lookup | none | none | - | not yet | `ProductionOutsideRouteSource.test.ts` |
 | `HybridOutsideRouteOrchestrator` | none | none | `enableGoogleDiagnosticProxy` | only through the Google provider | none | already injected | `HybridOutsideRouteProviders.test.ts`, `test:core-provider-routing-contract-v2` |
@@ -54,5 +54,10 @@ Default order is OSM walking route, then the labelled direct guide. Google is pr
     - `resolveOfflineOsmOutsideCandidate(..., streetGraph?)` and `createProductionOutsideRouteSource({ streetGraph })` take the graph explicitly.
     - Synthetic-graph isolation is in `test:street-graph-contract`.
     - A 5,418-case before/after differential is byte-identical to `f9c8fac`. The original 8,034-case script was not available on this machine.
-- `OutsideStreetRoutingService` still defaults its `streetGraph` parameters to Ijtema. Make them required once every caller passes a graph.
+- ~~`OutsideStreetRoutingService` still defaults its `streetGraph` parameters to Ijtema.~~ B3d-C:
+  - `isWithinStreetGraphRadius(coordinate, streetGraph)` is a venue-neutral calculation, so the graph is now required. Every production caller already passed one.
+  - `selectStreetGraphOutsidePath` keeps its Ijtema default on purpose. It is the host-owned Ijtema wrapper (Ijtema `Gate`s, verification penalty, gate-number tie-break), and every production caller passes the graph it bound.
+  - The remaining Ijtema defaults are all at the host boundary: this wrapper, `RoutingServiceV2.resolveOfflineOsmOutsideCandidate`, `createProductionOutsideRouteSource` and `selectOutsidePath`. All of them are lazy.
+  - `test:street-graph-contract` has a B3d-C check covering interleaved calls on graphs A/B against isolated runs, no fallback, frozen inputs, the default equal to explicit Ijtema, and Google -> OSM -> direct provider order with an injected graph.
+  - The B3d-B differential (5,418 cases, Ijtema graph passed explicitly to the coverage call) is byte-identical to `d4c9abd`. The 8,034-case baseline script is still unrecovered, so coverage remains at 5,418.
 - `ProductionOutsideRouteSource` gate labels/instructions, orchestrator wiring, V1 consumers, and the RN controller/UI.
