@@ -4,3 +4,4 @@
  */
 
 export * from './StreetGraph';
+export * from './StreetRouting';

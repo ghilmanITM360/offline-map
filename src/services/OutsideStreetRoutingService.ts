@@ -4,9 +4,9 @@
  */
 
 import { Coordinate, Gate } from '../data/ijtema/types';
-import { findNearestStreetNode, getStreetNavigationGraph } from '../data/ijtema/streetGraphBuilder';
-import { StreetGraphEdge } from '../data/ijtema/streetGraphTypes';
-import { AStarNeighbor, reconstructAStarPath, runAStar } from '../utils/AStar';
+import { findStreetRouteToTargets, StreetRoutingGraph } from '../../packages/offline-navigation/src/domain/street';
+import { getIjtemaStreetRoutingGraph } from '../data/ijtema/streetAdapter';
+import { getStreetNavigationGraph } from '../data/ijtema/streetGraphBuilder';
 import { haversineM } from '../utils/SpatialGrid';
 
 /**
@@ -28,9 +28,6 @@ export const DISTANCE_SANITY_CAP_RATIO = 1.8;
 export const NEEDS_VERIFICATION_GATE_PENALTY_M = 120;
 export const gatePenaltyM = (gate: Gate | undefined): number => (gate?.status === 'needs_verification' ? NEEDS_VERIFICATION_GATE_PENALTY_M : 0);
 
-/** Synthetic node id for the virtual-goal-node trick below — not a real street-graph node. */
-const GATE_GOAL_SINK = '__gate_goal__';
-
 export interface StreetOutsidePathResult {
   gate: Gate;
   /** Ordered from the nearest street node to the user through to the gate's exact coordinate (inclusive). Full rendering-fidelity geometry. */
@@ -47,20 +44,6 @@ export interface StreetOutsidePathResult {
   graphRoutedDistanceM: number;
   sanityCapExceeded: boolean;
 }
-
-const heuristicToNearestNode = (fromId: string, targetNodeIds: Set<string>): number => {
-  const graph = getStreetNavigationGraph();
-  const from = graph.nodes[fromId];
-  if (!from) return 0;
-  let min = Infinity;
-  for (const targetId of targetNodeIds) {
-    const target = graph.nodes[targetId];
-    if (!target) continue;
-    const distance = haversineM(from.lat, from.lng, target.lat, target.lng);
-    if (distance < min) min = distance;
-  }
-  return min === Infinity ? 0 : min;
-};
 
 // Sub-millimeter secondary key folded into the sink weight so an exact tie
 // in real cost breaks deterministically (lowest gate number wins) instead of
@@ -92,7 +75,7 @@ export const TIE_BREAK_EPSILON_M = 1e-6;
  * Standard fix: treat "arriving at the goal via gate g" as node g plus a
  * fixed non-negative synthetic edge of weight
  * `connector.distanceM + gatePenaltyM(g) + extraCostByGateId.get(g.id)` to
- * one shared virtual sink (`GATE_GOAL_SINK`). Whenever a candidate gate node
+ * one shared virtual sink (see findStreetRouteToTargets). Whenever a candidate gate node
  * is settled, relax the sink through it; keep expanding real neighbors too (a
  * path can legitimately thread past one gate's connector toward a cheaper
  * one). Stop only when the sink itself is popped — by then no unexplored
@@ -104,113 +87,24 @@ export const selectStreetGraphOutsidePath = (
   userCoordinate: Coordinate,
   candidateGates: Gate[],
   extraCostByGateId?: Map<string, number>,
+  streetGraph: StreetRoutingGraph = getIjtemaStreetRoutingGraph(),
 ): StreetOutsidePathResult | undefined => {
-  const graph = getStreetNavigationGraph();
-  const nearestUser = findNearestStreetNode(userCoordinate);
-  if (!nearestUser) return undefined;
-
-  const targets = candidateGates
-    .filter((gate) => gate.coordinate && graph.gateConnectors[gate.id])
-    .map((gate) => ({ gate, connector: graph.gateConnectors[gate.id] }));
-  if (targets.length === 0) return undefined;
-
-  const targetNodeIds = new Set(targets.map((target) => target.connector.nodeId));
-  const targetSinkWeight = new Map(
-    targets.map((target) => [
-      target.connector.nodeId,
-      target.connector.distanceM +
-        gatePenaltyM(target.gate) +
-        (extraCostByGateId?.get(target.gate.id) ?? 0) +
-        target.gate.number * TIE_BREAK_EPSILON_M,
-    ]),
+  // Gate eligibility, the verification penalty and the gate-number tie-break are Ijtema policy, so they are
+  // folded in here; the search itself is the venue-independent findStreetRouteToTargets.
+  const gates = candidateGates.filter((gate) => gate.coordinate);
+  const route = findStreetRouteToTargets(
+    streetGraph,
+    userCoordinate,
+    gates.map((gate) => ({
+      id: gate.id,
+      coordinate: gate.coordinate!,
+      extraCostsM: [gatePenaltyM(gate), extraCostByGateId?.get(gate.id) ?? 0, gate.number * TIE_BREAK_EPSILON_M],
+    })),
+    DISTANCE_SANITY_CAP_RATIO,
   );
-
-  // Real street-graph edges, plus (only from a candidate gate's connector
-  // node) one synthetic edge to the virtual sink weighted by that gate's
-  // connector + penalty + extra cost — see the function doc comment above.
-  const neighbors = (nodeId: string): AStarNeighbor<StreetGraphEdge>[] => {
-    const realNeighbors = (graph.adjacency[nodeId] ?? []).map((edge) => ({ to: edge.to, weight: edge.distanceM, edge }));
-    const sinkWeight = targetSinkWeight.get(nodeId);
-    return sinkWeight === undefined ? realNeighbors : [...realNeighbors, { to: GATE_GOAL_SINK, weight: sinkWeight }];
-  };
-
-  const result = runAStar<StreetGraphEdge>({
-    seeds: [{ id: nearestUser.node.id, gScore: 0 }],
-    heuristic: (nodeId) => (nodeId === GATE_GOAL_SINK ? 0 : heuristicToNearestNode(nodeId, targetNodeIds)),
-    neighbors,
-    isGoal: (nodeId) => nodeId === GATE_GOAL_SINK,
-  });
-  if (!result) return undefined;
-
-  const reachedNodeId = result.previousNode[GATE_GOAL_SINK];
-  if (!reachedNodeId) return undefined;
-
-  const reachedTarget = targets.find((target) => target.connector.nodeId === reachedNodeId);
-  if (!reachedTarget) return undefined;
-
-  const { edges: edgesUsed } = reconstructAStarPath(result, reachedNodeId);
-
-  const coordinates: Coordinate[] = [];
-  const dedupToleranceM = 2;
-  const pushCoord = (lat: number, lng: number) => {
-    const last = coordinates[coordinates.length - 1];
-    if (last && haversineM(last.lat, last.lng, lat, lng) <= dedupToleranceM) return;
-    coordinates.push({ lat, lng });
-  };
-
-  // Topology nodes are the real decision points (intersections/dead-ends) —
-  // turn-by-turn instructions are generated from this coarser sequence, not
-  // from every rendering-fidelity geometry point (which would produce one
-  // instruction per smoothing point on a curve).
-  //
-  // Issue #69: the first topology point used to be the snapped street node itself, so
-  // `nearestUser.distanceM` (the raw-GPS-to-street-node snap leg, already folded into
-  // `totalDistanceM` below) never appeared as a hop — turn-by-turn instructions silently
-  // dropped that leg's distance. Prepending the raw user coordinate as a real hop (when the
-  // gap is more than dedup noise) fixes this at the source for every instruction-generation
-  // caller without touching StreetInstructionService's per-hop logic.
-  const topologyCoordinates: Coordinate[] =
-    nearestUser.distanceM > dedupToleranceM
-      ? [{ lat: userCoordinate.lat, lng: userCoordinate.lng }, { lat: nearestUser.node.lat, lng: nearestUser.node.lng }]
-      : [{ lat: nearestUser.node.lat, lng: nearestUser.node.lng }];
-  const topologyEdgeDistancesM: number[] = nearestUser.distanceM > dedupToleranceM ? [nearestUser.distanceM] : [];
-  const topologyEdgeNames: Array<string | undefined> = nearestUser.distanceM > dedupToleranceM ? [undefined] : [];
-
-  // Issue #107: this rendering-fidelity `coordinates` array had the same gap #69 fixed
-  // in `topologyCoordinates` above — it always started at the snapped node, never the raw
-  // origin. OutsideRouteValidation checks route.coordinates[0] against the request origin
-  // (MAX_ROUTE_ENDPOINT_OFFSET_M = 100m); once the snap leg alone exceeds that, a valid OSM
-  // route was rejected as "origin mismatch" and orchestration fell back to direct-guide.
-  if (nearestUser.distanceM > dedupToleranceM) pushCoord(userCoordinate.lat, userCoordinate.lng);
-  pushCoord(nearestUser.node.lat, nearestUser.node.lng);
-  for (const edge of edgesUsed) {
-    for (const point of edge.geometry ?? []) pushCoord(point.lat, point.lng);
-    const endNode = graph.nodes[edge.to];
-    pushCoord(endNode.lat, endNode.lng);
-    topologyCoordinates.push({ lat: endNode.lat, lng: endNode.lng });
-    topologyEdgeDistancesM.push(edge.distanceM);
-    topologyEdgeNames.push(edge.name);
-  }
-  pushCoord(reachedTarget.gate.coordinate!.lat, reachedTarget.gate.coordinate!.lng);
-  topologyCoordinates.push({ lat: reachedTarget.gate.coordinate!.lat, lng: reachedTarget.gate.coordinate!.lng });
-  topologyEdgeDistancesM.push(reachedTarget.connector.distanceM);
-  topologyEdgeNames.push(undefined);
-
-  const graphRoutedDistanceM = result.gScore[reachedNodeId];
-  const reachedNode = graph.nodes[reachedNodeId];
-  const straightLineForRatio = haversineM(nearestUser.node.lat, nearestUser.node.lng, reachedNode.lat, reachedNode.lng);
-  const ratio = straightLineForRatio > 0 ? graphRoutedDistanceM / straightLineForRatio : 1;
-
-  return {
-    gate: reachedTarget.gate,
-    coordinates,
-    topologyCoordinates,
-    topologyEdgeDistancesM,
-    topologyEdgeNames,
-    totalDistanceM: nearestUser.distanceM + graphRoutedDistanceM + reachedTarget.connector.distanceM,
-    graphRoutedDistanceM,
-    sanityCapExceeded: ratio > DISTANCE_SANITY_CAP_RATIO,
-  };
+  if (!route) return undefined;
+  const { targetId, ...outsidePath } = route;
+  return { gate: gates.find((gate) => gate.id === targetId)!, ...outsidePath };
 };
 
 /**

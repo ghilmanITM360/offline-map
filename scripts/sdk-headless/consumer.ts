@@ -5,7 +5,9 @@ import { MinHeap } from '../../packages/offline-navigation/src/domain/algorithms
 import { reconstructAStarPath, runAStar, type AStarNeighbor } from '../../packages/offline-navigation/src/domain/algorithms/AStar';
 import * as journey from '../../packages/offline-navigation/src/domain/journey';
 import { findVenuePath, validateVenueGraph } from '../../packages/offline-navigation/src/domain/venue';
+import { findStreetRouteToTargets } from '../../packages/offline-navigation/src/domain/street';
 import { createSyntheticVenue } from './syntheticVenue';
+import { streetGraphA, streetGraphB } from './syntheticStreets';
 
 const {
   MAX_LIVE_FIX_AGE_MS, evaluateLocationCapability, evaluateNavigationStart, resolveStartActionKind,
@@ -199,9 +201,74 @@ check('synthetic venue: lookup, shortest route via A*, one-way edge, unreachable
   assert.equal(findVenuePath(v.graph, 'n/1', 'n/1')!.costM, 0);
 });
 
+// ---- Street routing: two synthetic street graphs through the real extracted calculation (B3c) ----
+const CAP = 1.8;
+const at = (lat: number, lng: number) => ({ lat, lng });
+const route = (g: ReturnType<typeof streetGraphA>, origin: { lat: number; lng: number }, ids: string[], extra: Record<string, number[]> = {}, cap = CAP) =>
+  findStreetRouteToTargets(g.graph, origin, ids.map((id) => ({ id, coordinate: at(9, 9), extraCostsM: extra[id] })), cap);
+
+check('street graph A: shortest two-way route, geometry in travel order, costs split into street/connector', () => {
+  const r = route(streetGraphA(), at(0, 0), ['P'])!;
+  assert.equal(r.targetId, 'P');
+  assert.equal(r.graphRoutedDistanceM, 300);
+  assert.equal(r.totalDistanceM, 310);
+  assert.deepEqual(r.topologyEdgeDistancesM, [150, 150, 10]);
+  assert.deepEqual(r.topologyEdgeNames, ['Alpha Rd', undefined, undefined]);
+  assert.deepEqual(r.coordinates, [at(0, 0), at(0, 0.001), at(0.0001, 0.0015), at(0, 0.002), at(9, 9)]);
+  assert.equal(r.sanityCapExceeded, false);
+  assert.equal(route(streetGraphA(), at(0, 0), ['P'], {}, 1.2)!.sanityCapExceeded, true, 'sanity ratio is caller policy');
+});
+check('street graph A: reversed two-way geometry, one-way edges honoured in one direction only', () => {
+  const back = route(streetGraphA(), at(0, 0.002), ['Q'])!; // a3 -> a4 must not reverse the one-way a4 -> a3
+  assert.equal(back.graphRoutedDistanceM, 150 + 150 + 200);
+  assert.deepEqual(back.coordinates.slice(0, 3), [at(0, 0.002), at(0.0001, 0.0015), at(0, 0.001)]);
+  assert.equal(route(streetGraphA(), at(0.001, 0.001), ['P'])!.graphRoutedDistanceM, 200); // a4 -> a3 forward
+});
+check('street routing minimises connector + extra arrival costs, not just the street leg', () => {
+  assert.equal(route(streetGraphA(), at(0, 0), ['P', 'Q'])!.targetId, 'Q'); // 205 < 310
+  assert.equal(route(streetGraphA(), at(0, 0), ['P', 'Q'], { Q: [100, 100] })!.targetId, 'P'); // 405 > 310
+  const snap = route(streetGraphA(), at(0.0005, 0), ['P'])!; // ~55 m off a1: snap leg becomes a real first hop
+  assert.deepEqual(snap.coordinates[0], at(0.0005, 0));
+  assert.ok(snap.topologyEdgeDistancesM[0] > 50 && snap.totalDistanceM === snap.topologyEdgeDistancesM[0] + 310);
+});
+check('street routing: unreachable, unknown and connector-less targets return undefined', () => {
+  const a = streetGraphA();
+  assert.equal(route(a, at(0, 0), ['Lost']), undefined);
+  assert.equal(route(a, at(0, 0), ['Nope', '__proto__', 'constructor']), undefined);
+  assert.equal(route(a, at(0, 0), []), undefined);
+  assert.equal(route(streetGraphB(), at(1, 1.001), ['R']), undefined); // b2 is a one-way dead end
+});
+check('two graphs share node id "x" with different connectivity; interleaved requests never leak state', () => {
+  const a = streetGraphA();
+  const b = streetGraphB();
+  const fromA = () => route(a, at(0, 0.001), ['P']);
+  const fromB = () => route(b, at(1, 1), ['P', 'R']);
+  const firstA = fromA()!;
+  const firstB = fromB()!;
+  assert.deepEqual([firstA.targetId, firstA.totalDistanceM], ['P', 160]);
+  assert.deepEqual([firstB.targetId, firstB.totalDistanceM], ['R', 123]);
+  assert.equal(route(b, at(1, 1), ['P'])!.totalDistanceM, 507);
+  for (let i = 0; i < 5; i++) {
+    assert.deepEqual(fromB(), firstB);
+    assert.deepEqual(fromA(), firstA);
+  }
+  const before = a.reads.edgesFrom;
+  fromB();
+  assert.equal(a.reads.edgesFrom, before, 'routing graph B read nothing from graph A');
+  assert.deepEqual(route(streetGraphA(), at(0, 0.001), ['P']), firstA, 'a fresh instance gives the same answer');
+});
+check('street inputs stay frozen and unmutated', () => {
+  const a = streetGraphA();
+  const snapshot = JSON.stringify(a.input);
+  const targets = Object.freeze([Object.freeze({ id: 'P', coordinate: Object.freeze(at(9, 9)), extraCostsM: Object.freeze([1, 2]) })]);
+  assert.ok(findStreetRouteToTargets(a.graph, Object.freeze(at(0, 0)), targets, CAP));
+  assert.equal(JSON.stringify(a.input), snapshot);
+  assert.ok(Object.isFrozen(a.graph.edgesFrom('a1')[0]));
+});
+
 // ---- Runtime dependency graph: everything loaded must be the emitted domain itself ----
-check('loaded module graph contains only emitted domain files (so no node_modules, RN, Expo, Zustand or app code)', () => {
-  const loaded = Object.keys(require.cache).filter((f) => f !== __filename && !f.endsWith('/syntheticVenue.js'));
+check('loaded module graph contains only emitted domain files (so no node_modules, RN, Expo, Zustand, app code or Ijtema data)', () => {
+  const loaded = Object.keys(require.cache).filter((f) => f !== __filename && !/\/synthetic(Venue|Streets)\.js$/.test(f));
   assert.ok(loaded.length >= 7, `unexpectedly small module graph: ${loaded.length}`);
   for (const f of loaded) {
     assert.match(f, /\/packages\/offline-navigation\/src\/domain\//, `non-domain module loaded: ${f}`);
