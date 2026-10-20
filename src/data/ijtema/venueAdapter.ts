@@ -8,12 +8,12 @@ import { IJTEMA_BLOCKS } from './blocks';
 import { IJTEMA_GATES } from './gates';
 import { getBlockEntryNodeIds } from './graphBuilder';
 import { IJTEMA_NAVIGATION_GRAPH_V2 } from './navigationGraph';
-import type { GraphEdge, NavigationGraphV2 } from './graphTypes';
+import type { GraphEdge, GraphNode, NavigationGraphV2 } from './graphTypes';
 
 const own = (o: object, k: string): boolean => Object.prototype.hasOwnProperty.call(o, k);
 
 /** Read-only view over the existing Ijtema records. Nothing is copied: edges/nodes are the graph's own objects. */
-export const createIjtemaVenueSource = (graph: NavigationGraphV2 = IJTEMA_NAVIGATION_GRAPH_V2): VenueDataSource<GraphEdge> => {
+export const createIjtemaVenueSource = (graph: NavigationGraphV2 = IJTEMA_NAVIGATION_GRAPH_V2): VenueDataSource<GraphEdge, GraphNode> => {
   const connected = (ids: string[]): string[] => ids.filter((id) => own(graph.nodes, id));
   const places = new Map<string, VenuePlace>();
   for (const gate of IJTEMA_GATES) {

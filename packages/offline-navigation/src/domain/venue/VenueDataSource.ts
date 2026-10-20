@@ -24,9 +24,9 @@ export interface VenueEdge {
   readonly weightMultiplier?: number;
 }
 
-export interface VenueRoutingGraph<E extends VenueEdge = VenueEdge> {
+export interface VenueRoutingGraph<E extends VenueEdge = VenueEdge, N extends VenueNode = VenueNode> {
   nodeIds(): readonly string[];
-  getNode(id: string): VenueNode | undefined;
+  getNode(id: string): N | undefined;
   /** Outgoing edges; empty for unknown or dead-end nodes. Must not be mutated by callers. */
   edgesFrom(id: string): readonly E[];
 }
@@ -39,11 +39,11 @@ export interface VenuePlace {
   readonly nodeIds: readonly string[];
 }
 
-export interface VenueDataSource<E extends VenueEdge = VenueEdge> {
+export interface VenueDataSource<E extends VenueEdge = VenueEdge, N extends VenueNode = VenueNode> {
   readonly venueId: string;
   /** Data pack/version label, for diagnostics and cache keys. */
   readonly dataVersion: string;
-  readonly graph: VenueRoutingGraph<E>;
+  readonly graph: VenueRoutingGraph<E, N>;
   placeIds(): readonly string[];
   getPlace(id: string): VenuePlace | undefined;
 }

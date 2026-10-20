@@ -5,6 +5,7 @@
 
 import { getRhumbLineBearing } from 'geolib';
 import { IJTEMA_VENUE_SOURCE } from '../data/ijtema/venueAdapter';
+import { findBestSeededVenuePath, findBestVenuePath } from '../../packages/offline-navigation/src/domain/venue';
 import {
   Block,
   Coordinate as V2Coordinate,
@@ -13,7 +14,6 @@ import {
   GraphNode,
   IJTEMA_BLOCKS,
   IJTEMA_GATES,
-  IJTEMA_NAVIGATION_GRAPH_V2,
   IJTEMA_RASTAS,
   IJTEMA_SPECIAL_ROUTES,
   distanceMeters,
@@ -30,7 +30,6 @@ import type {
   OutsideRouteCandidateSet,
 } from '../models/outsideRouting';
 import { EntryGateRoutingService, RouteStartResolutionV2 } from './EntryGateRoutingService';
-import { AStarNeighbor, reconstructAStarPath, runAStar } from '../utils/AStar';
 import { MapFeatureFlagsService } from './MapFeatureFlagsService';
 import {
   gatePenaltyM,
@@ -251,18 +250,24 @@ const buildPlanRequestId = (userCoordinate: AppCoordinate, destination: RoutingD
   return `plan_${lat}_${lng}_to_${destinationRequestKey(destination)}${manualSuffix}`;
 };
 
+// The only graph this host-owned service routes on. All graph reads go through this read-only view; the search
+// itself (findBestVenuePath / findBestSeededVenuePath) is venue-independent and takes the graph explicitly.
+// Every weighted edge (distanceM * (weightMultiplier ?? 1)) is >= its straight-line endpoint distance — no
+// weightMultiplier below 1 is used anywhere in the v2 graph today — so its haversine heuristics stay admissible.
+const venueGraph = IJTEMA_VENUE_SOURCE.graph;
+
 const routeNodeTypes = new Set(['rasta_point', 'special_route_point', 'central_point', 'gate', 'block_entry']);
 
 const getBlock = (blockId: string): Block | undefined => IJTEMA_BLOCKS.find((block) => block.id === blockId);
 const getGate = (gateId: string): Gate | undefined => IJTEMA_GATES.find((gate) => gate.id === gateId);
 
 const isRoutableGraphNode = (nodeId: string): boolean => {
-  const node = IJTEMA_NAVIGATION_GRAPH_V2.nodes[nodeId];
+  const node = venueGraph.getNode(nodeId);
   return Boolean(node && routeNodeTypes.has(node.type));
 };
 
 const getConnectedCandidates = (nodeIds: string[]): string[] =>
-  nodeIds.filter((nodeId) => isRoutableGraphNode(nodeId) && IJTEMA_NAVIGATION_GRAPH_V2.adjacency[nodeId]?.length > 0);
+  nodeIds.filter((nodeId) => isRoutableGraphNode(nodeId) && venueGraph.edgesFrom(nodeId).length > 0);
 
 const getBlockEntryCandidates = (blockId: string): string[] => getConnectedCandidates(getBlockEntryNodeIds(blockId));
 
@@ -277,7 +282,7 @@ const getSpecialRouteCandidates = (routeId: string): string[] => {
 };
 
 const friendlyNodeName = (nodeId: string): string => {
-  const node = IJTEMA_NAVIGATION_GRAPH_V2.nodes[nodeId];
+  const node = venueGraph.getNode(nodeId);
   if (!node) return 'the route';
 
   if (node.type === 'central_point') return 'central junction';
@@ -353,7 +358,7 @@ export const classifyJunctionTurn = (previous: V2Coordinate, junction: V2Coordin
 
 const generateInstructions = (path: ShortestPathResult, destinationLabel: string): NavigationInstruction[] => {
   const instructions: NavigationInstruction[] = [];
-  const firstNode = IJTEMA_NAVIGATION_GRAPH_V2.nodes[path.nodes[0]];
+  const firstNode = venueGraph.getNode(path.nodes[0]);
 
   instructions.push({
     id: 'v2-start',
@@ -366,9 +371,9 @@ const generateInstructions = (path: ShortestPathResult, destinationLabel: string
   });
 
   path.edges.forEach((edge, index) => {
-    const toNode = IJTEMA_NAVIGATION_GRAPH_V2.nodes[edge.to];
-    const junctionNode = IJTEMA_NAVIGATION_GRAPH_V2.nodes[path.nodes[index]];
-    const previousNode = index > 0 ? IJTEMA_NAVIGATION_GRAPH_V2.nodes[path.nodes[index - 1]] : undefined;
+    const toNode = venueGraph.getNode(edge.to);
+    const junctionNode = venueGraph.getNode(path.nodes[index]);
+    const previousNode = index > 0 ? venueGraph.getNode(path.nodes[index - 1]) : undefined;
     const maneuverType =
       previousNode && junctionNode && toNode
         ? classifyJunctionTurn(previousNode.coordinate, junctionNode.coordinate, toNode.coordinate)
@@ -385,7 +390,7 @@ const generateInstructions = (path: ShortestPathResult, destinationLabel: string
     });
   });
 
-  const finalNode = IJTEMA_NAVIGATION_GRAPH_V2.nodes[path.nodes[path.nodes.length - 1]];
+  const finalNode = venueGraph.getNode(path.nodes[path.nodes.length - 1]);
   instructions.push({
     id: 'v2-arrival',
     semantic: { key: 'instructions.arrival', params: { name: destinationLabel } },
@@ -491,68 +496,8 @@ const resolveDestinationCandidates = (destination: RoutingDestinationV2): RouteC
   };
 };
 
-const heuristicCostM = (fromNodeId: string, toNodeId: string): number => {
-  const from = IJTEMA_VENUE_SOURCE.graph.getNode(fromNodeId);
-  const to = IJTEMA_VENUE_SOURCE.graph.getNode(toNodeId);
-  if (!from || !to) return 0;
-  return distanceMeters(from.coordinate, to.coordinate);
-};
-
-// Every weighted edge (distanceM * (weightMultiplier ?? 1)) is >= its
-// straight-line endpoint distance — no weightMultiplier below 1 is used
-// anywhere in the v2 graph today — so haversine-based heuristics below stay
-// admissible.
-const internalGraphNeighbors = (nodeId: string): AStarNeighbor<GraphEdge>[] =>
-  IJTEMA_VENUE_SOURCE.graph.edgesFrom(nodeId).map((edge) => ({
-    to: edge.to,
-    weight: edge.distanceM * (edge.weightMultiplier ?? 1),
-    edge,
-  }));
-
-const calculateShortestPath = (startNodeId: string, destinationNodeId: string): ShortestPathResult | undefined => {
-  if (startNodeId === destinationNodeId) {
-    return {
-      nodes: [startNodeId],
-      edges: [],
-      distanceM: 0,
-      costM: 0,
-    };
-  }
-
-  const result = runAStar<GraphEdge>({
-    seeds: [{ id: startNodeId, gScore: 0 }],
-    heuristic: (nodeId) => heuristicCostM(nodeId, destinationNodeId),
-    neighbors: internalGraphNeighbors,
-    isGoal: (nodeId) => nodeId === destinationNodeId,
-  });
-  if (!result) return undefined;
-
-  const { nodes, edges } = reconstructAStarPath(result, result.goalId);
-  if (nodes[0] !== startNodeId || nodes.length < 2) return undefined;
-
-  return {
-    nodes,
-    edges,
-    distanceM: edges.reduce((sum, edge) => sum + edge.distanceM, 0),
-    costM: result.gScore[result.goalId],
-  };
-};
-
-const findBestPath = (startNodeIds: string[], destinationNodeIds: string[]): ShortestPathResult | undefined => {
-  let bestPath: ShortestPathResult | undefined;
-
-  for (const startNodeId of startNodeIds) {
-    for (const destinationNodeId of destinationNodeIds) {
-      const path = calculateShortestPath(startNodeId, destinationNodeId);
-      if (!path) continue;
-      if (!bestPath || path.costM < bestPath.costM) {
-        bestPath = path;
-      }
-    }
-  }
-
-  return bestPath;
-};
+const findBestPath = (startNodeIds: string[], destinationNodeIds: string[]): ShortestPathResult | undefined =>
+  findBestVenuePath(venueGraph, startNodeIds, destinationNodeIds);
 
 const routeSegmentsFromPath = (path: ShortestPathResult): RouteSegment[] =>
   path.edges.map((edge) => ({
@@ -669,11 +614,11 @@ const pathCoordinates = (
   // coordinate (street-graph legs end on the gate's exact coordinate too), in
   // which case the boundary is the existing last index, not a new one.
   if (path.nodes.length > 0) {
-    appendCoordinate(coordinates, toAppCoordinate(IJTEMA_NAVIGATION_GRAPH_V2.nodes[path.nodes[0]]));
+    appendCoordinate(coordinates, toAppCoordinate(venueGraph.getNode(path.nodes[0])!));
   }
   const outsideLegCoordinateCount = Math.max(0, coordinates.length - 1);
 
-  path.nodes.slice(1).forEach((nodeId) => appendCoordinate(coordinates, toAppCoordinate(IJTEMA_NAVIGATION_GRAPH_V2.nodes[nodeId])));
+  path.nodes.slice(1).forEach((nodeId) => appendCoordinate(coordinates, toAppCoordinate(venueGraph.getNode(nodeId)!)));
 
   // #103: a same-node degenerate path (start and destination resolve to the
   // identical graph node, e.g. two Rasta/SpecialRoute labels sharing a
@@ -710,19 +655,6 @@ const resolveOutsideGateSeeds = (
       return { gate, connectorDistanceM, seedCostM: connectorDistanceM + gatePenaltyM(gate) };
     });
 
-const heuristicToNearestDestination = (nodeId: string, destinationNodeIds: string[]): number => {
-  const node = IJTEMA_NAVIGATION_GRAPH_V2.nodes[nodeId];
-  if (!node) return 0;
-  let min = Infinity;
-  for (const destinationId of destinationNodeIds) {
-    const destination = IJTEMA_NAVIGATION_GRAPH_V2.nodes[destinationId];
-    if (!destination) continue;
-    const distance = distanceMeters(node.coordinate, destination.coordinate);
-    if (distance < min) min = distance;
-  }
-  return min === Infinity ? 0 : min;
-};
-
 // Multi-source A*: seeds the heap with every candidate gate simultaneously
 // (priority = connector distance + gate penalty) instead of running a full
 // graph search once per gate. First destination pop is optimal because the
@@ -737,32 +669,17 @@ const findBestOutsidePath = (
   seeds: OutsideGateSeed[],
   destinationNodeIds: string[],
 ): { path: ShortestPathResult; seed: OutsideGateSeed } | undefined => {
-  if (seeds.length === 0 || destinationNodeIds.length === 0) return undefined;
+  const best = findBestSeededVenuePath(
+    venueGraph,
+    seeds.map((seed) => ({ id: seed.gate.id, gScore: seed.seedCostM })),
+    destinationNodeIds,
+  );
+  if (!best) return undefined;
 
-  const destinationSet = new Set(destinationNodeIds);
-
-  const result = runAStar<GraphEdge>({
-    seeds: seeds.map((seed) => ({ id: seed.gate.id, gScore: seed.seedCostM })),
-    heuristic: (nodeId) => heuristicToNearestDestination(nodeId, destinationNodeIds),
-    neighbors: internalGraphNeighbors,
-    isGoal: (nodeId) => destinationSet.has(nodeId),
-  });
-  if (!result) return undefined;
-
-  const { nodes, edges } = reconstructAStarPath(result, result.goalId);
-
-  const seed = seeds.find((candidate) => candidate.gate.id === nodes[0]);
+  const seed = seeds.find((candidate) => candidate.gate.id === best.seedId);
   if (!seed) return undefined;
 
-  return {
-    path: {
-      nodes,
-      edges,
-      distanceM: edges.reduce((sum, edge) => sum + edge.distanceM, 0),
-      costM: result.gScore[result.goalId] - seed.seedCostM,
-    },
-    seed,
-  };
+  return { path: best.route, seed };
 };
 
 // Beeline fallback: always available offline, no dependency on the bundled
@@ -902,7 +819,7 @@ const selectDefaultPath = (start: RoutingStartV2, destinationNodeIds: string[]):
   const path = findBestPath(startCandidates.nodeIds, destinationNodeIds);
   if (!path) return undefined;
 
-  const firstNode = IJTEMA_NAVIGATION_GRAPH_V2.nodes[path.nodes[0]];
+  const firstNode = venueGraph.getNode(path.nodes[0]);
   const startCoordinate =
     start.type === 'inside_coordinate' || start.type === 'outside_coordinate'
       ? start.coordinate
