@@ -13,6 +13,10 @@ import {
   DirectionsHeader as SdkDirectionsHeader,
   type DirectionsHeaderTheme,
 } from '../../../../packages/offline-navigation/src/ui/DirectionsHeader';
+import {
+  StartOptionCard as SdkStartOptionCard,
+  type StartOptionCardTheme,
+} from '../../../../packages/offline-navigation/src/ui/StartOptionCard';
 
 /**
  * Presentational pieces of the Get Directions sheet (#177). They hold no route, GPS or
@@ -92,16 +96,22 @@ function EndpointRowView({ row }: { row: EndpointRow }) {
   );
 }
 
-/** One starting-location choice. `active` mirrors the real start source, never a guess. */
-export function StartOptionCard({
-  icon,
-  title,
-  subtitle,
-  active,
-  disabled,
-  loading,
-  onPress,
-}: {
+const startOptionColors = {
+  optionFill: c.optionFill,
+  optionBorder: c.optionBorder,
+  optionSelectedFill: c.optionSelectedFill,
+  optionSelectedBorder: c.optionSelectedBorder,
+  pressedFill: c.actionPressedFill,
+  iconDisc: c.iconDisc,
+  iconDiscSolid: c.iconDiscSolid,
+  headingText: c.headingText,
+  secondaryText: c.secondaryText,
+  brand: c.brand,
+  brandText: c.brandText,
+};
+
+/** Ijtema binding for the SDK start option: supplies direction, icons and app colours; same props as before B4b-4. */
+export function StartOptionCard(props: {
   icon: React.ReactNode;
   title: string;
   subtitle: string;
@@ -110,31 +120,12 @@ export function StartOptionCard({
   loading?: boolean;
   onPress: () => void;
 }) {
-  const Chevron = isRtl() ? ChevronLeft : ChevronRight;
-  return (
-    <Pressable
-      style={({ pressed }) => [
-        styles.option,
-        active && styles.optionActive,
-        disabled && styles.optionDisabled,
-        pressed && !disabled && styles.optionPressed,
-      ]}
-      disabled={disabled}
-      onPress={onPress}
-      accessibilityRole="button"
-      accessibilityLabel={`${title}. ${subtitle}`}
-      accessibilityState={{ selected: !!active, disabled: !!disabled, busy: !!loading }}
-    >
-      <View style={[styles.optionDisc, active && styles.optionDiscActive]}>
-        {loading ? <RefreshCw size={22} color={active ? c.brandText : c.brand} /> : icon}
-      </View>
-      <View style={styles.flex}>
-        <Text style={styles.optionTitle}>{title}</Text>
-        <Text style={styles.optionSubtitle}>{subtitle}</Text>
-      </View>
-      <Chevron size={20} color={c.secondaryText} />
-    </Pressable>
+  const { isRTL } = useI18n();
+  const theme = useMemo<StartOptionCardTheme>(
+    () => ({ ForwardIcon: isRTL ? ChevronLeft : ChevronRight, LoadingIcon: RefreshCw, colors: startOptionColors }),
+    [isRTL],
   );
+  return <SdkStartOptionCard {...props} theme={theme} />;
 }
 
 const styles = StyleSheet.create({
@@ -205,32 +196,4 @@ const styles = StyleSheet.create({
   },
   rowDivider: { height: StyleSheet.hairlineWidth, backgroundColor: c.cardBorder },
   actionText: { fontSize: 15, fontWeight: '800', color: c.brand, flexShrink: 1 },
-
-  option: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-    minHeight: 72,
-    borderRadius: 14,
-    borderWidth: 1.5,
-    borderColor: c.optionBorder,
-    backgroundColor: c.optionFill,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-  },
-  optionActive: { backgroundColor: c.optionSelectedFill, borderColor: c.optionSelectedBorder },
-  optionDisabled: { opacity: 0.6 },
-  optionPressed: { backgroundColor: c.actionPressedFill },
-  optionDisc: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: c.iconDisc,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  optionDiscActive: { backgroundColor: c.iconDiscSolid },
-  optionTitle: { fontSize: 18, fontWeight: '800', color: c.headingText },
-  optionSubtitle: { fontSize: 14, lineHeight: 20, color: c.secondaryText },
-
 });
