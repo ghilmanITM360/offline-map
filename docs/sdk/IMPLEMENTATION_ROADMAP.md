@@ -85,3 +85,10 @@ The spikes resolve uncertainty; they are not silently part of B1. No native/fram
 - **Why the generation guards stay:** `journeyGenerationRef` still guards the location-request and hypothetical-selection paths, which have no session. The upgrade `generation` tokens the preview candidate for one-shot Start. `ownsSession` / `ownsCommittedTrip` check store facts the session cannot see. Removing any of them needs equivalence tests first.
 - **Open limitations:** `LocationAccessService.resolveCurrentLocation` cannot be aborted, so a superseded GPS acquisition runs to completion and only its result is rejected. Inside-venue `calculatePreview` is synchronous, so there is nothing to abort. GPS loss and loss of live capability still call `cancelCurrent()` on their own, because the journey continues.
 - **Verdict:** B4a is complete, and B4b UI extraction can start. Views read view-model output and do not touch sessions. Candidate for B4b-1: `ManualLiveUpgradeCard`, which is props-only (48 lines, no store access), extracted behind its existing props contract.
+
+### B4b-1 reusable ManualLiveUpgradeCard
+
+- The implementation now lives in `packages/offline-navigation/src/ui/ManualLiveUpgradeCard.tsx`. It is presentation-only and takes typed `labels` (resolved copy), `isRTL`, and a `theme` (host `Card`/`Button`, text style, spinner colour, gap) plus the existing props. It contains no Ijtema copy and does not import Zustand, GPS, navigation or the app.
+- `src/views/components/map/ManualLiveUpgradeCard.tsx` is now the Ijtema binding. It keeps the same props and supplies `useI18n` copy/direction and the app design system, so the `LocationSheet` call site is unchanged. `useAccessibilityFocus` moved to `ui/`, and the old hook path is an `export *` shim.
+- Boundary: `test-astar-extraction` lets only `ui/` import `react`/`react-native`. The domain stays relative-only and inside `domain/`, and nothing in `packages/` may reach the app. Covered by `ManualLiveUpgradeCard.test.tsx` (10 cases: delegation, idle, confirm/cancel/start/recover separation, busy states, Urdu RTL + a11y, host-supplied labels).
+- Next, B4b-2: `RouteGuideCard` (same matrix row).

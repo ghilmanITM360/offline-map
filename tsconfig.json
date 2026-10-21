@@ -7,6 +7,6 @@
     },
     "types": ["react", "react-native"]
   },
-  "include": ["App.tsx", "src/**/*.ts", "src/**/*.tsx", "packages/**/*.ts"],
+  "include": ["App.tsx", "src/**/*.ts", "src/**/*.tsx", "packages/**/*.ts", "packages/**/*.tsx"],
   "exclude": ["scripts", "src/__tests__"]
 }

@@ -1,7 +1,7 @@
 // B2a extraction gate: golden parity, Dijkstra differential, edge cases, re-exports, module independence.
 import { strict as assert } from 'node:assert';
 import { readdirSync, readFileSync, statSync } from 'node:fs';
-import { dirname, join, resolve } from 'node:path';
+import { dirname, join, resolve, sep } from 'node:path';
 import * as sharedAStar from '../packages/offline-navigation/src/domain/algorithms/AStar';
 import * as sharedHeap from '../packages/offline-navigation/src/domain/algorithms/MinHeap';
 import * as legacyAStar from '../src/utils/AStar';
@@ -151,9 +151,14 @@ for (const f of ['AStar', 'MinHeap']) {
   assert.deepEqual(hits(/\bfunction\s+reconstructAStarPath\b/), [`${ALGO_DIR}/AStar.ts`]);
   // Package domain must not reach into the app.
   // Relative imports may cross domain subfolders (e.g. ../geo) but never leave the domain root.
-  const domainRoot = resolve('packages/offline-navigation/src/domain');
+  // B4b: the ui/ layer may also import React and React Native; the domain may not, and nothing reaches the app.
+  const domainRoot = resolve('packages/offline-navigation/src/domain') + sep;
+  const uiRoot = resolve('packages/offline-navigation/src/ui') + sep;
   for (const p of walk('packages')) for (const spec of importsOf(p)) {
-    assert.ok(spec.startsWith('.') && resolve(dirname(p), spec).startsWith(domainRoot), `${p} imports ${spec}`);
+    const target = resolve(dirname(p), spec);
+    const ui = resolve(p).startsWith(uiRoot);
+    const ok = spec.startsWith('.') ? target.startsWith(domainRoot) || (ui && target.startsWith(uiRoot)) : ui && ['react', 'react-native'].includes(spec);
+    assert.ok(ok, `${p} imports ${spec}`);
   }
 }
 
