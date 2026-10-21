@@ -22,6 +22,8 @@ const chromeV1Source = readFileSync(chromeV1Path, 'utf8');
 const chromeV2Source = readFileSync(chromeV2Path, 'utf8');
 // B4c-2: the arrival sheet styles live in the SDK card.
 const arrivalCardSource = readFileSync('packages/offline-navigation/src/ui/ArrivalCard.tsx', 'utf8');
+// B4c-3: the reroute status banner lives in the SDK card.
+const rerouteBannerSource = readFileSync('packages/offline-navigation/src/ui/RerouteBanner.tsx', 'utf8');
 
 /** Extracts the body of `name: { ... }` (single-level brace matching) from a
  * StyleSheet.create source block, then pulls its `fontSize` value out. */
@@ -67,7 +69,7 @@ const MANEUVER_LABEL_SIZE = 24; // primary instruction — not in scope for this
 
 // --- Font sizes: GPS / reroute / next-step text must be at (or above) the new floor ---
 assert(fontSizeOf(stylesSource, 'weakGpsText') >= SAFETY_TEXT_FLOOR, 'weakGpsText (GPS weak/lost banner, shared by NavigationChromeV1 and V2) must be >= 15px');
-assert(fontSizeOf(stylesSource, 'rerouteHintText') >= SAFETY_TEXT_FLOOR, 'rerouteHintText (reroute notification banner) must be >= 15px');
+assert(fontSizeOf(rerouteBannerSource, 'text') >= SAFETY_TEXT_FLOOR, 'RerouteBanner text (reroute notification banner) must be >= 15px');
 assert(fontSizeOf(stylesSource, 'nextStepText') >= SAFETY_TEXT_FLOOR, 'nextStepText (upcoming-turn preview) must be >= 15px');
 assert(fontSizeOf(stylesSource, 'rerouteText') >= SAFETY_TEXT_FLOOR, '"Finding a new way…" reroute-card text must be >= 15px');
 

@@ -87,7 +87,7 @@ assert(
 );
 assert(
   navigationChromeSource.includes(') : rerouteStatusMessage && !reroutePending ? (') &&
-    navigationChromeSource.includes('<Text style={styles.rerouteHintText}>{rerouteStatusMessage}</Text>'),
+    navigationChromeSource.includes('<RerouteBanner message={rerouteStatusMessage} />'),
   'Navigation v2 reroute status message must stay rendered when reroute settles.',
 );
 assert(

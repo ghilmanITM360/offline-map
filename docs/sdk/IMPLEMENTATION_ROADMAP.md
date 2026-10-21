@@ -162,3 +162,12 @@ The spikes resolve uncertainty; they are not silently part of B1. No native/fram
 - Source-pin scripts (`navigation-buttons-v2`, `navigation-ui`, `ui-components`, `critical-actions`, `nav-safety-text-accessibility`) now pin the chrome's `onDone` wiring and read the markup and font floors from the SDK card.
 - Covered by `ArrivalCard.test.tsx` (5 cases): delegation, copy, destination, and Recenter/Done/back each firing its own callback; hidden state and #301 padding; Urdu copy and wrapping; arrival focus; and the SDK card with host theme. The `NavigationChromeV1`/`V2` arrival suites still pass.
 - **Next, B4c-3:** the `NavigationChromeV2` reroute banner.
+
+### B4c-3 reusable RerouteBanner
+
+- The SDK's `ui/RerouteBanner` is the settled-reroute status banner: one bordered warning box with centred 16/700 text and a polite live region. Its typed props are an already-localized `message` and a `theme` of colour tokens (`fill`, `border`, `text`). The file imports only `react` and `react-native`.
+- `src/views/components/navigation/RerouteBanner.tsx` is the Ijtema binding, which supplies the `staticColors` warning tokens. `NavigationChromeV1` and `V2` had identical inline banners. Both now render `<RerouteBanner message={rerouteStatusMessage} />` inside their unchanged status-slot chain, ordered GPS lost or weak, then reroute, then basemap. The `rerouteHintBanner` and `rerouteHintText` styles left `navOverlayStyles`.
+- The host keeps the status copy and when it clears, `reroutePending`, the priority chain and all reroute logic. The "Rerouting…" pending card stays in the chrome, because it shares the `instructionCard` style with the maneuver card. Markup, styles and the live region are unchanged. The previously noted no-op arrival-focus call is still tracked separately.
+- Source-pin scripts (`navigation-buttons-v2`, `nav-safety-text-accessibility`) now pin the chrome's binding call and read the font floor from the SDK file.
+- Covered by `RerouteBanner.test.tsx` (3 cases): delegation of colours, text style and live region; Urdu wrapping; and the SDK banner with a host theme. The `NavigationChromeV1`/`V2` status-priority and reroute view-model suites still pass.
+- **Next, B4c-4:** the reroute pending card. It needs a decision on how its shared `instructionCard` base style crosses into the SDK.

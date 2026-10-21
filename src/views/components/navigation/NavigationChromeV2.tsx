@@ -24,6 +24,7 @@ import { Button } from '../common/Button';
 import { ActiveDirectionsPanel } from './ActiveDirectionsPanel';
 import { useI18n } from '../../../i18n';
 import { ArrivalCard } from './ArrivalCard';
+import { RerouteBanner } from './RerouteBanner';
 
 const AnimatedSafeAreaView = Animated.createAnimatedComponent(SafeAreaView);
 
@@ -220,9 +221,7 @@ export function NavigationChromeV2({ overlay, hasBaseMap }: { overlay: Navigatio
               <Text style={styles.weakGpsText}>{t('navigation.weak')}</Text>
             </View>
           ) : rerouteStatusMessage && !reroutePending ? (
-            <View style={styles.rerouteHintBanner} accessibilityLiveRegion="polite">
-              <Text style={styles.rerouteHintText}>{rerouteStatusMessage}</Text>
-            </View>
+            <RerouteBanner message={rerouteStatusMessage} />
           ) : !hasBaseMap ? (
             <View style={styles.mapUnavailableBanner} accessibilityLiveRegion="polite">
               <Text style={styles.mapUnavailableText}>{t('navigation.mapUnavailable')}</Text>

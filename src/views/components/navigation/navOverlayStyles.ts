@@ -164,25 +164,6 @@ export const navOverlayStyles = StyleSheet.create({
     fontWeight: '700',
     textAlign: 'center',
   },
-  rerouteHintBanner: {
-    marginHorizontal: 12,
-    marginTop: 4,
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    backgroundColor: staticColors.warningBackground,
-    borderWidth: 1,
-    borderColor: staticColors.warning,
-  },
-  // Safety-relevant: reroute notification. Bumped from 12 -> 16, matching weakGpsText
-  // (the two banners stack directly above one another, so keeping them the same size
-  // reads as a deliberate pair rather than an arbitrary mismatch).
-  rerouteHintText: {
-    color: staticColors.warningText, // #8D6E63 on #FFF8E1 fails AA (4.35:1); #7C4A03 passes (6.97:1)
-    fontSize: 16,
-    fontWeight: '700',
-    textAlign: 'center',
-  },
   instructionCard: {
     // Deep blue (not arrivalGreen — that's reserved for the arrived state so the
     // two don't read as the same "done" signal while still actively navigating).
