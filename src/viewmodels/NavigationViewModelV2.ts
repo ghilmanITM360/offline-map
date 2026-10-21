@@ -30,6 +30,8 @@ import { t } from '../i18n/translate';
 import { isValidCoordinate } from '../utils/isValidCoordinate';
 import { V2NavigationAdapter, isV2ActiveRoute } from '../services/V2NavigationAdapter';
 import { OutsideRouteRequestCoordinator } from '../services/outsideRouting/OutsideRouteRequestCoordinator';
+import { createNavigationSession } from '../../packages/offline-navigation/src/domain/session';
+import type { NavigationSession } from '../../packages/offline-navigation/src/domain/session';
 import { createProductionOutsideRouteSource } from '../services/outsideRouting/ProductionOutsideRouteSource';
 import { getRoutableOfficialGates } from '../data/ijtema/entryPolicy';
 import {
@@ -247,6 +249,9 @@ export function useNavigationViewModelV2() {
   const lastSpokenRouteRef = useRef<V2ActiveRoute | null>(null);
   const outsideRequestCoordinatorRef = useRef(new OutsideRouteRequestCoordinator());
   const rerouteRequestInFlightRef = useRef<object | null>(null);
+  // B4a-2: one SDK session per journey (navigationSessionId while navigating). Reroute results commit only through
+  // its current request, so a superseding request, Exit, a new trip, arrival or unmount rejects them.
+  const journeySessionRef = useRef<NavigationSession | null>(null);
   const handleLiveLocation = useCallback(() => {
     // GPSManagerService updates currentLocation through the store updater wired in RootNavigator.
   }, []);
@@ -287,6 +292,17 @@ export function useNavigationViewModelV2() {
     // this reset.
     setManualGateId(route?.origin.manuallySelectedGate ? route.origin.gateId ?? null : null);
   }, [navigationSessionId]);
+
+  useEffect(() => {
+    if (!isNavigating) return;
+    const session = createNavigationSession(`journey-${navigationSessionId}`);
+    session.start();
+    journeySessionRef.current = session;
+    return () => {
+      session.dispose();
+      if (journeySessionRef.current === session) journeySessionRef.current = null;
+    };
+  }, [isNavigating, navigationSessionId]);
 
   useEffect(() => () => outsideRequestCoordinatorRef.current.cancelCurrent(), []);
 
@@ -363,8 +379,13 @@ export function useNavigationViewModelV2() {
   const attemptReroute = useCallback(async (coordinate: Coordinate, options: RerouteOptions = {}) => {
     if (!route || arrivedRef.current || currentLiveCapability().mode !== 'live_navigation' || (!settings.autoReroute && !options.explicit)) return;
     if (!options.explicit && rerouteRequestInFlightRef.current) return;
+    const journeySession = journeySessionRef.current;
+    if (!journeySession) return;
+    const journeyRequest = journeySession.beginRequest();
     const sessionAtRequest = useAppStore.getState().navigationSessionId;
+    // Store ownership still scopes the pending/status cleanup below; committing a result also needs the SDK request.
     const ownsSession = () => useAppStore.getState().navigationSessionId === sessionAtRequest && useAppStore.getState().isNavigating;
+    const canCommit = () => journeyRequest.canCommit() && ownsSession();
     const requestMarker = {};
     rerouteRequestInFlightRef.current = requestMarker;
     let outsideHandle: ReturnType<OutsideRouteRequestCoordinator['begin']> | null = null;
@@ -400,7 +421,7 @@ export function useNavigationViewModelV2() {
         if (
           !outsideHandle.canCommit() ||
           useAppStore.getState().activeRoute !== routeAtRequest ||
-          !ownsSession() || currentLiveCapability().mode !== 'live_navigation'
+          !canCommit() || currentLiveCapability().mode !== 'live_navigation'
         ) {
           return;
         }
@@ -419,7 +440,7 @@ export function useNavigationViewModelV2() {
         candidate = RoutingServiceV2.calculateRoute(rerouteRequest);
       }
 
-      if (arrivedRef.current || currentLiveCapability().mode !== 'live_navigation' || !ownsSession() || useAppStore.getState().activeRoute !== routeAtRequest) return;
+      if (arrivedRef.current || currentLiveCapability().mode !== 'live_navigation' || !canCommit() || useAppStore.getState().activeRoute !== routeAtRequest) return;
 
       if (!candidate) {
         lastRerouteAtRef.current = Date.now();
@@ -586,6 +607,7 @@ export function useNavigationViewModelV2() {
       setArrived(true);
       // A5-02: a reroute still computing for this journey must not commit over the completed route.
       outsideRequestCoordinatorRef.current.cancelCurrent();
+      journeySessionRef.current?.cancel();
       setReroutePending(false);
     }
     if (nextIndex !== currentStepIndex) {

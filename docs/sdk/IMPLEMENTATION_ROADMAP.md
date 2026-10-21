@@ -44,3 +44,10 @@ The spikes resolve uncertainty; they are not silently part of B1. No native/fram
 - Added `domain/session/NavigationSession.ts`: `createNavigationSession(id)` with `idle -> active -> cancelled` (or `idle -> cancelled`), `disposed` from any state; one current request per session (supersede/cancel/dispose abort it, `commit` applies at most once); idempotent `cancel`/`dispose`; no listener calls after disposal. No GPS, timers, globals or Ijtema constants; the host injects the id.
 - Not wired into production; `NavigationViewModelV2` and the store are unchanged. Covered by 8 checks in `test:sdk-headless`.
 - B4a-2 (next, not started): adopt the session behind one existing caller (e.g. reroute's `ownsSession` + coordinator) with parity tests.
+
+### B4a-2 reroute session ownership
+
+- `NavigationViewModelV2` now holds one SDK `NavigationSession` per journey: created and started in an effect keyed on `isNavigating` + `navigationSessionId`, disposed on Exit/stop, a new trip or unmount, and cancelled when arrival latches. `attemptReroute` takes `beginRequest()` and both result-commit gates require `request.canCommit()` as well as the existing store check; pending/status cleanup keeps the store-only check. `OutsideRouteRequestCoordinator`, `arrivedRef` and the in-flight marker are unchanged.
+- No change to routing geometry, GPS thresholds or subscriptions, UI, ETA or provider policy; no global session.
+- Covered by `NavigationViewModelV2RerouteSession.test.tsx` (7 behaviours characterized on the pre-change code, then 4 session checks, one of which fails if the SDK gate is removed while the store and coordinator guards stay) plus the existing V2 reroute/arrival suites.
+- B4a-3 (next, not started): candidate is folding the outside-request coordinator's abort signal into the session request so there is one rejection path.
