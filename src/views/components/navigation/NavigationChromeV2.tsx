@@ -24,6 +24,7 @@ import { Button } from '../common/Button';
 import { ActiveDirectionsPanel } from './ActiveDirectionsPanel';
 import { useI18n } from '../../../i18n';
 import { ArrivalCard } from './ArrivalCard';
+import { EntryGateOriginBanner } from './EntryGateOriginBanner';
 import { GpsSignalBanner } from './GpsSignalBanner';
 import { MapUnavailableBanner } from './MapUnavailableBanner';
 import { RerouteBanner } from './RerouteBanner';
@@ -222,9 +223,7 @@ export function NavigationChromeV2({ overlay, hasBaseMap }: { overlay: Navigatio
             <MapUnavailableBanner message={t('navigation.mapUnavailable')} />
           ) : null}
           {route.metadata.startedOutside && route.metadata.entryGateId && (
-            <View style={styles.v2EntryGateBanner}>
-              <Text style={styles.v2EntryGateText}>{t('navigation.origin', {name: localizeVenueName(route.origin.label)})}</Text>
-            </View>
+            <EntryGateOriginBanner message={t('navigation.origin', {name: localizeVenueName(route.origin.label)})} />
           )}
           {outsidePhaseActive && outsideRoute && (
             <View style={styles.outsideStatusCardWrap}>

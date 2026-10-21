@@ -86,21 +86,6 @@ export const navOverlayStyles = StyleSheet.create({
     // recenter button always wins hit-testing if their absolute-positioned regions ever collide.
     zIndex: 6,
   },
-  v2EntryGateBanner: {
-    marginHorizontal: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 10,
-    backgroundColor: staticColors.entryGateBackground,
-    borderWidth: 1,
-    borderColor: staticColors.entryGateBorder,
-  },
-  v2EntryGateText: {
-    color: staticColors.focusedBlock,
-    fontSize: 12,
-    fontWeight: '700',
-    textAlign: 'center',
-  },
   directGateOptions: {
     marginHorizontal: 12,
     padding: 12,

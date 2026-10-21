@@ -111,6 +111,30 @@ describe('NavigationChromeV2 — map-unavailable banner (B4c-6)', () => {
   });
 });
 
+describe('NavigationChromeV2 — entry-gate origin banner (B4c-7)', () => {
+  const gateRoute: V2ActiveRoute = {
+    ...route,
+    origin: { ...route.origin, label: 'Gate 5' },
+    metadata: { ...route.metadata, startedOutside: true, entryGateId: 'GATE_05', usesOfficialGateEntry: true },
+  };
+
+  test('outside start with an entry gate shows the origin once, below the status slot', async () => {
+    await render(<NavigationChromeV2 overlay={baseOverlay({ route: gateRoute, gpsSignalState: 'GPS_LOST' })} hasBaseMap />);
+    expect(screen.getAllByText('Route starts from Gate 5.')).toHaveLength(1);
+    const slot = screen.getByTestId('navigation-subordinate-surfaces');
+    const texts = within(slot).getAllByText(/./).map((n) => n.props.children);
+    expect(texts.indexOf("We can't find you. Move to an open area.")).toBeLessThan(texts.indexOf('Route starts from Gate 5.'));
+  });
+
+  test('hidden for inside starts and for outside starts without an entry gate', async () => {
+    const view = await render(<NavigationChromeV2 overlay={baseOverlay()} hasBaseMap />);
+    expect(screen.queryByText(/Route starts from/)).toBeNull();
+    const noGate = { ...gateRoute, metadata: { ...gateRoute.metadata, entryGateId: undefined } };
+    await view.rerender(<NavigationChromeV2 overlay={baseOverlay({ route: noGate })} hasBaseMap />);
+    expect(screen.queryByText(/Route starts from/)).toBeNull();
+  });
+});
+
 describe('NavigationChromeV2 — GPS signal banner priority (B4c-5)', () => {
   test('lost GPS during a pending reroute: one assertive lost banner beside the progress card, no weak banner', async () => {
     await render(<NavigationChromeV2 overlay={baseOverlay({ gpsSignalState: 'GPS_LOST', isWeakGps: true, reroutePending: true })} hasBaseMap />);
