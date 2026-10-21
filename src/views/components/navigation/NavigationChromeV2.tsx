@@ -8,7 +8,7 @@ import { useAccessibilityFocus } from '../../hooks/useAccessibilityFocus';
 import React, { useEffect, useRef, useState } from 'react';
 import { AccessibilityInfo, Animated, Pressable, Text, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ArrowLeft, ArrowRight, LocateFixed, MapPin, Navigation, RefreshCw, Volume2, VolumeX, X } from 'lucide-react-native';
+import { ArrowLeft, ArrowRight, LocateFixed, MapPin, Navigation, Volume2, VolumeX, X } from 'lucide-react-native';
 
 import { InstructionService } from '../../../services/InstructionService';
 import { V2PlaceAdapter } from '../../../services/V2PlaceAdapter';
@@ -25,6 +25,7 @@ import { ActiveDirectionsPanel } from './ActiveDirectionsPanel';
 import { useI18n } from '../../../i18n';
 import { ArrivalCard } from './ArrivalCard';
 import { RerouteBanner } from './RerouteBanner';
+import { RerouteProgressCard } from './RerouteProgressCard';
 
 const AnimatedSafeAreaView = Animated.createAnimatedComponent(SafeAreaView);
 
@@ -139,10 +140,7 @@ export function NavigationChromeV2({ overlay, hasBaseMap }: { overlay: Navigatio
       >
         <View testID="navigation-maneuver-surface">
           {reroutePending ? (
-            <View style={[styles.instructionCard, styles.rerouteCard]}>
-              <RefreshCw size={28} color={staticColors.white} />
-              <Text style={styles.rerouteText}>{t('navigation.rerouting')}</Text>
-            </View>
+            <RerouteProgressCard label={t('navigation.rerouting')} />
           ) : directOutsideActive && !arrived ? (
             <View
               style={styles.instructionCard}

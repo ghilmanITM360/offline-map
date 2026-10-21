@@ -85,6 +85,22 @@ describe('NavigationChromeV2 — live maneuver distance', () => {
   });
 });
 
+describe('NavigationChromeV2 — reroute progress card priority (B4c-4)', () => {
+  test('pending reroute replaces the turn card and holds back the settled status banner', async () => {
+    await render(<NavigationChromeV2 overlay={baseOverlay({ reroutePending: true, rerouteStatusMessage: 'Route updated.' })} hasBaseMap />);
+    expect(screen.getByText('Finding a new way…')).toBeOnTheScreen();
+    expect(screen.queryByLabelText(/300 m/)).toBeNull();
+    expect(screen.queryByText('Route updated.')).toBeNull();
+  });
+
+  test('once settled the turn card returns and the progress card is gone', async () => {
+    await render(<NavigationChromeV2 overlay={baseOverlay({ rerouteStatusMessage: 'Route updated.' })} hasBaseMap />);
+    expect(screen.queryByText('Finding a new way…')).toBeNull();
+    expect(screen.getByLabelText(/300 m/)).toBeOnTheScreen();
+    expect(screen.getByText('Route updated.')).toBeOnTheScreen();
+  });
+});
+
 describe('NavigationChromeV2 — instruction card accessibility label', () => {
   test('announces the live maneuver distance, not the edge length baked into step.text', async () => {
     const stale = { ...route.instructions[0], text: 'Continue straight for 10 meters.' };

@@ -7,11 +7,12 @@ import { localizeVenueName } from '../../../i18n/venueNames';
 import { useI18n } from '../../../i18n';
 import { ArrivalCard } from './ArrivalCard';
 import { RerouteBanner } from './RerouteBanner';
+import { RerouteProgressCard } from './RerouteProgressCard';
 import { useAccessibilityFocus } from '../../hooks/useAccessibilityFocus';
 import React, { useEffect, useRef } from 'react';
 import { AccessibilityInfo, Animated, Pressable, Text, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ArrowLeft, ArrowRight, LocateFixed, MapPin, Navigation, RefreshCw, Volume2, VolumeX, X } from 'lucide-react-native';
+import { ArrowLeft, ArrowRight, LocateFixed, MapPin, Navigation, Volume2, VolumeX, X } from 'lucide-react-native';
 
 import { InstructionService } from '../../../services/InstructionService';
 import { staticColors } from '../../../theme';
@@ -97,10 +98,7 @@ export function NavigationChromeV1({ overlay, hasBaseMap }: { overlay: Navigatio
         ]}
       >
         {reroutePending ? (
-          <View style={[styles.instructionCard, styles.rerouteCard]}>
-            <RefreshCw size={28} color={staticColors.white} />
-            <Text style={styles.rerouteText}>{t('navigation.rerouting')}</Text>
-          </View>
+          <RerouteProgressCard label={t('navigation.rerouting')} />
         ) : currentStep && !arrived ? (
           <View style={styles.instructionCard} accessibilityLabel={currentStep.text}>
             <View style={styles.instructionIcon}>

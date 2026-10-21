@@ -180,19 +180,6 @@ export const navOverlayStyles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 6,
   },
-  rerouteCard: {
-    backgroundColor: staticColors.rerouteBackground,
-    justifyContent: 'center',
-    gap: 12,
-  },
-  // Already 18px (above the 15-17px safety-text floor) — no size change needed. The white
-  // text on rerouteBackground failed WCAG AA (2.70:1) though; fixed by darkening
-  // rerouteBackground itself in theme/colors.ts rather than changing this style.
-  rerouteText: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: staticColors.white,
-  },
   instructionIcon: {
     marginRight: 16,
     width: 40,

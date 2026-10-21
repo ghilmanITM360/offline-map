@@ -171,3 +171,12 @@ The spikes resolve uncertainty; they are not silently part of B1. No native/fram
 - Source-pin scripts (`navigation-buttons-v2`, `nav-safety-text-accessibility`) now pin the chrome's binding call and read the font floor from the SDK file.
 - Covered by `RerouteBanner.test.tsx` (3 cases): delegation of colours, text style and live region; Urdu wrapping; and the SDK banner with a host theme. The `NavigationChromeV1`/`V2` status-priority and reroute view-model suites still pass.
 - **Next, B4c-4:** the reroute pending card. It needs a decision on how its shared `instructionCard` base style crosses into the SDK.
+
+### B4c-4 reusable RerouteProgressCard
+
+- The SDK's `ui/RerouteProgressCard` is the in-progress "Finding a new way…" card. Its typed props are an already-localized `label`, a host-drawn `icon`, the host's shared turn-card `cardStyle` and a `theme` of colour tokens (`fill`, `text`). It overrides only fill, centring and gap on top of `cardStyle`, and keeps the 18px bold text. The file imports only `react` and `react-native`.
+- Shared-style decision: `instructionCard` stays in `navOverlayStyles` and is injected by the binding; the SDK never copies or imports it. The maneuver card is unchanged.
+- `src/views/components/navigation/RerouteProgressCard.tsx` is the Ijtema binding: `instructionCard`, the `RefreshCw` icon and the `rerouteBackground`/white tokens. `NavigationChromeV1` and `V2` now render `<RerouteProgressCard label={t('navigation.rerouting')} />` as the first branch of their unchanged `reroutePending` ternary. `rerouteCard` and `rerouteText` left `navOverlayStyles`. The card never had a test ID or live region, and none was added.
+- Source-pin scripts (`navigation-buttons-v2`, `nav-safety-text-accessibility`) pin the binding call and read the font floor from the SDK file.
+- Covered by `RerouteProgressCard.test.tsx` (4 cases: injected style, colours and icon; turn-card style untouched; Urdu wrapping; standalone SDK card) and two `NavigationChromeV2` priority cases (pending replaces the turn card and holds back the settled banner; settled restores both).
+- **Next, B4c-5:** the GPS weak/lost status banner (`weakGpsBanner`, shared by V1 and V2).

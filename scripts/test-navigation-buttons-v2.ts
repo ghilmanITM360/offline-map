@@ -92,7 +92,7 @@ assert(
 );
 assert(
   navigationChromeSource.includes('{reroutePending ? (') &&
-    navigationChromeSource.includes("<Text style={styles.rerouteText}>{t('navigation.rerouting')}</Text>"),
+    navigationChromeSource.includes("<RerouteProgressCard label={t('navigation.rerouting')} />"),
   'Navigation v2 reroute pending state must stay visible.',
 );
 
