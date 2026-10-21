@@ -6,6 +6,7 @@ import { reconstructAStarPath, runAStar, type AStarNeighbor } from '../../packag
 import * as journey from '../../packages/offline-navigation/src/domain/journey';
 import { findVenuePath, validateVenueGraph } from '../../packages/offline-navigation/src/domain/venue';
 import { findStreetRouteToTargets } from '../../packages/offline-navigation/src/domain/street';
+import { createNavigationSession, type NavigationSessionState } from '../../packages/offline-navigation/src/domain/session';
 import { createSyntheticVenue } from './syntheticVenue';
 import { streetGraphA, streetGraphB } from './syntheticStreets';
 
@@ -266,13 +267,171 @@ check('street inputs stay frozen and unmutated', () => {
   assert.ok(Object.isFrozen(a.graph.edgesFrom('a1')[0]));
 });
 
-// ---- Runtime dependency graph: everything loaded must be the emitted domain itself ----
-check('loaded module graph contains only emitted domain files (so no node_modules, RN, Expo, Zustand, app code or Ijtema data)', () => {
-  const loaded = Object.keys(require.cache).filter((f) => f !== __filename && !/\/synthetic(Venue|Streets)\.js$/.test(f));
-  assert.ok(loaded.length >= 7, `unexpectedly small module graph: ${loaded.length}`);
-  for (const f of loaded) {
-    assert.match(f, /\/packages\/offline-navigation\/src\/domain\//, `non-domain module loaded: ${f}`);
-  }
+// ---- B4a-1 session lifecycle: async work runs against host-controlled deferreds, never timers ----
+const deferred = <T>() => {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((r) => { resolve = r; });
+  return { promise, resolve };
+};
+const checkAsync = async (name: string, fn: () => Promise<void>): Promise<void> => {
+  await fn();
+  passed++;
+  console.log(`  ok - ${name}`);
+};
+const record = (session: ReturnType<typeof createNavigationSession>) => {
+  const seen: NavigationSessionState[] = [];
+  session.subscribe((s) => seen.push(s));
+  return seen;
+};
+
+check('session: created idle with no activation, and start is idle -> active once', () => {
+  const s = createNavigationSession('trip-1');
+  const seen = record(s);
+  assert.equal(s.state, 'idle');
+  assert.deepEqual(seen, [], 'creating a session notifies nothing');
+  assert.equal(s.start(), true);
+  assert.equal(s.start(), false, 'a second start is refused');
+  assert.deepEqual(seen, ['active']);
+  s.cancel();
+  assert.equal(s.start(), false, 'a cancelled session never restarts');
+  assert.throws(() => createNavigationSession(''), /non-empty/);
+  const never = createNavigationSession('trip-0');
+  const seenNever = record(never);
+  never.cancel();
+  assert.equal(never.start(), false, 'cancel before start: idle -> cancelled, never active');
+  assert.deepEqual(seenNever, ['cancelled']);
+});
+check('session: two independent sessions share no state, requests or listeners', () => {
+  const a = createNavigationSession('trip-a');
+  const b = createNavigationSession('trip-b');
+  const seenA = record(a);
+  const seenB = record(b);
+  a.start(); b.start();
+  const ra = a.beginRequest();
+  const rb = b.beginRequest();
+  assert.equal(ra.generation, 1);
+  assert.equal(rb.generation, 1, 'generations are per session');
+  a.beginRequest();
+  assert.equal(ra.canCommit(), false);
+  assert.equal(rb.canCommit(), true, 'superseding in A leaves B untouched');
+  a.cancel();
+  a.dispose();
+  assert.equal(b.state, 'active');
+  assert.equal(rb.signal.aborted, false);
+  assert.deepEqual(seenA, ['active', 'cancelled']);
+  assert.deepEqual(seenB, ['active']);
+  assert.notEqual(a.id, b.id);
+});
+check('session: superseded request is aborted and cannot commit; current commits exactly once', () => {
+  const s = createNavigationSession('trip-s');
+  s.start();
+  const first = s.beginRequest();
+  const second = s.beginRequest();
+  const applied: string[] = [];
+  assert.equal(first.signal.aborted, true);
+  assert.equal(first.commit(() => applied.push('first')), false);
+  assert.equal(second.commit(() => applied.push('second')), true);
+  assert.equal(second.commit(() => applied.push('again')), false, 'a committed request is retired');
+  assert.deepEqual(applied, ['second']);
+});
+check('session: dispose twice is safe; no callbacks, requests or restarts afterwards', () => {
+  const s = createNavigationSession('trip-d');
+  const seen = record(s);
+  s.start();
+  const r = s.beginRequest();
+  s.dispose();
+  s.dispose();
+  assert.equal(s.state, 'disposed');
+  assert.equal(r.signal.aborted, true);
+  s.cancel();
+  assert.equal(s.start(), false);
+  let late = 0;
+  s.subscribe(() => late++)();
+  assert.equal(s.beginRequest().canCommit(), false);
+  assert.deepEqual(seen, ['active'], 'disposal itself and everything after it notify nobody');
+  assert.equal(late, 0);
+});
+check('session: a listener that disposes mid-notification stops all further callbacks', () => {
+  const s = createNavigationSession('trip-l');
+  const calls: string[] = [];
+  s.subscribe(() => { calls.push('first'); s.dispose(); });
+  s.subscribe(() => calls.push('second'));
+  s.start();
+  assert.deepEqual(calls, ['first']);
+  assert.equal(s.state, 'disposed');
+  const t = createNavigationSession('trip-u');
+  const order: string[] = [];
+  let offSecond = () => {};
+  t.subscribe(() => { order.push('first'); offSecond(); });
+  offSecond = t.subscribe(() => order.push('second'));
+  t.start();
+  assert.deepEqual(order, ['first'], 'a listener unsubscribed mid-notification is not called');
 });
 
-console.log(`sdk-headless: PASS (${passed} checks, node ${process.version})`);
+const sessionChecks = async () => {
+  await checkAsync('session: cancel during async work aborts it and the late result is ignored', async () => {
+    const s = createNavigationSession('trip-c');
+    s.start();
+    const work = deferred<string>();
+    const request = s.beginRequest();
+    let abortedDuringWork = false;
+    request.signal.addEventListener('abort', () => { abortedDuringWork = true; });
+    const pending = work.promise.then((result) => request.commit(() => assert.fail(`late result ${result} applied`)));
+    s.cancel();
+    assert.equal(abortedDuringWork, true, 'cancel aborts in-flight work');
+    work.resolve('route');
+    assert.equal(await pending, false);
+    assert.equal(s.state, 'cancelled');
+  });
+  await checkAsync('session: superseded async result resolving last is ignored; newest wins', async () => {
+    const s = createNavigationSession('trip-r');
+    s.start();
+    const older = deferred<string>();
+    const newer = deferred<string>();
+    const applied: string[] = [];
+    const run = (d: ReturnType<typeof deferred<string>>) => {
+      const request = s.beginRequest();
+      return d.promise.then((v) => request.commit(() => applied.push(v)));
+    };
+    const olderDone = run(older);
+    const newerDone = run(newer);
+    newer.resolve('newer');
+    older.resolve('older');
+    assert.deepEqual(await Promise.all([olderDone, newerDone]), [false, true]);
+    assert.deepEqual(applied, ['newer']);
+  });
+  await checkAsync('session: interleaved async work across two sessions never crosses', async () => {
+    const a = createNavigationSession('trip-x');
+    const b = createNavigationSession('trip-y');
+    a.start(); b.start();
+    const da = deferred<string>();
+    const db = deferred<string>();
+    const appliedA: string[] = [];
+    const appliedB: string[] = [];
+    const ra = a.beginRequest();
+    const rb = b.beginRequest();
+    const doneA = da.promise.then((v) => ra.commit(() => appliedA.push(v)));
+    const doneB = db.promise.then((v) => rb.commit(() => appliedB.push(v)));
+    a.dispose();
+    db.resolve('b');
+    da.resolve('a');
+    assert.deepEqual(await Promise.all([doneA, doneB]), [false, true]);
+    assert.deepEqual([appliedA, appliedB], [[], ['b']]);
+  });
+};
+
+sessionChecks().then(() => {
+  // ---- Runtime dependency graph: everything loaded must be the emitted domain itself ----
+  check('loaded module graph contains only emitted domain files (so no node_modules, RN, Expo, Zustand, app code or Ijtema data)', () => {
+    const loaded = Object.keys(require.cache).filter((f) => f !== __filename && !/\/synthetic(Venue|Streets)\.js$/.test(f));
+    assert.ok(loaded.length >= 7, `unexpectedly small module graph: ${loaded.length}`);
+    for (const f of loaded) {
+      assert.match(f, /\/packages\/offline-navigation\/src\/domain\//, `non-domain module loaded: ${f}`);
+    }
+  });
+
+  console.log(`sdk-headless: PASS (${passed} checks, node ${process.version})`);
+}).catch((e: unknown) => {
+  console.error(e);
+  process.exitCode = 1;
+});
