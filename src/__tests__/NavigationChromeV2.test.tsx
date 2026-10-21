@@ -474,6 +474,62 @@ describe('NavigationChromeV2 — direct outside guide', () => {
     expect(retryOutsideRoute).toHaveBeenCalledTimes(1);
     expect(selectOutsideGate).toHaveBeenCalledWith('GATE_12');
   });
+
+  test('B4c-8: chooser toggles open/closed, closes on selection, and selecting only asks the host once', async () => {
+    const selectOutsideGate = jest.fn(async () => undefined);
+    const user = userEvent.setup();
+    const directRoute: V2ActiveRoute = {
+      ...route,
+      outsideLegCoordinateCount: 1,
+      outsideRoute: {
+        schemaVersion: 1, candidateId: 'c', requestId: 'r', requestVersion: 1, provider: 'direct-guide', gateId: 'GATE_05',
+        distanceM: 120, durationSeconds: null, coordinates: route.coordinates, steps: [], roadFollowing: false,
+        distanceKind: 'direct-distance', warnings: [{ code: 'direct-guide-not-road-route' }],
+        fallbackReason: 'outside-coverage', fallbackHistory: [],
+      },
+      metadata: { ...route.metadata, startedOutside: true, entryGateId: 'GATE_05', usesOfficialGateEntry: true },
+    };
+    const overlay = baseOverlay({
+      route: directRoute, instructions: directRoute.instructions, retryOutsideRoute: jest.fn(), selectOutsideGate,
+      manualGateId: 'GATE_03',
+      availableOutsideGates: [{ id: 'GATE_12', label: 'Gate 12' }, { id: 'GATE_03', label: 'Gate 3' }],
+    });
+    await render(<NavigationChromeV2 overlay={overlay} hasBaseMap />);
+    const toggle = () => user.press(screen.getByRole('button', { name: 'Choose another gate' }));
+
+    expect(screen.queryByRole('button', { name: 'Use Gate 12' })).toBeNull();
+    await toggle();
+    const surfaces = within(screen.getByTestId('navigation-subordinate-surfaces'));
+    expect(surfaces.getAllByRole('button', { name: /^Use Gate/ }).map((b) => b.props.accessibilityLabel)).toEqual(['Use Gate 12', 'Use Gate 3']);
+    await toggle();
+    expect(screen.queryByRole('button', { name: 'Use Gate 12' })).toBeNull();
+    expect(selectOutsideGate).not.toHaveBeenCalled();
+
+    await toggle();
+    await user.press(screen.getByRole('button', { name: 'Use Gate 12' }));
+    expect(selectOutsideGate).toHaveBeenCalledTimes(1);
+    expect(selectOutsideGate).toHaveBeenCalledWith('GATE_12');
+    expect(screen.queryByRole('button', { name: 'Use Gate 12' })).toBeNull();
+  });
+
+  test('B4c-8: no chooser once the outside leg is not a direct guide', async () => {
+    const roadRoute: V2ActiveRoute = {
+      ...route,
+      outsideLegCoordinateCount: 1,
+      outsideRoute: {
+        schemaVersion: 1, candidateId: 'c', requestId: 'r', requestVersion: 1, provider: 'offline-osm', gateId: 'GATE_05',
+        distanceM: 120, durationSeconds: 90, coordinates: route.coordinates, steps: [], roadFollowing: true,
+        distanceKind: 'road-distance', warnings: [], fallbackReason: null, fallbackHistory: [],
+      },
+      metadata: { ...route.metadata, startedOutside: true, entryGateId: 'GATE_05', usesOfficialGateEntry: true },
+    } as V2ActiveRoute;
+    await render(<NavigationChromeV2 overlay={baseOverlay({
+      route: roadRoute, instructions: roadRoute.instructions, retryOutsideRoute: jest.fn(), selectOutsideGate: jest.fn(),
+      manualGateId: null, availableOutsideGates: [{ id: 'GATE_12', label: 'Gate 12' }],
+    })} hasBaseMap />);
+    expect(screen.queryByRole('button', { name: 'Choose another gate' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Use Gate 12' })).toBeNull();
+  });
 });
 
 describe('NavigationChromeV2 — straight-line guide stays a straight-line guide while the outside leg is walked', () => {

@@ -86,21 +86,6 @@ export const navOverlayStyles = StyleSheet.create({
     // recenter button always wins hit-testing if their absolute-positioned regions ever collide.
     zIndex: 6,
   },
-  directGateOptions: {
-    marginHorizontal: 12,
-    padding: 12,
-    gap: 8,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: staticColors.warning,
-    backgroundColor: staticColors.warningBackground,
-    zIndex: 12,
-  },
-  directGateOptionsTitle: {
-    color: staticColors.warningText,
-    fontSize: 16,
-    fontWeight: '700',
-  },
   topBar: {
     position: 'absolute',
     top: 0,

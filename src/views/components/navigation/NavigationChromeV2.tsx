@@ -20,11 +20,11 @@ import { computeNavRecenterInset, resolveNavBarHeight } from '../../../viewmodel
 import { NAV_TOUCH_TARGET_HIT_SLOP, navOverlayStyles as styles } from './navOverlayStyles';
 import { OutsideRouteStatusCard } from './OutsideRouteStatusCard';
 import { outsideRouteMessage } from '../../../services/OutsideRouteLocalizationService';
-import { Button } from '../common/Button';
 import { ActiveDirectionsPanel } from './ActiveDirectionsPanel';
 import { useI18n } from '../../../i18n';
 import { ArrivalCard } from './ArrivalCard';
 import { EntryGateOriginBanner } from './EntryGateOriginBanner';
+import { GateChooser } from './GateChooser';
 import { GpsSignalBanner } from './GpsSignalBanner';
 import { MapUnavailableBanner } from './MapUnavailableBanner';
 import { RerouteBanner } from './RerouteBanner';
@@ -237,21 +237,14 @@ export function NavigationChromeV2({ overlay, hasBaseMap }: { overlay: Navigatio
             </View>
           )}
           {directOutsideActive && showGateOptions && (
-            <View style={styles.directGateOptions}>
-              <Text style={styles.directGateOptionsTitle}>{t('navigation.chooseGate')}</Text>
-              {availableOutsideGates.map((gate) => (
-                <Button
-                  key={gate.id}
-                  variant={manualGateId === gate.id ? 'secondary' : 'outline'}
-                  label={localizeVenueName(gate.label)}
-                  accessibilityLabel={t("navigation.useGate", {name: localizeVenueName(gate.label)})}
-                  onPress={() => {
-                    setShowGateOptions(false);
-                    void selectOutsideGate(gate.id);
-                  }}
-                />
-              ))}
-            </View>
+            <GateChooser
+              gates={availableOutsideGates}
+              selectedId={manualGateId}
+              onSelect={(gateId) => {
+                setShowGateOptions(false);
+                void selectOutsideGate(gateId);
+              }}
+            />
           )}
         </View>
       </AnimatedSafeAreaView>
