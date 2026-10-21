@@ -238,3 +238,22 @@ The spikes resolve uncertainty; they are not silently part of B1. No native/fram
   - Add a headless `src/index.ts` and a `src/ui/index.ts` barrel.
   - Add one boundary test that pins the public export list.
   - No workspaces, Metro, Gradle or Pod changes, and no app import rewrites.
+
+### B5a-1 package manifest and public exports
+
+- `packages/offline-navigation/package.json`: private `@muslim-ummah/offline-navigation` 0.1.0, Apache-2.0, `sideEffects: false`, no `dependencies`. `react` >=19.1.0 and `react-native` >=0.81.0 are optional peers; headless consumers need neither.
+- Source-only: `main`, `types`, `react-native` and every `exports` target point at `.ts` source. There is no build output. A consumer needs a TS-aware bundler (Metro on Expo 54 resolves `exports` by default) or its own compile step; plain Node cannot run it uncompiled.
+- Public entrypoints:
+  - `.` is headless: A*, MinHeap, SpatialGrid, isValidCoordinate, journey, session, street and venue.
+  - `./session` is NavigationSession only.
+  - `./ui` is the 13 leaves plus `useAccessibilityFocus`.
+  - Deep `src/...` paths are not exported. SpatialGrid's internal `haversineM` is deliberately not re-exported, because venue owns the public one.
+- `scripts/test-sdk-exports.mjs` (`npm run test:sdk-exports`, in `npm test`) runs 8 checks:
+  - The manifest and every target it names exist.
+  - The UI barrel matches the `.tsx` file list.
+  - The headless import graph never reaches react, react-native or `ui/`.
+  - No package file imports the host app.
+  - A throwaway consumer type-checks all three entrypoints by package name (bundler resolution), and is refused deep paths and root-level UI.
+  - The compiled headless entry runs in plain Node without loading React.
+- Not covered: consumer installation, a Metro bundle by package name and workspaces. Ijtema still imports by relative path and is unchanged.
+- **Next (B5a-2 candidate):** make Ijtema consume the package by name (a `file:` or workspace link plus Metro and TS resolution), switch one binding's import, and prove it with an Android bundle.
