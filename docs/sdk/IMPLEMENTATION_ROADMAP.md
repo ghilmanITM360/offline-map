@@ -144,3 +144,12 @@ The spikes resolve uncertainty; they are not silently part of B1. No native/fram
 
 - **Verdict:** B4b is complete as a leaf-component extraction milestone (the five Directions-sheet leaves). The full ready-made navigation UI is **not** complete. The SDK has no turn-by-turn chrome, arrival, reroute or recovery UI, and no composed sheet.
 - **Next, B4c-1:** extract `ActiveDirectionsPanel` into `ui/` behind a binding. Host-resolved instruction strings and labels go in, `isRTL` and a `theme` are passed, and focus uses the SDK `useAccessibilityFocus`. The `NavigationChromeV2` call site stays unchanged. After that, decompose `NavigationChromeV2` leaves: the arrival card, then the reroute banner.
+
+### B4c-1 reusable ActiveDirectionsPanel
+
+- The SDK's `ui/ActiveDirectionsPanel` is the full-screen `Modal` step list. It takes typed props: already-localized `steps` (`{ key, text }`), `currentStepIndex`, `destination`, `labels` (title, close, no steps, current step), `isRTL` and `onClose`. It also takes a `theme`, which carries a host `Container` (safe areas stay host-owned) and colour tokens. Focus uses the SDK `useAccessibilityFocus` (stage `active-directions`). The file imports only `react`, `react-native` and that hook.
+- `src/views/components/navigation/ActiveDirectionsPanel.tsx` is now the Ijtema binding, with the same props as before. It keeps the `${id}:${index}` keys and maps the engine's instructions through `localizeInstruction` on every render, so a locale change updates the visible text without a reroute. It supplies the `useI18n` copy and direction, `SafeAreaView` and `staticColors`. The `NavigationChromeV2` call site is unchanged. Step progression, the open/close state, rerouting, arrival and `RouteGuideCard` are untouched.
+- Styles, spacing, wrapping (no line limits), `ScrollView`, roles, spoken names and the selected state are unchanged.
+- Covered by `ActiveDirectionsPanel.test.tsx` (5 cases): delegation with ordered localized steps and stable keys; close; a single current step that moves with the index; empty and single-step lists; Urdu RTL, copy and wrapping; and the SDK panel with host copy and container. The `NavigationViewModelHybrid` locale-change suite and the `NavigationChromeV1`/`V2` suites still pass.
+- Still open (tracked separately, unchanged here): the `RouteGuideCard` binding chevrons read the global `isRtl()`.
+- **Next, B4c-2:** the `NavigationChromeV2` arrival card leaf, then the reroute banner.
