@@ -50,4 +50,24 @@ describe('OutsideRouteRequestCoordinator', () => {
     expect(handle.token.requestId).not.toContain('24.9600');
     expect(handle.token.requestId).not.toContain('GATE_05');
   });
+
+  test('a linked parent signal aborts its own handle only', () => {
+    const coordinator = new OutsideRouteRequestCoordinator({ requestIdFactory: () => 'linked' });
+    const parent = new AbortController();
+    const linked = coordinator.begin('linked', parent.signal);
+    parent.abort();
+    expect(linked.signal.aborted).toBe(true);
+    expect(linked.canCommit()).toBe(false);
+
+    const stale = new AbortController();
+    const first = coordinator.begin('first', stale.signal);
+    const second = coordinator.begin('second');
+    stale.abort();
+    expect(first.signal.aborted).toBe(true);
+    expect(second.signal.aborted).toBe(false);
+
+    const aborted = new AbortController();
+    aborted.abort();
+    expect(coordinator.begin('born-aborted', aborted.signal).canCommit()).toBe(false);
+  });
 });

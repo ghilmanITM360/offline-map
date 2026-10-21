@@ -250,6 +250,32 @@ describe('B4a-2 one SDK session per journey', () => {
     expect(hook.result.current.route).toBe(route);
   });
 
+  test('B4a-3: Exit or a new journey aborts the pending provider request via the session', async () => {
+    const calls = stubHybridDeferred();
+    const { hook } = await mountJourney();
+    await startRetry(hook);
+    await act(async () => { hook.result.current.handleExit(); });
+    expect(calls[0].signal?.aborted).toBe(true);
+
+    const again = buildJourney('B');
+    await act(async () => seedRunningNavigation(destination, again, again.instructions));
+    await publish(at(START, 2, 0));
+    await startRetry(hook);
+    expect(calls).toHaveLength(2);
+    const next = buildJourney('N');
+    await act(async () => seedRunningNavigation(destination, next, next.instructions));
+    expect(calls[1].signal?.aborted).toBe(true);
+  });
+
+  test('B4a-3: arrival aborts a pending provider request', async () => {
+    const calls = stubHybridDeferred();
+    const { hook } = await mountJourney();
+    await startRetry(hook);
+    for (const north of [25, 50, 75, 90]) await publish(at(START, north, 0));
+    expect(hook.result.current.arrived).toBe(true);
+    expect(calls[0].signal?.aborted).toBe(true);
+  });
+
   test('arrival cancels the journey session so no later reroute can commit', async () => {
     stubHybridDeferred();
     const { hook } = await mountJourney();

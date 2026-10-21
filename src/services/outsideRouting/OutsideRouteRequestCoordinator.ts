@@ -28,10 +28,13 @@ export class OutsideRouteRequestCoordinator {
     this.requestIdFactory = options.requestIdFactory ?? defaultRequestId;
   }
 
-  begin(requestKey: string): OutsideRouteRequestHandle {
+  /** `parentSignal` (e.g. a NavigationSession request's) aborts this handle only, never a later one. */
+  begin(requestKey: string, parentSignal?: AbortSignal): OutsideRouteRequestHandle {
     this.cancelCurrent();
     this.requestVersion += 1;
     const controller = new AbortController();
+    if (parentSignal?.aborted) controller.abort();
+    else parentSignal?.addEventListener('abort', () => controller.abort(), { once: true });
     const token = {
       requestId: this.requestIdFactory(),
       requestVersion: this.requestVersion,

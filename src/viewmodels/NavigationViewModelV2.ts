@@ -304,8 +304,6 @@ export function useNavigationViewModelV2() {
     };
   }, [isNavigating, navigationSessionId]);
 
-  useEffect(() => () => outsideRequestCoordinatorRef.current.cancelCurrent(), []);
-
   useEffect(() => {
     if (!route) return;
     GPSManagerService.addListener(handleLiveLocation, 'navigation');
@@ -397,8 +395,10 @@ export function useNavigationViewModelV2() {
 
       let candidate = null;
       if (!EntryGateRoutingService.isInsideIjtemaArea(coordinate) && destination) {
+        // B4a-3: the journey request's signal aborts the provider on supersede, Exit, a new trip, arrival or unmount.
         outsideHandle = outsideRequestCoordinatorRef.current.begin(
           `${destination.id}:${options.manualGateId ?? 'automatic'}`,
+          journeyRequest.signal,
         );
         try {
           const result = await V2DirectionsService.calculateHybridPreview({
@@ -430,7 +430,6 @@ export function useNavigationViewModelV2() {
           candidate = null;
         }
       } else {
-        outsideRequestCoordinatorRef.current.cancelCurrent();
         const rerouteRequest = buildV2RerouteRequest({
           route: routeAtRequest,
           coordinate,
@@ -605,8 +604,7 @@ export function useNavigationViewModelV2() {
     if (!arrivedRef.current && isArrived(route, currentLocation, nextIndex)) {
       arrivedRef.current = true;
       setArrived(true);
-      // A5-02: a reroute still computing for this journey must not commit over the completed route.
-      outsideRequestCoordinatorRef.current.cancelCurrent();
+      // A5-02: a reroute still computing for this journey must not commit over the completed route (cancel aborts it).
       journeySessionRef.current?.cancel();
       setReroutePending(false);
     }

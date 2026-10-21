@@ -50,4 +50,12 @@ The spikes resolve uncertainty; they are not silently part of B1. No native/fram
 - `NavigationViewModelV2` now holds one SDK `NavigationSession` per journey: created and started in an effect keyed on `isNavigating` + `navigationSessionId`, disposed on Exit/stop, a new trip or unmount, and cancelled when arrival latches. `attemptReroute` takes `beginRequest()` and both result-commit gates require `request.canCommit()` as well as the existing store check; pending/status cleanup keeps the store-only check. `OutsideRouteRequestCoordinator`, `arrivedRef` and the in-flight marker are unchanged.
 - No change to routing geometry, GPS thresholds or subscriptions, UI, ETA or provider policy; no global session.
 - Covered by `NavigationViewModelV2RerouteSession.test.tsx` (7 behaviours characterized on the pre-change code, then 4 session checks, one of which fails if the SDK gate is removed while the store and coordinator guards stay) plus the existing V2 reroute/arrival suites.
-- B4a-3 (next, not started): candidate is folding the outside-request coordinator's abort signal into the session request so there is one rejection path.
+- B4a-3 (done below): candidate is folding the outside-request coordinator's abort signal into the session request so there is one rejection path.
+
+### B4a-3 one rejection path for reroute requests
+
+- `OutsideRouteRequestCoordinator.begin(key, parentSignal?)`: an aborted parent aborts that handle only (never a later one). `NavigationViewModelV2` passes the journey request's signal, so supersede, Exit, a new trip, arrival and unmount abort the outside provider through the session.
+- Removed the three now-duplicate `cancelCurrent()` calls (unmount effect, inside-reroute branch, arrival). Kept the independent ones: GPS lost and loss of live capability (journey continues), plus `outsideHandle.canCommit()`, the store check, request tokens and the direct-guide rejection.
+- Behaviour change: Exit and a new trip now abort a pending outside provider fetch instead of only discarding its result.
+- Covered by a coordinator link test and two V2 abort tests (Exit/new journey, arrival); removing the link fails those plus the unmount abort test.
+- B4a-4 (next, not started): candidate is the same session ownership for `DirectionsViewModel`'s `journeyGenerationRef` preview requests.
