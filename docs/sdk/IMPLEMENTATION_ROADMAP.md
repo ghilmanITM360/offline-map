@@ -208,4 +208,33 @@ The spikes resolve uncertainty; they are not silently part of B1. No native/fram
 - The SDK's `ui/GateChooser` is the V2 direct-guide "Choose a gate" list. Typed props: an already-localized `title`, `options` (`id`, localized `label`, localized `accessibilityLabel`, optional `disabled`, SDK-only: the Ijtema binding never sets it) rendered in the order given, `selectedId`, `onSelect(id)`, and a `theme` carrying the host `Button` plus colour tokens (`fill`, `border`, `title`). The selected gate gets the `secondary` variant, others `outline`, as before. Layout moved unchanged from `directGateOptions`/`directGateOptionsTitle`. It has no search, scroll, Modal or Back handling because the inline list never did; no testIDs existed. The file imports only `react` and `react-native`.
 - `src/views/components/navigation/GateChooser.tsx` is the Ijtema binding: `t('navigation.chooseGate')`, `t('navigation.useGate')`, `localizeVenueName`, the app `Button` (52dp targets) and warning tokens. V2-only; V1 never had it. `NavigationChromeV2` keeps `showGateOptions` (toggled by the outside status card, closed on selection), the `directOutsideActive` visibility rule, `availableOutsideGates` eligibility, `manualGateId` and the `selectOutsideGate` call. EntryGateRoutingService, chooser generation, fresh-GPS activation and manual-to-live stay host-owned and unchanged; gates 18/19 remain field-blocked.
 - Covered by `GateChooser.test.tsx` (5 cases: copy, Button and unchanged layout; order, selected styling and callback; 52dp targets and Urdu wrapping; standalone SDK with a disabled option; empty list) and two `NavigationChromeV2` cases (open/close toggle, close on selection, one host call; no chooser for road-following outside legs).
-- **Next, B4c closeout:** confirm no V2 status-stack leaf remains inline, then pick B4d.
+- **Then, B4c closeout:** confirm no V2 status-stack leaf remains inline, then pick B4d.
+
+### B4c closeout
+
+- **Verified at `0468cc8`** (inspection and static checks only, no new extraction). `packages/offline-navigation/src/ui/` holds 13 components plus `useAccessibilityFocus`. Each has exactly one production importer, its thin Ijtema binding (`src/views/components/{map,navigation}/`), and no other copy in the app. The SDK UI files import only `react`, `react-native` and `./useAccessibilityFocus`. They contain no Ijtema copy, i18n, Zustand, GPS, routing, lucide or `staticColors`. Hosts supply resolved copy, `isRTL`, the theme (Button, Card, Container, icons, colour tokens) and every callback.
+  - **V1/V2:** ArrivalCard, RerouteBanner, RerouteProgressCard, GpsSignalBanner and MapUnavailableBanner are shared by both chromes. EntryGateOriginBanner and GateChooser are V2-only, as before. The status-slot priority is unchanged in the host ternaries. V2 runs lost > weak > reroute > map-unavailable. V1 runs weak > reroute > map-unavailable and has no lost branch. In V2, the entry-gate banner, outside status card and gate chooser follow as separate siblings. No inline V2 status-stack leaf remains. `OutsideRouteStatusCard` is already a separate host component, tied to `OutsideRouteLocalizationService`.
+  - **Domain:** `src/domain` uses relative imports only. `test-astar-extraction` PASS, and `test:sdk-headless` PASS (35 checks). The loaded graph has no RN, Expo, Zustand, app code or Ijtema data. `NavigationSession` stays React-Native-free.
+- **Known gaps (tracked, not blockers for B5a):**
+  - The `RouteGuideCard` binding chevrons still use `backChevron()`/`forwardChevron()`, which read the global `isRtl()` rather than the `useI18n` direction. The SDK component itself takes `isRTL`.
+  - `NavigationChromeV1`/`V2` still call `useAccessibilityFocus("arrival")` on a maneuver heading that is unmounted after arrival. That call is a no-op, because `ArrivalCard` owns arrival focus.
+  - EMU-N8 has no record in this repo. It and iOS acceptance (B7) remain unverified; there is no iOS consumer build or device evidence.
+  - Gates 18/19 (#43/#44) remain field-blocked (`ground_truth_required`); no connectors were added.
+- **Remaining SDK scope:**
+
+  | Area | State |
+  |---|---|
+  | Reusable UI | Done as leaves: 13 components listed above. |
+  | Navigation shell/chrome | Host-owned: `NavigationChromeV1`/`V2` (instruction card, trip info, recenter, status-slot composition), `LocationSheet`, `DirectionsSheetFooter` and `OutsideRouteStatusCard`. |
+  | MapLibre/PMTiles | Host-owned: `@maplibre/maplibre-react-native` 11.5.0, the map canvas, layers and pack assets. No SDK adapter exists. |
+  | GPS/permissions | Host-owned: `GPSManagerService` and the permission and recovery prompts. The SDK domain takes injected ports only. |
+  | Ijtema integration | 13 bindings plus 16 production imports of `src/domain`, all by relative path into `packages/`. |
+  | RN package deps | None declared. There is no `packages/offline-navigation/package.json`, no workspaces and no `exports`/index. `react` 19.1.0 and `react-native` 0.81.5 are implied peers. |
+  | Native/device | Android only (emulator/APK). iOS, B7 and field walking are open. |
+
+- **Importable today?** A new RN app cannot `import` the SDK as a package: there is no manifest or entry point. It could only copy-reference individual files by path. What reuse exists is component-level: the 13 presentational leaves and the headless `NavigationSession`/routing domain. There is no ready-made navigation experience (map, chrome, GPS and sheet stay host-owned).
+- **Decision: B5a, package contract.** The boundaries are clean and statically enforced, and none of the gaps above affect a package contract. The first small task is B5a-1:
+  - Add a private 0.x `packages/offline-navigation/package.json` with `react`/`react-native` as peers.
+  - Add a headless `src/index.ts` and a `src/ui/index.ts` barrel.
+  - Add one boundary test that pins the public export list.
+  - No workspaces, Metro, Gradle or Pod changes, and no app import rewrites.
