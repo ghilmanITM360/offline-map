@@ -120,3 +120,27 @@ The spikes resolve uncertainty; they are not silently part of B1. No native/fram
 - `RouteEndpointRows` in `src/views/components/map/DirectionsSheetParts.tsx` is now the Ijtema binding. It keeps the same props and re-exports `EndpointRow`. It supplies the `useI18n` direction (in place of the global `isRtl()`), lucide chevrons and `directionsSheetColors`. The styles in that file that nothing used were removed with the move. `LocationSheet` still owns all row copy, the start/destination formatting, the change-start/change-destination handlers and the warning card. Route selection, the Directions lifecycle, sheet detents and `useOverlayInsets` are untouched.
 - Covered by `RouteEndpointRows.test.tsx` (4 cases: delegation, order and per-row press; the optional detail; Urdu RTL chevron and wrapping; host-supplied copy, icons and colours). The LocationSheet route-ready, start-state, manual-start and journey suites still pass.
 - `DirectionsSheetParts.tsx` now holds only bindings. B4b presentation extraction from it is complete. Next: the B4b closeout.
+
+### B4b closeout
+
+- **Verified at `e2e8acc`.** `ManualLiveUpgradeCard`, `RouteGuideCard`, `DirectionsHeader`, `StartOptionCard` and `RouteEndpointRows` live in `packages/offline-navigation/src/ui/`.
+  - The SDK files import only `react`, `react-native` and the SDK's `useAccessibilityFocus`. They contain no Zustand, i18n, lucide, GPS, routing or app code, and no Ijtema copy.
+  - Each one takes typed props, plus host labels or copy and a `theme` with a direction-picked icon and colour tokens.
+  - The app files are thin bindings with unchanged props, so the `LocationSheet` and `LocationsDirectoryScreen` call sites did not change.
+  - RTL comes from the `useI18n` direction. The exception is the `RouteGuideCard` chevrons, which come from `backChevron()`/`forwardChevron()` and read the global `isRtl()`; aligning them is a small follow-up. Accessibility (roles, spoken names, 48–72dp targets, states, focus) and wrapping are unchanged.
+  - The five suites pass 31/31. Full `npm test` passed at `e2e8acc` (B4b-5).
+- **Remaining UI, classified (inspection only, not an audit):**
+
+  | Item | Lines | Class | Why |
+  |---|---|---|---|
+  | `ActiveDirectionsPanel` | 61 | SDK-reusable | Props-only full-screen `Modal` step list (instructions, current step, close). Depends on i18n, `localizeInstruction`, the `V2NavigationInstruction` type, `staticColors`, the app `useAccessibilityFocus` shim and `SafeAreaView` (safe areas stay host-injected). Used only by `NavigationChromeV2`. |
+  | `OutsideRouteStatusCard` | 144 | SDK-reusable, later | Typed outside candidate, but tied to `OutsideRouteLocalizationService` and the app `Button`. |
+  | `DirectionsPeekHandle`, `MapControls` | 86 / 166 | SDK-reusable, later | Presentational. `MapControls` couples to `CompassMode` from the camera manager. |
+  | `NavigationChromeV1`/`V2` (arrival modal, reroute banner, recenter) | 253 / 368 | Host-owned for now | They read the overlay view models, `useOverlayInsets`, safe areas and venue-name localization. Decompose them into leaf cards before any extraction. |
+  | `LocationSheet` (Directions sheet, Route Preview) | 1248 | Host-owned | Owns the lifecycle, detents, copy and handlers. Only its leaf cards were extracted. |
+  | `DirectionsSheetFooter` | 96 | Platform-specific | `@gorhom/bottom-sheet` footer and safe-area insets. |
+  | Location recovery (permission / GPS-off prompts in `LocationsDirectoryScreen`, `HomeScreen`) | n/a | Host-owned | Platform permissions and app flow. |
+  | `MapLabelOverlay`, `LayersSheet`, `MapTopBar`, `OsmAttribution` | n/a | Host- or platform-specific | MapLibre and app chrome. |
+
+- **Verdict:** B4b is complete as a leaf-component extraction milestone (the five Directions-sheet leaves). The full ready-made navigation UI is **not** complete. The SDK has no turn-by-turn chrome, arrival, reroute or recovery UI, and no composed sheet.
+- **Next, B4c-1:** extract `ActiveDirectionsPanel` into `ui/` behind a binding. Host-resolved instruction strings and labels go in, `isRTL` and a `theme` are passed, and focus uses the SDK `useAccessibilityFocus`. The `NavigationChromeV2` call site stays unchanged. After that, decompose `NavigationChromeV2` leaves: the arrival card, then the reroute banner.
