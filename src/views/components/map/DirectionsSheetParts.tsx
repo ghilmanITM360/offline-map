@@ -3,13 +3,16 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { ChevronLeft, ChevronRight, RefreshCw } from 'lucide-react-native';
 
-import { useAccessibilityFocus } from '../../hooks/useAccessibilityFocus';
 import { directionsSheetColors as c } from '../../../theme';
 import { isRtl, useI18n } from '../../../i18n';
+import {
+  DirectionsHeader as SdkDirectionsHeader,
+  type DirectionsHeaderTheme,
+} from '../../../../packages/offline-navigation/src/ui/DirectionsHeader';
 
 /**
  * Presentational pieces of the Get Directions sheet (#177). They hold no route, GPS or
@@ -20,42 +23,19 @@ import { isRtl, useI18n } from '../../../i18n';
 /** Minimum touch target for every control here (dp). */
 const TARGET = 48;
 
-export function DirectionsHeader({
-  title,
-  subtitle,
-  onBack,
-  focusKey = null,
-  accessibilityContext,
-}: {
+const headerColors = { headingText: c.headingText, secondaryText: c.secondaryText, backButtonFill: c.backButtonFill };
+
+/** Ijtema binding for the SDK header: supplies the back label, direction and app colours; same props as before B4b-3. */
+export function DirectionsHeader(props: {
   title: string;
   subtitle: string;
   onBack: () => void;
   focusKey?: string | null;
   accessibilityContext?: string;
 }) {
-  const { ref } = useAccessibilityFocus(focusKey);
-  const { t, isRTL, dir } = useI18n();
-  const BackIcon = isRTL ? ChevronRight : ChevronLeft;
-  return (
-    <View style={[styles.header, { direction: dir }]}>
-      <Pressable
-        onPress={onBack}
-        style={styles.backHit}
-        accessibilityRole="button"
-        accessibilityLabel={t('directions.back')}
-      >
-        <View style={styles.backCircle}>
-          <BackIcon size={24} color={c.headingText} />
-        </View>
-      </Pressable>
-      <View style={styles.headerText}>
-        <Text ref={ref} accessibilityRole="header" accessibilityLabel={accessibilityContext ? `${title}. ${accessibilityContext}` : undefined} style={styles.title}>
-          {title}
-        </Text>
-        <Text style={styles.subtitle}>{subtitle}</Text>
-      </View>
-    </View>
-  );
+  const { t, isRTL } = useI18n();
+  const theme = useMemo<DirectionsHeaderTheme>(() => ({ BackIcon: isRTL ? ChevronRight : ChevronLeft, colors: headerColors }), [isRTL]);
+  return <SdkDirectionsHeader {...props} backLabel={t('directions.back')} isRTL={isRTL} theme={theme} />;
 }
 
 /**
@@ -159,31 +139,6 @@ export function StartOptionCard({
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingTop: 4,
-    paddingBottom: 12,
-    gap: 4,
-  },
-  backHit: {
-    width: TARGET,
-    height: TARGET,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  backCircle: {
-    width: 41,
-    height: 41,
-    borderRadius: 21,
-    backgroundColor: c.backButtonFill,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerText: { flex: 1, gap: 2 },
-  title: { fontSize: 28, fontWeight: '800', color: c.headingText },
-  subtitle: { fontSize: 14, lineHeight: 20, color: c.secondaryText },
 
   card: {
     borderRadius: 14,
