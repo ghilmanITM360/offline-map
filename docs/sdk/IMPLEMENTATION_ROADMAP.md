@@ -92,3 +92,10 @@ The spikes resolve uncertainty; they are not silently part of B1. No native/fram
 - `src/views/components/map/ManualLiveUpgradeCard.tsx` is now the Ijtema binding. It keeps the same props and supplies `useI18n` copy/direction and the app design system, so the `LocationSheet` call site is unchanged. `useAccessibilityFocus` moved to `ui/`, and the old hook path is an `export *` shim.
 - Boundary: `test-astar-extraction` lets only `ui/` import `react`/`react-native`. The domain stays relative-only and inside `domain/`, and nothing in `packages/` may reach the app. Covered by `ManualLiveUpgradeCard.test.tsx` (10 cases: delegation, idle, confirm/cancel/start/recover separation, busy states, Urdu RTL + a11y, host-supplied labels).
 - Next, B4b-2: `RouteGuideCard` (same matrix row).
+
+### B4b-2 reusable RouteGuideCard
+
+- The implementation now lives in `packages/offline-navigation/src/ui/RouteGuideCard.tsx`. It is presentation-only and takes the current `step` (localized instruction plus formatted distance or null), `stepIndex`/`stepTotal`, typed `labels` (step count, spoken summary, Previous/Next, live, end), `isRTL`, and a `theme` (host `Button`, direction-picked `BackIcon`/`ForwardIcon`, colour tokens, radius). Previous/Next/live/end stay host callbacks. The 1.5 font-scale stacking, a11y labels and the live region are unchanged.
+- `src/views/components/map/RouteGuideCard.tsx` is now the Ijtema binding. It keeps the same props (`guide`, callbacks, `liveBusy`, `message`) and supplies `useI18n` copy/direction, `localizeInstruction`, the distance unit from the store, `backChevron()`/`forwardChevron()` and the design tokens. The `LocationSheet` call site, sheet detents and `useOverlayInsets` are untouched.
+- Covered by `RouteGuideCard.test.tsx` (6 cases: delegation, step numbering/instruction/distance, Previous/Next boundaries, live/end separation, Urdu RTL + spoken summary, host-supplied labels/theme). The existing `GuideControlsLocalization` and `LocationSheetRouteGuide` suites still pass.
+- Next, B4b-3 candidate: `DirectionsHeader` from `DirectionsSheetParts.tsx`, which uses props, i18n, chevrons and `useAccessibilityFocus` only.
