@@ -58,4 +58,13 @@ The spikes resolve uncertainty; they are not silently part of B1. No native/fram
 - Removed the three now-duplicate `cancelCurrent()` calls (unmount effect, inside-reroute branch, arrival). Kept the independent ones: GPS lost and loss of live capability (journey continues), plus `outsideHandle.canCommit()`, the store check, request tokens and the direct-guide rejection.
 - Behaviour change: Exit and a new trip now abort a pending outside provider fetch instead of only discarding its result.
 - Covered by a coordinator link test and two V2 abort tests (Exit/new journey, arrival); removing the link fails those plus the unmount abort test.
-- B4a-4 (next, not started): candidate is the same session ownership for `DirectionsViewModel`'s `journeyGenerationRef` preview requests.
+- B4a-4 (done below): candidate is the same session ownership for `DirectionsViewModel`'s `journeyGenerationRef` preview requests.
+- Known gap: no test yet proves an inside-venue reroute aborts a pending outside reroute (the removed inside-branch `cancelCurrent()` is now covered only by the session supersede).
+
+### B4a-4 route preview ownership
+
+- `DirectionsViewModel` holds one SDK `NavigationSession` (`directions-preview`) per mount, created and started in the mount effect and disposed on unmount. It is separate from the journey session, so closing Directions never touches a live journey.
+- `calculateRoute` takes `beginRequest()`; its `canCommit` also requires `request.canCommit()`, and the outside preview handle is linked to the request's signal. `invalidateJourneyWork` (destination/intent change, manual gate, unmount) supersedes the request instead of calling `cancelCurrent()` directly.
+- Kept unchanged: `journeyGenerationRef`, `routeRequestRef`, `mountedRef`, the `isNavigating` and intent checks, the location-request guards and the two `cancelCurrent()` calls inside `calculateRoute`. Removing `journeyGenerationRef` is not proven equivalent yet (the location and hypothetical-selection paths still use it).
+- Covered by `DirectionsPreviewSession.test.tsx` (6 cases: valid preview, rapid destination changes, origin change, close + late result + reopen, preview-to-live with no cross-cancellation, inside manual preview). If the signal link is removed, the close/unmount abort test fails.
+- B4a-5 (next, not started).

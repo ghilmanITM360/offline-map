@@ -37,6 +37,8 @@ import { RoutePointService } from '../services/RoutePointService';
 import { getRoutableOfficialGates } from '../data/ijtema/entryPolicy';
 import { createProductionOutsideRouteSource } from '../services/outsideRouting/ProductionOutsideRouteSource';
 import { OutsideRouteRequestCoordinator } from '../services/outsideRouting/OutsideRouteRequestCoordinator';
+import { createNavigationSession } from '../../packages/offline-navigation/src/domain/session';
+import type { NavigationSession } from '../../packages/offline-navigation/src/domain/session';
 import { formatLastKnownAge } from '../utils/formatLastKnownAge';
 import { CHOOSE_DESTINATION, NAVIGATION_UNAVAILABLE, ROUTE_NOT_FOUND } from '../utils/routeCopy';
 
@@ -124,6 +126,10 @@ export function useDirectionsViewModel(destination: Place | null) {
   const locationRequestRef = useRef(0);
   const routeRequestRef = useRef(0);
   const mountedRef = useRef(true);
+  // B4a-4: one SDK session per mounted Directions owns route-preview requests only (never a live journey's reroutes).
+  // A new preview or any journey invalidation supersedes the current request, unmount disposes it, and either
+  // aborts the outside provider through the request's signal.
+  const previewSessionRef = useRef<NavigationSession | null>(null);
   const hypotheticalSelectionRef = useRef<{ generation: number; journeyId: number; intentId: number | null; destinationId: string } | null>(null);
   const renderGeneration = journeyGenerationRef.current;
   const renderJourneyId = useAppStore.getState().directoryJourneySerial;
@@ -137,7 +143,7 @@ export function useDirectionsViewModel(destination: Place | null) {
     journeyGenerationRef.current += 1;
     locationRequestRef.current += 1;
     routeRequestRef.current += 1;
-    outsideRequestCoordinatorRef.current.cancelCurrent();
+    previewSessionRef.current?.beginRequest();
   };
   const outsideRequestCoordinatorRef = useRef(new OutsideRouteRequestCoordinator());
   routeRef.current = route;
@@ -161,7 +167,15 @@ export function useDirectionsViewModel(destination: Place | null) {
 
   useEffect(() => {
     mountedRef.current = true;
-    return () => { mountedRef.current = false; invalidateJourneyWork(); };
+    const previewSession = createNavigationSession('directions-preview');
+    previewSession.start();
+    previewSessionRef.current = previewSession;
+    return () => {
+      mountedRef.current = false;
+      invalidateJourneyWork();
+      previewSession.dispose();
+      if (previewSessionRef.current === previewSession) previewSessionRef.current = null;
+    };
   }, []);
 
   useLayoutEffect(() => {
@@ -299,8 +313,9 @@ export function useDirectionsViewModel(destination: Place | null) {
     const generation = journeyGenerationRef.current;
     const request = ++routeRequestRef.current;
     const intentId = ownedDestinationIntentRef.current;
+    const sessionRequest = previewSessionRef.current?.beginRequest() ?? null;
     const canCommit = () => mountedRef.current && generation === journeyGenerationRef.current && request === routeRequestRef.current &&
-      !useAppStore.getState().isNavigating && (intentId === null || useAppStore.getState().destinationJourneyIntent?.id === intentId);
+      sessionRequest !== null && sessionRequest.canCommit() && !useAppStore.getState().isNavigating && (intentId === null || useAppStore.getState().destinationJourneyIntent?.id === intentId);
     outsideRequestCoordinatorRef.current.cancelCurrent();
     if (!destination) {
       setLoadState('error');
@@ -353,7 +368,7 @@ export function useDirectionsViewModel(destination: Place | null) {
         manualGateId: manualGateId ?? undefined,
       };
       const requestHandle = forceOutside
-        ? outsideRequestCoordinatorRef.current.begin(`${destination.id}:${startSource}:${manualGateId ?? 'automatic'}`)
+        ? outsideRequestCoordinatorRef.current.begin(`${destination.id}:${startSource}:${manualGateId ?? 'automatic'}`, sessionRequest?.signal)
         : null;
       if (!forceOutside) outsideRequestCoordinatorRef.current.cancelCurrent();
       let preview: V2DirectionsPreviewResult;
