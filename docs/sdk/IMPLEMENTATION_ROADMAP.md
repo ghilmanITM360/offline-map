@@ -188,3 +188,10 @@ The spikes resolve uncertainty; they are not silently part of B1. No native/fram
 - Source-pin scripts (`gps-signal-loss-v2`, `nav-safety-text-accessibility`) pin the binding calls and read the font floor from the SDK file.
 - Covered by `GpsSignalBanner.test.tsx` (5 cases: colours and unchanged layout; assertive/polite per status, rendered once; Urdu wrapping; standalone SDK banner) and two `NavigationChromeV2` cases (lost during a pending reroute shows one lost banner beside the progress card and no weak banner; recovered GPS clears it).
 - **Next, B4c-6:** the basemap-unavailable status banner (`mapUnavailableBanner`, last branch of the same slot in V1 and V2).
+
+### B4c-6 reusable MapUnavailableBanner
+
+- The SDK's `ui/MapUnavailableBanner` is the basemap-unavailable notice. Its typed props are an already-localized `message` and a `theme` of colour tokens (`fill`, `border`, `text`). It is a polite live region with no icon, testID or retry action, as before. Layout and the 14/20 centred text moved unchanged from `mapUnavailableBanner`/`mapUnavailableText`. The file imports only `react` and `react-native`.
+- `src/views/components/navigation/MapUnavailableBanner.tsx` is the Ijtema binding: `bannerTranslucentWhite`/`border`/`iconMuted` tokens. V1 and V2 render it as the last branch of their unchanged status-slot ternary, so GPS and reroute status still outrank it. Copy stays `t('navigation.mapUnavailable')` in the chromes. Basemap loading, PMTiles availability (`hasBaseMap`) and any recovery stay host-owned; nothing in MapLibre, assets or connectivity changed.
+- `test-navigation-ui` pins the binding call. Covered by `MapUnavailableBanner.test.tsx` (4 cases: colours and unchanged layout; one polite announcement; Urdu wrapping; standalone SDK banner) and a `NavigationChromeV2` case (shown once without a basemap, hidden with one); the existing #66/#156 cases keep priority and live-region coverage.
+- **Next, B4c-7:** the V2 entry-gate origin banner (`v2EntryGateBanner`), the smallest remaining status-stack leaf.

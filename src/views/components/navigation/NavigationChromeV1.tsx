@@ -7,6 +7,7 @@ import { localizeVenueName } from '../../../i18n/venueNames';
 import { useI18n } from '../../../i18n';
 import { ArrivalCard } from './ArrivalCard';
 import { GpsSignalBanner } from './GpsSignalBanner';
+import { MapUnavailableBanner } from './MapUnavailableBanner';
 import { RerouteBanner } from './RerouteBanner';
 import { RerouteProgressCard } from './RerouteProgressCard';
 import { useAccessibilityFocus } from '../../hooks/useAccessibilityFocus';
@@ -143,9 +144,7 @@ export function NavigationChromeV1({ overlay, hasBaseMap }: { overlay: Navigatio
           ) : rerouteStatusMessage && !reroutePending ? (
             <RerouteBanner message={rerouteStatusMessage} />
           ) : !hasBaseMap ? (
-            <View style={styles.mapUnavailableBanner} accessibilityLiveRegion="polite">
-              <Text style={styles.mapUnavailableText}>{t('navigation.mapUnavailable')}</Text>
-            </View>
+            <MapUnavailableBanner message={t('navigation.mapUnavailable')} />
           ) : null}
         </View>
       </AnimatedSafeAreaView>

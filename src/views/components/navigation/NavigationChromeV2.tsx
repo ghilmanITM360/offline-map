@@ -25,6 +25,7 @@ import { ActiveDirectionsPanel } from './ActiveDirectionsPanel';
 import { useI18n } from '../../../i18n';
 import { ArrivalCard } from './ArrivalCard';
 import { GpsSignalBanner } from './GpsSignalBanner';
+import { MapUnavailableBanner } from './MapUnavailableBanner';
 import { RerouteBanner } from './RerouteBanner';
 import { RerouteProgressCard } from './RerouteProgressCard';
 
@@ -218,9 +219,7 @@ export function NavigationChromeV2({ overlay, hasBaseMap }: { overlay: Navigatio
           ) : rerouteStatusMessage && !reroutePending ? (
             <RerouteBanner message={rerouteStatusMessage} />
           ) : !hasBaseMap ? (
-            <View style={styles.mapUnavailableBanner} accessibilityLiveRegion="polite">
-              <Text style={styles.mapUnavailableText}>{t('navigation.mapUnavailable')}</Text>
-            </View>
+            <MapUnavailableBanner message={t('navigation.mapUnavailable')} />
           ) : null}
           {route.metadata.startedOutside && route.metadata.entryGateId && (
             <View style={styles.v2EntryGateBanner}>

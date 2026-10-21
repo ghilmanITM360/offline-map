@@ -40,7 +40,7 @@ assert(navOverlay.includes('graphOnlyFallbackUsed'), 'v2 navigation must expose 
 // product copy must describe user impact, not implementation terms). One basemap-unavailable
 // message now covers both cases; graphOnlyFallbackUsed still flows through navOverlay for any
 // other consumer, it's just not read by the chrome's own status banner anymore.
-assert(navChrome.includes("t('navigation.mapUnavailable')"), 'v2 navigation must show a clear, user-facing basemap-unavailable message');
+assert(navChrome.includes("<MapUnavailableBanner message={t('navigation.mapUnavailable')} />"), 'v2 navigation must show a clear, user-facing basemap-unavailable message through the SDK banner binding');
 
 // Phase 8 (docs/OFFLINE_NAVIGATION_AND_ROUTING.md): route.coordinates was moved
 // into a useMemo above the `!route` early return (Rules of Hooks), so the

@@ -101,6 +101,16 @@ describe('NavigationChromeV2 — reroute progress card priority (B4c-4)', () => 
   });
 });
 
+describe('NavigationChromeV2 — map-unavailable banner (B4c-6)', () => {
+  test('missing basemap shows the polite banner exactly once; a loaded basemap hides it', async () => {
+    const view = await render(<NavigationChromeV2 overlay={baseOverlay()} hasBaseMap={false} />);
+    expect(screen.getAllByText("The map can't be shown. Directions still work.")).toHaveLength(1);
+    expect(screen.getByText("The map can't be shown. Directions still work.").parent?.props.accessibilityLiveRegion).toBe('polite');
+    await view.rerender(<NavigationChromeV2 overlay={baseOverlay()} hasBaseMap />);
+    expect(screen.queryByText("The map can't be shown. Directions still work.")).not.toBeOnTheScreen();
+  });
+});
+
 describe('NavigationChromeV2 — GPS signal banner priority (B4c-5)', () => {
   test('lost GPS during a pending reroute: one assertive lost banner beside the progress card, no weak banner', async () => {
     await render(<NavigationChromeV2 overlay={baseOverlay({ gpsSignalState: 'GPS_LOST', isWeakGps: true, reroutePending: true })} hasBaseMap />);

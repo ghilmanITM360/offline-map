@@ -86,21 +86,6 @@ export const navOverlayStyles = StyleSheet.create({
     // recenter button always wins hit-testing if their absolute-positioned regions ever collide.
     zIndex: 6,
   },
-  mapUnavailableBanner: {
-    marginHorizontal: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: 10,
-    backgroundColor: staticColors.bannerTranslucentWhite,
-    borderWidth: 1,
-    borderColor: staticColors.border,
-  },
-  mapUnavailableText: {
-    color: staticColors.iconMuted,
-    fontSize: 14,
-    textAlign: 'center',
-    lineHeight: 20,
-  },
   v2EntryGateBanner: {
     marginHorizontal: 12,
     paddingHorizontal: 12,
