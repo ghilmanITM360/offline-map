@@ -1,6 +1,8 @@
 import { getDistance } from 'geolib';
 import { seedRunningNavigation } from './navigationFixture';
 import type { Coordinate, Place, V2ActiveRoute } from '../models/types';
+import { EntryGateRoutingService } from '../services/EntryGateRoutingService';
+import { RoutingServiceV2 } from '../services/RoutingServiceV2';
 import { V2DirectionsService } from '../services/V2DirectionsService';
 import { V2NavigationAdapter } from '../services/V2NavigationAdapter';
 import { VoiceService } from '../services/VoiceService';
@@ -265,6 +267,22 @@ describe('B4a-2 one SDK session per journey', () => {
     const next = buildJourney('N');
     await act(async () => seedRunningNavigation(destination, next, next.instructions));
     expect(calls[1].signal?.aborted).toBe(true);
+  });
+
+  test('B4a-5: an inside-venue reroute aborts a pending outside reroute through the session supersede', async () => {
+    const calls = stubHybridDeferred();
+    const { hook, route } = await mountJourney();
+    const { pending: outsidePending } = await startRetry(hook);
+    jest.spyOn(EntryGateRoutingService, 'isInsideIjtemaArea').mockReturnValue(true);
+    const inside = jest.spyOn(RoutingServiceV2, 'calculateRoute').mockReturnValue(null);
+    const { pending: insidePending } = await startRetry(hook);
+    await act(async () => { await insidePending; });
+
+    expect(inside).toHaveBeenCalledTimes(1);
+    expect(calls).toHaveLength(1);
+    expect(calls[0].signal?.aborted).toBe(true);
+    await act(async () => { calls[0].finish(); await outsidePending; });
+    expect(useAppStore.getState().activeRoute).toBe(route);
   });
 
   test('B4a-3: arrival aborts a pending provider request', async () => {

@@ -11,6 +11,7 @@ import { OutsideRouteRequestCoordinator } from '../services/outsideRouting/Outsi
 import { createProductionOutsideRouteSource } from '../services/outsideRouting/ProductionOutsideRouteSource';
 import { V2NavigationAdapter } from '../services/V2NavigationAdapter';
 import { startPreviewNavigationV2 } from './NavigationViewModelV2';
+import { createNavigationSession, type NavigationSession, type NavigationSessionRequest } from '../../packages/offline-navigation/src/domain/session';
 
 import { clearManualLivePreview, publishManualLivePreview } from './manualLivePreview';
 
@@ -32,12 +33,16 @@ export function useManualLiveUpgrade(destination: Place | null, route: unknown, 
   const committed = useRef<Pick<ReturnType<typeof useAppStore.getState>, 'activeRoute' | 'routePlannerOrigin' | 'routePlannerDest' | 'directoryRequestSerial'> | null>(null);
   const mounted = useRef(true);
   const coordinator = useRef(new OutsideRouteRequestCoordinator());
+  // B4a-5: one SDK session per mount owns upgrade requests; separate from the Directions preview and journey sessions.
+  const session = useRef<NavigationSession | null>(null);
+  const sessionRequest = useRef<NavigationSessionRequest | null>(null);
+  const supersede = () => { sessionRequest.current = null; session.current?.beginRequest(); };
   const guideActive = useAppStore(s => s.routeGuide !== null);
   const chooserSerial = useAppStore(s => s.directoryRequestSerial);
   const chooserPurpose = useAppStore(s => s.directoryPurpose);
   const cancelLiveUpgrade = () => {
     generation.current += 1;
-    coordinator.current.cancelCurrent();
+    supersede();
     clearManualLivePreview(presentationOwner.current);
     if (mounted.current) setUpgrade({ phase: 'idle' });
   };
@@ -49,7 +54,15 @@ export function useManualLiveUpgrade(destination: Place | null, route: unknown, 
   useEffect(() => { cancelLiveUpgrade(); }, [chooserPurpose, chooserSerial]);
   useEffect(() => {
     mounted.current = true;
-    return () => { mounted.current = false; generation.current += 1; coordinator.current.cancelCurrent(); clearManualLivePreview(presentationOwner.current); };
+    const upgradeSession = createNavigationSession('manual-live-upgrade');
+    upgradeSession.start();
+    session.current = upgradeSession;
+    return () => {
+      mounted.current = false; generation.current += 1; sessionRequest.current = null;
+      upgradeSession.dispose();
+      if (session.current === upgradeSession) session.current = null;
+      clearManualLivePreview(presentationOwner.current);
+    };
   }, []);
   const requestLiveUpgrade = () => {
     if (stateRef.current.phase !== 'idle' || !destination || !manualStart || !useAppStore.getState().routeGuide) return;
@@ -58,7 +71,7 @@ export function useManualLiveUpgrade(destination: Place | null, route: unknown, 
     generation.current += 1;
     const state = useAppStore.getState();
     committed.current = { activeRoute: state.activeRoute, routePlannerOrigin: state.routePlannerOrigin, routePlannerDest: state.routePlannerDest, directoryRequestSerial: state.directoryRequestSerial };
-    coordinator.current.cancelCurrent();
+    supersede();
     setUpgrade({ phase: 'confirming' });
   };
   const ownsCommittedTrip = () => {
@@ -71,7 +84,9 @@ export function useManualLiveUpgrade(destination: Place | null, route: unknown, 
   const confirmLiveUpgrade = async () => {
     if (!destination || !manualStart || !['confirming', 'failed'].includes(stateRef.current.phase)) return;
     const token = ++generation.current;
-    const owns = () => ownsCommittedTrip() && token === generation.current &&
+    const upgradeRequest = session.current?.beginRequest() ?? null;
+    sessionRequest.current = upgradeRequest;
+    const owns = () => upgradeRequest !== null && upgradeRequest.canCommit() && ownsCommittedTrip() && token === generation.current &&
       useAppStore.getState().routePlannerDest?.id === destination.id && useAppStore.getState().routeGuide !== null;
     setUpgrade({ phase: 'acquiring' });
     try {
@@ -88,7 +103,7 @@ export function useManualLiveUpgrade(destination: Place | null, route: unknown, 
       const forceOutside = !EntryGateRoutingService.isInsideIjtemaArea(resolved.coordinate);
       const request = { destination, startPlace: null, currentLocation: resolved.coordinate, forceOutside,
         manualGateId: manualGateId ?? undefined, walkingSpeedMs: useAppStore.getState().settings.walkingSpeed ?? 1.4 };
-      const handle = forceOutside ? coordinator.current.begin(`upgrade:${token}:${destination.id}`) : null;
+      const handle = forceOutside ? coordinator.current.begin(`upgrade:${token}:${destination.id}`, upgradeRequest?.signal) : null;
       const result = handle ? await V2DirectionsService.calculateHybridPreview({ request, token: handle.token, signal: handle.signal, outsideProvider }) :
         V2DirectionsService.calculatePreview(request);
       if (!owns() || (handle && !handle.canCommit())) return;
@@ -107,7 +122,7 @@ export function useManualLiveUpgrade(destination: Place | null, route: unknown, 
   const startUpgradedNavigation = (): boolean => {
     const candidate = stateRef.current;
     const state = useAppStore.getState();
-    if (candidate.phase !== 'preview' || candidate.token !== generation.current || !ownsCommittedTrip() || !destination || !state.routeGuide || state.routePlannerDest?.id !== destination.id) return false;
+    if (candidate.phase !== 'preview' || candidate.token !== generation.current || !sessionRequest.current?.canCommit() || !ownsCommittedTrip() || !destination || !state.routeGuide || state.routePlannerDest?.id !== destination.id) return false;
     const original = { activeRoute: state.activeRoute, routePlannerOrigin: state.routePlannerOrigin, routePlannerDest: state.routePlannerDest,
       routeInstructions: state.routeInstructions, routeGuide: state.routeGuide };
     useAppStore.setState({ activeRoute: candidate.route, routePlannerOrigin: null, routePlannerDest: destination });

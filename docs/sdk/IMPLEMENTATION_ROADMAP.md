@@ -59,7 +59,7 @@ The spikes resolve uncertainty; they are not silently part of B1. No native/fram
 - Behaviour change: Exit and a new trip now abort a pending outside provider fetch instead of only discarding its result.
 - Covered by a coordinator link test and two V2 abort tests (Exit/new journey, arrival); removing the link fails those plus the unmount abort test.
 - B4a-4 (done below): candidate is the same session ownership for `DirectionsViewModel`'s `journeyGenerationRef` preview requests.
-- Known gap: no test yet proves an inside-venue reroute aborts a pending outside reroute (the removed inside-branch `cancelCurrent()` is now covered only by the session supersede).
+- Known gap (closed in B4a-5): an inside-venue reroute aborting a pending outside reroute is now pinned by a V2 session test.
 
 ### B4a-4 route preview ownership
 
@@ -67,4 +67,12 @@ The spikes resolve uncertainty; they are not silently part of B1. No native/fram
 - `calculateRoute` takes `beginRequest()`; its `canCommit` also requires `request.canCommit()`, and the outside preview handle is linked to the request's signal. `invalidateJourneyWork` (destination/intent change, manual gate, unmount) supersedes the request instead of calling `cancelCurrent()` directly.
 - Kept unchanged: `journeyGenerationRef`, `routeRequestRef`, `mountedRef`, the `isNavigating` and intent checks, the location-request guards and the two `cancelCurrent()` calls inside `calculateRoute`. Removing `journeyGenerationRef` is not proven equivalent yet (the location and hypothetical-selection paths still use it).
 - Covered by `DirectionsPreviewSession.test.tsx` (6 cases: valid preview, rapid destination changes, origin change, close + late result + reopen, preview-to-live with no cross-cancellation, inside manual preview). If the signal link is removed, the close/unmount abort test fails.
-- B4a-5 (next, not started).
+- B4a-5 (done below).
+
+### B4a-5 manual-to-live upgrade ownership
+
+- `useManualLiveUpgrade` holds one SDK `NavigationSession` (`manual-live-upgrade`) per mount, separate from the Directions preview and journey sessions. `confirmLiveUpgrade` takes `beginRequest()`; its `owns()` and `startUpgradedNavigation` also require `request.canCommit()`, and the outside upgrade handle is linked to the request's signal. Cancel, a new request, the trip/gate/chooser invalidation effects and unmount supersede or dispose the session instead of calling `cancelCurrent()` directly.
+- Kept unchanged: `generation`, `mounted`, `ownsCommittedTrip`, explicit confirmation, capability/fresh-fix checks, one-shot Start with rollback and the private map candidate.
+- A destination change through the store (prop unchanged) still only rejects the late result; it does not abort the provider (same as before).
+- Covered by `ManualLiveUpgradeSession.test.tsx` (7 cases) plus the existing `DirectionsManualLiveUpgrade` suite. If the signal link is removed, the cancel, gate and unmount abort tests fail.
+- B4a closeout (next, not started): `journeyGenerationRef` and the upgrade `generation` remain; removing either needs equivalence tests.
