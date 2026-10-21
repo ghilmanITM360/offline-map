@@ -40,6 +40,8 @@ export function useManualLiveUpgrade(destination: Place | null, route: unknown, 
   const guideActive = useAppStore(s => s.routeGuide !== null);
   const chooserSerial = useAppStore(s => s.directoryRequestSerial);
   const chooserPurpose = useAppStore(s => s.directoryPurpose);
+  // B4a-6: a destination changed outside Directions (store only, prop unchanged) must abort the lookup, not just reject it.
+  const plannerDestId = useAppStore(s => s.routePlannerDest?.id ?? null);
   const cancelLiveUpgrade = () => {
     generation.current += 1;
     supersede();
@@ -49,7 +51,7 @@ export function useManualLiveUpgrade(destination: Place | null, route: unknown, 
   useEffect(() => {
     cancelLiveUpgrade();
     // A candidate belongs to exactly one committed manual trip.
-  }, [destination?.id, route, manualStart?.id, manualGateId]);
+  }, [destination?.id, route, manualStart?.id, manualGateId, plannerDestId]);
   useEffect(() => { if (!guideActive) cancelLiveUpgrade(); }, [guideActive]);
   useEffect(() => { cancelLiveUpgrade(); }, [chooserPurpose, chooserSerial]);
   useEffect(() => {

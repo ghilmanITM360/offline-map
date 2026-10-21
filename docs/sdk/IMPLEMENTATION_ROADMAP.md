@@ -73,6 +73,15 @@ The spikes resolve uncertainty; they are not silently part of B1. No native/fram
 
 - `useManualLiveUpgrade` holds one SDK `NavigationSession` (`manual-live-upgrade`) per mount, separate from the Directions preview and journey sessions. `confirmLiveUpgrade` takes `beginRequest()`; its `owns()` and `startUpgradedNavigation` also require `request.canCommit()`, and the outside upgrade handle is linked to the request's signal. Cancel, a new request, the trip/gate/chooser invalidation effects and unmount supersede or dispose the session instead of calling `cancelCurrent()` directly.
 - Kept unchanged: `generation`, `mounted`, `ownsCommittedTrip`, explicit confirmation, capability/fresh-fix checks, one-shot Start with rollback and the private map candidate.
-- A destination change through the store (prop unchanged) still only rejects the late result; it does not abort the provider (same as before).
+- Closed in B4a-6: a destination change through the store (prop unchanged) now aborts the provider as well as rejecting the late result.
 - Covered by `ManualLiveUpgradeSession.test.tsx` (7 cases) plus the existing `DirectionsManualLiveUpgrade` suite. If the signal link is removed, the cancel, gate and unmount abort tests fail.
-- B4a closeout (next, not started): `journeyGenerationRef` and the upgrade `generation` remain; removing either needs equivalence tests.
+- B4a closeout: done in B4a-6 below.
+
+### B4a-6 external destination-change abort and B4a closeout
+
+- `useManualLiveUpgrade` subscribes to the store's `routePlannerDest` id and adds it to the trip-invalidation effect. A destination changed outside Directions (prop unchanged) now supersedes the upgrade request, so the outside lookup is aborted, not just rejected. The manual guide, the Directions preview session and any live journey session are untouched. A test in `ManualLiveUpgradeSession.test.tsx` fails without the link.
+- **SDK-owned lifecycles:** three `NavigationSession`s (journey/reroute in `NavigationViewModelV2`; `directions-preview` and `manual-live-upgrade`, one per mount). Each owns one current request whose signal is linked to `OutsideRouteRequestCoordinator`. Supersede, cancel and dispose abort the request; `canCommit` gates each commit.
+- **Still owned by the host:** the Zustand store (`isNavigating`, `navigationSessionId`, `startNavigation`/`stopNavigation`, planner/guide state), `GPSManagerService` subscriptions, location-permission requests, the explicit Live approval/Start flow, and all RN views and hooks.
+- **Why the generation guards stay:** `journeyGenerationRef` still guards the location-request and hypothetical-selection paths, which have no session. The upgrade `generation` tokens the preview candidate for one-shot Start. `ownsSession` / `ownsCommittedTrip` check store facts the session cannot see. Removing any of them needs equivalence tests first.
+- **Open limitations:** `LocationAccessService.resolveCurrentLocation` cannot be aborted, so a superseded GPS acquisition runs to completion and only its result is rejected. Inside-venue `calculatePreview` is synchronous, so there is nothing to abort. GPS loss and loss of live capability still call `cancelCurrent()` on their own, because the journey continues.
+- **Verdict:** B4a is complete, and B4b UI extraction can start. Views read view-model output and do not touch sessions. Candidate for B4b-1: `ManualLiveUpgradeCard`, which is props-only (48 lines, no store access), extracted behind its existing props contract.

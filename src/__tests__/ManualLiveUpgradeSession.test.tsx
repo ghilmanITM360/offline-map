@@ -112,13 +112,18 @@ describe('B4a-5 manual-to-live upgrade commits only for the request that is stil
     if (action === 'cancel') expect(useAppStore.getState().routeGuide).toBe(guide);
   });
 
-  test('a superseded destination rejects the late replacement', async () => {
+  test('a destination changed outside Directions aborts the lookup and rejects the late replacement', async () => {
     const hook = await manualGuide();
+    const guide = useAppStore.getState().routeGuide;
     const { calls, pending } = await pendingOutsideUpgrade(hook);
     await act(() => useAppStore.getState().setRoutePlannerDest(V2PlaceAdapter.getPlaceById('B2')!));
+    expect(calls[0].signal?.aborted).toBe(true);
     await act(async () => { calls[0].release(); await pending; });
-    expect(hook.result.current.upgrade.phase).not.toBe('preview');
+    expect(hook.result.current.upgrade.phase).toBe('idle');
     expect(useAppStore.getState().isNavigating).toBe(false);
+    expect(useAppStore.getState().routeGuide).toBe(guide);
+    expect(sessionsNamed('directions-preview')[0].state).toBe('active');
+    expect(sessionsNamed('manual-live-upgrade')[0].state).toBe('active');
   });
 
   test('cancelling an upgrade never aborts the Directions preview session', async () => {
