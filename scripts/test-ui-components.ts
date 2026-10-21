@@ -10,6 +10,8 @@ const navigationVm = readFileSync('src/viewmodels/NavigationViewModel.ts', 'utf8
 const navigationOverlayV1 = readFileSync('src/viewmodels/useNavigationOverlayV1.ts', 'utf8');
 const navigationMapLayersV1 = readFileSync('src/views/components/mapgl/navigationScene.ts', 'utf8');
 const navigationChromeV1 = readFileSync('src/views/components/navigation/NavigationChromeV1.tsx', 'utf8');
+// B4c-2: the arrival sheet the chrome renders lives in the SDK card.
+const arrivalCard = readFileSync('packages/offline-navigation/src/ui/ArrivalCard.tsx', 'utf8');
 const navigation = [navigationVm, navigationOverlayV1, navigationMapLayersV1, navigationChromeV1].join('\n');
 const settings = readFileSync('src/views/screens/SettingsScreen.tsx', 'utf8');
 const guide = readFileSync('src/views/screens/AppGuideScreen.tsx', 'utf8');
@@ -66,11 +68,12 @@ assert(navigation.includes('showNavigationStart'), 'Navigation must render a sta
 assert(navigation.includes('showNavigationDestination'), 'Navigation must render a destination marker');
 assert(navigation.includes('showNavigationUser'), 'Navigation must render current/user marker');
 assert(navigation.includes('onPress={requestNavigationExit}'), 'Navigation active Exit must use confirmation owner');
-assert(navigation.includes('onPress={completeArrivalNavigation}'), 'Navigation arrival Done must exit immediately');
+assert(navigation.includes('onDone={completeArrivalNavigation}'), 'Navigation arrival Done must exit immediately');
 assert(navigation.includes('styles.tripTextWrap'), 'Navigation bottom trip text must be constrained separately from Exit button');
 assert(navigation.includes('cameraManager.enterNavigationCamera(') && navigation.includes('LocateFixed'), 'Navigation recenter button must animate camera');
 assert(
-  navigation.includes('testID="nav-arrived-recenter-button"') && navigation.includes('testID="nav-arrived-done-button"'),
+  navigationChromeV1.includes('<ArrivalCard') &&
+    arrivalCard.includes('testID="nav-arrived-recenter-button"') && arrivalCard.includes('testID="nav-arrived-done-button"'),
   'Navigation arrival sheet must offer both Recenter map and Done actions',
 );
 

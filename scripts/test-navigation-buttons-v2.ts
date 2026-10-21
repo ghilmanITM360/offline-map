@@ -19,6 +19,8 @@ const navigationChromeSource = readFileSync('src/views/components/navigation/Nav
 const navigationOverlaySource = readFileSync('src/viewmodels/useNavigationOverlayV2.ts', 'utf8');
 const navigationExitSource = readFileSync('src/viewmodels/useNavigationExitConfirmation.ts', 'utf8');
 const navigationViewModelSource = readFileSync('src/viewmodels/NavigationViewModelV2.ts', 'utf8');
+// B4c-2: the arrival sheet markup lives in the SDK card; the chrome only wires its callbacks.
+const arrivalCardSource = readFileSync('packages/offline-navigation/src/ui/ArrivalCard.tsx', 'utf8');
 
 const navigationVmReturnSource = getReturnObject(navigationViewModelSource);
 
@@ -43,9 +45,10 @@ assert(
   'Navigation v2 Exit button must stay wired to shared exit handler.',
 );
 assert(
-  navigationChromeSource.includes('testID="nav-arrived-done-button"') &&
-    navigationChromeSource.includes('style={styles.arrivedButton}') &&
-    navigationChromeSource.includes('onPress={completeArrivalNavigation}'),
+  navigationChromeSource.includes('onDone={completeArrivalNavigation}') &&
+    arrivalCardSource.includes('testID="nav-arrived-done-button"') &&
+    arrivalCardSource.includes('onPress={onDone}') &&
+    arrivalCardSource.includes('onRequestClose={onDone}'),
   'Navigation v2 arrival Done button must stay wired to shared exit handler.',
 );
 assert(
@@ -57,8 +60,9 @@ assert(
   'Navigation v2 recenter control must resume auto-follow.',
 );
 assert(
-  navigationChromeSource.includes('testID="nav-arrived-recenter-button"') &&
-    navigationChromeSource.includes('testID="nav-arrived-done-button"'),
+  navigationChromeSource.includes('<ArrivalCard') &&
+    arrivalCardSource.includes('testID="nav-arrived-recenter-button"') &&
+    arrivalCardSource.includes('testID="nav-arrived-done-button"'),
   'Navigation v2 arrival sheet must offer both Recenter map and Done actions.',
 );
 assert(

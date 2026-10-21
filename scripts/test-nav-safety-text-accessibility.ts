@@ -20,6 +20,8 @@ const stylesSource = readFileSync(stylesPath, 'utf8');
 const colorsSource = readFileSync(colorsPath, 'utf8');
 const chromeV1Source = readFileSync(chromeV1Path, 'utf8');
 const chromeV2Source = readFileSync(chromeV2Path, 'utf8');
+// B4c-2: the arrival sheet styles live in the SDK card.
+const arrivalCardSource = readFileSync('packages/offline-navigation/src/ui/ArrivalCard.tsx', 'utf8');
 
 /** Extracts the body of `name: { ... }` (single-level brace matching) from a
  * StyleSheet.create source block, then pulls its `fontSize` value out. */
@@ -70,8 +72,8 @@ assert(fontSizeOf(stylesSource, 'nextStepText') >= SAFETY_TEXT_FLOOR, 'nextStepT
 assert(fontSizeOf(stylesSource, 'rerouteText') >= SAFETY_TEXT_FLOOR, '"Finding a new way…" reroute-card text must be >= 15px');
 
 // Arrival messaging was already at/above the floor before this pass — pin it so it can't regress.
-assert(fontSizeOf(stylesSource, 'arrivedTitle') >= SAFETY_TEXT_FLOOR, 'arrivedTitle must stay >= 15px');
-assert(fontSizeOf(stylesSource, 'arrivedSubtitle') >= SAFETY_TEXT_FLOOR, 'arrivedSubtitle (destination name on arrival) must stay >= 15px');
+assert(fontSizeOf(arrivalCardSource, 'title') >= SAFETY_TEXT_FLOOR, 'arrivedTitle must stay >= 15px');
+assert(fontSizeOf(arrivalCardSource, 'destination') >= SAFETY_TEXT_FLOOR, 'ArrivalCard destination (destination name on arrival) must stay >= 15px');
 
 // The 24px maneuver label is the primary instruction and explicitly out of scope for
 // this pass — assert it is untouched, not merely "still large enough".

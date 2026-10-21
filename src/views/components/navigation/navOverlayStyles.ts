@@ -86,66 +86,6 @@ export const navOverlayStyles = StyleSheet.create({
     // recenter button always wins hit-testing if their absolute-positioned regions ever collide.
     zIndex: 6,
   },
-  arrivedOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'flex-end',
-  },
-  arrivedCard: {
-    backgroundColor: staticColors.white,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    padding: 36,
-    alignItems: 'center',
-    elevation: 20,
-  },
-  arrivedTitle: {
-    fontSize: 26,
-    fontWeight: 'bold',
-    color: staticColors.textPrimary,
-    marginTop: 16,
-  },
-  arrivedUrdu: {
-    fontSize: 18,
-    color: staticColors.arrivalGreen,
-    marginTop: 4,
-  },
-  arrivedSubtitle: {
-    fontSize: 16,
-    color: staticColors.iconMuted,
-    marginTop: 6,
-    textAlign: 'center',
-  },
-  arrivedActionsRow: {
-    flexDirection: 'row',
-    marginTop: 28,
-    gap: 12,
-  },
-  arrivedButton: {
-    backgroundColor: staticColors.arrivalGreen,
-    borderRadius: 28,
-    paddingHorizontal: 48,
-    paddingVertical: 16,
-  },
-  arrivedButtonText: {
-    color: staticColors.white,
-    fontSize: 17,
-    fontWeight: 'bold',
-  },
-  arrivedSecondaryButton: {
-    backgroundColor: staticColors.neutralSurface,
-    borderRadius: 28,
-    paddingHorizontal: 24,
-    paddingVertical: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  arrivedSecondaryButtonText: {
-    color: staticColors.routeInside,
-    fontSize: 15,
-    fontWeight: '600',
-  },
   mapUnavailableBanner: {
     marginHorizontal: 12,
     paddingHorizontal: 12,

@@ -6,7 +6,7 @@
 import { localizeVenueName } from '../../../i18n/venueNames';
 import { useAccessibilityFocus } from '../../hooks/useAccessibilityFocus';
 import React, { useEffect, useRef, useState } from 'react';
-import { AccessibilityInfo, Animated, Modal, Pressable, Text, useWindowDimensions, View } from 'react-native';
+import { AccessibilityInfo, Animated, Pressable, Text, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowLeft, ArrowRight, LocateFixed, MapPin, Navigation, RefreshCw, Volume2, VolumeX, X } from 'lucide-react-native';
 
@@ -23,6 +23,7 @@ import { outsideRouteMessage } from '../../../services/OutsideRouteLocalizationS
 import { Button } from '../common/Button';
 import { ActiveDirectionsPanel } from './ActiveDirectionsPanel';
 import { useI18n } from '../../../i18n';
+import { ArrivalCard } from './ArrivalCard';
 
 const AnimatedSafeAreaView = Animated.createAnimatedComponent(SafeAreaView);
 
@@ -323,46 +324,8 @@ export function NavigationChromeV2({ overlay, hasBaseMap }: { overlay: Navigatio
       <ActiveDirectionsPanel visible={showDirections && !arrived} destination={localizeVenueName(route.destination.label)}
         instructions={instructions} currentStepIndex={currentStepIndex} onClose={() => setShowDirections(false)} />
 
-      <Modal
-        testID="nav-arrival-modal"
-        visible={arrived}
-        transparent
-        animationType="slide"
-        onRequestClose={completeArrivalNavigation}
-      >
-        <View style={styles.arrivedOverlay} accessibilityViewIsModal>
-          {/* The Modal window is full-screen (under the system nav bar), so the buttons must clear the bottom inset (#301). */}
-          <View testID="nav-arrived-card" style={[styles.arrivedCard, { paddingBottom: Math.max(36, insets.bottom + 24) }]}>
-            <MapPin size={52} color={staticColors.arrivalGreen} />
-            <Text ref={instructionHeadingRef} accessible accessibilityRole="header" style={styles.arrivedTitle}>{t('navigation.arrived')}</Text>
-            <Text style={styles.arrivedUrdu}>{t('navigation.arrivedSubtitle')}</Text>
-            <Text style={styles.arrivedSubtitle}>{localizeVenueName(route.destination.label)}</Text>
-            <View style={styles.arrivedActionsRow}>
-              <Pressable
-                testID="nav-arrived-recenter-button"
-                style={styles.arrivedSecondaryButton}
-                onPress={() => setIsAutoFollowing(true)}
-                hitSlop={NAV_TOUCH_TARGET_HIT_SLOP}
-                accessibilityRole="button"
-                accessibilityLabel={t('navigation.recenterLabel')}
-              >
-                <LocateFixed size={18} color={staticColors.routeInside} />
-                <Text style={styles.arrivedSecondaryButtonText}>{t('navigation.recenter')}</Text>
-              </Pressable>
-              <Pressable
-                testID="nav-arrived-done-button"
-                style={styles.arrivedButton}
-                onPress={completeArrivalNavigation}
-                hitSlop={NAV_TOUCH_TARGET_HIT_SLOP}
-                accessibilityRole="button"
-                accessibilityLabel={t('navigation.doneLabel')}
-              >
-                <Text style={styles.arrivedButtonText}>{t('navigation.done')}</Text>
-              </Pressable>
-            </View>
-          </View>
-        </View>
-      </Modal>
+      <ArrivalCard visible={arrived} destination={localizeVenueName(route.destination.label)}
+        onRecenter={() => setIsAutoFollowing(true)} onDone={completeArrivalNavigation} />
     </>
   );
 }

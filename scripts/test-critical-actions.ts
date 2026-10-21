@@ -176,7 +176,7 @@ assert(
   'Navigation mute button must toggle mute state',
 );
 assert(
-  navScreen.includes('onPress={requestNavigationExit}') && navScreen.includes('onPress={completeArrivalNavigation}'),
+  navScreen.includes('onPress={requestNavigationExit}') && navScreen.includes('onDone={completeArrivalNavigation}'),
   'Navigation active Exit and arrival Done actions must use their canonical paths',
 );
 assert(rootNavigator.includes("name=\"AppGuide\""), 'App Guide route should be registered');
