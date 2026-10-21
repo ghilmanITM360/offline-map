@@ -24,6 +24,7 @@ import { Button } from '../common/Button';
 import { ActiveDirectionsPanel } from './ActiveDirectionsPanel';
 import { useI18n } from '../../../i18n';
 import { ArrivalCard } from './ArrivalCard';
+import { GpsSignalBanner } from './GpsSignalBanner';
 import { RerouteBanner } from './RerouteBanner';
 import { RerouteProgressCard } from './RerouteProgressCard';
 
@@ -211,13 +212,9 @@ export function NavigationChromeV2({ overlay, hasBaseMap }: { overlay: Navigatio
             rerouting status, which outranks basemap degradation. Never stack more than one. */}
         <View testID="navigation-subordinate-surfaces" style={[styles.topStatusStack, largeText && styles.topStatusStackClearOfControls]}>
           {gpsSignalState === 'GPS_LOST' ? (
-            <View style={styles.weakGpsBanner} accessibilityLiveRegion="assertive">
-              <Text style={styles.weakGpsText}>{t('navigation.lost')}</Text>
-            </View>
+            <GpsSignalBanner status="lost" message={t('navigation.lost')} />
           ) : isWeakGps ? (
-            <View style={styles.weakGpsBanner} accessibilityLiveRegion="polite">
-              <Text style={styles.weakGpsText}>{t('navigation.weak')}</Text>
-            </View>
+            <GpsSignalBanner status="weak" message={t('navigation.weak')} />
           ) : rerouteStatusMessage && !reroutePending ? (
             <RerouteBanner message={rerouteStatusMessage} />
           ) : !hasBaseMap ? (

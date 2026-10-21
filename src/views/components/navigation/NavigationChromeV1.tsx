@@ -6,6 +6,7 @@
 import { localizeVenueName } from '../../../i18n/venueNames';
 import { useI18n } from '../../../i18n';
 import { ArrivalCard } from './ArrivalCard';
+import { GpsSignalBanner } from './GpsSignalBanner';
 import { RerouteBanner } from './RerouteBanner';
 import { RerouteProgressCard } from './RerouteProgressCard';
 import { useAccessibilityFocus } from '../../hooks/useAccessibilityFocus';
@@ -138,9 +139,7 @@ export function NavigationChromeV1({ overlay, hasBaseMap }: { overlay: Navigatio
             outranks basemap degradation. Never stack more than one. */}
         <View style={styles.topStatusStack}>
           {isWeakGps ? (
-            <View style={styles.weakGpsBanner} accessibilityLiveRegion="polite">
-              <Text style={styles.weakGpsText}>{t('navigation.weak')}</Text>
-            </View>
+            <GpsSignalBanner status="weak" message={t('navigation.weak')} />
           ) : rerouteStatusMessage && !reroutePending ? (
             <RerouteBanner message={rerouteStatusMessage} />
           ) : !hasBaseMap ? (

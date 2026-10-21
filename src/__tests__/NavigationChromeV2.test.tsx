@@ -101,6 +101,23 @@ describe('NavigationChromeV2 — reroute progress card priority (B4c-4)', () => 
   });
 });
 
+describe('NavigationChromeV2 — GPS signal banner priority (B4c-5)', () => {
+  test('lost GPS during a pending reroute: one assertive lost banner beside the progress card, no weak banner', async () => {
+    await render(<NavigationChromeV2 overlay={baseOverlay({ gpsSignalState: 'GPS_LOST', isWeakGps: true, reroutePending: true })} hasBaseMap />);
+    expect(screen.getByText('Finding a new way…')).toBeOnTheScreen();
+    expect(screen.getAllByText("We can't find you. Move to an open area.")).toHaveLength(1);
+    expect(screen.getByText("We can't find you. Move to an open area.").parent?.props.accessibilityLiveRegion).toBe('assertive');
+    expect(screen.queryByText('Weak signal. Directions may be slow.')).toBeNull();
+  });
+
+  test('banner leaves once GPS recovers and the turn card stays', async () => {
+    await render(<NavigationChromeV2 overlay={baseOverlay({ gpsSignalState: 'GPS_GOOD' })} hasBaseMap />);
+    expect(screen.queryByText("We can't find you. Move to an open area.")).toBeNull();
+    expect(screen.queryByText('Weak signal. Directions may be slow.')).toBeNull();
+    expect(screen.getByLabelText(/300 m/)).toBeOnTheScreen();
+  });
+});
+
 describe('NavigationChromeV2 — instruction card accessibility label', () => {
   test('announces the live maneuver distance, not the edge length baked into step.text', async () => {
     const stale = { ...route.instructions[0], text: 'Continue straight for 10 meters.' };

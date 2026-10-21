@@ -180,3 +180,11 @@ The spikes resolve uncertainty; they are not silently part of B1. No native/fram
 - Source-pin scripts (`navigation-buttons-v2`, `nav-safety-text-accessibility`) pin the binding call and read the font floor from the SDK file.
 - Covered by `RerouteProgressCard.test.tsx` (4 cases: injected style, colours and icon; turn-card style untouched; Urdu wrapping; standalone SDK card) and two `NavigationChromeV2` priority cases (pending replaces the turn card and holds back the settled banner; settled restores both).
 - **Next, B4c-5:** the GPS weak/lost status banner (`weakGpsBanner`, shared by V1 and V2).
+
+### B4c-5 reusable GpsSignalBanner
+
+- The SDK's `ui/GpsSignalBanner` is the weak/lost GPS warning. Its typed props are a `status` (`weak` | `lost`), an already-localized `message` and a `theme` of colour tokens (`fill`, `text`). `lost` is an assertive live region and `weak` a polite one, as before. Layout and the 16/700 centred text moved unchanged from `weakGpsBanner`/`weakGpsText`. The file imports only `react` and `react-native`.
+- `src/views/components/navigation/GpsSignalBanner.tsx` is the Ijtema binding: `weakGpsBackground`/white tokens. `NavigationChromeV2` renders `<GpsSignalBanner status="lost" …/>` then `status="weak"` as the first two branches of its unchanged status-slot ternary; `V1` renders only the weak branch. Copy stays `t('navigation.lost'|'navigation.weak')` in the chromes. GPS detection, thresholds and the slot priority are untouched; `weakGpsBanner` and `weakGpsText` left `navOverlayStyles`.
+- Source-pin scripts (`gps-signal-loss-v2`, `nav-safety-text-accessibility`) pin the binding calls and read the font floor from the SDK file.
+- Covered by `GpsSignalBanner.test.tsx` (5 cases: colours and unchanged layout; assertive/polite per status, rendered once; Urdu wrapping; standalone SDK banner) and two `NavigationChromeV2` cases (lost during a pending reroute shows one lost banner beside the progress card and no weak banner; recovered GPS clears it).
+- **Next, B4c-6:** the basemap-unavailable status banner (`mapUnavailableBanner`, last branch of the same slot in V1 and V2).

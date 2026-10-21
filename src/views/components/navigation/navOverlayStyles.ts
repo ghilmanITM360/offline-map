@@ -146,24 +146,6 @@ export const navOverlayStyles = StyleSheet.create({
   outsideStatusCardWrap: {
     marginHorizontal: 12,
   },
-  weakGpsBanner: {
-    marginHorizontal: 12,
-    marginTop: 8,
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    backgroundColor: staticColors.weakGpsBackground,
-  },
-  // Safety-relevant: weak-GPS / GPS-lost warning. Bumped from 12 -> 16 (elderly-user
-  // legibility pass) to match the file's existing "important secondary text" tier
-  // (instructionDistance/exitText, also 16). No fixed height on weakGpsBanner, so the
-  // banner grows with the text instead of clipping it.
-  weakGpsText: {
-    color: staticColors.white,
-    fontSize: 16,
-    fontWeight: '700',
-    textAlign: 'center',
-  },
   instructionCard: {
     // Deep blue (not arrivalGreen — that's reserved for the arrived state so the
     // two don't read as the same "done" signal while still actively navigating).

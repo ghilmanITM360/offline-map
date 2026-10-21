@@ -162,8 +162,8 @@ assert(
   'isArrived must stay completely unaware of GPS_LOST — arrival detection must be unaffected by signal-loss display state',
 );
 
-// The banner reuses the exact existing weak-GPS banner mechanism (same styles) rather than
-// building a new UI surface, and the pre-existing weak-GPS banner block is left untouched.
+// The GPS_LOST banner reuses the weak-GPS GpsSignalBanner component (B4c-5) rather than
+// building a new UI surface, and the pre-existing weak-GPS branch is left in place.
 assert(
   navigationChromeSource.includes("gpsSignalState === 'GPS_LOST'") &&
     navigationChromeSource.includes("t('navigation.lost')"),
@@ -172,8 +172,8 @@ assert(
 const gpsLostBannerStart = navigationChromeSource.indexOf("gpsSignalState === 'GPS_LOST'");
 const gpsLostBannerSnippet = navigationChromeSource.slice(gpsLostBannerStart, gpsLostBannerStart + 350);
 assert(
-  gpsLostBannerSnippet.includes('styles.weakGpsBanner') && gpsLostBannerSnippet.includes('styles.weakGpsText'),
-  'The GPS_LOST banner must reuse the existing weak-GPS banner styles rather than introducing a new UI surface',
+  gpsLostBannerSnippet.includes('<GpsSignalBanner status="lost"') && gpsLostBannerSnippet.includes('<GpsSignalBanner status="weak"'),
+  'The GPS_LOST banner must reuse the weak-GPS GpsSignalBanner component rather than introducing a new UI surface',
 );
 // #66: GPS_LOST and weak-GPS must never stack as two banners — they share one priority
 // slot (GPS_LOST first), so the weak-GPS branch is now part of that ternary, not an

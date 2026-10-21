@@ -26,6 +26,7 @@ const arrivalCardSource = readFileSync('packages/offline-navigation/src/ui/Arriv
 const rerouteBannerSource = readFileSync('packages/offline-navigation/src/ui/RerouteBanner.tsx', 'utf8');
 // B4c-4: the reroute progress card text lives in the SDK card.
 const rerouteProgressCardSource = readFileSync('packages/offline-navigation/src/ui/RerouteProgressCard.tsx', 'utf8');
+const gpsSignalBannerSource = readFileSync('packages/offline-navigation/src/ui/GpsSignalBanner.tsx', 'utf8');
 
 /** Extracts the body of `name: { ... }` (single-level brace matching) from a
  * StyleSheet.create source block, then pulls its `fontSize` value out. */
@@ -70,7 +71,7 @@ const SAFETY_TEXT_FLOOR = 15; // matches the 15-17px target range for safety-cri
 const MANEUVER_LABEL_SIZE = 24; // primary instruction — not in scope for this pass, must stay put
 
 // --- Font sizes: GPS / reroute / next-step text must be at (or above) the new floor ---
-assert(fontSizeOf(stylesSource, 'weakGpsText') >= SAFETY_TEXT_FLOOR, 'weakGpsText (GPS weak/lost banner, shared by NavigationChromeV1 and V2) must be >= 15px');
+assert(fontSizeOf(gpsSignalBannerSource, 'text') >= SAFETY_TEXT_FLOOR, 'GpsSignalBanner text (GPS weak/lost banner, shared by NavigationChromeV1 and V2) must be >= 15px');
 assert(fontSizeOf(rerouteBannerSource, 'text') >= SAFETY_TEXT_FLOOR, 'RerouteBanner text (reroute notification banner) must be >= 15px');
 assert(fontSizeOf(stylesSource, 'nextStepText') >= SAFETY_TEXT_FLOOR, 'nextStepText (upcoming-turn preview) must be >= 15px');
 assert(fontSizeOf(rerouteProgressCardSource, 'text') >= SAFETY_TEXT_FLOOR, '"Finding a new way…" reroute-card text must be >= 15px');
@@ -95,7 +96,7 @@ const rerouteBackground = hexOf(colorsSource, 'rerouteBackground');
 
 assert(
   contrastRatio(white, weakGpsBackground) >= WCAG_AA_NORMAL_TEXT,
-  `weakGpsText (white) on weakGpsBackground (${weakGpsBackground}) must clear WCAG AA 4.5:1, got ${contrastRatio(white, weakGpsBackground).toFixed(2)}:1`,
+  `GpsSignalBanner text (white) on weakGpsBackground (${weakGpsBackground}) must clear WCAG AA 4.5:1, got ${contrastRatio(white, weakGpsBackground).toFixed(2)}:1`,
 );
 assert(
   contrastRatio(white, rerouteBackground) >= WCAG_AA_NORMAL_TEXT,
@@ -105,8 +106,8 @@ assert(
 // --- The GPS_LOST banner (added alongside weak-GPS handling) must still reuse the same
 // styled banner rather than drifting onto a separate, unaudited style. ---
 assert(
-  /gpsSignalState === 'GPS_LOST'[\s\S]{0,200}styles\.weakGpsBanner[\s\S]{0,200}styles\.weakGpsText/.test(chromeV2Source),
-  'NavigationChromeV2 GPS_LOST banner must reuse styles.weakGpsBanner/styles.weakGpsText (the audited, now-larger, now-contrast-fixed style) — not a separate one-off style',
+  /gpsSignalState === 'GPS_LOST'[\s\S]{0,200}<GpsSignalBanner status="lost"[\s\S]{0,200}<GpsSignalBanner status="weak"/.test(chromeV2Source),
+  'NavigationChromeV2 GPS_LOST banner must reuse the weak-GPS GpsSignalBanner (the audited, now-larger, now-contrast-fixed style) — not a separate one-off style',
 );
 
 // --- allowFontScaling must never be disabled on these components — OS text scaling has
