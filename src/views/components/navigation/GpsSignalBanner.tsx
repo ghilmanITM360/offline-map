@@ -9,7 +9,7 @@ import {
   GpsSignalBanner as SdkGpsSignalBanner,
   type GpsSignalBannerProps,
   type GpsSignalBannerTheme,
-} from '../../../../packages/offline-navigation/src/ui/GpsSignalBanner';
+} from '@muslim-ummah/offline-navigation/ui';
 
 const theme: GpsSignalBannerTheme = { colors: { fill: staticColors.weakGpsBackground, text: staticColors.white } };
 

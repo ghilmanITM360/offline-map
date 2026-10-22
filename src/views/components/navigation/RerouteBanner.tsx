@@ -8,7 +8,7 @@ import { staticColors } from '../../../theme';
 import {
   RerouteBanner as SdkRerouteBanner,
   type RerouteBannerTheme,
-} from '../../../../packages/offline-navigation/src/ui/RerouteBanner';
+} from '@muslim-ummah/offline-navigation/ui';
 
 const theme: RerouteBannerTheme = {
   // #8D6E63 on #FFF8E1 failed AA (4.35:1); warningText #7C4A03 passes (6.97:1).

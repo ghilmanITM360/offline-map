@@ -391,3 +391,8 @@ All paths below are under `src/`. All referenced domain APIs are already availab
 
 - ActiveDirectionsPanel, ArrivalCard and EntryGateOriginBanner wrappers now use `/ui`. Existing props, theme, copy, RTL, safe-area container, accessibility and actions are unchanged.
 - SOURCE/RUNTIME: focused Jest 5 suites / 30 tests, typecheck, graph/peer checks and diff-check pass; independent read-only review CLEAR. Evidence `b6-continuation/ui-active.log`.
+
+### B6c-4 recovery/status public bindings (#391)
+
+- RerouteBanner, RerouteProgressCard and GpsSignalBanner now use `/ui`. Copy, accessibility/live regions, physical positioning and host recovery/GPS policy are unchanged.
+- SOURCE/RUNTIME: focused Jest 5 suites / 16 tests, typecheck, graph/peer checks and diff-check pass; independent read-only review CLEAR. Evidence `b6-continuation/ui-recovery.log`.

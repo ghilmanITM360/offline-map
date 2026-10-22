@@ -10,7 +10,7 @@ import { navOverlayStyles } from './navOverlayStyles';
 import {
   RerouteProgressCard as SdkRerouteProgressCard,
   type RerouteProgressCardTheme,
-} from '../../../../packages/offline-navigation/src/ui/RerouteProgressCard';
+} from '@muslim-ummah/offline-navigation/ui';
 
 const theme: RerouteProgressCardTheme = { colors: { fill: staticColors.rerouteBackground, text: staticColors.white } };
 
