@@ -381,3 +381,8 @@ All paths below are under `src/`. All referenced domain APIs are already availab
 
 - ManualLiveUpgradeCard and RouteGuideCard wrappers now import `/ui`; props/copy/theme/RTL/actions unchanged. New public UI identity test covers all 13 leaves and the focus hook.
 - SOURCE/RUNTIME: focused Jest 4 suites / 46 tests, typecheck, diff-check and boundary graph pass (19 headless / 15 UI modules, no cycles/host escapes, shared React/RN realpaths). Independent read-only review CLEAR. Evidence `b6-continuation/ui-cards.log`.
+
+### B6c-2 directions-sheet public leaves (#391)
+
+- DirectionsSheetParts imports its three SDK leaves (DirectionsHeader, RouteEndpointRows, StartOptionCard) from `/ui`. Host props, translations, icons/themes, physical positioning, sheet ownership and callbacks remain untouched.
+- SOURCE/RUNTIME: focused Jest 7 suites / 23 tests, typecheck, graph/peer checks and diff-check pass; independent read-only review CLEAR. Evidence `b6-continuation/ui-sheet.log`.

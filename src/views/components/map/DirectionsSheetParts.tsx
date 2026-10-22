@@ -11,16 +11,16 @@ import { useI18n } from '../../../i18n';
 import {
   DirectionsHeader as SdkDirectionsHeader,
   type DirectionsHeaderTheme,
-} from '../../../../packages/offline-navigation/src/ui/DirectionsHeader';
+} from '@muslim-ummah/offline-navigation/ui';
 import {
   RouteEndpointRows as SdkRouteEndpointRows,
   type EndpointRow,
   type RouteEndpointRowsTheme,
-} from '../../../../packages/offline-navigation/src/ui/RouteEndpointRows';
+} from '@muslim-ummah/offline-navigation/ui';
 import {
   StartOptionCard as SdkStartOptionCard,
   type StartOptionCardTheme,
-} from '../../../../packages/offline-navigation/src/ui/StartOptionCard';
+} from '@muslim-ummah/offline-navigation/ui';
 
 /**
  * Presentational pieces of the Get Directions sheet (#177). They hold no route, GPS or
