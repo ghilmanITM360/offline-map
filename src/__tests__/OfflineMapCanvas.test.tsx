@@ -35,10 +35,20 @@ describe('buildBasemapStyle', () => {
     ]);
   });
 
-  it('has no glyphs, sprite or remote URL anywhere, so a render cannot touch the network', () => {
+  it('provides native iOS attribution as a clickable OSM copyright link', () => {
+    const iosStyle = buildBasemapStyle('file:///data/map/a.pmtiles', { min: 12, max: 16 }, 'ios');
+    const source = Object.values(iosStyle.sources)[0];
+    expect(source).not.toHaveProperty('url');
+    expect(source.tiles).toEqual(['pmtiles://file:///data/map/a.pmtiles']);
+    expect(source.attribution).toBe('<a href="https://www.openstreetmap.org/copyright">© OpenStreetMap contributors</a>');
+  });
+
+  it.each(['android', 'ios'])('has no remote resource dependency on %s (attribution links are not resources)', (platform) => {
+    const style = buildBasemapStyle('file:///data/map/a.pmtiles', { min: 12, max: 16 }, platform);
     expect(style).not.toHaveProperty('glyphs');
     expect(style).not.toHaveProperty('sprite');
-    expect(JSON.stringify(style)).not.toMatch(/https?:\/\//);
+    const resources = { ...style, sources: Object.fromEntries(Object.entries(style.sources).map(([id, source]) => [id, { ...source, attribution: undefined }])) };
+    expect(JSON.stringify(resources)).not.toMatch(/https?:\/\//);
   });
 
   it('falls back to a plain land canvas (no source) when the archive is unavailable', () => {

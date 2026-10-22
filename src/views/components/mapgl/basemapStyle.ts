@@ -8,8 +8,9 @@
 // can never reach for the network. Venue overlays are added on top by the canvas.
 
 export const BASEMAP_SOURCE_ID = 'ijtema-basemap';
-// ODbL attribution travels with the style so the map's own attribution control always shows it.
+// iOS URL sources replace sibling metadata with archive TileJSON. Inline tiles retain this credit.
 export const BASEMAP_ATTRIBUTION = '© OpenStreetMap contributors';
+const IOS_BASEMAP_ATTRIBUTION = `<a href="https://www.openstreetmap.org/copyright">${BASEMAP_ATTRIBUTION}</a>`;
 
 // Calm, low-contrast ground so the route, destination and venue overlays carry the visual weight.
 export const BASEMAP_COLORS = {
@@ -29,19 +30,21 @@ const widthByZoom = (z12: number, z16: number, z19: number) => ['interpolate', [
 
 export interface BasemapStyle {
   version: 8;
-  sources: Record<string, { type: 'vector'; url: string; minzoom: number; maxzoom: number; attribution: string }>;
+  sources: Record<string, { type: 'vector'; url?: string; tiles?: string[]; minzoom: number; maxzoom: number; attribution: string }>;
   layers: Record<string, unknown>[];
 }
 
 /** `archiveFileUri` null (install failed): a plain land-coloured canvas — venue overlays still render. */
-export function buildBasemapStyle(archiveFileUri: string | null, zoom: { min: number; max: number }): BasemapStyle {
+export function buildBasemapStyle(archiveFileUri: string | null, zoom: { min: number; max: number }, platform = 'android'): BasemapStyle {
   const c = BASEMAP_COLORS;
   if (archiveFileUri === null) return { version: 8, sources: {}, layers: [{ id: 'bg', type: 'background', paint: { 'background-color': c.land } }] };
   const src = BASEMAP_SOURCE_ID;
   const roads = (cls: string) => ['==', ['get', 'class'], cls];
   return {
     version: 8,
-    sources: { [src]: { type: 'vector', url: `pmtiles://${archiveFileUri}`, minzoom: zoom.min, maxzoom: zoom.max, attribution: BASEMAP_ATTRIBUTION } },
+    sources: { [src]: platform === 'ios'
+      ? { type: 'vector', tiles: [`pmtiles://${archiveFileUri}`], minzoom: zoom.min, maxzoom: zoom.max, attribution: IOS_BASEMAP_ATTRIBUTION }
+      : { type: 'vector', url: `pmtiles://${archiveFileUri}`, minzoom: zoom.min, maxzoom: zoom.max, attribution: BASEMAP_ATTRIBUTION } },
     layers: [
       { id: 'bg', type: 'background', paint: { 'background-color': c.land } },
       {

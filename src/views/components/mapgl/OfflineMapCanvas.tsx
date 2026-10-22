@@ -4,7 +4,7 @@
  */
 
 import React, { useCallback, useImperativeHandle, useMemo, useRef, useState } from 'react';
-import { type NativeSyntheticEvent, type StyleProp, type ViewStyle, useWindowDimensions } from 'react-native';
+import { Platform, type NativeSyntheticEvent, type StyleProp, type ViewStyle, useWindowDimensions } from 'react-native';
 import { Camera, Images, Map, type CameraRef, type MapRef, type ViewStateChangeEvent } from '@maplibre/maplibre-react-native';
 import type { Region } from './MapCameraHandle';
 import type { Coordinate } from '../../../models/types';
@@ -85,7 +85,7 @@ export function OfflineMapCanvas(props: OfflineMapCanvasProps) {
   );
   useImperativeHandle(ref, () => handle, [handle]);
 
-  const mapStyle = useMemo(() => buildBasemapStyle(archiveUri, archiveZoom), [archiveUri, archiveZoom]);
+  const mapStyle = useMemo(() => buildBasemapStyle(archiveUri, archiveZoom, Platform.OS), [archiveUri, archiveZoom]);
   const initialViewState = useMemo(
     () => ({
       center: [initialRegion.longitude, initialRegion.latitude] as [number, number],
