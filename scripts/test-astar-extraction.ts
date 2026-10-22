@@ -133,7 +133,7 @@ for (const f of ['AStar', 'MinHeap']) {
   const body = readFileSync(`src/utils/${f}.ts`, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').trim();
   assert.equal(body, f === 'MinHeap'
     ? "export { MinHeap } from '@muslim-ummah/offline-navigation';"
-    : `export * from '../../packages/offline-navigation/src/domain/algorithms/${f}';`);
+    : "export { reconstructAStarPath, runAStar } from '@muslim-ummah/offline-navigation';\nexport type { AStarNeighbor, AStarParams, AStarResult, AStarSeed } from '@muslim-ummah/offline-navigation';");
 }
 
 // ---- Module independence + exactly one implementation ----

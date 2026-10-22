@@ -1,5 +1,5 @@
 /**
- * Compatibility re-export. The implementation lives in the shared domain layer
- * (future @muslim-ummah/offline-navigation); keep this path for existing consumers.
+ * Compatibility re-export from the public SDK; keep this path for existing consumers.
  */
-export * from '../../packages/offline-navigation/src/domain/algorithms/AStar';
+export { reconstructAStarPath, runAStar } from '@muslim-ummah/offline-navigation';
+export type { AStarNeighbor, AStarParams, AStarResult, AStarSeed } from '@muslim-ummah/offline-navigation';
