@@ -131,7 +131,9 @@ assert.strictEqual(legacyAStar.reconstructAStarPath, sharedAStar.reconstructASta
 assert.strictEqual(legacyHeap.MinHeap, sharedHeap.MinHeap);
 for (const f of ['AStar', 'MinHeap']) {
   const body = readFileSync(`src/utils/${f}.ts`, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').trim();
-  assert.equal(body, `export * from '../../packages/offline-navigation/src/domain/algorithms/${f}';`);
+  assert.equal(body, f === 'MinHeap'
+    ? "export { MinHeap } from '@muslim-ummah/offline-navigation';"
+    : `export * from '../../packages/offline-navigation/src/domain/algorithms/${f}';`);
 }
 
 // ---- Module independence + exactly one implementation ----
