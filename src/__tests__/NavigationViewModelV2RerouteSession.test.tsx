@@ -8,7 +8,7 @@ import { V2NavigationAdapter } from '../services/V2NavigationAdapter';
 import { VoiceService } from '../services/VoiceService';
 import { useAppStore } from '../store/useAppStore';
 import { useNavigationViewModelV2 } from '../viewmodels/NavigationViewModelV2';
-import type { NavigationSession } from '../../packages/offline-navigation/src/domain/session';
+import type { NavigationSession } from '@muslim-ummah/offline-navigation/session';
 import { act, renderHook } from './test-utils';
 
 // B4a-2: reroute ownership is checked against one SDK NavigationSession per journey (per navigationSessionId),
@@ -18,8 +18,8 @@ import { act, renderHook } from './test-utils';
 jest.setTimeout(15_000);
 
 const mockCreatedSessions: NavigationSession[] = [];
-jest.mock('../../packages/offline-navigation/src/domain/session', () => {
-  const actual = jest.requireActual('../../packages/offline-navigation/src/domain/session');
+jest.mock('@muslim-ummah/offline-navigation/session', () => {
+  const actual = jest.requireActual('@muslim-ummah/offline-navigation/session');
   return {
     ...actual,
     createNavigationSession: (id: string) => {
@@ -301,4 +301,12 @@ describe('B4a-2 one SDK session per journey', () => {
     expect(hook.result.current.arrived).toBe(true);
     expect(mockCreatedSessions[0].state).toBe('cancelled');
   });
+});
+
+
+test('public session entrypoint shares the existing implementation and module identity', () => {
+  const publicSession = jest.requireActual('@muslim-ummah/offline-navigation/session');
+  const sourceSession = jest.requireActual('../../packages/offline-navigation/src/domain/session');
+  expect(publicSession).toBe(sourceSession);
+  expect(publicSession.createNavigationSession).toBe(sourceSession.createNavigationSession);
 });

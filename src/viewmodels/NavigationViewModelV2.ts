@@ -30,8 +30,8 @@ import { t } from '../i18n/translate';
 import { isValidCoordinate } from '../utils/isValidCoordinate';
 import { V2NavigationAdapter, isV2ActiveRoute } from '../services/V2NavigationAdapter';
 import { OutsideRouteRequestCoordinator } from '../services/outsideRouting/OutsideRouteRequestCoordinator';
-import { createNavigationSession } from '../../packages/offline-navigation/src/domain/session';
-import type { NavigationSession } from '../../packages/offline-navigation/src/domain/session';
+import { createNavigationSession } from '@muslim-ummah/offline-navigation/session';
+import type { NavigationSession } from '@muslim-ummah/offline-navigation/session';
 import { createProductionOutsideRouteSource } from '../services/outsideRouting/ProductionOutsideRouteSource';
 import { getRoutableOfficialGates } from '../data/ijtema/entryPolicy';
 import {
