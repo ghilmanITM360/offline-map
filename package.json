@@ -24,6 +24,8 @@
     "test:min-heap": "node --import tsx scripts/test-min-heap.ts",
     "test:astar-extraction": "node --import tsx scripts/test-astar-extraction.ts",
     "test:sdk-headless": "node scripts/sdk-headless/run.mjs",
+    "pack:sdk": "node scripts/sdk-package/pack.mjs",
+    "test:sdk-package": "node scripts/sdk-package/test.mjs",
     "test:sdk-exports": "node scripts/test-sdk-exports.mjs",
     "test:venue-contract": "node --import tsx scripts/test-venue-contract.ts",
     "test:street-graph-contract": "node --import tsx scripts/test-street-graph-contract.ts",
