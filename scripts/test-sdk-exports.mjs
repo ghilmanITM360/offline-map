@@ -70,10 +70,10 @@ try {
     '--jsx', 'react-native', '--types', 'react', '--typeRoots', join(root, 'node_modules/@types')];
   check('package-name imports of ".", "./session" and "./ui" type-check through exports', () => {
     writeFileSync(join(tmp, 'ok.ts'), [
-      `import { runAStar, MinHeap, SpatialGrid, isValidCoordinate, findVenuePath, validateVenueGraph, findStreetRouteToTargets, evaluateNavigationStart, createNavigationSession } from '@muslim-ummah/offline-navigation';`,
+      `import { runAStar, MinHeap, SpatialGrid, spatialHaversineM, isValidCoordinate, findVenuePath, validateVenueGraph, findStreetRouteToTargets, evaluateNavigationStart, createNavigationSession } from '@muslim-ummah/offline-navigation';`,
       `import { createNavigationSession as fromSession } from '@muslim-ummah/offline-navigation/session';`,
       `import { ${UI_COMPONENTS.join(', ')}, useAccessibilityFocus } from '@muslim-ummah/offline-navigation/ui';`,
-      `export const all = [runAStar, MinHeap, SpatialGrid, isValidCoordinate, findVenuePath, validateVenueGraph, findStreetRouteToTargets, evaluateNavigationStart, createNavigationSession, fromSession, ${UI_COMPONENTS.join(', ')}, useAccessibilityFocus];`,
+      `export const all = [runAStar, MinHeap, SpatialGrid, spatialHaversineM, isValidCoordinate, findVenuePath, validateVenueGraph, findStreetRouteToTargets, evaluateNavigationStart, createNavigationSession, fromSession, ${UI_COMPONENTS.join(', ')}, useAccessibilityFocus];`,
       `export const same: typeof createNavigationSession = fromSession;`,
     ].join('\n'));
     const r = tscRun([...probeArgs, 'ok.ts']);

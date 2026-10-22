@@ -1,5 +1,3 @@
-/**
- * Compatibility re-export. The implementation lives in the shared domain layer
- * (future @muslim-ummah/offline-navigation); keep this path for existing consumers.
- */
-export * from '../../packages/offline-navigation/src/domain/geo/SpatialGrid';
+/** Compatibility re-exports; preserve the four-number spatial distance contract. */
+export { SpatialGrid, spatialHaversineM as haversineM } from '@muslim-ummah/offline-navigation';
+export type { SpatialGridPoint } from '@muslim-ummah/offline-navigation';
