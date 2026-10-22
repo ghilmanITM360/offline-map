@@ -12,7 +12,7 @@ import { staticColors } from '../../../theme';
 import {
   ActiveDirectionsPanel as SdkActiveDirectionsPanel,
   type ActiveDirectionsPanelTheme,
-} from '../../../../packages/offline-navigation/src/ui/ActiveDirectionsPanel';
+} from '@muslim-ummah/offline-navigation/ui';
 
 const theme: ActiveDirectionsPanelTheme = {
   Container: SafeAreaView,

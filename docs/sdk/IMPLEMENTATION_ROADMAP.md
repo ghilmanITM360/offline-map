@@ -386,3 +386,8 @@ All paths below are under `src/`. All referenced domain APIs are already availab
 
 - DirectionsSheetParts imports its three SDK leaves (DirectionsHeader, RouteEndpointRows, StartOptionCard) from `/ui`. Host props, translations, icons/themes, physical positioning, sheet ownership and callbacks remain untouched.
 - SOURCE/RUNTIME: focused Jest 7 suites / 23 tests, typecheck, graph/peer checks and diff-check pass; independent read-only review CLEAR. Evidence `b6-continuation/ui-sheet.log`.
+
+### B6c-3 active/arrival/origin public bindings (#391)
+
+- ActiveDirectionsPanel, ArrivalCard and EntryGateOriginBanner wrappers now use `/ui`. Existing props, theme, copy, RTL, safe-area container, accessibility and actions are unchanged.
+- SOURCE/RUNTIME: focused Jest 5 suites / 30 tests, typecheck, graph/peer checks and diff-check pass; independent read-only review CLEAR. Evidence `b6-continuation/ui-active.log`.

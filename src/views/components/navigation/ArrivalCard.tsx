@@ -12,7 +12,7 @@ import { NAV_TOUCH_TARGET_HIT_SLOP } from './navOverlayStyles';
 import {
   ArrivalCard as SdkArrivalCard,
   type ArrivalCardTheme,
-} from '../../../../packages/offline-navigation/src/ui/ArrivalCard';
+} from '@muslim-ummah/offline-navigation/ui';
 
 const theme: ArrivalCardTheme = {
   PinIcon: MapPin,
