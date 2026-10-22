@@ -3,7 +3,7 @@ import { V2DirectionsService } from '../services/V2DirectionsService';
 import { V2PlaceAdapter } from '../services/V2PlaceAdapter';
 import { useAppStore } from '../store/useAppStore';
 import { useDirectionsViewModel } from '../viewmodels/DirectionsViewModel';
-import type { NavigationSession } from '../../packages/offline-navigation/src/domain/session';
+import type { NavigationSession } from '@muslim-ummah/offline-navigation/session';
 import { act, renderHook, waitFor } from './test-utils';
 
 // B4a-5: manual-to-live upgrade requests are owned by one SDK NavigationSession per mounted upgrade hook. The outside
@@ -12,8 +12,8 @@ import { act, renderHook, waitFor } from './test-utils';
 jest.setTimeout(15_000);
 
 const mockCreatedSessions: NavigationSession[] = [];
-jest.mock('../../packages/offline-navigation/src/domain/session', () => {
-  const actual = jest.requireActual('../../packages/offline-navigation/src/domain/session');
+jest.mock('@muslim-ummah/offline-navigation/session', () => {
+  const actual = jest.requireActual('@muslim-ummah/offline-navigation/session');
   return {
     ...actual,
     createNavigationSession: (id: string) => {
@@ -66,6 +66,13 @@ beforeEach(() => {
 afterEach(() => jest.restoreAllMocks());
 
 describe('B4a-5 manual-to-live upgrade commits only for the request that is still current', () => {
+  test('public session entrypoint shares the existing module and factory identity', () => {
+    const publicSession = jest.requireActual('@muslim-ummah/offline-navigation/session');
+    const sourceSession = jest.requireActual('../../packages/offline-navigation/src/domain/session');
+    expect(publicSession).toBe(sourceSession);
+    expect(publicSession.createNavigationSession).toBe(sourceSession.createNavigationSession);
+  });
+
   test('a valid upgrade activates once through one persistent session, independent of the preview session', async () => {
     const hook = await manualGuide();
     jest.spyOn(LocationAccessService, 'resolveCurrentLocation').mockResolvedValue(liveFix(V2PlaceAdapter.getPlaceById('B9')!.coordinate));

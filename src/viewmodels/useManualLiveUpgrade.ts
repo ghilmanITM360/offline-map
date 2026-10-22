@@ -11,7 +11,8 @@ import { OutsideRouteRequestCoordinator } from '../services/outsideRouting/Outsi
 import { createProductionOutsideRouteSource } from '../services/outsideRouting/ProductionOutsideRouteSource';
 import { V2NavigationAdapter } from '../services/V2NavigationAdapter';
 import { startPreviewNavigationV2 } from './NavigationViewModelV2';
-import { createNavigationSession, type NavigationSession, type NavigationSessionRequest } from '../../packages/offline-navigation/src/domain/session';
+import { createNavigationSession } from '@muslim-ummah/offline-navigation/session';
+import type { NavigationSession, NavigationSessionRequest } from '@muslim-ummah/offline-navigation/session';
 
 import { clearManualLivePreview, publishManualLivePreview } from './manualLivePreview';
 
