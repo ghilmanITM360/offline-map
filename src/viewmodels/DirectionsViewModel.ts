@@ -37,8 +37,8 @@ import { RoutePointService } from '../services/RoutePointService';
 import { getRoutableOfficialGates } from '../data/ijtema/entryPolicy';
 import { createProductionOutsideRouteSource } from '../services/outsideRouting/ProductionOutsideRouteSource';
 import { OutsideRouteRequestCoordinator } from '../services/outsideRouting/OutsideRouteRequestCoordinator';
-import { createNavigationSession } from '../../packages/offline-navigation/src/domain/session';
-import type { NavigationSession } from '../../packages/offline-navigation/src/domain/session';
+import { createNavigationSession } from '@muslim-ummah/offline-navigation/session';
+import type { NavigationSession } from '@muslim-ummah/offline-navigation/session';
 import { formatLastKnownAge } from '../utils/formatLastKnownAge';
 import { CHOOSE_DESTINATION, NAVIGATION_UNAVAILABLE, ROUTE_NOT_FOUND } from '../utils/routeCopy';
 

@@ -6,7 +6,7 @@ import { VoiceService } from '../services/VoiceService';
 import { useAppStore } from '../store/useAppStore';
 import { useDirectionsViewModel } from '../viewmodels/DirectionsViewModel';
 import { useNavigationViewModelV2 } from '../viewmodels/NavigationViewModelV2';
-import type { NavigationSession } from '../../packages/offline-navigation/src/domain/session';
+import type { NavigationSession } from '@muslim-ummah/offline-navigation/session';
 import { seedRunningNavigation } from './navigationFixture';
 import { act, renderHook, waitFor } from './test-utils';
 
@@ -16,8 +16,8 @@ import { act, renderHook, waitFor } from './test-utils';
 jest.setTimeout(15_000);
 
 const mockCreatedSessions: NavigationSession[] = [];
-jest.mock('../../packages/offline-navigation/src/domain/session', () => {
-  const actual = jest.requireActual('../../packages/offline-navigation/src/domain/session');
+jest.mock('@muslim-ummah/offline-navigation/session', () => {
+  const actual = jest.requireActual('@muslim-ummah/offline-navigation/session');
   return {
     ...actual,
     createNavigationSession: (id: string) => {
@@ -71,6 +71,13 @@ beforeEach(() => {
 afterEach(() => jest.restoreAllMocks());
 
 describe('B4a-4 route previews commit only for the Directions request that is still current', () => {
+  test('public session entrypoint shares the existing module and factory identity', () => {
+    const publicSession = jest.requireActual('@muslim-ummah/offline-navigation/session');
+    const sourceSession = jest.requireActual('../../packages/offline-navigation/src/domain/session');
+    expect(publicSession).toBe(sourceSession);
+    expect(publicSession.createNavigationSession).toBe(sourceSession.createNavigationSession);
+  });
+
   test('a valid preview commits through one session that persists across renders', async () => {
     const calls = stubPreviewDeferred();
     const hook = await renderHook(() => useDirectionsViewModel(destination));
