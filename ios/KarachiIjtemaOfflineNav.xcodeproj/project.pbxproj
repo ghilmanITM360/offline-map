@@ -14,6 +14,7 @@
 		BB2F792D24A3F905000567C9 /* Expo.plist in Resources */ = {isa = PBXBuildFile; fileRef = BB2F792C24A3F905000567C9 /* Expo.plist */; };
 		CDC29E7F84246577891F8579 /* libPods-KarachiIjtemaOfflineNav.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 6CCBF9DF190A6C5A3B5EF27A /* libPods-KarachiIjtemaOfflineNav.a */; };
 		F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = F11748412D0307B40044C1D9 /* AppDelegate.swift */; };
+		B7A000000000000000000001 /* IjtemaLocationPrecision.m in Sources */ = {isa = PBXBuildFile; fileRef = B7A000000000000000000002 /* IjtemaLocationPrecision.m */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -30,6 +31,7 @@
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 		F11748412D0307B40044C1D9 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = KarachiIjtemaOfflineNav/AppDelegate.swift; sourceTree = "<group>"; };
 		F11748442D0722820044C1D9 /* KarachiIjtemaOfflineNav-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = "KarachiIjtemaOfflineNav-Bridging-Header.h"; path = "KarachiIjtemaOfflineNav/KarachiIjtemaOfflineNav-Bridging-Header.h"; sourceTree = "<group>"; };
+		B7A000000000000000000002 /* IjtemaLocationPrecision.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = KarachiIjtemaOfflineNav/IjtemaLocationPrecision.m; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -48,6 +50,7 @@
 			isa = PBXGroup;
 			children = (
 				F11748412D0307B40044C1D9 /* AppDelegate.swift */,
+				B7A000000000000000000002 /* IjtemaLocationPrecision.m */,
 				F11748442D0722820044C1D9 /* KarachiIjtemaOfflineNav-Bridging-Header.h */,
 				BB2F792B24A3F905000567C9 /* Supporting */,
 				13B07FB51A68108700A75B9A /* Images.xcassets */,
@@ -356,6 +359,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */,
+				B7A000000000000000000001 /* IjtemaLocationPrecision.m in Sources */,
 				238DFE61B2BBBC38A0669320 /* ExpoModulesProvider.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

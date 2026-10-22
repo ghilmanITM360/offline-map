@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import { observeIOSLocationPermission } from '../services/LocationAccessService';
 import React, { useEffect } from 'react';
 import { NavigatorScreenParams } from '@react-navigation/native'; // fixed: add typed nested navigator params
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -66,7 +67,11 @@ export function RootNavigator() {
   useEffect(() => {
     GPSManagerService.setStoreUpdater(setCurrentLocation);
     GPSManagerService.setPermissionUpdater(setLocationPermissionFacts);
-    return () => GPSManagerService.setPermissionUpdater(null);
+    const stopPermissionMonitor = observeIOSLocationPermission(setLocationPermissionFacts);
+    return () => {
+      stopPermissionMonitor();
+      GPSManagerService.setPermissionUpdater(null);
+    };
   }, [setCurrentLocation, setLocationPermissionFacts]);
 
   // Poll connectivity every 30s and update the global store

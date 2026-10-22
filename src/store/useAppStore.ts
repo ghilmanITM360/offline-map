@@ -127,7 +127,7 @@ interface AppState {
   // --- Permissions / connectivity ---
   hasLocationPermission: boolean;
   setHasLocationPermission: (val: boolean) => void;
-  // Android permission precision ('fine'/'coarse'/'none'); iOS or pre-check defaults to 'none'.
+  // Verified permission precision ('fine'/'coarse'/'none'); pre-check defaults to 'none'.
   // Independent of fix accuracy in meters — a fine-permission fix can still be a weak (>50m) fix.
   locationPermissionPrecision: 'fine' | 'coarse' | 'none';
   setLocationPermissionPrecision: (val: 'fine' | 'coarse' | 'none') => void;

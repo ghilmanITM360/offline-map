@@ -3,10 +3,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { Linking, Platform } from 'react-native';
+import { AppState, Linking, Platform } from 'react-native';
 import * as Location from 'expo-location';
 import { Coordinate, LocationSource } from '../models/types';
 import { t } from '../i18n';
+
+import { invalidateIOSPrecisionReads, readIOSLocationSnapshot, subscribeIOSLocationAuthorization } from './IOSLocationPrecision';
 
 const DEVICE_LAST_KNOWN_MAX_AGE_MS = 30_000;
 const DEVICE_LAST_KNOWN_REQUIRED_ACCURACY_M = 50;
@@ -22,7 +24,7 @@ export interface LocationPermissionState {
   granted: boolean;
   canAskAgain: boolean;
   status: Location.PermissionStatus;
-  /** Android permission precision (fine/coarse/none). Independent of fix accuracy in meters. */
+  /** Verified permission precision (fine/coarse/none), independent of fix accuracy in meters. */
   precision: LocationPermissionPrecision;
   /** True only when servicesState === 'enabled'; kept for callers that only need a yes/no gate. */
   servicesEnabled: boolean;
@@ -59,15 +61,7 @@ export class LocationAccessService {
   static async getPermissionState(): Promise<LocationPermissionState> {
     const permission = await Location.getForegroundPermissionsAsync();
     const servicesState = await queryServicesState();
-    const granted = permission.status === 'granted';
-    return {
-      granted,
-      canAskAgain: permission.canAskAgain,
-      status: permission.status,
-      precision: derivePrecision(permission),
-      servicesEnabled: servicesState === 'enabled',
-      servicesState,
-    };
+    return permissionFacts(permission, servicesState);
   }
 
   static async resolveCurrentLocation(allowPrompt = true): Promise<LocationResolveResult> {
@@ -79,14 +73,7 @@ export class LocationAccessService {
 
       const servicesState = await queryServicesState();
 
-      const permissionState: LocationPermissionState = {
-        granted: permission.status === 'granted',
-        canAskAgain: permission.canAskAgain,
-        status: permission.status,
-        precision: derivePrecision(permission),
-        servicesEnabled: servicesState === 'enabled',
-        servicesState,
-      };
+      let permissionState = await permissionFacts(permission, servicesState);
       if (!permissionState.granted) {
         return {
           ok: false,
@@ -120,6 +107,7 @@ export class LocationAccessService {
         ]).finally(() => {
           if (timeoutId !== undefined) clearTimeout(timeoutId);
         });
+        if (Platform.OS === 'ios') permissionState = await this.getPermissionState();
         return {
           ok: true,
           coordinate: {
@@ -139,6 +127,7 @@ export class LocationAccessService {
           requiredAccuracy: DEVICE_LAST_KNOWN_REQUIRED_ACCURACY_M,
         });
         if (lastKnown) {
+          if (Platform.OS === 'ios') permissionState = await this.getPermissionState();
           return {
             ok: true,
             coordinate: {
@@ -201,4 +190,53 @@ export class LocationAccessService {
       return this.openAppSettings();
     }
   }
+}
+
+async function permissionFacts(permission: Location.LocationPermissionResponse, servicesState: LocationServicesState): Promise<LocationPermissionState> {
+  let granted = permission.status === 'granted';
+  let precision = derivePrecision(permission);
+  if (Platform.OS === 'ios') {
+    const native = await readIOSLocationSnapshot();
+    const foreground = native?.authorization === 'whenInUse' || native?.authorization === 'always';
+    granted = granted && foreground;
+    if (native?.servicesEnabled === false) servicesState = 'disabled';
+    if (granted && servicesState === 'enabled' && native?.servicesEnabled === true) {
+      precision = native.precision === 'full' ? 'fine' : native.precision === 'reduced' ? 'coarse' : 'none';
+    }
+  }
+  return { granted, canAskAgain: permission.canAskAgain, status: permission.status, precision,
+    servicesState, servicesEnabled: servicesState === 'enabled' };
+}
+
+/** Root-owned iOS refresh, independent of GPS-watch ownership. Never starts navigation. */
+export function observeIOSLocationPermission(onFacts: (facts: LocationPermissionState) => void): () => void {
+  if (Platform.OS !== 'ios') return () => {};
+  let disposed = false;
+  let generation = 0;
+  let active = AppState.currentState === 'active';
+  const clear = () => onFacts({ granted: false, canAskAgain: false, status: Location.PermissionStatus.UNDETERMINED,
+    precision: 'none', servicesEnabled: false, servicesState: 'unknown' });
+  const refresh = () => {
+    if (disposed) return;
+    const request = ++generation;
+    invalidateIOSPrecisionReads();
+    clear();
+    if (!active || disposed) return;
+    void LocationAccessService.getPermissionState().then((facts) => {
+      if (!disposed && active && request === generation) onFacts(facts);
+    }).catch(() => { /* The cleared capability remains fail-closed. */ });
+  };
+  const removeNative = subscribeIOSLocationAuthorization(refresh);
+  const appState = AppState.addEventListener('change', (state) => {
+    active = state === 'active';
+    refresh();
+  });
+  refresh();
+  return () => {
+    disposed = true;
+    generation += 1;
+    invalidateIOSPrecisionReads();
+    removeNative();
+    appState.remove();
+  };
 }
