@@ -13,7 +13,7 @@ import {
   type LiveBlocker,
   type LocationCapability,
   type LocationPermissionInput,
-} from '../../packages/offline-navigation/src/domain/journey/LocationCapability';
+} from '@muslim-ummah/offline-navigation';
 import type { Coordinate } from '../models/types';
 
 export {
@@ -21,7 +21,7 @@ export {
   MAX_LIVE_FIX_AGE_MS,
   classifyLiveFix,
   accuracyFacet,
-} from '../../packages/offline-navigation/src/domain/journey/LocationCapability';
+} from '@muslim-ummah/offline-navigation';
 export type {
   PermissionFacet,
   AccuracyFacet,
@@ -31,7 +31,7 @@ export type {
   LiveBlocker,
   LocationPermissionInput,
   LocationCapability,
-} from '../../packages/offline-navigation/src/domain/journey/LocationCapability';
+} from '@muslim-ummah/offline-navigation';
 
 export function evaluateLocationCapability(input: {
   permission: LocationPermissionInput;

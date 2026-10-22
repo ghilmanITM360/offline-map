@@ -1,5 +1,3 @@
-/**
- * Compatibility re-export. The implementation lives in the shared domain layer
- * (future @muslim-ummah/offline-navigation); keep this path for existing consumers.
- */
-export * from '../../packages/offline-navigation/src/domain/journey/JourneyPresentationState';
+/** Compatibility exports from the public SDK; keep the existing host surface. */
+export { selectJourneyPresentationState, isJourneyStartable, outsideGuideSummary } from '@muslim-ummah/offline-navigation';
+export type { JourneyPresentationState, JourneyPresentationInput } from '@muslim-ummah/offline-navigation';

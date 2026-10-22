@@ -15,7 +15,7 @@ import {
   type NavigationStartBlock,
   type NavigationStartSource,
   type StartActionKind,
-} from '../../packages/offline-navigation/src/domain/journey/NavigationStartPolicy';
+} from '@muslim-ummah/offline-navigation';
 
 export type { NavigationStartSource, StartActionKind };
 

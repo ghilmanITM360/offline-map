@@ -366,3 +366,8 @@ All paths below are under `src/`. All referenced domain APIs are already availab
 - Root now adds `spatialHaversineM`, an alias of the original four-number clamped-asin function. Existing root `haversineM` remains the two-coordinate venue atan2 function. Neither implementation changed; the facade explicitly preserves class/type and legacy `haversineM` name with exact reference identity.
 - SOURCE/RUNTIME: focused Jest 2 suites / 7 tests, grid assertions, street graph contract 8 checks, headless 35, exports 8, typecheck and diff-check pass. Compiled tarball reproducibility, isolated plain Node, declarations and shared peers pass; additional installed-artifact smoke confirms both distance signatures and antipodal spatial result. Independent read-only review CLEAR. Final full tests/Metro deferred to end of authorized continuation.
 - Evidence: `/Users/ghilmankhan/Documents/offline-map-audits/pc1-2026-10-23/b6-continuation/`. No native/device/field evidence added.
+
+### B6b-5 journey public imports (#391)
+
+- LocationCapability, LocationNavigationCapability, JourneyPresentationState and useAppStore now consume root exports. Host clocks, localized messages and store behavior are unchanged. Presentation facade explicitly preserves its three functions/two types; identity test checks all journey runtime bindings.
+- SOURCE/RUNTIME: focused Jest 8 suites / 126 tests, typecheck, exports 8, headless 35 and diff-check pass. Independent read-only review CLEAR. Full validation remains scheduled once at continuation closeout; evidence `b6-continuation/journey.log` under the external audit directory above.

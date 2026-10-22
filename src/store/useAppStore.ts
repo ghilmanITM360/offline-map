@@ -16,7 +16,7 @@ import {
   type DestinationJourneyIntent,
   type DirectoryPurpose,
   type DirectoryRequest,
-} from '../../packages/offline-navigation/src/domain/journey/DestinationJourneyPolicy';
+} from '@muslim-ummah/offline-navigation';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
