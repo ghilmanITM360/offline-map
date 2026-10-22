@@ -1,1 +1,1 @@
-export * from '../../../packages/offline-navigation/src/ui/useAccessibilityFocus';
+export { useAccessibilityFocus } from '@muslim-ummah/offline-navigation/ui';

@@ -396,3 +396,8 @@ All paths below are under `src/`. All referenced domain APIs are already availab
 
 - RerouteBanner, RerouteProgressCard and GpsSignalBanner now use `/ui`. Copy, accessibility/live regions, physical positioning and host recovery/GPS policy are unchanged.
 - SOURCE/RUNTIME: focused Jest 5 suites / 16 tests, typecheck, graph/peer checks and diff-check pass; independent read-only review CLEAR. Evidence `b6-continuation/ui-recovery.log`.
+
+### B6c-5 gate/focus public bindings (#391)
+
+- GateChooser and the useAccessibilityFocus facade now use `/ui`; hook facade explicitly preserves its sole export. Gate labels, selection callbacks, theme/layout and focus lifecycle are unchanged. MapUnavailableBanner was already public and was not modified.
+- SOURCE/RUNTIME: focused Jest 5 suites / 24 tests, typecheck, graph/peer checks and diff-check pass; independent read-only review CLEAR. Evidence `b6-continuation/ui-gate-focus.log`. All 13 extracted UI leaves and the hook now have public host consumption; composed navigation shell remains host-owned.

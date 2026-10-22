@@ -11,7 +11,7 @@ import { Button } from '../common/Button';
 import {
   GateChooser as SdkGateChooser,
   type GateChooserTheme,
-} from '../../../../packages/offline-navigation/src/ui/GateChooser';
+} from '@muslim-ummah/offline-navigation/ui';
 
 const theme: GateChooserTheme = {
   Button,
