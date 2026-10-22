@@ -14,7 +14,7 @@ import { InstructionService } from '../../../services/InstructionService';
 import {
   RouteGuideCard as SdkRouteGuideCard,
   type RouteGuideCardTheme,
-} from '../../../../packages/offline-navigation/src/ui/RouteGuideCard';
+} from '@muslim-ummah/offline-navigation/ui';
 
 const colors = {
   brand: directionsSheetColors.brand,

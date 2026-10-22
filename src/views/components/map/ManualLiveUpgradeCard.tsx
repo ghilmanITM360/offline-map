@@ -7,7 +7,7 @@ import { Button } from '../common/Button';
 import {
   ManualLiveUpgradeCard as SdkManualLiveUpgradeCard,
   type ManualLiveUpgradeCardTheme,
-} from '../../../../packages/offline-navigation/src/ui/ManualLiveUpgradeCard';
+} from '@muslim-ummah/offline-navigation/ui';
 
 const theme: ManualLiveUpgradeCardTheme = {
   Card,

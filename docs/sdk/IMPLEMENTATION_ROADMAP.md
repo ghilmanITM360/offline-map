@@ -376,3 +376,8 @@ All paths below are under `src/`. All referenced domain APIs are already availab
 
 - RoutingServiceV2 and OutsideStreetRoutingService use the existing root search exports; ProductionOutsideRouteSource and both Ijtema adapters use root contract types. Algorithms, graph/data, host gate eligibility, full-journey costs and provider orchestration are unchanged. Root/domain runtime identity covered for all venue/street bindings.
 - SOURCE/RUNTIME: focused Jest 6 suites / 35 tests, street contracts 8 checks, gate-selection-cost/provider regressions, typecheck, headless 35 and diff-check pass. Independent review CLEAR. Final npm test will supply the existing expensive differential/golden gates once. No production private domain paths remain; test probes and SDK-internal imports intentionally remain.
+
+### B6c-1 guide/upgrade public UI bindings (#391)
+
+- ManualLiveUpgradeCard and RouteGuideCard wrappers now import `/ui`; props/copy/theme/RTL/actions unchanged. New public UI identity test covers all 13 leaves and the focus hook.
+- SOURCE/RUNTIME: focused Jest 4 suites / 46 tests, typecheck, diff-check and boundary graph pass (19 headless / 15 UI modules, no cycles/host escapes, shared React/RN realpaths). Independent read-only review CLEAR. Evidence `b6-continuation/ui-cards.log`.
