@@ -7,10 +7,10 @@ import { StyleSheet } from 'react-native';
 import { render, screen } from './test-utils';
 import { staticColors } from '../theme';
 import { MapUnavailableBanner } from '../views/components/navigation/MapUnavailableBanner';
-import { MapUnavailableBanner as SdkBanner } from '../../packages/offline-navigation/src/ui/MapUnavailableBanner';
+import { MapUnavailableBanner as SdkBanner } from '@muslim-ummah/offline-navigation/ui';
 
-jest.mock('../../packages/offline-navigation/src/ui/MapUnavailableBanner', () => {
-  const actual = jest.requireActual('../../packages/offline-navigation/src/ui/MapUnavailableBanner');
+jest.mock('@muslim-ummah/offline-navigation/ui', () => {
+  const actual = jest.requireActual('@muslim-ummah/offline-navigation/ui');
   return { ...actual, MapUnavailableBanner: jest.fn(actual.MapUnavailableBanner) };
 });
 
@@ -42,7 +42,7 @@ test('Urdu copy wraps rather than truncating', async () => {
 });
 
 test('SDK banner renders host copy and colours with no app dependencies', async () => {
-  const { MapUnavailableBanner: Actual } = jest.requireActual('../../packages/offline-navigation/src/ui/MapUnavailableBanner');
+  const { MapUnavailableBanner: Actual } = jest.requireActual('@muslim-ummah/offline-navigation/ui');
   await render(<Actual message="M" theme={{ colors: { fill: '#fff', border: '#000', text: '#123' } }} />);
   expect(StyleSheet.flatten(screen.getByText('M').props.style).color).toBe('#123');
 });

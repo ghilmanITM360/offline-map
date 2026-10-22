@@ -7,8 +7,9 @@ import React from 'react';
 import { staticColors } from '../../../theme';
 import {
   MapUnavailableBanner as SdkMapUnavailableBanner,
-  type MapUnavailableBannerTheme,
-} from '../../../../packages/offline-navigation/src/ui/MapUnavailableBanner';
+} from '@muslim-ummah/offline-navigation/ui';
+
+import type { MapUnavailableBannerTheme } from '@muslim-ummah/offline-navigation/ui';
 
 const theme: MapUnavailableBannerTheme = {
   colors: { fill: staticColors.bannerTranslucentWhite, border: staticColors.border, text: staticColors.iconMuted },
