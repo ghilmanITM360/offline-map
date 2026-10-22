@@ -9,9 +9,7 @@
   "services/V2DirectionsService.ts": 1,
   "utils/placeShare.ts": 1,
   "viewmodels/NavigationViewModel.ts": 1,
-  "views/components/common/SearchBarField.tsx": 1,
-  "views/components/map/LocationSheet.tsx": 9,
+  "views/components/map/LocationSheet.tsx": 1,
   "views/components/map/OsmAttribution.tsx": 1,
-  "views/components/navigation/NavigationChromeV2.tsx": 2,
-  "views/screens/HomeScreen.tsx": 23
+  "views/screens/HomeScreen.tsx": 13
 }

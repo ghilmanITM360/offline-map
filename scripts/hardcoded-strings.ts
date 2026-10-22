@@ -72,8 +72,9 @@ export function findHardcodedStrings(file: string): string[] {
       add(literalText(node.initializer), node.initializer);
     } else if (ts.isCallExpression(node) && node.expression.getText() === 'Alert.alert') {
       node.arguments.slice(0, 2).forEach((arg) => add(literalText(arg), arg));
-    } else if (ts.isConditionalExpression(node) && ts.isJsxExpression(node.parent)) {
-      // {cond ? 'On' : 'Off'} inside JSX renders as text.
+    } else if (ts.isConditionalExpression(node) && ts.isJsxExpression(node.parent)
+      && (!ts.isJsxAttribute(node.parent.parent) || TEXT_PROPS.has(node.parent.parent.name.getText()))) {
+      // Rendered children and copy props are text; variant/live-region attributes are configuration.
       add(literalText(node.whenTrue), node.whenTrue);
       add(literalText(node.whenFalse), node.whenFalse);
     }
@@ -100,14 +101,20 @@ function walk(dir: string, out: string[] = []): string[] {
   return out;
 }
 
-/** file (relative to src) -> every hardcoded user-visible string in it. */
-export function scanAll(): Record<string, string[]> {
+/** Host keys stay relative to src; SDK UI keys are repository-relative to avoid collisions. */
+export function scanAll(root = path.join(__dirname, '..')): Record<string, string[]> {
   const result: Record<string, string[]> = {};
-  for (const file of walk(SRC).sort()) {
-    const rel = path.relative(SRC, file).split(path.sep).join('/');
-    if (SKIP_FILES.has(rel)) continue;
-    const found = findHardcodedStrings(file);
-    if (found.length) result[rel] = found;
+  const roots = [
+    { directory: path.join(root, 'src'), prefix: '' },
+    { directory: path.join(root, 'packages/offline-navigation/src/ui'), prefix: 'packages/offline-navigation/src/ui/' },
+  ];
+  for (const { directory, prefix } of roots) {
+    for (const file of walk(directory).sort()) {
+      const rel = path.relative(directory, file).split(path.sep).join('/');
+      if (!prefix && SKIP_FILES.has(rel)) continue;
+      const found = findHardcodedStrings(file);
+      if (found.length) result[prefix + rel] = found;
+    }
   }
   return result;
 }
