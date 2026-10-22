@@ -6,8 +6,8 @@
 import { getRhumbLineBearing } from 'geolib';
 import { IJTEMA_VENUE_SOURCE } from '../data/ijtema/venueAdapter';
 import { getIjtemaStreetRoutingGraph } from '../data/ijtema/streetAdapter';
-import { findBestSeededVenuePath, findBestVenuePath } from '../../packages/offline-navigation/src/domain/venue';
-import type { StreetRoutingGraph } from '../../packages/offline-navigation/src/domain/street';
+import { findBestSeededVenuePath, findBestVenuePath } from '@muslim-ummah/offline-navigation';
+import type { StreetRoutingGraph } from '@muslim-ummah/offline-navigation';
 import {
   Block,
   Coordinate as V2Coordinate,

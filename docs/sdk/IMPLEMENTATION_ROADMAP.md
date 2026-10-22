@@ -371,3 +371,8 @@ All paths below are under `src/`. All referenced domain APIs are already availab
 
 - LocationCapability, LocationNavigationCapability, JourneyPresentationState and useAppStore now consume root exports. Host clocks, localized messages and store behavior are unchanged. Presentation facade explicitly preserves its three functions/two types; identity test checks all journey runtime bindings.
 - SOURCE/RUNTIME: focused Jest 8 suites / 126 tests, typecheck, exports 8, headless 35 and diff-check pass. Independent read-only review CLEAR. Full validation remains scheduled once at continuation closeout; evidence `b6-continuation/journey.log` under the external audit directory above.
+
+### B6b-6 venue/street public consumers (#391)
+
+- RoutingServiceV2 and OutsideStreetRoutingService use the existing root search exports; ProductionOutsideRouteSource and both Ijtema adapters use root contract types. Algorithms, graph/data, host gate eligibility, full-journey costs and provider orchestration are unchanged. Root/domain runtime identity covered for all venue/street bindings.
+- SOURCE/RUNTIME: focused Jest 6 suites / 35 tests, street contracts 8 checks, gate-selection-cost/provider regressions, typecheck, headless 35 and diff-check pass. Independent review CLEAR. Final npm test will supply the existing expensive differential/golden gates once. No production private domain paths remain; test probes and SDK-internal imports intentionally remain.

@@ -4,7 +4,7 @@
  */
 
 import { Coordinate, Gate } from '../data/ijtema/types';
-import { findStreetRouteToTargets, StreetRoutingGraph } from '../../packages/offline-navigation/src/domain/street';
+import { findStreetRouteToTargets, StreetRoutingGraph } from '@muslim-ummah/offline-navigation';
 import { getIjtemaStreetRoutingGraph } from '../data/ijtema/streetAdapter';
 
 /**

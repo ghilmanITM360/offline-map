@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import type { StreetRoutingGraph } from '../../../packages/offline-navigation/src/domain/street';
+import type { StreetRoutingGraph } from '@muslim-ummah/offline-navigation';
 import { haversineM, SpatialGrid } from '../../utils/SpatialGrid';
 import { findNearestStreetNode, getStreetNavigationGraph } from './streetGraphBuilder';
 import type { StreetGraphEdge, StreetGraphNode, StreetNavigationGraph } from './streetGraphTypes';

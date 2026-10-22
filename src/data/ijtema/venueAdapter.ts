@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import type { VenueDataSource, VenuePlace } from '../../../packages/offline-navigation/src/domain/venue';
+import type { VenueDataSource, VenuePlace } from '@muslim-ummah/offline-navigation';
 import { IJTEMA_BLOCKS } from './blocks';
 import { IJTEMA_GATES } from './gates';
 import { getBlockEntryNodeIds } from './graphBuilder';

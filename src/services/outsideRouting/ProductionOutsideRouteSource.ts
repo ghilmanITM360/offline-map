@@ -3,7 +3,7 @@ import type {
   OutsideRouteCandidateSource,
   OutsideWalkingManeuver,
 } from '../../models/outsideRouting';
-import type { StreetRoutingGraph } from '../../../packages/offline-navigation/src/domain/street';
+import type { StreetRoutingGraph } from '@muslim-ummah/offline-navigation';
 import { IJTEMA_GATES } from '../../data/ijtema';
 import { getIjtemaStreetRoutingGraph } from '../../data/ijtema/streetAdapter';
 import { RoutingServiceV2 } from '../RoutingServiceV2';
