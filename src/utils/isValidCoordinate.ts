@@ -1,5 +1,4 @@
 /**
- * Compatibility re-export. The implementation lives in the shared domain layer
- * (future @muslim-ummah/offline-navigation); keep this path for existing consumers.
+ * Compatibility re-export from the public SDK; keep this path for existing consumers.
  */
-export * from '../../packages/offline-navigation/src/domain/geo/isValidCoordinate';
+export { isValidCoordinate } from '@muslim-ummah/offline-navigation';
