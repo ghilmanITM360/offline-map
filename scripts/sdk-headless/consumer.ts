@@ -9,6 +9,7 @@ import { findStreetRouteToTargets } from '../../packages/offline-navigation/src/
 import { createNavigationSession, type NavigationSessionState } from '../../packages/offline-navigation/src/domain/session';
 import { packChecks } from './packChecks';
 import { packManagerChecks } from './packManagerChecks';
+import { navigationChecks } from './navigationChecks';
 import { createSyntheticVenue } from './syntheticVenue';
 import { streetGraphA, streetGraphB } from './syntheticStreets';
 
@@ -427,10 +428,10 @@ const asyncCheck = async (name: string, fn: () => void | Promise<void>): Promise
   passed++;
   console.log(`  ok - ${name}`);
 };
-sessionChecks().then(() => packChecks(asyncCheck)).then(() => packManagerChecks(asyncCheck)).then(() => {
+sessionChecks().then(() => packChecks(asyncCheck)).then(() => packManagerChecks(asyncCheck)).then(() => navigationChecks(asyncCheck)).then(() => {
   // ---- Runtime dependency graph: everything loaded must be the emitted domain itself ----
   check('loaded module graph contains only emitted domain files (so no node_modules, RN, Expo, Zustand, app code or Ijtema data)', () => {
-    const loaded = Object.keys(require.cache).filter((f) => f !== __filename && !/\/(synthetic(Venue|Streets)|packChecks|packManagerChecks)\.js$/.test(f));
+    const loaded = Object.keys(require.cache).filter((f) => f !== __filename && !/\/(synthetic(Venue|Streets)|packChecks|packManagerChecks|navigationChecks)\.js$/.test(f));
     assert.ok(loaded.length >= 7, `unexpectedly small module graph: ${loaded.length}`);
     for (const f of loaded) {
       assert.match(f, /\/packages\/offline-navigation\/src\/domain\//, `non-domain module loaded: ${f}`);

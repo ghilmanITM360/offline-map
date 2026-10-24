@@ -58,15 +58,25 @@ const s = session.createNavigationSession('artifact'); assert.equal(s.start(), t
 const old = s.beginRequest(); const current = s.beginRequest();
 assert.equal(old.canCommit(), false); assert.equal(current.commit(() => {}), true);
 s.cancel(); assert.equal(s.state, 'cancelled');
+const A = { id: 'a', coordinate: { lat: 1, lng: 1 } }, B = { id: 'b', coordinate: { lat: 1.0005, lng: 1 } };
+const venue = {
+  venueId: 'artifact-venue', dataVersion: '1',
+  graph: { nodeIds: () => ['a', 'b'], getNode: id => id === 'a' ? A : id === 'b' ? B : undefined, edgesFrom: id => id === 'a' ? [{ to: 'b', distanceM: 55 }] : id === 'b' ? [{ to: 'a', distanceM: 55 }] : [] },
+  placeIds: () => ['pa', 'pb'], getPlace: id => id === 'pa' ? { id, kind: 'k', nodeIds: ['a'] } : id === 'pb' ? { id, kind: 'k', nodeIds: ['b'] } : undefined,
+};
+const nav = sdk.createNavigationController({ venue });
+nav.selectDestination('pb'); nav.selectOrigin('pa');
+assert.deepEqual(nav.getState().route.steps.map(x => x.kind), ['depart', 'arrive']);
+assert.equal(nav.startGuide(), true); nav.exit(); assert.equal(nav.getState().phase, 'browsing');
 assert.throws(() => require('@muslim-ummah/offline-navigation/dist/domain/algorithms/MinHeap.js'), {code:'ERR_PACKAGE_PATH_NOT_EXPORTED'});
 assert.equal(sdk.GateChooser, undefined);
 assert.ok(!Object.keys(require.cache).some(p => p.includes('/node_modules/react/') || p.includes('/node_modules/react-native/')));
-console.log('artifact runtime: heap + session + export encapsulation passed');
+console.log('artifact runtime: heap + session + navigation controller + export encapsulation passed');
 `);
 process.stdout.write(run(process.execPath, ['smoke.cjs'], consumer));
 assert.ok(!existsSync(join(consumer, 'node_modules/react')));
 assert.ok(!existsSync(join(consumer, 'node_modules/react-native')));
-writeFileSync(join(consumer, 'headless.ts'), `import { MinHeap, createNavigationSession } from '@muslim-ummah/offline-navigation';\nimport type { NavigationSession } from '@muslim-ummah/offline-navigation/session';\nconst s: NavigationSession = createNavigationSession('types'); const heap = new MinHeap<string>(); heap.push(s.id, 1);`);
+writeFileSync(join(consumer, 'headless.ts'), `import { MinHeap, createNavigationSession, createNavigationController } from '@muslim-ummah/offline-navigation';\nimport type { NavigationControllerState, VenueDataSource } from '@muslim-ummah/offline-navigation';\nimport type { NavigationSession } from '@muslim-ummah/offline-navigation/session';\nconst s: NavigationSession = createNavigationSession('types'); const heap = new MinHeap<string>(); heap.push(s.id, 1);\nexport const open = (venue: VenueDataSource): NavigationControllerState => createNavigationController({ venue }).getState();`);
 const tscArgs = ['--noEmit', '--strict', '--skipLibCheck', '--target', 'es2020', '--module', 'node16', '--moduleResolution', 'node16', '--types', 'node', '--typeRoots', join(root, 'node_modules/@types')];
 run(process.execPath, [join(root, 'node_modules/typescript/bin/tsc'), ...tscArgs, 'headless.ts'], consumer);
 // Reuse installed host peers only for a RN-aware declaration check; do not install duplicates.
