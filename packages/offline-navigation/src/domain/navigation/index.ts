@@ -4,4 +4,5 @@
  */
 
 export * from './RouteSteps';
+export * from './RouteProgress';
 export * from './NavigationController';
