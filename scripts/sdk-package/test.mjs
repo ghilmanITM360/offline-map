@@ -65,11 +65,13 @@ const venue = {
   placeIds: () => ['pa', 'pb'], getPlace: id => id === 'pa' ? { id, kind: 'k', nodeIds: ['a'] } : id === 'pb' ? { id, kind: 'k', nodeIds: ['b'] } : undefined,
 };
 const nav = sdk.createNavigationController({ venue });
+assert.deepEqual(nav.listPlaces().map(p => p.id), ['pa', 'pb']);
 nav.selectDestination('pb'); nav.selectOrigin('pa');
 assert.deepEqual(nav.getState().route.steps.map(x => x.kind), ['depart', 'arrive']);
 assert.equal(nav.startGuide(), true); nav.exit(); assert.equal(nav.getState().phase, 'browsing');
 assert.throws(() => require('@muslim-ummah/offline-navigation/dist/domain/algorithms/MinHeap.js'), {code:'ERR_PACKAGE_PATH_NOT_EXPORTED'});
 assert.equal(sdk.GateChooser, undefined);
+assert.equal(sdk.NavigationScreen, undefined); assert.equal(sdk.createDefaultNavigationTheme, undefined); // UI never leaks into the headless root
 assert.ok(!Object.keys(require.cache).some(p => p.includes('/node_modules/react/') || p.includes('/node_modules/react-native/')));
 console.log('artifact runtime: heap + session + navigation controller + export encapsulation passed');
 `);
@@ -81,7 +83,31 @@ const tscArgs = ['--noEmit', '--strict', '--skipLibCheck', '--target', 'es2020',
 run(process.execPath, [join(root, 'node_modules/typescript/bin/tsc'), ...tscArgs, 'headless.ts'], consumer);
 // Reuse installed host peers only for a RN-aware declaration check; do not install duplicates.
 for (const name of ['react', 'react-native', '@types']) symlinkSync(join(root, 'node_modules', name), join(consumer, 'node_modules', name), 'dir');
-writeFileSync(join(consumer, 'ui.ts'), `import { MapUnavailableBanner, GateChooser } from '@muslim-ummah/offline-navigation/ui';\nexport const ui = [MapUnavailableBanner, GateChooser];`);
+// The packed artifact must carry the ready-made screen, its default theme/copy and their declarations.
+const uiDir = join(pkgDir, dirname(manifest.exports['./ui'].types));
+for (const name of ['NavigationScreen', 'PlaceDirectory', 'createDefaultNavigationTheme', 'EnglishNavigationCopy', 'NavigationScreenTypes']) {
+  assert.ok(existsSync(join(uiDir, `${name}.js`)) && existsSync(join(uiDir, `${name}.d.ts`)), `packed ${name}`);
+}
+writeFileSync(join(consumer, 'ui.ts'), [
+  `import React from 'react';`,
+  `import { MapUnavailableBanner, GateChooser, NavigationProvider, NavigationScreen, createDefaultNavigationTheme, ENGLISH_NAVIGATION_SCREEN_COPY } from '@muslim-ummah/offline-navigation/ui';`,
+  `import type { NavigationMapProps, NavigationMapHandle, NavigationScreenCopy } from '@muslim-ummah/offline-navigation/ui';`,
+  `import { createNavigationController } from '@muslim-ummah/offline-navigation';`,
+  `import type { VenueDataSource } from '@muslim-ummah/offline-navigation';`,
+  `export const ui = [MapUnavailableBanner, GateChooser];`,
+  `// A host's map: it renders what it is given and answers recenter(); typed against the packed declarations.`,
+  `const HostMap = (props: NavigationMapProps): null => { const handle: NavigationMapHandle = { recenter: () => props.onAvailabilityChange(true) }; void handle; return null; };`,
+  `const copy: NavigationScreenCopy = { ...ENGLISH_NAVIGATION_SCREEN_COPY };`,
+  `export const screen = (venue: VenueDataSource) => {`,
+  `  const controller = createNavigationController({ venue });`,
+  `  const theme = createDefaultNavigationTheme({ isRTL: false });`,
+  `  return React.createElement(NavigationProvider, { controller, children: React.createElement(NavigationScreen, { copy, theme, isRTL: false, MapComponent: HostMap, describePlace: (p) => ({ title: p.id }), onTripEnded: (reason: 'exit' | 'arrived') => void reason }) });`,
+  `};`,
+  `// @ts-expect-error the screen cannot render without the host's copy`,
+  `export const missingCopy = React.createElement(NavigationScreen, { theme: createDefaultNavigationTheme({ isRTL: false }), isRTL: false });`,
+  `// @ts-expect-error the screen needs to know the reading direction`,
+  `export const missingDirection = React.createElement(NavigationScreen, { copy, theme: createDefaultNavigationTheme({ isRTL: false }) });`,
+].join('\n'));
 run(process.execPath, [join(root, 'node_modules/typescript/bin/tsc'), ...tscArgs, '--jsx', 'react', 'ui.ts'], consumer);
 const req = createRequire(join(consumer, 'package.json'));
 assert.equal(req.resolve('react'), createRequire(join(root, 'package.json')).resolve('react'));

@@ -21,6 +21,9 @@ export const BASELINE_FILE = path.join(SRC, '__tests__', 'hardcodedStrings.basel
 
 // Not user copy: tests, venue/dataset records, the POC harness and the catalogs themselves.
 const SKIP_DIRS = new Set(['__tests__', 'data', 'poc', 'i18n']);
+// The SDK's UI has no inline copy: hosts supply every string. Its single optional English default is the one exception,
+// kept in one module so it can be dropped or replaced. Any other SDK UI file with copy still counts against the baseline.
+const SDK_OPTIONAL_ENGLISH_COPY = new Set(['EnglishNavigationCopy.ts']);
 // Developer-only surfaces (behind developer mode, never shown to attendees) and the legacy v1 dataset.
 const SKIP_FILES = new Set(['views/components/map/DebugOverlay.tsx', 'constants/data.ts']);
 
@@ -112,6 +115,7 @@ export function scanAll(root = path.join(__dirname, '..')): Record<string, strin
     for (const file of walk(directory).sort()) {
       const rel = path.relative(directory, file).split(path.sep).join('/');
       if (!prefix && SKIP_FILES.has(rel)) continue;
+      if (prefix && SDK_OPTIONAL_ENGLISH_COPY.has(rel)) continue;
       const found = findHardcodedStrings(file);
       if (found.length) result[prefix + rel] = found;
     }

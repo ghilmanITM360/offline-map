@@ -68,4 +68,13 @@ describe('hardcoded-string scanner coverage', () => {
     const baseline: Record<string, number> = {};
     expect(found[sdkKey].length).toBeGreaterThan(baseline[sdkKey] ?? 0);
   });
+
+  test('the SDK\'s one optional English copy module is allowed; any other SDK file with copy is not', () => {
+    fixture('src/Host.tsx', '<Text>Host</Text>');
+    fixture('packages/offline-navigation/src/ui/EnglishNavigationCopy.ts', "export const COPY = { title: 'Where to?', body: 'Choose a destination now' };");
+    fixture('packages/offline-navigation/src/ui/OtherCopy.ts', "export const COPY = { body: 'Choose a destination now' };");
+    const found = scanAll(root);
+    expect(found['packages/offline-navigation/src/ui/EnglishNavigationCopy.ts']).toBeUndefined();
+    expect(found['packages/offline-navigation/src/ui/OtherCopy.ts']).toEqual(['Choose a destination now']);
+  });
 });

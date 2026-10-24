@@ -142,6 +142,8 @@ export interface NavigationController {
   /** Referentially stable until something changes, so it is safe as a useSyncExternalStore snapshot. */
   getState(): NavigationControllerState;
   subscribe(listener: () => void): () => void;
+  /** Every venue place this controller can route to or from, in venue order. The same array each call. */
+  listPlaces(): readonly VenuePlace[];
   /** Begins a new trip. A manually chosen origin is kept and the route recalculated. Unknown ids are reported in state. */
   selectDestination(placeId: string): void;
   /** Manual start for the current trip; ignored until a destination is chosen and while live. */
@@ -236,6 +238,8 @@ export function createNavigationController(options: NavigationControllerOptions)
     const place = venue.getPlace(id);
     return place && Array.isArray(place.nodeIds) && place.nodeIds.length > 0 ? place : undefined;
   };
+
+  let places: readonly VenuePlace[] | null = null;
 
   const makeRoute = (originId: string, destinationId: string, found: VenueRoute<VenueEdge>): NavigationRoute => ({
     originId, destinationId, nodeIds: [...found.nodes], distanceM: found.distanceM,
@@ -518,6 +522,7 @@ export function createNavigationController(options: NavigationControllerOptions)
 
   return {
     getState: () => state,
+    listPlaces: () => (places ??= venue.placeIds().flatMap((id) => resolvePlace(id) ?? [])),
     subscribe(listener) {
       if (disposed) return () => {};
       listeners.add(listener);

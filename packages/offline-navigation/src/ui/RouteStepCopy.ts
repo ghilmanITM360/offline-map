@@ -6,7 +6,7 @@
 import type { RouteStep } from '../domain/navigation';
 import type { RouteGuideCardStep } from './RouteGuideCard';
 
-/** Resolved wording for one language; the host owns language. Only English ships, so other languages are host-supplied. */
+/** Resolved wording for one language; the host owns language. English ships separately (EnglishNavigationCopy), so other languages are host-supplied. */
 export interface RouteStepCopy {
   depart: string;
   turnLeft: string;
@@ -16,15 +16,6 @@ export interface RouteStepCopy {
   /** Receives a one-decimal string such as "1.5". */
   kilometers: (kilometres: string) => string;
 }
-
-export const ENGLISH_ROUTE_STEP_COPY: RouteStepCopy = {
-  depart: 'Start walking',
-  turnLeft: 'Turn left',
-  turnRight: 'Turn right',
-  arrive: (destinationLabel) => `You have arrived at ${destinationLabel}`,
-  meters: (metres) => `${metres} m`,
-  kilometers: (kilometres) => `${kilometres} km`,
-};
 
 /** Whole metres below a kilometre, one-decimal kilometres from there; null when it is not a distance (shown as nothing, never as a guess). */
 export function formatDistance(metres: number, copy: RouteStepCopy): string | null {

@@ -1,0 +1,109 @@
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+import type { NavigationScreenCopy } from './NavigationScreenTypes';
+import type { RouteStepCopy } from './RouteStepCopy';
+
+export const ENGLISH_ROUTE_STEP_COPY: RouteStepCopy = {
+  depart: 'Start walking',
+  turnLeft: 'Turn left',
+  turnRight: 'Turn right',
+  arrive: (destinationLabel) => `You have arrived at ${destinationLabel}`,
+  meters: (metres) => `${metres} m`,
+  kilometers: (kilometres) => `${kilometres} km`,
+};
+
+/** Optional English wording. Other languages are the host's to supply; the SDK ships no machine translations. */
+export const ENGLISH_NAVIGATION_SCREEN_COPY: NavigationScreenCopy = {
+  routeStep: ENGLISH_ROUTE_STEP_COPY,
+  directory: {
+    destinationTitle: 'Where to?',
+    destinationSubtitle: 'Choose a destination. Works offline.',
+    originTitle: 'Choose a start',
+    originSubtitle: 'Where will you begin walking?',
+    back: 'Back',
+    searchLabel: 'Search places',
+    searchPlaceholder: 'Search places',
+    empty: 'No places are available offline.',
+    noMatches: (query) => `No places match "${query}".`,
+  },
+  trip: {
+    title: (destination) => `To ${destination}`,
+    back: 'Back to places',
+    from: 'From',
+    to: 'To',
+    chooseStart: 'Choose a start',
+    yourLocation: 'Your location',
+    changeFrom: (origin) => `From ${origin}. Change start.`,
+    changeTo: (destination) => `To ${destination}. Change destination.`,
+    loading: 'Finding the route…',
+    needsOrigin: 'Choose where you are starting from.',
+    samePlace: 'Your start and destination are the same place.',
+    summary: (distance) => `${distance} walk`,
+    errors: {
+      unknown_place: 'That place is not in this venue.',
+      no_route: 'No walking route connects these places offline.',
+      route_failed: 'The route could not be calculated.',
+    },
+    retry: 'Try again',
+    startGuide: { title: 'Follow the steps', subtitle: 'Step-by-step directions. No GPS needed.' },
+    startLive: { title: 'Navigate with my location', subtitle: 'Follows your progress with GPS.', busy: 'Checking your location…' },
+  },
+  guide: {
+    stepCount: (step, total) => `Step ${step} of ${total}`,
+    stepSummary: (count, instruction, distance) => (distance ? `${count}. ${instruction}. ${distance}` : `${count}. ${instruction}`),
+    previous: 'Previous',
+    previousStep: 'Previous step',
+    next: 'Next',
+    nextStep: 'Next step',
+    useLocation: 'Use my location',
+    acquiring: 'Finding your location…',
+    end: 'End directions',
+  },
+  upgrade: {
+    confirm: 'Switch to live navigation?',
+    acquiring: 'Finding your location…',
+    failed: 'Live navigation did not start',
+    preserved: 'Your step-by-step guide stays as it is until live navigation starts.',
+    continue: 'Continue',
+    retry: 'Try again',
+    cancel: 'Not now',
+  },
+  liveBlockers: {
+    permission_needed: 'Location permission is needed for live navigation. Your steps are still available.',
+    permission_blocked: 'Location access is turned off for this app. Turn it on in Settings to use live navigation. Your steps still work.',
+    approximate_only: 'Live navigation needs precise location, but only approximate location is allowed.',
+    precision_unknown: 'Could not confirm that precise location is allowed.',
+    services_off: 'Location services are off. Turn them on to use live navigation.',
+    no_fix: 'No location fix yet. Try again, or follow the steps.',
+    stale_fix: 'The location is out of date. Try again in a moment.',
+    weak_fix: 'The GPS signal is too weak to navigate accurately.',
+    unsupported: 'Live navigation is not available in this app.',
+    route_pending: 'Wait for the route to finish calculating first.',
+    outside_venue: 'You appear to be outside this venue. Live navigation works only inside it.',
+    already_at_destination: 'You are already at this destination.',
+    no_route: 'No walking route from your location was found.',
+  },
+  live: {
+    remaining: (distance, minutes) => `${distance} left · about ${minutes} min`,
+    gpsWeak: 'GPS signal is weak. Progress may be off.',
+    gpsLost: 'GPS signal lost. Progress is paused until the signal returns.',
+    rerouting: 'Finding a new way…',
+    rerouted: 'Route updated from where you are.',
+    keptRoute: 'No better route found. Keeping your current route.',
+    exit: 'End navigation',
+    recenter: 'Recenter',
+    recenterA11y: 'Recenter map on the route',
+  },
+  arrival: {
+    title: 'You have arrived',
+    subtitle: 'Navigation complete',
+    recenter: 'Recenter',
+    recenterA11y: 'Recenter map',
+    done: 'Done',
+    doneA11y: 'Finish navigation',
+  },
+  mapUnavailable: 'The map cannot be shown. Directions still work.',
+};

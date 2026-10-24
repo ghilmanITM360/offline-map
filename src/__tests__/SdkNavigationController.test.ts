@@ -282,3 +282,23 @@ describe('NavigationController: asynchronous route calculation is deterministic'
     expect(c.getState()).toMatchObject({ loadState: 'ready', error: null });
   });
 });
+
+describe('NavigationController: the directory the UI lists', () => {
+  it('lists the venue places the controller itself can route to, in venue order', () => {
+    expect(make().listPlaces().map((p) => p.id)).toEqual(['lobby', 'annex', 'hall', 'lobby2', 'isle']);
+  });
+
+  it('drops places the controller would refuse (no nodes), so the UI never offers a dead choice', () => {
+    const broken: VenueDataSource = {
+      ...venue,
+      placeIds: () => ['lobby', 'ghost', 'empty'],
+      getPlace: (id) => (id === 'lobby' ? venue.getPlace('lobby') : id === 'empty' ? { id, kind: 'hall', nodeIds: [] } : undefined),
+    };
+    expect(createNavigationController({ venue: broken }).listPlaces().map((p) => p.id)).toEqual(['lobby']);
+  });
+
+  it('returns the same array each time, so React can memoize on it', () => {
+    const c = make();
+    expect(c.listPlaces()).toBe(c.listPlaces());
+  });
+});

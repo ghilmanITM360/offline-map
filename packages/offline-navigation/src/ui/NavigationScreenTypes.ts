@@ -1,0 +1,170 @@
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+import type React from 'react';
+import type { Insets, StyleProp, ViewStyle } from 'react-native';
+import type { LiveStartBlocker, NavigationError, NavigationPhase, NavigationRoute } from '../domain/navigation';
+import type { VenueCoordinate, VenuePlace } from '../domain/venue';
+import type { ManualLiveUpgradeCardLabels } from './ManualLiveUpgradeCard';
+import type { RouteGuideCardLabels } from './RouteGuideCard';
+import type { RouteStepCopy } from './RouteStepCopy';
+
+/** How the host names a venue place. The SDK knows only ids, kinds and graph nodes; names are the host's. */
+export interface NavigationPlacePresentation {
+  title: string;
+  subtitle?: string;
+  /** Extra words the search should match (other spellings, scripts, nicknames). */
+  searchTerms?: readonly string[];
+}
+
+/** What the screen can ask of the host's map. */
+export interface NavigationMapHandle {
+  /** Bring the camera back to the walker/route. Called from the Recenter controls. */
+  recenter(): void;
+}
+
+/** Everything the host's map needs to draw the journey. The map renders; it never decides anything. */
+export interface NavigationMapProps {
+  phase: NavigationPhase;
+  route: NavigationRoute | null;
+  originId: string | null;
+  destinationId: string | null;
+  /** The live fix snapped onto the route. Null in every phase but `live`, and before the first accepted fix. */
+  position: VenueCoordinate | null;
+  stepIndex: number;
+  /** Call with false when the basemap cannot be shown (the screen then says directions still work). */
+  onAvailabilityChange: (available: boolean) => void;
+  ref?: React.Ref<NavigationMapHandle>;
+}
+
+export type NavigationIcon = React.ComponentType<{ size?: number; color?: string }>;
+
+/** The one button primitive the screen and its leaves share. */
+export interface NavigationButtonProps {
+  label?: string;
+  variant?: 'brand' | 'brandTint' | 'outline';
+  fullWidth?: boolean;
+  style?: StyleProp<ViewStyle>;
+  accessibilityLabel?: string;
+  icon?: React.ReactNode;
+  trailingIcon?: React.ReactNode;
+  disabled?: boolean;
+  onPress?: () => void;
+}
+
+/**
+ * The host's design system for the whole screen. One object: the screen derives each leaf's own theme from it.
+ * Icons and chevrons must already be chosen for the reading direction (back points to the start edge).
+ */
+export interface NavigationScreenTheme {
+  colors: {
+    screen: string;
+    surface: string;
+    surfaceMuted: string;
+    border: string;
+    text: string;
+    textSecondary: string;
+    brand: string;
+    onBrand: string;
+    /** Soft brand fill: icon discs, selected rows, secondary buttons. */
+    brandTint: string;
+    pressed: string;
+    warningFill: string;
+    warningText: string;
+    infoFill: string;
+    infoBorder: string;
+    infoText: string;
+    scrim: string;
+  };
+  radius: number;
+  hitSlop: Insets;
+  icons: {
+    Back: NavigationIcon;
+    Forward: NavigationIcon;
+    Loading: NavigationIcon;
+    Pin: NavigationIcon;
+    Recenter: NavigationIcon;
+    Place: NavigationIcon;
+    Guide: NavigationIcon;
+    Location: NavigationIcon;
+  };
+  /** A function component, so each leaf may use it with its own (narrower) prop set. */
+  Button: React.FunctionComponent<NavigationButtonProps>;
+}
+
+/** Resolved wording for the whole screen; the host owns language. English ships separately and is optional. */
+export interface NavigationScreenCopy {
+  routeStep: RouteStepCopy;
+  directory: {
+    destinationTitle: string;
+    destinationSubtitle: string;
+    originTitle: string;
+    originSubtitle: string;
+    back: string;
+    searchLabel: string;
+    searchPlaceholder: string;
+    /** The venue lists no places. */
+    empty: string;
+    noMatches: (query: string) => string;
+  };
+  trip: {
+    title: (destination: string) => string;
+    back: string;
+    from: string;
+    to: string;
+    chooseStart: string;
+    yourLocation: string;
+    changeFrom: (origin: string) => string;
+    changeTo: (destination: string) => string;
+    loading: string;
+    needsOrigin: string;
+    samePlace: string;
+    /** Receives the formatted walking distance. */
+    summary: (distance: string) => string;
+    errors: Record<NavigationError, string>;
+    retry: string;
+    startGuide: { title: string; subtitle: string };
+    startLive: { title: string; subtitle: string; busy: string };
+  };
+  guide: RouteGuideCardLabels;
+  /** The confirmation shown before a Manual Guide is upgraded to Live. */
+  upgrade: Pick<ManualLiveUpgradeCardLabels, 'confirm' | 'acquiring' | 'failed' | 'preserved' | 'continue' | 'retry' | 'cancel'>;
+  /** One plain sentence per reason live navigation could not start. */
+  liveBlockers: Record<LiveStartBlocker, string>;
+  live: {
+    /** Receives the formatted distance left and the whole minutes left. */
+    remaining: (distance: string, minutes: number) => string;
+    gpsWeak: string;
+    gpsLost: string;
+    rerouting: string;
+    rerouted: string;
+    keptRoute: string;
+    exit: string;
+    recenter: string;
+    recenterA11y: string;
+  };
+  arrival: { title: string; subtitle: string; recenter: string; recenterA11y: string; done: string; doneA11y: string };
+  mapUnavailable: string;
+}
+
+export interface NavigationScreenProps {
+  copy: NavigationScreenCopy;
+  theme: NavigationScreenTheme;
+  isRTL: boolean;
+  /** Names a place, or returns null to leave it out of the directory. Without it the place id is shown. */
+  describePlace?: (place: VenuePlace) => NavigationPlacePresentation | null;
+  /** The host's map. Omit for a directions-only screen. */
+  MapComponent?: React.ComponentType<NavigationMapProps>;
+  /** Offer live navigation at all. Default true; a controller without a location adapter reports it as unsupported. */
+  allowLive?: boolean;
+  /** Host safe-area bottom inset for the arrival sheet. Default 0. */
+  bottomInset?: number;
+  /** Back was pressed on the directory itself; without it the directory shows no Back control. */
+  onClose?: () => void;
+  /** A trip ended: the user left it, or finished it on arrival. */
+  onTripEnded?: (reason: 'exit' | 'arrived') => void;
+  /** Applied to the root, where the host adds safe-area padding. */
+  style?: StyleProp<ViewStyle>;
+}
