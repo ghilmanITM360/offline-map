@@ -12,7 +12,8 @@ import { RerouteBanner } from './RerouteBanner';
 import { RerouteProgressCard } from './RerouteProgressCard';
 import { useAccessibilityFocus } from '../../hooks/useAccessibilityFocus';
 import React, { useEffect, useRef } from 'react';
-import { AccessibilityInfo, Animated, Pressable, Text, View } from 'react-native';
+import { AccessibilityInfo, Animated, Pressable, View } from 'react-native';
+import { Text } from '@muslim-ummah/offline-navigation/ui';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowLeft, ArrowRight, LocateFixed, MapPin, Navigation, Volume2, VolumeX, X } from 'lucide-react-native';
 

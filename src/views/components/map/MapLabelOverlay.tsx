@@ -4,7 +4,8 @@
  */
 
 import React, { useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react';
-import { LayoutChangeEvent, Pressable, StyleSheet, Text, View, ViewStyle } from 'react-native';
+import { LayoutChangeEvent, Pressable, StyleSheet, View, ViewStyle } from 'react-native';
+import { Text } from '@muslim-ummah/offline-navigation/ui';
 import type { MapCameraHandle } from '../mapgl/MapCameraHandle';
 
 import { mapLayerStyles as styles } from './mapLayerStyles';

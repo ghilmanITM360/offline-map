@@ -4,7 +4,8 @@
  */
 
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable } from 'react-native';
+import { View, StyleSheet, ScrollView, Pressable } from 'react-native';
+import { Text } from '@muslim-ummah/offline-navigation/ui';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   Search,

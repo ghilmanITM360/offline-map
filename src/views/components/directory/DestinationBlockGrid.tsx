@@ -7,7 +7,8 @@ import { useI18n } from '../../../i18n/useI18n';
 import { localizeVenueName } from '../../../i18n/venueNames';
 import React from 'react';
 import type { LayoutChangeEvent } from 'react-native';
-import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Animated, Pressable, StyleSheet, View } from 'react-native';
+import { Text } from '@muslim-ummah/offline-navigation/ui';
 
 import { V2Place } from '../../../models/types';
 import { usePressScale } from '../../../viewmodels/usePressScale';

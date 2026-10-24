@@ -10,10 +10,10 @@ import {
   PressableProps,
   StyleProp,
   StyleSheet,
-  Text,
   TextStyle,
   ViewStyle,
 } from 'react-native';
+import { Text } from '@muslim-ummah/offline-navigation/ui';
 
 import { directionsSheetColors, staticColors, radii, spacing, typography } from '../../../theme';
 

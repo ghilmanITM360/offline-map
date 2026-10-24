@@ -4,7 +4,8 @@
  */
 
 import React from 'react';
-import { View, Text, StyleSheet, Pressable } from 'react-native';
+import { View, StyleSheet, Pressable } from 'react-native';
+import { Text } from '@muslim-ummah/offline-navigation/ui';
 import { DrawerContentComponentProps, DrawerContentScrollView } from '@react-navigation/drawer';
 import { Search, Settings, HelpCircle, Map as MapIcon } from 'lucide-react-native';
 import { useTheme } from '../../services/useTheme'; // fixed: use theme-safe colors for icons and badges

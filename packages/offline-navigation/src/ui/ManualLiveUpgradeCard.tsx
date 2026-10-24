@@ -1,5 +1,6 @@
 import React from 'react';
-import { ActivityIndicator, StyleSheet, Text, TextStyle, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, TextStyle, View } from 'react-native';
+import { Text } from './Text';
 import { useAccessibilityFocus } from './useAccessibilityFocus';
 
 /** Structural view of the host's upgrade state; the host ViewModel owns acquisition, routing and activation. */

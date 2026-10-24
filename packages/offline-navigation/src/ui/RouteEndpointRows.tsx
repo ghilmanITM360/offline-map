@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
+import { Text } from './Text';
 
 /** The host's design system: a direction-aware chevron and colour tokens. */
 export interface RouteEndpointRowsTheme {

@@ -5,7 +5,8 @@
 
 import React from 'react';
 import { useI18n } from '../../../i18n';
-import { Linking, Pressable, StyleSheet, Text } from 'react-native';
+import { Linking, Pressable, StyleSheet } from 'react-native';
+import { Text } from '@muslim-ummah/offline-navigation/ui';
 
 export const OSM_COPYRIGHT_URL = 'https://www.openstreetmap.org/copyright';
 

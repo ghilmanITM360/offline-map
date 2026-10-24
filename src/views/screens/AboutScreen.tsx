@@ -4,7 +4,8 @@
  */
 
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable, Image, Linking, Alert } from 'react-native';
+import { View, StyleSheet, ScrollView, Pressable, Image, Linking, Alert } from 'react-native';
+import { Text } from '@muslim-ummah/offline-navigation/ui';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Info, Heart, Shield, ExternalLink, Map as MapIcon } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';

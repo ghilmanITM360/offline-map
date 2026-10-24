@@ -32,4 +32,26 @@ module.exports = [
       },
     },
   },
+  // B7R-3F: SDK UI renders text through the SDK Text. Scoped to our own UI folders (not tests, not hosts of the
+  // SDK); the wrapper is the one place that may import the native Text.
+  {
+    files: ['src/views/**/*.{ts,tsx}', 'src/components/**/*.{ts,tsx}', 'packages/offline-navigation/src/ui/**/*.{ts,tsx}'],
+    ignores: ['packages/offline-navigation/src/ui/Text.tsx'],
+    rules: {
+      '@typescript-eslint/no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            {
+              name: 'react-native',
+              importNames: ['Text'],
+              allowTypeImports: true,
+              message:
+                "Import Text from '@muslim-ummah/offline-navigation/ui' ('./Text' inside the package). react-native's Text keeps a stale measurement after an iOS font-size change (B7R-3F).",
+            },
+          ],
+        },
+      ],
+    },
+  },
 ];

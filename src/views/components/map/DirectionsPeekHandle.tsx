@@ -5,7 +5,8 @@ import { useI18n } from '../../../i18n/useI18n';
  */
 
 import React, { useSyncExternalStore } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
+import { Text } from '@muslim-ummah/offline-navigation/ui';
 import { ChevronDown, ChevronUp } from 'lucide-react-native';
 
 import { directionsSheetColors } from '../../../theme';

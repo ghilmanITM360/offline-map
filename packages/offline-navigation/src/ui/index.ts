@@ -17,4 +17,5 @@ export * from './RerouteProgressCard';
 export * from './RouteEndpointRows';
 export * from './RouteGuideCard';
 export * from './StartOptionCard';
+export * from './Text';
 export * from './useAccessibilityFocus';

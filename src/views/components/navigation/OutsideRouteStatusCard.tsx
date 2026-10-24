@@ -1,5 +1,6 @@
 import { useI18n } from '../../../i18n/useI18n';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
+import { Text } from '@muslim-ummah/offline-navigation/ui';
 import { AlertTriangle, Route } from 'lucide-react-native';
 
 import type { NormalizedOutsideCandidate } from '../../../models/outsideRouting';

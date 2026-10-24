@@ -4,7 +4,8 @@
  */
 
 import React, { useMemo } from 'react';
-import { Modal, Pressable, StyleSheet, Text, View, type Insets } from 'react-native';
+import { Modal, Pressable, StyleSheet, View, type Insets } from 'react-native';
+import { Text } from './Text';
 import { useAccessibilityFocus } from './useAccessibilityFocus';
 
 type IconComponent = React.ComponentType<{ size?: number; color?: string }>;

@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
+import { Text } from './Text';
 import { useAccessibilityFocus } from './useAccessibilityFocus';
 
 /** The host's design system: a direction-aware back chevron and colour tokens. */

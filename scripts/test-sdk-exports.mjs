@@ -36,7 +36,7 @@ try {
     for (const t of targets) assert.ok(existsSync(join(pkgDir, t)), `missing ${t}`);
   });
   check(`UI entrypoint re-exports all ${UI_COMPONENTS.length} leaves and the focus hook`, () => {
-    assert.equal(UI_COMPONENTS.length, 13);
+    assert.equal(UI_COMPONENTS.length, 14);
     const reexports = imports(join(pkgDir, 'src/ui/index.ts')).map((s) => s.slice(2)).sort();
     assert.deepEqual(reexports, [...UI_COMPONENTS, 'useAccessibilityFocus'].sort());
   });

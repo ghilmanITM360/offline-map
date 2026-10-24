@@ -5,7 +5,8 @@ import { useI18n } from '../../../i18n/useI18n';
  */
 
 import React from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { Modal, Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
+import { Text } from '@muslim-ummah/offline-navigation/ui';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Layers } from 'lucide-react-native';
 

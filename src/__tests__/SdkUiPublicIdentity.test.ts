@@ -14,11 +14,12 @@ import * as leaf10 from '../../packages/offline-navigation/src/ui/GateChooser';
 import * as leaf11 from '../../packages/offline-navigation/src/ui/ManualLiveUpgradeCard';
 import * as leaf12 from '../../packages/offline-navigation/src/ui/RerouteBanner';
 import * as leaf13 from '../../packages/offline-navigation/src/ui/useAccessibilityFocus';
+import * as leaf14 from '../../packages/offline-navigation/src/ui/Text';
 
 it('public UI forwards all leaf and hook references without adding runtime bindings', () => {
   expect(hostFocus).toBe(publicUI.useAccessibilityFocus);
   const api = publicUI as Record<string, unknown>;
-  const leaves = [leaf0,leaf1,leaf2,leaf3,leaf4,leaf5,leaf6,leaf7,leaf8,leaf9,leaf10,leaf11,leaf12,leaf13];
+  const leaves = [leaf0,leaf1,leaf2,leaf3,leaf4,leaf5,leaf6,leaf7,leaf8,leaf9,leaf10,leaf11,leaf12,leaf13,leaf14];
   const names = new Set<string>();
   for (const leaf of leaves) for (const [name, value] of Object.entries(leaf)) {
     names.add(name);

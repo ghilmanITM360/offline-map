@@ -4,7 +4,8 @@
  */
 
 import React, { useMemo } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View, type ViewProps } from 'react-native';
+import { Modal, Pressable, ScrollView, StyleSheet, View, type ViewProps } from 'react-native';
+import { Text } from './Text';
 import { useAccessibilityFocus } from './useAccessibilityFocus';
 
 /** One already-localized step. `key` must stay stable for the same step across locale changes. */

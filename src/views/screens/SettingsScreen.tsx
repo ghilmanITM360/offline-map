@@ -6,7 +6,6 @@
 import React, { useEffect, useState } from 'react';
 import {
   View,
-  Text,
   StyleSheet,
   ScrollView,
   Pressable,
@@ -14,6 +13,7 @@ import {
   Alert,
   AppState,
 } from 'react-native';
+import { Text } from '@muslim-ummah/offline-navigation/ui';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Check, Info, Shield, Trash2, Volume2, BookOpen, LucideIcon } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';

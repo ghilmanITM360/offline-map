@@ -5,7 +5,8 @@ import { useI18n } from '../../../i18n/useI18n';
  */
 
 import React, { useEffect, useRef } from 'react';
-import { AccessibilityInfo, Animated, StyleSheet, Text } from 'react-native';
+import { AccessibilityInfo, Animated, StyleSheet } from 'react-native';
+import { Text } from '@muslim-ummah/offline-navigation/ui';
 
 import { staticColors } from '../../../theme';
 import { useReducedMotion } from '../../../viewmodels/useReducedMotion';

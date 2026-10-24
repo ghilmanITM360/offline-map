@@ -11,7 +11,6 @@ import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react'
 import ReanimatedView, { runOnJS, useAnimatedReaction, useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
 import {
   View,
-  Text,
   StyleSheet,
   Pressable,
   Platform,
@@ -22,6 +21,7 @@ import {
   Animated,
   useWindowDimensions,
 } from 'react-native';
+import { Text } from '@muslim-ummah/offline-navigation/ui';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import provenance from '../../../assets/offline-map/BASEMAP_PROVENANCE.json';
 import { OfflineMapCanvas, type MapFeaturePress } from '../components/mapgl/OfflineMapCanvas';

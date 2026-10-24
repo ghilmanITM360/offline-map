@@ -4,7 +4,8 @@
  */
 
 import React, { useMemo } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
+import { Text } from './Text';
 
 /** The host's colour tokens for the basemap-unavailable banner. */
 export interface MapUnavailableBannerTheme {

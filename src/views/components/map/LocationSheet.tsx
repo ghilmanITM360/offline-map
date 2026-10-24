@@ -13,7 +13,6 @@ import {
   AccessibilityInfo,
   Animated,
   View,
-  Text,
   StyleSheet,
   Pressable,
   ScrollView,
@@ -23,6 +22,7 @@ import {
   Alert,
   useWindowDimensions,
 } from 'react-native';
+import { Text } from '@muslim-ummah/offline-navigation/ui';
 import { BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {

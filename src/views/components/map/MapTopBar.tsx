@@ -5,7 +5,8 @@ import { useI18n } from '../../../i18n/useI18n';
  */
 
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
+import { Text } from '@muslim-ummah/offline-navigation/ui';
 import { MoreVertical } from 'lucide-react-native';
 import { useTheme } from '../../../services/useTheme';
 import { backChevron } from '../common/directionalIcons';

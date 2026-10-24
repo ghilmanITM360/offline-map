@@ -5,7 +5,8 @@
 
 import React from 'react';
 import { useI18n } from '../../../i18n';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
+import { Text } from '@muslim-ummah/offline-navigation/ui';
 import { X } from 'lucide-react-native';
 
 import { radii, spacing, staticColors, typography } from '../../../theme';

@@ -4,7 +4,8 @@
  */
 
 import React from 'react';
-import { View, Text, StyleSheet, Pressable } from 'react-native';
+import { View, StyleSheet, Pressable } from 'react-native';
+import { Text } from '@muslim-ummah/offline-navigation/ui';
 import { t } from '../i18n';
 import * as Updates from 'expo-updates'; // fixed: allow the fallback UI to restart the app safely
 

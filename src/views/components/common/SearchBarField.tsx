@@ -4,7 +4,8 @@
  */
 
 import React, { forwardRef } from 'react';
-import { StyleSheet, Text, TextInput, TextInputProps, TextStyle, View } from 'react-native';
+import { StyleSheet, TextInput, TextInputProps, TextStyle, View } from 'react-native';
+import { Text } from '@muslim-ummah/offline-navigation/ui';
 
 import { radii, spacing, staticColors } from '../../../theme';
 
