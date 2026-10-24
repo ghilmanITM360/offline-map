@@ -12,6 +12,7 @@ export * from './GateChooser';
 export * from './GpsSignalBanner';
 export * from './ManualLiveUpgradeCard';
 export * from './MapUnavailableBanner';
+export * from './NavigationProvider';
 export * from './RerouteBanner';
 export * from './RerouteProgressCard';
 export * from './RouteEndpointRows';
