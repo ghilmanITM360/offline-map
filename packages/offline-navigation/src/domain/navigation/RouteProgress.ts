@@ -17,6 +17,8 @@ export const ARRIVAL_THRESHOLD_M = 20;
 export const REROUTE_COOLDOWN_MS = 25_000;
 /** A fix whose own observation time predates the watcher start by more than this is a cached fix, not live. */
 export const STALE_FIX_CLOCK_TOLERANCE_MS = 2_000;
+/** Eight missed one-second fixes: long enough to ride out jitter, short enough that a frozen dot is never mistaken for a position. */
+export const GPS_LOST_TIMEOUT_MS = 8_000;
 
 const PLAUSIBLE_FORWARD_SPEED_FACTOR = 3;
 const GPS_JITTER_ALLOWANCE_M = 25;

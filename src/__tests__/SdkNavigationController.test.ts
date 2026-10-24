@@ -6,21 +6,9 @@ import {
   type VenueRoute,
   type VenueEdge,
 } from '@muslim-ummah/offline-navigation';
-import { createSyntheticVenue } from '../../scripts/sdk-headless/syntheticVenue';
+import { testVenue } from './sdkTestVenue';
 
-const base = createSyntheticVenue();
-const PLACES = new Map<string, readonly string[]>([
-  ['lobby', ['n/1']],
-  ['annex', ['n/5', 'n/3']],
-  ['hall', ['n/4']],
-  ['lobby2', ['n/1']], // a different place on the same graph node
-  ['isle', ['island']], // unreachable
-]);
-const venue: VenueDataSource = {
-  ...base,
-  placeIds: () => [...PLACES.keys()],
-  getPlace: (id) => (PLACES.has(id) ? { id, kind: 'hall', nodeIds: PLACES.get(id)! } : undefined),
-};
+const venue: VenueDataSource = testVenue;
 
 const make = (extra: Partial<NavigationControllerOptions> = {}) => createNavigationController({ venue, ...extra });
 const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
