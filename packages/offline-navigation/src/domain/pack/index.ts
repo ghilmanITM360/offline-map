@@ -5,5 +5,7 @@
 
 export * from './PackCompatibility';
 export * from './PackError';
+export * from './PackManager';
 export * from './PackManifest';
+export * from './PackStore';
 export * from './PackVerifier';
