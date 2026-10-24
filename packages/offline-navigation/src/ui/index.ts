@@ -15,6 +15,7 @@ export * from './MapUnavailableBanner';
 export * from './NavigationProvider';
 export * from './RerouteBanner';
 export * from './RerouteProgressCard';
+export * from './RouteStepCopy';
 export * from './RouteEndpointRows';
 export * from './RouteGuideCard';
 export * from './StartOptionCard';

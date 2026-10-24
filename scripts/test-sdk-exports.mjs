@@ -38,7 +38,7 @@ try {
   check(`UI entrypoint re-exports all ${UI_COMPONENTS.length} leaves and the focus hook`, () => {
     assert.equal(UI_COMPONENTS.length, 15);
     const reexports = imports(join(pkgDir, 'src/ui/index.ts')).map((s) => s.slice(2)).sort();
-    assert.deepEqual(reexports, [...UI_COMPONENTS, 'useAccessibilityFocus'].sort());
+    assert.deepEqual(reexports, [...UI_COMPONENTS, 'useAccessibilityFocus', 'RouteStepCopy'].sort());
   });
   check('headless entrypoint graph never reaches react/react-native or the UI layer', () => {
     const seen = new Set();
