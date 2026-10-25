@@ -1,0 +1,8 @@
+{
+  "expo": {
+    "name": "SDK Consumer",
+    "slug": "sdk-expo-consumer",
+    "version": "0.0.0",
+    "platforms": ["android", "ios"]
+  }
+}
