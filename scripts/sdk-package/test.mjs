@@ -31,9 +31,10 @@ const pkgDir = join(consumer, 'node_modules/@muslim-ummah/offline-navigation');
 const manifest = JSON.parse(readFileSync(join(pkgDir, 'package.json'), 'utf8'));
 assert.equal(manifest.private, true);
 assert.equal(manifest.version, '0.1.0');
-assert.deepEqual(Object.keys(manifest.exports), ['.', './session', './ui', './package.json']);
+assert.deepEqual(Object.keys(manifest.exports), ['.', './session', './ui', './maplibre', './package.json']);
 assert.equal(manifest.dependencies, undefined);
-assert.deepEqual(manifest.peerDependencies, { react: '>=19.1.0', 'react-native': '>=0.81.0' });
+assert.deepEqual(manifest.peerDependencies, { '@maplibre/maplibre-react-native': '>=11.5.0 <12', react: '>=19.1.0', 'react-native': '>=0.81.0' });
+assert.deepEqual(Object.keys(manifest.peerDependenciesMeta).sort(), Object.keys(manifest.peerDependencies).sort());
 for (const target of [manifest.main, manifest.types, manifest['react-native'], ...Object.values(manifest.exports).flatMap((v) => typeof v === 'string' ? [v] : Object.values(v))]) assert.ok(existsSync(join(pkgDir, target)), target);
 const walk = (dir) => readdirSync(dir, { withFileTypes: true }).flatMap((e) => e.isDirectory() ? walk(join(dir, e.name)) : [join(dir, e.name)]);
 for (const file of walk(pkgDir)) {
@@ -72,7 +73,7 @@ assert.equal(nav.startGuide(), true); nav.exit(); assert.equal(nav.getState().ph
 assert.throws(() => require('@muslim-ummah/offline-navigation/dist/domain/algorithms/MinHeap.js'), {code:'ERR_PACKAGE_PATH_NOT_EXPORTED'});
 assert.equal(sdk.GateChooser, undefined);
 assert.equal(sdk.NavigationScreen, undefined); assert.equal(sdk.createDefaultNavigationTheme, undefined); // UI never leaks into the headless root
-assert.ok(!Object.keys(require.cache).some(p => p.includes('/node_modules/react/') || p.includes('/node_modules/react-native/')));
+assert.ok(!Object.keys(require.cache).some(p => p.includes('/node_modules/react/') || p.includes('/node_modules/react-native/') || p.includes('/node_modules/@maplibre/')));
 console.log('artifact runtime: heap + session + navigation controller + export encapsulation passed');
 `);
 process.stdout.write(run(process.execPath, ['smoke.cjs'], consumer));
@@ -82,9 +83,11 @@ writeFileSync(join(consumer, 'headless.ts'), `import { MinHeap, createNavigation
 const tscArgs = ['--noEmit', '--strict', '--skipLibCheck', '--target', 'es2020', '--module', 'node16', '--moduleResolution', 'node16', '--types', 'node', '--typeRoots', join(root, 'node_modules/@types')];
 run(process.execPath, [join(root, 'node_modules/typescript/bin/tsc'), ...tscArgs, 'headless.ts'], consumer);
 // Reuse installed host peers only for a RN-aware declaration check; do not install duplicates.
-for (const name of ['react', 'react-native', '@types']) symlinkSync(join(root, 'node_modules', name), join(consumer, 'node_modules', name), 'dir');
+for (const name of ['react', 'react-native', '@maplibre', '@types']) symlinkSync(join(root, 'node_modules', name), join(consumer, 'node_modules', name), 'dir');
 // The packed artifact must carry the ready-made screen, its default theme/copy and their declarations.
 const uiDir = join(pkgDir, dirname(manifest.exports['./ui'].types));
+const mapDir = join(pkgDir, dirname(manifest.exports['./maplibre'].types));
+for (const name of ['MapLibreNavigationMap', 'navigationOverlay', 'offlineBasemapStyle']) assert.ok(existsSync(join(mapDir, `${name}.js`)) && existsSync(join(mapDir, `${name}.d.ts`)), `packed ${name}`);
 for (const name of ['NavigationScreen', 'PlaceDirectory', 'createDefaultNavigationTheme', 'EnglishNavigationCopy', 'NavigationScreenTypes']) {
   assert.ok(existsSync(join(uiDir, `${name}.js`)) && existsSync(join(uiDir, `${name}.d.ts`)), `packed ${name}`);
 }
@@ -103,6 +106,10 @@ writeFileSync(join(consumer, 'ui.ts'), [
   `  const theme = createDefaultNavigationTheme({ isRTL: false });`,
   `  return React.createElement(NavigationProvider, { controller, children: React.createElement(NavigationScreen, { copy, theme, isRTL: false, MapComponent: HostMap, describePlace: (p) => ({ title: p.id }), onTripEnded: (reason: 'exit' | 'arrived') => void reason }) });`,
   `};`,
+  `import { createMapLibreNavigationMap } from '@muslim-ummah/offline-navigation/maplibre';`,
+  `// The packed MapLibre adapter is typed as the screen's MapComponent.`,
+  `export const MapView: React.ComponentType<NavigationMapProps> = createMapLibreNavigationMap({ venue: {} as VenueDataSource, archiveUri: null, archiveZoom: { min: 10, max: 17 }, initialCenter: { lat: 0, lng: 0 }, initialZoom: 15 });`,
+  `export const withMap = (copy: NavigationScreenCopy) => React.createElement(NavigationScreen, { copy, theme: createDefaultNavigationTheme({ isRTL: false }), isRTL: false, MapComponent: MapView });`,
   `// @ts-expect-error the screen cannot render without the host's copy`,
   `export const missingCopy = React.createElement(NavigationScreen, { theme: createDefaultNavigationTheme({ isRTL: false }), isRTL: false });`,
   `// @ts-expect-error the screen needs to know the reading direction`,

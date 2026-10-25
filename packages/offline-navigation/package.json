@@ -12,14 +12,17 @@
     ".": { "types": "./src/index.ts", "default": "./src/index.ts" },
     "./session": { "types": "./src/domain/session/index.ts", "default": "./src/domain/session/index.ts" },
     "./ui": { "types": "./src/ui/index.ts", "default": "./src/ui/index.ts" },
+    "./maplibre": { "types": "./src/maplibre/index.ts", "default": "./src/maplibre/index.ts" },
     "./package.json": "./package.json"
   },
   "files": ["src"],
   "peerDependencies": {
+    "@maplibre/maplibre-react-native": ">=11.5.0 <12",
     "react": ">=19.1.0",
     "react-native": ">=0.81.0"
   },
   "peerDependenciesMeta": {
+    "@maplibre/maplibre-react-native": { "optional": true },
     "react": { "optional": true },
     "react-native": { "optional": true }
   }

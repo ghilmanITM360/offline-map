@@ -26,12 +26,12 @@ try {
     assert.equal(pkg.name, '@muslim-ummah/offline-navigation');
     assert.equal(pkg.private, true);
     assert.match(pkg.version, /^0\.\d+\.\d+$/);
-    assert.deepEqual(Object.keys(pkg.peerDependencies).sort(), ['react', 'react-native']);
-    assert.equal(pkg.peerDependenciesMeta.react.optional, true);
+    assert.deepEqual(Object.keys(pkg.peerDependencies).sort(), ['@maplibre/maplibre-react-native', 'react', 'react-native']);
+    for (const peer of Object.keys(pkg.peerDependencies)) assert.equal(pkg.peerDependenciesMeta[peer].optional, true, peer);
     assert.equal(pkg.dependencies, undefined);
   });
-  check('every entrypoint the manifest names exists; only ".", "./session", "./ui" are public', () => {
-    assert.deepEqual(Object.keys(pkg.exports), ['.', './session', './ui', './package.json']);
+  check('every entrypoint the manifest names exists; only ".", "./session", "./ui", "./maplibre" are public', () => {
+    assert.deepEqual(Object.keys(pkg.exports), ['.', './session', './ui', './maplibre', './package.json']);
     const targets = [pkg.main, pkg.types, pkg['react-native'], ...Object.values(pkg.exports).flatMap((v) => typeof v === 'string' ? [v] : Object.values(v))];
     for (const t of targets) assert.ok(existsSync(join(pkgDir, t)), `missing ${t}`);
   });
@@ -55,10 +55,11 @@ try {
     walk(join(pkgDir, 'src/index.ts'));
     assert.ok(seen.size > 10);
   });
-  check('no package file imports the host app or anything outside react, react-native and the package', () => {
+  check('no package file imports the host app or anything outside react, react-native, the package and (only under src/maplibre) MapLibre', () => {
     const walkDir = (d) => readdirSync(d, { withFileTypes: true }).flatMap((e) => e.isDirectory() ? walkDir(join(d, e.name)) : [join(d, e.name)]);
     for (const f of walkDir(join(pkgDir, 'src'))) for (const s of imports(f)) {
       if (s.startsWith('.')) assert.ok(resolve(dirname(f), s).startsWith(join(pkgDir, 'src')), `${relative(root, f)} escapes via '${s}'`);
+      else if (s === '@maplibre/maplibre-react-native') assert.ok(f.startsWith(join(pkgDir, 'src/maplibre/')), `${relative(root, f)} imports MapLibre outside the maplibre entrypoint`);
       else assert.ok(s === 'react' || s === 'react-native', `${relative(root, f)} imports '${s}'`);
     }
   });
@@ -72,8 +73,9 @@ try {
     writeFileSync(join(tmp, 'ok.ts'), [
       `import { runAStar, MinHeap, SpatialGrid, spatialHaversineM, isValidCoordinate, findVenuePath, validateVenueGraph, findStreetRouteToTargets, evaluateNavigationStart, createNavigationSession } from '@muslim-ummah/offline-navigation';`,
       `import { createNavigationSession as fromSession } from '@muslim-ummah/offline-navigation/session';`,
+      `import { createMapLibreNavigationMap, buildOfflineBasemapStyle } from '@muslim-ummah/offline-navigation/maplibre';`,
       `import { ${UI_COMPONENTS.join(', ')}, useAccessibilityFocus } from '@muslim-ummah/offline-navigation/ui';`,
-      `export const all = [runAStar, MinHeap, SpatialGrid, spatialHaversineM, isValidCoordinate, findVenuePath, validateVenueGraph, findStreetRouteToTargets, evaluateNavigationStart, createNavigationSession, fromSession, ${UI_COMPONENTS.join(', ')}, useAccessibilityFocus];`,
+      `export const all = [runAStar, MinHeap, SpatialGrid, spatialHaversineM, isValidCoordinate, findVenuePath, validateVenueGraph, findStreetRouteToTargets, evaluateNavigationStart, createNavigationSession, fromSession, createMapLibreNavigationMap, buildOfflineBasemapStyle, ${UI_COMPONENTS.join(', ')}, useAccessibilityFocus];`,
       `export const same: typeof createNavigationSession = fromSession;`,
     ].join('\n'));
     const r = tscRun([...probeArgs, 'ok.ts']);
@@ -82,12 +84,13 @@ try {
   check('private internals and the UI-from-root path are not reachable by package name', () => {
     writeFileSync(join(tmp, 'bad.ts'), [
       `import { findVenuePath } from '@muslim-ummah/offline-navigation/src/domain/venue/VenueRouting';`,
-      `import { GateChooser } from '@muslim-ummah/offline-navigation';`,
-      `export const x = [findVenuePath, GateChooser];`,
+      `import { GateChooser, createMapLibreNavigationMap } from '@muslim-ummah/offline-navigation';`,
+      `export const x = [findVenuePath, GateChooser, createMapLibreNavigationMap];`,
     ].join('\n'));
     const out = tscRun([...probeArgs, 'bad.ts']).stdout;
     assert.match(out, /bad\.ts\(1,.*TS2307/);
     assert.match(out, /bad\.ts\(2,.*TS2305/);
+    assert.match(out, /createMapLibreNavigationMap/); // the root does not export the MapLibre adapter either
   });
   check('compiled headless entrypoint runs in plain Node without loading react/react-native', () => {
     const out = join(tmp, 'cjs');
@@ -98,7 +101,7 @@ try {
     const req = createRequire(join(out, 'index.js'));
     const sdk = req('./index.js');
     for (const n of ['runAStar', 'findVenuePath', 'findStreetRouteToTargets', 'createNavigationSession', 'evaluateNavigationStart']) assert.equal(typeof sdk[n], 'function', n);
-    assert.ok(!Object.keys(req.cache).some((k) => /node_modules[\\/](react|react-native)[\\/]/.test(k)));
+    assert.ok(!Object.keys(req.cache).some((k) => /node_modules[\\/](react|react-native|@maplibre)[\\/]/.test(k)));
   });
   console.log(`sdk-exports: ${passed} checks passed`);
 } catch (e) {
