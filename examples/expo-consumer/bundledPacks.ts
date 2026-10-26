@@ -57,8 +57,8 @@ export const installBundledPacks = async (deps: BundledPackDeps): Promise<Bundle
     let manifestText: string;
     try {
       manifestText = await copier.readText(source.id, PACK_MANIFEST_FILE);
-    } catch {
-      fail({ code: 'asset-unreadable', message: 'the packaged manifest could not be read' });
+    } catch (e) {
+      fail({ code: 'asset-unreadable', message: `the packaged manifest could not be read: ${e instanceof Error ? e.message : String(e)}` });
       continue;
     }
     if ((await deps.sha256Text(manifestText)).toLowerCase() !== source.manifestSha256.toLowerCase()) {

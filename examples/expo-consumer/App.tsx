@@ -93,7 +93,11 @@ function VenuePicker({ runtime, retry }: { runtime: PackRuntime; retry: () => vo
   const venue = useVenue(runtime, venueId);
   const failures = runtime.install.report.filter((r) => r.status === 'failed');
   if (venue.status === 'loading') return <View style={styles.loading}><ActivityIndicator accessibilityLabel="Preparing the offline map" /></View>;
-  if (venue.status === 'failed') return <Problem message={failures.length ? `${venue.message} (${failures.length} bundled pack failed verification)` : venue.message} retry={retry} />;
+  if (venue.status === 'failed') {
+    // Say which pack failed and why, so a support report says more than "it did not work".
+    const why = failures.map((f) => `${f.id}: ${f.status === 'failed' ? `${f.error.code} ${f.error.message}` : ''}`).join('; ');
+    return <Problem message={failures.length ? `${venue.message} (${why})` : venue.message} retry={retry} />;
+  }
   const next = ids[(ids.indexOf(venueId ?? '') + 1) % ids.length];
   return (
     <VenueScreen
@@ -123,6 +127,8 @@ function VenueScreen({ runtime, venue, switchVenue }: { runtime: PackRuntime; ve
   // Two clearly separate location sources. Switching starts a fresh controller (the previous one is disposed), so a
   // simulated fix can never be read as device evidence or the other way round.
   const [locationSource, setLocationSource] = useState<'simulated' | 'device'>('simulated');
+  // Demo tools stay folded so the journey panel keeps the screen; the Demo GPS button is outside them because a Live walk needs it.
+  const [tools, setTools] = useState(false);
   const simulated = useMemo(() => createSimulatedLocation(start), [start]);
   const device = useMemo(() => createExpoLocationAdapter({ platform: Platform.OS === 'ios' ? 'ios' : 'android', readIOSPrecision }), []);
   const controller = useMemo(
@@ -155,14 +161,23 @@ function VenueScreen({ runtime, venue, switchVenue }: { runtime: PackRuntime; ve
           bottomInset={insets.bottom}
         />
         <View style={{ paddingBottom: insets.bottom }}>
-          <PackStatus venue={venue} runtime={runtime} />
           {locationSource === 'simulated' ? <DemoGps location={simulated} /> : null}
           <Button
-            title={`Location: ${locationSource === 'simulated' ? 'simulated' : 'device'} (switch)`}
-            accessibilityLabel={`Location source: ${locationSource === 'simulated' ? 'simulated' : 'device'}. Switch.`}
-            onPress={() => setLocationSource((s) => (s === 'simulated' ? 'device' : 'simulated'))}
+            title={tools ? 'Hide demo tools' : 'Show demo tools'}
+            accessibilityLabel={tools ? 'Hide demo tools' : 'Show demo tools'}
+            onPress={() => setTools((t) => !t)}
           />
-          {switchVenue ? <Button title={`Venue: ${venue.manifest.venueId} (switch)`} accessibilityLabel={`Venue: ${venue.manifest.venueId}. Switch.`} onPress={switchVenue} /> : null}
+          {tools ? (
+            <>
+              <PackStatus venue={venue} runtime={runtime} />
+              <Button
+                title={`Location: ${locationSource === 'simulated' ? 'simulated' : 'device'} (switch)`}
+                accessibilityLabel={`Location source: ${locationSource === 'simulated' ? 'simulated' : 'device'}. Switch.`}
+                onPress={() => setLocationSource((s) => (s === 'simulated' ? 'device' : 'simulated'))}
+              />
+              {switchVenue ? <Button title={`Venue: ${venue.manifest.venueId} (switch)`} accessibilityLabel={`Venue: ${venue.manifest.venueId}. Switch.`} onPress={switchVenue} /> : null}
+            </>
+          ) : null}
         </View>
       </View>
     </NavigationProvider>

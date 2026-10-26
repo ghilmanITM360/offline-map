@@ -59,6 +59,7 @@ const runtime = (open?: jest.Mock) => ({
 });
 const start = startBundledPacks as jest.Mock;
 const room = (name: string) => `${name}. Room`;
+const showTools = () => fireEvent.press(screen.getByRole('button', { name: 'Show demo tools' }));
 const press = (name: string) => fireEvent.press(screen.getByRole('button', { name }));
 const guideOption = `${copy.trip.startGuide.title}. ${copy.trip.startGuide.subtitle}`;
 const liveOption = `${copy.trip.startLive.title}. ${copy.trip.startLive.subtitle}`;
@@ -154,9 +155,12 @@ it('says so when the packs cannot be started at all, and starts them again on re
 
 it('shows which verified pack is serving, switches to another venue, and drops the pack pin on the way out', async () => {
   await render(<App />);
+  await showTools();
   expect(screen.getByLabelText('Pack synthetic-demo-venue@1.0.0, bundled, digest pinned, 1234 bytes')).toBeOnTheScreen();
   expect(released).not.toHaveBeenCalled(); // pinned while the venue is open
   await press('Venue: synthetic-demo-venue. Switch.');
+  await screen.findByText(copy.directory.destinationTitle);
+  await showTools(); // a new venue is a new screen: the tools fold again
   expect(await screen.findByLabelText('Pack second-venue@1.0.0, bundled, digest pinned, 1234 bytes')).toBeOnTheScreen();
   expect(released).toHaveBeenCalledTimes(1);
   expect(screen.getByTestId('map').props.mapStyle.sources['sdk-basemap']).toMatchObject({ url: 'pmtiles://file:///documents/ummah-packs/bundled/second-venue-1.0.0/map/ijtema-basemap.pmtiles' });
@@ -165,6 +169,7 @@ it('shows which verified pack is serving, switches to another venue, and drops t
 it('runs the device self-test on request and reports every scenario', async () => {
   (runDeviceSelfTest as jest.Mock).mockResolvedValue([{ name: 'a', ok: true, detail: 'ok' }, { name: 'b', ok: false, detail: 'broken' }]);
   await render(<App />);
+  await showTools();
   await press('Run pack self-test');
   expect(await screen.findByText('Self-test: 1 of 2 passed')).toBeOnTheScreen();
   expect(screen.getByText('PASS a')).toBeOnTheScreen();
@@ -174,6 +179,7 @@ it('runs the device self-test on request and reports every scenario', async () =
 it('keeps simulated and device locations apart: a blocked device permission refuses Live and the Manual Guide survives', async () => {
   const deviceLocation = jest.requireMock('expo-location');
   await render(<App />);
+  await showTools();
   await press('Location source: simulated. Switch.');
   expect(screen.queryByRole('button', { name: 'Demo GPS: walk to the next point' })).toBeNull();
   await press('Annex. Room');

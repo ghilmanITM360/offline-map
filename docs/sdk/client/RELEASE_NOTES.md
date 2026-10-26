@@ -7,7 +7,9 @@
 - Headless engine: offline A\* and a multi-venue graph contract, route steps, route progress with a continuity window, location
   capability rules, `NavigationController` (Manual Guide, explicit Live, GPS-loss handling, guarded reroute, latched arrival),
   `NavigationSession` (one trip's lifetime).
-- Offline pack manifest parser/verifier and pack manager (staging, atomic activation, rollback, recovery, pinning) over injected ports.
+- Offline pack manifest parser/verifier and pack manager (staging, atomic activation, rollback, recovery, pinning) over injected ports; incremental
+  SHA-256 (`createSha256`, `sha256Hex`), a filesystem-backed `PackStore` over a small `PackFileSystem` port (`createFileSystemPackStore`), and
+  `parsePackVenueData` (graph and place files to a `VenueDataSource`).
 - React Native UI: `NavigationProvider` and hooks, ready-made `NavigationScreen`, leaf cards, default light/dark theme with drawn
   icons, optional English copy, the iOS-safe `Text`.
 - `/maplibre`: offline PMTiles map adapter (basemap, venue places, route, markers, walker, framing, follow, recenter, fallback,
@@ -21,6 +23,13 @@
 - `OutsideRouteProvider` (outside-venue start and reroute, entry gate selection, direct guides never Live), `requestReroute()`, and a
   fresh-fix request on `resume()`. New blocker `route_outdated` (the copy contract gains `route_outdated`, `upgrade.preview`, `upgrade.start`).
 
+### Added with the pack platform integration (C5)
+
+- `scripts/sdk-pack/compile.ts`: deterministic pack compiler. `scripts/sdk-pack/karachi.ts`: the real `karachi-ijtema@1.0.0` pack (tracked
+  PMTiles archive, the repository's V2 graph, places, gates and names), byte-reproducible and pinned. Gates 18/19 stay unconnected.
+- Node and Expo `PackFileSystem` adapters; a pack-driven Expo consumer (two bundled packs, startup order install → recover → open, journey
+  pin, on-device pack self-test). Imported/remote packs remain refused (no signing scheme or key exists).
+
 ### Fixed during native acceptance (all covered by tests)
 
 - Map adapter reserved the panel's height twice, shrinking the route to a speck on Android (default bottom padding 300 → 56).
@@ -33,8 +42,8 @@
 - Venue data, tiles and place names. Reviewed Urdu / Roman Urdu copy.
 - Street routing itself. Outside-venue routing is an injected `OutsideRouteProvider` (the SDK validates and tracks the host's route). The
   Ijtema host still has its own navigation authority and does **not** yet delegate to this controller (see `docs/sdk/C4_PARITY_MATRIX.md`).
-- Pack platform adapters (SHA-256 reader, filesystem `PackStore`, extraction, compiler, Ed25519 verifier), signing keys and a
-  delivery channel. Imported/remote packs are therefore not accepted anywhere.
+- Pack signing (an Ed25519 verifier, keys, rotation), archive extraction, download/import and a delivery channel. Imported/remote packs are
+  therefore not accepted anywhere; only packs shipped inside the app, pinned by manifest digest, are used.
 - Background location, speech/voice instructions, a dark basemap, a gesture-detent bottom sheet, `GateChooser` composition.
 - A published registry package, signing or notarisation. Nothing was published or delivered externally.
 

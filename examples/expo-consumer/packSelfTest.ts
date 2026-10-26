@@ -14,19 +14,22 @@ export interface SelfTestDeps {
   fs: PackFileSystem;
   reset(): Promise<void>;
   copier: PackAssetCopier;
-  primary: BundledPackSource;
-  secondary: BundledPackSource;
+  primary: SelfTestPack;
+  secondary: SelfTestPack;
   sdkVersion: string;
   platformCapabilities: readonly string[];
   /** Renames one file inside the test root without any swap logic, to reproduce a process killed mid-replacement. */
   moveFile(from: string, to: string): void;
 }
 
+/** A packaged pack and the venue it is for (the directory id is not `<venue>@<version>`). */
+export type SelfTestPack = BundledPackSource & { venueId: string };
+
 export interface SelfTestResult { name: string; ok: boolean; detail: string }
 
 class Failed extends Error {}
 const check = (condition: unknown, message: string): void => { if (!condition) throw new Failed(message); };
-const venueOf = (source: BundledPackSource): string => source.id.slice(0, source.id.lastIndexOf('@'));
+const venueOf = (source: SelfTestPack): string => source.venueId;
 
 export const runPackSelfTest = async (deps: SelfTestDeps): Promise<SelfTestResult[]> => {
   const { fs, copier } = deps;
@@ -50,7 +53,7 @@ export const runPackSelfTest = async (deps: SelfTestDeps): Promise<SelfTestResul
   };
 
   /** Fills `packs/staging/<id>` with a packaged pack, optionally relabelled as another version of the same venue and optionally missing a file. */
-  const stage = async (source: BundledPackSource, stagingId: string, options: { version?: string; omit?: string } = {}): Promise<void> => {
+  const stage = async (source: SelfTestPack, stagingId: string, options: { version?: string; omit?: string } = {}): Promise<void> => {
     for (const path of source.files) if (path !== options.omit) await copier.copy(source.id, path, `packs/staging/${stagingId}/${path}`);
     if (options.version) {
       const file = `packs/staging/${stagingId}/${PACK_MANIFEST_FILE}`;
@@ -60,7 +63,7 @@ export const runPackSelfTest = async (deps: SelfTestDeps): Promise<SelfTestResul
       await fs.writeTextAtomic(file, `${JSON.stringify(manifest, null, 2)}\n`);
     }
   };
-  const installVersion = async (manager: PackManager, source: BundledPackSource, version: string): Promise<void> => {
+  const installVersion = async (manager: PackManager, source: SelfTestPack, version: string): Promise<void> => {
     await stage(source, `s-${version}`, { version });
     const result = await manager.installStaged(`s-${version}`, { venueId: venueOf(source) });
     check(result.ok, `install ${version} failed: ${result.ok ? '' : result.error.code}`);

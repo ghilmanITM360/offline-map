@@ -102,7 +102,38 @@ Use `react-native-safe-area-context` insets (Android edge-to-edge draws under th
 
 ## 8. Offline venue packs
 
-`createPackManager` handles staged install → verify → atomic activation → rollback → recovery over a `PackStore` port you implement
-(filesystem, extraction, downloads). Platform adapters (SHA-256 reader, file store, compiler) are **not shipped yet**; see
-[RELEASE_NOTES.md](RELEASE_NOTES.md). SHA-256 proves integrity, not publisher authenticity: do not accept imported packs without a
-publisher signature scheme and keys you control.
+The SDK validates, stores and activates venue packs; **you** supply the filesystem and, for packs that ship in the app, the bytes.
+Format, compiler and trust rules: [../OFFLINE_PACK_SPEC.md](../OFFLINE_PACK_SPEC.md).
+
+**Build a pack.** `scripts/sdk-pack/compile.ts` (`compilePack(dir, spec, { write: true })`) turns a directory of resources plus a build
+spec into a deterministic `pack.manifest.json` (sorted resources, streamed SHA-256, no clock or host paths). It refuses symlinks,
+undeclared/missing files, unsafe or duplicate paths, missing required kinds, bad versions, missing attribution and a data file that
+names another venue. `npm run sdk:karachi-pack -- <dir>` builds the real Karachi pack; its digest is pinned in
+`scripts/sdk-pack/karachi-ijtema.pin.json`.
+
+**Ship it in the app.** `examples/expo-consumer` is the reference: `bundledPackTable.ts` lists each bundled pack's pinned manifest
+digest and its files (Metro assets with a `.packfile` extension registered in `metro.config.js`); `bundledPacks.ts` copies a pack into
+app-private storage through a staging directory renamed into place whole, trusts it only while every byte hashes to the pinned
+manifest, and repairs a damaged copy from the packaged one at the next start. `packRuntime.ts` then does, in this order:
+bundled install/verify → `createPackManager({ bundled })` → `recover()` → `open(venueId)`. `open` pins the active pack, re-checks the
+graph, place and name files against the manifest, and returns a `VenueDataSource` (`parsePackVenueData`) plus the archive path for
+the map. Release the pin (`venue.release()`) when the venue closes; the sample holds it while a venue is open, which covers every
+journey in it.
+
+**Expo FileSystem adapter** (`expoPackFileSystem.ts`, `createExpoPackFileSystem(rootUri)`), written against the installed
+`expo-file-system` 19.0.x object API:
+- `File.write` is not atomic and there is no fsync, so replacing a file is a swap (write temp, move the target aside, move the temp in)
+  that `readText` repairs; a process kill at any step leaves the old or the new complete text. Power-loss durability is the OS's.
+- `move()` onto an existing file fails; moving a directory onto an existing directory moves it *inside*. `renameDir` therefore checks
+  first, refuses an existing destination, and creates the destination's parent (Android requires it).
+- Reads stream through `FileHandle.readBytes` in 64 KiB chunks and always close the handle.
+- Keep packs under the document directory, not the cache directory (the OS may purge the cache).
+
+**Imported and remote packs are refused.** Installing needs a signature from a trusted key; no signing scheme or key exists yet, so
+`createPackManager` is configured without a verifier and every `installStaged` fails with `signature-required`. SHA-256 proves
+integrity, not publisher authenticity. Do not enable `requireSignature: false` outside tests.
+
+**Prove it on the device.** The sample's *Run pack self-test* button runs the lifecycle on the device's real filesystem in a separate
+directory (copy/replace/rename semantics, interrupted replacement, install → update → rollback across restarts, a changed or deleted
+resource, an update with a missing file, interrupted staging, pins, storage pressure, two venues). It uses a lab manager without the
+signature requirement, so it checks storage and recovery, not the trust policy.

@@ -22,17 +22,31 @@ const localUriOf = async (packId: string, path: string): Promise<string> => {
   return asset.localUri;
 };
 
-export const createAssetCopier = (rootUri: string): PackAssetCopier => ({
-  readText: async (packId, path) => new File(await localUriOf(packId, path)).text(),
-  copy: async (packId, path, destination) => {
+export const createAssetCopier = (rootUri: string): PackAssetCopier => {
+  const copy: PackAssetCopier['copy'] = async (packId, path, destination) => {
     const from = new File(await localUriOf(packId, path));
     const target = new File(rootUri, destination);
     const cut = destination.lastIndexOf('/');
     if (cut > 0) new Directory(rootUri, destination.slice(0, cut)).create({ intermediates: true, idempotent: true });
     if (target.exists) target.delete();
     from.copy(target);
-  },
-});
+  };
+  return {
+    copy,
+    // Found on iOS: expo-file-system will copy a packaged asset but refuses to read one in place ("Missing permission for uri" inside
+    // the app bundle), so text is read from a copy in app storage.
+    readText: async (packId, path) => {
+      const scratch = `bundled-staging/.read-${packId}`;
+      await copy(packId, path, scratch);
+      const file = new File(rootUri, scratch);
+      try {
+        return await file.text();
+      } finally {
+        file.delete();
+      }
+    },
+  };
+};
 
 export const startBundledPacks = (): Promise<PackRuntime> => {
   const rootUri = packRootUri();
@@ -59,8 +73,8 @@ export const runDeviceSelfTest = async (): Promise<SelfTestResult[]> => {
     fs,
     reset: async () => { const d = new Directory(rootUri); if (d.exists) d.delete(); d.create({ intermediates: true, idempotent: true }); },
     copier: createAssetCopier(rootUri),
-    primary: { id: primary.id, manifestSha256: primary.manifestSha256, files: primary.files },
-    secondary: { id: secondary.id, manifestSha256: secondary.manifestSha256, files: secondary.files },
+    primary: { id: primary.id, venueId: primary.packId.slice(0, primary.packId.lastIndexOf('@')), manifestSha256: primary.manifestSha256, files: primary.files },
+    secondary: { id: secondary.id, venueId: secondary.packId.slice(0, secondary.packId.lastIndexOf('@')), manifestSha256: secondary.manifestSha256, files: secondary.files },
     sdkVersion: SDK_VERSION,
     platformCapabilities: PLATFORM_CAPABILITIES,
     moveFile: (from, to) => new File(rootUri, from).move(new File(rootUri, to)),
