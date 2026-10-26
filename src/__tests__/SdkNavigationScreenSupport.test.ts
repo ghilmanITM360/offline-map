@@ -108,7 +108,7 @@ describe('ENGLISH_NAVIGATION_SCREEN_COPY', () => {
   it('words every reason live navigation can be refused, and every route failure', () => {
     const blockers: LiveStartBlocker[] = [
       'permission_needed', 'permission_blocked', 'approximate_only', 'precision_unknown', 'services_off', 'no_fix', 'stale_fix',
-      'weak_fix', 'unsupported', 'route_pending', 'outside_venue', 'already_at_destination', 'no_route',
+      'weak_fix', 'unsupported', 'route_pending', 'outside_venue', 'already_at_destination', 'no_route', 'route_outdated',
     ];
     expect(Object.keys(copy.liveBlockers).sort()).toEqual([...blockers].sort());
     for (const b of blockers) expect(copy.liveBlockers[b].trim()).not.toBe('');

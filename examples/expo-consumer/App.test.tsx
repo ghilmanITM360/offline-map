@@ -93,6 +93,9 @@ it('goes Live only on the explicit request, follows the simulated GPS to arrival
   await press('Entrance. Synthetic demo venue');
   expect(screen.queryByRole('button', { name: 'Demo GPS: walk to the next point' })).toBeNull(); // nothing is live yet
   await press(liveOption);
+  expect(await screen.findByText(copy.upgrade.preview)).toBeOnTheScreen(); // the live route is shown first
+  expect(screen.queryByText(copy.live.exit)).toBeNull(); // and nothing is live until Start
+  await press(copy.upgrade.start);
   expect(await screen.findByText(copy.live.exit)).toBeOnTheScreen();
   await finishMapLoad();
   await nextGps();

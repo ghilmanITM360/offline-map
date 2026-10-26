@@ -65,6 +65,8 @@ export const ENGLISH_NAVIGATION_SCREEN_COPY: NavigationScreenCopy = {
   upgrade: {
     confirm: 'Switch to live navigation?',
     acquiring: 'Finding your location…',
+    preview: 'Your live route',
+    start: 'Start live navigation',
     failed: 'Live navigation did not start',
     preserved: 'Your step-by-step guide stays as it is until live navigation starts.',
     continue: 'Continue',
@@ -85,6 +87,7 @@ export const ENGLISH_NAVIGATION_SCREEN_COPY: NavigationScreenCopy = {
     outside_venue: 'You appear to be outside this venue. Live navigation works only inside it.',
     already_at_destination: 'You are already at this destination.',
     no_route: 'No walking route from your location was found.',
+    route_outdated: 'You moved since the route was prepared. Prepare it again from where you are.',
   },
   live: {
     remaining: (distance, minutes) => `${distance} left · about ${minutes} min`,

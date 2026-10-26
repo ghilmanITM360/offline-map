@@ -130,7 +130,7 @@ export interface NavigationScreenCopy {
   };
   guide: RouteGuideCardLabels;
   /** The confirmation shown before a Manual Guide is upgraded to Live. */
-  upgrade: Pick<ManualLiveUpgradeCardLabels, 'confirm' | 'acquiring' | 'failed' | 'preserved' | 'continue' | 'retry' | 'cancel'>;
+  upgrade: Pick<ManualLiveUpgradeCardLabels, 'confirm' | 'acquiring' | 'preview' | 'start' | 'failed' | 'preserved' | 'continue' | 'retry' | 'cancel'>;
   /** One plain sentence per reason live navigation could not start. */
   liveBlockers: Record<LiveStartBlocker, string>;
   live: {
@@ -159,6 +159,8 @@ export interface NavigationScreenProps {
   MapComponent?: React.ComponentType<NavigationMapProps>;
   /** Offer live navigation at all. Default true; a controller without a location adapter reports it as unsupported. */
   allowLive?: boolean;
+  /** Show the live route and wait for a second tap before going live (default). False starts Live on the first tap. */
+  reviewLiveRoute?: boolean;
   /** Host safe-area bottom inset for the arrival sheet. Default 0. */
   bottomInset?: number;
   /** Back was pressed on the directory itself; without it the directory shows no Back control. */

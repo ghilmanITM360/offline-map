@@ -68,7 +68,7 @@ function deriveLeafThemes({ colors, icons, Button, radius, hitSlop }: Navigation
 // step and live status, and every button below is one controller command. What lives here is view-local only: the
 // search text, which chooser is open, the Manual-to-Live confirmation and whether the host's map said it is unavailable.
 export function NavigationScreen({
-  copy, theme, isRTL, describePlace, MapComponent, allowLive = true, bottomInset = 0, onClose, onTripEnded, style,
+  copy, theme, isRTL, describePlace, MapComponent, allowLive = true, reviewLiveRoute = true, bottomInset = 0, onClose, onTripEnded, style,
 }: NavigationScreenProps) {
   const controller = useNavigationController();
   const state = useNavigationState();
@@ -124,6 +124,9 @@ export function NavigationScreen({
   };
   const blockerMessage = liveAttempt.status === 'blocked' && liveAttempt.blocker ? copy.liveBlockers[liveAttempt.blocker] : null;
   const requesting = liveAttempt.status === 'requesting';
+  const candidate = state.liveCandidate;
+  // The walker sees the live route and starts it with a second tap (what the Ijtema host does); `reviewLiveRoute={false}` starts in one tap.
+  const startLive = () => void (reviewLiveRoute ? controller.prepareLive() : controller.requestLive());
 
   // ---- the panel, one stage at a time ----
 
@@ -176,7 +179,7 @@ export function NavigationScreen({
         subtitle={requesting ? copy.trip.startLive.busy : copy.trip.startLive.subtitle}
         loading={requesting}
         disabled={state.loadState === 'loading' || requesting}
-        onPress={() => void controller.requestLive()}
+        onPress={startLive}
         theme={leaf.option}
       />
       {blockerMessage ? <Text testID="navigation-live-message" accessibilityLiveRegion="polite" style={[styles.subtitle, text]}>{blockerMessage}</Text> : null}
@@ -238,21 +241,38 @@ export function NavigationScreen({
               theme={leaf.option}
             />
           ) : null}
-          {allowLive ? liveOption() : null}
+          {allowLive && !candidate ? liveOption() : null}
+          {allowLive && candidate ? upgradeCard('idle') : null}
         </View>
       </>
     );
   };
 
   const upgradeLabels = useMemo<ManualLiveUpgradeCardLabels>(
-    // The controller routes and starts in one step, so the card's routing/preview phases are never reached: their
-    // wording is never shown and the host does not have to write it.
-    () => ({ routing: '', preview: '', start: '', destination: () => '', summary: () => '', ...copy.upgrade }),
-    [copy.upgrade],
+    () => ({
+      routing: '',
+      destination: copy.trip.title,
+      summary: (minutes, distance) => copy.live.remaining(formatDistance(distance, copy.routeStep) ?? '', minutes),
+      ...copy.upgrade,
+    }),
+    [copy.upgrade, copy.trip.title, copy.live, copy.routeStep],
+  );
+  // One card for the whole Manual-to-Live step: confirm, acquire, show the candidate route, start, or report why not.
+  const upgradeCard = (phase: 'idle' | 'acquiring' | 'confirming' | 'failed') => (
+    <ManualLiveUpgradeCard
+      upgrade={candidate ? { phase: 'preview', route: { estimatedTimeMin: candidate.etaMinutes, totalDistance: candidate.route.distanceM } } : { phase }}
+      destination={destination}
+      onConfirm={startLive}
+      onCancel={() => { controller.cancelLive(); setConfirmSession(null); }}
+      onStart={() => void controller.confirmLive()}
+      labels={upgradeLabels}
+      isRTL={isRTL}
+      theme={leaf.upgrade}
+    />
   );
   const guide = () => {
     if (!route) return null;
-    const upgradePhase = !confirming ? 'idle' : requesting ? 'acquiring' : liveAttempt.status === 'blocked' ? 'failed' : 'confirming';
+    const upgradePhase = !confirming && !candidate ? 'idle' : requesting ? 'acquiring' : liveAttempt.status === 'blocked' ? 'failed' : 'confirming';
     return (
       <View style={styles.content}>
         <Text accessibilityRole="header" style={[styles.plainTitle, text]}>{copy.trip.title(destination)}</Text>
@@ -268,16 +288,7 @@ export function NavigationScreen({
           isRTL={isRTL}
           theme={leaf.guide}
         />
-        <ManualLiveUpgradeCard
-          upgrade={{ phase: upgradePhase }}
-          destination={destination}
-          onConfirm={() => void controller.requestLive()}
-          onCancel={() => setConfirmSession(null)}
-          onStart={() => {}}
-          labels={upgradeLabels}
-          isRTL={isRTL}
-          theme={leaf.upgrade}
-        />
+        {upgradeCard(upgradePhase)}
         {confirming && blockerMessage ? <Text testID="navigation-live-message" accessibilityLiveRegion="polite" style={[styles.subtitle, text]}>{blockerMessage}</Text> : null}
       </View>
     );

@@ -14,6 +14,13 @@
   OSM attribution).
 - Independent Expo consumer app and the driver that proves the packed artifact installs, type-checks, renders and bundles.
 
+### Added after the C4 parity audit (source and Jest evidence only)
+
+- `prepareLive()` / `confirmLive()` / `cancelLive()`: the host's candidate-route-then-Start flow, with a fresh-fix and 20 m drift check on
+  confirm; `<NavigationScreen reviewLiveRoute>` (default on). `requestLive()` is unchanged.
+- `OutsideRouteProvider` (outside-venue start and reroute, entry gate selection, direct guides never Live), `requestReroute()`, and a
+  fresh-fix request on `resume()`. New blocker `route_outdated` (the copy contract gains `route_outdated`, `upgrade.preview`, `upgrade.start`).
+
 ### Fixed during native acceptance (all covered by tests)
 
 - Map adapter reserved the panel's height twice, shrinking the route to a speck on Android (default bottom padding 300 → 56).
@@ -24,8 +31,8 @@
 ### Not included
 
 - Venue data, tiles and place names. Reviewed Urdu / Roman Urdu copy.
-- Outside-venue (street) routing in the SDK; the Ijtema host still has its own navigation authority and does **not** yet delegate
-  to this SDK controller (two implementations coexist until that migration).
+- Street routing itself. Outside-venue routing is an injected `OutsideRouteProvider` (the SDK validates and tracks the host's route). The
+  Ijtema host still has its own navigation authority and does **not** yet delegate to this controller (see `docs/sdk/C4_PARITY_MATRIX.md`).
 - Pack platform adapters (SHA-256 reader, filesystem `PackStore`, extraction, compiler, Ed25519 verifier), signing keys and a
   delivery channel. Imported/remote packs are therefore not accepted anywhere.
 - Background location, speech/voice instructions, a dark basemap, a gesture-detent bottom sheet, `GateChooser` composition.

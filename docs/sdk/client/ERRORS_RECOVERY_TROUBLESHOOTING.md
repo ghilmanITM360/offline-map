@@ -12,7 +12,8 @@ Each has a sentence in `copy.liveBlockers`. None of them end the journey: the pr
 | `precision_unknown` | Precision cannot be proven | **iOS without a native precision check** (see Integration §6). Never guess it. |
 | `services_off` | Location services disabled | Offer the system location settings. |
 | `no_fix` / `stale_fix` / `weak_fix` | No usable fresh fix (none, older than 30 s or in the future, or worse than 50 m) | Retry; the SDK never uses a remembered position. (`acquiring` is a transient capability state shown as "Checking your location…", not a start blocker.) |
-| `outside_venue` | Fix further than `maxLiveSnapDistanceM` from any node | Outside-venue routing is not in the SDK; keep Manual Guide. |
+| `outside_venue` | Fix further than `maxLiveSnapDistanceM` from any node and no `outside` provider (or it returned a `directGuide`) | Provide an `OutsideRouteProvider`, or keep Manual Guide. |
+| `route_outdated` | The walker moved more than 20 m between `prepareLive()` and `confirmLive()` | Prepare the live route again from where they stand. |
 | `route_pending` | A route is still loading | Wait. |
 | `unsupported` | The controller was created without a `location` adapter | Provide one, or hide Live (`allowLive={false}`). |
 | `already_at_destination` / `no_route` | The live position is at the destination / no route from it | Show the message; Manual Guide stays. |

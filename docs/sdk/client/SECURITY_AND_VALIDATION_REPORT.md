@@ -51,7 +51,7 @@ is outside the repository under `~/Documents/offline-map-audits/…/`.
 2. iOS: `watchPositionAsync` delivered only its first callback on the simulator and later simulated locations produced no updates;
    continuous iOS live following is **unproven** (simulator limitation or adapter/Expo issue, undetermined).
 3. iOS precision needs a host native check (provided as sample code); without it Live is refused honestly.
-4. The Ijtema host does not delegate to the SDK controller; outside-venue routing is not in the SDK (a live fix outside the venue is refused).
+4. The Ijtema host does not delegate to the SDK controller (`docs/sdk/C4_PARITY_MATRIX.md`). Outside-venue routing exists only as an injected, validated provider; no Ijtema provider is wired yet and none of the C4.2 additions has native evidence.
 5. Pack platform adapters, compiler, signing keys and delivery channel do not exist; the bundled Karachi pack manifest is not written.
 6. Only English copy ships; Urdu/Roman Urdu need reviewed text. The basemap has no dark palette. iOS AX5 panel height and Android
    dark-system theming (`expo-system-ui`) are open. The directory scrolls under the Android navigation bar by design.

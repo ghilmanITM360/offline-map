@@ -1,11 +1,15 @@
 import {
   createNavigationController,
   findBestVenuePath,
+  haversineM,
   LIVE_ORIGIN_ID,
   type LiveFixCoordinate,
   type LocationPermissionInput,
   type NavigationControllerOptions,
   type NavigationLocationAdapter,
+  type OutsideRoute,
+  type OutsideRouteProvider,
+  type OutsideRouteRequest,
   type VenueCoordinate,
   type VenueEdge,
   type VenueRoute,
@@ -660,5 +664,397 @@ describe('safety invariants', () => {
     expect(await c.requestLive()).toBe(false);
     expect(c.getState()).toMatchObject({ phase: 'guide', liveAttempt: { blocker: 'weak_fix' } });
     expect(c.getState().route).toBe(route);
+  });
+});
+
+// C4.2-a: the host shows the walker the live route and waits for a second explicit Start (useManualLiveUpgrade). The controller
+// offers the same two-step start; requestLive() stays the direct one-call start.
+describe('prepareLive / confirmLive: candidate route before Live', () => {
+  const guideTrip = () => {
+    const s = setup();
+    s.c.selectDestination('annex');
+    s.c.selectOrigin('lobby');
+    s.c.startGuide();
+    return s;
+  };
+
+  it('prepares a candidate from the walker\'s position without starting Live or the watcher', async () => {
+    const { c, L } = guideTrip();
+    const before = c.getState();
+    expect(await c.prepareLive()).toBe(true);
+    const s = c.getState();
+    expect(s.phase).toBe('guide');
+    expect(s.live).toBeNull();
+    expect(s.route).toBe(before.route); // the committed Manual Guide is untouched
+    expect(s.stepIndex).toBe(before.stepIndex);
+    expect(s.liveAttempt).toEqual({ status: 'candidate', blocker: null });
+    expect(s.liveCandidate!.route).toMatchObject({ originId: LIVE_ORIGIN_ID, destinationId: 'annex' });
+    expect(s.liveCandidate!.etaMinutes).toBe(Math.ceil(s.liveCandidate!.route.distanceM / 1.4 / 60));
+    expect(L.watchStarts).toBe(0);
+  });
+
+  it('confirmLive starts Live on the candidate route and clears the candidate', async () => {
+    const { c, L } = guideTrip();
+    await c.prepareLive();
+    const candidate = c.getState().liveCandidate!.route;
+    expect(await c.confirmLive()).toBe(true);
+    const s = c.getState();
+    expect(s.phase).toBe('live');
+    expect(s.route).toBe(candidate);
+    expect(s.liveCandidate).toBeNull();
+    expect(s.liveAttempt.status).toBe('idle');
+    expect(L.watching).toBe(1);
+  });
+
+  it('cancelLive drops the candidate and keeps the guide; a later confirm does nothing', async () => {
+    const { c, L } = guideTrip();
+    await c.prepareLive();
+    c.cancelLive();
+    expect(c.getState()).toMatchObject({ phase: 'guide', liveCandidate: null, liveAttempt: { status: 'idle' } });
+    expect(await c.confirmLive()).toBe(false);
+    expect(L.watchStarts).toBe(0);
+  });
+
+  it('cancelLive during acquisition keeps a late fix from creating a candidate', async () => {
+    const { c, L } = guideTrip();
+    let release: (f: LiveFixCoordinate | null) => void = () => {};
+    L.getCurrentFix = () => new Promise((resolve) => { release = resolve; });
+    const pending = c.prepareLive();
+    await flush();
+    expect(c.getState().liveAttempt.status).toBe('requesting');
+    c.cancelLive();
+    release(fix(offset(N1, 3, 0)));
+    expect(await pending).toBe(false);
+    expect(c.getState()).toMatchObject({ liveCandidate: null, liveAttempt: { status: 'idle' } });
+  });
+
+  it.each([
+    ['a new destination', (c: ReturnType<typeof setup>['c']) => c.selectDestination('hall')],
+    ['a new origin', (c: ReturnType<typeof setup>['c']) => c.selectOrigin('lobby2')],
+    ['Exit', (c: ReturnType<typeof setup>['c']) => c.exit()],
+  ])('%s retires the candidate', async (_name, act) => {
+    const { c, L } = guideTrip();
+    await c.prepareLive();
+    act(c);
+    expect(c.getState().liveCandidate).toBeNull();
+    expect(await c.confirmLive()).toBe(false);
+    expect(c.getState().phase).not.toBe('live');
+    expect(L.watchStarts).toBe(0);
+  });
+
+  it('confirms with a fresh fix: a stale one, none, or a weak one refuses and starts nothing', async () => {
+    for (const [blocker, makeFix] of [
+      ['stale_fix', () => fix(offset(N1, 3, 0), { observedAtMs: T0 })],
+      ['no_fix', () => null],
+      ['weak_fix', () => fix(offset(N1, 3, 0), { accuracy: 80 })],
+    ] as const) {
+      const { c, L } = guideTrip();
+      await c.prepareLive();
+      t += 31_000;
+      L.currentFix = makeFix();
+      expect(await c.confirmLive()).toBe(false);
+      expect(c.getState()).toMatchObject({ phase: 'guide', liveCandidate: null, liveAttempt: { status: 'blocked', blocker } });
+      expect(L.watchStarts).toBe(0);
+    }
+  });
+
+  it('refuses when the walker has moved more than 20 m since the candidate was prepared (the host\'s refresh-route rule)', async () => {
+    const { c, L } = guideTrip();
+    await c.prepareLive();
+    t += 10_000;
+    L.currentFix = fix(offset(N1, 3 + 25, 0));
+    expect(await c.confirmLive()).toBe(false);
+    expect(c.getState()).toMatchObject({ phase: 'guide', liveCandidate: null, liveAttempt: { status: 'blocked', blocker: 'route_outdated' } });
+    expect(L.watchStarts).toBe(0);
+  });
+
+  it('a fix a few metres away still confirms', async () => {
+    const { c, L } = guideTrip();
+    await c.prepareLive();
+    t += 10_000;
+    L.currentFix = fix(offset(N1, 3 + 8, 0));
+    expect(await c.confirmLive()).toBe(true);
+    expect(c.getState().phase).toBe('live');
+  });
+
+  it('re-reads permission on confirm, never prompts, and refuses after a revocation', async () => {
+    const { c, L } = guideTrip();
+    await c.prepareLive();
+    const prompts = L.prompts;
+    L.permission = DENIED;
+    expect(await c.confirmLive()).toBe(false);
+    expect(L.prompts).toBe(prompts);
+    expect(c.getState()).toMatchObject({ phase: 'guide', liveCandidate: null, liveAttempt: { status: 'blocked', blocker: 'permission_needed' } });
+    expect(L.watchStarts).toBe(0);
+  });
+
+  it('a second prepareLive supersedes the first; confirm uses only the newest candidate', async () => {
+    const { c } = guideTrip();
+    await c.prepareLive();
+    const first = c.getState().liveCandidate!.route;
+    await c.prepareLive();
+    const second = c.getState().liveCandidate!.route;
+    expect(second).not.toBe(first);
+    expect(await c.confirmLive()).toBe(true);
+    expect(c.getState().route).toBe(second);
+  });
+
+  it('requestLive still starts Live in one call and leaves no candidate behind', async () => {
+    const { c } = guideTrip();
+    expect(await c.requestLive()).toBe(true);
+    expect(c.getState()).toMatchObject({ phase: 'live', liveCandidate: null });
+  });
+});
+
+// C4.2-b: outside-venue routing is a host capability the controller composes, never something it invents. The host's hybrid route
+// (street geometry + entry gate) arrives as a polyline with steps; a direct guide can be shown elsewhere but can never become Live.
+describe('outside-venue routing (injected capability)', () => {
+  const OUT = offset(N1, -300, 0);
+  const lengths = [haversineM(OUT, N1), haversineM(N1, N2), haversineM(N2, N3)];
+  const alongOutside = (distM: number): VenueCoordinate => (distM <= lengths[0] + lengths[1] ? offset(OUT, distM, 0) : offset(N2, 0, distM - lengths[0] - lengths[1]));
+  const route = (over: Partial<OutsideRoute> = {}): OutsideRoute => ({
+    points: [OUT, N1, N2, N3],
+    steps: [
+      { kind: 'depart', nodeId: 'out/0', toNodeId: 'out/2', distanceM: lengths[0] + lengths[1] },
+      { kind: 'turn_right', nodeId: 'out/2', toNodeId: 'out/3', distanceM: lengths[2] },
+      { kind: 'arrive', nodeId: 'out/3', toNodeId: 'out/3', distanceM: 0 },
+    ],
+    ...over,
+  });
+  const provider = (impl: (r: OutsideRouteRequest) => OutsideRoute | null | Promise<OutsideRoute | null> = () => route()) => {
+    const calls: OutsideRouteRequest[] = [];
+    const p: OutsideRouteProvider = {
+      entryGates: [{ id: 'g1', label: 'Gate 1' }, { id: 'g2', label: 'Gate 2' }],
+      route: (r) => { calls.push(r); return impl(r); },
+    };
+    return { calls, p };
+  };
+  const outsideSetup = (impl?: Parameters<typeof provider>[0], extra: Partial<NavigationControllerOptions> = {}) => {
+    const o = provider(impl);
+    const s = setup({ outside: o.p, ...extra });
+    s.L.currentFix = fix(OUT);
+    s.c.selectDestination('annex');
+    return { ...s, ...o };
+  };
+
+  it('without a provider the walker outside the venue is refused, as before', async () => {
+    const { c, L } = setup();
+    L.currentFix = fix(OUT);
+    c.selectDestination('annex');
+    expect(await c.requestLive()).toBe(false);
+    expect(c.getState().liveAttempt.blocker).toBe('outside_venue');
+  });
+
+  it('starts Live on the provider route, asks it from the fix, and follows it to arrival', async () => {
+    const { c, L, calls } = outsideSetup();
+    expect(await c.requestLive()).toBe(true);
+    expect(calls).toHaveLength(1);
+    expect(calls[0]).toMatchObject({ from: { lat: OUT.lat, lng: OUT.lng }, entryGateId: null });
+    expect(calls[0].destination.id).toBe('annex');
+    const s = c.getState();
+    expect(s).toMatchObject({ phase: 'live', originId: LIVE_ORIGIN_ID });
+    expect(s.route).toMatchObject({ nodeIds: [] });
+    expect(s.route!.distanceM).toBeCloseTo(lengths[0] + lengths[1] + lengths[2], 1);
+    const total = lengths[0] + lengths[1] + lengths[2];
+    for (let d = 30; d < total; d += 30) walk(L, alongOutside(d));
+    walk(L, alongOutside(total));
+    expect(c.getState().phase).toBe('arrived');
+    expect(L.watching).toBe(0);
+  });
+
+  it('a direct guide has no live authority: nothing goes live', async () => {
+    const { c, L } = outsideSetup(() => route({ directGuide: true }));
+    expect(await c.requestLive()).toBe(false);
+    expect(c.getState()).toMatchObject({ phase: 'preview', liveAttempt: { blocker: 'outside_venue' } });
+    expect(L.watchStarts).toBe(0);
+  });
+
+  it.each([
+    ['no route', () => null],
+    ['a throwing provider', () => { throw new Error('boom'); }],
+    ['a rejecting provider', () => Promise.reject(new Error('boom'))],
+    ['a single point', () => route({ points: [OUT] })],
+    ['a non-finite point', () => route({ points: [OUT, { lat: NaN, lng: 0 }, N3] })],
+    ['steps that do not add up to the polyline', () => route({ steps: [{ kind: 'depart', nodeId: 'a', toNodeId: 'b', distanceM: 5 }, { kind: 'arrive', nodeId: 'b', toNodeId: 'b', distanceM: 0 }] })],
+    ['steps without an arrival', () => route({ steps: [{ kind: 'depart', nodeId: 'a', toNodeId: 'b', distanceM: lengths[0] + lengths[1] + lengths[2] }] })],
+  ])('%s is no route and starts nothing', async (_name, impl) => {
+    const { c, L } = outsideSetup(impl as Parameters<typeof provider>[0]);
+    expect(await c.requestLive()).toBe(false);
+    expect(c.getState().liveAttempt.blocker).toBe('no_route');
+    expect(L.watchStarts).toBe(0);
+  });
+
+  it('cancelling while the provider is working keeps its late answer from committing', async () => {
+    let release: (r: OutsideRoute | null) => void = () => {};
+    const { c, L, calls } = outsideSetup(() => new Promise((resolve) => { release = resolve; }));
+    const pending = c.prepareLive();
+    await flush();
+    expect(calls).toHaveLength(1);
+    expect(calls[0].signal.aborted).toBe(false);
+    c.cancelLive();
+    expect(calls[0].signal.aborted).toBe(true);
+    release(route());
+    expect(await pending).toBe(false);
+    expect(c.getState()).toMatchObject({ liveCandidate: null, liveAttempt: { status: 'idle' } });
+    expect(L.watchStarts).toBe(0);
+  });
+
+  it('an entry gate chosen from the provider\'s list is passed on; an unknown one is ignored; a prepared route is retired', async () => {
+    const { c, calls } = outsideSetup();
+    expect(c.listEntryGates()).toEqual([{ id: 'g1', label: 'Gate 1' }, { id: 'g2', label: 'Gate 2' }]);
+    c.selectEntryGate('nope');
+    expect(c.getState().entryGateId).toBeNull();
+    c.selectEntryGate('g2');
+    expect(c.getState().entryGateId).toBe('g2');
+    await c.prepareLive();
+    expect(calls[0].entryGateId).toBe('g2');
+    expect(c.getState().liveCandidate).not.toBeNull();
+    c.selectEntryGate('g1');
+    expect(c.getState()).toMatchObject({ entryGateId: 'g1', liveCandidate: null, liveAttempt: { status: 'idle' } });
+  });
+
+  it('the chosen gate is kept for a new origin but not for a new destination', async () => {
+    const { c } = outsideSetup();
+    c.selectEntryGate('g1');
+    c.selectOrigin('lobby');
+    expect(c.getState().entryGateId).toBe('g1');
+    c.selectDestination('hall');
+    expect(c.getState().entryGateId).toBeNull();
+  });
+
+  it('off the route outside the venue reroutes through the provider, from the walker\'s position', async () => {
+    const P = offset(OUT, 20, 80);
+    const second = route({
+      points: [P, N1, N2, N3],
+      steps: [
+        { kind: 'depart', nodeId: 'out/0', toNodeId: 'out/2', distanceM: haversineM(P, N1) + lengths[1] },
+        { kind: 'turn_right', nodeId: 'out/2', toNodeId: 'out/3', distanceM: lengths[2] },
+        { kind: 'arrive', nodeId: 'out/3', toNodeId: 'out/3', distanceM: 0 },
+      ],
+    });
+    let n = 0;
+    const { c, L, calls } = outsideSetup(() => (n++ === 0 ? route() : second));
+    await c.requestLive();
+    walk(L, offset(OUT, 20, 60));
+    walk(L, offset(OUT, 20, 70));
+    walk(L, offset(OUT, 20, 80));
+    await flush();
+    expect(calls).toHaveLength(2);
+    expect(calls[1].from).toMatchObject({ lat: offset(OUT, 20, 80).lat });
+    expect(c.getState().live).toMatchObject({ rerouting: false, notice: 'rerouted' });
+  });
+
+  it('keeps the current route when the provider has nothing better, and says so', async () => {
+    let n = 0;
+    const { c, L } = outsideSetup(() => (n++ === 0 ? route() : null));
+    await c.requestLive();
+    const first = c.getState().route;
+    walk(L, offset(OUT, 20, 60));
+    walk(L, offset(OUT, 20, 70));
+    walk(L, offset(OUT, 20, 80));
+    await flush();
+    expect(c.getState().route).toBe(first);
+    expect(c.getState().live).toMatchObject({ rerouting: false, notice: 'kept_route' });
+  });
+
+  it('a walker who has reached the venue reroutes with the venue finder, not the provider', async () => {
+    const f = countingFinder();
+    const { c, L, calls } = outsideSetup(undefined, { findRoute: f.findRoute });
+    await c.requestLive();
+    f.calls.length = 0;
+    // Inside the venue (next to n/4) but far from the outside route's last leg.
+    walk(L, offset(N1, 10, 48));
+    walk(L, offset(N1, 10, 56));
+    walk(L, offset(N1, 10, 64));
+    await flush();
+    expect(f.calls.length).toBeGreaterThan(0);
+    expect(calls).toHaveLength(1);
+  });
+});
+
+// C4.2-c: the walker (or the host after a failed outside route or a gate change) can ask for a new route now.
+describe('requestReroute: the explicit reroute', () => {
+  it('reroutes from the last accepted fix even with autoReroute off and inside the cooldown', async () => {
+    const f = countingFinder();
+    const { c, L } = await goLive({ findRoute: f.findRoute, autoReroute: false });
+    walk(L, offset(N1, 10, 48));
+    f.calls.length = 0;
+    expect(c.requestReroute()).toBe(true);
+    await flush();
+    expect(f.calls).toHaveLength(1);
+    expect(c.getState().live).toMatchObject({ rerouting: false, notice: 'rerouted' });
+    expect(c.requestReroute()).toBe(true); // no cooldown for an explicit request
+    await flush();
+    expect(f.calls).toHaveLength(2);
+  });
+
+  it('is refused outside Live, and before any fix has been accepted', async () => {
+    const { c } = setup();
+    c.selectDestination('annex');
+    expect(c.requestReroute()).toBe(false);
+  });
+
+  it('supersedes a reroute still in flight: only the newest result commits', async () => {
+    const resolvers: Array<(r: ReturnType<typeof findBestVenuePath>) => void> = [];
+    let started = false;
+    const findRoute: NonNullable<NavigationControllerOptions['findRoute']> = (input) =>
+      started ? new Promise((resolve) => { resolvers.push(resolve); }) : findBestVenuePath(input.graph, input.startIds, input.goalIds);
+    const { c, L } = await goLive({ findRoute });
+    started = true;
+    walk(L, offset(N1, 10, 48));
+    expect(c.requestReroute()).toBe(true);
+    expect(c.requestReroute()).toBe(true);
+    expect(resolvers).toHaveLength(2);
+    const n4 = testVenue.graph;
+    resolvers[0](findBestVenuePath(n4, ['n/4'], ['n/3'])); // the superseded request answers late
+    await flush();
+    expect(c.getState().live!.rerouting).toBe(true);
+    expect(c.getState().live!.notice).toBeNull();
+    resolvers[1](findBestVenuePath(n4, ['n/1'], ['n/3']));
+    await flush();
+    expect(c.getState().live).toMatchObject({ rerouting: false, notice: 'rerouted' });
+    expect(c.getState().route!.nodeIds).toEqual(['n/1', 'n/2', 'n/3']);
+  });
+});
+
+// C4.2-d: the host forces a fresh fix on foreground resume; so does the controller, through the adapter.
+describe('resume asks for a fresh fix', () => {
+  it('ingests the fix the adapter returns, after the new boundary', async () => {
+    const { c, L } = await goLive();
+    t += 60_000;
+    L.currentFix = fix(offset(N1, 30, 0));
+    await c.resume();
+    await flush();
+    expect(c.getState().live).toMatchObject({ signal: 'good' });
+    expect(c.getState().live!.progressM).toBeGreaterThan(29);
+  });
+
+  it('never ingests a cached fix, and ignores one that arrives after Exit', async () => {
+    const { c, L } = await goLive();
+    t += 60_000;
+    L.currentFix = fix(offset(N1, 30, 0), { observedAtMs: t - 20_000 });
+    await c.resume();
+    await flush();
+    expect(c.getState().live!.signal).toBe('lost');
+    expect(c.getState().live!.progressM).toBeLessThan(10);
+
+    let release: (f: LiveFixCoordinate | null) => void = () => {};
+    L.getCurrentFix = () => new Promise((resolve) => { release = resolve; });
+    t += 1_000;
+    await c.resume();
+    c.exit();
+    release(fix(offset(N1, 30, 0)));
+    await flush();
+    expect(c.getState().phase).toBe('browsing');
+  });
+
+  it('does not ask while permission is gone', async () => {
+    const { c, L } = await goLive();
+    t += 5_000;
+    L.permission = DENIED;
+    let asked = 0;
+    L.getCurrentFix = async () => { asked += 1; return null; };
+    await c.resume();
+    expect(asked).toBe(0);
   });
 });

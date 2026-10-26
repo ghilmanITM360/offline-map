@@ -113,6 +113,7 @@ const tree = (c: NavigationController, props: Partial<NavigationScreenProps> = {
       isRTL={false}
       describePlace={describePlace}
       MapComponent={FakeMap}
+      reviewLiveRoute={false}
       {...props}
     />
   </NavigationProvider>
@@ -969,5 +970,58 @@ describe('NavigationScreen: ownership and cleanup', () => {
     expect(screen.getByText(copy.trip.title('Grand Hall'))).toBeOnTheScreen();
     await act(async () => c.exit());
     expect(screen.getByText(copy.directory.destinationTitle)).toBeOnTheScreen();
+  });
+});
+
+// The ready-made screen reviews the live route before going live unless the host opts out (reviewLiveRoute={false} everywhere above).
+describe('NavigationScreen: review the live route, then start (C4.2-a)', () => {
+  const liveOption = `${copy.trip.startLive.title}. ${copy.trip.startLive.subtitle}`;
+
+  it('from the preview: shows the candidate route and goes live only after Start', async () => {
+    const L = simulatedLocation();
+    const c = ctrl({ location: L });
+    await mount(c, { reviewLiveRoute: true });
+    await press('Annex Wing');
+    await press(liveOption);
+    expect(await screen.findByText(copy.upgrade.preview)).toBeOnTheScreen();
+    expect(c.getState()).toMatchObject({ phase: 'preview', liveAttempt: { status: 'candidate' } });
+    expect(L.watching).toBe(0);
+    expect(screen.queryByRole('button', { name: liveOption })).toBeNull();
+    await press(copy.upgrade.start);
+    expect(await screen.findByText(copy.live.exit)).toBeOnTheScreen();
+    expect(c.getState().phase).toBe('live');
+    expect(L.watching).toBe(1);
+  });
+
+  it('from the guide: Not now drops the candidate and the guide carries on', async () => {
+    const L = simulatedLocation();
+    const c = ctrl({ location: L });
+    await mount(c, { reviewLiveRoute: true });
+    await planAnnexFromLobby();
+    await press(`${copy.trip.startGuide.title}. ${copy.trip.startGuide.subtitle}`);
+    await press(copy.guide.nextStep);
+    await press(copy.guide.useLocation);
+    await press(copy.upgrade.continue);
+    expect(await screen.findByText(copy.upgrade.preview)).toBeOnTheScreen();
+    await press(copy.upgrade.cancel);
+    expect(screen.queryByText(copy.upgrade.preview)).toBeNull();
+    expect(c.getState()).toMatchObject({ phase: 'guide', stepIndex: 1, liveCandidate: null, liveAttempt: { status: 'idle' } });
+    expect(L.watching).toBe(0);
+    await press(copy.guide.nextStep);
+    expect(c.getState().stepIndex).toBe(2);
+  });
+
+  it('a walker who has moved on is told to prepare the route again, and nothing goes live', async () => {
+    const L = simulatedLocation();
+    const c = ctrl({ location: L });
+    await mount(c, { reviewLiveRoute: true });
+    await press('Annex Wing');
+    await press(liveOption);
+    await screen.findByText(copy.upgrade.preview);
+    L.currentFix = fixAt(offset(N1, 3 + 40, 0));
+    await press(copy.upgrade.start);
+    expect(await screen.findByText(copy.liveBlockers.route_outdated)).toBeOnTheScreen();
+    expect(c.getState()).toMatchObject({ phase: 'preview', liveCandidate: null });
+    expect(L.watching).toBe(0);
   });
 });
