@@ -1,21 +1,26 @@
 {
   "branch": "feat/muslim-ummah-offline-navigation-sdk",
   "machine": "Ghilmans-Laptop.local",
-  "headBeforeHandoffCommit": "a8083bc5cf11fd7b684a32672f585d6754d60b6d",
-  "tarballSha256": "dc00250f6cb19a7d8807f155d5d4e2515bca0c27db1291ebdae6dc7000d14a0f",
+  "headBeforeHandoffCommit": "590c2328a79dd9d6603f12e9fafa073b45692d04",
+  "tarballSha256": "recompute: npm run sdk:bundle (last consumer-driver tarball 9527e2873af0a6929baaf3f2a40d104ca6b6f5a859772602e32b8b1f2e3e98e9 predates C5.1)",
   "completed": [
     "C2b",
     "C2c",
     "C3",
     "C6.1",
-    "C7.1"
+    "C7.1",
+    "C4.1",
+    "C4.2",
+    "C4.3-a",
+    "C5.1"
   ],
   "next": [
-    "C4 characterization",
-    "C5 adapters",
+    "verify npm test + jest + consumer driver",
+    "C5.2 compiler + Karachi manifest",
+    "C5.3 expo file-system adapter + wiring + native run",
+    "iOS continuous location experiment",
     "C6 rest",
-    "iOS continuous location proof",
-    "C7 final bundle"
+    "C7 docs + final bundle"
   ],
   "ownerGated": [
     "physical devices",
@@ -25,9 +30,13 @@
     "gate 18/19 survey"
   ],
   "usageAtHandoff": {
-    "fiveHourPercent": 75,
-    "weeklyPercent": 19,
-    "contextPercent": 58
+    "fiveHourPercent": 93,
+    "weeklyPercent": 41,
+    "contextPercent": 39
   },
-  "doc": "docs/sdk/CONTINUATION_HANDOFF.md"
+  "doc": "docs/sdk/CONTINUATION_HANDOFF.md",
+  "decisions": [
+    "NavigationViewModelV2 is not replaced by NavigationController (docs/sdk/C4_PARITY_MATRIX.md)",
+    "no signing keys fabricated; imported/remote packs refused"
+  ]
 }
