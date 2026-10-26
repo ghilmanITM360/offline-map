@@ -15,6 +15,7 @@ import { BASEMAP } from './basemap';
 import { installKarachiBasemap } from './basemapExpo';
 import { DEMO_CENTER, demoVenue, describeDemoPlace } from './demoVenue';
 import { appStateLifecycle, createExpoLocationAdapter } from './expoLocation';
+import { readIOSPrecision } from './modules/sdk-location-precision';
 import { createSimulatedLocation, type SimulatedLocation } from './simulatedLocation';
 
 // Everything the host owns is here: the venue, place names, the basemap file, the location service, language, theme and
@@ -36,7 +37,7 @@ function Consumer() {
   // simulated fix can never be read as device evidence or the other way round.
   const [source, setSource] = useState<'simulated' | 'device'>('simulated');
   const simulated = useMemo(() => createSimulatedLocation(demoVenue.graph.getNode('a')!.coordinate), []);
-  const device = useMemo(() => createExpoLocationAdapter({ platform: Platform.OS === 'ios' ? 'ios' : 'android' }), []);
+  const device = useMemo(() => createExpoLocationAdapter({ platform: Platform.OS === 'ios' ? 'ios' : 'android', readIOSPrecision }), []);
   const controller = useMemo(
     () => createNavigationController({ venue: demoVenue, location: source === 'device' ? device : simulated, now: Date.now }),
     [source, device, simulated],

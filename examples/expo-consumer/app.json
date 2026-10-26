@@ -17,14 +17,22 @@
       }
     },
     "android": {
-      "package": "com.example.sdkconsumer"
+      "package": "com.example.sdkconsumer",
+      "blockedPermissions": [
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.SYSTEM_ALERT_WINDOW",
+        "android.permission.VIBRATE"
+      ]
     },
     "plugins": [
       "@maplibre/maplibre-react-native",
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "The SDK consumer uses your location only while the app is open, to follow your progress along a route."
+          "locationWhenInUsePermission": "The SDK consumer uses your location only while the app is open, to follow your progress along a route.",
+          "locationAlwaysPermission": false,
+          "locationAlwaysAndWhenInUsePermission": false
         }
       ]
     ],
