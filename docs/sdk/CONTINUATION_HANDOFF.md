@@ -8,7 +8,7 @@
 - **Native evidence** (simulator/emulator only) in `~/Documents/offline-map-audits/offline-sdk-b7-b10-master-continuation-2026-10-24/c6-final/` (`ios/`, `android/`); scratch consumers under `/private/tmp/claude-501/c53c` and `/private/tmp/claude-501/c6` are disposable (several GB: delete). The Android release APK of the final source is `24606c019e8538713e373e590b2458e7c8c6477aec2bf2bd35bdc5e11a99c710` (`c6-final/android/sdk-consumer-final-release.apk`; the reverted font-scale experiments rebuilt to the identical bytes).
 - **Traps found:** zsh globs with `--include` fail (quote or use `grep -rl`); `fireEvent` in RNTL 14 is async (await it); the repo's Jest starts at `fontScale: 2`, tests that care set their own; a `flex: 1` button in a column collapses to its minimum height (not an RN text-measure cache issue — three wrong theories were disproved natively before the real cause); an iOS TextInput keeps the previous system size (manual scaling); expo-system-ui and expo-crypto are not installed in the repo root, so `consumer.mjs` checks their pins against `expo/bundledNativeModules.json`; adding `fontScale` to Android `configChanges` kept the journey but React Native did not re-lay out, so it was reverted; `adb`/`uiautomator` helpers: `/private/tmp/claude-501/c6/{adbx,ui,tap}.sh`.
 - **Open (owner/hardware):** the list in the ledger. **Deferred:** host (workstream B) migration, voice, Android live font change.
-- Usage at this hand-off: five-hour about 40%, weekly about 52%.
+- Usage at this hand-off: five-hour 95% (past the 90% hard stop; no new expensive work started), weekly 60%; context about 79%.
 
 ---
 
