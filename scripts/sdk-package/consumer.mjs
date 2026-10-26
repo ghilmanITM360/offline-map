@@ -44,6 +44,26 @@ const basemapSource = readFileSync(join(consumer, 'basemap.ts'), 'utf8');
 for (const literal of [`sha256: '${provenance.archive.sha256}'`, `bytes: ${provenance.archive.bytes}`, `zoom: { min: ${provenance.zoom.min}, max: ${provenance.zoom.max} }`]) {
   assert.ok(basemapSource.includes(literal), `basemap.ts must carry ${literal} from BASEMAP_PROVENANCE.json`);
 }
+
+// The bundled venue packs are built by the pack compiler from tracked sources and pinned by manifest digest. The example's table must
+// describe exactly what the compiler produced: same digest, same file list, one asset per file (the archive is the shared one above).
+const packTable = readFileSync(join(consumer, 'bundledPackTable.ts'), 'utf8');
+const bundledPackFiles = [];
+for (const [venue, script, pinFile] of [['karachi-ijtema', 'karachi.ts', 'karachi-ijtema.pin.json'], ['synthetic-demo-venue', 'demo.ts', 'synthetic-demo-venue.pin.json']]) {
+  const built = join(out, 'packs', venue);
+  run(process.execPath, ['--import', 'tsx', join(root, 'scripts/sdk-pack', script), built], root);
+  const pin = JSON.parse(readFileSync(join(root, 'scripts/sdk-pack', pinFile), 'utf8'));
+  assert.equal(sha256(join(built, 'pack.manifest.json')), pin.manifestSha256, `${venue}: the built pack differs from its committed pin`);
+  assert.ok(packTable.includes(`packId: '${pin.packId}'`) && packTable.includes(`id: '${pin.packId.replace('@', '-')}'`) && packTable.includes(`manifestSha256: '${pin.manifestSha256}'`), `bundledPackTable.ts must pin ${pin.packId} at ${pin.manifestSha256}`);
+  for (const path of ['pack.manifest.json', ...pin.resources.map((r) => r.path)]) {
+    if (path === 'map/ijtema-basemap.pmtiles') { assert.equal(sha256(join(built, path)), provenance.archive.sha256); continue; }
+    const asset = `${path.replaceAll('/', '__')}.packfile`;
+    assert.ok(packTable.includes(`'${path}': require('./assets/packs/${venue}/${asset}')`), `bundledPackTable.ts must list ${path} for ${venue}`);
+    mkdirSync(join(consumer, 'assets/packs', venue), { recursive: true });
+    cpSync(join(built, path), join(consumer, 'assets/packs', venue, asset));
+    bundledPackFiles.push([`${venue}/${path}`, sha256(join(built, path))]);
+  }
+}
 const manifest = JSON.parse(readFileSync(join(consumer, 'package.json'), 'utf8'));
 const pins = { ...manifest.dependencies, ...manifest.devDependencies };
 delete pins['@muslim-ummah/offline-navigation'];
@@ -89,6 +109,7 @@ for (const platform of ['android', 'ios']) {
   assert.ok(sources.some((s) => s.endsWith('node_modules/@muslim-ummah/offline-navigation/dist/domain/navigation/NavigationController.js')), `${platform}: the packed controller is not in the bundle`);
   assert.ok(sources.some((s) => s.endsWith('node_modules/@muslim-ummah/offline-navigation/dist/maplibre/MapLibreNavigationMap.js')), `${platform}: the packed MapLibre adapter is not in the bundle`);
   assert.ok(files.some((f) => !f.endsWith('.map') && statSync(f).size === provenance.archive.bytes && sha256(f) === provenance.archive.sha256), `${platform}: the basemap archive is not among the exported assets`);
+  for (const [name, hash] of bundledPackFiles) assert.ok(files.some((f) => !f.endsWith('.map') && sha256(f) === hash), `${platform}: ${name} is not among the exported assets`);
   assert.ok(sources.every((s) => s.startsWith(consumer + sep)), `${platform}: a module came from outside the consumer: ${sources.find((s) => !s.startsWith(consumer + sep))}`);
   assert.ok(!sources.some((s) => s.startsWith(root + sep)), `${platform}: repository source leaked into the bundle`);
   const roots = (name) => new Set(sources.filter((s) => s.includes(`/node_modules/${name}/`)).map((s) => s.slice(0, s.indexOf(`/node_modules/${name}/`))));

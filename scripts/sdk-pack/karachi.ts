@@ -16,7 +16,7 @@ import { IJTEMA_GATES } from '../../src/data/ijtema/gates';
 import { MAJOR_GATE_IDS } from '../../src/data/ijtema/gateMeta';
 import { IJTEMA_VENUE_SOURCE } from '../../src/data/ijtema/venueAdapter';
 import type { LocalizedLabel } from '../../src/data/ijtema/types';
-import { compilePack, type CompiledPack, type PackBuildSpec } from './compile';
+import { compilePack, pinFor, type CompiledPack, type PackBuildSpec } from './compile';
 
 const REPO = resolve(__dirname, '../..');
 const BASEMAP = join(REPO, 'assets/offline-map/ijtema-basemap.pmtiles');
@@ -120,10 +120,7 @@ if (require.main === module) {
   const [out, flag] = process.argv.slice(2);
   if (!out) { console.error('usage: karachi.ts <outDir> [--write-pin]'); process.exit(2); }
   buildKarachiPack(resolve(out)).then((pack) => {
-    const pin = {
-      packId: pack.manifest.packId, manifestSha256: pack.manifestSha256, manifestBytes: Buffer.byteLength(pack.manifestText),
-      resources: pack.manifest.resources.map((r) => ({ path: r.path, kind: r.kind, bytes: r.bytes, sha256: r.sha256 })),
-    };
+    const pin = pinFor(pack);
     if (flag === '--write-pin') writeFileSync(KARACHI_PIN_FILE, json(pin));
     console.log(JSON.stringify(pin));
   }, (e) => { console.error(e); process.exit(1); });

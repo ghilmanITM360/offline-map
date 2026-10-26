@@ -175,3 +175,11 @@ export const compilePack = async (dir: string, spec: PackBuildSpec, options: Com
   hasher.update(new TextEncoder().encode(manifestText));
   return { manifest: parsed.manifest, manifestText, manifestSha256: hasher.digestHex() };
 };
+
+/** What an app ships to authenticate a bundled pack without a signature: the manifest digest, plus the per-file facts for review. */
+export const pinFor = (pack: CompiledPack) => ({
+  packId: pack.manifest.packId,
+  manifestSha256: pack.manifestSha256,
+  manifestBytes: new TextEncoder().encode(pack.manifestText).length,
+  resources: pack.manifest.resources.map((r) => ({ path: r.path, kind: r.kind, bytes: r.bytes, sha256: r.sha256 })),
+});
