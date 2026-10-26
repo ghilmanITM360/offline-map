@@ -38,5 +38,24 @@
   "decisions": [
     "NavigationViewModelV2 is not replaced by NavigationController (docs/sdk/C4_PARITY_MATRIX.md)",
     "no signing keys fabricated; imported/remote packs refused"
-  ]
+  ],
+  "third_handoff": {
+    "date": "2026-10-27",
+    "completed": [
+      "C5.2 compiler and Karachi pack",
+      "C5.3 Expo adapter, bundled-pack runtime, self-test, pack-driven consumer, native iOS/Android acceptance (simulator/emulator)",
+      "iOS continuous-location root cause and adapter fix",
+      "docs and FINAL_GO_NO_GO.md",
+      "bundle c7-bundle-c5"
+    ],
+    "next": [
+      "C4 Ijtema OutsideRouteProvider and venue places (owner/device)",
+      "C6 reviewed Urdu, AX5, dark basemap, GateChooser",
+      "native hashing for cold start",
+      "owner-gated items"
+    ],
+    "tarballSha256": "f2cf114c563bd7af4948a64d121147ce6204c946b32d74b2b985a7175f9da4ba",
+    "jest": "214 suites / 2199 tests",
+    "verdict": "NO-GO unrestricted; GO controlled pilot"
+  }
 }

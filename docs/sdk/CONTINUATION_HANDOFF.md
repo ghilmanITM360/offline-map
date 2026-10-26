@@ -1,4 +1,18 @@
-# SDK continuation handoff (written 2026-10-26, #392)
+# SDK continuation handoff (written 2026-10-27 (third hand-off; supersedes the second where they differ), #392)
+
+## Third hand-off: state after C5.2, C5.3 and the iOS location investigation
+
+- HEAD == origin at `f8f66cc…` plus this hand-off commit (verify with `git rev-parse HEAD` / `git ls-remote origin refs/heads/feat/muslim-ummah-offline-navigation-sdk`). Stashes, Codex worktree and `integration/ijtema-clean-baseline` untouched.
+- **Done and pushed:** C5.2 compiler + real Karachi pack (`scripts/sdk-pack/compile.ts`, `karachi.ts`, `demo.ts`, pins `*.pin.json`, SDK `parsePackVenueData`); C5.3 Expo adapter + bundled-pack runtime + on-device self-test + pack-driven consumer; iOS continuous-location root cause + adapter fix (`docs/sdk/C3_IOS_CONTINUOUS_LOCATION.md`); docs refresh; `FINAL_GO_NO_GO.md`.
+- **Verification at the final commit:** full Jest 214 suites / 2,199 tests; full `npm test` exit 0 (before only test-timeout edits); tsc, eslint, `test:sdk-exports`, `test:sdk-headless` (83), `test:sdk-package`, `test:sdk-consumer` (45 consumer tests, Android + iOS bundles); tarball `f2cf114c563bd7af4948a64d121147ce6204c946b32d74b2b985a7175f9da4ba` (the repo's reproducible pack at C5.3; the location-adapter fix is in the consumer, not the tarball); bundle `c7-bundle-c5/` (45 files, `shasum -c` clean) under `~/Documents/offline-map-audits/offline-sdk-b7-b10-master-continuation-2026-10-24/`.
+- **Native evidence** (same folder, `c5-native/`): iOS screenshots + device file hashes + build logs, Android APK `df54ad82…b0c` + screenshots, `ios-location/` logs. Builds were made from scratch consumers under `/private/tmp/claude-501/c53c` (disposable, ~several GB: delete).
+- **Traps found this session:** expo-file-system on iOS will not read a packaged asset in place (copy first); `simctl location run` takes a scenario name, a route is `simctl location <udid> start --speed=3 --interval=1 lat,lng lat,lng`; every `simctl location` change makes Core Location raise `kCLErrorLocationUnknown`; macOS `sed -i` needs `''`; Android `ENTRY_FILE` must be relative (`index.js`) while iOS needs the absolute path; the import-guard regexes read a quoted `from` as an import (`PackVenueData.ts` uses a backtick); full-suite Jest needs explicit timeouts on real-filesystem tests.
+- **Not done:** C4 host delegation beyond C4.3-a (Ijtema `OutsideRouteProvider` over `V2DirectionsService.calculateHybridPreview`, venue places for rastas/facilities/special routes); C6 (reviewed Urdu copy, iOS AX5 panel height, dark basemap, `expo-system-ui`, `GateChooser` composition, voice switch, VoiceOver/TalkBack); native hashing or verified-once marker to cut cold-start time; upstream report of the expo-location defect (needs owner approval to publish).
+- **Owner-gated:** physical devices and real walking (including the iOS continuous-location path on a real iPhone), airplane-mode cold start, signing scheme and keys (imported/remote packs stay refused), survey-data redistribution terms, Gate 18/19 survey, external security review, publishing decision.
+- Usage at this hand-off: five-hour about 78%, weekly about 49%; context about 58%.
+
+---
+
 
 Branch `feat/muslim-ummah-offline-navigation-sdk` on the Home Mac (`Ghilmans-Laptop.local`), checkout `/Users/ghilmankhan/workprojects/offline-map`.
 Sole writer: the Claude implementation session. Codex is reserved for later independent QA. No other worktree is used; the Codex
