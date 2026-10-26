@@ -15,6 +15,9 @@ import {
 import { compilePack, PackCompileError, type PackBuildSpec } from '../../scripts/sdk-pack/compile';
 import { createNodePackFileSystem } from '../../scripts/sdk-pack/nodePackFileSystem';
 
+// Real-filesystem tests (fsync, rename, directory trees) slow down badly when the whole suite runs in parallel; assertions are unchanged.
+jest.setTimeout(60_000);
+
 const nodeSha = (b: Uint8Array | string): string => createHash('sha256').update(b).digest('hex');
 let work: string;
 beforeEach(() => { work = mkdtempSync(join(tmpdir(), 'sdk-compile-')); });

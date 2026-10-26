@@ -13,6 +13,9 @@ import { demoVenue } from '../../examples/expo-consumer/demoVenue';
 import { DEMO_PIN_FILE, buildDemoPack } from '../../scripts/sdk-pack/demo';
 import { buildKarachiPack } from '../../scripts/sdk-pack/karachi';
 
+// Real-filesystem tests (fsync, rename, directory trees) slow down badly when the whole suite runs in parallel; assertions are unchanged.
+jest.setTimeout(60_000);
+
 let out: string;
 beforeEach(() => { out = mkdtempSync(join(tmpdir(), 'sdk-demo-pack-')); });
 afterEach(() => { rmSync(out, { recursive: true, force: true }); });

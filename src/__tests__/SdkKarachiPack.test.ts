@@ -16,6 +16,9 @@ import { IJTEMA_NAVIGATION_GRAPH_V2 } from '../data/ijtema/navigationGraph';
 import { IJTEMA_VENUE_SOURCE } from '../data/ijtema/venueAdapter';
 import { buildKarachiPack, KARACHI_PIN_FILE, KARACHI_PMTILES_SHA256 } from '../../scripts/sdk-pack/karachi';
 
+// Real-filesystem tests (fsync, rename, directory trees) slow down badly when the whole suite runs in parallel; assertions are unchanged.
+jest.setTimeout(60_000);
+
 const sha = (b: Uint8Array | string): string => createHash('sha256').update(b).digest('hex');
 let out: string;
 beforeEach(() => { out = mkdtempSync(join(tmpdir(), 'sdk-karachi-')); });

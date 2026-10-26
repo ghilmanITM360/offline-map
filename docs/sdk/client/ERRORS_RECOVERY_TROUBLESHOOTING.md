@@ -26,10 +26,20 @@ Each has a sentence in `copy.liveBlockers`. None of them end the journey: the pr
 - **Arrival:** latched; nothing can replace the route afterwards. **Exit:** always available and idempotent.
 - **`state.error`** is one of `unknown_place`, `no_route`, `route_failed` (retry offered for failures); the screen also handles "same place" and "choose a start" itself.
 
+## Packs
+
+- `No verified offline map pack is available (<pack>: <code> <message>)`: a bundled pack failed verification and nothing unverified is used.
+  `asset-digest-mismatch`: the packaged manifest is not the one pinned in this build (rebuild the app). `asset-unreadable`: the packaged file
+  could not be read (on iOS expo-file-system refuses to read an asset in place; copy it first). `resource-*`: a copied file is wrong; Retry re-copies
+  it from the app. `copy-failed`: storage failed mid-copy; free space and retry. A half-copied pack is never used.
+- `signature-required` on install: imported/remote packs are refused until a trusted signing key exists. Do not bypass it.
+- Cold start takes several seconds: every bundled file is hashed in JavaScript at each start (see the security report, limitation 5).
+
 ## Map and basemap
 
 - Missing, partial or corrupt archive → install replaces it from the bundle; if that fails pass `archiveUri: null`
-  (plain canvas + "directions still work"); offer retry. Verified on iOS (corrupt same-size file and deleted file both healed).
+  (plain canvas + "directions still work"); offer retry. With the pack runtime a pack that fails verification does not open at all (venue and
+  map are verified as a unit); Retry re-copies it. Verified on iOS (a bit-flipped graph and a deleted archive were both repaired at the next start).
 - A failed style load reports `onAvailabilityChange(false)`; the route still draws over the canvas.
 
 ## Troubleshooting

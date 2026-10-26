@@ -16,6 +16,9 @@ import {
 import { createNodePackFileSystem } from '../../scripts/sdk-pack/nodePackFileSystem';
 import { sampleManifest } from '../../scripts/sdk-headless/packChecks';
 
+// Real-filesystem tests (fsync, rename, directory trees) slow down badly when the whole suite runs in parallel; assertions are unchanged.
+jest.setTimeout(60_000);
+
 const nodeSha = (b: Uint8Array | string): string => createHash('sha256').update(b).digest('hex');
 
 describe('createSha256 / sha256Hex', () => {

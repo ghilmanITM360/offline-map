@@ -10,7 +10,8 @@ Anything not listed is untested; widen only after testing.
 | React Native | 0.81.5 (New Architecture) | Hermes |
 | Expo | 54.0.37 | development/release builds; not Expo Go |
 | `@maplibre/maplibre-react-native` | 11.5.0 | optional peer, `/maplibre` only |
-| `expo-location` | 19.0.8 | reference adapter; no iOS accuracy-authorization API |
+| `expo-location` | 19.0.8 | reference adapter; no iOS accuracy-authorization API; ends a watch on the first Core Location error (the adapter restarts it) |
+| `expo-file-system` | 19.0.24 | pack adapter; object API (`File`, `Directory`, `FileHandle`); cannot read packaged assets in place on iOS, no fsync, no atomic file replace |
 | `expo-asset` / `expo-file-system` | 12.0.13 / 19.0.24 | basemap installation |
 | `react-native-safe-area-context` / `expo-status-bar` | 5.6.2 / 3.0.9 | insets and system bars |
 | TypeScript | 5.9.3 | `.d.ts` consumed with `strict` |
@@ -26,13 +27,15 @@ Anything not listed is untested; widen only after testing.
 | Offline routing, steps, progress, reroute, arrival | yes | yes | yes (simulated GPS) | yes (simulated GPS + emulator GPS) | **no** |
 | Manual Guide / ready-made screen | yes | yes | yes | yes | **no** |
 | Offline MapLibre rendering of local PMTiles | mocked | n/a | yes | yes (needs `-gpu host`) | **no** |
-| Device location adapter | mocked | yes | first fix only (see below) | yes (permission, deny, fix, walk, arrival) | **no** |
-| iOS continuous location updates | n/a | n/a | **not proven** (watcher delivered one callback) | n/a | **no** |
+| Device location adapter | mocked | yes | yes (permission, fix, 25-fix simulated walk to arrival through real expo-location callbacks) | yes (permission, deny, fix, walk, arrival) | **no** |
+| iOS continuous location updates | restart logic tested | n/a | **yes, with the adapter's restart** (expo-location ends a watch on the first transient `kCLErrorLocationUnknown`; `docs/sdk/C3_IOS_CONTINUOUS_LOCATION.md`) | n/a | **no** |
+| Pack store on the platform filesystem (copy, verify, replace, rename, rollback, recovery, pins) | Node + test double, kill sweeps | n/a | **yes** (self-test 10/10) | **yes** (self-test 10/10) | **no** |
+| Bundled Karachi pack served to the map and router | yes | yes | yes | yes | **no** |
 | RTL (Urdu locale) | yes | n/a | yes | yes | **no** |
 | Font scaling | structure only | n/a | AX5 layout works, panel tall | scale 2.0 ok | **no** |
 | VoiceOver / TalkBack | structure only | n/a | **no** | **no** | **no** |
 | Whole-device airplane mode | n/a | n/a | **no** | **no** | **no** |
 | Real GPS walking | n/a | n/a | **no** | **no** | **no** |
 
-Bundle facts (consumer, production Hermes): Android 736 modules / 1.30 MB, iOS 738 modules / 1.30 MB; one React, one React Native,
+Bundle facts (consumer, production Hermes): Android 759 modules / 1.34 MB, iOS 761 modules / 1.34 MB (C5.3 consumer, plus the venue-pack assets); one React, one React Native,
 one MapLibre; every module from the consumer's `node_modules`, none from this repository.
