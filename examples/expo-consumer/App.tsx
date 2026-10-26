@@ -59,7 +59,7 @@ function Consumer() {
           bottomInset={insets.bottom}
         />
         {basemap.status === 'failed' ? <Button title="Retry offline map" accessibilityLabel="Retry offline map" onPress={retry} /> : null}
-        <DemoGps location={location} />
+        <View style={{ paddingBottom: insets.bottom }}><DemoGps location={location} /></View>
       </View>
     </NavigationProvider>
   );

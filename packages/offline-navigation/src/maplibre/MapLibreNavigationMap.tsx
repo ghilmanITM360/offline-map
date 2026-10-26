@@ -36,7 +36,10 @@ export interface MapLibreNavigationMapOptions {
   initialCenter: VenueCoordinate;
   initialZoom: number;
   colors?: Partial<MapLibreNavigationMapColors>;
-  /** Space the camera keeps clear of the screen's bottom panel, dp. Default 300. */
+  /**
+   * Space the camera keeps clear at the bottom edge of the MAP VIEW, dp. `NavigationScreen` lays the map out above its panel, so
+   * this only clears the Recenter button (default 56); raise it only if the host overlays its own panel on the map.
+   */
   bottomPadding?: number;
   /** Keeps the OpenStreetMap attribution (bottom-left) clear of the panel and the navigation bar, dp. Default 8. */
   attributionBottomInset?: number;
@@ -54,13 +57,13 @@ const emptyCollection = { type: 'FeatureCollection', features: [] } as const;
  * render, so the component identity stays stable.
  */
 export function createMapLibreNavigationMap(options: MapLibreNavigationMapOptions): React.ComponentType<NavigationMapProps> {
-  const { venue, archiveUri, archiveZoom, initialCenter, initialZoom, bottomPadding = 300, attributionBottomInset = 8, followZoom = 17 } = options;
+  const { venue, archiveUri, archiveZoom, initialCenter, initialZoom, bottomPadding = 56, attributionBottomInset = 8, followZoom = 17 } = options;
   const colors = { ...DEFAULT_MAP_COLORS, ...options.colors };
   const places = placePoints(venue);
   const placeData = placeCollection(places);
   const mapStyle = buildOfflineBasemapStyle(archiveUri, archiveZoom, Platform.OS);
   const initialViewState = { center: [initialCenter.lng, initialCenter.lat] as [number, number], zoom: initialZoom };
-  const padding = { top: 64, right: 40, bottom: bottomPadding, left: 40 };
+  const padding = { top: 48, right: 40, bottom: bottomPadding, left: 40 };
   const circle = (id: string, role: string, color: string, radius: number, stroke: number) => (
     <Layer key={id} id={id} type="circle" filter={['==', ['get', 'role'], role] as never}
       paint={{ 'circle-color': color, 'circle-radius': radius, 'circle-stroke-color': colors.halo, 'circle-stroke-width': stroke } as never} />

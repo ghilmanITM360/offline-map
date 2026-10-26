@@ -67,6 +67,17 @@ describe('createMapLibreNavigationMap', () => {
     expect(mockSetStop).toHaveBeenCalledWith(expect.objectContaining({ bounds: [67.0, 24.9, 67.01, 24.91], bearing: 0, pitch: 0 }));
   });
 
+  it('reserves only a Recenter-sized strip below the route: the screen already lays the map out above its panel', async () => {
+    const Map = createMapLibreNavigationMap(options);
+    const api = await render(<Map {...base} route={route} originId="lobby" destinationId="hall" />);
+    await load(api);
+    expect(mockSetStop).toHaveBeenLastCalledWith(expect.objectContaining({ padding: { top: 48, right: 40, bottom: 56, left: 40 } }));
+    const Overlay = createMapLibreNavigationMap({ ...options, bottomPadding: 300 });
+    const overlay = await render(<Overlay {...base} route={route} originId="lobby" destinationId="hall" />);
+    await load(overlay);
+    expect(mockSetStop).toHaveBeenLastCalledWith(expect.objectContaining({ padding: expect.objectContaining({ bottom: 300 }) }));
+  });
+
   it('follows the snapped walker only while live, and recenter() reapplies the current framing', async () => {
     const Map = createMapLibreNavigationMap({ ...options, followZoom: 17 });
     const handle = React.createRef<NavigationMapHandle>();
