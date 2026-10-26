@@ -1,6 +1,7 @@
-import React, { useEffect, useMemo, useRef } from 'react';
-import { Button, I18nManager, Platform, StatusBar, StyleSheet, View, useColorScheme } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ActivityIndicator, Button, I18nManager, Platform, StatusBar, StyleSheet, View, useColorScheme } from 'react-native';
 import { createNavigationController } from '@muslim-ummah/offline-navigation';
+import { createMapLibreNavigationMap } from '@muslim-ummah/offline-navigation/maplibre';
 import {
   createDefaultNavigationTheme,
   ENGLISH_NAVIGATION_SCREEN_COPY,
@@ -8,12 +9,13 @@ import {
   NavigationScreen,
   useNavigationState,
 } from '@muslim-ummah/offline-navigation/ui';
-import { demoVenue, describeDemoPlace } from './demoVenue';
-import { SketchMap } from './SketchMap';
+import { BASEMAP } from './basemap';
+import { installKarachiBasemap } from './basemapExpo';
+import { DEMO_CENTER, demoVenue, describeDemoPlace } from './demoVenue';
 import { createSimulatedLocation, type SimulatedLocation } from './simulatedLocation';
 
-// Everything the host owns is here: the venue, place names, map, location service, language, theme and safe area.
-// The ready-made screen owns the journey.
+// Everything the host owns is here: the venue, place names, the basemap file, the location service, language, theme and
+// safe area. The ready-made screen owns the journey; the SDK's MapLibre adapter owns the map.
 export default function App() {
   const isRTL = I18nManager.isRTL;
   const colorScheme = useColorScheme() === 'dark' ? 'dark' : 'light';
@@ -22,6 +24,16 @@ export default function App() {
     return { location, controller: createNavigationController({ venue: demoVenue, location, now: Date.now }) };
   }, []);
   const theme = useMemo(() => createDefaultNavigationTheme({ isRTL, colorScheme }), [isRTL, colorScheme]);
+  const { basemap, retry } = useBasemap();
+  // Created once per archive so the map component keeps a stable identity; a missing archive draws a plain canvas and the
+  // screen tells the user that directions still work.
+  const archiveUri = basemap.status === 'ready' ? basemap.uri : null;
+  const MapComponent = useMemo(() => createMapLibreNavigationMap({
+    venue: demoVenue, archiveUri, archiveZoom: BASEMAP.zoom, initialCenter: DEMO_CENTER, initialZoom: 17,
+    attributionBottomInset: Platform.OS === 'ios' ? 34 : 8,
+  }), [archiveUri]);
+
+  if (basemap.status === 'loading') return <View style={styles.loading}><ActivityIndicator accessibilityLabel="Preparing the offline map" /></View>;
   return (
     <NavigationProvider controller={controller}>
       <View style={styles.root}>
@@ -31,13 +43,32 @@ export default function App() {
           theme={theme}
           isRTL={isRTL}
           describePlace={describeDemoPlace}
-          MapComponent={SketchMap}
+          MapComponent={MapComponent}
           bottomInset={Platform.OS === 'ios' ? 34 : 0}
         />
+        {basemap.status === 'failed' ? <Button title="Retry offline map" accessibilityLabel="Retry offline map" onPress={retry} /> : null}
         <DemoGps location={location} />
       </View>
     </NavigationProvider>
   );
+}
+
+type Basemap = { status: 'loading' } | { status: 'ready'; uri: string } | { status: 'failed' };
+
+function useBasemap() {
+  const [basemap, setBasemap] = useState<Basemap>({ status: 'loading' });
+  const [attempt, setAttempt] = useState(0);
+  useEffect(() => {
+    let current = true;
+    installKarachiBasemap().then(
+      (uri) => current && setBasemap({ status: 'ready', uri }),
+      () => current && setBasemap({ status: 'failed' }),
+    );
+    return () => { current = false; };
+  }, [attempt]);
+  // A retry keeps the screen (and the user's trip) up; only the map component is replaced once the archive is ready.
+  const retry = useCallback(() => setAttempt((n) => n + 1), []);
+  return { basemap, retry };
 }
 
 // Demo only: lets a simulator user walk the simulated GPS along the live route.
@@ -53,5 +84,6 @@ function DemoGps({ location }: { location: SimulatedLocation }) {
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
+  loading: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   screen: { flex: 1, paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight ?? 24) : 56 },
 });

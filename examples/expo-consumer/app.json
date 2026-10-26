@@ -3,6 +3,19 @@
     "name": "SDK Consumer",
     "slug": "sdk-expo-consumer",
     "version": "0.0.0",
-    "platforms": ["android", "ios"]
+    "platforms": [
+      "android",
+      "ios"
+    ],
+    "ios": {
+      "bundleIdentifier": "com.example.sdkconsumer"
+    },
+    "android": {
+      "package": "com.example.sdkconsumer"
+    },
+    "plugins": [
+      "@maplibre/maplibre-react-native"
+    ],
+    "userInterfaceStyle": "automatic"
   }
 }

@@ -1,9 +1,12 @@
 import type { VenueCoordinate, VenueDataSource, VenueNode } from '@muslim-ummah/offline-navigation';
 
-// SYNTHETIC demo venue: four corridor nodes, one turn, near (0, 0) in open ocean so it cannot be mistaken for a real
-// place. A real app supplies its own surveyed VenueDataSource; the SDK ships none.
-const M = 1 / 111_320; // degrees per metre, exact enough at the equator
-const at = (northM: number, eastM: number): VenueCoordinate => ({ lat: 0.001 + northM * M, lng: 0.001 + eastM * M });
+// SYNTHETIC demo venue: four corridor nodes and one turn. It is placed inside the bundled Karachi basemap only so the
+// map has something to draw under it; it is not a surveyed place and follows no real path. A real app supplies its own
+// surveyed VenueDataSource; the SDK ships none.
+const ORIGIN = { lat: 24.97, lng: 67.005 };
+const M_LAT = 1 / 111_320; // degrees per metre
+const M_LNG = M_LAT / Math.cos((ORIGIN.lat * Math.PI) / 180);
+const at = (northM: number, eastM: number): VenueCoordinate => ({ lat: ORIGIN.lat + northM * M_LAT, lng: ORIGIN.lng + eastM * M_LNG });
 
 const NODES: Record<string, VenueNode> = {
   a: { id: 'a', coordinate: at(0, 0) },
@@ -30,6 +33,9 @@ export const demoVenue: VenueDataSource = {
   placeIds: () => Object.keys(PLACES),
   getPlace: (id) => (id in PLACES ? { id, kind: 'room', nodeIds: [PLACES[id as keyof typeof PLACES]] } : undefined),
 };
+
+/** Where the map starts before there is a route: the middle of the venue. */
+export const DEMO_CENTER: VenueCoordinate = at(30, 70);
 
 /** Names are the host's: the SDK knows only ids. */
 export const describeDemoPlace = (place: { id: string }) => ({
