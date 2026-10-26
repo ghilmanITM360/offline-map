@@ -1,5 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Button, I18nManager, Platform, StatusBar, StyleSheet, View, useColorScheme } from 'react-native';
+import { ActivityIndicator, Button, I18nManager, StyleSheet, View, useColorScheme } from 'react-native';
+import { SafeAreaProvider, initialWindowMetrics, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { StatusBar } from 'expo-status-bar';
 import { createNavigationController } from '@muslim-ummah/offline-navigation';
 import { createMapLibreNavigationMap } from '@muslim-ummah/offline-navigation/maplibre';
 import {
@@ -15,8 +17,18 @@ import { DEMO_CENTER, demoVenue, describeDemoPlace } from './demoVenue';
 import { createSimulatedLocation, type SimulatedLocation } from './simulatedLocation';
 
 // Everything the host owns is here: the venue, place names, the basemap file, the location service, language, theme and
-// safe area. The ready-made screen owns the journey; the SDK's MapLibre adapter owns the map.
+// safe area and system bars. The ready-made screen owns the journey; the SDK's MapLibre adapter owns the map.
 export default function App() {
+  return (
+    <SafeAreaProvider initialMetrics={initialWindowMetrics}>
+      <StatusBar style="auto" />
+      <Consumer />
+    </SafeAreaProvider>
+  );
+}
+
+function Consumer() {
+  const insets = useSafeAreaInsets();
   const isRTL = I18nManager.isRTL;
   const colorScheme = useColorScheme() === 'dark' ? 'dark' : 'light';
   const { location, controller } = useMemo(() => {
@@ -30,21 +42,21 @@ export default function App() {
   const archiveUri = basemap.status === 'ready' ? basemap.uri : null;
   const MapComponent = useMemo(() => createMapLibreNavigationMap({
     venue: demoVenue, archiveUri, archiveZoom: BASEMAP.zoom, initialCenter: DEMO_CENTER, initialZoom: 17,
-    attributionBottomInset: Platform.OS === 'ios' ? 34 : 8,
-  }), [archiveUri]);
+    attributionBottomInset: insets.bottom + 8,
+  }), [archiveUri, insets.bottom]);
 
   if (basemap.status === 'loading') return <View style={styles.loading}><ActivityIndicator accessibilityLabel="Preparing the offline map" /></View>;
   return (
     <NavigationProvider controller={controller}>
       <View style={styles.root}>
         <NavigationScreen
-          style={styles.screen}
+          style={[styles.screen, { paddingTop: insets.top }]}
           copy={ENGLISH_NAVIGATION_SCREEN_COPY}
           theme={theme}
           isRTL={isRTL}
           describePlace={describeDemoPlace}
           MapComponent={MapComponent}
-          bottomInset={Platform.OS === 'ios' ? 34 : 0}
+          bottomInset={insets.bottom}
         />
         {basemap.status === 'failed' ? <Button title="Retry offline map" accessibilityLabel="Retry offline map" onPress={retry} /> : null}
         <DemoGps location={location} />
@@ -85,5 +97,5 @@ function DemoGps({ location }: { location: SimulatedLocation }) {
 const styles = StyleSheet.create({
   root: { flex: 1 },
   loading: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  screen: { flex: 1, paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight ?? 24) : 56 },
+  screen: { flex: 1 },
 });

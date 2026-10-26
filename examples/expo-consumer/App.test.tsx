@@ -24,6 +24,7 @@ jest.mock('@maplibre/maplibre-react-native', () => {
   };
 });
 
+jest.mock('react-native-safe-area-context', () => require('react-native-safe-area-context/jest/mock').default);
 const install = installKarachiBasemap as jest.Mock;
 const ARCHIVE = 'file:///documents/map/basemap-d5e6883d55d5.pmtiles';
 const press = (name: string) => fireEvent.press(screen.getByRole('button', { name }));
