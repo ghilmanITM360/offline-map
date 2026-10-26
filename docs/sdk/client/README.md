@@ -40,6 +40,7 @@ lifetime of the controller. The SDK decides the journey; you supply the world.
 - [API_REFERENCE.md](API_REFERENCE.md) — controller, provider/hooks, screen, theme, copy, map adapter.
 - [INTEGRATION_GUIDES.md](INTEGRATION_GUIDES.md) — Expo development build, bare React Native iOS and Android, MapLibre and offline basemap, location/GPS adapters and permissions.
 - [LOCALIZATION_THEME_RTL.md](LOCALIZATION_THEME_RTL.md) — languages, RTL, light/dark/system, font scaling, accessibility.
+- [TRANSLATION_REVIEW.md](TRANSLATION_REVIEW.md) — every Urdu / Roman Urdu string the sample shows, its source, and what the owner must supply (pending review).
 - [ERRORS_RECOVERY_TROUBLESHOOTING.md](ERRORS_RECOVERY_TROUBLESHOOTING.md) — every blocker/error state and what to do; known traps.
 - [COMPATIBILITY_MATRIX.md](COMPATIBILITY_MATRIX.md) — exact versions that were exercised.
 - [RELEASE_NOTES.md](RELEASE_NOTES.md) — what 0.1.0 contains and does not.

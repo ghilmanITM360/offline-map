@@ -86,22 +86,34 @@ fires. It owns no navigation state. Hooks: `useNavigationController()`, `useNavi
 
 | Prop | Meaning |
 | --- | --- |
-| `copy` (required) | Every string. `ENGLISH_NAVIGATION_SCREEN_COPY` is optional and separate; no Urdu/Roman Urdu ships. |
-| `theme` (required) | One object: colours, radius, icons, `Button`. `createDefaultNavigationTheme({ isRTL, colorScheme })` is ready-made (light/dark, View-drawn icons). |
+| `copy` (required) | Every string. `ENGLISH_NAVIGATION_SCREEN_COPY` is optional and separate; no Urdu/Roman Urdu ships. `copy.entryGate` (optional) is the wording of the entry-gate chooser: without it the screen never shows one. |
+| `theme` (required) | One object: colours, radius, icons, `Button`, and `colorScheme` (`'light' \| 'dark'`, default light) which picks the map's palette. `createDefaultNavigationTheme({ isRTL, colorScheme })` is ready-made (light/dark, View-drawn icons) and sets it. Changing the theme restyles the screen and the map **in place**: the trip, the step and the camera are untouched. |
 | `isRTL` (required) | Text flow direction only. The map and Recenter keep their physical layout. |
 | `describePlace` | Names a place or returns `null` to hide it; without it the place id is shown (never an invented name). |
 | `MapComponent` | Your map, or `createMapLibreNavigationMap(...)`. Omit for a directions-only screen. |
 | `allowLive` | Default true. |
-| `bottomInset` | Safe-area bottom inset for the arrival sheet. |
+| `bottomInset` | Safe-area bottom inset, default 0. Applied to the panel and the arrival sheet, so pass `insets.bottom` when the screen is the bottom-most thing on the page and `0` when your own bar sits below it and already clears the system bar. |
 | `onClose`, `onTripEnded('exit'\|'arrived')`, `style` | Navigation hooks; `style` goes on the root so you add safe-area padding. |
 
-The screen owns the journey UI (directory and search, start chooser, preview, Manual Guide, explicit Live, GPS weak/lost, reroute,
-arrival, Exit, Recenter) and holds no navigation state of its own.
+The screen owns the journey UI (directory and search, start chooser, preview, Manual Guide, explicit Live, entry-gate chooser, GPS weak/lost,
+reroute, arrival, Exit, Recenter) and holds no navigation state of its own.
+
+**Large text.** From a system font scale of 1.3 (`LARGE_TEXT_SCALE`) the panel changes shape instead of growing: in the directory the heading and
+search field scroll with the list (so the places can always be reached), and in the Manual Guide and Live the step controls, End and Exit are pinned under
+the scrolling content (testID `navigation-pinned`). Headings stop growing at 1.8x (`HEADING_MAX_FONT_SCALE`); instructions, rows and buttons scale
+fully and nothing is truncated. A system text-size change mid-journey keeps the trip, the step and the search text.
+
+**Entry gates.** When the controller's `outside` provider lists `entryGates` **and** `copy.entryGate` is set, the screen shows a chooser (a "Let the app
+choose" option plus one button per gate, the chosen one exposed as selected) in the preview, under a live candidate and while live. A choice is one
+`controller.selectEntryGate(id)` call (`null` for "Let the app choose"); a prepared live route is retired, while live the route is recomputed, and a new
+destination or Exit clears the choice. A gate the provider does not list (for example Gates 18 and 19, which have no verified connection) is not shown
+and cannot be chosen.
 
 ### `NavigationMapProps` (what a custom map receives)
 
 `phase`, `route`, `originId`, `destinationId`, `position` (snapped live position), `stepIndex`, `onAvailabilityChange(boolean)`,
-and a `ref` answering `recenter()`. A map renders what it is given and decides nothing.
+`colorScheme` (the theme's appearance; switching it must restyle in place, never remount or move the camera) and a `ref` answering `recenter()`.
+A map renders what it is given and decides nothing.
 
 ## Map: `@muslim-ummah/offline-navigation/maplibre`
 
@@ -119,3 +131,13 @@ The style has one local vector source and **no** glyphs, sprite or remote URL, s
 archive or a failed style load draws a plain canvas and reports `onAvailabilityChange(false)` (the screen then says directions still
 work). OpenStreetMap attribution stays visible. Expected source layers: `landuse`, `water`, `buildings`, `roads` (`class`: path,
 minor, major).
+
+**Dark map.** `colorScheme="dark"` (from the theme) swaps to `BASEMAP_COLORS_DARK` and `DEFAULT_MAP_COLORS_DARK`: the same layers and sources, the same
+single local archive, still no glyphs, sprite or remote URL. Roads and paths are at least 3:1 against the land and the route, origin, destination and
+walker at least 3:1 (tested). Both styles are built once; switching changes the style object and the overlay paints only. `colors` overrides the overlay for
+both appearances. `buildOfflineBasemapStyle(archive, zoom, platform, scheme)` takes the scheme as a fourth argument (default `'light'`, so existing hosts are
+unchanged).
+
+**Camera browsing.** While Live the map follows the walker. A deliberate pan or zoom (a MapLibre region change with `userInteraction: true`; the adapter's own
+camera moves are reported as programmatic and are ignored) stops the following and leaves the user's view alone; the walker marker keeps moving and the
+controller is untouched. Recenter, a new route or a new phase follows again.

@@ -30,6 +30,16 @@
 - Node and Expo `PackFileSystem` adapters; a pack-driven Expo consumer (two bundled packs, startup order install → recover → open, journey
   pin, on-device pack self-test). Imported/remote packs remain refused (no signing scheme or key exists).
 
+### Added in the final fix cycle (C6; Jest, iOS simulator and Android emulator evidence)
+
+- **Large text:** from a system font scale of 1.3 the directory heading scrolls with its list and the Manual Guide's Previous / Next and Live's End navigation are pinned under the scrolling content; headings cap at 1.8x. Found and fixed on the iPhone at AX5: stacked step buttons used `flex: 1` in a column and collapsed, so the large text overflowed onto the rows below.
+- **Appearance:** `theme.colorScheme` and a local dark basemap (`BASEMAP_COLORS_DARK`, `DEFAULT_MAP_COLORS_DARK`, no network reference) that restyle the map in place (no remount, no camera move). The sample app has System / Light / Dark.
+- **Entry-gate chooser** inside `NavigationScreen` (optional `copy.entryGate`; driven by the outside-route provider's gates; Gates 18/19 never appear).
+- **Camera browsing:** a deliberate pan or zoom while Live stops the follow; Recenter, a new route or phase follows again.
+- **Faster, still byte-exact verification:** a leaner SHA-256 (about 30% faster under Hermes) and an optional `digestFile` port (the example uses `expo-crypto`): warm start of the two sample packs 1,460 ms → about 200 ms on the iOS simulator.
+- `bottomInset` now applies to the panel as well as the arrival sheet; `RouteGuideCard` is split into `RouteGuideStep`, `RouteGuideStepper`, `RouteGuideLinks` (the card is unchanged).
+- Sample app: language picker (reviewed-pending Urdu / Roman Urdu), appearance picker, `expo-system-ui`, startup measurement tool.
+
 ### Fixed during native acceptance (all covered by tests)
 
 - Map adapter reserved the panel's height twice, shrinking the route to a speck on Android (default bottom padding 300 → 56).
@@ -44,7 +54,7 @@
   Ijtema host still has its own navigation authority and does **not** yet delegate to this controller (see `docs/sdk/C4_PARITY_MATRIX.md`).
 - Pack signing (an Ed25519 verifier, keys, rotation), archive extraction, download/import and a delivery channel. Imported/remote packs are
   therefore not accepted anywhere; only packs shipped inside the app, pinned by manifest digest, are used.
-- Background location, speech/voice instructions, a dark basemap, a gesture-detent bottom sheet, `GateChooser` composition.
+- Background location, speech/voice instructions (the Ijtema host's *Voice instructions* switch is not part of the SDK), a gesture-detent bottom sheet.
 - A published registry package, signing or notarisation. Nothing was published or delivered externally.
 
 ### Known issues

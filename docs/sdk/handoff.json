@@ -57,5 +57,49 @@
     "tarballSha256": "f2cf114c563bd7af4948a64d121147ce6204c946b32d74b2b985a7175f9da4ba",
     "jest": "214 suites / 2199 tests",
     "verdict": "NO-GO unrestricted; GO controlled pilot"
+  },
+  "fourth_handoff": {
+    "date": "2026-10-27",
+    "completed": [
+      "AX5/large-text layout",
+      "appearance and dark basemap",
+      "runtime language picker with reviewed-pending Urdu/Roman Urdu",
+      "entry-gate chooser",
+      "camera browsing",
+      "startup hashing speed-up (digestFile port, expo-crypto, SHA-256 rewrite)",
+      "native iOS simulator and Android emulator acceptance",
+      "final closure ledger and GO/NO-GO"
+    ],
+    "tarballSha256": "69a787931adef0ab4ce13d739f7af5c814267974f7166e118c6c51fdafc54a19",
+    "jest": "218 suites / 2269 tests",
+    "npmTest": "exit 0; 2400 differential PASS; 91506 golden pairs equal",
+    "consumerDriver": "61 tests; Android 768 modules, iOS 770 modules",
+    "startup": {
+      "iosSimulatorWarmMs": {
+        "before": 1460,
+        "after": "about 200"
+      },
+      "androidEmulatorRestartMs": {
+        "jsHash": 919,
+        "platformHash": 84
+      }
+    },
+    "verdict": "ENGINEERING IMPLEMENTATION COMPLETE FOR SDK 0.1.0 CONTROLLED PILOT - EXTERNAL ACCEPTANCE PENDING",
+    "ownerGated": [
+      "physical devices and walking",
+      "physical-iPhone continuous GPS",
+      "airplane-mode cold start",
+      "VoiceOver/TalkBack",
+      "reviewed Urdu/Roman Urdu",
+      "Gate 18/19 survey",
+      "venue-data redistribution rights",
+      "external security review",
+      "signing/key custody/publication"
+    ],
+    "deferred": [
+      "host (Ijtema) controller migration",
+      "speech output",
+      "Android live font-size change without restart"
+    ]
   }
 }

@@ -129,6 +129,10 @@ journey in it.
 - Reads stream through `FileHandle.readBytes` in 64 KiB chunks and always close the handle.
 - Keep packs under the document directory, not the cache directory (the OS may purge the cache).
 
+**Fast verification.** Hashing a pack in JS costs about a second on a phone (Hermes has no JIT). Pass `digestFile` to `createFileSystemPackStore` / the bundled installer to use the platform's SHA-256: the example installs `expo-crypto` (15.0.9 for Expo 54) and `nativeDigest.ts` reads a whole file (up to 8 MiB) and returns `{ bytes, sha256 }` of exactly what it hashed; anything it declines is hashed by the SDK in bounded chunks. Verification still fails on any byte difference.
+
+**Appearance and language in the example.** `expo-system-ui` (6.0.9 for Expo 54) is installed so `userInterfaceStyle: "automatic"` and the root background work on Android. The *System / Light / Dark* and *English / اردو / Roman Urdu* pickers sit above the venue and the journey: switching restyles in place and keeps the trip, the step, the map camera and the pack pin. Urdu and Roman Urdu use only the reviewed-pending wording in [TRANSLATION_REVIEW.md](TRANSLATION_REVIEW.md).
+
 **Imported and remote packs are refused.** Installing needs a signature from a trusted key; no signing scheme or key exists yet, so
 `createPackManager` is configured without a verifier and every `installStaged` fails with `signature-required`. SHA-256 proves
 integrity, not publisher authenticity. Do not enable `requireSignature: false` outside tests.

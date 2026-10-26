@@ -707,3 +707,7 @@ Commits `283c7e1` (C1a), `f7be850` (C1b-1), `b6b51db` (C1b-2), `634f539` (C1c); 
 - **C3 iOS continuous location:** root cause found by native + JS instrumentation: expo-location ends `watchPositionAsync` permanently on the first transient `kCLErrorLocationUnknown`; the reference adapter now restarts it. Simulator: 25/25 fixes to the SDK across two errors, arrival reached. Physical device unproven. `docs/sdk/C3_IOS_CONTINUOUS_LOCATION.md`.
 - **C4 / C6 not advanced (decision, not omission):** the Ijtema outside-route provider and venue-place slices need the host's hybrid-preview service and device acceptance; no host production flow was changed in C5. C6 items that need reviewed Urdu copy, a dark basemap design and real VoiceOver/TalkBack remain open.
 - **Evidence:** full Jest 214 suites / 2,199 tests; full `npm test` exit 0; tsc, eslint, `test:sdk-exports`, `test:sdk-headless` (83), `test:sdk-package`, `test:sdk-consumer` (45 consumer tests, Android + iOS bundles). Not run: physical devices, airplane mode, screen readers.
+
+## C6 final-fix cycle (2026-10-27)
+
+Large text (pinned controls, scrolling directory header, heading cap), appearance and the dark basemap, runtime language picker (reviewed-pending Urdu / Roman Urdu), entry-gate chooser, camera browsing, faster byte-exact verification (`digestFile` port, `expo-crypto`, SHA-256 rewrite). Simulator/emulator evidence only; the per-item status and the owner-gated list are in [FINAL_CLOSURE_LEDGER.md](FINAL_CLOSURE_LEDGER.md); verdict in [FINAL_GO_NO_GO.md](FINAL_GO_NO_GO.md).

@@ -14,6 +14,7 @@ Anything not listed is untested; widen only after testing.
 | `expo-file-system` | 19.0.24 | pack adapter; object API (`File`, `Directory`, `FileHandle`); cannot read packaged assets in place on iOS, no fsync, no atomic file replace |
 | `expo-asset` / `expo-file-system` | 12.0.13 / 19.0.24 | basemap installation |
 | `react-native-safe-area-context` / `expo-status-bar` | 5.6.2 / 3.0.9 | insets and system bars |
+| `expo-system-ui` / `expo-crypto` | 6.0.9 / 15.0.9 | Android appearance and root background; platform SHA-256 for pack verification (both optional for a host that does not need them) |
 | TypeScript | 5.9.3 | `.d.ts` consumed with `strict` |
 | Jest / jest-expo / RNTL | 29.7.0 / 54.0.18 / 14.0.1 | `jest-expo/android` preset for the consumer |
 | Node | 24.14 | build tooling only |
@@ -32,7 +33,10 @@ Anything not listed is untested; widen only after testing.
 | Pack store on the platform filesystem (copy, verify, replace, rename, rollback, recovery, pins) | Node + test double, kill sweeps | n/a | **yes** (self-test 10/10) | **yes** (self-test 10/10) | **no** |
 | Bundled Karachi pack served to the map and router | yes | yes | yes | yes | **no** |
 | RTL (Urdu locale) | yes | n/a | yes | yes | **no** |
-| Font scaling | structure only | n/a | AX5 layout works, panel tall | scale 2.0 ok | **no** |
+| Font scaling | structure + large-text layout | n/a | **AX5: directory scrolls, Manual Guide / Live controls pinned and reachable; live change keeps the journey** | **scale 2.0 from a cold start**; a live change recreates the activity (restart the app) | **no** |
+| System / Light / Dark, dark basemap | yes (palette contrast, in-place restyle) | n/a | **yes** (System follows the device, forced Light/Dark, mid-route change keeps route, step and camera) | **yes** (forced Dark keeps the system's light navigation bar) | **no** |
+| Camera browsing while Live | yes | n/a | **yes** | **yes** (emulator GPS) | **no** |
+| Pack verification speed | Node | n/a | **warm start 1,460 → ~200 ms; corruption repaired** | **919 → 84 ms (benchmark)** | **no** |
 | VoiceOver / TalkBack | structure only | n/a | **no** | **no** | **no** |
 | Whole-device airplane mode | n/a | n/a | **no** | **no** | **no** |
 | Real GPS walking | n/a | n/a | **no** | **no** | **no** |

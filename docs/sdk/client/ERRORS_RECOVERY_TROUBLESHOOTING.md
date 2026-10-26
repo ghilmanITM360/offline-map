@@ -33,7 +33,9 @@ Each has a sentence in `copy.liveBlockers`. None of them end the journey: the pr
   could not be read (on iOS expo-file-system refuses to read an asset in place; copy it first). `resource-*`: a copied file is wrong; Retry re-copies
   it from the app. `copy-failed`: storage failed mid-copy; free space and retry. A half-copied pack is never used.
 - `signature-required` on install: imported/remote packs are refused until a trusted signing key exists. Do not bypass it.
-- Cold start takes several seconds: every bundled file is hashed in JavaScript at each start (see the security report, limitation 5).
+- Start-up time: the sample app logs `[pack-startup]` and shows `Start: install … recover … open …` in the demo tools (plus *Measure startup (JS vs platform hashing)*). A start that hashes in JavaScript (`bytes … in N reads` non-zero) is the slow path: `expo-crypto` is missing, a file is over 8 MiB, or the platform digest failed (the SDK falls back and stays correct). Hashing on the platform takes about 0.1–0.2 s for the two sample packs.
+- A damaged copy is repaired at the next start (`1 repaired at start`): flipped bytes and deleted files are both detected through the same digest.
+- Android: after changing the system font size, restart the app. A live change recreates the activity and drops the journey.
 
 ## Map and basemap
 

@@ -15,8 +15,8 @@ open item is listed.
 | Plain-Node headless | 83 checks; the headless entrypoint loads with no React/React Native |
 | Tarball | contents allowlist, byte-reproducible (two packs), isolated runtime, declarations, shared peers pass |
 | Independent consumer install | fresh `npm install` of the `.tgz`, `tsc`, 45 Jest tests in 5 suites (Expo file-system adapter with a native-strict test double and kill-at-every-step sweeps, bundled-pack runtime, on-device self-test harness, the app, the location adapter), Android and iOS production bundles (both ship every pack file) pass; one React, one React Native, one MapLibre |
-| iOS simulator (iPhone 17 Pro, iOS 26.2) | native offline map, route, Manual Guide, explicit Live (simulated and device source), arrival, archive recovery, background/foreground, RTL, dark theme, AX5 layout; **continuous device-location updates not proven** |
-| Android emulator (API 36 arm64) | native offline map, route, Manual Guide, explicit Live (simulated and emulator GPS), arrival, permission prompt/deny, RTL, font scale 2.0, insets; **C5.3:** fresh install of the pack-driven consumer, bundled Karachi pack verified and served, venue switch, on-device pack self-test 10/10 (release APK `df54ad82…b0c`) |
+| iOS simulator (iPhone 17 Pro, iOS 26.2) | native offline map, route, Manual Guide, explicit Live (simulated and device source), arrival, archive recovery, background/foreground, RTL, dark theme, AX5 layout; **C6:** AX5 directory/guide/live controls reachable and a live text-size change keeps the journey, System/Light/Dark and the dark basemap restyling in place, camera browsing, Urdu RTL, pack corruption repaired, startup measured (1,460 → ~200 ms); **continuous device-location updates not proven** |
+| Android emulator (API 36 arm64) | native offline map, route, Manual Guide, explicit Live (simulated and emulator GPS), arrival, permission prompt/deny, RTL, font scale 2.0, insets; **C5.3:** fresh install of the pack-driven consumer, bundled Karachi pack verified and served, venue switch, on-device pack self-test 10/10 (release APK `df54ad82…b0c`); **C6:** 200% font from a cold start with pinned guide controls and clear navigation bar, forced Dark + Urdu RTL, location permission denied then granted, real emulator-GPS Live with camera browsing, startup 919 → 84 ms |
 | Physical device | **none** |
 | Real GPS walking | **none** |
 | Whole-device airplane mode | **none** (a simulator HTTP block is not airplane mode) |
@@ -65,15 +65,24 @@ Android corrupt-file recovery (release APK is not debuggable; the same logic is 
    reached the SDK across two errors, arrival reached; see `docs/sdk/C3_IOS_CONTINUOUS_LOCATION.md`). **Unproven on a physical iPhone.**
 3. iOS precision needs a host native check (provided as sample code); without it Live is refused honestly.
 4. The Ijtema host does not delegate to the SDK controller (`docs/sdk/C4_PARITY_MATRIX.md`). Outside-venue routing exists only as an injected, validated provider; no Ijtema provider is wired yet and none of the C4.2 additions has native evidence.
-5. Pack signing, import/download and a delivery channel do not exist. Packs are bundled and digest-pinned only. The pack runtime hashes
-   every bundled file in pure JavaScript at each start (~1 MB across the two sample packs): cold start on the iOS simulator takes several
-   seconds and the on-device self-test about ten; a native hasher or a verified-once marker is the upgrade path. The compiled pack lists the
-   owner-supplied survey data with redistribution terms not recorded in the repository (owner action).
-6. Only English copy ships; Urdu/Roman Urdu need reviewed text. The basemap has no dark palette. iOS AX5 panel height and Android
-   dark-system theming (`expo-system-ui`) are open. The directory scrolls under the Android navigation bar by design.
-7. The second sample venue is synthetic (the first is the real Karachi pack); the Android emulator needs `-gpu host`; Android corrupt-file
+5. Pack signing, import/download and a delivery channel do not exist. Packs are bundled and digest-pinned only. **Startup hashing (C6):** every
+   bundled file is still hashed at each start, but by the platform's SHA-256 (`expo-crypto`) through the store's optional `digestFile` port (files
+   up to 8 MiB; larger files and any failure fall back to the SDK's bounded-memory JS hash). Measured on the iPhone 17 Pro simulator, warm start of the
+   two sample packs: 1,460 ms before, about 200 ms now; Android emulator (API 36 arm64): 919 ms (JS hash, rewritten) against 84 ms. A verified-once marker was
+   deliberately **not** added: it would trust a path/size/time match instead of the bytes. Corruption (flipped bytes, a deleted file) is still detected and
+   repaired from the packaged copy at the next start (iOS simulator). The compiled pack lists the owner-supplied survey data with redistribution terms
+   not recorded in the repository (owner action).
+6. Only English copy ships; the sample app's Urdu / Roman Urdu are host-shipped wording reused only where the English matches word for word (26 of 88
+   strings, listed in [TRANSLATION_REVIEW.md](TRANSLATION_REVIEW.md), **pending owner review**); every other string stays English, so an Urdu screen mixes
+   scripts (and trailing punctuation of English text is placed by the right-to-left paragraph). Dark basemap, System/Light/Dark and AX5 handling exist (C6) at simulator/emulator level
+   only. On Android the forced-Dark window keeps the system's light navigation bar (dark icons, readable). **A live system font-size change on Android recreates the activity**
+   (the journey is lost and the new window can show text frames sized for the old scale); change the size and restart the app. iOS follows a live change.
+7. There is no speech output in SDK 0.1.0: no voice control is shown anywhere. The *Voice instructions* switch that exists in the original Ijtema host
+   Settings is that host's (workstream B).
+8. The second sample venue is synthetic (the first is the real Karachi pack); the Android emulator needs `-gpu host`; Android corrupt-file
    recovery was not exercised on a device (release APK not debuggable; the on-device self-test covers it on the real filesystem).
-8. Physical Gate 18/19 connectivity is surveyed-only and untouched.
+9. Physical Gate 18/19 connectivity is surveyed-only and untouched. The entry-gate chooser is driven by the host's outside-route provider; the sample app has no
+   street router, so it never shows one (Jest covers it against the real Karachi gates).
 
 ## Outstanding acceptance before an unrestricted release
 
