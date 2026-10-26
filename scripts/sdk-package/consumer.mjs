@@ -67,8 +67,17 @@ for (const [venue, script, pinFile] of [['karachi-ijtema', 'karachi.ts', 'karach
 const manifest = JSON.parse(readFileSync(join(consumer, 'package.json'), 'utf8'));
 const pins = { ...manifest.dependencies, ...manifest.devDependencies };
 delete pins['@muslim-ummah/offline-navigation'];
+// A package the repository does not itself install (the example's expo-system-ui) is pinned to what the installed Expo SDK declares compatible.
+const bundled = JSON.parse(readFileSync(join(root, 'node_modules/expo/bundledNativeModules.json'), 'utf8'));
+const compatible = (range, version) => {
+  const [rm, rn, rp] = range.replace(/^[~^]/, '').split('.').map(Number);
+  const [vm, vn, vp] = version.split('.').map(Number);
+  return range.startsWith('~') ? vm === rm && vn === rn && vp >= rp : vm === rm && (vn > rn || (vn === rn && vp >= rp));
+};
 for (const [name, version] of Object.entries(pins)) {
-  assert.equal(JSON.parse(readFileSync(join(root, 'node_modules', name, 'package.json'), 'utf8')).version, version, `${name} pin differs from the repository's resolved version`);
+  const installed = join(root, 'node_modules', name, 'package.json');
+  if (existsSync(installed)) assert.equal(JSON.parse(readFileSync(installed, 'utf8')).version, version, `${name} pin differs from the repository's resolved version`);
+  else assert.ok(bundled[name] && compatible(bundled[name], version), `${name}@${version} is not what Expo SDK ${bundled.expo ?? ''} bundles (${bundled[name]})`);
 }
 run('npm', ['install', '--ignore-scripts', '--no-audit', '--no-fund', '--prefer-offline'], consumer);
 

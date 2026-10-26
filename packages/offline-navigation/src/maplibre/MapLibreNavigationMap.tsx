@@ -25,6 +25,11 @@ export const DEFAULT_MAP_COLORS: MapLibreNavigationMapColors = {
   route: '#0B6B4D', routeCasing: '#FFFFFF', origin: '#2E7D32', destination: '#C62828', position: '#1D6FE0', place: '#6B6B6B', halo: '#FFFFFF',
 };
 
+/** The overlay on the dark basemap: a bright route over a dark casing, markers that stay visible on dark land. */
+export const DEFAULT_MAP_COLORS_DARK: MapLibreNavigationMapColors = {
+  route: '#5FD3A5', routeCasing: '#0B1511', origin: '#7BDC86', destination: '#FF7A7A', position: '#5AA9FF', place: '#9BA8A1', halo: '#E8EEEA',
+};
+
 export interface MapLibreNavigationMapOptions {
   /** The venue the controller routes over: its places are drawn as small dots. */
   venue: VenueDataSource;
@@ -35,6 +40,7 @@ export interface MapLibreNavigationMapOptions {
   /** Where the camera starts before there is a route. */
   initialCenter: VenueCoordinate;
   initialZoom: number;
+  /** Overrides for the default overlay colours; they replace the default for BOTH appearances. */
   colors?: Partial<MapLibreNavigationMapColors>;
   /**
    * Space the camera keeps clear at the bottom edge of the MAP VIEW, dp. `NavigationScreen` lays the map out above its panel, so
@@ -58,18 +64,21 @@ const emptyCollection = { type: 'FeatureCollection', features: [] } as const;
  */
 export function createMapLibreNavigationMap(options: MapLibreNavigationMapOptions): React.ComponentType<NavigationMapProps> {
   const { venue, archiveUri, archiveZoom, initialCenter, initialZoom, bottomPadding = 56, attributionBottomInset = 8, followZoom = 17 } = options;
-  const colors = { ...DEFAULT_MAP_COLORS, ...options.colors };
+  const lightColors = { ...DEFAULT_MAP_COLORS, ...options.colors };
+  const darkColors = { ...DEFAULT_MAP_COLORS_DARK, ...options.colors };
   const places = placePoints(venue);
   const placeData = placeCollection(places);
-  const mapStyle = buildOfflineBasemapStyle(archiveUri, archiveZoom, Platform.OS);
+  // Both styles are built once. Switching appearance swaps the style object only: the component, its camera and its sources stay mounted.
+  const styles = { light: buildOfflineBasemapStyle(archiveUri, archiveZoom, Platform.OS, 'light'), dark: buildOfflineBasemapStyle(archiveUri, archiveZoom, Platform.OS, 'dark') };
   const initialViewState = { center: [initialCenter.lng, initialCenter.lat] as [number, number], zoom: initialZoom };
   const padding = { top: 48, right: 40, bottom: bottomPadding, left: 40 };
-  const circle = (id: string, role: string, color: string, radius: number, stroke: number) => (
+  const circle = (colors: MapLibreNavigationMapColors, id: string, role: string, color: string, radius: number, stroke: number) => (
     <Layer key={id} id={id} type="circle" filter={['==', ['get', 'role'], role] as never}
       paint={{ 'circle-color': color, 'circle-radius': radius, 'circle-stroke-color': colors.halo, 'circle-stroke-width': stroke } as never} />
   );
 
-  return function MapLibreNavigationMap({ phase, route, originId, destinationId, position, onAvailabilityChange, ref }: NavigationMapProps) {
+  return function MapLibreNavigationMap({ phase, route, originId, destinationId, position, onAvailabilityChange, colorScheme = 'light', ref }: NavigationMapProps) {
+    const colors = colorScheme === 'dark' ? darkColors : lightColors;
     const cameraRef = useRef<CameraRef>(null);
     const readyRef = useRef(false);
     const latest = useRef({ phase, route, position });
@@ -78,11 +87,19 @@ export function createMapLibreNavigationMap(options: MapLibreNavigationMapOption
     const routeData = useMemo(() => routeCollection(route), [route]);
     const markerData = useMemo(() => markerCollection(places, originId, destinationId, position), [originId, destinationId, position]);
 
+    // True from the moment the user deliberately pans/zooms the map while live until Recenter (or a new route or phase). While true the
+    // map no longer chases the walker; the controller, the live route and the walker marker are unaffected.
+    const browsingRef = useRef(false);
+    const shapeRef = useRef({ route, phase });
+
     // Follows the walker while live, frames the whole route otherwise, and does nothing when there is nothing to frame.
-    const frame = useCallback(() => {
+    // `force` is the Recenter control: it always follows/frames again.
+    const frame = useCallback((force = false) => {
       const camera = cameraRef.current;
       if (!readyRef.current || !camera) return;
       const { phase: p, route: r, position: pos } = latest.current;
+      if (force) browsingRef.current = false;
+      else if (p === 'live' && browsingRef.current) return;
       const stop = p === 'live' && pos
         ? { center: [pos.lng, pos.lat], zoom: followZoom, duration: MOVE_MS, easing: 'ease' }
         : (() => {
@@ -93,8 +110,16 @@ export function createMapLibreNavigationMap(options: MapLibreNavigationMapOption
       if (stop) void Promise.resolve(camera.setStop(stop as never)).catch(() => undefined);
     }, []);
 
-    useImperativeHandle(ref, () => ({ recenter: frame }), [frame]);
-    useEffect(frame, [frame, route, phase, position]);
+    useImperativeHandle(ref, () => ({ recenter: () => frame(true) }), [frame]);
+    useEffect(() => {
+      // A different route or phase is a new thing to look at: follow again.
+      if (shapeRef.current.route !== route || shapeRef.current.phase !== phase) { browsingRef.current = false; shapeRef.current = { route, phase }; }
+      frame();
+    }, [frame, route, phase, position]);
+    // Only gestures count: MapLibre reports our own camera commands as programmatic (userInteraction false).
+    const onRegionWillChange = useCallback((event: { nativeEvent?: { userInteraction?: boolean } }) => {
+      if (event.nativeEvent?.userInteraction === true && latest.current.phase === 'live') browsingRef.current = true;
+    }, []);
 
     // No archive: the plain canvas still draws the route, but the user is told the basemap is missing.
     useEffect(() => { if (archiveUri === null) onAvailabilityChange(false); }, [onAvailabilityChange]);
@@ -102,7 +127,7 @@ export function createMapLibreNavigationMap(options: MapLibreNavigationMapOption
     return (
       <Map
         style={StyleSheet.absoluteFill}
-        mapStyle={mapStyle as never}
+        mapStyle={styles[colorScheme] as never}
         androidView="texture"
         logo={false}
         attribution
@@ -115,6 +140,7 @@ export function createMapLibreNavigationMap(options: MapLibreNavigationMapOption
           if (archiveUri !== null) onAvailabilityChange(true);
           frame();
         }}
+        onRegionWillChange={onRegionWillChange as never}
         onDidFailLoadingMap={() => onAvailabilityChange(false)}
       >
         <Camera ref={cameraRef} initialViewState={initialViewState} />
@@ -129,9 +155,9 @@ export function createMapLibreNavigationMap(options: MapLibreNavigationMapOption
             paint={{ 'line-color': colors.route, 'line-width': 5.5 } as never} />
         </GeoJSONSource>
         <GeoJSONSource id="sdk-markers" data={markerData as never}>
-          {circle('sdk-origin', 'origin', colors.origin, 8, 3)}
-          {circle('sdk-destination', 'destination', colors.destination, 9, 3)}
-          {circle('sdk-position', 'position', colors.position, 8, 3)}
+          {circle(colors, 'sdk-origin', 'origin', colors.origin, 8, 3)}
+          {circle(colors, 'sdk-destination', 'destination', colors.destination, 9, 3)}
+          {circle(colors, 'sdk-position', 'position', colors.position, 8, 3)}
         </GeoJSONSource>
       </Map>
     );

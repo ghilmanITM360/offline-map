@@ -44,6 +44,13 @@ export interface FileSystemPackStoreConfig {
   bundledRoot?: string;
   /** Hashing chunk size. Default 64 KiB; peak memory while hashing is about this. */
   chunkBytes?: number;
+  /**
+   * Optional faster SHA-256 of a whole file, e.g. the platform's native digest where it is much quicker than hashing in JS. It must read the
+   * file once and return the length and lowercase hex SHA-256 of exactly the bytes it hashed, or null to leave this file to the SDK's own
+   * bounded-memory streaming hash (the right answer for a file too large to hold in memory). A throw, a null or a malformed answer all fall
+   * back to streaming, so the port can only make verification faster: a wrong or missing digest still fails the manifest check.
+   */
+  digestFile?: (path: string) => Promise<{ bytes: number; sha256: string } | null>;
 }
 
 export interface FileSystemPackStore extends PackStore {
@@ -72,12 +79,27 @@ export const createFileSystemPackStore = (config: FileSystemPackStoreConfig): Fi
   const pointerPath = `${root}/pointer.json`;
   const dir = (ref: PackRef): string => `${ref.area === 'bundled' ? bundledRoot : `${root}/${ref.area}`}/${safeId(ref.id)}`;
 
+  const HEX_SHA256 = /^[0-9a-f]{64}$/;
+  const nativeDigest = async (full: string): Promise<{ bytes: number; sha256: string } | null> => {
+    if (!config.digestFile) return null;
+    try {
+      const answer = await config.digestFile(full);
+      if (!answer || !Number.isSafeInteger(answer.bytes) || answer.bytes < 0 || typeof answer.sha256 !== 'string') return null;
+      const sha256 = answer.sha256.toLowerCase();
+      return HEX_SHA256.test(sha256) ? { bytes: answer.bytes, sha256 } : null;
+    } catch {
+      return null;
+    }
+  };
+
   const reader = (ref: PackRef): PackFileReader => {
     const base = dir(ref);
     return {
       async stat(path) {
         const full = `${base}/${safeRelative(path)}`;
         if ((await fs.size(full)) === null) return null;
+        const fast = await nativeDigest(full);
+        if (fast) return fast;
         const hasher = createSha256();
         let bytes = 0;
         for await (const chunk of fs.readChunks(full, chunkBytes)) {

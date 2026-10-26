@@ -4,9 +4,10 @@
  */
 
 import React, { useMemo, useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { ArrivalCard } from './ArrivalCard';
 import { DirectionsHeader } from './DirectionsHeader';
+import { GateChooser } from './GateChooser';
 import { GpsSignalBanner } from './GpsSignalBanner';
 import { ManualLiveUpgradeCard, type ManualLiveUpgradeCardLabels } from './ManualLiveUpgradeCard';
 import { MapUnavailableBanner } from './MapUnavailableBanner';
@@ -16,12 +17,23 @@ import { PlaceDirectory, type PlaceDirectoryItem } from './PlaceDirectory';
 import { RerouteBanner } from './RerouteBanner';
 import { RerouteProgressCard } from './RerouteProgressCard';
 import { RouteEndpointRows } from './RouteEndpointRows';
-import { RouteGuideCard } from './RouteGuideCard';
+import { RouteGuideCard, RouteGuideLinks, RouteGuideStep, RouteGuideStepper } from './RouteGuideCard';
 import { describeRouteStep, formatDistance } from './RouteStepCopy';
 import { StartOptionCard } from './StartOptionCard';
 import { Text } from './Text';
 
 type PickerKind = 'origin' | 'destination';
+
+// From this system font scale the panel changes shape: the directory header scrolls with its list, and the step controls and Exit stay
+// pinned under the scrolling content (Previous / Next in the guide, End navigation while live; the guide's End link follows the step text),
+// so the controls are never buried below a screen of enlarged text. Scaling itself stays on.
+export const LARGE_TEXT_SCALE = 1.3;
+// Headings repeat what the rows already say, so they stop growing here; instructions, rows and buttons keep scaling fully.
+export const HEADING_MAX_FONT_SCALE = 1.8;
+
+const AUTOMATIC_GATE = '\u0000automatic'; // never a real gate id: ids are non-empty text without control characters
+
+type Stage = { body: React.ReactNode; footer?: React.ReactNode; scroll: boolean };
 
 // Each leaf has its own small theme type. The screen takes ONE theme and derives them, so a host styles one object.
 function deriveLeafThemes({ colors, icons, Button, radius, hitSlop }: NavigationScreenTheme) {
@@ -50,6 +62,13 @@ function deriveLeafThemes({ colors, icons, Button, radius, hitSlop }: Navigation
     },
     upgrade: { Card, Button, text: { color: colors.text, fontSize: 16, lineHeight: 22 }, spinnerColor: colors.brand, gap: 10 },
     gps: { colors: { fill: colors.warningFill, text: colors.warningText } },
+    gates: {
+      // The chooser's two variants map onto the screen's one Button.
+      Button: function GateButton({ variant, ...rest }: { label: string; accessibilityLabel: string; variant: 'secondary' | 'outline'; disabled?: boolean; selected?: boolean; onPress: () => void }) {
+        return <Button {...rest} variant={variant === 'secondary' ? 'brandTint' : 'outline'} />;
+      },
+      colors: { fill: colors.surfaceMuted, border: colors.border, title: colors.text },
+    },
     notice: { colors: info },
     mapBanner: { colors: info },
     rerouting: { colors: { fill: colors.brand, text: colors.onBrand } },
@@ -80,6 +99,7 @@ export function NavigationScreen({
   const [mapAvailable, setMapAvailable] = useState(true);
   const leaf = useMemo(() => deriveLeafThemes(theme), [theme]);
   const { colors, icons, Button } = theme;
+  const large = useWindowDimensions().fontScale >= LARGE_TEXT_SCALE;
 
   const places = controller.listPlaces();
   const presented = useMemo(() => {
@@ -137,37 +157,68 @@ export function NavigationScreen({
     const onBack = browsing ? onClose : closePicker;
     const title = origin ? copy.directory.originTitle : copy.directory.destinationTitle;
     const listed = presented.items.filter((item) => item.id !== destinationId);
+    const header = onBack ? (
+      <DirectionsHeader
+        title={title}
+        subtitle={origin ? copy.directory.originSubtitle : copy.directory.destinationSubtitle}
+        onBack={onBack}
+        focusKey={`directory:${kind}`}
+        backLabel={copy.directory.back}
+        isRTL={isRTL}
+        theme={leaf.header}
+        maxTitleFontScale={HEADING_MAX_FONT_SCALE}
+      />
+    ) : (
+      <View style={styles.plainHeader}>
+        <Text accessibilityRole="header" maxFontSizeMultiplier={HEADING_MAX_FONT_SCALE} style={[styles.plainTitle, text]}>{title}</Text>
+        <Text style={[styles.subtitle, text]}>{origin ? copy.directory.originSubtitle : copy.directory.destinationSubtitle}</Text>
+      </View>
+    );
+    const error = browsing && state.error ? <Text accessibilityLiveRegion="polite" style={[styles.subtitle, text, large && styles.bleedPad]}>{copy.trip.errors[state.error]}</Text> : null;
+    const places = (
+      <PlaceDirectory
+        items={browsing ? presented.items : listed}
+        query={query}
+        onQueryChange={setQuery}
+        onSelect={choose}
+        labels={copy.directory}
+        isRTL={isRTL}
+        theme={leaf.directory}
+        header={large ? <View style={styles.headerBleed}>{header}{error}</View> : undefined}
+      />
+    );
+    // Large text: the header is part of the list's own scroll, so the places can always be reached.
+    if (large) return <View style={styles.directoryLarge}>{places}</View>;
     return (
       <>
-        {onBack ? (
-          <DirectionsHeader
-            title={title}
-            subtitle={origin ? copy.directory.originSubtitle : copy.directory.destinationSubtitle}
-            onBack={onBack}
-            focusKey={`directory:${kind}`}
-            backLabel={copy.directory.back}
-            isRTL={isRTL}
-            theme={leaf.header}
-          />
-        ) : (
-          <View style={styles.plainHeader}>
-            <Text accessibilityRole="header" style={[styles.plainTitle, text]}>{title}</Text>
-            <Text style={[styles.subtitle, text]}>{origin ? copy.directory.originSubtitle : copy.directory.destinationSubtitle}</Text>
-          </View>
-        )}
+        {header}
         <View style={styles.directory}>
-          {browsing && state.error ? <Text accessibilityLiveRegion="polite" style={[styles.subtitle, text]}>{copy.trip.errors[state.error]}</Text> : null}
-          <PlaceDirectory
-            items={browsing ? presented.items : listed}
-            query={query}
-            onQueryChange={setQuery}
-            onSelect={choose}
-            labels={copy.directory}
-            isRTL={isRTL}
-            theme={leaf.directory}
-          />
+          {error}
+          {places}
         </View>
       </>
+    );
+  };
+
+  // The gates are the host's outside-route provider's; the screen only lists them and passes the choice on. A gate the provider does not list
+  // cannot be chosen (the controller ignores it), so a gate with no connection never appears here.
+  const gates = controller.listEntryGates();
+  const entryGates = (visible: boolean) => {
+    const gateCopy = copy.entryGate;
+    if (!visible || !gateCopy || gates.length === 0) return null;
+    return (
+      <View testID="entry-gate-chooser" style={styles.gateBleed}>
+        <GateChooser
+          title={gateCopy.title}
+          options={[
+            { id: AUTOMATIC_GATE, label: gateCopy.automatic, accessibilityLabel: gateCopy.automaticA11y },
+            ...gates.map((gate) => ({ id: gate.id, label: gate.label, accessibilityLabel: gateCopy.option(gate.label) })),
+          ]}
+          selectedId={state.entryGateId ?? AUTOMATIC_GATE}
+          onSelect={(id) => controller.selectEntryGate(id === AUTOMATIC_GATE ? null : id)}
+          theme={leaf.gates}
+        />
+      </View>
     );
   };
 
@@ -203,6 +254,7 @@ export function NavigationScreen({
           backLabel={copy.trip.back}
           isRTL={isRTL}
           theme={leaf.header}
+          maxTitleFontScale={HEADING_MAX_FONT_SCALE}
         />
         <View style={styles.content}>
           <RouteEndpointRows
@@ -243,6 +295,7 @@ export function NavigationScreen({
           ) : null}
           {allowLive && !candidate ? liveOption() : null}
           {allowLive && candidate ? upgradeCard('idle') : null}
+          {allowLive ? entryGates(true) : null}
         </View>
       </>
     );
@@ -270,40 +323,64 @@ export function NavigationScreen({
       theme={leaf.upgrade}
     />
   );
-  const guide = () => {
-    if (!route) return null;
+  const guide = (): Stage => {
+    if (!route) return { body: null, scroll: false };
     const upgradePhase = !confirming && !candidate ? 'idle' : requesting ? 'acquiring' : liveAttempt.status === 'blocked' ? 'failed' : 'confirming';
-    return (
-      <View style={styles.content}>
-        <Text accessibilityRole="header" style={[styles.plainTitle, text]}>{copy.trip.title(destination)}</Text>
-        <RouteGuideCard
-          step={describeRouteStep(route.steps[state.stepIndex], copy.routeStep, destination)}
-          stepIndex={state.stepIndex}
-          stepTotal={route.steps.length}
-          onPrevious={() => controller.previousStep()}
-          onNext={() => controller.nextStep()}
-          onLive={allowLive && !confirming ? () => setConfirmSession(state.sessionId) : undefined}
-          onEnd={() => endTrip('exit')}
-          labels={copy.guide}
-          isRTL={isRTL}
-          theme={leaf.guide}
-        />
-        {upgradeCard(upgradePhase)}
-        {confirming && blockerMessage ? <Text testID="navigation-live-message" accessibilityLiveRegion="polite" style={[styles.subtitle, text]}>{blockerMessage}</Text> : null}
-      </View>
-    );
+    const heading = <Text accessibilityRole="header" maxFontSizeMultiplier={HEADING_MAX_FONT_SCALE} style={[styles.plainTitle, text]}>{copy.trip.title(destination)}</Text>;
+    const guideProps = {
+      step: describeRouteStep(route.steps[state.stepIndex], copy.routeStep, destination),
+      stepIndex: state.stepIndex,
+      stepTotal: route.steps.length,
+      onPrevious: () => controller.previousStep(),
+      onNext: () => controller.nextStep(),
+      onLive: allowLive && !confirming ? () => setConfirmSession(state.sessionId) : undefined,
+      onEnd: () => endTrip('exit'),
+      labels: copy.guide,
+      isRTL,
+      theme: leaf.guide,
+    };
+    const message = confirming && blockerMessage ? <Text testID="navigation-live-message" accessibilityLiveRegion="polite" style={[styles.subtitle, text]}>{blockerMessage}</Text> : null;
+    if (large) {
+      return {
+        scroll: true,
+        body: (
+          <View style={styles.content}>
+            {heading}
+            <RouteGuideStep {...guideProps} />
+            <RouteGuideLinks {...guideProps} />
+            {upgradeCard(upgradePhase)}
+            {entryGates(confirming || !!candidate)}
+            {message}
+          </View>
+        ),
+        footer: <View style={styles.content}><RouteGuideStepper {...guideProps} /></View>,
+      };
+    }
+    return {
+      scroll: true,
+      body: (
+        <View style={styles.content}>
+          {heading}
+          <RouteGuideCard {...guideProps} />
+          {upgradeCard(upgradePhase)}
+          {entryGates(confirming || !!candidate)}
+          {message}
+        </View>
+      ),
+    };
   };
 
-  const liveGuidance = () => {
-    if (!route || !live) return null;
+  const liveGuidance = (): Stage => {
+    if (!route || !live) return { body: null, scroll: false };
     const step = route.steps[state.stepIndex];
     // While live, a step's distance is what is left of it, not its whole length.
     const described = describeRouteStep(step, copy.routeStep, destination);
     const distance = step.kind === 'arrive' ? null : formatDistance(live.maneuverDistanceM, copy.routeStep);
     const notice = live.notice === 'rerouted' ? copy.live.rerouted : live.notice === 'kept_route' ? copy.live.keptRoute : null;
-    return (
+    const exit = <Button label={copy.live.exit} variant="outline" onPress={() => endTrip('exit')} />;
+    const body = (
       <View style={styles.content}>
-        <Text accessibilityRole="header" style={[styles.plainTitle, text]}>{copy.trip.title(destination)}</Text>
+        <Text accessibilityRole="header" maxFontSizeMultiplier={HEADING_MAX_FONT_SCALE} style={[styles.plainTitle, text]}>{copy.trip.title(destination)}</Text>
         {live.rerouting ? (
           <RerouteProgressCard
             label={copy.live.rerouting}
@@ -329,19 +406,22 @@ export function NavigationScreen({
           <RerouteBanner message={notice} theme={leaf.notice} />
         ) : null}
         <Text style={[styles.subtitle, text]}>{copy.live.remaining(formatDistance(live.remainingM, copy.routeStep) ?? '', live.etaMinutes)}</Text>
-        <Button label={copy.live.exit} variant="outline" onPress={() => endTrip('exit')} />
+        {entryGates(true)}
+        {large ? null : exit}
       </View>
     );
+    // Large text: End navigation stays under the scrolling instruction instead of below it.
+    return large ? { body, footer: <View style={styles.content}>{exit}</View>, scroll: true } : { body, scroll: true };
   };
 
-  const stage = () => {
-    if (phase === 'browsing' || activePicker) return directory();
-    if (phase === 'preview') return preview();
+  const stage = (): Stage => {
+    if (phase === 'browsing' || activePicker) return { body: directory(), scroll: false };
+    if (phase === 'preview') return { body: preview(), scroll: true };
     if (phase === 'guide') return guide();
     if (phase === 'live') return liveGuidance();
-    return null; // arrived: the arrival sheet below owns the screen
+    return { body: null, scroll: false }; // arrived: the arrival sheet below owns the screen
   };
-  const scrolls = phase !== 'browsing' && !activePicker;
+  const { body, footer, scroll } = stage();
   const showRecenter = !!MapComponent && (phase === 'guide' || phase === 'live');
 
   return (
@@ -358,6 +438,7 @@ export function NavigationScreen({
             position={live?.snapped ?? null}
             stepIndex={state.stepIndex}
             onAvailabilityChange={setMapAvailable}
+            colorScheme={theme.colorScheme ?? 'light'}
           />
           {showRecenter ? (
             <Pressable testID="navigation-recenter" onPress={recenter} accessibilityRole="button" accessibilityLabel={copy.live.recenterA11y} style={styles.recenter}>
@@ -368,8 +449,9 @@ export function NavigationScreen({
         </View>
       ) : null}
       {MapComponent && !mapAvailable ? <MapUnavailableBanner message={copy.mapUnavailable} theme={leaf.mapBanner} /> : null}
-      <View testID="navigation-panel" style={[styles.panel, MapComponent ? styles.panelOverMap : styles.panelFull, { direction }]}>
-        {scrolls ? <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.scroll}>{stage()}</ScrollView> : stage()}
+      <View testID="navigation-panel" style={[styles.panel, MapComponent ? (large ? styles.panelOverMapLarge : styles.panelOverMap) : styles.panelFull, { direction, paddingBottom: bottomInset }]}>
+        {scroll ? <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.scroll}>{body}</ScrollView> : body}
+        {footer ? <View testID="navigation-pinned" style={styles.pinned}>{footer}</View> : null}
       </View>
       <ArrivalCard
         visible={phase === 'arrived'}
@@ -395,10 +477,18 @@ const makeStyles = ({ colors, radius }: NavigationScreenTheme) => StyleSheet.cre
   recenterText: { fontSize: 15, fontWeight: '700', color: colors.brand },
   panel: { backgroundColor: colors.surface, paddingTop: 12 },
   panelOverMap: { flexShrink: 1, maxHeight: '75%', borderTopLeftRadius: 20, borderTopRightRadius: 20 },
+  panelOverMapLarge: { flexShrink: 1, maxHeight: '80%', borderTopLeftRadius: 20, borderTopRightRadius: 20 },
   panelFull: { flex: 1 },
   scroll: { paddingBottom: 16 },
   content: { gap: 12, paddingHorizontal: 16 },
   directory: { flexShrink: 1, gap: 8, paddingHorizontal: 16 },
+  directoryLarge: { flexShrink: 1, paddingHorizontal: 16 },
+  // The list already pads its content by 16; the header and message carry their own 16, so they step out first.
+  headerBleed: { marginHorizontal: -16, gap: 8 },
+  // GateChooser brings its own 12 margin; the content column already pads by 16.
+  gateBleed: { marginHorizontal: -12 },
+  bleedPad: { paddingHorizontal: 16 },
+  pinned: { paddingTop: 8, paddingBottom: 8, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border, backgroundColor: colors.surface },
   plainHeader: { paddingHorizontal: 16, paddingBottom: 12, gap: 2 },
   plainTitle: { fontSize: 24, fontWeight: '800', color: colors.text },
   subtitle: { fontSize: 15, lineHeight: 21, color: colors.textSecondary },

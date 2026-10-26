@@ -4,7 +4,7 @@
  */
 
 import React, { useMemo } from 'react';
-import { FlatList, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { FlatList, Platform, Pressable, StyleSheet, TextInput, useWindowDimensions, View } from 'react-native';
 import type { NavigationIcon } from './NavigationScreenTypes';
 import { Text } from './Text';
 
@@ -40,6 +40,8 @@ export interface PlaceDirectoryProps {
   labels: PlaceDirectoryLabels;
   isRTL: boolean;
   theme: PlaceDirectoryTheme;
+  /** Content that scrolls away with the list, above the search field (large text: the screen's own header). */
+  header?: React.ReactNode;
 }
 
 /** Case, width and composition-insensitive text for matching; never changes what is displayed. */
@@ -58,32 +60,42 @@ export function filterPlaceItems<T extends PlaceDirectoryItem>(items: readonly T
 }
 
 const TARGET = 48;
+const INPUT_FONT_SIZE = 16;
 
 // Presentation only: the host owns the places, their names and what choosing one does.
-export function PlaceDirectory({ items, query, onQueryChange, onSelect, labels, isRTL, theme }: PlaceDirectoryProps) {
+export function PlaceDirectory({ items, query, onQueryChange, onSelect, labels, isRTL, theme, header }: PlaceDirectoryProps) {
+  const { fontScale } = useWindowDimensions();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const visible = useMemo(() => filterPlaceItems(items, query), [items, query]);
   const { PlaceIcon, ForwardIcon, colors } = theme;
   const text = { textAlign: 'auto' as const, writingDirection: isRTL ? 'rtl' as const : 'ltr' as const };
   const emptyMessage = items.length === 0 ? labels.empty : labels.noMatches(query.trim());
+  // Found on an iPhone simulator: after a Dynamic Type change a TextInput keeps drawing at the OLD system scale (a re-created one too), so on iOS
+  // the field is scaled here from the window's current font scale instead. It still follows the system size; nothing is clipped or capped.
+  const manualScale = Platform.OS === 'ios';
+  const input = (
+    <TextInput
+      allowFontScaling={!manualScale}
+      value={query}
+      onChangeText={onQueryChange}
+      accessibilityLabel={labels.searchLabel}
+      placeholder={labels.searchPlaceholder}
+      placeholderTextColor={colors.secondaryText}
+      returnKeyType="search"
+      autoCorrect={false}
+      clearButtonMode="while-editing"
+      style={[styles.input, manualScale && { fontSize: INPUT_FONT_SIZE * fontScale }, text]}
+    />
+  );
   return (
     <View testID="place-directory" style={styles.root}>
-      <TextInput
-        value={query}
-        onChangeText={onQueryChange}
-        accessibilityLabel={labels.searchLabel}
-        placeholder={labels.searchPlaceholder}
-        placeholderTextColor={colors.secondaryText}
-        returnKeyType="search"
-        autoCorrect={false}
-        clearButtonMode="while-editing"
-        style={[styles.input, text]}
-      />
+      {header ? null : input}
       <FlatList
         data={visible}
         keyExtractor={(item) => item.id}
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={styles.list}
+        ListHeaderComponent={header ? <View style={styles.headerStack}>{header}{input}</View> : undefined}
         ListEmptyComponent={<Text accessibilityLiveRegion="polite" style={[styles.empty, text]}>{emptyMessage}</Text>}
         renderItem={({ item }) => (
           <Pressable
@@ -110,9 +122,10 @@ const makeStyles = ({ colors }: PlaceDirectoryTheme) => StyleSheet.create({
   root: { flexShrink: 1, gap: 8 },
   input: {
     minHeight: TARGET, borderRadius: 12, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.fill,
-    paddingHorizontal: 14, fontSize: 16, color: colors.headingText,
+    paddingHorizontal: 14, paddingVertical: 8, fontSize: INPUT_FONT_SIZE, color: colors.headingText,
   },
   list: { gap: 8, paddingBottom: 8 },
+  headerStack: { gap: 8 },
   row: {
     flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: TARGET + 8, borderRadius: 14, borderWidth: 1,
     borderColor: colors.border, backgroundColor: colors.fill, paddingHorizontal: 12, paddingVertical: 8,

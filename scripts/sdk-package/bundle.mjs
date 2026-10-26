@@ -50,6 +50,7 @@ assert.equal(loaded, 'function function');
 mkdirSync(join(out, 'docs'), { recursive: true });
 for (const f of readdirSync(join(root, 'docs/sdk/client'))) cpSync(join(root, 'docs/sdk/client', f), join(out, 'docs', f));
 cpSync(join(root, 'docs/sdk/OFFLINE_PACK_SPEC.md'), join(out, 'docs/OFFLINE_PACK_SPEC.md'));
+for (const f of ['FINAL_GO_NO_GO.md', 'FINAL_CLOSURE_LEDGER.md']) cpSync(join(root, 'docs/sdk', f), join(out, 'docs', f));
 // Generated native projects live at the example's top level only; modules/*/ios is real source and must ship.
 const skip = /(^|\/)(node_modules|\.expo|sdk\.tgz|package-lock\.json)(\/|$)|^(ios|android)(\/|$)|^export-/;
 cpSync(join(root, 'examples/expo-consumer'), join(out, 'examples/expo-consumer'), { recursive: true, filter: (p) => !skip.test(relative(join(root, 'examples/expo-consumer'), p)) });

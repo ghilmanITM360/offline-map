@@ -42,12 +42,14 @@ export interface BundledPackDeps {
   sha256Text(text: string): Promise<string>;
   sdkVersion: string;
   platformCapabilities: readonly string[];
+  /** Optional platform SHA-256 of a whole file, passed to the SDK stores. */
+  digestFile?: NonNullable<Parameters<typeof createFileSystemPackStore>[0]['digestFile']>;
 }
 
 export const installBundledPacks = async (deps: BundledPackDeps): Promise<BundledPackInstall> => {
   const { fs, copier } = deps;
-  const live = createFileSystemPackStore({ fs, bundledRoot: BUNDLED_DIR });
-  const staged = createFileSystemPackStore({ fs, bundledRoot: BUNDLED_STAGING_DIR });
+  const live = createFileSystemPackStore({ fs, bundledRoot: BUNDLED_DIR, digestFile: deps.digestFile });
+  const staged = createFileSystemPackStore({ fs, bundledRoot: BUNDLED_STAGING_DIR, digestFile: deps.digestFile });
   await fs.removeTree(BUNDLED_STAGING_DIR); // anything left here is an interrupted copy
   const bundled: BundledPack[] = [];
   const report: BundledPackStatus[] = [];

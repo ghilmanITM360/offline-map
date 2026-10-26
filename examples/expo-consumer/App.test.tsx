@@ -3,15 +3,17 @@ import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-
 import { ENGLISH_NAVIGATION_SCREEN_COPY as copy } from '@muslim-ummah/offline-navigation/ui';
 import App from './App';
 import { demoVenue, describeDemoPlace } from './demoVenue';
-import { runDeviceSelfTest, startBundledPacks } from './packRuntimeExpo';
+import { runDeviceSelfTest, runStartupBenchmark, startBundledPacks } from './packRuntimeExpo';
 
 // Every flow runs the PACKED SDK (node_modules/@muslim-ummah/offline-navigation/dist) through the host's own pack runtime and
 // simulated GPS. It proves the artifact installs, bundles and renders; it is not a device test: the native MapLibre view and the
 // file system are replaced by recorders, so no tile is read here. (The pack runtime itself is tested in packRuntime.test.ts, the
 // Expo file-system adapter in expoPackFileSystem.test.ts, and both run for real on devices through the pack self-test.)
+jest.mock('./systemUi', () => ({ setSystemBackground: jest.fn() }));
 jest.mock('./packRuntimeExpo', () => ({
   startBundledPacks: jest.fn(),
   runDeviceSelfTest: jest.fn(),
+  runStartupBenchmark: jest.fn(),
   packRootUri: () => 'file:///documents/ummah-packs',
 }));
 const mockSetStop = jest.fn((stop: unknown) => Promise.resolve(stop));
@@ -192,4 +194,110 @@ it('keeps simulated and device locations apart: a blocked device permission refu
   expect(deviceLocation.watchPositionAsync).not.toHaveBeenCalled();
   await press(guideOption);
   expect(screen.getByRole('button', { name: copy.guide.nextStep })).toBeOnTheScreen();
+});
+
+// ---- appearance and language: the host's two preferences, changed mid-journey ----
+const urdu = (path: string): any => path.split('.').reduce((node: any, part) => node[part], require('./copy').copyFor('ur'));
+const flatStyle = (style: unknown) => Object.assign({}, ...[style].flat(3).filter(Boolean));
+
+describe('appearance', () => {
+  it('hands the choice to the device: System clears the override, Light and Dark force it', async () => {
+    const { Appearance } = require('react-native');
+    const set = jest.spyOn(Appearance, 'setColorScheme').mockImplementation(() => undefined);
+    await render(<App />);
+    set.mockClear();
+    await showTools();
+    await press('Appearance: Dark');
+    expect(set).toHaveBeenLastCalledWith('dark');
+    await press('Appearance: Light');
+    expect(set).toHaveBeenLastCalledWith('light');
+    await press('Appearance: System');
+    expect(set).toHaveBeenLastCalledWith(null);
+    set.mockRestore();
+  });
+
+  it('shows which appearance is chosen, and keeps the journey when it changes', async () => {
+    const { Appearance } = require('react-native');
+    jest.spyOn(Appearance, 'setColorScheme').mockImplementation(() => undefined);
+    await render(<App />);
+    await press('Annex. Room');
+    await press(copy.trip.chooseStart);
+    await press('Entrance. Room');
+    await press(guideOption);
+    await press(copy.guide.nextStep);
+    await showTools();
+    expect(screen.getByRole('button', { name: 'Appearance: System' }).props.accessibilityState.selected).toBe(true);
+    await press('Appearance: Dark');
+    expect(screen.getByRole('button', { name: 'Appearance: Dark' }).props.accessibilityState.selected).toBe(true);
+    expect(screen.getByText(copy.guide.stepCount(2, 3))).toBeOnTheScreen(); // same trip, same step
+    jest.restoreAllMocks();
+  });
+});
+
+describe('language', () => {
+  it('switches the whole screen to right-to-left Urdu mid-journey and back, without losing the trip, the step or the pack pin', async () => {
+    await render(<App />);
+    await press('Annex. Room');
+    await press(copy.trip.chooseStart);
+    await press('Entrance. Room');
+    await press(guideOption);
+    await press(copy.guide.nextStep);
+    expect(flatStyle(screen.getByTestId('navigation-panel').props.style).direction).toBe('ltr');
+    await showTools();
+    await press('Language: اردو');
+    expect(flatStyle(screen.getByTestId('navigation-panel').props.style).direction).toBe('rtl');
+    expect(screen.getByText(urdu('guide.stepCount')(2, 3))).toBeOnTheScreen(); // step 2 of 3 survived the switch
+    expect(screen.getByRole('button', { name: urdu('guide.previousStep') })).toBeOnTheScreen();
+    expect(released).not.toHaveBeenCalled(); // the venue stayed open: the pack pin was not dropped
+    await press(urdu('guide.previousStep'));
+    expect(screen.getByText(urdu('guide.stepCount')(1, 3))).toBeOnTheScreen();
+    await press('Language: English');
+    expect(flatStyle(screen.getByTestId('navigation-panel').props.style).direction).toBe('ltr');
+    expect(screen.getByText(copy.guide.stepCount(1, 3))).toBeOnTheScreen();
+  });
+
+  it('never keeps the map from its physical layout: the map and its Recenter control stay left-to-right in Urdu', async () => {
+    await render(<App />);
+    await press('Annex. Room');
+    await press(copy.trip.chooseStart);
+    await press('Entrance. Room');
+    await press(guideOption);
+    await showTools();
+    await press('Language: اردو');
+    expect(flatStyle(screen.getByTestId('navigation-map').props.style).direction).toBe('ltr');
+    expect(flatStyle(screen.getByTestId('navigation-recenter').props.style).right).toBe(12);
+  });
+
+  it('uses only the pack\'s own place names, falling back to English for a place with no name in the language', async () => {
+    const localized = (id: string) => {
+      const base = venueFor(id);
+      return { ...base, localizedNames: new Map([['annex', { en: 'Annex', ur: 'اینیکس' }]]) };
+    };
+    start.mockReset().mockImplementation(async () => runtime(jest.fn(async (id: string) => ({ ok: true, venue: localized(id) }))));
+    await render(<App />);
+    await showTools();
+    await press('Language: اردو');
+    expect(screen.getByRole('button', { name: 'اینیکس. Room' })).toBeOnTheScreen(); // named in Urdu by the pack
+    expect(screen.getByRole('button', { name: room('Entrance') })).toBeOnTheScreen(); // no Urdu name: English, not a guess
+  });
+
+  it('Roman Urdu is left-to-right and, like Urdu, shows English for any string without reviewed wording', async () => {
+    await render(<App />);
+    await showTools();
+    await press('Language: Roman Urdu');
+    expect(flatStyle(screen.getByTestId('navigation-panel').props.style).direction).toBe('ltr');
+    expect(screen.getByText(copy.directory.destinationTitle)).toBeOnTheScreen(); // no host wording exists for this title, so it stays English
+  });
+});
+
+it('measures startup on request and shows each row, JS against platform hashing', async () => {
+  (runStartupBenchmark as jest.Mock).mockResolvedValue([
+    { hashing: 'js', start: 'restart', totalMs: 900, installMs: 400, recoverMs: 450, readMs: 40, bytesRead: 1927532 },
+    { hashing: 'platform', start: 'restart', totalMs: 120, installMs: 50, recoverMs: 60, readMs: 40, bytesRead: 1927532 },
+  ]);
+  await render(<App />);
+  await showTools();
+  await press('Measure startup (JS vs platform hashing)');
+  expect(await screen.findByText(/JS hash, restart: 900 ms/)).toBeOnTheScreen();
+  expect(screen.getByText(/Platform hash, restart: 120 ms/)).toBeOnTheScreen();
 });

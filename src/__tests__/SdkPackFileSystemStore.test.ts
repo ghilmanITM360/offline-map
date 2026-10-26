@@ -132,6 +132,62 @@ describe('createFileSystemPackStore over the Node filesystem', () => {
     expect(sizes.length).toBeGreaterThan(8 * 1024);
   });
 
+  describe('optional whole-file digest port', () => {
+    const honest = (root: string) => async (path: string) => { const bytes = readFileSync(join(root, path)); return { bytes: bytes.length, sha256: nodeSha(bytes) }; };
+    /** A store over a counting filesystem, with the given port; returns the manager and how many chunk reads happened. */
+    const withPort = (digestFile?: (path: string) => Promise<{ bytes: number; sha256: string } | null>) => {
+      const fs = createNodePackFileSystem(dir);
+      const reads = { chunked: 0 };
+      const counting: PackFileSystem = { ...fs, readChunks: (p, n) => { reads.chunked += 1; return fs.readChunks(p, n); } };
+      const store = createFileSystemPackStore({ fs: counting, chunkBytes: 1024, digestFile });
+      const manager = createPackManager({
+        store, sdkVersion: '0.1.0', platformCapabilities: ['pmtiles-local-read'], reserveBytes: 0, trustedKeyIds: ['k1'],
+        ports: { manifestSha256: async (t) => nodeSha(t), signatureVerifier: { verify: async (a) => a.signature === 'good' } },
+      });
+      return { manager, reads };
+    };
+    const stageAndInstall = async (m: PackManager) => { await m.recover(); writePack('packs/staging/s1', '1.0.0'); return m.installStaged('s1', { venueId: VENUE, signature: 'good' }); };
+
+    it('is used for every file when it answers, so nothing is hashed in JS', async () => {
+      const calls: string[] = [];
+      const port = honest(dir);
+      const { manager, reads } = withPort(async (p) => { calls.push(p); return port(p); });
+      expect(await stageAndInstall(manager)).toMatchObject({ ok: true });
+      expect(calls.length).toBeGreaterThanOrEqual(6); // every resource of the pack
+      expect(reads.chunked).toBe(0);
+    });
+
+    it('does not let a damaged file through: an honest digest of the bad bytes fails the manifest check', async () => {
+      const { manager } = withPort(honest(dir));
+      await manager.recover();
+      writePack('packs/staging/s1', '1.0.0');
+      const victim = join(dir, 'packs/staging/s1/data/routing-graph.bin');
+      writeFileSync(victim, Buffer.concat([readFileSync(victim), Buffer.from('x')]));
+      expect(await manager.installStaged('s1', { venueId: VENUE, signature: 'good' })).toMatchObject({ ok: false });
+      expect(existsSync(join(dir, 'packs/installed', `${VENUE}@1.0.0`))).toBe(false);
+    });
+
+    it.each([
+      ['returns null', async () => null],
+      ['throws', async () => { throw new Error('native module unavailable'); }],
+      ['answers with a short digest', async () => ({ bytes: 4, sha256: 'abcd' })],
+      ['answers with a negative length', async () => ({ bytes: -1, sha256: 'a'.repeat(64) })],
+      ['answers with a non-integer length', async () => ({ bytes: 1.5, sha256: 'a'.repeat(64) })],
+      ['answers with something that is not text', async () => ({ bytes: 4, sha256: 12345 as unknown as string })],
+    ])('falls back to the SDK\'s own streaming hash when the port %s', async (_label, port) => {
+      const { manager, reads } = withPort(port);
+      expect(await stageAndInstall(manager)).toMatchObject({ ok: true });
+      expect(reads.chunked).toBeGreaterThanOrEqual(6);
+    });
+
+    it('accepts an upper-case digest by normalising it', async () => {
+      const port = honest(dir);
+      const { manager, reads } = withPort(async (p) => { const a = await port(p); return { bytes: a.bytes, sha256: a.sha256.toUpperCase() }; });
+      expect(await stageAndInstall(manager)).toMatchObject({ ok: true });
+      expect(reads.chunked).toBe(0);
+    });
+  });
+
   it('refuses a corrupted file, a truncated file and an extra file, and removes the bad staging directory', async () => {
     for (const [name, damage, code] of [
       ['flip', (p: string) => { const b = readFileSync(p); b[10] ^= 0xff; writeFileSync(p, b); }, 'resource-hash-mismatch'],

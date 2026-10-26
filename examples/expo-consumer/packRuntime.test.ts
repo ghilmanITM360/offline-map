@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { cpSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -53,6 +54,49 @@ describe('bundled packs at startup', () => {
     opened.venue.release();
     other.venue.release();
     expect(fake.openHandles()).toBe(0);
+  });
+
+  it('records where start time went: files and bytes read, copy, install, recover and open', async () => {
+    const a = await buildPack('venue-a');
+    const { runtime } = await start([a]);
+    const afterStart = { ...runtime.timings };
+    expect(afterStart.filesRead).toBeGreaterThan(0);
+    expect(afterStart.bytesRead).toBeGreaterThan(0);
+    for (const ms of [afterStart.installMs, afterStart.copyMs, afterStart.recoverMs, afterStart.readMs]) expect(ms).toBeGreaterThanOrEqual(0);
+    expect(afterStart.openMs).toBe(0);
+    const opened = await runtime.open('venue-a');
+    if (!opened.ok) throw new Error('venue should open');
+    expect(runtime.timings.openMs).toBeGreaterThanOrEqual(0);
+    opened.venue.release();
+  });
+
+  it('uses the platform digest for every pack file when one is given, and still catches a damaged copy', async () => {
+    const a = await buildPack('venue-a');
+    const fake = createFakeExpoFs();
+    const fs = createExpoPackFileSystem(`file://${device}`, fake.api);
+    const asked: string[] = [];
+    let chunked = 0;
+    const counting = { ...fs, readChunks: (p: string, n: number) => { chunked += 1; return fs.readChunks(p, n); } };
+    const digestFile = async (path: string) => { asked.push(path); const bytes = readFileSync(join(device, path)); return { bytes: bytes.length, sha256: createHash('sha256').update(bytes).digest('hex') }; };
+    const runtime = await startPacks({
+      fs: counting, copier: copier(), digestFile, sdkVersion: '0.1.0', platformCapabilities: ['pmtiles-local-read'],
+      sources: [{ id: a.id, manifestSha256: a.sha, files: a.files }],
+    });
+    expect(runtime.install.report[0]).toMatchObject({ status: 'installed' });
+    expect(asked.length).toBeGreaterThan(0);
+    expect(chunked).toBe(0); // nothing was hashed in JS
+    // Damage the installed copy: the next start sees it through the same digest, repairs it from the app's packaged files and serves it.
+    const victim = join(device, 'bundled', a.id, 'map/ijtema-basemap.pmtiles');
+    writeFileSync(victim, Buffer.concat([readFileSync(victim), Buffer.from('rot')]));
+    const again = await startPacks({
+      fs: counting, copier: copier(), digestFile, sdkVersion: '0.1.0', platformCapabilities: ['pmtiles-local-read'],
+      sources: [{ id: a.id, manifestSha256: a.sha, files: a.files }],
+    });
+    expect(again.install.report[0]).toMatchObject({ status: 'installed', repaired: true });
+    expect(chunked).toBe(0);
+    const opened = await again.open('venue-a');
+    expect(opened.ok).toBe(true);
+    if (opened.ok) opened.venue.release();
   });
 
   it('a second start finds the packs present and copies nothing', async () => {

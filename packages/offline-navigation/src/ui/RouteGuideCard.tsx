@@ -62,46 +62,80 @@ export interface RouteGuideCardProps {
 
 // Presentation only: the user reads the steps and moves through them; nothing here may claim live movement,
 // progress, rerouting or arrival. The host owns the step index, live attempts and ending the guide.
-export function RouteGuideCard({ step, stepIndex, stepTotal, onPrevious, onNext, onLive, onEnd, liveBusy, message, labels, isRTL, theme }: RouteGuideCardProps) {
+export function RouteGuideCard(props: RouteGuideCardProps) {
+  const styles = useMemo(() => makeStyles(props.theme), [props.theme]);
+  return (
+    <View testID="route-guide-card" style={[styles.card, { direction: props.isRTL ? 'rtl' : 'ltr' }]}>
+      <RouteGuideStep {...props} />
+      <RouteGuideActions {...props} />
+    </View>
+  );
+}
+
+/** The step the user is reading. Split from the actions so a screen can pin the actions while this scrolls (large text). */
+export function RouteGuideStep({ step, stepIndex, stepTotal, labels, theme }: Pick<RouteGuideCardProps, 'step' | 'stepIndex' | 'stepTotal' | 'labels' | 'theme'>) {
+  const styles = useMemo(() => makeStyles(theme), [theme]);
+  const count = labels.stepCount(stepIndex + 1, stepTotal);
+  return (
+    <View style={styles.step} accessible accessibilityLiveRegion="polite"
+      accessibilityLabel={labels.stepSummary(count, step.instruction, step.distance)}>
+      <Text style={styles.stepCount}>{count}</Text>
+      <Text style={styles.stepText}>{step.instruction}</Text>
+      {step.distance ? <Text style={styles.stepDistance}>{step.distance}</Text> : null}
+    </View>
+  );
+}
+
+/** Previous / Next, the optional Live link and End. */
+export function RouteGuideActions(props: Omit<RouteGuideCardProps, 'step'>) {
+  const styles = useMemo(() => makeStyles(props.theme), [props.theme]);
+  return (
+    <View testID="route-guide-actions" style={[styles.card, { direction: props.isRTL ? 'rtl' : 'ltr' }]}>
+      <RouteGuideStepper {...props} />
+      <RouteGuideLinks {...props} />
+    </View>
+  );
+}
+
+/** Previous and Next only. The screen pins this under the scrolling step at large text sizes. */
+export function RouteGuideStepper({ stepIndex, stepTotal, onPrevious, onNext, labels, isRTL, theme }: Pick<RouteGuideCardProps, 'stepIndex' | 'stepTotal' | 'onPrevious' | 'onNext' | 'labels' | 'isRTL' | 'theme'>) {
   const styles = useMemo(() => makeStyles(theme), [theme]);
   // Same threshold as the Directions footer: side by side, "Previous" splits mid-word at large text on a narrow window.
   const stacked = useWindowDimensions().fontScale >= 1.5;
   const { Button, BackIcon, ForwardIcon } = theme;
   const atStart = stepIndex === 0;
   const atEnd = stepIndex === stepTotal - 1;
-  const count = labels.stepCount(stepIndex + 1, stepTotal);
   return (
-    <View testID="route-guide-card" style={[styles.card, { direction: isRTL ? 'rtl' : 'ltr' }]}>
-      <View style={styles.step} accessible accessibilityLiveRegion="polite"
-        accessibilityLabel={labels.stepSummary(count, step.instruction, step.distance)}>
-        <Text style={styles.stepCount}>{count}</Text>
-        <Text style={styles.stepText}>{step.instruction}</Text>
-        {step.distance ? <Text style={styles.stepDistance}>{step.distance}</Text> : null}
-      </View>
+    <View testID="guide-stepper" style={[styles.stepper, stacked && styles.stepperStacked, { direction: isRTL ? 'rtl' : 'ltr' }]}>
+      <Button
+        variant="brandTint"
+        fullWidth={false}
+        style={stacked ? styles.stepperButtonStacked : styles.stepperButton}
+        label={labels.previous}
+        accessibilityLabel={labels.previousStep}
+        icon={<BackIcon size={20} color={theme.colors.brand} />}
+        disabled={atStart}
+        onPress={onPrevious}
+      />
+      <Button
+        variant="brand"
+        fullWidth={false}
+        style={stacked ? styles.stepperButtonStacked : styles.stepperButton}
+        label={labels.next}
+        accessibilityLabel={labels.nextStep}
+        trailingIcon={<ForwardIcon size={20} color={theme.colors.brandText} />}
+        disabled={atEnd}
+        onPress={onNext}
+      />
+    </View>
+  );
+}
 
-      <View testID="guide-stepper" style={[styles.stepper, stacked && styles.stepperStacked]}>
-        <Button
-          variant="brandTint"
-          fullWidth={false}
-          style={styles.stepperButton}
-          label={labels.previous}
-          accessibilityLabel={labels.previousStep}
-          icon={<BackIcon size={20} color={theme.colors.brand} />}
-          disabled={atStart}
-          onPress={onPrevious}
-        />
-        <Button
-          variant="brand"
-          fullWidth={false}
-          style={styles.stepperButton}
-          label={labels.next}
-          accessibilityLabel={labels.nextStep}
-          trailingIcon={<ForwardIcon size={20} color={theme.colors.brandText} />}
-          disabled={atEnd}
-          onPress={onNext}
-        />
-      </View>
-
+/** The optional "use my location" link, its message and End. */
+export function RouteGuideLinks({ onLive, onEnd, liveBusy, message, labels, isRTL, theme }: Pick<RouteGuideCardProps, 'onLive' | 'onEnd' | 'liveBusy' | 'message' | 'labels' | 'isRTL' | 'theme'>) {
+  const styles = useMemo(() => makeStyles(theme), [theme]);
+  return (
+    <View testID="route-guide-links" style={[styles.card, { direction: isRTL ? 'rtl' : 'ltr' }]}>
       {onLive && (
         <Pressable style={styles.link} onPress={onLive} disabled={liveBusy} accessibilityRole="button"
           accessibilityLabel={labels.useLocation}>
@@ -133,6 +167,9 @@ const makeStyles = ({ colors, radius }: RouteGuideCardTheme) => StyleSheet.creat
   stepper: { flexDirection: 'row', gap: 10 },
   stepperStacked: { flexDirection: 'column' },
   stepperButton: { flex: 1, borderRadius: radius },
+  // In a column `flex: 1` means a basis of 0: the column then measures as just its gaps, every button collapses to its minimum height and the
+  // large text inside overflows onto the rows below (found on an iPhone at the largest text size). Stacked buttons size to their content.
+  stepperButtonStacked: { flexGrow: 0, flexShrink: 0, flexBasis: 'auto', alignSelf: 'stretch', borderRadius: radius },
   link: { alignSelf: 'flex-start', minHeight: 48, justifyContent: 'center', paddingHorizontal: 4 },
   linkText: { fontSize: 16, fontWeight: '800', color: colors.brand },
   endText: { fontSize: 16, fontWeight: '700', color: colors.secondaryText },

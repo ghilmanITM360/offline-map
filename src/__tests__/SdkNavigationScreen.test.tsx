@@ -1,6 +1,6 @@
 import React, { useImperativeHandle } from 'react';
-import { Dimensions, View } from 'react-native';
-import { act, fireEvent, render, screen } from './test-utils';
+import { Dimensions, Platform, View } from 'react-native';
+import { act, fireEvent, render, screen, within } from './test-utils';
 import {
   createNavigationController,
   findBestVenuePath,
@@ -21,6 +21,7 @@ import {
   NavigationScreen,
   type NavigationMapProps,
   type NavigationScreenCopy,
+  HEADING_MAX_FONT_SCALE,
   type NavigationScreenProps,
 } from '@muslim-ummah/offline-navigation/ui';
 import { testVenue } from './sdkTestVenue';
@@ -133,6 +134,8 @@ const planAnnexFromLobby = async () => {
 };
 
 beforeEach(() => {
+  // react-native's jest setup starts at fontScale 2; the layout tests below choose their own scale, everything else runs at 1.
+  Dimensions.set({ window: { width: 390, height: 844, scale: 2, fontScale: 1 } });
   t = T0;
   mapProps = null;
   recenters = 0;
@@ -854,6 +857,169 @@ describe('NavigationScreen: accessibility and large text', () => {
     } finally {
       await act(async () => { Dimensions.set({ window: { width: 390, height: 844, scale: 2, fontScale: 1 } }); });
     }
+  });
+});
+
+describe('NavigationScreen: large text layout (AX5-like scale)', () => {
+  const guideOption = `${copy.trip.startGuide.title}. ${copy.trip.startGuide.subtitle}`;
+  const liveOption = `${copy.trip.startLive.title}. ${copy.trip.startLive.subtitle}`;
+  const setScale = (fontScale: number) => act(async () => { Dimensions.set({ window: { width: 390, height: 844, scale: 3, fontScale } }); });
+  afterEach(async () => { await setScale(1); });
+  const flat = (style: unknown) => Object.assign({}, ...[style].flat(3).filter(Boolean));
+
+  it('at a normal scale nothing is pinned: the guide card keeps its own controls', async () => {
+    await mount(ctrl());
+    await planAnnexFromLobby();
+    await press(guideOption);
+    expect(screen.queryByTestId('navigation-pinned')).toBeNull();
+    expect(within(screen.getByTestId('route-guide-card')).getByTestId('guide-stepper')).toBeOnTheScreen();
+  });
+
+  it('keeps Previous and Next pinned under the scrolling guide, with End right after the step text, and they all still work', async () => {
+    await setScale(3.1);
+    const c = ctrl();
+    await mount(c);
+    await planAnnexFromLobby();
+    await press(guideOption);
+    const pinned = screen.getByTestId('navigation-pinned');
+    expect(within(pinned).getByTestId('guide-stepper')).toBeOnTheScreen();
+    expect(within(pinned).queryByRole('button', { name: copy.guide.end })).toBeNull(); // End scrolls with the step: the pinned strip stays small
+    expect(screen.getByRole('button', { name: copy.guide.end })).toBeOnTheScreen();
+    expect(screen.queryByTestId('route-guide-card')).toBeNull(); // the step text scrolls; the stepper is not inside it
+    const pinnedNow = () => within(screen.getByTestId('navigation-pinned'));
+    await fireEvent.press(pinnedNow().getByRole('button', { name: copy.guide.nextStep }));
+    expect(c.getState().stepIndex).toBe(1);
+    await fireEvent.press(pinnedNow().getByRole('button', { name: copy.guide.previousStep }));
+    expect(c.getState().stepIndex).toBe(0);
+    await fireEvent.press(screen.getByRole('button', { name: copy.guide.end }));
+    expect(c.getState().phase).toBe('browsing');
+  });
+
+  it('keeps End navigation pinned while live', async () => {
+    await setScale(3.1);
+    const L = simulatedLocation();
+    const c = ctrl({ location: L });
+    await mount(c);
+    await press('Annex Wing');
+    await press(liveOption);
+    await screen.findByText(copy.live.exit);
+    const pinned = screen.getByTestId('navigation-pinned');
+    await fireEvent.press(within(pinned).getByRole('button', { name: copy.live.exit }));
+    expect(c.getState().phase).toBe('browsing');
+  });
+
+  it('survives a system text-size change mid-journey: same trip, same step, controls switch place', async () => {
+    const c = ctrl();
+    await mount(c);
+    await planAnnexFromLobby();
+    await press(guideOption);
+    await press(copy.guide.nextStep);
+    const before = c.getState();
+    expect(before).toMatchObject({ phase: 'guide', stepIndex: 1 });
+    await setScale(3.1);
+    expect(c.getState()).toBe(before);
+    expect(within(screen.getByTestId('navigation-pinned')).getByRole('button', { name: copy.guide.nextStep })).toBeOnTheScreen();
+    await setScale(1);
+    expect(c.getState()).toBe(before);
+    expect(screen.queryByTestId('navigation-pinned')).toBeNull();
+    await press(copy.guide.nextStep);
+    expect(c.getState().stepIndex).toBe(2);
+  });
+
+  it('stacked step buttons size to their content: a column of `flex: 1` buttons collapses to its minimum height and the large text overflows', async () => {
+    await setScale(3.1);
+    await mount(ctrl());
+    await planAnnexFromLobby();
+    await press(guideOption);
+    for (const name of [copy.guide.previousStep, copy.guide.nextStep]) {
+      const style = flat(within(screen.getByTestId('guide-stepper')).getByRole('button', { name }).props.style);
+      expect(style.flexBasis).toBe('auto');
+      expect(style.flexGrow).toBe(0);
+      expect(style.flexShrink).toBe(0);
+    }
+    expect(flat(screen.getByTestId('guide-stepper').props.style).flexDirection).toBe('column');
+    await setScale(1);
+    const side = flat(within(screen.getByTestId('guide-stepper')).getByRole('button', { name: copy.guide.nextStep }).props.style);
+    expect(side.flex).toBe(1); // side by side at a normal size, as before
+  });
+
+  it('puts the directory heading inside the list scroll, so the places can always be reached', async () => {
+    await setScale(3.1);
+    await mount(ctrl());
+    const scrollsWith = (el: { parent: unknown }, wanted: unknown): boolean => {
+      for (let node = (el as { parent: { type: unknown; parent: unknown } | null }).parent; node; node = node.parent as typeof node) if (node.type === wanted) return true;
+      return false;
+    };
+    const scroll = screen.getByText('Annex Wing');
+    let list: { type: unknown; parent: unknown } | null = (scroll as unknown as { parent: { type: unknown; parent: unknown } }).parent;
+    while (list && !String(list.type).includes('ScrollView')) list = list.parent as typeof list;
+    expect(list).toBeTruthy();
+    expect(scrollsWith(screen.getByText(copy.directory.destinationTitle), list!.type)).toBe(true);
+    await setScale(1);
+    let normal: { type: unknown; parent: unknown } | null = (screen.getByText('Annex Wing') as unknown as { parent: { type: unknown; parent: unknown } }).parent;
+    while (normal && !String(normal.type).includes('ScrollView')) normal = normal.parent as typeof normal;
+    expect(scrollsWith(screen.getByText(copy.directory.destinationTitle), normal!.type)).toBe(false);
+  });
+
+  it('scales the search field itself on iOS, where a TextInput keeps drawing at the previous system size', async () => {
+    const fontSizeOf = (input: { props: { style: unknown } }) => flat(input.props.style).fontSize;
+    await mount(ctrl());
+    const android = screen.getByLabelText(copy.directory.searchLabel);
+    expect(android.props.allowFontScaling).not.toBe(false); // Android: the platform scales it
+    expect(fontSizeOf(android)).toBe(16);
+    jest.replaceProperty(Platform, 'OS', 'ios');
+    try {
+      await setScale(2.5);
+      const ios = screen.getByLabelText(copy.directory.searchLabel);
+      expect(ios.props.allowFontScaling).toBe(false); // scaled by hand from the window's font scale, which does update
+      expect(fontSizeOf(ios)).toBe(40);
+      await setScale(1);
+      expect(fontSizeOf(screen.getByLabelText(copy.directory.searchLabel))).toBe(16);
+    } finally {
+      jest.restoreAllMocks();
+    }
+  });
+
+  it('caps headings but leaves instructions, rows and buttons fully scalable', async () => {
+    await setScale(3.1);
+    const c = ctrl();
+    await mount(c);
+    await planAnnexFromLobby();
+    await press(guideOption);
+    expect(screen.getByText(copy.trip.title('Annex Wing')).props.maxFontSizeMultiplier).toBe(HEADING_MAX_FONT_SCALE);
+    const instruction = screen.getByText(copy.routeStep.depart);
+    expect(instruction.props.maxFontSizeMultiplier).toBeUndefined();
+    expect(instruction.props.allowFontScaling).not.toBe(false);
+  });
+
+  it('applies the host bottom inset to the panel, so the system bar never covers a control', async () => {
+    await mount(ctrl(), { bottomInset: 34 });
+    expect(flat(screen.getByTestId('navigation-panel').props.style).paddingBottom).toBe(34);
+  });
+});
+
+describe('NavigationScreen: appearance', () => {
+  it('tells the map the theme\'s appearance, and restyling does not touch the journey', async () => {
+    const c = ctrl();
+    const { rerender } = await mount(c);
+    expect(mapProps?.colorScheme).toBe('light');
+    await planAnnexFromLobby();
+    await press(`${copy.trip.startGuide.title}. ${copy.trip.startGuide.subtitle}`);
+    await press(copy.guide.nextStep);
+    const before = c.getState();
+    await rerender({ theme: createDefaultNavigationTheme({ isRTL: false, colorScheme: 'dark' }) });
+    expect(mapProps?.colorScheme).toBe('dark');
+    expect(c.getState()).toBe(before);
+    await rerender({ theme: createDefaultNavigationTheme({ isRTL: false }) });
+    expect(mapProps?.colorScheme).toBe('light');
+    expect(c.getState()).toBe(before);
+  });
+
+  it('a custom theme that does not name its appearance gets the light map', async () => {
+    const custom = { ...createDefaultNavigationTheme({ isRTL: false, colorScheme: 'dark' }) };
+    delete custom.colorScheme;
+    await mount(ctrl(), { theme: custom });
+    expect(mapProps?.colorScheme).toBe('light');
   });
 });
 

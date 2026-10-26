@@ -22,13 +22,15 @@ export interface DirectionsHeaderProps {
   backLabel: string;
   isRTL: boolean;
   theme: DirectionsHeaderTheme;
+  /** Stops the title growing past this multiple of its size with the system font scale. Default: no cap. */
+  maxTitleFontScale?: number;
 }
 
 /** Minimum touch target (dp). */
 const TARGET = 48;
 
 // Presentation only: the host owns the copy, what Back does and when focus should move.
-export function DirectionsHeader({ title, subtitle, onBack, focusKey = null, accessibilityContext, backLabel, isRTL, theme }: DirectionsHeaderProps) {
+export function DirectionsHeader({ title, subtitle, onBack, focusKey = null, accessibilityContext, backLabel, isRTL, theme, maxTitleFontScale }: DirectionsHeaderProps) {
   const { ref } = useAccessibilityFocus(focusKey);
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const { BackIcon } = theme;
@@ -40,7 +42,7 @@ export function DirectionsHeader({ title, subtitle, onBack, focusKey = null, acc
         </View>
       </Pressable>
       <View style={styles.headerText}>
-        <Text ref={ref} accessibilityRole="header" accessibilityLabel={accessibilityContext ? `${title}. ${accessibilityContext}` : undefined} style={styles.title}>
+        <Text ref={ref} accessibilityRole="header" maxFontSizeMultiplier={maxTitleFontScale} accessibilityLabel={accessibilityContext ? `${title}. ${accessibilityContext}` : undefined} style={styles.title}>
           {title}
         </Text>
         <Text style={styles.subtitle}>{subtitle}</Text>

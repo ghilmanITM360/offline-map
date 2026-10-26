@@ -70,14 +70,14 @@ const CHEVRON_FORWARD_LTR = makeChevron('right');
 const makeButton = (colors: Colors, radius: number): React.FunctionComponent<NavigationButtonProps> => {
   const fills = { brand: colors.brand, brandTint: colors.brandTint, outline: 'transparent' } as const;
   const inks = { brand: colors.onBrand, brandTint: colors.brand, outline: colors.brand } as const;
-  return function Button({ label, variant = 'brand', fullWidth = true, style, accessibilityLabel, icon, trailingIcon, disabled, onPress }: NavigationButtonProps) {
+  return function Button({ label, variant = 'brand', fullWidth = true, style, accessibilityLabel, icon, trailingIcon, disabled, selected, onPress }: NavigationButtonProps) {
     return (
       <Pressable
         onPress={onPress}
         disabled={disabled}
         accessibilityRole="button"
         accessibilityLabel={accessibilityLabel ?? label}
-        accessibilityState={{ disabled: !!disabled }}
+        accessibilityState={selected === undefined ? { disabled: !!disabled } : { disabled: !!disabled, selected }}
         style={({ pressed }) => [
           styles.button,
           { backgroundColor: fills[variant], borderRadius: radius, borderColor: variant === 'outline' ? colors.border : fills[variant] },
@@ -126,6 +126,7 @@ export function createDefaultNavigationTheme({ isRTL, colorScheme = 'light', col
   if (cached) return cached;
   const palette: Colors = { ...(colorScheme === 'dark' ? DARK : LIGHT), ...colors };
   const theme: NavigationScreenTheme = {
+    colorScheme,
     colors: palette,
     radius,
     hitSlop: { top: 8, bottom: 8, left: 8, right: 8 },

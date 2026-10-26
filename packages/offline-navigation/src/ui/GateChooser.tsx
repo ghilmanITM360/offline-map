@@ -23,6 +23,8 @@ export interface GateChooserTheme {
     accessibilityLabel: string;
     variant: 'secondary' | 'outline';
     disabled?: boolean;
+    /** Optional: a host Button may ignore it. */
+    selected?: boolean;
     onPress: () => void;
   }>;
   colors: { fill: string; border: string; title: string };
@@ -52,6 +54,7 @@ export function GateChooser({ title, options, selectedId, onSelect, theme }: Gat
           label={option.label}
           accessibilityLabel={option.accessibilityLabel}
           disabled={option.disabled}
+          selected={selectedId === option.id}
           onPress={() => onSelect(option.id)}
         />
       ))}

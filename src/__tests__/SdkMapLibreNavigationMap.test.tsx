@@ -122,4 +122,79 @@ describe('createMapLibreNavigationMap', () => {
     expect(props.mapStyle).not.toHaveProperty('glyphs');
     expect(JSON.stringify(props.mapStyle)).toContain('OpenStreetMap');
   });
+
+  it('switching to dark restyles in place: same map, camera and sources, new style and colours, no new camera command', async () => {
+    const Map = createMapLibreNavigationMap(options);
+    const api = await render(<Map {...base} route={route} originId="lobby" destinationId="hall" />);
+    await load(api);
+    const framed = mockSetStop.mock.calls.length;
+    const camera = api.getByTestId('camera');
+    const lightStyle = api.getByTestId('map').props.mapStyle;
+    const lightLine = api.getByTestId('layer-sdk-route-line').props.paint['line-color'];
+    await api.rerender(<Map {...base} route={route} originId="lobby" destinationId="hall" colorScheme="dark" />);
+    expect(api.getByTestId('camera')).toBe(camera); // same instance, not remounted
+    expect(api.getByTestId('map').props.mapStyle).not.toBe(lightStyle);
+    expect(api.getByTestId('map').props.mapStyle.layers[0].paint['background-color']).not.toBe(lightStyle.layers[0].paint['background-color']);
+    expect(api.getByTestId('layer-sdk-route-line').props.paint['line-color']).not.toBe(lightLine);
+    expect(data(api, 'sdk-route').features).toHaveLength(1);
+    expect(data(api, 'sdk-markers').features).toHaveLength(2);
+    expect(mockSetStop.mock.calls.length).toBe(framed); // an appearance change never moves the camera
+    await api.rerender(<Map {...base} route={route} originId="lobby" destinationId="hall" colorScheme="light" />);
+    expect(api.getByTestId('map').props.mapStyle).toBe(lightStyle);
+    expect(mockSetStop.mock.calls.length).toBe(framed);
+  });
+
+  describe('camera browsing while live', () => {
+    const live = (lat: number, lng: number) => ({ phase: 'live' as any, position: { lat, lng } });
+    const gesture = (api: View, userInteraction: boolean) => act(async () => api.getByTestId('map').props.onRegionWillChange({ nativeEvent: { userInteraction } }));
+
+    it('stops chasing the walker after a deliberate pan, keeps the walker marker moving, and Recenter follows again', async () => {
+      const Map = createMapLibreNavigationMap(options);
+      const handle = React.createRef<NavigationMapHandle>();
+      const api = await render(<Map {...base} ref={handle} route={route} {...live(24.901, 67.001)} />);
+      await load(api);
+      expect(mockSetStop).toHaveBeenLastCalledWith(expect.objectContaining({ center: [67.001, 24.901] }));
+      mockSetStop.mockClear();
+      await gesture(api, true);
+      await api.rerender(<Map {...base} ref={handle} route={route} {...live(24.902, 67.002)} />);
+      await api.rerender(<Map {...base} ref={handle} route={route} {...live(24.903, 67.003)} />);
+      expect(mockSetStop).not.toHaveBeenCalled(); // the user's view is left alone
+      const walker = data(api, 'sdk-markers').features.find((f: any) => f.properties.role === 'position');
+      expect(walker.geometry.coordinates).toEqual([67.003, 24.903]); // but the walker is still drawn where they are
+      await act(async () => handle.current!.recenter());
+      expect(mockSetStop).toHaveBeenCalledTimes(1);
+      expect(mockSetStop).toHaveBeenLastCalledWith(expect.objectContaining({ center: [67.003, 24.903], zoom: 17 }));
+      mockSetStop.mockClear();
+      await api.rerender(<Map {...base} ref={handle} route={route} {...live(24.904, 67.004)} />);
+      expect(mockSetStop).toHaveBeenCalledTimes(1); // following again, one command per fix: no duplicates, no loop
+      expect(mockSetStop).toHaveBeenLastCalledWith(expect.objectContaining({ center: [67.004, 24.904] }));
+    });
+
+    it('ignores the map\'s own programmatic camera moves', async () => {
+      const Map = createMapLibreNavigationMap(options);
+      const api = await render(<Map {...base} route={route} {...live(24.901, 67.001)} />);
+      await load(api);
+      await gesture(api, false);
+      mockSetStop.mockClear();
+      await api.rerender(<Map {...base} route={route} {...live(24.902, 67.002)} />);
+      expect(mockSetStop).toHaveBeenCalledTimes(1);
+    });
+
+    it('a gesture outside Live changes nothing, and a new route or a new phase starts following again', async () => {
+      const Map = createMapLibreNavigationMap(options);
+      const api = await render(<Map {...base} route={route} phase={'guide' as any} />);
+      await load(api);
+      await gesture(api, true); // guide: nothing follows anyway
+      await api.rerender(<Map {...base} route={route} {...live(24.901, 67.001)} />);
+      expect(mockSetStop).toHaveBeenLastCalledWith(expect.objectContaining({ center: [67.001, 24.901] }));
+      await gesture(api, true);
+      mockSetStop.mockClear();
+      await api.rerender(<Map {...base} route={route} {...live(24.902, 67.002)} />);
+      expect(mockSetStop).not.toHaveBeenCalled();
+      const next = { ...route, line: { ...route.line } }; // a new route object: the walker was rerouted
+      await api.rerender(<Map {...base} route={next} {...live(24.903, 67.003)} />);
+      expect(mockSetStop).toHaveBeenCalledTimes(1);
+      expect(mockSetStop).toHaveBeenLastCalledWith(expect.objectContaining({ center: [67.003, 24.903] }));
+    });
+  });
 });

@@ -36,6 +36,8 @@ export interface NavigationMapProps {
   stepIndex: number;
   /** Call with false when the basemap cannot be shown (the screen then says directions still work). */
   onAvailabilityChange: (available: boolean) => void;
+  /** The theme's appearance. Switching it must restyle the map in place, never remount it or move the camera. */
+  colorScheme?: 'light' | 'dark';
   ref?: React.Ref<NavigationMapHandle>;
 }
 
@@ -51,6 +53,8 @@ export interface NavigationButtonProps {
   icon?: React.ReactNode;
   trailingIcon?: React.ReactNode;
   disabled?: boolean;
+  /** A choice that is currently picked (the entry-gate chooser). Exposed to assistive technology as selected. */
+  selected?: boolean;
   onPress?: () => void;
 }
 
@@ -59,6 +63,8 @@ export interface NavigationButtonProps {
  * Icons and chevrons must already be chosen for the reading direction (back points to the start edge).
  */
 export interface NavigationScreenTheme {
+  /** Which basemap palette the map uses. Default 'light': a custom dark theme must say so. */
+  colorScheme?: 'light' | 'dark';
   colors: {
     screen: string;
     surface: string;
@@ -147,6 +153,18 @@ export interface NavigationScreenCopy {
   };
   arrival: { title: string; subtitle: string; recenter: string; recenterA11y: string; done: string; doneA11y: string };
   mapUnavailable: string;
+  /**
+   * Wording for the entry-gate chooser. Optional: without it the screen never shows one, whatever gates the controller's outside-route
+   * provider lists.
+   */
+  entryGate?: {
+    title: string;
+    /** Clears the choice, so the provider picks the gate. */
+    automatic: string;
+    automaticA11y: string;
+    /** Spoken name of the action for one already-localized gate label. */
+    option: (gate: string) => string;
+  };
 }
 
 export interface NavigationScreenProps {

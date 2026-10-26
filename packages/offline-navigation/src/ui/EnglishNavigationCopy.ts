@@ -109,4 +109,10 @@ export const ENGLISH_NAVIGATION_SCREEN_COPY: NavigationScreenCopy = {
     doneA11y: 'Finish navigation',
   },
   mapUnavailable: 'The map cannot be shown. Directions still work.',
+  entryGate: {
+    title: 'Enter through',
+    automatic: 'Let the app choose',
+    automaticA11y: 'Let the app choose the entry gate',
+    option: (gate) => `Enter through ${gate}`,
+  },
 };
