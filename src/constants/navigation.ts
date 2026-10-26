@@ -6,7 +6,10 @@
 // Shared between v1 (NavigationViewModel) and v2 (NavigationViewModelV2) — a plain
 // numeric constant, not a v1/v2 data or routing module, so it doesn't violate the
 // v1/v2 isolation boundary enforced by test:v1-v2-isolation.
-export const ARRIVAL_THRESHOLD_METERS = 20;
+import { ARRIVAL_THRESHOLD_M, STALE_FIX_CLOCK_TOLERANCE_MS as SDK_STALE_FIX_CLOCK_TOLERANCE_MS } from '@muslim-ummah/offline-navigation';
+
+// C4.3-a: the value is the SDK's (20 m); the name stays so the V1/V2 view models and their tests keep one import path.
+export const ARRIVAL_THRESHOLD_METERS = ARRIVAL_THRESHOLD_M;
 
 // Minimum ms between fixes requested from watchPositionAsync while GPSManagerService is in
 // 'navigation' mode (a listener is registered with this mode for the whole time
@@ -35,7 +38,7 @@ export const OUTSIDE_VENUE_BOUNDARY_NODE_IDS_V1 = /^(T1|T2|S6|S12|S13|S14|S15|S1
 // progress. 2s is generous enough to absorb ordinary provider/processing relay lag right at
 // the boundary instant (not an arbitrary large grace window that would let real stale fixes
 // back in).
-export const STALE_FIX_CLOCK_TOLERANCE_MS = 2000;
+export const STALE_FIX_CLOCK_TOLERANCE_MS = SDK_STALE_FIX_CLOCK_TOLERANCE_MS;
 
 /**
  * GPS_LOST fires once this many ms have passed with zero fresh fixes while navigating. Set

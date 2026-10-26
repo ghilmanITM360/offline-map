@@ -5,6 +5,7 @@
 
 import { Coordinate, RoutePreview } from '../models/types';
 import { getDistance } from 'geolib';
+import { MAX_LIVE_NAVIGATION_ACCURACY_M, offRouteThresholdM, shouldTriggerReroute } from '@muslim-ummah/offline-navigation';
 
 // Single owner of "closest point on route / progress meters" for live navigation: both
 // NavigationViewModel (v1, inline) and calculateNavigationProgressV2/V2NavigationRuntimeService
@@ -12,13 +13,14 @@ import { getDistance } from 'geolib';
 // re-deriving projection math. Do not add a second progress-projection implementation —
 // GPS position -> this service -> navigation UI is the whole chain.
 export class RerouteService {
+  // The numeric reroute policy lives in the SDK (C4.3-a): one definition of the thresholds for the host and every SDK consumer.
+  // HostSdkPolicyParity.test.ts pins these to the formulas this class used before the delegation.
   static getDynamicOffRouteThresholdMeters(gpsAccuracyM = 0): number {
-    const threshold = Math.max(30, gpsAccuracyM * 1.5);
-    return Math.min(80, Math.round(threshold));
+    return offRouteThresholdM(gpsAccuracyM);
   }
 
   static shouldHoldRouteForWeakGps(gpsAccuracyM = 0): boolean {
-    return gpsAccuracyM > 50;
+    return gpsAccuracyM > MAX_LIVE_NAVIGATION_ACCURACY_M;
   }
 
   static shouldTriggerReroute(input: {
@@ -27,9 +29,12 @@ export class RerouteService {
     cooldownRemainingMs: number;
     movedDistanceSinceLastAcceptedM: number;
   }): boolean {
-    if (input.cooldownRemainingMs > 0) return false;
-    if (input.movedDistanceSinceLastAcceptedM < 12) return false;
-    return input.consecutiveOffRouteCount >= 3 || input.offRouteDurationMs >= 9000;
+    return shouldTriggerReroute({
+      consecutiveOffRouteCount: input.consecutiveOffRouteCount,
+      offRouteDurationMs: input.offRouteDurationMs,
+      cooldownRemainingMs: input.cooldownRemainingMs,
+      movedDistanceM: input.movedDistanceSinceLastAcceptedM,
+    });
   }
 
   static clampMonotonicProgress(
