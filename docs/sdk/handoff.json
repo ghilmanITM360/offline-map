@@ -1,0 +1,33 @@
+{
+  "branch": "feat/muslim-ummah-offline-navigation-sdk",
+  "machine": "Ghilmans-Laptop.local",
+  "headBeforeHandoffCommit": "a8083bc5cf11fd7b684a32672f585d6754d60b6d",
+  "tarballSha256": "dc00250f6cb19a7d8807f155d5d4e2515bca0c27db1291ebdae6dc7000d14a0f",
+  "completed": [
+    "C2b",
+    "C2c",
+    "C3",
+    "C6.1",
+    "C7.1"
+  ],
+  "next": [
+    "C4 characterization",
+    "C5 adapters",
+    "C6 rest",
+    "iOS continuous location proof",
+    "C7 final bundle"
+  ],
+  "ownerGated": [
+    "physical devices",
+    "airplane mode",
+    "external security review",
+    "signing/publishing",
+    "gate 18/19 survey"
+  ],
+  "usageAtHandoff": {
+    "fiveHourPercent": 75,
+    "weeklyPercent": 19,
+    "contextPercent": 58
+  },
+  "doc": "docs/sdk/CONTINUATION_HANDOFF.md"
+}
