@@ -8,6 +8,7 @@ export * from './PackError';
 export * from './PackManager';
 export * from './PackManifest';
 export * from './PackStore';
+export * from './PackVenueData';
 export * from './PackVerifier';
 export * from './FileSystemPackStore';
 export * from './Sha256';

@@ -2,7 +2,7 @@
 // integrity/trust verification. Pure domain only; hashing, file reads and signatures are injected fakes here.
 import { strict as assert } from 'node:assert';
 import {
-  checkPackCompatibility, parsePackManifest, verifyPack,
+  checkPackCompatibility, parsePackManifest, parsePackVenueData, verifyPack,
   type PackManifest, type PackResourceKind, type PackVerifyPorts,
 } from '../../packages/offline-navigation/src/domain/pack';
 
@@ -231,5 +231,18 @@ export const packChecks = (check: (name: string, fn: () => void | Promise<void>)
     assert.equal(await verify(sampleManifest(), { ...ports(goodFiles(sampleManifest())), signatureVerifier: verifier }, { ...sigOpts }), 'signature-untrusted-key'); // unsigned manifest has no key
     // Without the requirement, an unsigned bundled pack still verifies on integrity alone.
     assert.equal(await verify(sampleManifest(), ports(goodFiles(sampleManifest()))), 'ok');
+  });
+
+  await check('pack: a venue is rebuilt from the graph and place files with validated, read-only data; bad references and prototype ids are refused', () => {
+    const graph = JSON.stringify({ schemaVersion: 1, venueId: 'v', dataVersion: 'd', nodes: [{ id: 'a', lat: 1, lng: 1 }, { id: 'b', lat: 1.001, lng: 1 }], edges: [{ from: 'a', to: 'b', distanceM: 111 }] });
+    const places = (nodeIds: string[]) => JSON.stringify({ schemaVersion: 1, venueId: 'v', places: [{ id: 'p', kind: 'room', nodeIds }] });
+    const ok = parsePackVenueData(graph, places(['a']), 'v');
+    assert.equal(ok.ok, true);
+    if (ok.ok) {
+      assert.deepEqual(ok.source.graph.edgesFrom('a'), [{ to: 'b', distanceM: 111 }]);
+      assert.equal(ok.source.graph.getNode('constructor'), undefined);
+    }
+    assert.equal(parsePackVenueData(graph, places(['ghost'])).ok, false);
+    assert.equal(parsePackVenueData(graph, places(['a']), 'other').ok, false);
   });
 })();

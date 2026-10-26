@@ -7,7 +7,7 @@ export type PackErrorCode =
   | 'manifest-malformed' | 'schema-unsupported' | 'field-invalid' | 'totals-mismatch'
   | 'resource-path-unsafe' | 'resource-duplicate' | 'required-resource-missing'
   | 'sdk-incompatible' | 'capability-missing' | 'venue-mismatch'
-  | 'resource-missing' | 'resource-unexpected' | 'resource-size-mismatch' | 'resource-hash-mismatch' | 'resource-unreadable'
+  | 'resource-missing' | 'resource-unexpected' | 'resource-size-mismatch' | 'resource-hash-mismatch' | 'resource-unreadable' | 'resource-invalid'
   | 'digest-unverifiable' | 'manifest-digest-mismatch'
   | 'signature-required' | 'signature-untrusted-key' | 'signature-invalid'
   | 'storage-insufficient' | 'staging-missing' | 'version-not-newer' | 'already-installed' | 'version-conflict'
