@@ -15,14 +15,13 @@ worktree and both original stashes are untouched. `integration/ijtema-clean-base
 - Validation at C4.2/C4.3-a: Jest 209 suites / 2,141 tests, tsc, eslint, `test:sdk-exports`, `test:sdk-headless` (82), `test:sdk-consumer` (22 tests, Android + iOS bundles, tarball
   `9527e287...e98e9`, which predates C5.1), the navigation `test:*` scripts. C5.1 added 13 tests (all pass in isolation; the full Jest run after C5.1 was NOT repeated).
 - **Finding: the full `npm test` chain had been failing at its 2nd step since C2a** (`test:astar-extraction` forbade the new `maplibre/` layer from importing react). Guard repaired in C5.1.
-  A full `npm test` run (2,400 differential comparisons, 91,506 goldens) was started afterwards: log `/private/tmp/claude-501/npm-test-c4b.log` (ends with `exit N`). If it is gone,
-  re-run `npm test` first thing; a failure there is a real regression to bisect, never a golden to regenerate.
+  The full `npm test` chain was then re-run at `590c232` and **passed (exit 0)**, including the 2,400 seeded differential comparisons and the route goldens (log `/private/tmp/claude-501/npm-test-c4b.log`).
 - Usage at this hand-off: five-hour 93% (hard stop for new work), weekly 41%, context 39%. Work stopped here by the protocol, not by a blocker.
 - Evidence level for everything since the first hand-off: SOURCE / JEST / PACKAGE (consumer bundles). No native, device or field run of the C4.2 candidate/outside/reroute paths or of the pack store.
 
 ## Remaining work, in dependency order
 
-1. **Verify first:** `npm test` result (above); full `npx jest`; `npm run test:sdk-consumer -- <fresh dir>` (the consumer now imports the SDK's `sha256Hex`); `git rev-parse HEAD` == origin.
+1. **Verify first:** full `npx jest` (not re-run after C5.1); `npm run test:sdk-consumer -- <fresh dir>` (the consumer now imports the SDK's `sha256Hex`); `git rev-parse HEAD` == origin.
 2. **C5.2 compiler + Karachi manifest:** `scripts/sdk-pack/compile.ts` (directory of resources + metadata -> `pack.manifest.json` with per-file bytes/SHA-256, totals, attribution, provenance; deterministic,
    reuse `createNodePackFileSystem` and `createSha256`; fail on unknown kinds, duplicate/unsafe paths, missing required kinds). Then the versioned Karachi manifest from `assets/offline-map/ijtema-basemap.pmtiles`
    + `BASEMAP_PROVENANCE.json` + the real route graph/places/gates data exported as data-only JSON (no invented Gate 18/19 connectivity). The manifest is unsigned: bundled packs are pinned by digest only.
