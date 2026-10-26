@@ -25,6 +25,15 @@ jest.mock('@maplibre/maplibre-react-native', () => {
 });
 
 jest.mock('react-native-safe-area-context', () => require('react-native-safe-area-context/jest/mock').default);
+// The device source's platform module: permission is blocked, so no fix is ever read.
+jest.mock('expo-location', () => ({
+  Accuracy: { High: 4 },
+  getForegroundPermissionsAsync: jest.fn(async () => ({ status: 'denied', canAskAgain: false })),
+  requestForegroundPermissionsAsync: jest.fn(async () => ({ status: 'denied', canAskAgain: false })),
+  hasServicesEnabledAsync: jest.fn(async () => true),
+  getCurrentPositionAsync: jest.fn(),
+  watchPositionAsync: jest.fn(),
+}));
 const install = installKarachiBasemap as jest.Mock;
 const ARCHIVE = 'file:///documents/map/basemap-d5e6883d55d5.pmtiles';
 const press = (name: string) => fireEvent.press(screen.getByRole('button', { name }));
@@ -107,4 +116,21 @@ it('shows a plain canvas and says directions still work when the basemap cannot 
   await waitFor(() => expect(screen.getByTestId('map').props.mapStyle.sources['sdk-basemap']).toMatchObject({ url: `pmtiles://${ARCHIVE}` }));
   expect(screen.queryByRole('button', { name: 'Retry offline map' })).toBeNull();
   expect(screen.getByRole('button', { name: copy.trip.chooseStart })).toBeOnTheScreen(); // the trip survived the retry
+});
+
+it('keeps simulated and device locations apart: a blocked device permission refuses Live and the Manual Guide survives', async () => {
+  const deviceLocation = jest.requireMock('expo-location');
+  await render(<App />);
+  await press('Location source: simulated. Switch.');
+  expect(screen.queryByRole('button', { name: 'Demo GPS: walk to the next point' })).toBeNull();
+  await press('Annex. Synthetic demo venue');
+  await press(copy.trip.chooseStart);
+  await press('Entrance. Synthetic demo venue');
+  await press(liveOption);
+  expect(await screen.findByText(copy.liveBlockers.permission_blocked)).toBeOnTheScreen();
+  expect(screen.queryByText(copy.live.exit)).toBeNull(); // never live without the user's permission
+  expect(deviceLocation.getCurrentPositionAsync).not.toHaveBeenCalled();
+  expect(deviceLocation.watchPositionAsync).not.toHaveBeenCalled();
+  await press(guideOption);
+  expect(screen.getByRole('button', { name: copy.guide.nextStep })).toBeOnTheScreen();
 });

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Button, I18nManager, StyleSheet, View, useColorScheme } from 'react-native';
+import { ActivityIndicator, Button, I18nManager, Platform, StyleSheet, View, useColorScheme } from 'react-native';
 import { SafeAreaProvider, initialWindowMetrics, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { createNavigationController } from '@muslim-ummah/offline-navigation';
@@ -14,6 +14,7 @@ import {
 import { BASEMAP } from './basemap';
 import { installKarachiBasemap } from './basemapExpo';
 import { DEMO_CENTER, demoVenue, describeDemoPlace } from './demoVenue';
+import { appStateLifecycle, createExpoLocationAdapter } from './expoLocation';
 import { createSimulatedLocation, type SimulatedLocation } from './simulatedLocation';
 
 // Everything the host owns is here: the venue, place names, the basemap file, the location service, language, theme and
@@ -31,10 +32,16 @@ function Consumer() {
   const insets = useSafeAreaInsets();
   const isRTL = I18nManager.isRTL;
   const colorScheme = useColorScheme() === 'dark' ? 'dark' : 'light';
-  const { location, controller } = useMemo(() => {
-    const location = createSimulatedLocation(demoVenue.graph.getNode('a')!.coordinate);
-    return { location, controller: createNavigationController({ venue: demoVenue, location, now: Date.now }) };
-  }, []);
+  // Two clearly separate location sources. Switching starts a fresh controller (the previous one is disposed), so a
+  // simulated fix can never be read as device evidence or the other way round.
+  const [source, setSource] = useState<'simulated' | 'device'>('simulated');
+  const simulated = useMemo(() => createSimulatedLocation(demoVenue.graph.getNode('a')!.coordinate), []);
+  const device = useMemo(() => createExpoLocationAdapter({ platform: Platform.OS === 'ios' ? 'ios' : 'android' }), []);
+  const controller = useMemo(
+    () => createNavigationController({ venue: demoVenue, location: source === 'device' ? device : simulated, now: Date.now }),
+    [source, device, simulated],
+  );
+  useEffect(() => () => controller.dispose(), [controller]);
   const theme = useMemo(() => createDefaultNavigationTheme({ isRTL, colorScheme }), [isRTL, colorScheme]);
   const { basemap, retry } = useBasemap();
   // Created once per archive so the map component keeps a stable identity; a missing archive draws a plain canvas and the
@@ -47,7 +54,7 @@ function Consumer() {
 
   if (basemap.status === 'loading') return <View style={styles.loading}><ActivityIndicator accessibilityLabel="Preparing the offline map" /></View>;
   return (
-    <NavigationProvider controller={controller}>
+    <NavigationProvider controller={controller} lifecycle={appStateLifecycle}>
       <View style={styles.root}>
         <NavigationScreen
           style={[styles.screen, { paddingTop: insets.top }]}
@@ -59,7 +66,14 @@ function Consumer() {
           bottomInset={insets.bottom}
         />
         {basemap.status === 'failed' ? <Button title="Retry offline map" accessibilityLabel="Retry offline map" onPress={retry} /> : null}
-        <View style={{ paddingBottom: insets.bottom }}><DemoGps location={location} /></View>
+        <View style={{ paddingBottom: insets.bottom }}>
+          {source === 'simulated' ? <DemoGps location={simulated} /> : null}
+          <Button
+            title={`Location: ${source === 'simulated' ? 'simulated' : 'device'} (switch)`}
+            accessibilityLabel={`Location source: ${source === 'simulated' ? 'simulated' : 'device'}. Switch.`}
+            onPress={() => setSource((s) => (s === 'simulated' ? 'device' : 'simulated'))}
+          />
+        </View>
       </View>
     </NavigationProvider>
   );
