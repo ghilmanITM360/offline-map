@@ -29,8 +29,20 @@ const box = (size = 24) => ({ width: size, height: size, alignItems: 'center' as
 const hidden = { accessibilityElementsHidden: true, importantForAccessibility: 'no-hide-descendants' as const };
 
 // Icons are drawn from Views, so the default theme needs no icon font and renders the same on every platform.
-const makeChevron = (glyph: string): NavigationIcon => function Chevron({ size = 24, color }) {
-  return <View {...hidden} style={box(size)}><Text allowFontScaling={false} style={{ fontSize: size, lineHeight: size * 1.1, color }}>{glyph}</Text></View>;
+// Drawn from a rotated corner, not a text glyph: U+2039/U+203A are bidi-mirrored, so a glyph already chosen for the reading
+// direction was mirrored AGAIN by Android's text engine inside an RTL layout. Transforms are never mirrored.
+const makeChevron = (points: 'left' | 'right'): NavigationIcon => function Chevron({ size = 24, color }) {
+  const side = size * 0.4;
+  const edge = Math.max(2, size / 10);
+  return (
+    // direction ltr: Android also flips a transform's rotation inside an RTL layout, which turned the drawn chevron sideways.
+    <View {...hidden} style={[box(size), { direction: 'ltr' }]}>
+      <View style={{
+        width: side, height: side, borderTopWidth: edge, borderRightWidth: edge, borderColor: color,
+        transform: [{ translateX: (points === 'right' ? -1 : 1) * side * 0.2 }, { rotate: points === 'right' ? '45deg' : '-135deg' }],
+      }} />
+    </View>
+  );
 };
 const Dot: NavigationIcon = ({ size = 24, color }) => (
   <View {...hidden} style={box(size)}><View style={{ width: size * 0.4, height: size * 0.4, borderRadius: size, backgroundColor: color }} /></View>
@@ -52,8 +64,8 @@ const Bars: NavigationIcon = ({ size = 24, color }) => (
 );
 const Spinner: NavigationIcon = ({ size = 24, color }) => <ActivityIndicator size={size > 24 ? 'large' : 'small'} color={color} />;
 
-const CHEVRON_BACK_LTR = makeChevron('‹');
-const CHEVRON_FORWARD_LTR = makeChevron('›');
+const CHEVRON_BACK_LTR = makeChevron('left');
+const CHEVRON_FORWARD_LTR = makeChevron('right');
 
 const makeButton = (colors: Colors, radius: number): React.FunctionComponent<NavigationButtonProps> => {
   const fills = { brand: colors.brand, brandTint: colors.brandTint, outline: 'transparent' } as const;

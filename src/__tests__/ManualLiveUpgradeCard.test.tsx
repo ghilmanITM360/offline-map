@@ -93,7 +93,7 @@ test('Urdu is RTL with header + live region preserved', async () => {
   const header = screen.getByRole('header');
   expect(header.props.accessibilityLiveRegion).toBe('polite');
   const style = StyleSheet.flatten(header.props.style);
-  expect(style).toMatchObject({ textAlign: 'right', writingDirection: 'rtl', fontWeight: '700' });
+  expect(style).toMatchObject({ textAlign: 'auto', writingDirection: 'rtl', fontWeight: '700' });
   expect(header).not.toHaveTextContent('Switch to live navigation?');
 });
 

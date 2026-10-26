@@ -769,6 +769,33 @@ describe('NavigationScreen: host configuration changes keep the journey', () => 
     expect(flat('navigation-recenter').left).toBeUndefined();
   });
 
+  it('RTL text follows the paragraph direction instead of an absolute edge, and the chevrons are drawn, never glyphs', async () => {
+    const view = await mount(ctrl());
+    await planAnnexFromLobby();
+    await press(`${copy.trip.startGuide.title}. ${copy.trip.startGuide.subtitle}`);
+    await view.rerender({ isRTL: true, theme: createDefaultNavigationTheme({ isRTL: true }) });
+    // Android and iOS both flip an explicit left/right again once writingDirection is rtl, which put RTL text on the wrong edge.
+    const styles: any[] = [];
+    const walk = (node: any) => {
+      if (!node || typeof node === 'string') return;
+      if (Array.isArray(node)) { node.forEach(walk); return; }
+      if (node.props?.style) styles.push(Object.assign({}, ...[node.props.style].flat(3).filter(Boolean)));
+      walk(node.children);
+    };
+    walk(screen.toJSON());
+    const aligned = styles.filter((style) => style.textAlign !== undefined);
+    expect(aligned.filter((style) => style.textAlign === 'auto').length).toBeGreaterThan(0);
+    expect(aligned.filter((style) => style.textAlign === 'left' || style.textAlign === 'right')).toEqual([]); // centred labels are fine
+    // U+2039/U+203A are bidi-mirrored, so a glyph already chosen for the direction was mirrored again inside an RTL layout.
+    for (const direction of [false, true]) {
+      const theme = createDefaultNavigationTheme({ isRTL: direction });
+      for (const Icon of [theme.icons.Back, theme.icons.Forward]) {
+        expect(JSON.stringify((Icon as (p: { size: number; color: string }) => unknown)({ size: 24, color: '#000' }))).not.toMatch(/[\u2039\u203A]/);
+        expect(JSON.stringify((Icon as (p: { size: number; color: string }) => unknown)({ size: 24, color: '#000' }))).toContain('"direction":"ltr"'); // never re-flipped by an RTL parent
+      }
+    }
+  });
+
   it('the host\'s style prop reaches the root, so safe areas stay the host\'s', async () => {
     await mount(ctrl(), { style: { paddingTop: 47 } });
     const root = screen.getByTestId('navigation-screen');

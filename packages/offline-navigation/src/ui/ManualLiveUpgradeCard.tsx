@@ -56,7 +56,7 @@ export function ManualLiveUpgradeCard({ upgrade, destination, onConfirm, onCance
     : upgrade.phase === 'acquiring' ? labels.acquiring
     : upgrade.phase === 'routing' ? labels.routing
     : upgrade.phase === 'preview' ? labels.preview : labels.failed;
-  const textStyle = [theme.text, { textAlign: isRTL ? 'right' as const : 'left' as const, writingDirection: isRTL ? 'rtl' as const : 'ltr' as const }];
+  const textStyle = [theme.text, { textAlign: 'auto' as const, writingDirection: isRTL ? 'rtl' as const : 'ltr' as const }];
   return <Card>
     <View style={{ gap: theme.gap }}>
       <Text ref={ref} accessibilityRole="header" accessibilityLiveRegion="polite" style={[textStyle, styles.title]}>{title}</Text>

@@ -76,7 +76,7 @@ test('Urdu: RTL text direction, translated copy and spoken names, wrapping not t
   const close = screen.getByRole('button', { name: 'ہدایات بند کریں' });
   expect(close).toBeTruthy();
   const stepText = screen.getByText(localizeInstruction(instructions[0], 'ur'));
-  expect(StyleSheet.flatten(stepText.props.style)).toMatchObject({ writingDirection: 'rtl', textAlign: 'right' });
+  expect(StyleSheet.flatten(stepText.props.style)).toMatchObject({ writingDirection: 'rtl', textAlign: 'auto' });
   expect(stepText.props.numberOfLines).toBeUndefined();
 });
 

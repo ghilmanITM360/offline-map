@@ -64,7 +64,7 @@ export function PlaceDirectory({ items, query, onQueryChange, onSelect, labels, 
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const visible = useMemo(() => filterPlaceItems(items, query), [items, query]);
   const { PlaceIcon, ForwardIcon, colors } = theme;
-  const text = { textAlign: isRTL ? 'right' as const : 'left' as const, writingDirection: isRTL ? 'rtl' as const : 'ltr' as const };
+  const text = { textAlign: 'auto' as const, writingDirection: isRTL ? 'rtl' as const : 'ltr' as const };
   const emptyMessage = items.length === 0 ? labels.empty : labels.noMatches(query.trim());
   return (
     <View testID="place-directory" style={styles.root}>

@@ -100,7 +100,9 @@ export function NavigationScreen({
   const activePicker = phase !== 'browsing' && picker?.sessionId === state.sessionId ? picker.kind : null;
   const confirming = phase === 'guide' && confirmSession === state.sessionId && allowLive;
   const direction = isRTL ? 'rtl' : 'ltr';
-  const text = { textAlign: isRTL ? 'right' as const : 'left' as const, writingDirection: isRTL ? 'rtl' as const : 'ltr' as const };
+  // `textAlign: 'auto'` follows the paragraph direction. An explicit left/right is flipped again by the platform once
+  // writingDirection is rtl, which put RTL text on the wrong edge on both Android and iOS.
+  const text = { textAlign: 'auto' as const, writingDirection: isRTL ? 'rtl' as const : 'ltr' as const };
   const styles = useMemo(() => makeStyles(theme), [theme]);
 
   const closePicker = () => { setPicker(null); setQuery(''); };

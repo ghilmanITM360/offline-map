@@ -43,7 +43,7 @@ export function ActiveDirectionsPanel({ visible, destination, steps, currentStep
   const { ref: headingRef } = useAccessibilityFocus(visible ? 'active-directions' : null);
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const { Container } = theme;
-  const textDirection = { writingDirection: isRTL ? 'rtl' as const : 'ltr' as const, textAlign: isRTL ? 'right' as const : 'left' as const };
+  const textDirection = { writingDirection: isRTL ? 'rtl' as const : 'ltr' as const, textAlign: 'auto' as const };
   return (
     <Modal visible={visible} animationType="none" onRequestClose={onClose}>
       <Container style={styles.panel} accessibilityViewIsModal>
