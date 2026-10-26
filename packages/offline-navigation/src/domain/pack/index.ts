@@ -9,3 +9,5 @@ export * from './PackManager';
 export * from './PackManifest';
 export * from './PackStore';
 export * from './PackVerifier';
+export * from './FileSystemPackStore';
+export * from './Sha256';

@@ -156,10 +156,15 @@ for (const f of ['AStar', 'MinHeap']) {
   // B4b: the ui/ layer may also import React and React Native; the domain may not, and nothing reaches the app.
   const domainRoot = resolve('packages/offline-navigation/src/domain') + sep;
   const uiRoot = resolve('packages/offline-navigation/src/ui') + sep;
+  // C2a: the maplibre/ layer may also import React, React Native and MapLibre, the domain, ui types and its own files.
+  const mapRoot = resolve('packages/offline-navigation/src/maplibre') + sep;
   for (const p of walk('packages')) for (const spec of importsOf(p)) {
     const target = resolve(dirname(p), spec);
     const ui = resolve(p).startsWith(uiRoot);
-    const ok = spec.startsWith('.') ? target.startsWith(domainRoot) || (ui && target.startsWith(uiRoot)) : ui && ['react', 'react-native'].includes(spec);
+    const map = resolve(p).startsWith(mapRoot);
+    const ok = spec.startsWith('.')
+      ? target.startsWith(domainRoot) || ((ui || map) && target.startsWith(uiRoot)) || (map && (target + sep).startsWith(mapRoot.slice(0, -1) + sep))
+      : (ui || map) && ['react', 'react-native'].includes(spec) || (map && spec === '@maplibre/maplibre-react-native');
     assert.ok(ok, `${p} imports ${spec}`);
   }
 }
