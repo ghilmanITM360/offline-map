@@ -117,4 +117,93 @@ describe('watch', () => {
     await Promise.resolve();
     expect(() => stop()).not.toThrow();
   });
+
+  describe('when expo-location ends the watch with an error', () => {
+    // Found on the iOS simulator: one kCLErrorLocationUnknown ended the stream for good while Core Location kept delivering fixes.
+    const scripted = () => {
+      const subs: Array<{ cb: Callback; err: (reason: string) => void; removed: number }> = [];
+      const module: any = { ...fakeLocation().module, watchPositionAsync: jest.fn(async (_o: unknown, cb: Callback, err: (r: string) => void) => {
+        const sub = { cb, err, removed: 0 };
+        subs.push(sub);
+        return { remove: () => { sub.removed += 1; } };
+      }) };
+      return { subs, module };
+    };
+    const fix = (n: number) => ({ coords: { latitude: n, longitude: n, accuracy: 5 }, timestamp: n });
+    const settle = async () => { for (let i = 0; i < 5; i++) await Promise.resolve(); };
+    beforeEach(() => jest.useFakeTimers());
+    afterEach(() => jest.useRealTimers());
+
+    it('starts a new subscription after a short delay, keeps delivering, and releases the dead one once', async () => {
+      const { subs, module } = scripted();
+      const seen: number[] = [];
+      const stop = android(module).watch((f) => seen.push(f.latitude));
+      await settle();
+      subs[0].cb(fix(1));
+      subs[0].err('Cannot obtain current location');
+      expect(subs[0].removed).toBe(1);
+      subs[0].cb(fix(99)); // a straggler from the dead subscription is not delivered
+      jest.advanceTimersByTime(999);
+      expect(subs).toHaveLength(1);
+      jest.advanceTimersByTime(1);
+      await settle();
+      expect(subs).toHaveLength(2);
+      subs[1].cb(fix(2));
+      expect(seen).toEqual([1, 2]);
+      stop();
+      expect(subs[1].removed).toBe(1);
+      expect(subs[0].removed).toBe(1);
+    });
+
+    it('backs off while nothing works (1 s, 2 s, ... capped at 5 s), and a delivered fix resets it', async () => {
+      const { subs, module } = scripted();
+      const stop = android(module).watch(() => undefined);
+      await settle();
+      const delays: number[] = [];
+      for (let i = 0; i < 7; i++) {
+        const before = subs.length;
+        subs[before - 1].err('unavailable');
+        let waited = 0;
+        while (subs.length === before) { jest.advanceTimersByTime(500); await settle(); waited += 500; }
+        delays.push(waited);
+      }
+      expect(delays).toEqual([1000, 2000, 3000, 4000, 5000, 5000, 5000]);
+      subs[subs.length - 1].cb(fix(1));
+      subs[subs.length - 1].err('unavailable');
+      let waited = 0;
+      const before = subs.length;
+      while (subs.length === before) { jest.advanceTimersByTime(500); await settle(); waited += 500; }
+      expect(waited).toBe(1000);
+      stop();
+    });
+
+    it('stopping cancels a pending restart and an error after stop starts nothing', async () => {
+      const { subs, module } = scripted();
+      const stop = android(module).watch(() => undefined);
+      await settle();
+      subs[0].err('unavailable');
+      stop();
+      jest.advanceTimersByTime(20_000);
+      await settle();
+      expect(subs).toHaveLength(1);
+      subs[0].err('late');
+      jest.advanceTimersByTime(20_000);
+      expect(subs).toHaveLength(1);
+      expect(subs[0].removed).toBe(1);
+    });
+
+    it('a subscription that is rejected is retried the same way, without an unhandled rejection', async () => {
+      const calls: number[] = [];
+      const module: any = { ...fakeLocation().module, watchPositionAsync: jest.fn(async () => { calls.push(1); throw new Error('denied'); }) };
+      const stop = android(module).watch(() => undefined);
+      await settle();
+      expect(calls).toHaveLength(1);
+      jest.advanceTimersByTime(1000);
+      await settle();
+      expect(calls).toHaveLength(2);
+      stop();
+      jest.advanceTimersByTime(20_000);
+      expect(calls).toHaveLength(2);
+    });
+  });
 });

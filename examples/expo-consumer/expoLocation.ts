@@ -6,6 +6,9 @@ import type { NavigationLifecycleAdapter } from '@muslim-ummah/offline-navigatio
 // The reference device-location adapter: foreground only (no background permission is requested), never a remembered
 // position, never a prompt except from requestPermission(), and every watcher released exactly once.
 
+const RESTART_BASE_MS = 1_000;
+const RESTART_MAX_MS = 5_000;
+
 export interface ExpoLocationAdapterOptions {
   /** Defaults to the installed `expo-location`; injectable so the mapping can be tested without a device. */
   location?: typeof ExpoLocation;
@@ -59,16 +62,43 @@ export function createExpoLocationAdapter({ location = ExpoLocation, platform, r
       // Accuracy.High, not a cached read: the SDK also rejects a fix whose own timestamp is old.
       location.getCurrentPositionAsync({ accuracy: location.Accuracy.High }).then((p) => done(signal.aborted ? null : toFix(p)), () => done(null));
     }),
+    // expo-location 19.0.8 on iOS ends a watch for good on the first Core Location error, including kCLErrorLocationUnknown ("no fix
+    // right now; keep waiting"), which Core Location raises routinely (a simulator location change, a tunnel, a building). Core Location
+    // keeps delivering fixes afterwards, but Expo has dropped its stream, so the watch silently goes quiet. Found on the iOS simulator
+    // with native delegate logging. The adapter therefore treats an error as "this subscription is dead" and starts a new one after a
+    // short, growing delay for as long as the SDK is watching. No fix is invented meanwhile: the SDK's own GPS-loss handling covers the gap.
     watch: (onFix) => {
       let stopped = false;
       let subscription: ExpoLocation.LocationSubscription | null = null;
-      location.watchPositionAsync(
-        { accuracy: location.Accuracy.High, timeInterval: 1_000, distanceInterval: 1 },
-        (p) => { if (!stopped) onFix(toFix(p)); },
-      ).then((s) => { if (stopped) s.remove(); else subscription = s; }, () => undefined);
+      let timer: ReturnType<typeof setTimeout> | null = null;
+      let failures = 0;
+      const start = () => {
+        timer = null;
+        let dead = false;
+        let mine: ExpoLocation.LocationSubscription | null = null;
+        const die = () => {
+          if (dead || stopped) return;
+          dead = true;
+          mine?.remove();
+          if (subscription === mine) subscription = null;
+          failures += 1;
+          timer = setTimeout(start, Math.min(RESTART_BASE_MS * failures, RESTART_MAX_MS));
+        };
+        location.watchPositionAsync(
+          { accuracy: location.Accuracy.High, timeInterval: 1_000, distanceInterval: 1 },
+          (p) => { if (!stopped && !dead) { failures = 0; onFix(toFix(p)); } },
+          die,
+        ).then((s) => {
+          if (stopped || dead) s.remove();
+          else { mine = s; subscription = s; }
+        }, die);
+      };
+      start();
       return () => {
         if (stopped) return;
         stopped = true;
+        if (timer) clearTimeout(timer);
+        timer = null;
         subscription?.remove();
         subscription = null;
       };
