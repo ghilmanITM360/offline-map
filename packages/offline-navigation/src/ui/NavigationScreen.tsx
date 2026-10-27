@@ -21,6 +21,7 @@ import { RouteGuideCard, RouteGuideLinks, RouteGuideStep, RouteGuideStepper } fr
 import { describeRouteStep, formatDistance } from './RouteStepCopy';
 import { StartOptionCard } from './StartOptionCard';
 import { Text } from './Text';
+import { useSafetyAnnouncements } from './useSafetyAnnouncements';
 
 type PickerKind = 'origin' | 'destination';
 
@@ -124,6 +125,20 @@ export function NavigationScreen({
   // writingDirection is rtl, which put RTL text on the wrong edge on both Android and iOS.
   const text = { textAlign: 'auto' as const, writingDirection: isRTL ? 'rtl' as const : 'ltr' as const };
   const styles = useMemo(() => makeStyles(theme), [theme]);
+
+  // iOS has no live regions, so VoiceOver is told about GPS loss/recovery, reroutes and each new instruction explicitly (Android keeps the live regions).
+  const liveStep = phase === 'live' && route && live ? route.steps[state.stepIndex] : undefined;
+  const spoken = liveStep ? describeRouteStep(liveStep, copy.routeStep, destination) : null;
+  const spokenDistance = liveStep && live && liveStep.kind !== 'arrive' ? formatDistance(live.maneuverDistanceM, copy.routeStep) : null;
+  useSafetyAnnouncements({
+    active: liveStep !== undefined,
+    signal: live?.signal ?? 'good',
+    rerouting: live?.rerouting ?? false,
+    notice: live?.notice ?? null,
+    instructionKey: `${state.sessionId}#${route?.nodeIds.length ?? 0}:${route?.distanceM ?? 0}#${state.stepIndex}`,
+    instruction: spoken ? (spokenDistance ? `${spoken.instruction}. ${spokenDistance}` : spoken.instruction) : '',
+    copy: { ...copy.live, signalRecovered: copy.live.gpsRecovered },
+  });
 
   const closePicker = () => { setPicker(null); setQuery(''); };
   const openPicker = (kind: PickerKind) => { setQuery(''); setPicker({ kind, sessionId: state.sessionId }); };

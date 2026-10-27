@@ -38,7 +38,7 @@ try {
   check(`UI entrypoint re-exports all ${UI_COMPONENTS.length} leaves and the focus hook`, () => {
     assert.equal(UI_COMPONENTS.length, 18);
     const reexports = imports(join(pkgDir, 'src/ui/index.ts')).map((s) => s.slice(2)).sort();
-    assert.deepEqual(reexports, [...UI_COMPONENTS, 'useAccessibilityFocus', 'RouteStepCopy', 'EnglishNavigationCopy', 'NavigationScreenTypes'].sort());
+    assert.deepEqual(reexports, [...UI_COMPONENTS, 'useAccessibilityFocus', 'useSafetyAnnouncements', 'RouteStepCopy', 'EnglishNavigationCopy', 'NavigationScreenTypes'].sort());
   });
   check('headless entrypoint graph never reaches react/react-native or the UI layer', () => {
     const seen = new Set();
@@ -74,8 +74,8 @@ try {
       `import { runAStar, MinHeap, SpatialGrid, spatialHaversineM, isValidCoordinate, findVenuePath, validateVenueGraph, findStreetRouteToTargets, evaluateNavigationStart, createNavigationSession } from '@muslim-ummah/offline-navigation';`,
       `import { createNavigationSession as fromSession } from '@muslim-ummah/offline-navigation/session';`,
       `import { createMapLibreNavigationMap, buildOfflineBasemapStyle } from '@muslim-ummah/offline-navigation/maplibre';`,
-      `import { ${UI_COMPONENTS.join(', ')}, useAccessibilityFocus } from '@muslim-ummah/offline-navigation/ui';`,
-      `export const all = [runAStar, MinHeap, SpatialGrid, spatialHaversineM, isValidCoordinate, findVenuePath, validateVenueGraph, findStreetRouteToTargets, evaluateNavigationStart, createNavigationSession, fromSession, createMapLibreNavigationMap, buildOfflineBasemapStyle, ${UI_COMPONENTS.join(', ')}, useAccessibilityFocus];`,
+      `import { ${UI_COMPONENTS.join(', ')}, useAccessibilityFocus, useSafetyAnnouncements } from '@muslim-ummah/offline-navigation/ui';`,
+      `export const all = [runAStar, MinHeap, SpatialGrid, spatialHaversineM, isValidCoordinate, findVenuePath, validateVenueGraph, findStreetRouteToTargets, evaluateNavigationStart, createNavigationSession, fromSession, createMapLibreNavigationMap, buildOfflineBasemapStyle, ${UI_COMPONENTS.join(', ')}, useAccessibilityFocus, useSafetyAnnouncements];`,
       `export const same: typeof createNavigationSession = fromSession;`,
     ].join('\n'));
     const r = tscRun([...probeArgs, 'ok.ts']);

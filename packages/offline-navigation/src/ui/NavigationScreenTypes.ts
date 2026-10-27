@@ -144,6 +144,8 @@ export interface NavigationScreenCopy {
     remaining: (distance: string, minutes: number) => string;
     gpsWeak: string;
     gpsLost: string;
+    /** Spoken (iOS VoiceOver) when a lost or weak signal returns. Optional: without it the recovery is not announced. */
+    gpsRecovered?: string;
     rerouting: string;
     rerouted: string;
     keptRoute: string;

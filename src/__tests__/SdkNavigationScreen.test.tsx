@@ -1,5 +1,5 @@
 import React, { useImperativeHandle } from 'react';
-import { Dimensions, Platform, View } from 'react-native';
+import { AccessibilityInfo, Dimensions, Platform, View } from 'react-native';
 import { act, fireEvent, render, screen, within } from './test-utils';
 import {
   createNavigationController,
@@ -543,6 +543,31 @@ describe('NavigationScreen: GPS loss, reroute, arrival and Exit while live (simu
     await walk(L, offset(N1, 8, 0), 1_000);
     expect(screen.queryByText(copy.live.gpsLost)).toBeNull();
     expect(c.getState().live!.signal).toBe('good');
+  });
+
+  it('on iOS, GPS loss and its recovery are announced through VoiceOver exactly once each (audit PLAT-02)', async () => {
+    const original = Platform.OS;
+    Platform.OS = 'ios';
+    const interrupt = jest.spyOn(AccessibilityInfo, 'announceForAccessibility').mockImplementation(() => {});
+    const queued = jest.spyOn(AccessibilityInfo, 'announceForAccessibilityWithOptions').mockImplementation(() => {});
+    interrupt.mockClear();
+    queued.mockClear();
+    try {
+      const { L } = await goLive();
+      expect(queued).toHaveBeenCalledWith(expect.stringContaining(copy.routeStep.depart), { queue: true });
+      queued.mockClear();
+      t += 8_000;
+      await act(async () => { jest.advanceTimersByTime(1_000); });
+      await act(async () => { jest.advanceTimersByTime(1_000); }); // still lost: not announced again
+      expect(interrupt.mock.calls).toEqual([[copy.live.gpsLost]]);
+      await walk(L, offset(N1, 8, 0), 1_000);
+      expect(queued).toHaveBeenCalledWith(copy.live.gpsRecovered, { queue: true });
+      expect(queued.mock.calls.filter(([m]) => m === copy.live.gpsRecovered)).toHaveLength(1);
+    } finally {
+      Platform.OS = original;
+      interrupt.mockRestore();
+      queued.mockRestore();
+    }
   });
 
   it('a weak signal is a warning, not a reroute', async () => {

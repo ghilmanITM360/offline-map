@@ -93,6 +93,7 @@ export const ENGLISH_NAVIGATION_SCREEN_COPY: NavigationScreenCopy = {
     remaining: (distance, minutes) => `${distance} left · about ${minutes} min`,
     gpsWeak: 'GPS signal is weak. Progress may be off.',
     gpsLost: 'GPS signal lost. Progress is paused until the signal returns.',
+    gpsRecovered: 'GPS signal is back. Progress has resumed.',
     rerouting: 'Finding a new way…',
     rerouted: 'Route updated from where you are.',
     keptRoute: 'No better route found. Keeping your current route.',

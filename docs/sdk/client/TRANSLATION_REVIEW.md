@@ -6,9 +6,9 @@ The SDK ships English only. The sample app can show the screen in Urdu (right to
 translations, a screen string gets Urdu / Roman Urdu text **only** where the Ijtema host already ships a message whose English is word for word the
 same. Reusing a host string is not approval for this screen: the owner still has to confirm each one in its new context.
 
-- Screen strings: 88
+- Screen strings: 89
 - With host-shipped wording (to review): 26
-- With no wording yet (shown in English until the owner supplies it): 62
+- With no wording yet (shown in English until the owner supplies it): 63
 
 `{0}`, `{1}` are the values the screen fills in (a place name, a number, a distance).
 
@@ -96,6 +96,7 @@ same. Reusing a host string is not approval for this screen: the owner still has
 | `live.remaining` | {0} left · about {1} min |
 | `live.gpsWeak` | GPS signal is weak. Progress may be off. |
 | `live.gpsLost` | GPS signal lost. Progress is paused until the signal returns. |
+| `live.gpsRecovered` | GPS signal is back. Progress has resumed. |
 | `live.rerouted` | Route updated from where you are. |
 | `live.keptRoute` | No better route found. Keeping your current route. |
 | `live.exit` | End navigation |

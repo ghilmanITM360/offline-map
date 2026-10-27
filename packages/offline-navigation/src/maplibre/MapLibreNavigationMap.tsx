@@ -122,7 +122,14 @@ export function createMapLibreNavigationMap(options: MapLibreNavigationMapOption
     }, []);
 
     // No archive: the plain canvas still draws the route, but the user is told the basemap is missing.
-    useEffect(() => { if (archiveUri === null) onAvailabilityChange(false); }, [onAvailabilityChange]);
+    // Only a change is reported, so a style reload that succeeds again does not re-render the screen for nothing.
+    const availableRef = useRef<boolean | null>(null);
+    const reportAvailable = useCallback((available: boolean) => {
+      if (availableRef.current === available) return;
+      availableRef.current = available;
+      onAvailabilityChange(available);
+    }, [onAvailabilityChange]);
+    useEffect(() => { if (archiveUri === null) reportAvailable(false); }, [reportAvailable]);
 
     return (
       <Map
@@ -135,13 +142,14 @@ export function createMapLibreNavigationMap(options: MapLibreNavigationMapOption
         compass={false}
         touchPitch={false}
         onDidFinishLoadingMap={() => {
+          // Availability follows every native outcome (a later success clears an earlier failure); only the camera framing is once-per-map.
+          if (archiveUri !== null) reportAvailable(true);
           if (readyRef.current) return;
           readyRef.current = true;
-          if (archiveUri !== null) onAvailabilityChange(true);
           frame();
         }}
         onRegionWillChange={onRegionWillChange as never}
-        onDidFailLoadingMap={() => onAvailabilityChange(false)}
+        onDidFailLoadingMap={() => reportAvailable(false)}
       >
         <Camera ref={cameraRef} initialViewState={initialViewState} />
         <GeoJSONSource id="sdk-places" data={placeData as never}>

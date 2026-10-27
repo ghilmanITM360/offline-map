@@ -26,3 +26,4 @@ export * from './RouteGuideCard';
 export * from './StartOptionCard';
 export * from './Text';
 export * from './useAccessibilityFocus';
+export * from './useSafetyAnnouncements';

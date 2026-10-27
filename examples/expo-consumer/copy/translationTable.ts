@@ -88,6 +88,7 @@ export const TRANSLATION_TABLE: readonly TranslationEntry[] = [
   { key: "live.remaining", en: "{0} left · about {1} min" },
   { key: "live.gpsWeak", en: "GPS signal is weak. Progress may be off." },
   { key: "live.gpsLost", en: "GPS signal lost. Progress is paused until the signal returns." },
+  { key: "live.gpsRecovered", en: "GPS signal is back. Progress has resumed." },
   { key: "live.rerouting", en: "Finding a new way…", ur: "نیا راستہ تلاش ہو رہا ہے…", urLatn: "Naya rasta talash ho raha hai…", source: "host:navigation.rerouting" },
   { key: "live.rerouted", en: "Route updated from where you are." },
   { key: "live.keptRoute", en: "No better route found. Keeping your current route." },
