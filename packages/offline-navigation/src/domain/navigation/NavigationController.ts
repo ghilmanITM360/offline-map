@@ -237,7 +237,10 @@ interface Track {
   boundaryMs: number;
   permission: LocationPermissionInput;
   lastFixAtMs: number | null;
-  lastObservation: LiveFixCoordinate | null;
+  /** High-water mark of every observation time this trip has seen: time only moves forward, so a replay of an older fix is no news. */
+  lastObservedAtMs: number | null;
+  /** Identifies the one watcher whose fixes the trip accepts; null when none is owned. */
+  watchOwner: object | null;
   lastAcceptedObservedAtMs: number | null;
   previousProgressM: number;
   previousEtaMinutes: number | undefined;
@@ -262,9 +265,14 @@ interface PendingLive {
   readonly route: NavigationRoute;
   readonly permission: LocationPermissionInput;
   readonly fix: LiveFixCoordinate;
+  /** The clock when the fix was taken: how long the route search has been keeping the walker waiting. */
+  readonly fixedAtMs: number;
 }
-const sameObservation = (a: LiveFixCoordinate, b: LiveFixCoordinate | null): boolean =>
-  b !== null && a.observedAtMs != null && a.observedAtMs === b.observedAtMs && a.latitude === b.latitude && a.longitude === b.longitude;
+/** A one-step Live start that waited longer than this for its route re-reads permission and takes a new fix before it commits. */
+const REVALIDATE_AFTER_MS = 5_000;
+/** An outside route must begin near the walker and end at the chosen destination; the provider is not trusted for either. */
+const OUTSIDE_START_TOLERANCE_M = 100;
+const OUTSIDE_END_TOLERANCE_M = 25;
 
 export function createNavigationController(options: NavigationControllerOptions): NavigationController {
   const { venue, location } = options;
@@ -307,7 +315,9 @@ export function createNavigationController(options: NavigationControllerOptions)
     for (const listener of [...listeners]) if (listeners.has(listener)) listener();
   };
   const update = (patch: Partial<Core>) => publish(derive({ ...state, ...patch }));
-  const updateLive = (patch: Partial<LiveState>, core: Partial<Core> = {}) => update({ ...core, live: { ...state.live!, ...patch } });
+  const updateLive = (patch: Partial<LiveState>, core: Partial<Core> = {}) => {
+    if (state.live) update({ ...core, live: { ...state.live, ...patch } });
+  };
 
   // A malformed place (no nodes) is as unknown as a missing one.
   const resolvePlace = (id: string): VenuePlace | undefined => {
@@ -381,6 +391,7 @@ export function createNavigationController(options: NavigationControllerOptions)
     const stop = track?.stopWatch;
     if (track) {
       track.stopWatch = null;
+      track.watchOwner = null;
       track.fixAbort?.abort();
       track.fixAbort = null;
     }
@@ -405,12 +416,13 @@ export function createNavigationController(options: NavigationControllerOptions)
 
   const beginLive = (route: NavigationRoute, permission: LocationPermissionInput, firstFix: LiveFixCoordinate) => {
     const line = route.line!;
-    track = {
+    const tr: Track = {
       // The start fix was validated as live, so it is the oldest fix this watcher generation may accept.
-      boundaryMs: firstFix.observedAtMs ?? now(), permission, lastFixAtMs: now(), lastObservation: null,
+      boundaryMs: firstFix.observedAtMs ?? now(), permission, lastFixAtMs: now(), lastObservedAtMs: null, watchOwner: null,
       lastAcceptedObservedAtMs: null, previousProgressM: 0, previousEtaMinutes: undefined, consecutiveOffRoute: 0,
       offRouteStartMs: null, offRouteAnchor: null, lastRerouteAtMs: null, stopWatch: null, lastAcceptedPoint: null, fixAbort: null,
     };
+    track = tr;
     update({
       phase: 'live', originId: LIVE_ORIGIN_ID, originSource: 'live_gps', loadState: 'ready', error: null, route, stepIndex: 0,
       liveAttempt: IDLE_ATTEMPT, liveCandidate: null,
@@ -419,15 +431,29 @@ export function createNavigationController(options: NavigationControllerOptions)
         maneuverDistanceM: route.steps[0].distanceM, snapped: null, signal: 'good', rerouting: false, notice: null,
       },
     });
-    track.stopWatch = location!.watch(ingestFix);
+    // A subscriber may have exited, disposed or changed the destination while Live was published: then there is no trip to watch.
+    if (track !== tr) return;
+    startWatch(tr);
+    if (track !== tr) return;
     ingestFix(firstFix);
   };
+
+  // A watcher delivers fixes only while it is the one the trip owns, so a stopped or superseded watcher that still calls back is deaf,
+  // and a watcher the adapter hands back after the trip moved on is stopped at once.
+  const startWatch = (tr: Track) => {
+    const owner = {};
+    tr.watchOwner = owner;
+    const stop = location!.watch((fix) => { if (track === tr && tr.watchOwner === owner) ingestFix(fix); });
+    if (track !== tr || tr.watchOwner !== owner) return stop();
+    tr.stopWatch = stop;
+  };
+  const stillLive = (tr: Track): boolean => track === tr && state.phase === 'live' && state.live !== null;
 
   const validPoint = (p: VenueCoordinate): boolean =>
     p != null && Number.isFinite(p.lat) && Number.isFinite(p.lng) && Math.abs(p.lat) <= 90 && Math.abs(p.lng) <= 180;
 
   // The provider is a trust boundary: its route is only used if it is a finite polyline with steps that agree with it.
-  const toOutsideRoute = (destinationId: string, out: OutsideRoute | null | undefined): NavigationRoute | 'direct' | null => {
+  const toOutsideRoute = (from: VenueCoordinate, destination: VenuePlace, out: OutsideRoute | null | undefined): NavigationRoute | 'direct' | null => {
     if (!out) return null;
     if (out.directGuide) return 'direct';
     const { points, steps } = out;
@@ -439,12 +465,20 @@ export function createNavigationController(options: NavigationControllerOptions)
     const totalM = cumulativeM[cumulativeM.length - 1];
     const stepsM = steps.reduce((sum, st) => sum + st.distanceM, 0);
     if (!(totalM > 0) || Math.abs(stepsM - totalM) > Math.max(5, totalM * 0.02)) return null;
-    return { originId: LIVE_ORIGIN_ID, destinationId, nodeIds: [], distanceM: totalM, steps: [...steps], line: { points: [...points], cumulativeM, totalM } };
+    // Bind the geometry to the journey that was asked for: it starts at the walker and finishes at the chosen destination.
+    if (haversineM(points[0], from) > OUTSIDE_START_TOLERANCE_M) return null;
+    const end = points[points.length - 1];
+    const reachesDestination = destination.nodeIds.some((id) => {
+      const node = venue.graph.getNode(id);
+      return node !== undefined && haversineM(end, node.coordinate) <= OUTSIDE_END_TOLERANCE_M;
+    });
+    if (!reachesDestination) return null;
+    return { originId: LIVE_ORIGIN_ID, destinationId: destination.id, nodeIds: [], distanceM: totalM, steps: [...steps], line: { points: [...points], cumulativeM, totalM } };
   };
   const askOutside = async (point: VenueCoordinate, destination: VenuePlace, signal: AbortSignal): Promise<NavigationRoute | 'direct' | null> => {
     try {
       const out = await options.outside!.route({ from: point, destination, entryGateId: state.entryGateId, signal });
-      return toOutsideRoute(destination.id, out);
+      return toOutsideRoute(point, destination, out);
     } catch {
       return null;
     }
@@ -463,6 +497,7 @@ export function createNavigationController(options: NavigationControllerOptions)
     if (!active || !destination || (!near && !options.outside)) return keep();
     const request = active.beginRequest();
     updateLive({ rerouting: true });
+    if (session !== active || !stillLive(tr)) return; // a subscriber ended or replaced the trip while this was published
     const land = (route: NavigationRoute | null) => request.commit(() => {
       try {
         if (!route || !route.line) return keep();
@@ -505,9 +540,10 @@ export function createNavigationController(options: NavigationControllerOptions)
     const observedAt = fix.observedAtMs;
     // Android/Play Services can deliver a cached last-known fix first after a (re)subscribe: it must not become progress.
     if (observedAt != null && observedAt < tr.boundaryMs - STALE_FIX_CLOCK_TOLERANCE_MS) return;
-    // One physical observation counts once, however often it is delivered.
-    if (sameObservation(fix, tr.lastObservation)) return;
-    tr.lastObservation = fix;
+    // One physical observation counts once, and time only moves forward: a duplicate, an out-of-order or a replayed older fix is no news,
+    // whether the watcher or a one-shot request delivered it. A time from the future cannot move the mark (it is stale anyway).
+    if (observedAt != null && tr.lastObservedAtMs !== null && observedAt <= tr.lastObservedAtMs) return;
+    if (observedAt != null && Number.isFinite(observedAt) && observedAt <= nowMs + STALE_FIX_CLOCK_TOLERANCE_MS) tr.lastObservedAtMs = observedAt;
 
     const capability = evaluateLocationCapability({ permission: tr.permission, liveFix: fix, nowMs });
     if (capability.liveBlocker !== null) {
@@ -544,6 +580,7 @@ export function createNavigationController(options: NavigationControllerOptions)
       return updateLive({ ...liveUpdate, rerouting: false }, { phase: 'arrived', stepIndex: located.stepIndex });
     }
     updateLive(liveUpdate, { stepIndex: located.stepIndex });
+    if (!stillLive(tr)) return; // a subscriber exited, disposed or changed the destination while this was published
 
     if (progress.distanceToRouteM <= offRouteThresholdM(fix.accuracy ?? 0)) return resetEvidence(tr);
     if (state.live!.rerouting) return; // one reroute at a time
@@ -599,6 +636,7 @@ export function createNavigationController(options: NavigationControllerOptions)
     if (!request.canCommit()) return null;
     const capability = evaluateLocationCapability({ permission, liveFix: fix, nowMs: now() });
     if (capability.liveBlocker !== null || fix === null) return block((capability.liveBlocker ?? 'no_fix') as LiveStartBlocker);
+    const fixedAtMs = now();
 
     const point: VenueCoordinate = { lat: fix.latitude, lng: fix.longitude };
     const near = nearestNode(point);
@@ -621,13 +659,48 @@ export function createNavigationController(options: NavigationControllerOptions)
       route = outside;
     }
     if (!route.line) return block('no_route');
-    return { request, route, permission, fix };
+    return { request, route, permission, fix, fixedAtMs };
+  };
+
+  // What a live start learned before its last await can be out of date when it commits (a slow route search, a revoked permission, a walker who
+  // moved on). Re-reads permission (never prompts) and, when asked or when the fix is no longer live, takes a new fix that must still be near
+  // where the route was made. Resolves the permission and fix to start with, a blocker, or null when the request was superseded.
+  const revalidate = async (live: PendingLive, reacquire: boolean): Promise<{ permission: LocationPermissionInput; fix: LiveFixCoordinate } | LiveStartBlocker | null> => {
+    const { request } = live;
+    let permission: LocationPermissionInput;
+    try {
+      permission = await location!.getPermission();
+    } catch {
+      permission = { granted: false, canAskAgain: true };
+    }
+    if (!request.canCommit()) return null;
+    if (!permission.granted) return permission.canAskAgain ? 'permission_needed' : 'permission_blocked';
+    if (!reacquire && evaluateLocationCapability({ permission, liveFix: live.fix, nowMs: now() }).liveBlocker === null) return { permission, fix: live.fix };
+
+    let fix: LiveFixCoordinate | null;
+    try {
+      fix = await location!.getCurrentFix(request.signal);
+    } catch {
+      return 'no_fix';
+    }
+    if (!request.canCommit()) return null;
+    const capability = evaluateLocationCapability({ permission, liveFix: fix, nowMs: now() });
+    if (capability.liveBlocker !== null || fix === null) return (capability.liveBlocker ?? 'no_fix') as LiveStartBlocker;
+    if (haversineM({ lat: fix.latitude, lng: fix.longitude }, { lat: live.fix.latitude, lng: live.fix.longitude }) > CANDIDATE_MAX_DRIFT_M) return 'route_outdated';
+    return { permission, fix };
   };
 
   const requestLive = async (): Promise<boolean> => {
     if (!disposed && state.phase === 'live') return true;
     const live = await acquireLive();
-    return live !== null && live.request.commit(() => beginLive(live.route, live.permission, live.fix));
+    if (live === null) return false;
+    const settled = await revalidate(live, now() - live.fixedAtMs > REVALIDATE_AFTER_MS);
+    if (settled === null) return false;
+    if (typeof settled === 'string') {
+      live.request.commit(() => blocked(settled));
+      return false;
+    }
+    return live.request.commit(() => beginLive(live.route, settled.permission, settled.fix));
   };
 
   const prepareLive = async (): Promise<boolean> => {
@@ -648,32 +721,13 @@ export function createNavigationController(options: NavigationControllerOptions)
     if (disposed || !candidate || !location || state.phase === 'live' || !candidate.request.canCommit()) return false;
     pending = null; // a second tap while this one is in flight must not start a second live
     const { request } = candidate;
-    const refuse = (blocker: LiveStartBlocker): boolean => {
-      request.commit(() => blocked(blocker));
+    const settled = await revalidate(candidate, true);
+    if (settled === null) return false;
+    if (typeof settled === 'string') {
+      request.commit(() => blocked(settled));
       return false;
-    };
-    let permission: LocationPermissionInput;
-    try {
-      permission = await location.getPermission(); // never prompts: the walker already answered
-    } catch {
-      permission = { granted: false, canAskAgain: true };
     }
-    if (!request.canCommit()) return false;
-    if (!permission.granted) return refuse(permission.canAskAgain ? 'permission_needed' : 'permission_blocked');
-
-    let fix: LiveFixCoordinate | null;
-    try {
-      fix = await location.getCurrentFix(request.signal);
-    } catch {
-      return refuse('no_fix');
-    }
-    if (!request.canCommit()) return false;
-    const capability = evaluateLocationCapability({ permission, liveFix: fix, nowMs: now() });
-    if (capability.liveBlocker !== null || fix === null) return refuse((capability.liveBlocker ?? 'no_fix') as LiveStartBlocker);
-    if (haversineM({ lat: fix.latitude, lng: fix.longitude }, { lat: candidate.fix.latitude, lng: candidate.fix.longitude }) > CANDIDATE_MAX_DRIFT_M) {
-      return refuse('route_outdated');
-    }
-    return request.commit(() => beginLive(candidate.route, permission, fix));
+    return request.commit(() => beginLive(candidate.route, settled.permission, settled.fix));
   };
 
   const cancelLive = () => {
@@ -683,9 +737,11 @@ export function createNavigationController(options: NavigationControllerOptions)
     update({ liveAttempt: IDLE_ATTEMPT, liveCandidate: null });
   };
 
+  let resumes = 0;
   const resume = async (): Promise<void> => {
     const tr = track;
     if (disposed || state.phase !== 'live' || !tr || !location) return;
+    const mine = (resumes += 1);
     tr.boundaryMs = now();
     stopWatch();
     resetEvidence(tr);
@@ -695,10 +751,13 @@ export function createNavigationController(options: NavigationControllerOptions)
     } catch {
       permission = { granted: false, canAskAgain: true };
     }
-    if (disposed || track !== tr || state.phase !== 'live') return;
+    // Only the newest resume may decide: an older one that finishes late must not replace what the newer one saw, start a second watcher
+    // or outlive an Exit.
+    if (disposed || track !== tr || state.phase !== 'live' || mine !== resumes) return;
     tr.permission = permission;
     if (permission.granted) {
-      tr.stopWatch = location.watch(ingestFix);
+      startWatch(tr);
+      if (track !== tr) return;
       // The watcher may take a while to reacquire after a long background gap; ask for one fresh fix now, as the host does.
       const request = new AbortController();
       tr.fixAbort = request;
@@ -791,6 +850,7 @@ export function createNavigationController(options: NavigationControllerOptions)
       endTrip();
       disposed = true;
       listeners.clear();
+      state = IDLE; // nobody is listening, but a late getState() must not describe a live trip that no longer exists
     },
   };
 }

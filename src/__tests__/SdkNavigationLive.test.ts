@@ -387,10 +387,13 @@ describe('ingestFix: live progress', () => {
 
   it('a fix cached before the watcher started is ignored entirely', async () => {
     const { c, L } = await goLive();
+    t += 10_000;
+    await c.resume(); // a new watcher generation: nothing observed before this moment may count
+    await flush();
     const before = c.getState();
-    walk(L, offset(N1, 30, 0), 4_000, { observedAtMs: T0 - 5_000 });
+    L.emit(fix(offset(N1, 30, 0), { observedAtMs: t - 5_000 }));
     expect(c.getState()).toBe(before);
-    walk(L, offset(N1, 30, 0), 0, { observedAtMs: T0 - 1_500 }); // within the clock tolerance: genuine
+    L.emit(fix(offset(N1, 30, 0), { observedAtMs: t - 1_500 })); // within the clock tolerance: genuine
     expect(c.getState()).not.toBe(before);
   });
 
