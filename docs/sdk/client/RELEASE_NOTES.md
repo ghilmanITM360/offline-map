@@ -38,6 +38,7 @@
 - **Camera browsing:** a deliberate pan or zoom while Live stops the follow; Recenter, a new route or phase follows again.
 - **Faster, still byte-exact verification:** a leaner SHA-256 (about 30% faster under Hermes) and an optional `digestFile` port (the example uses `expo-crypto`): warm start of the two sample packs 1,460 ms → about 200 ms on the iOS simulator.
 - `bottomInset` now applies to the panel as well as the arrival sheet; `RouteGuideCard` is split into `RouteGuideStep`, `RouteGuideStepper`, `RouteGuideLinks` (the card is unchanged).
+- `arrivalBottomInset` (new, optional, defaults to `bottomInset`): the arrival sheet is a Modal that draws under the Android navigation bar, so a host whose own bar clears the system bar (and passes `bottomInset={0}`) needs a separate inset for it. Found on the Android emulator: the sample's Done button was overlapped by the three-button bar.
 - Sample app: language picker (reviewed-pending Urdu / Roman Urdu), appearance picker, `expo-system-ui`, startup measurement tool.
 
 ### Fixed during native acceptance (all covered by tests)

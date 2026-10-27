@@ -225,8 +225,9 @@ function VenueScreen({ runtime, venue, switchVenue, preferences, theme }: { runt
           isRTL={isRTL}
           describePlace={describePlace}
           MapComponent={MapComponent}
-          // The demo bar below the screen clears the system bar itself; a host with nothing below the screen passes insets.bottom here.
+          // The demo bar below the screen clears the system bar itself, so the panel needs none; the arrival sheet is a Modal that draws under it.
           bottomInset={0}
+          arrivalBottomInset={insets.bottom}
         />
         <View style={[styles.demoBar, { paddingBottom: insets.bottom, backgroundColor: theme.colors.surface, borderTopColor: theme.colors.border }]}>
           {locationSource === 'simulated' ? <DemoGps location={simulated} theme={theme} /> : null}

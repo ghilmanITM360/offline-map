@@ -656,6 +656,25 @@ describe('NavigationScreen: GPS loss, reroute, arrival and Exit while live (simu
     expect(screen.getByText(copy.directory.destinationTitle)).toBeOnTheScreen();
   });
 
+  const flatStyle = (style: unknown) => Object.assign({}, ...[style].flat(3).filter(Boolean));
+
+  it('the arrival sheet takes the system inset from arrivalBottomInset even when the panel inset is 0 (Android nav bar overlapped Done)', async () => {
+    const { L, c } = await goLive({}, { bottomInset: 0, arrivalBottomInset: 34 });
+    await walk(L, offset(N1, 56, 0));
+    await walk(L, N3);
+    expect(c.getState().phase).toBe('arrived');
+    expect(flatStyle((await screen.findByTestId('nav-arrived-card')).props.style).paddingBottom).toBe(58);
+    expect(flatStyle(screen.getByTestId('navigation-panel').props.style).paddingBottom).toBe(0);
+  });
+
+  it('without arrivalBottomInset the arrival sheet falls back to bottomInset', async () => {
+    const { L, c } = await goLive({}, { bottomInset: 34 });
+    await walk(L, offset(N1, 56, 0));
+    await walk(L, N3);
+    expect(c.getState().phase).toBe('arrived');
+    expect(flatStyle((await screen.findByTestId('nav-arrived-card')).props.style).paddingBottom).toBe(58);
+  });
+
   it('Exit while live stops the watcher, ignores any late reroute, and returns to the directory', async () => {
     const f = deferredFinder();
     let phase = 0;

@@ -103,7 +103,8 @@ fires. It owns no navigation state. Hooks: `useNavigationController()`, `useNavi
 | `describePlace` | Names a place or returns `null` to hide it; without it the place id is shown (never an invented name). |
 | `MapComponent` | Your map, or `createMapLibreNavigationMap(...)`. Omit for a directions-only screen. |
 | `allowLive` | Default true. |
-| `bottomInset` | Safe-area bottom inset, default 0. Applied to the panel and the arrival sheet, so pass `insets.bottom` when the screen is the bottom-most thing on the page and `0` when your own bar sits below it and already clears the system bar. |
+| `bottomInset` | Safe-area bottom inset for the panel, default 0. Pass `insets.bottom` when the screen is the bottom-most thing on the page and `0` when your own bar sits below it and already clears the system bar. |
+| `arrivalBottomInset` | Bottom inset for the arrival sheet, default `bottomInset`. The sheet is a Modal window that draws under the system navigation bar, so pass `insets.bottom` here even when `bottomInset` is `0`. |
 | `onClose`, `onTripEnded('exit'\|'arrived')`, `style` | Navigation hooks; `style` goes on the root so you add safe-area padding. |
 
 The screen owns the journey UI (directory and search, start chooser, preview, Manual Guide, explicit Live, entry-gate chooser, GPS weak/lost,

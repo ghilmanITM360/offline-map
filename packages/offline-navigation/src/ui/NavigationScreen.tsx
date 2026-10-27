@@ -88,7 +88,7 @@ function deriveLeafThemes({ colors, icons, Button, radius, hitSlop }: Navigation
 // step and live status, and every button below is one controller command. What lives here is view-local only: the
 // search text, which chooser is open, the Manual-to-Live confirmation and whether the host's map said it is unavailable.
 export function NavigationScreen({
-  copy, theme, isRTL, describePlace, MapComponent, allowLive = true, reviewLiveRoute = true, bottomInset = 0, onClose, onTripEnded, style,
+  copy, theme, isRTL, describePlace, MapComponent, allowLive = true, reviewLiveRoute = true, bottomInset = 0, arrivalBottomInset, onClose, onTripEnded, style,
 }: NavigationScreenProps) {
   const controller = useNavigationController();
   const state = useNavigationState();
@@ -472,7 +472,7 @@ export function NavigationScreen({
         visible={phase === 'arrived'}
         destination={destination}
         labels={copy.arrival}
-        bottomInset={bottomInset}
+        bottomInset={arrivalBottomInset ?? bottomInset}
         onRecenter={recenter}
         onDone={() => endTrip('arrived')}
         theme={leaf.arrival}

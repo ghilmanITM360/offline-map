@@ -181,8 +181,13 @@ export interface NavigationScreenProps {
   allowLive?: boolean;
   /** Show the live route and wait for a second tap before going live (default). False starts Live on the first tap. */
   reviewLiveRoute?: boolean;
-  /** Host safe-area bottom inset for the arrival sheet. Default 0. */
+  /** Host safe-area bottom inset for the panel. Default 0. */
   bottomInset?: number;
+  /**
+   * Bottom inset for the arrival sheet. The sheet is a Modal, a separate window that always draws under the system navigation bar,
+   * so it needs the system inset even when `bottomInset` is 0 because the host's own bar clears it below the panel. Defaults to `bottomInset`.
+   */
+  arrivalBottomInset?: number;
   /** Back was pressed on the directory itself; without it the directory shows no Back control. */
   onClose?: () => void;
   /** A trip ended: the user left it, or finished it on arrival. */
