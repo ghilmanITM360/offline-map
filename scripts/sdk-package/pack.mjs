@@ -1,7 +1,7 @@
 // Build an allowlisted, compiled private artifact outside the checkout. Workspace exports stay source-based.
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
@@ -29,8 +29,10 @@ const exports = Object.fromEntries(Object.entries(source.exports).map(([key, val
 const manifest = { ...source, main: exports['.'].default, types: exports['.'].types,
   'react-native': exports['.'].default, exports, files: ['dist'] };
 writeFileSync(join(stage, 'package.json'), JSON.stringify(manifest, null, 2) + '\n');
+// Apache-2.0 section 4(a): whoever receives the package gets the licence text (verbatim apache.org LICENSE-2.0, checked by test:sdk-package).
+copyFileSync(join(pkgDir, 'LICENSE'), join(stage, 'LICENSE'));
 const inspection = JSON.parse(run('npm', ['pack', '--dry-run', '--json', '--ignore-scripts']))[0];
-for (const file of inspection.files) assert.ok(file.path === 'package.json' || /^dist\/.*\.(js|d\.ts)$/.test(file.path), `unexpected artifact file: ${file.path}`);
+for (const file of inspection.files) assert.ok(file.path === 'package.json' || file.path === 'LICENSE' || /^dist\/.*\.(js|d\.ts)$/.test(file.path), `unexpected artifact file: ${file.path}`);
 for (const target of [manifest.main, manifest.types, ...Object.values(exports).flatMap((value) => typeof value === 'string' ? [value] : Object.values(value))]) assert.ok(existsSync(join(stage, target)), `missing entrypoint ${target}`);
 writeFileSync(join(out, 'pack-dry-run.json'), JSON.stringify(inspection, null, 2) + '\n');
 const packed = JSON.parse(run('npm', ['pack', '--json', '--ignore-scripts', '--pack-destination', out]))[0];

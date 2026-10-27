@@ -38,9 +38,11 @@ assert.deepEqual(Object.keys(manifest.peerDependenciesMeta).sort(), Object.keys(
 for (const target of [manifest.main, manifest.types, manifest['react-native'], ...Object.values(manifest.exports).flatMap((v) => typeof v === 'string' ? [v] : Object.values(v))]) assert.ok(existsSync(join(pkgDir, target)), target);
 const walk = (dir) => readdirSync(dir, { withFileTypes: true }).flatMap((e) => e.isDirectory() ? walk(join(dir, e.name)) : [join(dir, e.name)]);
 for (const file of walk(pkgDir)) {
-  assert.ok(file.endsWith('package.json') || /\/dist\/.*\.(js|d\.ts)$/.test(file), file);
+  assert.ok(file.endsWith('package.json') || file === join(pkgDir, 'LICENSE') || /\/dist\/.*\.(js|d\.ts)$/.test(file), file);
   assert.ok(!readFileSync(file, 'utf8').includes(root), 'artifact contains repository path');
 }
+// The licence text must be the verbatim Apache License 2.0 (sha-256 of apache.org/licenses/LICENSE-2.0.txt, 11,358 bytes).
+assert.equal(createHash('sha256').update(readFileSync(join(pkgDir, 'LICENSE'))).digest('hex'), 'cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30', 'LICENSE is not the verbatim Apache-2.0 text');
 // Runtime is a separate plain Node process with no loader, peers, NODE_PATH or repository cwd.
 writeFileSync(join(consumer, 'smoke.cjs'), `
 const assert = require('node:assert/strict');

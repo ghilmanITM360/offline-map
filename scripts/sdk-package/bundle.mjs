@@ -4,9 +4,10 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { copyFileSync, cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { inventoryFromLock, renderInventory } from './inventory.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 assert.ok(process.argv[2], 'usage: node scripts/sdk-package/bundle.mjs <fresh outside-repository directory>');
@@ -34,9 +35,9 @@ const tarSha = sha256(first);
 mkdirSync(join(out, 'package'), { recursive: true });
 cpSync(first, join(out, 'package', tarName));
 
-// 2. The archive allowlist: only package.json and compiled dist/ JavaScript and declarations.
+// 2. The archive allowlist: only package.json, the licence text and compiled dist/ JavaScript and declarations.
 const listing = run('tar', ['-tzf', first]).split('\n').filter(Boolean);
-for (const entry of listing) assert.ok(/^package\/(package\.json|dist\/.*\.(js|d\.ts))$/.test(entry), `unexpected archive entry: ${entry}`);
+for (const entry of listing) assert.ok(/^package\/(package\.json|LICENSE|dist\/.*\.(js|d\.ts))$/.test(entry), `unexpected archive entry: ${entry}`);
 
 // 3. Independent reinstall of the artifact alone into an empty project: the headless entrypoint must load in plain Node.
 const probe = join(scratch, 'probe');
@@ -61,6 +62,23 @@ mkdirSync(join(out, 'examples/expo-consumer/assets'), { recursive: true });
 cpSync(archive, join(out, 'examples/expo-consumer/assets/karachi-basemap.pmtiles'));
 cpSync(join(root, 'assets/offline-map/BASEMAP_PROVENANCE.json'), join(out, 'examples/expo-consumer/assets/BASEMAP_PROVENANCE.json'));
 cpSync(first, join(out, 'examples/expo-consumer/sdk.tgz'));
+copyFileSync(join(root, 'packages/offline-navigation/LICENSE'), join(out, 'LICENSE'));
+
+// 4b. A reviewed, reproducible consumer install: resolve the example's pinned dependencies once, against THIS tarball, and ship the lockfile.
+// `npm ci` with it installs exactly this graph; `--dry-run` proves the lockfile and package.json agree. Only registry metadata is read.
+const lockDir = join(scratch, 'lock');
+mkdirSync(lockDir);
+for (const f of ['package.json']) cpSync(join(root, 'examples/expo-consumer', f), join(lockDir, f));
+cpSync(first, join(lockDir, 'sdk.tgz'));
+run('npm', ['install', '--package-lock-only', '--ignore-scripts', '--no-audit', '--no-fund'], lockDir);
+run('npm', ['ci', '--dry-run', '--ignore-scripts', '--no-audit', '--no-fund'], lockDir);
+const lockFile = join(lockDir, 'package-lock.json');
+const lock = JSON.parse(readFileSync(lockFile, 'utf8'));
+assert.ok(lock.packages['node_modules/@muslim-ummah/offline-navigation']?.resolved?.startsWith('file:'), 'the lockfile must pin the packed tarball');
+cpSync(lockFile, join(out, 'examples/expo-consumer/package-lock.json'));
+writeFileSync(join(out, 'docs/DEPENDENCY_INVENTORY.md'), renderInventory(inventoryFromLock(lock), {
+  title: 'JavaScript dependency and licence inventory (consumer app)', tarballSha256: tarSha, lockSha256: sha256(lockFile),
+}));
 rmSync(scratch, { recursive: true, force: true });
 
 for (const f of ['modules/sdk-location-precision/ios/SdkLocationPrecisionModule.swift', 'modules/sdk-location-precision/ios/SdkLocationPrecision.podspec', 'modules/sdk-location-precision/expo-module.config.json']) assert.ok(existsSync(join(out, 'examples/expo-consumer', f)), `missing ${f}`);
