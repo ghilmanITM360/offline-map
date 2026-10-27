@@ -53,6 +53,6 @@ iOS: local offline map, directory/search, preview, Manual Guide, explicit Live w
 
 ## Independent audit findings (Codex, 2026-10-27)
 
-Tracked in [CODEX_AUDIT_REMEDIATION.md](CODEX_AUDIT_REMEDIATION.md): 17 fixed at J/P (+S where stated), **awaiting Codex retest**; Android regression of the corrected binary and the arrival-modal-vs-Android-nav-bar hypothesis are **open** (VERIFY NOW, not run).
+Tracked in [CODEX_AUDIT_REMEDIATION.md](CODEX_AUDIT_REMEDIATION.md): 17 fixed at J/P (+S where stated), **awaiting Codex retest**; the Android emulator regression of the rebuilt binary **passed** (evidence level E), which also confirmed and fixed the arrival-modal-vs-Android-nav-bar hypothesis (`e49ed1b`); device, screen-reader and field items stay open.
 
 ## FAIL — none open.

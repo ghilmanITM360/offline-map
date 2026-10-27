@@ -6,8 +6,8 @@ Audit baseline: `13f46292648e9d7cf34713d9487f3835e923fd2a` (tarball `69a78793…
 At the start of remediation `HEAD` equalled the audited SHA (local = remote, both stashes and the Codex worktree intact), so every finding was taken as reproduced at current HEAD
 from the audit's own probes before code was changed.
 
-Remediation source: `646a604` (live safety), `cdb2d8e` (packs), `9122bb2` (routing), `467d4a1` (platform), `5f62845` (supply chain), `4f9a4d2` (arrival card), and the commit that adds this file.
-Compiled SDK package at `4f9a4d2`, byte-reproducible: **`eab28df2b74887767ecca7eb4f8846c97d3e22268b03bec4a2d7babb3c01e819`** (`muslim-ummah-offline-navigation-0.1.0.tgz`, contains `LICENSE`).
+Remediation source: `646a604` (live safety), `cdb2d8e` (packs), `9122bb2` (routing), `467d4a1` (platform), `5f62845` (supply chain), `4f9a4d2` (arrival card at large text), `e49ed1b` (arrival sheet inset, found on the Android emulator), and the commit that adds this file.
+Compiled SDK package at `e49ed1b`, byte-reproducible: **`d722ce2541c3cd179cd0ce19ecf9536ec50481ace08beea3a0ef61f19dd29cca`** (the earlier `4f9a4d2` package, `eab28df2…1e819`, is superseded) (`muslim-ummah-offline-navigation-0.1.0.tgz`, contains `LICENSE`).
 The delivery bundle and native binary identities are in the bundle's `manifest.json` / `CHECKSUMS.txt` and in the evidence directory `~/Documents/offline-map-audits/offline-sdk-codex-remediation-2026-10-27/`.
 
 ## Finding ledger
@@ -35,14 +35,14 @@ Verification levels: **J** Jest/source, **P** replay of the audit's probes again
 | SUP-01 advisories | M | `5f62845` four in-range patches; disposition per advisory; reproducible consumer lock + inventory | `package-lock.json`, docs | `test:sdk-package`; `DEPENDENCY_ADVISORY_DISPOSITION.md` | repo audit 15→8 nodes (0 critical), fresh consumer 9→5 | Awaiting Codex |
 | REL-01 debug-signed APK | Info | documented, nothing fabricated | `RELEASE_SIGNING_AND_DISTRIBUTION.md` | — | — | Informational |
 | Hypothesis: arrival card overflow | — | `4f9a4d2` **reproduced on iOS at the largest text size** (both buttons clipped), buttons stacked, card scrolls | `ArrivalCard.tsx` | `SdkPlatformDefects.test.tsx`; before/after screenshots | J, S | New; Awaiting Codex |
-| Hypothesis: arrival modal vs Android nav bar | — | **not reproduced, not tested**: the Android run did not complete (host starvation) | — | — | none | Open |
+| Hypothesis: arrival modal vs Android nav bar | — | **CONFIRMED on the Android emulator** (three-button bar overlapped Recenter/Done by 32 px, also at 200% text): the arrival sheet is a Modal that draws under the bar, but the sample passed `bottomInset={0}` and the documented guidance said to. `e49ed1b` adds `arrivalBottomInset` (defaults to `bottomInset`); the sample passes `insets.bottom`. Re-tested on the rebuilt APK: clear of the bar under three-button and gesture navigation, at 100% and 200% text | `NavigationScreen.tsx`, `NavigationScreenTypes.ts`, `examples/expo-consumer/App.tsx`, `API_REFERENCE.md` | `SdkNavigationScreen.test.tsx` (fails without the fix); Android screenshots 13 and 40/41 | J, E | New; Awaiting Codex |
 
 ## Evidence summary at the remediation source
 
 - Typecheck (app + scripts), ESLint, `git diff --check`: clean. Full Jest 222 suites / 2,363 tests; `npm test` chain exit 0 (2,400 differential comparisons, 91,506 golden pairs equal, all-gates, outside/street/gate/reroute scripts); plain-Node headless 83 checks; exports; package; fresh consumer from the tarball (63 tests, Android 769-module and iOS 771-module production bundles). The final re-run at the closing commit is recorded in the evidence directory.
 - Replay of the audit's probes against the new compiled package: navigation parent replay 18 of 19 (the 19th, "unknown equal endpoints", is the one Codex itself classed Not Applicable); extended probes 4 of 4 including the 100 independent-Dijkstra graphs; pack parent replay 8 pass / 4 fail where the four failures are exactly the defect demonstrations (declared/undeclared link, staging race, Expo cleanup, array pointer) that no longer reproduce.
 - iOS simulator (new isolated simulator, new Release binary): pack self-test 10/10, corruption repair ("1 repaired at start", hashes restored), Live to arrival, background/foreground keeps the journey, arrival card at the largest text size before and after the fix.
-- **Android emulator: not completed.** See `android/RESULT.md` in the evidence directory. No Android claim is made for this binary.
+- **Android emulator (`Ijtema_API_36_Play`, API 36, host GPU), run 3: completed.** 18 of 20 scenarios PASS (GPS "lost" and "recovered" were exercised; "weak accuracy" was not, because `adb emu geo fix` cannot set accuracy), 2 BLOCKED (map-unavailable recovery and at-rest pack corruption are not safely reproducible on a non-rooted release build; both are covered by Jest and the in-app self-test), 1 product defect found and fixed (above). Binary `sdkconsumer-release-e49ed1b.apk` sha256 `bdfe5c92d9593f0661a7f10c7bf70d920aa5d86f4e3531be896aef074b1865ce` (debug-signed sample), installed bytes re-verified. Per-scenario results: `android/RESULT.md`. Emulator evidence only: no physical device, real GPS walking, TalkBack or airplane mode.
 
 ## How Codex retests
 
@@ -55,5 +55,5 @@ Verification levels: **J** Jest/source, **P** replay of the audit's probes again
 
 ## Verdict (fresh, evidence-backed, provisional until Codex retests)
 
-- **Controlled pilot: conditionally ready, about 65/100** (was 55). Reason for the rise: every audited code defect is fixed with regression tests and replayed against the compiled package, and the new iOS binary passed on a simulator. Why not higher: Android was not re-verified for this binary, nothing is verified on a physical device, VoiceOver/TalkBack and GPS walking are untested, and Codex has not retested.
+- **Controlled pilot: conditionally ready, about 67/100** (was 55; 65 before the Android emulator pass). Reason for the rise: every audited code defect is fixed with regression tests and replayed against the compiled package, and the new iOS binary passed on a simulator. Why not higher: Android passed on an emulator for the rebuilt binary (not a device), nothing is verified on a physical device, VoiceOver/TalkBack and GPS walking are untested, and Codex has not retested.
 - **Unrestricted production: NOT READY, about 38/100** (was 36). The mandatory external gates are unchanged (device walking, continuous GPS on an iPhone, whole-device airplane mode, screen readers, reviewed Urdu/Roman Urdu, Gate 18/19 survey where supported, data-distribution rights, owner signing/publishing, independent security acceptance).
