@@ -282,3 +282,44 @@ describe('PackManager on the Expo adapter', () => {
     expect(existsSync(join(root, 'packs/installed/venue-a@1.0.0'))).toBe(false);
   });
 });
+
+// Codex PACK-01: a failure while removing the REPLACED copy happens after the new text is already in place. The write has committed, so it must
+// not be reported as failed; if it were, the manager would think the update did not happen and delete the pack the pointer now names.
+describe('a failure after the pointer committed (audit PACK-01)', () => {
+  const faulty = (failOn: string) => {
+    const fake = createFakeExpoFs();
+    const Base = fake.api.File;
+    let injected = 0;
+    class FaultFile extends Base {
+      delete(): void {
+        if (this.uri.endsWith(failOn)) { injected += 1; throw new Error('audit transient cleanup EIO'); }
+        super.delete();
+      }
+    }
+    return { fake, api: { ...fake.api, File: FaultFile } as typeof fake.api, injected: () => injected };
+  };
+
+  it('writeTextAtomic still resolves when only the final .swap-old cleanup fails, and the new text is what is read', async () => {
+    const { api, injected } = faulty('pointer.json.swap-old');
+    const fs = createExpoPackFileSystem(uri, api);
+    await fs.writeTextAtomic('packs/pointer.json', 'one');
+    await expect(fs.writeTextAtomic('packs/pointer.json', 'two')).resolves.toBeUndefined();
+    expect(injected()).toBe(1);
+    expect(await fs.readText('packs/pointer.json')).toBe('two');
+    await expect(fs.writeTextAtomic('packs/pointer.json', 'three')).rejects.toThrow(); // the stale copy still blocks a LATER write, before it commits anything
+    expect(await fs.readText('packs/pointer.json')).toBe('two');
+  });
+
+  it('an update whose old-pointer cleanup fails is installed: the new pack is active and survives a restart', async () => {
+    const { api } = faulty('pointer.json.swap-old');
+    const m = manager(createExpoPackFileSystem(uri, api));
+    await m.recover();
+    writePack('staging', 'a', '1.0.0');
+    expect((await m.installStaged('a', { venueId: 'venue-a' })).ok).toBe(true);
+    writePack('staging', 'b', '2.0.0');
+    const result = await m.installStaged('b', { venueId: 'venue-a' });
+    expect(result.ok).toBe(true);
+    expect(existsSync(join(root, 'packs/installed/venue-a@2.0.0'))).toBe(true);
+    expect((await m.resolveActive('venue-a'))?.manifest.packVersion).toBe('2.0.0');
+  });
+});

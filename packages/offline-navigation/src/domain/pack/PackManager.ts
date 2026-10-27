@@ -163,29 +163,55 @@ export const createPackManager = (config: PackManagerConfig) => {
     v: POINTER_VERSION, generation: gen,
     venues: Object.fromEntries([...venues.entries()].sort(([a], [b]) => (a < b ? -1 : 1)).map(([k, e]) => [k, { active: e.active, previous: e.previous, confirmed: e.confirmed }])),
   });
-  /** Persist `next`; memory changes only if the write succeeds. */
+  /**
+   * Persist `next`; memory changes only if the write succeeds. A rejected write is not proof that nothing changed (a platform can fail after
+   * the new pointer is already in place, e.g. while cleaning up the replaced file), so the disk is read back: if it holds exactly the text
+   * that was written, the write committed and the failure is ignored.
+   */
   const writeState = async (next: Map<string, VenueEntry>): Promise<PackError | null> => {
     const saved = new Map(venues);
     venues.clear();
     next.forEach((v, k) => venues.set(k, v));
+    const text = pointerText(generation + 1);
     try {
-      await store.writePointer(pointerText(generation + 1));
+      await store.writePointer(text);
     } catch {
-      venues.clear();
-      saved.forEach((v, k) => venues.set(k, v));
-      return { code: 'pointer-write-failed', message: 'the active pointer could not be written' };
+      let landed = false;
+      try { landed = (await store.readPointer()) === text; } catch { landed = false; }
+      if (!landed) {
+        venues.clear();
+        saved.forEach((v, k) => venues.set(k, v));
+        return { code: 'pointer-write-failed', message: 'the active pointer could not be written' };
+      }
     }
     generation += 1;
     return null;
   };
 
-  const removeInstalled = async (id: string): Promise<void> => {
-    if ((pins.get(id) ?? 0) > 0) { pendingRemoval.add(id); return; }
+  /** The pack ids the pointer on disk references; null when that cannot be established (unreadable or unparseable): then nothing is safe to delete. */
+  const persistedIds = async (): Promise<Set<string> | null> => {
+    try {
+      const text = await store.readPointer();
+      if (text === null) return new Set();
+      const parsed = parsePointerText(text);
+      return parsed ? new Set([...parsed.venues.values()].flatMap((e) => (e.previous ? [e.active, e.previous] : [e.active]))) : null;
+    } catch {
+      return null;
+    }
+  };
+
+  /** Never removes a pack that is pinned by a journey or that the persisted pointer still references; those stay for a later sweep or recovery. */
+  const removeInstalled = async (id: string): Promise<boolean> => {
+    if ((pins.get(id) ?? 0) > 0) { pendingRemoval.add(id); return false; }
+    const onDisk = await persistedIds();
+    if (onDisk === null || onDisk.has(id)) { pendingRemoval.add(id); return false; }
     try {
       await store.remove({ area: 'installed', id });
       pendingRemoval.delete(id);
+      return true;
     } catch {
       pendingRemoval.add(id); // retried on the next mutation or recovery; never blocks navigation
+      return false;
     }
   };
   const referenced = (): Set<string> => new Set([...venues.values()].flatMap((e) => (e.previous ? [e.active, e.previous] : [e.active])));
@@ -198,22 +224,30 @@ export const createPackManager = (config: PackManagerConfig) => {
     for (const id of new Set(ids)) if (id && !keep.has(id)) await removeInstalled(id);
   };
 
-  const parsePointer = (text: string): Map<string, VenueEntry> | null => {
+  const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
+  /** Strict shape check: a plain record of plain entries and a finite, non-negative integer generation. Anything else is corrupt, never "empty". */
+  const parsePointerText = (text: string): { generation: number; venues: Map<string, VenueEntry> } | null => {
     try {
-      const o = parseStrictJson(text) as { v?: unknown; generation?: unknown; venues?: unknown };
-      if (o.v !== POINTER_VERSION || typeof o.generation !== 'number' || typeof o.venues !== 'object' || o.venues === null) return null;
+      const o = parseStrictJson(text);
+      if (!isRecord(o) || o.v !== POINTER_VERSION || !Number.isSafeInteger(o.generation) || (o.generation as number) < 0 || !isRecord(o.venues)) return null;
       const out = new Map<string, VenueEntry>();
       for (const [k, raw] of Object.entries(o.venues)) {
+        if (!isRecord(raw)) return null;
         const e = raw as { active?: unknown; previous?: unknown; confirmed?: unknown };
         const idOk = (v: unknown) => typeof v === 'string' && v.startsWith(`${k}@`) && parseSemver(v.slice(k.length + 1)) !== null;
         if (!idOk(e.active) || (e.previous !== null && !idOk(e.previous)) || typeof e.confirmed !== 'boolean') return null;
         out.set(k, { active: e.active as string, previous: e.previous as string | null, confirmed: e.confirmed });
       }
-      generation = o.generation;
-      return out;
+      return { generation: o.generation as number, venues: out };
     } catch {
       return null;
     }
+  };
+  const parsePointer = (text: string): Map<string, VenueEntry> | null => {
+    const parsed = parsePointerText(text);
+    if (!parsed) return null;
+    generation = parsed.generation;
+    return parsed.venues;
   };
 
   const doRecover = async (): Promise<RecoveryReport> => {
@@ -259,7 +293,7 @@ export const createPackManager = (config: PackManagerConfig) => {
       // Orphans (a commit whose pointer write never happened, a removal a crash interrupted) are not referenced.
       const keep = referenced();
       for (const id of await store.list('installed')) {
-        if (!keep.has(id) && (pins.get(id) ?? 0) === 0) { await removeInstalled(id); report.removedOrphans++; }
+        if (!keep.has(id) && (pins.get(id) ?? 0) === 0 && (await removeInstalled(id))) report.removedOrphans++;
       }
     }
     for (const b of bundled) { const m = parsePackManifest(b.manifestText); if (m.ok) await resolveBundled(m.manifest.venueId); } // warm the hash memo
@@ -382,6 +416,17 @@ export const createPackManager = (config: PackManagerConfig) => {
         await discard();
         return err('commit-failed', 'the staged pack could not be moved into place', id);
       }
+      // Staging can be written by others between the verification above and the move, so what was verified is not yet what is installed.
+      // Bind them before anything points at it: the committed manifest must be the very bytes that were authenticated, and the committed
+      // files must still match it. Anything else is removed unreferenced and never activated.
+      const installedRef: PackRef = { area: 'installed', id };
+      let committedText: string | null = null;
+      try { committedText = await store.readManifest(installedRef); } catch { committedText = null; }
+      const bound = committedText === text ? await verifyPack(text, readerFor(installedRef), { compatibility: compat(options.venueId) }) : null;
+      if (!bound?.ok) {
+        await removeInstalled(id);
+        return bound ? bound : err('manifest-digest-mismatch', 'the staged manifest changed after it was verified', id);
+      }
 
       // Only a pack that has run successfully (confirmed) becomes the rollback target; an unconfirmed one is replaced, not kept.
       const old = venues.get(manifest.venueId);
@@ -434,7 +479,23 @@ export const createPackManager = (config: PackManagerConfig) => {
     repairPointer: (): Promise<PackOpResult> => serialize(async () => {
       needRecovered();
       if (pointerReadable) return { ok: true };
-      const failed = await writeState(new Map());
+      // Keep every installed pack that still verifies instead of declaring them all orphans: rebuild the pointer from the directories, the
+      // newest per venue, unconfirmed (nothing says it has run). If a directory cannot be judged right now, change nothing and let the caller retry.
+      const found = new Map<string, { id: string; version: Version }>();
+      for (const id of await store.list('installed')) {
+        const at = id.lastIndexOf('@');
+        const version = at > 0 ? parseSemver(id.slice(at + 1)) : null;
+        if (!version) continue;
+        const venueId = id.slice(0, at);
+        const checked = await verifyInstalled(id, venueId, true);
+        if (!checked.ok) { if (DEFINITIVE.has(checked.error.code)) continue; return checked; }
+        if (`${checked.manifest.venueId}@${checked.manifest.packVersion}` !== id) continue;
+        const best = found.get(venueId);
+        if (!best || compareSemver(version as Version, best.version) > 0) found.set(venueId, { id, version: version as Version });
+      }
+      const rebuilt = new Map<string, VenueEntry>();
+      found.forEach((f, venueId) => rebuilt.set(venueId, { active: f.id, previous: null, confirmed: false }));
+      const failed = await writeState(rebuilt);
       if (failed) return { ok: false, error: failed };
       pointerReadable = true;
       return { ok: true };

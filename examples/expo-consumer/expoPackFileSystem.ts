@@ -76,7 +76,11 @@ export const createExpoPackFileSystem = (rootUri: string, api: ExpoFsApi = ExpoF
         if (hadTarget) file(old).move(file(path)); // put the previous text back
         throw e;
       }
-      if (hadTarget) file(old).delete();
+      // The new text is in place: that was the commit point. Removing the replaced copy is housekeeping; failing here must not report the
+      // write as failed (readText() ignores a leftover .swap-old whenever the target exists, and the next write deletes it).
+      if (hadTarget) {
+        try { file(old).delete(); } catch { /* best effort */ }
+      }
     },
 
     async listNames(path) {
