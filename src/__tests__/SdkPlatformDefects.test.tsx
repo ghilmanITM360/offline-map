@@ -2,7 +2,7 @@
 // the VoiceOver speech itself and a real map load/failure sequence are physical-device / native-run gates.
 import React from 'react';
 import { AccessibilityInfo, Platform } from 'react-native';
-import { act, render, renderHook } from '@testing-library/react-native';
+import { act, render, renderHook, screen } from '@testing-library/react-native';
 import { createMapLibreNavigationMap } from '@muslim-ummah/offline-navigation/maplibre';
 import { useSafetyAnnouncements, type SafetyAnnouncementInput } from '@muslim-ummah/offline-navigation/ui';
 import { testVenue } from './sdkTestVenue';
@@ -161,5 +161,38 @@ describe('PLAT-02: safety changes are announced on iOS and only once', () => {
       expect(now).not.toHaveBeenCalled();
       expect(queued).not.toHaveBeenCalled();
     });
+  });
+});
+
+// Reproduced natively (iOS simulator, accessibility-extra-extra-extra-large): the arrival card's Recenter and Done buttons were clipped at both
+// screen edges because they stayed side by side with fixed horizontal padding.
+describe('arrival card at large text (audit hypothesis, reproduced on the iOS simulator)', () => {
+  const { Dimensions, StyleSheet } = require('react-native');
+  const { ArrivalCard } = require('../../packages/offline-navigation/src/ui/ArrivalCard');
+  const theme = {
+    PinIcon: () => null, RecenterIcon: () => null, hitSlop: { top: 0, bottom: 0, left: 0, right: 0 },
+    colors: { scrim: '#000', cardFill: '#fff', title: '#000', accent: '#0a0', onAccent: '#fff', muted: '#555', secondaryFill: '#eee', secondaryText: '#000' },
+  };
+  const labels = { title: 'You have arrived', subtitle: 'Navigation complete', recenter: 'Recenter', recenterA11y: 'Recenter map', done: 'Done', doneA11y: 'Done' };
+  const draw = async (fontScale: number) => {
+    Dimensions.set({ window: { width: 390, height: 844, scale: 3, fontScale } });
+    await render(<ArrivalCard visible destination="Gate 02" labels={labels} bottomInset={0} onRecenter={() => {}} onDone={() => {}} theme={theme} />);
+    const done = StyleSheet.flatten(screen.getByTestId('nav-arrived-done-button').props.style);
+    const row = StyleSheet.flatten(screen.getByTestId('nav-arrived-done-button').parent.props.style);
+    return { done, row, scrolls: screen.getByTestId('nav-arrived-scroll') !== null };
+  };
+  afterEach(() => { Dimensions.set({ window: { width: 390, height: 844, scale: 2, fontScale: 1 } }); });
+
+  it('keeps the two buttons side by side at normal text', async () => {
+    const { row, done } = await draw(1);
+    expect(row.flexDirection).toBe('row');
+    expect(done.alignSelf).toBeUndefined();
+  });
+
+  it('stacks them full width at large text, and the card can scroll', async () => {
+    const { row, done, scrolls } = await draw(3);
+    expect(row.flexDirection).toBe('column');
+    expect(done.alignSelf).toBe('stretch');
+    expect(scrolls).toBe(true);
   });
 });
