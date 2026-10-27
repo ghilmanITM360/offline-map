@@ -68,13 +68,16 @@ export const findStreetRouteToTargets = <E extends StreetEdge>(
   });
   if (connected.length === 0) return undefined;
 
-  const targetNodeIds = new Set(connected.map(({ connector }) => connector.nodeId));
-  const targetSinkWeight = new Map(
-    connected.map(({ target, connector }) => [
-      connector.nodeId,
-      (target.extraCostsM ?? []).reduce((sum, cost) => sum + cost, connector.distanceM),
-    ]),
-  );
+  // Several targets can hang off one street node. Each node keeps the single target that is cheapest to arrive at (the earliest on a tie),
+  // and that same target supplies both the arrival cost and the reported result, so the cost and the identity can never disagree.
+  const bestAtNode = new Map<string, { target: StreetRouteTarget; connector: { nodeId: string; distanceM: number }; weight: number }>();
+  for (const { target, connector } of connected) {
+    const weight = (target.extraCostsM ?? []).reduce((sum, cost) => sum + cost, connector.distanceM);
+    const known = bestAtNode.get(connector.nodeId);
+    if (!known || weight < known.weight) bestAtNode.set(connector.nodeId, { target, connector, weight });
+  }
+  const targetNodeIds = new Set(bestAtNode.keys());
+  const targetSinkWeight = new Map([...bestAtNode].map(([nodeId, best]) => [nodeId, best.weight]));
 
   const heuristicToNearestNode = (fromId: string): number => {
     const from = graph.getNode(fromId);
@@ -106,7 +109,7 @@ export const findStreetRouteToTargets = <E extends StreetEdge>(
   const reachedNodeId = result.previousNode[TARGET_GOAL_SINK];
   if (!reachedNodeId) return undefined;
 
-  const reached = connected.find(({ connector }) => connector.nodeId === reachedNodeId);
+  const reached = bestAtNode.get(reachedNodeId);
   if (!reached) return undefined;
 
   const { edges: edgesUsed } = reconstructAStarPath(result, reachedNodeId);

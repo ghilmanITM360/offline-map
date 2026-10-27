@@ -17,6 +17,50 @@ export const haversineM = (from: VenueCoordinate, to: VenueCoordinate): number =
   return 6371000 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 };
 
+/**
+ * How much of the straight-line distance may be used as the A* estimate on this graph. The estimate is admissible only if no edge costs less
+ * than the straight line between its ends, but the graph contracts accept any non-negative `weightMultiplier` (a discounted path) and a
+ * `distanceM` shorter than the geodesic. So the scale is the smallest cost/straight-line ratio over every edge, capped at 1: scale x
+ * straight-line is then a lower bound of any route's cost (triangle inequality), and it is exactly 1 on a graph with no discounted edge,
+ * leaving those searches unchanged. An edge whose far end has no coordinates, or a zero-cost edge, makes the scale 0 (plain Dijkstra).
+ * Computed once per graph object, which is assumed not to change afterwards.
+ */
+const SCALE_SAFETY = 1 - 1e-9; // float rounding in the haversine formula must never tip an estimate over the true cost
+const scaleCache = new WeakMap<object, number>();
+export const heuristicScale = (graph: VenueRoutingGraph): number => {
+  const cached = scaleCache.get(graph);
+  if (cached !== undefined) return cached;
+  let scale = 1;
+  for (const id of graph.nodeIds()) {
+    const from = graph.getNode(id);
+    for (const edge of graph.edgesFrom(id)) {
+      const to = graph.getNode(edge.to);
+      if (!from || !to) { scale = 0; continue; }
+      const cost = edgeCostM(edge);
+      const straight = haversineM(from.coordinate, to.coordinate);
+      if (!(cost >= straight)) scale = Math.min(scale, straight > 0 && cost >= 0 ? cost / straight : 0);
+    }
+  }
+  const result = scale < 1 ? scale * SCALE_SAFETY : 1;
+  scaleCache.set(graph, result);
+  return result;
+};
+
+/**
+ * Every search runs with the scaled (provably admissible) estimate and is therefore cheapest-cost. On a graph that needed a scale below 1 it
+ * also runs once with the plain straight-line estimate the venue has always used, and that route is kept when it is as cheap (within float
+ * noise): both are optimal, they differ only in WHICH of several equal-cost paths they report, and the routes this SDK has already published
+ * must not change. A route that is genuinely dearer than the optimum is never returned.
+ */
+const COST_EPSILON_M = 1e-9;
+const preferPublishedTies = <T extends { total: number }>(graph: VenueRoutingGraph, run: (scale: number) => T | undefined): T | undefined => {
+  const scale = heuristicScale(graph);
+  const exact = run(scale);
+  if (!exact || scale === 1) return exact;
+  const published = run(1);
+  return published && published.total <= exact.total + COST_EPSILON_M ? published : exact;
+};
+
 export interface VenuePath<E extends VenueEdge> {
   readonly nodes: string[];
   readonly edges: E[];
@@ -32,18 +76,20 @@ export const findVenuePath = <E extends VenueEdge>(
   if (!graph.getNode(startId) || !graph.getNode(goalId)) return undefined;
   if (startId === goalId) return { nodes: [startId], edges: [], costM: 0 };
   const goal = graph.getNode(goalId)!;
-  const result = runAStar<E>({
-    seeds: [{ id: startId, gScore: 0 }],
-    heuristic: (id) => {
-      const n = graph.getNode(id);
-      return n ? haversineM(n.coordinate, goal.coordinate) : 0;
-    },
-    neighbors: (id): AStarNeighbor<E>[] => graph.edgesFrom(id).map((edge) => ({ to: edge.to, weight: edgeCostM(edge), edge })),
-    isGoal: (id) => id === goalId,
+  return preferPublishedTies(graph, (scale) => {
+    const result = runAStar<E>({
+      seeds: [{ id: startId, gScore: 0 }],
+      heuristic: (id) => {
+        const n = graph.getNode(id);
+        return n ? scale * haversineM(n.coordinate, goal.coordinate) : 0;
+      },
+      neighbors: (id): AStarNeighbor<E>[] => graph.edgesFrom(id).map((edge) => ({ to: edge.to, weight: edgeCostM(edge), edge })),
+      isGoal: (id) => id === goalId,
+    });
+    if (!result) return undefined;
+    const path = reconstructAStarPath(result, result.goalId);
+    return { nodes: path.nodes, edges: path.edges, costM: result.gScore[result.goalId], total: result.gScore[result.goalId] };
   });
-  if (!result) return undefined;
-  const path = reconstructAStarPath(result, result.goalId);
-  return { nodes: path.nodes, edges: path.edges, costM: result.gScore[result.goalId] };
 };
 
 // B3b: the service-level search RoutingServiceV2 runs on whatever graph its host injects. These reproduce the
@@ -62,20 +108,23 @@ const sumDistanceM = (edges: readonly VenueEdge[]): number => edges.reduce((sum,
 
 const shortestVenueRoute = <E extends VenueEdge>(graph: VenueRoutingGraph<E>, startId: string, goalId: string): VenueRoute<E> | undefined => {
   if (startId === goalId) return { nodes: [startId], edges: [], distanceM: 0, costM: 0 };
-  const result = runAStar<E>({
-    seeds: [{ id: startId, gScore: 0 }],
-    heuristic: (id) => {
-      const from = graph.getNode(id);
-      const to = graph.getNode(goalId);
-      return from && to ? haversineM(from.coordinate, to.coordinate) : 0;
-    },
-    neighbors: venueNeighbors(graph),
-    isGoal: (id) => id === goalId,
+  return preferPublishedTies(graph, (scale) => {
+    const result = runAStar<E>({
+      seeds: [{ id: startId, gScore: 0 }],
+      heuristic: (id) => {
+        const from = graph.getNode(id);
+        const to = graph.getNode(goalId);
+        return from && to ? scale * haversineM(from.coordinate, to.coordinate) : 0;
+      },
+      neighbors: venueNeighbors(graph),
+      isGoal: (id) => id === goalId,
+    });
+    if (!result) return undefined;
+    const { nodes, edges } = reconstructAStarPath(result, result.goalId);
+    if (nodes[0] !== startId || nodes.length < 2) return undefined;
+    const costM = result.gScore[result.goalId];
+    return { nodes, edges, distanceM: sumDistanceM(edges), costM, total: costM };
   });
-  if (!result) return undefined;
-  const { nodes, edges } = reconstructAStarPath(result, result.goalId);
-  if (nodes[0] !== startId || nodes.length < 2) return undefined;
-  return { nodes, edges, distanceM: sumDistanceM(edges), costM: result.gScore[result.goalId] };
 };
 
 /** Cheapest route over every (start, goal) pair; on equal cost the earliest pair (start-major) wins. */
@@ -105,26 +154,38 @@ export const findBestSeededVenuePath = <E extends VenueEdge>(
 ): { route: VenueRoute<E>; seedId: string } | undefined => {
   if (seeds.length === 0 || goalIds.length === 0) return undefined;
   const goals = new Set(goalIds);
-  const result = runAStar<E>({
-    seeds: [...seeds],
-    heuristic: (id) => {
-      const node = graph.getNode(id);
-      if (!node) return 0;
-      let min = Infinity;
-      for (const goalId of goalIds) {
-        const goal = graph.getNode(goalId);
-        if (!goal) continue;
-        const d = haversineM(node.coordinate, goal.coordinate);
-        if (d < min) min = d;
-      }
-      return min === Infinity ? 0 : min;
-    },
-    neighbors: venueNeighbors(graph),
-    isGoal: (id) => goals.has(id),
+  // One initial cost per id (the lowest, the earliest on a tie), so the search and the reconstruction agree on the winning seed.
+  const byId = new Map<string, AStarSeed>();
+  for (const seed of seeds) {
+    const known = byId.get(seed.id);
+    if (!known || seed.gScore < known.gScore) byId.set(seed.id, seed);
+  }
+  const unique = [...byId.values()];
+  const found = preferPublishedTies(graph, (scale) => {
+    const result = runAStar<E>({
+      seeds: unique,
+      heuristic: (id) => {
+        const node = graph.getNode(id);
+        if (!node) return 0;
+        let min = Infinity;
+        for (const goalId of goalIds) {
+          const goal = graph.getNode(goalId);
+          if (!goal) continue;
+          const d = haversineM(node.coordinate, goal.coordinate);
+          if (d < min) min = d;
+        }
+        return min === Infinity ? 0 : scale * min;
+      },
+      neighbors: venueNeighbors(graph),
+      isGoal: (id) => goals.has(id),
+    });
+    if (!result) return undefined;
+    const { nodes, edges } = reconstructAStarPath(result, result.goalId);
+    const seed = byId.get(nodes[0]);
+    if (!seed) return undefined;
+    return { nodes, edges, seed, total: result.gScore[result.goalId] };
   });
-  if (!result) return undefined;
-  const { nodes, edges } = reconstructAStarPath(result, result.goalId);
-  const seed = seeds.find((s) => s.id === nodes[0]);
-  if (!seed) return undefined;
-  return { route: { nodes, edges, distanceM: sumDistanceM(edges), costM: result.gScore[result.goalId] - seed.gScore }, seedId: seed.id };
+  if (!found) return undefined;
+  const { nodes, edges, seed, total } = found;
+  return { route: { nodes, edges, distanceM: sumDistanceM(edges), costM: total - seed.gScore }, seedId: seed.id };
 };
