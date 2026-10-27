@@ -7,6 +7,13 @@ Evidence levels are kept separate: Jest/package/bundle, iOS simulator, Android e
 - **GO** for a controlled pilot / client integration of the private package, with the host app keeping its own navigation authority.
 - **NO-GO** for an unrestricted production release.
 
+## Update after the independent Codex audit (2026-10-27)
+
+All 17 confirmed findings (NAV-01..10, PACK-01..04, PLAT-01..02, SUP-01) were fixed and replayed against the compiled package; REL-01 is documented; one extra defect (arrival card overflow at the
+largest iOS text size) was reproduced and fixed. **They await the independent Codex retest and are not marked verified by this document.** The Android emulator regression for the corrected binary
+was **not completed** (host starvation), so no Android claim transfers to it. Details, commands and the fresh assessment (controlled pilot conditionally ready ~65/100, unrestricted production not ready
+~38/100): [CODEX_AUDIT_REMEDIATION.md](CODEX_AUDIT_REMEDIATION.md).
+
 ## What is done and verified (at the levels stated)
 | Area | State | Evidence |
 | --- | --- | --- |

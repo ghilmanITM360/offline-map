@@ -57,6 +57,15 @@
 - Background location, speech/voice instructions (the Ijtema host's *Voice instructions* switch is not part of the SDK), a gesture-detent bottom sheet.
 - A published registry package, signing or notarisation. Nothing was published or delivered externally.
 
+### Changes after the independent audit (same 0.1.0 candidate)
+
+- **Live safety:** overlapping foreground resumes, replayed or out-of-order GPS fixes, reentrant subscriber commands and a slow one-step Live start can no longer leak a watcher, revive a lost signal, crash or commit a stale fix; an outside route must start at the walker and end at the chosen destination.
+- **Packs:** a pointer write that fails after it committed no longer deletes the active pack; malformed pointers delete nothing and `repairPointer()` rebuilds from verified directories; the committed manifest and files are re-verified before activation; the Node reference adapter never follows a link.
+- **Routing:** any opaque node id routes (including `toString`); cheapest weighted route even with discounted edges (`heuristicScale` is exported); admissible but inconsistent estimates stay optimal; duplicate seed ids and shared street connectors keep their own costs. Published routes are unchanged.
+- **Platform:** a recovered map load clears the unavailable warning; iOS VoiceOver gets GPS-loss, recovery, reroute and instruction announcements (`useSafetyAnnouncements`, optional `copy.live.gpsRecovered`); the arrival card stacks its buttons and scrolls at large text.
+- **Supply chain:** the tarball carries the Apache-2.0 `LICENSE`; the delivery bundle ships a resolved consumer `package-lock.json` and a generated dependency/licence inventory; four advisory packages were patched inside their declared ranges.
+- Details: [../CODEX_AUDIT_REMEDIATION.md](../CODEX_AUDIT_REMEDIATION.md). Android emulator and physical-device evidence for the corrected binary does not exist yet.
+
 ### Known issues
 
 See [SECURITY_AND_VALIDATION_REPORT.md](SECURITY_AND_VALIDATION_REPORT.md) §Known limitations.

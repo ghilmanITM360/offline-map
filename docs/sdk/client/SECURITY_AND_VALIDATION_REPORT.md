@@ -11,7 +11,7 @@ open item is listed.
 | Level | Result |
 | --- | --- |
 | Static (tsc app + scripts, eslint) | pass |
-| Unit/integration (Jest) | 214 suites / 2,199 tests pass; the full `npm test` chain (2,400 seeded A\* differential comparisons, 91,506 golden route pairs, every `test:*` script) exits 0 at the C5.3 checkpoint; routing sources and goldens were not modified |
+| Unit/integration (Jest) | 222 suites / 2,363 tests pass at the post-audit remediation source; the full `npm test` chain (2,400 seeded A\* differential comparisons, 91,506 golden route pairs, every `test:*` script) exits 0 at the C5.3 checkpoint; routing sources and goldens were not modified |
 | Plain-Node headless | 83 checks; the headless entrypoint loads with no React/React Native |
 | Tarball | contents allowlist, byte-reproducible (two packs), isolated runtime, declarations, shared peers pass |
 | Independent consumer install | fresh `npm install` of the `.tgz`, `tsc`, 45 Jest tests in 5 suites (Expo file-system adapter with a native-strict test double and kill-at-every-step sweeps, bundled-pack runtime, on-device self-test harness, the app, the location adapter), Android and iOS production bundles (both ship every pack file) pass; one React, one React Native, one MapLibre |
@@ -36,6 +36,11 @@ Native runs found a defect Jest could not: expo-file-system refuses to read a pa
 uri" inside the app bundle), so the first build failed closed with both packs unavailable; the fix copies to app storage and reads
 there. Not established: real airplane mode, a physical device, storage-full conditions beyond the simulated free-space check, and
 Android corrupt-file recovery (release APK is not debuggable; the same logic is covered by the on-device self-test and Jest).
+
+**Post-audit remediation (Codex baseline `13f4629`).** 17 findings fixed with regression tests and replayed against the compiled package; they await independent Codex retest
+([../CODEX_AUDIT_REMEDIATION.md](../CODEX_AUDIT_REMEDIATION.md)). On the corrected binary the iOS simulator passed the on-device pack self-test (10/10), corruption repair, Live to arrival and the
+arrival card at the largest text size. **The Android emulator regression for the corrected binary was not completed** (host starvation), so the Android rows above describe the earlier binary only.
+Advisory disposition: [DEPENDENCY_ADVISORY_DISPOSITION.md](DEPENDENCY_ADVISORY_DISPOSITION.md).
 
 ## Security notes
 

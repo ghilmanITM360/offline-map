@@ -101,5 +101,20 @@
       "speech output",
       "Android live font-size change without restart"
     ]
+  },
+  "fifth_handoff": {
+    "baseline_audited": "13f46292648e9d7cf34713d9487f3835e923fd2a",
+    "fix_commits": [
+      "646a604",
+      "cdb2d8e",
+      "9122bb2",
+      "467d4a1",
+      "5f62845",
+      "4f9a4d2"
+    ],
+    "tarballSha256": "eab28df2b74887767ecca7eb4f8846c97d3e22268b03bec4a2d7babb3c01e819",
+    "status": "17 findings fixed, awaiting independent Codex retest; Android emulator regression not completed",
+    "doc": "docs/sdk/CODEX_AUDIT_REMEDIATION.md",
+    "codexVerified": []
   }
 }

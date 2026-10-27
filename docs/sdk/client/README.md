@@ -46,6 +46,10 @@ lifetime of the controller. The SDK decides the journey; you supply the world.
 - [RELEASE_NOTES.md](RELEASE_NOTES.md) — what 0.1.0 contains and does not.
 - [CLIENT_CHECKLIST_AND_QA.md](CLIENT_CHECKLIST_AND_QA.md) — client checklist and independent QA instructions.
 - [SECURITY_AND_VALIDATION_REPORT.md](SECURITY_AND_VALIDATION_REPORT.md) — evidence by level, security notes, known limitations, go/no-go.
+- [DEPENDENCY_ADVISORY_DISPOSITION.md](DEPENDENCY_ADVISORY_DISPOSITION.md) — every npm advisory: reachability, patch, decision.
+- [LICENSES_AND_NOTICES.md](LICENSES_AND_NOTICES.md) — licence text, notices, third-party inventory, data rights.
+- [RELEASE_SIGNING_AND_DISTRIBUTION.md](RELEASE_SIGNING_AND_DISTRIBUTION.md) — delivery vs publishing vs host signing; the debug-signed sample APK.
+- [../CODEX_AUDIT_REMEDIATION.md](../CODEX_AUDIT_REMEDIATION.md) — independent-audit findings, fixes and retest instructions.
 - [../OFFLINE_PACK_SPEC.md](../OFFLINE_PACK_SPEC.md) — offline venue-pack manifest and recovery rules.
 
 © OpenStreetMap contributors: the sample basemap is derived from OpenStreetMap (ODbL). Keep the attribution visible; the map

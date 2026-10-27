@@ -51,4 +51,8 @@ iOS: local offline map, directory/search, preview, Manual Guide, explicit Live w
 - Android live font-size change without restart (needs the host to handle `fontScale` and RN to re-lay out; tried and not effective, reverted).
 - Verified-once marker / streaming native hash for files over 8 MiB; upstream report of the expo-location defect (needs owner approval).
 
+## Independent audit findings (Codex, 2026-10-27)
+
+Tracked in [CODEX_AUDIT_REMEDIATION.md](CODEX_AUDIT_REMEDIATION.md): 17 fixed at J/P (+S where stated), **awaiting Codex retest**; Android regression of the corrected binary and the arrival-modal-vs-Android-nav-bar hypothesis are **open** (VERIFY NOW, not run).
+
 ## FAIL — none open.

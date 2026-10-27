@@ -12,6 +12,13 @@
 
 ---
 
+## Fifth hand-off: independent Codex audit remediation (2026-10-27)
+
+State: all 17 audited findings fixed and pushed (`646a604`, `cdb2d8e`, `9122bb2`, `467d4a1`, `5f62845`, `4f9a4d2`, plus the documentation commit); see [CODEX_AUDIT_REMEDIATION.md](CODEX_AUDIT_REMEDIATION.md) for the ledger, the retest commands and the fresh verdict. Codex must retest independently; nothing is marked Codex-verified.
+Open: Android emulator regression for the corrected binary (host was starved; use a quiet host with >8 GiB free), physical-device scenarios J01-J18, VoiceOver/TalkBack, the owner/hardware list in FINAL_GO_NO_GO.md.
+Traps met this cycle: the emulator refuses to boot below ~2 GiB free disk and thrashes (ANRs, black display, framework restart) when the host is starved; **do not build trees under `~/Documents`** (iCloud file-provider load made the whole machine crawl); `npm update <pkg>` narrow lockfile patches are fine, `npm audit fix` is not;
+the source-hash pin of `AStar.ts` in `scripts/fixtures/astar-golden-baseline.json` was updated deliberately (every route/cost/tie hash untouched).
+
 ## Third hand-off: state after C5.2, C5.3 and the iOS location investigation
 
 - HEAD == origin at `f8f66cc…` plus this hand-off commit (verify with `git rev-parse HEAD` / `git ls-remote origin refs/heads/feat/muslim-ummah-offline-navigation-sdk`). Stashes, Codex worktree and `integration/ijtema-clean-baseline` untouched.

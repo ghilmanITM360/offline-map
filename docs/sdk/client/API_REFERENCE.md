@@ -68,6 +68,17 @@ Map precision honestly: `'fine'` only for full precision (Android fine, iOS full
 "not read yet" and refuses Live as `precision_unknown`. A fix is usable only if timestamped, no older than 30 s, not in the future and
 accurate to 50 m or better.
 
+### Behaviour guarantees added after the independent audit
+
+- `resume()`: only the newest call decides; an older one finishing late changes nothing. A watcher the trip no longer owns is ignored even if the adapter keeps calling it.
+- `ingestFix`: observation time only moves forward per trip; a duplicate, older or replayed fix is ignored, so it cannot refresh GPS, move progress or count towards a reroute.
+- `requestLive()`: re-reads permission and, when the route search took more than 5 s or the fix is no longer live, takes a new fix that must be within 20 m of where the route was made (`route_outdated` / `stale_fix` otherwise).
+- `OutsideRouteProvider.route()`: its polyline must start within 100 m of `from` and end within 25 m of a node of the chosen destination, else it is `no_route` (also on a reroute).
+- Subscribers may call `exit()`, `dispose()` or `selectDestination()` from inside a notification; the controller re-checks ownership after every publish. `dispose()` also resets `getState()` to browsing.
+- `repairPointer()` (pack manager) rebuilds the pointer from verified installed directories instead of discarding them.
+- `heuristicScale(graph)` (venue routing) is the cached lower-bound factor used for the straight-line estimate; `useSafetyAnnouncements` and the optional `copy.live.gpsRecovered` are exported from `/ui`.
+- `createNodePackFileSystem(root, { requireCurrentUser? })` (reference adapter, repository scripts) refuses symbolic links at every path component.
+
 ### Other headless exports
 
 `findBestVenuePath` / `runAStar` / `MinHeap` (offline routing), `buildRouteSteps`, `buildRouteLine`, `advanceProgress`,
