@@ -17,8 +17,8 @@ Anything not listed is untested; widen only after testing.
 | `expo-system-ui` / `expo-crypto` | 6.0.9 / 15.0.9 | Android appearance and root background; platform SHA-256 for pack verification (both optional for a host that does not need them) |
 | TypeScript | 5.9.3 | `.d.ts` consumed with `strict` |
 | Jest / jest-expo / RNTL | 29.7.0 / 54.0.18 / 14.0.1 | `jest-expo/android` preset for the consumer |
-| Node | 24.14 | build tooling only; image-size 2.0.4 requires Node >=18 |
-| PostCSS / image-size | 8.5.32 / 2.0.4 | deliberate build-tool overrides; parser/API regressions and standalone Metro export acceptance required; no native or SDK runtime dependency upgrade |
+| Node | 24.14 | build tooling only; Metro 0.83.8 requires Node >=20.19.4 |
+| PostCSS / Metro family | 8.5.32 / 0.83.8 | deliberate build-tool overrides; parser/API regressions and standalone Metro export acceptance required; no native or SDK runtime dependency upgrade |
 | Xcode / iOS Simulator | 26.2 (17C52) / iPhone 17 Pro, iOS 26.2 | Release, arm64 simulator |
 | Android | API 36 arm64 emulator (Google Play image), Gradle wrapper 8.14.3, JDK 17 | Release APK, arm64-v8a only |
 

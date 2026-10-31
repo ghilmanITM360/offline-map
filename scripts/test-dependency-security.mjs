@@ -2,31 +2,36 @@
 // An optional consumer directory tests its independently installed copy with the same hostile inputs.
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
-import { dirname, join, resolve } from 'node:path';
+import { join, resolve } from 'node:path';
 
 const project = resolve(process.argv[2] ?? '.');
 const require = createRequire(join(project, 'package.json'));
 const postcss = require('postcss');
-let imagePackage = dirname(require.resolve('image-size'));
-while (!existsSync(join(imagePackage, 'package.json')) ||
-  JSON.parse(readFileSync(join(imagePackage, 'package.json'), 'utf8')).name !== 'image-size') {
-  assert.notEqual(imagePackage, dirname(imagePackage), 'installed image-size package manifest missing');
-  imagePackage = dirname(imagePackage);
-}
 // Exercise Metro's real CommonJS interop, not a hand-written image-size adapter. A subprocess bounds defective parsers.
 const imageProbe = `
   const assert = require('node:assert/strict');
   const { createRequire } = require('node:module');
   const { dirname, join } = require('node:path');
+  const fs = require('node:fs');
+  const { tmpdir } = require('node:os');
+  (async () => {
   const req = createRequire(process.argv[1]);
   const metro = req(join(dirname(req.resolve('metro/package.json')), 'src/Assets.js'));
   const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl6dX8AAAAASUVORK5CYII=', 'base64');
   assert.deepEqual(metro.getAssetSize('png', png, 'healthy.png'), { width: 1, height: 1 });
+  const dir = fs.mkdtempSync(join(tmpdir(), 'metro-image-path-'));
+  try {
+    const file = join(dir, 'healthy.png'); fs.writeFileSync(file, png);
+    const data = await metro.getAssetData(file, '', [], 'android', '/assets');
+    assert.equal(data.width, 1); assert.equal(data.height, 1);
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
   const bad = Buffer.from(process.argv[2], 'hex');
   assert.throws(() => metro.getAssetSize('png', bad, 'renamed-malicious.png'));
+  console.log('METRO_IMAGE_PROBE_PASS');
+  })().catch(error => { console.error(error); process.exitCode = 1; });
 `;
 // A zero-length ICNS entry and a matching zero-length JXL partial stream must reject, even renamed .png.
 for (const [format, hex] of [
@@ -37,6 +42,7 @@ for (const [format, hex] of [
     ['--max-old-space-size=64', '-e', imageProbe, join(project, 'package.json'), hex],
     { encoding: 'utf8', timeout: 3000, killSignal: 'SIGKILL', maxBuffer: 1024 * 1024 });
   assert.equal(result.status, 0, `${format} must reject promptly through Metro: ${result.error?.code ?? result.signal ?? result.stderr.slice(-500)}`);
+  assert.equal(result.stdout.trim(), 'METRO_IMAGE_PROBE_PASS', `${format} probe must complete all asynchronous checks`);
 }
 const fixture = mkdtempSync(join(tmpdir(), 'offline-sdk-postcss-'));
 const canary = 'POSTCSS_EXTERNAL_MAP_CANARY';
@@ -70,8 +76,8 @@ try {
   }]).process('a{color:red}', { from, to: from, map: false });
   assert.equal(result.content, 'a{color:blue}');
   console.log(JSON.stringify({ project, postcss: require('postcss/package.json').version,
-    imageSize: JSON.parse(readFileSync(join(imagePackage, 'package.json'), 'utf8')).version,
-    checks: 10, result: 'PASS' }));
+    metro: require('metro/package.json').version,
+    checks: 14, result: 'PASS' }));
 } finally {
   rmSync(fixture, { recursive: true, force: true });
 }

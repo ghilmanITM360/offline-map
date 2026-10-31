@@ -3,12 +3,25 @@
   "scope": "JavaScript exact-lock graph, not native or handset runtime inventory",
   "overrides": {
     "postcss": "8.5.32",
-    "image-size": "2.0.4"
+    "metro": "0.83.8",
+    "metro-babel-transformer": "0.83.8",
+    "metro-cache": "0.83.8",
+    "metro-cache-key": "0.83.8",
+    "metro-config": "0.83.8",
+    "metro-core": "0.83.8",
+    "metro-file-map": "0.83.8",
+    "metro-minify-terser": "0.83.8",
+    "metro-resolver": "0.83.8",
+    "metro-runtime": "0.83.8",
+    "metro-source-map": "0.83.8",
+    "metro-symbolicate": "0.83.8",
+    "metro-transform-plugins": "0.83.8",
+    "metro-transform-worker": "0.83.8"
   },
   "graphs": {
     "root": {
-      "lockSHA256": "b8b23e8003766ba4c7595a5b986372f1bc31b5a51bdeb8c059984c7a4fc781ba",
-      "rawAuditSHA256": "0d9252bd28cd3956d993fcbf07a563a977cff87f702a7a5827c144e7f840c195",
+      "lockSHA256": "760e0aac4cf4651554a55b59f6be196697e579c7ae8a5413e336ac852b92b80b",
+      "rawAuditSHA256": "29a86f3aa09beba3e8ba7d830055f016207ce12c4c14a3ec9dfe1a77ac862df0",
       "auditExit": 1,
       "counts": {
         "info": 0,
@@ -222,21 +235,8 @@
               "vulnerable_functions": []
             }
           ],
-          "status": "fixed by published override",
-          "packages": [
-            {
-              "path": "node_modules/image-size",
-              "lockedVersion": "2.0.4",
-              "parents": [
-                {
-                  "packagePath": "node_modules/metro",
-                  "dependency": "image-size",
-                  "declaredRange": "^1.0.2",
-                  "kind": "dependencies"
-                }
-              ]
-            }
-          ]
+          "status": "removed by supported Metro 0.83.8 security hotfix; real buffer and file-path APIs tested",
+          "packages": []
         },
         "GHSA-w3rx-r6r6-pgpr": {
           "package": "image-size",
@@ -255,21 +255,8 @@
               "vulnerable_functions": []
             }
           ],
-          "status": "fixed by published override",
-          "packages": [
-            {
-              "path": "node_modules/image-size",
-              "lockedVersion": "2.0.4",
-              "parents": [
-                {
-                  "packagePath": "node_modules/metro",
-                  "dependency": "image-size",
-                  "declaredRange": "^1.0.2",
-                  "kind": "dependencies"
-                }
-              ]
-            }
-          ]
+          "status": "removed by supported Metro 0.83.8 security hotfix; real buffer and file-path APIs tested",
+          "packages": []
         },
         "GHSA-g3hv-75wg-m249": {
           "package": "minimatch",
@@ -1266,8 +1253,8 @@
       }
     },
     "consumer": {
-      "lockSHA256": "f1ff922f8ca397475717512d8de34441427ae979c895b7f2af7ff09cb6523645",
-      "rawAuditSHA256": "e1c596539f0136dd986b55f0320c531eb6d6e93c87f9355bd61b5812fc527d92",
+      "lockSHA256": "64e9d1190452c48d7379c8fd598b6ccac10fc2070fac9aa98fcba4ebb0b06e68",
+      "rawAuditSHA256": "6f66650cdc1568c0e115257680f462d4909a164d5554c12a0a1777029ff85c89",
       "auditExit": 1,
       "counts": {
         "info": 0,
@@ -1462,21 +1449,8 @@
               "vulnerable_functions": []
             }
           ],
-          "status": "fixed by published override",
-          "packages": [
-            {
-              "path": "node_modules/image-size",
-              "lockedVersion": "2.0.4",
-              "parents": [
-                {
-                  "packagePath": "node_modules/metro",
-                  "dependency": "image-size",
-                  "declaredRange": "^1.0.2",
-                  "kind": "dependencies"
-                }
-              ]
-            }
-          ]
+          "status": "removed by supported Metro 0.83.8 security hotfix; real buffer and file-path APIs tested",
+          "packages": []
         },
         "GHSA-w3rx-r6r6-pgpr": {
           "package": "image-size",
@@ -1495,21 +1469,8 @@
               "vulnerable_functions": []
             }
           ],
-          "status": "fixed by published override",
-          "packages": [
-            {
-              "path": "node_modules/image-size",
-              "lockedVersion": "2.0.4",
-              "parents": [
-                {
-                  "packagePath": "node_modules/metro",
-                  "dependency": "image-size",
-                  "declaredRange": "^1.0.2",
-                  "kind": "dependencies"
-                }
-              ]
-            }
-          ]
+          "status": "removed by supported Metro 0.83.8 security hotfix; real buffer and file-path APIs tested",
+          "packages": []
         },
         "GHSA-g3hv-75wg-m249": {
           "package": "minimatch",
