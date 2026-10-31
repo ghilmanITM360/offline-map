@@ -1,0 +1,302 @@
+{
+  "evidenceRoot": "/Users/ghilmankhan/Documents/offline-map-audits/offline-sdk-release-closure-2026-10-31/resume-20261101",
+  "sourceCommit": "1a913b9e521c093499855625c8b3a76cc11fd61a",
+  "scope": "External raw evidence remains preserved; hashes freshly verified 2026-11-01. Reports copied byte-for-byte. No test reruns for this documentation checkpoint.",
+  "files": [
+    {
+      "path": "/Users/ghilmankhan/Documents/offline-map-audits/offline-sdk-release-closure-2026-10-31/resume-20261101/CODEX_INDEPENDENT_RETEST_RESULTS.md",
+      "bytes": 365,
+      "sha256": "78502a007c14ad23b6d44d6b8bbd357701f39624599833113804e5d28fa67064"
+    },
+    {
+      "path": "/Users/ghilmankhan/Documents/offline-map-audits/offline-sdk-release-closure-2026-10-31/resume-20261101/COMMAND_INDEX.md",
+      "bytes": 10763,
+      "sha256": "a2de99eb245a495814a9a51044cb4f13b670d077dfeb6e61b19f8ce0afb3b4a5"
+    },
+    {
+      "path": "/Users/ghilmankhan/Documents/offline-map-audits/offline-sdk-release-closure-2026-10-31/resume-20261101/CONTINUATION_HANDOFF.md",
+      "bytes": 898,
+      "sha256": "8af91f18fbade1203e1174988fdfe64cdf346d1426b65615d96004de14eed779"
+    },
+    {
+      "path": "/Users/ghilmankhan/Documents/offline-map-audits/offline-sdk-release-closure-2026-10-31/resume-20261101/CURRENT_PROJECT_STATUS.md",
+      "bytes": 578,
+      "sha256": "1920d88ab7c8e68d90deaa7b69fc45cd35d0bfd4e5e5f79b85c5ee76436f9b89"
+    },
+    {
+      "path": "/Users/ghilmankhan/Documents/offline-map-audits/offline-sdk-release-closure-2026-10-31/resume-20261101/FINAL_ARTIFACT_IDENTITIES.json",
+      "bytes": 1515,
+      "sha256": "cd2efb3c200ac8e935887e0a53019438dd4bb89358c7fd256f015627ba5c10ed"
+    },
+    {
+      "path": "/Users/ghilmankhan/Documents/offline-map-audits/offline-sdk-release-closure-2026-10-31/resume-20261101/FINAL_QA_VERDICT.md",
+      "bytes": 5840,
+      "sha256": "c9e139c486096b27838218aef51f18e614f15c840247f55436ceb1242c627ec4"
+    },
+    {
+      "path": "/Users/ghilmankhan/Documents/offline-map-audits/offline-sdk-release-closure-2026-10-31/resume-20261101/FINDINGS_CLOSURE_MATRIX.md",
+      "bytes": 3431,
+      "sha256": "f67dc82f490552a7cbb6b11cf3dc2b57022f59d27f61474c0e0fa0c21fab396a"
+    },
+    {
+      "path": "/Users/ghilmankhan/Documents/offline-map-audits/offline-sdk-release-closure-2026-10-31/resume-20261101/REMAINING_BLOCKERS.md",
+      "bytes": 544,
+      "sha256": "e717033916d7d1d9e7f39396a4845e1ee0c252c8d4826657eeb91244d29e2bb6"
+    },
+    {
+      "path": "/Users/ghilmankhan/Documents/offline-map-audits/offline-sdk-release-closure-2026-10-31/resume-20261101/accepted-asset-no-injection.json",
+      "bytes": 79,
+      "sha256": "9a78326452736926ee7ae5f71fedfc4568ca0f3ecfcbb01bda8736dd5a146a78"
+    },
+    {
+      "path": "/Users/ghilmankhan/Documents/offline-map-audits/offline-sdk-release-closure-2026-10-31/resume-20261101/accepted-bundle-build.json",
+      "bytes": 279,
+      "sha256": "f1f0570f5af31bf4fb92f5c3981eccc8b53a65b6b84e27cec37e50c1bd2d3364"
+    },
+    {
+      "path": "/Users/ghilmankhan/Documents/offline-map-audits/offline-sdk-release-closure-2026-10-31/resume-20261101/accepted-bundle-build.log",
+      "bytes": 403,
+      "sha256": "82ef42cdabd179c17921625dc92b27a2a46fed3539ca947a0c4238a6ce499d72"
+    },
+    {
+      "path": "/Users/ghilmankhan/Documents/offline-map-audits/offline-sdk-release-closure-2026-10-31/resume-20261101/accepted-consumer-audit.execution.json",
+      "bytes": 426,
+      "sha256": "f66f67894e0e63e168b8259b7601860667796a371aa83b288cd38112cd8eeb59"
+    },
+    {
+      "path": "/Users/ghilmankhan/Documents/offline-map-audits/offline-sdk-release-closure-2026-10-31/resume-20261101/accepted-consumer-audit.json",
+      "bytes": 22473,
+      "sha256": "f71ce203c9def87446526076099ca86c70cd363096d1aee95f53ea0ab77cb0d4"
+    },
+    {
+      "path": "/Users/ghilmankhan/Documents/offline-map-audits/offline-sdk-release-closure-2026-10-31/resume-20261101/accepted-consumer-audit.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/Users/ghilmankhan/Documents/offline-map-audits/offline-sdk-release-closure-2026-10-31/resume-20261101/accepted-delivered-before-install.json",
+      "bytes": 5379,
+      "sha256": "e3ddd838f64af1a19abe356e5c7a29680121ab7a295b22ad5257d64bd0a2d1e1"
+    },
+    {
+      "path": "/Users/ghilmankhan/Documents/offline-map-audits/offline-sdk-release-closure-2026-10-31/resume-20261101/accepted-delivered-ci.json",
+      "bytes": 401,
+      "sha256": "c2b67866f1cf1045a6812cb4d62f181d417f6911c2306bdaa78c61f0389e7593"
+    },
+    {
+      "path": "/Users/ghilmankhan/Documents/offline-map-audits/offline-sdk-release-closure-2026-10-31/resume-20261101/accepted-delivered-ci.log",
+      "bytes": 1804,
+      "sha256": "e85343e9e9a38a9c87f41a5fd4ec77738826636a32df69cde278ea91711fae17"
+    },
+    {
+      "path": "/Users/ghilmankhan/Documents/offline-map-audits/offline-sdk-release-closure-2026-10-31/resume-20261101/accepted-delivered-jest-results.json",
+      "bytes": 27600,
+      "sha256": "9e7a4aac629b2a7ad9c863bbb8964ded38764d53bcf440663d107a8ee83e71ef"
+    },
+    {
+      "path": "/Users/ghilmankhan/Documents/offline-map-audits/offline-sdk-release-closure-2026-10-31/resume-20261101/accepted-delivered-jest.json",
+      "bytes": 630,
+      "sha256": "f06e0f9a0ec8796842be835686c1fb22c5eefffe975ee79f9be34ccf54e430f7"
+    },
+    {
+      "path": "/Users/ghilmankhan/Documents/offline-map-audits/offline-sdk-release-closure-2026-10-31/resume-20261101/accepted-delivered-jest.log",
+      "bytes": 523,
+      "sha256": "ef89a1991d996eb47df0e5691dde6e7978b45490019436649f2893212841a0a9"
+    },
+    {
+      "path": "/Users/ghilmankhan/Documents/offline-map-audits/offline-sdk-release-closure-2026-10-31/resume-20261101/accepted-delivered-metro-android.json",
+      "bytes": 555,
+      "sha256": "641836516bfeb1daf63e077d956a2c3b1408962fed15be3de682ecc7a45cdb2a"
+    },
+    {
+      "path": "/Users/ghilmankhan/Documents/offline-map-audits/offline-sdk-release-closure-2026-10-31/resume-20261101/accepted-delivered-metro-android.log",
+      "bytes": 1595,
+      "sha256": "283a7a8ba8d81c4ab6a6580e1258a0e0a8d7cef8c45ffb2a2ff5e5dd3a669025"
+    },
+    {
+      "path": "/Users/ghilmankhan/Documents/offline-map-audits/offline-sdk-release-closure-2026-10-31/resume-20261101/accepted-delivered-metro-ios.json",
+      "bytes": 547,
+      "sha256": "fef49b41bde9e3d6459e9c40c9ebb506c38c4ecfe43a7ef24682b131409784df"
+    },
+    {
+      "path": "/Users/ghilmankhan/Documents/offline-map-audits/offline-sdk-release-closure-2026-10-31/resume-20261101/accepted-delivered-metro-ios.log",
+      "bytes": 1563,
+      "sha256": "7bda96c3221fb2b6466ae924953093abfd7d2d9fedf1db66f393044957e5b8fb"
+    },
+    {
+      "path": "/Users/ghilmankhan/Documents/offline-map-audits/offline-sdk-release-closure-2026-10-31/resume-20261101/accepted-delivered-security.json",
+      "bytes": 486,
+      "sha256": "15baa87fa59a7a0c0706c6b2df7fa9c68d7501375b824b270a900232a5485634"
+    },
+    {
+      "path": "/Users/ghilmankhan/Documents/offline-map-audits/offline-sdk-release-closure-2026-10-31/resume-20261101/accepted-delivered-security.log",
+      "bytes": 203,
+      "sha256": "902bc91d0af22f19c797a846e78fd53fcd2bd355ce3c9f3331ffb63a65c4c985"
+    },
+    {
+      "path": "/Users/ghilmankhan/Documents/offline-map-audits/offline-sdk-release-closure-2026-10-31/resume-20261101/accepted-delivered-types.json",
+      "bytes": 435,
+      "sha256": "7736f79b806e4b1575da29a1e62266dcc094d16bf2402cab9f9d50b7d942a129"
+    },
+    {
+      "path": "/Users/ghilmankhan/Documents/offline-map-audits/offline-sdk-release-closure-2026-10-31/resume-20261101/accepted-delivered-types.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/Users/ghilmankhan/Documents/offline-map-audits/offline-sdk-release-closure-2026-10-31/resume-20261101/accepted-delivery-acceptance.json",
+      "bytes": 474,
+      "sha256": "7a4c2c5327feb1767ee265624280d07322985fe8c8da62edfbdc451e6b583880"
+    },
+    {
+      "path": "/Users/ghilmankhan/Documents/offline-map-audits/offline-sdk-release-closure-2026-10-31/resume-20261101/accepted-hygiene.json",
+      "bytes": 199,
+      "sha256": "097c41a2c12418189035e7e45aefad591b23b4ba70b45986168017ba508fc434"
+    },
+    {
+      "path": "/Users/ghilmankhan/Documents/offline-map-audits/offline-sdk-release-closure-2026-10-31/resume-20261101/accepted-metro-android-sources.json",
+      "bytes": 154267,
+      "sha256": "b1b1c85d423bfa7822237b2787485641f7b544f68aaec93e04847708b1027cd1"
+    },
+    {
+      "path": "/Users/ghilmankhan/Documents/offline-map-audits/offline-sdk-release-closure-2026-10-31/resume-20261101/accepted-metro-ios-sources.json",
+      "bytes": 154643,
+      "sha256": "9cb8d352976380846c491c6655b031d0cd93f9e74b96dac76858b701f6b1f9ee"
+    },
+    {
+      "path": "/Users/ghilmankhan/Documents/offline-map-audits/offline-sdk-release-closure-2026-10-31/resume-20261101/hotfix-components-results.json",
+      "bytes": 1024086,
+      "sha256": "c1a766e57348e79c5e54b1287a30679d48fe3b2c7718cedfcc03a51324331d8f"
+    },
+    {
+      "path": "/Users/ghilmankhan/Documents/offline-map-audits/offline-sdk-release-closure-2026-10-31/resume-20261101/hotfix-components.json",
+      "bytes": 432,
+      "sha256": "487ef5dd7b7d404980bf04eb1901a816bf0a99279495e3a585329f9423b6a1d7"
+    },
+    {
+      "path": "/Users/ghilmankhan/Documents/offline-map-audits/offline-sdk-release-closure-2026-10-31/resume-20261101/hotfix-components.log",
+      "bytes": 307005,
+      "sha256": "b4ebeee6983d78c3d6aa5d3fbc933890ecdeae9ac39594e05cca30b9b2b3a8fc"
+    },
+    {
+      "path": "/Users/ghilmankhan/Documents/offline-map-audits/offline-sdk-release-closure-2026-10-31/resume-20261101/hotfix-consumer-audit.execution.json",
+      "bytes": 451,
+      "sha256": "a7d8e8ecf9d350d47d24e91c3f7411438cbbd87487a505a342b32b35424ac8b6"
+    },
+    {
+      "path": "/Users/ghilmankhan/Documents/offline-map-audits/offline-sdk-release-closure-2026-10-31/resume-20261101/hotfix-consumer-audit.json",
+      "bytes": 22777,
+      "sha256": "e31092e01f4c2ea79f6d69b94a4edaa114a60525ee437da516facac92956936b"
+    },
+    {
+      "path": "/Users/ghilmankhan/Documents/offline-map-audits/offline-sdk-release-closure-2026-10-31/resume-20261101/hotfix-consumer-audit.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/Users/ghilmankhan/Documents/offline-map-audits/offline-sdk-release-closure-2026-10-31/resume-20261101/hotfix-consumer-lock.json",
+      "bytes": 443,
+      "sha256": "3d77d3ca67073c0011a47021d09b9756a191bce758d3af77e1b7e6ee1676c5ea"
+    },
+    {
+      "path": "/Users/ghilmankhan/Documents/offline-map-audits/offline-sdk-release-closure-2026-10-31/resume-20261101/hotfix-consumer-lock.log",
+      "bytes": 891,
+      "sha256": "f253270dfc5f0162d8616706403081058789d78ce8fc8d6e4bff74633cb351c8"
+    },
+    {
+      "path": "/Users/ghilmankhan/Documents/offline-map-audits/offline-sdk-release-closure-2026-10-31/resume-20261101/hotfix-dependency-security.json",
+      "bytes": 219,
+      "sha256": "ba834f23130a976c03564499d6cee54978a690da7514f3a9e50ac757ea5ba3e2"
+    },
+    {
+      "path": "/Users/ghilmankhan/Documents/offline-map-audits/offline-sdk-release-closure-2026-10-31/resume-20261101/hotfix-dependency-security.log",
+      "bytes": 228,
+      "sha256": "41d3602364220faafb92147eb15ec3f9e8d69127b88bbb201bd75911ebb861a6"
+    },
+    {
+      "path": "/Users/ghilmankhan/Documents/offline-map-audits/offline-sdk-release-closure-2026-10-31/resume-20261101/hotfix-fresh-consumer-audit.execution.json",
+      "bytes": 425,
+      "sha256": "b9c321e2b1cd80292d2d223e26dc7cd9169a10403fc50d2b9a04a965487cb566"
+    },
+    {
+      "path": "/Users/ghilmankhan/Documents/offline-map-audits/offline-sdk-release-closure-2026-10-31/resume-20261101/hotfix-fresh-consumer-audit.json",
+      "bytes": 22665,
+      "sha256": "6f66650cdc1568c0e115257680f462d4909a164d5554c12a0a1777029ff85c89"
+    },
+    {
+      "path": "/Users/ghilmankhan/Documents/offline-map-audits/offline-sdk-release-closure-2026-10-31/resume-20261101/hotfix-fresh-consumer-audit.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/Users/ghilmankhan/Documents/offline-map-audits/offline-sdk-release-closure-2026-10-31/resume-20261101/hotfix-fresh-lock.json",
+      "bytes": 441,
+      "sha256": "0d2075a111da76e4b1ea6494ae9f1352c22eefdbb17e1565fa6ec2e1ce6aab9a"
+    },
+    {
+      "path": "/Users/ghilmankhan/Documents/offline-map-audits/offline-sdk-release-closure-2026-10-31/resume-20261101/hotfix-fresh-lock.log",
+      "bytes": 63,
+      "sha256": "cf34e42d90934fa7572ad3d16b009675e4d2d492f0bcd56826c896b7611025ea"
+    },
+    {
+      "path": "/Users/ghilmankhan/Documents/offline-map-audits/offline-sdk-release-closure-2026-10-31/resume-20261101/hotfix-lint.json",
+      "bytes": 199,
+      "sha256": "858e05eb075724d0b8e5661e021ff72b818a03d328493946ec769ade8792da7d"
+    },
+    {
+      "path": "/Users/ghilmankhan/Documents/offline-map-audits/offline-sdk-release-closure-2026-10-31/resume-20261101/hotfix-lint.log",
+      "bytes": 506,
+      "sha256": "b6951e6f52ec6da067c00639fa3036473af3c19b1bf42f198a81b76fb2a85c98"
+    },
+    {
+      "path": "/Users/ghilmankhan/Documents/offline-map-audits/offline-sdk-release-closure-2026-10-31/resume-20261101/hotfix-npm-test.json",
+      "bytes": 195,
+      "sha256": "b8209b6bbe6d4867f2a9bd23d6268ae0057776d3ffbb25cb39962737c0c77ec2"
+    },
+    {
+      "path": "/Users/ghilmankhan/Documents/offline-map-audits/offline-sdk-release-closure-2026-10-31/resume-20261101/hotfix-npm-test.log",
+      "bytes": 52793,
+      "sha256": "c6d6f21f846af724487234c7fb66eb7de7b37071895949957995c591c9ba3dcb"
+    },
+    {
+      "path": "/Users/ghilmankhan/Documents/offline-map-audits/offline-sdk-release-closure-2026-10-31/resume-20261101/hotfix-root-audit.execution.json",
+      "bytes": 364,
+      "sha256": "a664e40bb0230b20fd8216b79634003a3d114e849415efb1b558ef8c4172488a"
+    },
+    {
+      "path": "/Users/ghilmankhan/Documents/offline-map-audits/offline-sdk-release-closure-2026-10-31/resume-20261101/hotfix-root-audit.json",
+      "bytes": 30240,
+      "sha256": "29a86f3aa09beba3e8ba7d830055f016207ce12c4c14a3ec9dfe1a77ac862df0"
+    },
+    {
+      "path": "/Users/ghilmankhan/Documents/offline-map-audits/offline-sdk-release-closure-2026-10-31/resume-20261101/hotfix-root-audit.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/Users/ghilmankhan/Documents/offline-map-audits/offline-sdk-release-closure-2026-10-31/resume-20261101/hotfix-sdk-package.json",
+      "bytes": 218,
+      "sha256": "42c175ed79da42532d8c76056be2c4ead77557e7c5af9f7f73f266e7d6d3ff94"
+    },
+    {
+      "path": "/Users/ghilmankhan/Documents/offline-map-audits/offline-sdk-release-closure-2026-10-31/resume-20261101/hotfix-sdk-package.log",
+      "bytes": 958,
+      "sha256": "fd3f96ad514be9e958e6dee5dac2304dac5d23740258f1c0cfd48d53723bfbab"
+    },
+    {
+      "path": "/Users/ghilmankhan/Documents/offline-map-audits/offline-sdk-release-closure-2026-10-31/resume-20261101/hotfix-typecheck.json",
+      "bytes": 210,
+      "sha256": "2683639576b3789a4a27387b66afb4c863a639244812067cc2c0ab3c6596207e"
+    },
+    {
+      "path": "/Users/ghilmankhan/Documents/offline-map-audits/offline-sdk-release-closure-2026-10-31/resume-20261101/hotfix-typecheck.log",
+      "bytes": 261,
+      "sha256": "1f526e8af8d7c0d50bd938d1a64afe9bf80f625bb4334c9f9ee4dad104f98a77"
+    },
+    {
+      "path": "/Users/ghilmankhan/Documents/offline-map-audits/offline-sdk-release-closure-2026-10-31/resume-20261101/reg-repeatability.json",
+      "bytes": 2899,
+      "sha256": "5adca81af90bfe2cd4333eb32f78bcb4744fc1cfe1e095117369a55e165d2732"
+    }
+  ]
+}

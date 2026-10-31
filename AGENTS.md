@@ -8,7 +8,7 @@ Offline-first pedestrian navigation for attendees walking to and inside the Kara
 
 ## Canonical branch
 
-`integration/ijtema-clean-baseline` is canonical. `main` trails it. Always verify `git status --short --branch` and current HEAD before starting work — do not assume `main` is current.
+For Muslim Ummah Offline Navigation SDK work, the sole authorized checkout is `/Users/ghilmankhan/workprojects/offline-map` on `feat/muslim-ummah-offline-navigation-sdk`. Verify actual HEAD, status, origin-tracking and live remote before work. Preserve the original senior-testing baseline `integration/ijtema-clean-baseline`; do not switch to or modify it. See [the permanent SDK rule and closure checkpoint](docs/sdk/release-closure-2026-11-01/README.md).
 
 ## Start-of-task check
 
@@ -82,8 +82,10 @@ Label every verification claim with its actual level. Do not describe SOURCE-lev
 
 ## Branch and worktree rules
 
-- Use one isolated branch and worktree per task. Verify source ref, target branch, target path, and worktree list before creation.
-- Do not modify a dirty integration worktree while implementing isolated work.
+- SDK work uses exactly one existing checkout and one branch as specified above. Never create extra worktrees, clones, implementation branches or divergent development copies. Never move SDK development into `.codex/worktrees`.
+- One active source writer. Independent reviewers remain read-only while a writer is active. Temporary isolated build/consumer-test directories are allowed only when technically required; they are not alternate development checkouts.
+- Record every completed change, validation summary, evidence manifest, QA result, release decision and continuation handoff under tracked `docs/sdk/` documentation. Large binaries/raw logs may remain external with verified paths, hashes and reproduction instructions recorded.
+- After each validated atomic change: review the actual diff, run relevant checks, stage intended paths, commit and push normally, then verify local/origin/live remote equality, a clean tree and exactly one registered worktree. Preserve historical stashes/evidence and the baseline branch.
 - Stage explicit paths and create focused commits. Do not include generated files or unrelated local changes.
 - Do not push, merge, rebase, reset, clean, delete branches/worktrees, or perform destructive Git operations without owner approval.
 

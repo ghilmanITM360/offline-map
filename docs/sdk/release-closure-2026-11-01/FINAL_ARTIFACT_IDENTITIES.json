@@ -1,0 +1,31 @@
+{
+  "sourceCommit": "1a913b9e521c093499855625c8b3a76cc11fd61a",
+  "payloadFiles": 73,
+  "artifacts": {
+    "bundle": {
+      "path": "/Users/ghilmankhan/Documents/offline-map-audits/offline-sdk-release-closure-2026-10-31/delivery-1a913b9-final.tgz",
+      "sha256": "82b32fd74702a2e29ee8ff3913765c9591110b5d58eb7fec4c0730db72e8972e",
+      "bytes": 888020
+    },
+    "sdk": {
+      "path": "/Users/ghilmankhan/Documents/offline-map-audits/offline-sdk-release-closure-2026-10-31/delivery-1a913b9-final/package/muslim-ummah-offline-navigation-0.1.0.tgz",
+      "sha256": "d722ce2541c3cd179cd0ce19ecf9536ec50481ace08beea3a0ef61f19dd29cca",
+      "bytes": 107061
+    },
+    "consumerLock": {
+      "path": "/Users/ghilmankhan/Documents/offline-map-audits/offline-sdk-release-closure-2026-10-31/delivery-1a913b9-final/examples/expo-consumer/package-lock.json",
+      "sha256": "64e9d1190452c48d7379c8fd598b6ccac10fc2070fac9aa98fcba4ebb0b06e68",
+      "bytes": 409503
+    },
+    "manifest": {
+      "path": "/Users/ghilmankhan/Documents/offline-map-audits/offline-sdk-release-closure-2026-10-31/delivery-1a913b9-final/manifest.json",
+      "sha256": "9b8fec4a704dd3f2de69ab85de302f21299ae26606fde82d3947191de572c947",
+      "bytes": 13694
+    },
+    "checksums": {
+      "path": "/Users/ghilmankhan/Documents/offline-map-audits/offline-sdk-release-closure-2026-10-31/delivery-1a913b9-final/CHECKSUMS.txt",
+      "sha256": "5922cca5270c16bc5db88280c03994b73114de6fe254db74570c87e97089ca0f",
+      "bytes": 8234
+    }
+  }
+}

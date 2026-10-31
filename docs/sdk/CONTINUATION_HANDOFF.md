@@ -1,3 +1,5 @@
+> **Current checkpoint — 1 November 2026:** [tracked engineering closure and permanent single-checkout rule](release-closure-2026-11-01/README.md). Engineering source `1a913b9e521c093499855625c8b3a76cc11fd61a`; independent/external acceptance pending. Older handoffs below are historical. Their extra-worktree/cleanup instructions do not override the current owner rule.
+
 # SDK continuation handoff (written 2026-10-27 (fourth hand-off, final-fix cycle; supersedes the third where they differ), #392)
 
 ## Fourth hand-off: final bug fixing, release closure and client delivery

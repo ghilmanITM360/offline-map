@@ -1,0 +1,171 @@
+{
+  "date": "2026-11-01",
+  "sourceCommit": "1a913b9e521c093499855625c8b3a76cc11fd61a",
+  "checks": [
+    {
+      "command": [
+        "git",
+        "status",
+        "--porcelain=v1"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "git",
+        "worktree",
+        "list",
+        "--porcelain"
+      ],
+      "exit": 0,
+      "stdout": "worktree /Users/ghilmankhan/workprojects/offline-map\nHEAD 1a913b9e521c093499855625c8b3a76cc11fd61a\nbranch refs/heads/feat/muslim-ummah-offline-navigation-sdk\n\nworktree /Users/ghilmankhan/.codex/worktrees/6a1a/offline-map\nHEAD 42451f1bc9deaeda822e5de5fca00782fd5e366b\ndetached\n\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "git",
+        "-C",
+        "/Users/ghilmankhan/.codex/worktrees/6a1a/offline-map",
+        "status",
+        "--porcelain=v1",
+        "--untracked-files=all",
+        "--ignored"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "git",
+        "-C",
+        "/Users/ghilmankhan/.codex/worktrees/6a1a/offline-map",
+        "diff",
+        "--exit-code",
+        "HEAD"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "git",
+        "-C",
+        "/Users/ghilmankhan/.codex/worktrees/6a1a/offline-map",
+        "ls-files",
+        "--others",
+        "--exclude-standard"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "git",
+        "-C",
+        "/Users/ghilmankhan/.codex/worktrees/6a1a/offline-map",
+        "ls-files",
+        "--others",
+        "--ignored",
+        "--exclude-standard"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "git",
+        "branch",
+        "-a",
+        "--contains",
+        "42451f1bc9deaeda822e5de5fca00782fd5e366b"
+      ],
+      "exit": 0,
+      "stdout": "  codex/full-ui-ux-audit\n  codex/preview-attribution-height\n  fix/core-functionality-finalization\n  fix/gps-progress-freshness-p0\n  fix/new-05-live-maneuver-distance\n  fix/new-08-gps-observation-trust\n  integration/aud-fix-consolidation\n  integration/ux-simplification-final\n  remotes/origin/HEAD -> origin/main\n  remotes/origin/main\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "git",
+        "log",
+        "--oneline",
+        "42451f1bc9deaeda822e5de5fca00782fd5e366b",
+        "--not",
+        "--all"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "lsof",
+        "-nP",
+        "+D",
+        "/Users/ghilmankhan/.codex/worktrees/6a1a/offline-map"
+      ],
+      "exit": 1,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "git",
+        "stash",
+        "list",
+        "--format=%H %gd %s"
+      ],
+      "exit": 0,
+      "stdout": "b5a47d6c39274b77d5cb8132e4c4b28f1092a734 stash@{0} On fix/a3-01-rtl-label-overlay: A3-01 pre-SDK checkout preservation 2026-10-20\n6d4a9c8de0ab763ca3719b50caa2c782d9d11cce stash@{1} On integration/ijtema-clean-baseline: pre-merge-safety-stash: uncommitted release-branch work (HomeScreen/test/script edits + build artifacts + docs), unrelated to nav-correctness merge\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "git",
+        "rev-parse",
+        "integration/ijtema-clean-baseline"
+      ],
+      "exit": 0,
+      "stdout": "9c0fd50d7434b5b2daf875f47fbb45ab6d444995\n",
+      "stderr": ""
+    }
+  ],
+  "physicalFiles": 461,
+  "trackedFiles": 461,
+  "extraFiles": [],
+  "missingFiles": [],
+  "locked": false,
+  "extendedAttributeNames": [
+    "com.apple.provenance"
+  ],
+  "extendedAttributesSha256": "f4d6f4aafbd289903f303188c570e525f1557d871de1d2745ca3497585bd864c",
+  "notes": "Only macOS provenance metadata; no resource forks. Global lsof cwd inventory also found no process rooted in detached path. Detached commit retained by existing refs; no new branch created.",
+  "removal": {
+    "command": [
+      "git",
+      "worktree",
+      "remove",
+      "/Users/ghilmankhan/.codex/worktrees/6a1a/offline-map"
+    ],
+    "exit": 0,
+    "stdout": "",
+    "stderr": ""
+  },
+  "after": {
+    "command": [
+      "git",
+      "worktree",
+      "list",
+      "--porcelain"
+    ],
+    "exit": 0,
+    "stdout": "worktree /Users/ghilmankhan/workprojects/offline-map\nHEAD 1a913b9e521c093499855625c8b3a76cc11fd61a\nbranch refs/heads/feat/muslim-ummah-offline-navigation-sdk\n\n",
+    "stderr": ""
+  },
+  "pathAbsent": true
+}

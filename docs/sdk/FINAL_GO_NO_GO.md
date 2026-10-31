@@ -1,15 +1,15 @@
 # Final GO / NO-GO — SDK 0.1.0 release closure
 
-Updated 1 November 2026, release-closure issue #393. Exact source and artifact identities are in the final delivery manifest and attached QA handoff. This author-side report is not independent acceptance of Codex-authored corrections.
+Updated 1 November 2026, release-closure issue #393. Completed final delivery identities, exact results and preserved evidence are tracked in [the closure checkpoint](release-closure-2026-11-01/README.md). Exact source and artifact identities are in the final delivery manifest and attached QA handoff. This author-side report is not independent acceptance of Codex-authored corrections.
 
 ## Software gates
 
 | Gate | Engineering evidence | Remaining acceptance |
 | --- | --- | --- |
 | DELIV-01 | Fixed at `91de2d15728c4a8fae1f39827a55856a6935b04a`: actual archive ships all12 pinned packfiles, checks resources/checksums/metadata. Clean consumer63tests/types and both real production Metro exports passed. | Independent acceptance of packaging correction and final delivered graph. |
-| SUP-01 | PostCSS 8.5.32 / Metro 0.83.8 overrides address six advisory sources; actual-Metro hostile-image and PostCSS canary/API probes pass. Root fresh audit0critical/0high; remaining low/moderate sources have a complete disposition. No Expo/RN/MapLibre or SDK runtime upgrade. | Final exact delivered-lock audit and standalone export evidence; focused independent/security acceptance of conditional tooling exceptions. |
+| SUP-01 | PostCSS 8.5.32 / Metro 0.83.8 overrides address six advisory sources; actual-Metro hostile-image and PostCSS canary/API probes pass. Root fresh audit0critical/0high; remaining low/moderate sources have a complete disposition. No Expo/RN/MapLibre or SDK runtime upgrade. | Final delivered-lock audit and both standalone exports completed at `1a913b9`; focused independent/security acceptance of conditional tooling exceptions remains pending. |
 | REG-01 | Original two suites57/57 tests pass3runs. Full regression after both selected fixes:222/222suites,2367/2367tests. No test/product/timeout change. | Focused independent review of completed raw evidence. Host-pressure causation remains unproven. |
-| Final source integration | Application/scripts typecheckPASS, ESLint0errors2pre-existingwarnings, full npmtestPASS,2400differential comparisons,91506golden route pairs unchanged,83headless/8exports checks, compiled package/runtime/declarations and byte reproducibilityPASS. | Final delivered-consumer checks and artifact identities in attached final handoff. |
+| Final source integration | Application/scripts typecheckPASS, ESLint0errors2pre-existingwarnings, full npmtestPASS,2400differential comparisons,91506golden route pairs unchanged,83headless/8exports checks, compiled package/runtime/declarations and byte reproducibilityPASS. | Final delivered-consumer checks passed; identities and raw-evidence references are tracked in the closure checkpoint. Independent acceptance remains pending. |
 
 The original independent audit's16 SOURCE/RUNTIME PASS findings at `923a604be161c749bd5bf50d8fdd8c036ba4bcbb` remain preserved. No routing, navigation lifecycle, pack trust, API, Karachi graph/places/gates, PMTiles, native source or golden change occurred in release closure. Do not describe engineering checks as emulator/device/field acceptance.
 
