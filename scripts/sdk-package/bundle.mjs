@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { copyFileSync, cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
-import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
+import { basename, dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { inventoryFromLock, renderInventory } from './inventory.mjs';
 
@@ -15,10 +15,11 @@ const out = resolve(process.argv[2]);
 const rel = relative(root, out);
 assert.ok(rel === '..' || rel.startsWith(`..${sep}`) || isAbsolute(rel), 'output must be outside the repository');
 assert.ok(!existsSync(out) || readdirSync(out).length === 0, 'use a fresh, empty bundle directory');
+assert.ok(!existsSync(`${out}.tgz`) && !existsSync(`${out}.verification`), 'use fresh archive and verification paths');
 mkdirSync(out, { recursive: true });
 
 const run = (cmd, args, cwd = root) => {
-  const r = spawnSync(cmd, args, { cwd, encoding: 'utf8', env: { PATH: process.env.PATH, HOME: process.env.HOME, CI: '1' }, maxBuffer: 64 * 1024 * 1024 });
+  const r = spawnSync(cmd, args, { cwd, encoding: 'utf8', env: { PATH: process.env.PATH, HOME: process.env.HOME, CI: '1', COPYFILE_DISABLE: '1' }, maxBuffer: 64 * 1024 * 1024 });
   assert.equal(r.status, 0, `${cmd} ${args.join(' ')}\n${r.stdout}\n${r.stderr}`);
   return r.stdout;
 };
@@ -53,7 +54,7 @@ for (const f of readdirSync(join(root, 'docs/sdk/client'))) cpSync(join(root, 'd
 cpSync(join(root, 'docs/sdk/OFFLINE_PACK_SPEC.md'), join(out, 'docs/OFFLINE_PACK_SPEC.md'));
 for (const f of ['FINAL_GO_NO_GO.md', 'FINAL_CLOSURE_LEDGER.md']) cpSync(join(root, 'docs/sdk', f), join(out, 'docs', f));
 // Generated native projects live at the example's top level only; modules/*/ios is real source and must ship.
-const skip = /(^|\/)(node_modules|\.expo|sdk\.tgz|package-lock\.json)(\/|$)|^(ios|android)(\/|$)|^export-/;
+const skip = /(^|\/)(node_modules|\.expo|sdk\.tgz|package-lock\.json|\._[^/]*|__MACOSX)(\/|$)|^(ios|android)(\/|$)|^export-/;
 cpSync(join(root, 'examples/expo-consumer'), join(out, 'examples/expo-consumer'), { recursive: true, filter: (p) => !skip.test(relative(join(root, 'examples/expo-consumer'), p)) });
 const archive = join(root, 'assets/offline-map/ijtema-basemap.pmtiles');
 const provenance = JSON.parse(readFileSync(join(root, 'assets/offline-map/BASEMAP_PROVENANCE.json'), 'utf8'));
@@ -61,6 +62,29 @@ assert.equal(sha256(archive), provenance.archive.sha256, 'the sample archive mus
 mkdirSync(join(out, 'examples/expo-consumer/assets'), { recursive: true });
 cpSync(archive, join(out, 'examples/expo-consumer/assets/karachi-basemap.pmtiles'));
 cpSync(join(root, 'assets/offline-map/BASEMAP_PROVENANCE.json'), join(out, 'examples/expo-consumer/assets/BASEMAP_PROVENANCE.json'));
+// Compile tracked sources, never copy ignored checkout assets. Pins and shared archive bytes are authoritative.
+const packTable = readFileSync(join(out, 'examples/expo-consumer/bundledPackTable.ts'), 'utf8');
+for (const [venue, script] of [['karachi-ijtema', 'karachi.ts'], ['synthetic-demo-venue', 'demo.ts']]) {
+  const built = join(scratch, 'packs', venue);
+  run(process.execPath, ['--import', 'tsx', join(root, 'scripts/sdk-pack', script), built]);
+  const pin = JSON.parse(readFileSync(join(root, 'scripts/sdk-pack', `${venue}.pin.json`), 'utf8'));
+  assert.equal(sha256(join(built, 'pack.manifest.json')), pin.manifestSha256, `${venue}: manifest pin changed`);
+  assert.ok(packTable.includes(`packId: '${pin.packId}'`) && packTable.includes(`manifestSha256: '${pin.manifestSha256}'`), `${venue}: consumer pin changed`);
+  for (const resource of pin.resources) {
+    assert.equal(statSync(join(built, resource.path)).size, resource.bytes, resource.path);
+    assert.equal(sha256(join(built, resource.path)), resource.sha256, resource.path);
+  }
+  for (const path of ['pack.manifest.json', ...pin.resources.map((r) => r.path)]) {
+    if (path === 'map/ijtema-basemap.pmtiles') {
+      assert.equal(sha256(join(built, path)), provenance.archive.sha256);
+      continue;
+    }
+    const asset = `${path.replaceAll('/', '__')}.packfile`;
+    assert.ok(packTable.includes(`'${path}': require('./assets/packs/${venue}/${asset}')`), `${venue}: missing consumer reference ${path}`);
+    mkdirSync(join(out, 'examples/expo-consumer/assets/packs', venue), { recursive: true });
+    cpSync(join(built, path), join(out, 'examples/expo-consumer/assets/packs', venue, asset));
+  }
+}
 cpSync(first, join(out, 'examples/expo-consumer/sdk.tgz'));
 copyFileSync(join(root, 'packages/offline-navigation/LICENSE'), join(out, 'LICENSE'));
 
@@ -103,5 +127,8 @@ const info = {
 writeFileSync(join(out, 'manifest.json'), JSON.stringify({ ...info, files: entries }, null, 2) + '\n');
 writeFileSync(join(out, 'CHECKSUMS.txt'), entries.map((e) => `${e.sha256}  ${e.path}`).join('\n') + '\n');
 writeFileSync(join(out, 'README.txt'), `Muslim Ummah Offline Navigation SDK ${version} - private release candidate\n\nStart at docs/README.md. Install package/${tarName}.\nVerify with: shasum -a 256 -c CHECKSUMS.txt (manifest.json, CHECKSUMS.txt and this README are not listed in it).\nThis bundle is NOT published anywhere and carries outstanding physical-device and field acceptance: docs/SECURITY_AND_VALIDATION_REPORT.md.\n`);
+// Exercise the actual client archive, including metadata exclusion and every referenced pinned asset.
+run('tar', ['-czf', `${out}.tgz`, '-C', dirname(out), basename(out)]);
+console.log(run(process.execPath, [join(root, 'scripts/sdk-package/test-bundle.mjs'), `${out}.tgz`, `${out}.verification`]).trim());
 console.log(`sdk-bundle: ${files.length} files, tarball sha256 ${info.tarball.sha256}, commit ${info.sourceCommit}`);
 console.log(out);
