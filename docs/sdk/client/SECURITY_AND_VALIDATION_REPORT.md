@@ -1,46 +1,37 @@
-# Security and validation report — SDK 0.1.0 release candidate
+# Security and validation report — SDK 0.1.0
 
-## Verdict
+Release-closure update: **1 November 2026**, release-closure issue #393. Current results supersede older C5/C6/remediation totals; historical native evidence is separated below.
 
-**NO-GO for an unrestricted production release. GO for a controlled pilot / client integration under the outstanding-acceptance
-list below.** Nothing here is physical-device, real-GPS or field evidence. No mandatory safety or security blocker is hidden: every
-open item is listed.
+## Release status
 
-## Evidence by level (separate, never merged)
+Author-side final-source engineering validation completed for the selected dependency graph. Standalone delivered-consumer acceptance and exact artifact identities are recorded in the attached final handoff. DELIV-01 engineering acceptance completed at `91de2d15728c4a8fae1f39827a55856a6935b04a`; REG-01's unchanged scenarios passed three focused runs and a full 222-suite / 2,367-test run. PostCSS 8.5.32 and image-size 2.0.4 are selected with executable security/API regressions. Fresh final-source results and final delivered lock identities are recorded in the closure handoff; this report must not imply independent acceptance of author-created corrections.
 
-| Level | Result |
-| --- | --- |
-| Static (tsc app + scripts, eslint) | pass |
-| Unit/integration (Jest) | 222 suites / 2,363 tests pass at the post-audit remediation source; the full `npm test` chain (2,400 seeded A\* differential comparisons, 91,506 golden route pairs, every `test:*` script) exits 0 at the C5.3 checkpoint; routing sources and goldens were not modified |
-| Plain-Node headless | 83 checks; the headless entrypoint loads with no React/React Native |
-| Tarball | contents allowlist, byte-reproducible (two packs), isolated runtime, declarations, shared peers pass |
-| Independent consumer install | fresh `npm install` of the `.tgz`, `tsc`, 45 Jest tests in 5 suites (Expo file-system adapter with a native-strict test double and kill-at-every-step sweeps, bundled-pack runtime, on-device self-test harness, the app, the location adapter), Android and iOS production bundles (both ship every pack file) pass; one React, one React Native, one MapLibre |
-| iOS simulator (iPhone 17 Pro, iOS 26.2) | native offline map, route, Manual Guide, explicit Live (simulated and device source), arrival, archive recovery, background/foreground, RTL, dark theme, AX5 layout; **C6:** AX5 directory/guide/live controls reachable and a live text-size change keeps the journey, System/Light/Dark and the dark basemap restyling in place, camera browsing, Urdu RTL, pack corruption repaired, startup measured (1,460 → ~200 ms); **continuous device-location updates not proven** |
-| Android emulator (API 36 arm64) | native offline map, route, Manual Guide, explicit Live (simulated and emulator GPS), arrival, permission prompt/deny, RTL, font scale 2.0, insets; **C5.3:** fresh install of the pack-driven consumer, bundled Karachi pack verified and served, venue switch, on-device pack self-test 10/10 (release APK `df54ad82…b0c`); **C6:** 200% font from a cold start with pinned guide controls and clear navigation bar, forced Dark + Urdu RTL, location permission denied then granted, real emulator-GPS Live with camera browsing, startup 919 → 84 ms |
-| Physical device | **none** |
-| Real GPS walking | **none** |
-| Whole-device airplane mode | **none** (a simulator HTTP block is not airplane mode) |
-| Accessibility (VoiceOver/TalkBack) | **none** beyond structural Jest checks |
-| Security review | self-review below; no external review |
-| Field survey (gates 18/19) | **none**; blocked on surveyed connectivity |
+**Controlled pilot: pending focused independent acceptance. Unrestricted production: NO-GO.** No physical-device, real-GPS walking, whole-device airplane-mode or audible VoiceOver/TalkBack acceptance is claimed.
 
-Artifacts and their SHA-256 are in `CHECKSUMS.txt`/`manifest.json` of the delivery bundle. Raw evidence (logs, screenshots, APK, hashes)
-is outside the repository under `~/Documents/offline-map-audits/…/`.
+## Current source and package evidence
 
-**Pack platform integration (C5.3), what the native runs established.** iOS simulator (iPhone 17 Pro, iOS 26.2): fresh install, cold launch,
-bundled packs copied through staging and verified (every on-device file hashes to the repository pin), Karachi directory, route (Gate 01
-to Gate 02, 111 m) on the real basemap, explicit Live to arrival, venue switch, and a bit-flipped and a deleted resource repaired at the
-next start; the on-device pack self-test passes 10/10 (replace/rename semantics, interrupted replacement, install → update → rollback
-across restarts, changed and deleted resource, update with a missing file, interrupted staging, pins, storage pressure, two venues).
-Native runs found a defect Jest could not: expo-file-system refuses to read a packaged asset in place on iOS ("Missing permission for
-uri" inside the app bundle), so the first build failed closed with both packs unavailable; the fix copies to app storage and reads
-there. Not established: real airplane mode, a physical device, storage-full conditions beyond the simulated free-space check, and
-Android corrupt-file recovery (release APK is not debuggable; the same logic is covered by the on-device self-test and Jest).
+- Independent 31 October audit at `923a604be161c749bd5bf50d8fdd8c036ba4bcbb`: 16 of 17 original actionable findings independently PASS at SOURCE/RUNTIME. SUP-01 required a current disposition; DELIV-01 and REG-01 were additional software gates. The original reproducers and evidence are preserved.
+- DELIV-01 fixed by `91de2d1`: actual archive contains all 12 compiler-generated `.packfile` assets and pinned shared PMTiles; standalone consumer clean install, TypeScript, 6 suites / 63 tests, Android/iOS production Metro exports passed without asset injection or implementation aliases. Original corrected delivery has 71 payload files and no AppleDouble metadata.
+- REG-01 first 1 November baseline: original two suites 57/57 tests passed; two unchanged warm repeats also passed. Full suite 222/222 suites, 2,367/2,367 tests passed. No timeout, assertion, component or test source changed. Host pressure was observed, but its causal role in historical timeouts remains unproven. The final run after both dependency corrections also passed all 222 suites / 2,367 tests.
+- SDK tarball remains `d722ce2541c3cd179cd0ce19ecf9536ec50481ace08beea3a0ef61f19dd29cca`; runtime, routing algorithms, APIs, GIS and golden data are unchanged. Packaging checks reproduce it twice and verify headless runtime, declarations, exports, allowlist and Apache-2.0 text.
+- SUP-01 root final lock SHA `b8b23e8003766ba4c7595a5b986372f1bc31b5a51bdeb8c059984c7a4fc781ba`: fresh audit **57 affected entries (6 low, 51 moderate, 0 high, 0 critical), 4 distinct sources**, exit 1. The original corrected consumer was 45 entries / 9 sources before these overrides; the separately resolved final consumer lock is `f1ff922f8ca397475717512d8de34441427ae979c895b7f2af7ff09cb6523645`: **43 affected entries (6 low, 37 moderate, 0 high, 0 critical), 3 distinct sources**, audit exit 1. The delivery must match this exact reviewed lock; acceptance verifies that identity. Graph-entry counts can change through propagated labels; six source advisories were removed by the two published corrections.
+- Full [advisory disposition](DEPENDENCY_ADVISORY_DISPOSITION.md) accounts for every GHSA/CVE, call path, parent range, exploitation prerequisite and remaining conditional exception. No audit output is suppressed. Non-dev lockfile entries include build tooling and are not handset runtime inventory.
 
-**Post-audit remediation (Codex baseline `13f4629`).** 17 findings fixed with regression tests and replayed against the compiled package; they await independent Codex retest
-([../CODEX_AUDIT_REMEDIATION.md](../CODEX_AUDIT_REMEDIATION.md)). On the corrected binary the iOS simulator passed the on-device pack self-test (10/10), corruption repair, Live to arrival and the
-arrival card at the largest text size. **The Android emulator regression for the corrected binary was not completed** (host starvation), so the Android rows above describe the earlier binary only.
-Advisory disposition: [DEPENDENCY_ADVISORY_DISPOSITION.md](DEPENDENCY_ADVISORY_DISPOSITION.md).
+## Historical native evidence — retained, not rebuilt for packaging/tooling
+
+| Artifact | Recorded SHA-256 | Scope |
+| --- | --- | --- |
+| APK A, `android/sdkconsumer-release.apk` | `e59518b918b84e0db1aeb356724a603a98517538cc5c5fc65526ada23c9a257b` | Pre-arrival-inset correction. Earlier Android scenarios were exercised on this build. |
+| APK B, `android/run3/sdkconsumer-release-e49ed1b.apk` | `bdfe5c92d9593f0661a7f10c7bf70d920aa5d86f4e3531be896aef074b1865ce` | Corrected arrival inset, SDK d722 package. Targeted correction evidence at 100%/200% text and three-button/gesture navigation. |
+| Earlier iOS simulator executable (identity record only; executable not retained) | `18933dab8721f92f31e9b9dc501dcf8db5bf074f6d7ffa8621976854cfa5a96b` | Source `4f9a4d2`, SDK `eab28df2b74887767ecca7eb4f8846c97d3e22268b03bec4a2d7babb3c01e819`; predates e49ed1b/d722. Do not label it the final SDK simulator binary. |
+
+Android's historical **18 PASS / 2 BLOCKED** is aggregate evidence spanning APK A plus targeted retesting on B. It does **not** establish that all 18 scenarios were rerun on B. The blocked scenarios are release-build map-unavailable recovery and at-rest corruption. The arrival bottom-inset correction has emulator evidence; no physical Android, TalkBack or field result follows.
+
+Earlier iOS simulator runs establish historical offline map, simulated Live/arrival, pack self-test/corruption repair and layout behavior for their recorded source/packages. They do not establish the final d722 native binary or physical continuous iPhone GPS. Final SDK source carrying the inset fix is `e49ed1b13810e120c97d2d589fa8aaacee8dc4e1`. No native-affecting product source changed during release closure, so no fresh native build was required.
+
+Historical remediation notes report 222 suites / 2,363 tests; the later audited source `923a604` contains 2,367 tests and independently recorded 2,362 passes / 5 timeouts. Those totals refer to different checkpoints. Current completed regression totals above must not be substituted into the older native reports.
+
+Raw evidence and exact commands are in owner audit storage: `codex-independent-sdk-qa/20261027-081859/retest-20261031/` (independent) and `offline-sdk-release-closure-2026-10-31/resume-20261101/` (implementation). Final delivery `manifest.json`/`CHECKSUMS.txt` identify its exact source and payload.
 
 ## Security notes
 

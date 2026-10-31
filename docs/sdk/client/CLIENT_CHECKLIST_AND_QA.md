@@ -31,23 +31,21 @@
 - [ ] VoiceOver and TalkBack passes; AX5 / font scale 2.0 on small screens.
 - [ ] Venue field survey (graph accuracy, entrances, gates) — the SDK cannot certify your data.
 
-## B. Independent QA instructions
+## B. Focused independent verification of release closure
 
-Run from a clean checkout of branch `feat/muslim-ummah-offline-navigation-sdk` on a Mac with Node 24, Xcode 26.2, Android SDK 36, JDK 17.
-Do not share a working tree with the implementer.
+The original 16 SOURCE/RUNTIME findings passed independent retest at `923a604be161c749bd5bf50d8fdd8c036ba4bcbb`. Their SDK runtime source is unchanged; reopen only if a relevant change warrants it. Release closure was implemented by Codex, so its author-side results are not independent approval. Use the exact source/artifact identities and commands in the final handoff.
 
-1. **Source gates:** `npm ci`, `npx tsc --noEmit -p .`, `npx eslint packages src/__tests__ examples scripts/sdk-package`, `npx jest` (expect 207
-   suites / 2,096 tests), `npm run test:sdk-exports`, `npm run test:sdk-headless`, `npm test` (routing differential and golden parity;
-   goldens must not be edited).
-2. **Artifact:** `npm run test:sdk-package` (contents allowlist, byte-reproducible tarball, plain-Node runtime without React,
-   declarations, shared peers). Compare the tarball SHA-256 with `CHECKSUMS.txt` in the delivery bundle.
-3. **Independent install:** `npm run test:sdk-consumer -- <fresh dir outside the repo>` (fresh `npm install` of the `.tgz`, `tsc`,
-   Jest flows, Android + iOS production bundles; it fails if a module comes from the repository or a second React/RN/MapLibre appears).
-4. **iOS:** from that fresh consumer: `npx expo prebuild --platform ios --no-install`, `pod install`, Release simulator build (export real
-   `PROJECT_ROOT`/`ENTRY_FILE` when under `/tmp`). Walk: directory → route → Manual Guide → explicit Live (device source with a
-   simulator location) → arrival; switch `ur` and AX5; delete/corrupt the installed archive (`Documents/map/basemap-*.pmtiles`) and relaunch.
-5. **Android:** `npx expo prebuild --platform android --no-install`, `./gradlew assembleRelease -PreactNativeArchitectures=arm64-v8a`,
-   emulator **with `-gpu host`**; same walk; `adb emu geo fix <lng> <lat>` for device location; deny the permission once.
-6. **Record** each result with its evidence level (see the matrix) and never relabel simulator evidence as device evidence.
-7. **Negative controls:** point Metro at repository source and confirm the consumer driver fails; mutate a guard (e.g. accept a stale
-   fix) and confirm a test fails.
+1. Preserve original audits/reproducers. Review only the packaging correction, dependency disposition/overrides and REG-01 evidence. Do not create a worktree/branch/clone or repeat native builds for packaging/tooling-only changes.
+2. Test the actual delivery archive: `node scripts/sdk-package/test-bundle.mjs /absolute/delivery.tgz /private/tmp/fresh-unpack`. This checks all 12 packfiles, pinned manifests/resources, inventory/checksums and metadata exclusion from the unpacked archive.
+3. Enter that unpacked `examples/expo-consumer`. Run `npm ci --ignore-scripts --no-audit --no-fund --prefer-offline`, `./node_modules/.bin/tsc --noEmit -p .`, and `./node_modules/.bin/jest --ci --runInBand --watchman=false` (6 suites / 63 tests). Do not run an asset generator or copy any assets into the consumer. The shipped lock, SDK and pack bytes must remain unchanged.
+4. From the delivered consumer, run both real exports with `CI=1 EXPO_OFFLINE=1 EXPO_NO_TELEMETRY=1 ./node_modules/.bin/expo export --platform android --output-dir export-android --dump-sourcemap --max-workers 1`, then the equivalent `ios` command. Every nonvirtual source-map source must resolve inside this consumer; all pack asset hashes must appear in exports. No NODE_PATH, source alias, parent node_modules link or implementation import is permitted. The repository consumer driver is not a substitute for these tests.
+5. Run `node /absolute/checkout/scripts/test-dependency-security.mjs /absolute/unpacked/examples/expo-consumer`; it resolves dependencies inside the supplied consumer and tests patched PostCSS plus actual Metro image parsing. Re-audit both exact locks using the command in [DEPENDENCY_ADVISORY_DISPOSITION.md](DEPENDENCY_ADVISORY_DISPOSITION.md); report nonzero audit exits and remaining low/moderate advisories truthfully.
+6. REG-01: the unchanged LocationsDirectoryScreen and DirectoryRecentManagement suites use default timeouts. Implementation evidence includes three 57-test focused passes and a clean full 222-suite / 2,367-test run, plus final-source validation. Review exact raw JSON and scenario durations; do not infer physical behavior or environmental causation from these results.
+7. Final routing evidence must show 2,400 differential and 91,506 unchanged golden comparisons, headless/exports/package checks and artifact reproducibility. No golden regeneration. A reviewer can choose relevant impacted checks rather than redo the original 17-finding audit.
+
+## C. Owner/client gates before distribution
+
+- [ ] Accept the documented build-input operating conditions and obtain independent security acceptance for the final lock/binary.
+- [ ] Review all 12 packfiles plus shared PMTiles hashes against pins; confirm two-venue isolation and default refusal of imported/remote packs.
+- [ ] Confirm the current artifact manifest/source commit; distinguish historical APK A from corrected B and the earlier iOS simulator package.
+- [ ] Complete physical J01–J18, walking GPS/continuous iPhone updates, whole-device cold airplane launch, VoiceOver/TalkBack, reviewed Urdu/Roman Urdu, venue data rights, supported Gate 18/19 survey, signing and authorized distribution.

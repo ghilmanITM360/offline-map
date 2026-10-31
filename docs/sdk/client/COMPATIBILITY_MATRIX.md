@@ -17,7 +17,8 @@ Anything not listed is untested; widen only after testing.
 | `expo-system-ui` / `expo-crypto` | 6.0.9 / 15.0.9 | Android appearance and root background; platform SHA-256 for pack verification (both optional for a host that does not need them) |
 | TypeScript | 5.9.3 | `.d.ts` consumed with `strict` |
 | Jest / jest-expo / RNTL | 29.7.0 / 54.0.18 / 14.0.1 | `jest-expo/android` preset for the consumer |
-| Node | 24.14 | build tooling only |
+| Node | 24.14 | build tooling only; image-size 2.0.4 requires Node >=18 |
+| PostCSS / image-size | 8.5.32 / 2.0.4 | deliberate build-tool overrides; parser/API regressions and standalone Metro export acceptance required; no native or SDK runtime dependency upgrade |
 | Xcode / iOS Simulator | 26.2 (17C52) / iPhone 17 Pro, iOS 26.2 | Release, arm64 simulator |
 | Android | API 36 arm64 emulator (Google Play image), Gradle wrapper 8.14.3, JDK 17 | Release APK, arm64-v8a only |
 
@@ -41,5 +42,4 @@ Anything not listed is untested; widen only after testing.
 | Whole-device airplane mode | n/a | n/a | **no** | **no** | **no** |
 | Real GPS walking | n/a | n/a | **no** | **no** | **no** |
 
-Bundle facts (consumer, production Hermes): Android 759 modules / 1.34 MB, iOS 761 modules / 1.34 MB (C5.3 consumer, plus the venue-pack assets); one React, one React Native,
-one MapLibre; every module from the consumer's `node_modules`, none from this repository.
+Current standalone production Metro counts and byte sizes are recorded in final raw export logs and the release handoff; older C5.3 values (759/761 modules) are historical. Every current source must resolve inside the delivered consumer with one React/RN/MapLibre and all pinned pack assets exported. Native rows above describe historical source/package combinations, not a newly rebuilt final SDK native binary. Exact APK A/B and earlier iOS identities are in [SECURITY_AND_VALIDATION_REPORT.md](SECURITY_AND_VALIDATION_REPORT.md).

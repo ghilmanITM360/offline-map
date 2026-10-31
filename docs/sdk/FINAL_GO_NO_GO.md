@@ -1,43 +1,36 @@
-# Final GO / NO-GO — SDK 0.1.0 release candidate (2026-10-27, #392)
+# Final GO / NO-GO — SDK 0.1.0 release closure
 
-Evidence levels are kept separate: Jest/package/bundle, iOS simulator, Android emulator. **There is no physical-device, real-GPS, whole-device airplane-mode, screen-reader or field evidence.** The per-item status is in [FINAL_CLOSURE_LEDGER.md](FINAL_CLOSURE_LEDGER.md).
+Updated 1 November 2026, release-closure issue #393. Exact source and artifact identities are in the final delivery manifest and attached QA handoff. This author-side report is not independent acceptance of Codex-authored corrections.
 
-## Verdict
-**ENGINEERING IMPLEMENTATION COMPLETE FOR SDK 0.1.0 CONTROLLED PILOT — EXTERNAL ACCEPTANCE PENDING.**
-- **GO** for a controlled pilot / client integration of the private package, with the host app keeping its own navigation authority.
-- **NO-GO** for an unrestricted production release.
+## Software gates
 
-## Update after the independent Codex audit (2026-10-27)
-
-All 17 confirmed findings (NAV-01..10, PACK-01..04, PLAT-01..02, SUP-01) were fixed and replayed against the compiled package; REL-01 is documented; one extra defect (arrival card overflow at the
-largest iOS text size) was reproduced and fixed. The Android emulator regression then found and fixed one more (the arrival sheet was overlapped by the Android navigation bar; `arrivalBottomInset`, `e49ed1b`). **They await the independent Codex retest and are not marked verified by this document.** The Android emulator regression of the rebuilt binary **passed** (18 of 20 scenarios PASS, 2 BLOCKED, evidence level E only; the earlier
-host-starved attempts are recorded in `android/RESULT.md`). Details, commands and the fresh assessment (controlled pilot conditionally ready ~65/100, unrestricted production not ready
-~38/100): [CODEX_AUDIT_REMEDIATION.md](CODEX_AUDIT_REMEDIATION.md).
-
-## What is done and verified (at the levels stated)
-| Area | State | Evidence |
+| Gate | Engineering evidence | Remaining acceptance |
 | --- | --- | --- |
-| Headless engine, controller, candidate Live, outside-route provider, reroute | done | Jest, plain-Node headless |
-| Host/SDK parity (C4.1) and shared policy (C4.3-a) | done, bounded | parity matrix, replay tests |
-| Pack format, verifier, manager, filesystem store, compiler, real Karachi pack | done, byte-reproducible, digest-pinned | Jest, driver rebuild check, on-device self-test |
-| Expo FileSystem adapter, bundled-pack runtime, pack-driven consumer | done | Jest, iOS simulator, Android emulator |
-| iOS continuous location | mechanism found, fixed in the reference adapter | simulator, native + JS logs |
-| Large text / AX5, dark basemap, appearance, RTL language picker, entry-gate chooser, camera browsing (C6) | done | Jest, iOS simulator, Android emulator |
-| Startup verification speed | 1,460 → ~200 ms (iOS sim), 919 → 84 ms (Android emu); integrity unchanged | on-device measurement tool |
-| Client docs, compatibility matrix, security report, release notes, translation review | updated | this repository |
+| DELIV-01 | Fixed at `91de2d15728c4a8fae1f39827a55856a6935b04a`: actual archive ships all12 pinned packfiles, checks resources/checksums/metadata. Clean consumer63tests/types and both real production Metro exports passed. | Independent acceptance of packaging correction and final delivered graph. |
+| SUP-01 | PostCSS8.5.32/image-size2.0.4 overrides address six advisory sources; actual-Metro hostile-image and PostCSS canary/API probes pass. Root fresh audit0critical/0high; remaining low/moderate sources have a complete disposition. No Expo/RN/MapLibre or SDK runtime upgrade. | Final exact delivered-lock audit and standalone export evidence; focused independent/security acceptance of conditional tooling exceptions. |
+| REG-01 | Original two suites57/57 tests pass3runs. Full regression after both selected fixes:222/222suites,2367/2367tests. No test/product/timeout change. | Focused independent review of completed raw evidence. Host-pressure causation remains unproven. |
+| Final source integration | Application/scripts typecheckPASS, ESLint0errors2pre-existingwarnings, full npmtestPASS,2400differential comparisons,91506golden route pairs unchanged,83headless/8exports checks, compiled package/runtime/declarations and byte reproducibilityPASS. | Final delivered-consumer checks and artifact identities in attached final handoff. |
 
-## What blocks an unrestricted release (owner/hardware)
-1. Physical iOS and Android devices with real walking; continuous Live GPS on a physical iPhone.
+The original independent audit's16 SOURCE/RUNTIME PASS findings at `923a604be161c749bd5bf50d8fdd8c036ba4bcbb` remain preserved. No routing, navigation lifecycle, pack trust, API, Karachi graph/places/gates, PMTiles, native source or golden change occurred in release closure. Do not describe engineering checks as emulator/device/field acceptance.
+
+## Verdict boundaries
+
+**Controlled pilot / client integration: NOT CLEARED until focused independent acceptance of the final delivery and security disposition.** Implementation evidence may support conditional readiness; it does not authorize distribution. The final attached report records whether all software commands completed successfully.
+
+**Unrestricted production: NO-GO.** Required external gates remain:
+
+1. Physical iOS/Android walking and continuous physical-iPhone Live GPS.
 2. Whole-device airplane-mode cold start.
-3. VoiceOver / TalkBack passes; reviewed Urdu / Roman Urdu copy.
-4. Pack signing: no scheme, key or verifier exists, so imported/remote packs are refused (key custody, rotation, distribution are an owner decision).
-5. Venue data rights: the owner-supplied survey's redistribution terms are not recorded in the repository.
-6. Gates 18/19 field survey (still unconnected and `ground_truth_required`).
-7. External security review; publishing decision for the package.
+3. Audible VoiceOver/TalkBack and remaining physical J01–J18.
+4. Native-reviewed Urdu/Roman Urdu production wording.
+5. Venue data redistribution rights and supported Gate18/19 surveyed connectivity (unchanged/unconnected).
+6. Independent/external security acceptance and native-library review.
+7. Owner-controlled production signing and authorized distribution.
 
-## Known product limits
-- The Ijtema host still has its own navigation authority (workstream B); no Ijtema outside-route provider exists, so the entry-gate chooser is exercised only in Jest.
-- No speech output in 0.1.0; the host's *Voice instructions* switch is the host's.
-- Android: a live system font-size change recreates the activity (restart the app); iOS follows live changes.
-- Untranslated strings stay English inside an Urdu (right-to-left) screen.
-- expo-location 19.0.8 defect (watch ended by a transient Core Location error) is worked around, not reported upstream.
+Imported/remote packs remain refused: no trusted signing scheme/keys were fabricated. No external package publication/distribution occurred.
+
+## Native evidence boundary
+
+[Security/validation report](client/SECURITY_AND_VALIDATION_REPORT.md) records full artifact identities. APK A `e59518b9…` predates the arrival inset fix; APK B `bdfe5c92…` is corrected. Historical Android18PASS/2BLOCKED spans A plus targeted B checks, not18reruns onB. Earlier iOS executable identity `18933dab…` belongs to `4f9a4d2` / SDK `eab28df2…`, not final d722. No unchanged native application was rebuilt for release packaging/tooling.
+
+Known product limits remain: host retains navigation authority; no sample street router or speech; Android live font-size change recreates the activity; untranslated strings remain English. See release notes and compatibility matrix.

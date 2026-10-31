@@ -65,7 +65,15 @@
 - **Routing:** any opaque node id routes (including `toString`); cheapest weighted route even with discounted edges (`heuristicScale` is exported); admissible but inconsistent estimates stay optimal; duplicate seed ids and shared street connectors keep their own costs. Published routes are unchanged.
 - **Platform:** a recovered map load clears the unavailable warning; iOS VoiceOver gets GPS-loss, recovery, reroute and instruction announcements (`useSafetyAnnouncements`, optional `copy.live.gpsRecovered`); the arrival card stacks its buttons and scrolls at large text.
 - **Supply chain:** the tarball carries the Apache-2.0 `LICENSE`; the delivery bundle ships a resolved consumer `package-lock.json` and a generated dependency/licence inventory; four advisory packages were patched inside their declared ranges.
-- Details: [../CODEX_AUDIT_REMEDIATION.md](../CODEX_AUDIT_REMEDIATION.md). Android emulator and physical-device evidence for the corrected binary does not exist yet.
+- Details: [../CODEX_AUDIT_REMEDIATION.md](../CODEX_AUDIT_REMEDIATION.md). Corrected Android APK B has targeted arrival-inset emulator evidence. The aggregate historical 18 PASS / 2 BLOCKED spans pre-fix APK A plus targeted B checks; it is not a complete rerun on B. Physical-device acceptance remains pending. See [SECURITY_AND_VALIDATION_REPORT.md](SECURITY_AND_VALIDATION_REPORT.md) for full hashes and the earlier iOS artifact boundary.
+
+### Release closure — 1 November 2026
+
+- Packaging correction `91de2d15728c4a8fae1f39827a55856a6935b04a`: ships all 12 authoritative compiler-generated pack assets; archive-level regression checks actual unpacked contents, pins, checksums and AppleDouble exclusion. The example delivery includes the real Karachi and synthetic demo packs; venue data is not embedded in the SDK tarball itself.
+- Exact PostCSS 8.5.32 and image-size 2.0.4 build-tool overrides address six advisory sources without upgrading Expo/RN/MapLibre or changing native product code. Both deliberately exceed their parents' old ranges; bounded real-Metro/parser/API regressions and final standalone production exports validate compatibility. Remaining low/moderate build-tool risks are documented, not hidden by audit suppression.
+- The original REG-01 scenarios passed three unchanged focused runs and a full 222-suite / 2,367-test regression. No scenario, assertion or timeout was weakened. Historical host-pressure causation remains unproven; final post-dependency validation is separately recorded.
+- SDK runtime/API, navigation safety fixes, pack trust/refusal policy, Karachi connectivity, PMTiles and routing goldens remain unchanged. SDK SHA-256 stays `d722ce2541c3cd179cd0ce19ecf9536ec50481ace08beea3a0ef61f19dd29cca`.
+- This implementation session authored the release corrections. Focused independent final acceptance and external/device/field gates remain pending; no unrestricted production GO is claimed.
 
 ### Known issues
 

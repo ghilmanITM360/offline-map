@@ -53,6 +53,12 @@ iOS: local offline map, directory/search, preview, Manual Guide, explicit Live w
 
 ## Independent audit findings (Codex, 2026-10-27)
 
-Tracked in [CODEX_AUDIT_REMEDIATION.md](CODEX_AUDIT_REMEDIATION.md): 17 fixed at J/P (+S where stated), **awaiting Codex retest**; the Android emulator regression of the rebuilt binary **passed** (evidence level E), which also confirmed and fixed the arrival-modal-vs-Android-nav-bar hypothesis (`e49ed1b`); device, screen-reader and field items stay open.
+Tracked in [CODEX_AUDIT_REMEDIATION.md](CODEX_AUDIT_REMEDIATION.md): Historical implementation report:17 fixed at J/P (+S where stated). The31October independent retest verified16 original findings at SOURCE/RUNTIME; SUP-01 required refreshed disposition. See the1November release closure update below; the Android emulator regression of the rebuilt binary **passed** (evidence level E), which also confirmed and fixed the arrival-modal-vs-Android-nav-bar hypothesis (`e49ed1b`); device, screen-reader and field items stay open.
 
 ## FAIL — none open.
+
+## Release closure update — 1 November 2026 (#393)
+
+DELIV-01 engineering fixed/pushed91de2d1; SUP-01 selects publishedPostCSS8.5.32/image-size2.0.4 with bounded actual-call-site regressions and explicit remaining low/moderate tooling disposition. REG-01 unchanged focused scenarios pass3runs; full post-selection component suite222/222 and2367/2367 passes. No original16-findings runtime source, native source, venue pins or routing goldens changed. Full npmtest/typecheck/lint/package/reproducibility passed; exact delivered-consumer final acceptance and artifact identities belong to the attached final handoff.
+
+All author-side results require focused independent final acceptance. Historical18AndroidPASS/2BLOCKED is aggregate A+targetedB, not a full corrected-APK campaign. Earlier iOS executable predates finalSDKd722. Physical/field/signing/rights/translation/external-security gates stay open. No unrestricted productionGO.
