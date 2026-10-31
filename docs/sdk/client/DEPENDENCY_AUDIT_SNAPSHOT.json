@@ -1,0 +1,2231 @@
+{
+  "reviewDate": "2026-11-01",
+  "scope": "JavaScript exact-lock graph, not native or handset runtime inventory",
+  "overrides": {
+    "postcss": "8.5.32",
+    "image-size": "2.0.4"
+  },
+  "graphs": {
+    "root": {
+      "lockSHA256": "b8b23e8003766ba4c7595a5b986372f1bc31b5a51bdeb8c059984c7a4fc781ba",
+      "rawAuditSHA256": "0d9252bd28cd3956d993fcbf07a563a977cff87f702a7a5827c144e7f840c195",
+      "auditExit": 1,
+      "counts": {
+        "info": 0,
+        "low": 6,
+        "moderate": 51,
+        "high": 0,
+        "critical": 0,
+        "total": 57
+      },
+      "currentSourceAdvisories": [
+        "GHSA-3g3m-2fjr-6pw4",
+        "GHSA-g3hv-75wg-m249",
+        "GHSA-gcqx-w48m-w2h4",
+        "GHSA-w5hq-g745-h8pq"
+      ],
+      "allInitialAdvisoryDispositions": {
+        "GHSA-gcqx-w48m-w2h4": {
+          "package": "deepmerge",
+          "cve": "CVE-2026-93753",
+          "severity": "low",
+          "url": "https://github.com/advisories/GHSA-gcqx-w48m-w2h4",
+          "affectedRange": ">=4.2.0 <=4.3.1",
+          "publishedPatches": [
+            {
+              "package": {
+                "ecosystem": "npm",
+                "name": "deepmerge"
+              },
+              "vulnerable_version_range": ">= 4.2.0, <= 4.3.1",
+              "first_patched_version": null,
+              "vulnerable_functions": []
+            }
+          ],
+          "status": "conditional engineering exception; independent security acceptance pending",
+          "packages": [
+            {
+              "path": "node_modules/deepmerge",
+              "lockedVersion": "4.3.1",
+              "parents": [
+                {
+                  "packagePath": "node_modules/@expo/config",
+                  "dependency": "deepmerge",
+                  "declaredRange": "^4.3.1",
+                  "kind": "dependencies"
+                },
+                {
+                  "packagePath": "node_modules/jest-config",
+                  "dependency": "deepmerge",
+                  "declaredRange": "^4.2.2",
+                  "kind": "dependencies"
+                }
+              ]
+            }
+          ]
+        },
+        "GHSA-3g3m-2fjr-6pw4": {
+          "package": "glob",
+          "cve": "CVE-2026-118773",
+          "severity": "moderate",
+          "url": "https://github.com/advisories/GHSA-3g3m-2fjr-6pw4",
+          "affectedRange": ">=9.0.0 <=14.0.1",
+          "publishedPatches": [
+            {
+              "package": {
+                "ecosystem": "npm",
+                "name": "glob"
+              },
+              "vulnerable_version_range": ">= 9.0.0, <= 14.0.1",
+              "first_patched_version": "14.0.2",
+              "vulnerable_functions": []
+            }
+          ],
+          "status": "conditional engineering exception; independent security acceptance pending",
+          "packages": [
+            {
+              "path": "node_modules/@expo/config-plugins/node_modules/glob",
+              "lockedVersion": "13.0.6",
+              "parents": [
+                {
+                  "packagePath": "node_modules/@expo/config-plugins",
+                  "dependency": "glob",
+                  "declaredRange": "^13.0.0",
+                  "kind": "dependencies"
+                }
+              ]
+            },
+            {
+              "path": "node_modules/@expo/config/node_modules/glob",
+              "lockedVersion": "13.0.6",
+              "parents": [
+                {
+                  "packagePath": "node_modules/@expo/config",
+                  "dependency": "glob",
+                  "declaredRange": "^13.0.0",
+                  "kind": "dependencies"
+                }
+              ]
+            },
+            {
+              "path": "node_modules/@expo/fingerprint/node_modules/glob",
+              "lockedVersion": "13.0.6",
+              "parents": [
+                {
+                  "packagePath": "node_modules/@expo/fingerprint",
+                  "dependency": "glob",
+                  "declaredRange": "^13.0.0",
+                  "kind": "dependencies"
+                }
+              ]
+            },
+            {
+              "path": "node_modules/@expo/metro-config/node_modules/glob",
+              "lockedVersion": "13.0.6",
+              "parents": [
+                {
+                  "packagePath": "node_modules/@expo/metro-config",
+                  "dependency": "glob",
+                  "declaredRange": "^13.0.0",
+                  "kind": "dependencies"
+                }
+              ]
+            },
+            {
+              "path": "node_modules/expo-updates/node_modules/glob",
+              "lockedVersion": "13.0.6",
+              "parents": [
+                {
+                  "packagePath": "node_modules/expo-updates",
+                  "dependency": "glob",
+                  "declaredRange": "^13.0.0",
+                  "kind": "dependencies"
+                }
+              ]
+            },
+            {
+              "path": "node_modules/expo/node_modules/glob",
+              "lockedVersion": "13.0.6",
+              "parents": [
+                {
+                  "packagePath": "node_modules/expo/node_modules/@expo/cli",
+                  "dependency": "glob",
+                  "declaredRange": "^13.0.0",
+                  "kind": "dependencies"
+                }
+              ]
+            },
+            {
+              "path": "node_modules/glob",
+              "lockedVersion": "7.2.3",
+              "parents": [
+                {
+                  "packagePath": "node_modules/@jest/reporters",
+                  "dependency": "glob",
+                  "declaredRange": "^7.1.3",
+                  "kind": "dependencies"
+                },
+                {
+                  "packagePath": "node_modules/@react-native/codegen",
+                  "dependency": "glob",
+                  "declaredRange": "^7.1.1",
+                  "kind": "dependencies"
+                },
+                {
+                  "packagePath": "node_modules/jest-config",
+                  "dependency": "glob",
+                  "declaredRange": "^7.1.3",
+                  "kind": "dependencies"
+                },
+                {
+                  "packagePath": "node_modules/jest-runtime",
+                  "dependency": "glob",
+                  "declaredRange": "^7.1.3",
+                  "kind": "dependencies"
+                },
+                {
+                  "packagePath": "node_modules/react-native",
+                  "dependency": "glob",
+                  "declaredRange": "^7.1.1",
+                  "kind": "dependencies"
+                },
+                {
+                  "packagePath": "node_modules/rimraf",
+                  "dependency": "glob",
+                  "declaredRange": "^7.1.3",
+                  "kind": "dependencies"
+                },
+                {
+                  "packagePath": "node_modules/test-exclude",
+                  "dependency": "glob",
+                  "declaredRange": "^7.1.4",
+                  "kind": "dependencies"
+                }
+              ]
+            }
+          ]
+        },
+        "GHSA-5p2g-fcmc-qvqq": {
+          "package": "image-size",
+          "cve": "CVE-2025-71329",
+          "severity": "high",
+          "url": "https://github.com/advisories/GHSA-5p2g-fcmc-qvqq",
+          "affectedRange": ">=1.2.0 <=2.0.2",
+          "publishedPatches": [
+            {
+              "package": {
+                "ecosystem": "npm",
+                "name": "image-size"
+              },
+              "vulnerable_version_range": ">= 1.2.0, <= 2.0.2",
+              "first_patched_version": "2.0.3",
+              "vulnerable_functions": []
+            }
+          ],
+          "status": "fixed by published override",
+          "packages": [
+            {
+              "path": "node_modules/image-size",
+              "lockedVersion": "2.0.4",
+              "parents": [
+                {
+                  "packagePath": "node_modules/metro",
+                  "dependency": "image-size",
+                  "declaredRange": "^1.0.2",
+                  "kind": "dependencies"
+                }
+              ]
+            }
+          ]
+        },
+        "GHSA-w3rx-r6r6-pgpr": {
+          "package": "image-size",
+          "cve": "CVE-2025-71330",
+          "severity": "high",
+          "url": "https://github.com/advisories/GHSA-w3rx-r6r6-pgpr",
+          "affectedRange": ">=0.6.3 <=2.0.2",
+          "publishedPatches": [
+            {
+              "package": {
+                "ecosystem": "npm",
+                "name": "image-size"
+              },
+              "vulnerable_version_range": ">= 0.6.3, <= 2.0.2",
+              "first_patched_version": "2.0.3",
+              "vulnerable_functions": []
+            }
+          ],
+          "status": "fixed by published override",
+          "packages": [
+            {
+              "path": "node_modules/image-size",
+              "lockedVersion": "2.0.4",
+              "parents": [
+                {
+                  "packagePath": "node_modules/metro",
+                  "dependency": "image-size",
+                  "declaredRange": "^1.0.2",
+                  "kind": "dependencies"
+                }
+              ]
+            }
+          ]
+        },
+        "GHSA-g3hv-75wg-m249": {
+          "package": "minimatch",
+          "cve": "CVE-2026-118764",
+          "severity": "moderate",
+          "url": "https://github.com/advisories/GHSA-g3hv-75wg-m249",
+          "affectedRange": "<11.0.1",
+          "publishedPatches": [
+            {
+              "package": {
+                "ecosystem": "npm",
+                "name": "minimatch"
+              },
+              "vulnerable_version_range": "< 11.0.1",
+              "first_patched_version": "11.0.1",
+              "vulnerable_functions": []
+            }
+          ],
+          "status": "conditional engineering exception; independent security acceptance pending",
+          "packages": [
+            {
+              "path": "node_modules/@eslint/config-array/node_modules/minimatch",
+              "lockedVersion": "3.1.5",
+              "parents": [
+                {
+                  "packagePath": "node_modules/@eslint/config-array",
+                  "dependency": "minimatch",
+                  "declaredRange": "^3.1.5",
+                  "kind": "dependencies"
+                }
+              ]
+            },
+            {
+              "path": "node_modules/@eslint/eslintrc/node_modules/minimatch",
+              "lockedVersion": "3.1.5",
+              "parents": [
+                {
+                  "packagePath": "node_modules/@eslint/eslintrc",
+                  "dependency": "minimatch",
+                  "declaredRange": "^3.1.5",
+                  "kind": "dependencies"
+                }
+              ]
+            },
+            {
+              "path": "node_modules/eslint-plugin-react/node_modules/minimatch",
+              "lockedVersion": "3.1.5",
+              "parents": [
+                {
+                  "packagePath": "node_modules/eslint-plugin-react",
+                  "dependency": "minimatch",
+                  "declaredRange": "^3.1.2",
+                  "kind": "dependencies"
+                }
+              ]
+            },
+            {
+              "path": "node_modules/eslint/node_modules/minimatch",
+              "lockedVersion": "3.1.5",
+              "parents": [
+                {
+                  "packagePath": "node_modules/eslint",
+                  "dependency": "minimatch",
+                  "declaredRange": "^3.1.5",
+                  "kind": "dependencies"
+                }
+              ]
+            },
+            {
+              "path": "node_modules/expo/node_modules/@expo/cli/node_modules/minimatch",
+              "lockedVersion": "9.0.9",
+              "parents": [
+                {
+                  "packagePath": "node_modules/expo/node_modules/@expo/cli",
+                  "dependency": "minimatch",
+                  "declaredRange": "^9.0.0",
+                  "kind": "dependencies"
+                }
+              ]
+            },
+            {
+              "path": "node_modules/glob/node_modules/minimatch",
+              "lockedVersion": "3.1.5",
+              "parents": [
+                {
+                  "packagePath": "node_modules/glob",
+                  "dependency": "minimatch",
+                  "declaredRange": "^3.1.1",
+                  "kind": "dependencies"
+                }
+              ]
+            },
+            {
+              "path": "node_modules/minimatch",
+              "lockedVersion": "10.2.5",
+              "parents": [
+                {
+                  "packagePath": "node_modules/@expo/config-plugins/node_modules/glob",
+                  "dependency": "minimatch",
+                  "declaredRange": "^10.2.2",
+                  "kind": "dependencies"
+                },
+                {
+                  "packagePath": "node_modules/@expo/config/node_modules/glob",
+                  "dependency": "minimatch",
+                  "declaredRange": "^10.2.2",
+                  "kind": "dependencies"
+                },
+                {
+                  "packagePath": "node_modules/@expo/fingerprint",
+                  "dependency": "minimatch",
+                  "declaredRange": "^10.2.2",
+                  "kind": "dependencies"
+                },
+                {
+                  "packagePath": "node_modules/@expo/fingerprint/node_modules/glob",
+                  "dependency": "minimatch",
+                  "declaredRange": "^10.2.2",
+                  "kind": "dependencies"
+                },
+                {
+                  "packagePath": "node_modules/@expo/metro-config/node_modules/glob",
+                  "dependency": "minimatch",
+                  "declaredRange": "^10.2.2",
+                  "kind": "dependencies"
+                },
+                {
+                  "packagePath": "node_modules/@typescript-eslint/typescript-estree",
+                  "dependency": "minimatch",
+                  "declaredRange": "^10.2.2",
+                  "kind": "dependencies"
+                },
+                {
+                  "packagePath": "node_modules/expo-updates/node_modules/glob",
+                  "dependency": "minimatch",
+                  "declaredRange": "^10.2.2",
+                  "kind": "dependencies"
+                },
+                {
+                  "packagePath": "node_modules/expo/node_modules/glob",
+                  "dependency": "minimatch",
+                  "declaredRange": "^10.2.2",
+                  "kind": "dependencies"
+                }
+              ]
+            },
+            {
+              "path": "node_modules/test-exclude/node_modules/minimatch",
+              "lockedVersion": "3.1.5",
+              "parents": [
+                {
+                  "packagePath": "node_modules/test-exclude",
+                  "dependency": "minimatch",
+                  "declaredRange": "^3.0.4",
+                  "kind": "dependencies"
+                }
+              ]
+            }
+          ]
+        },
+        "GHSA-qx2v-qp2m-jg93": {
+          "package": "postcss",
+          "cve": "CVE-2026-41305",
+          "severity": "moderate",
+          "url": "https://github.com/advisories/GHSA-qx2v-qp2m-jg93",
+          "affectedRange": "<8.5.10",
+          "publishedPatches": [
+            {
+              "package": {
+                "ecosystem": "npm",
+                "name": "postcss"
+              },
+              "vulnerable_version_range": "< 8.5.10",
+              "first_patched_version": "8.5.10",
+              "vulnerable_functions": []
+            }
+          ],
+          "status": "fixed by published override",
+          "packages": [
+            {
+              "path": "node_modules/postcss",
+              "lockedVersion": "8.5.32",
+              "parents": [
+                {
+                  "packagePath": "node_modules/@expo/metro-config",
+                  "dependency": "postcss",
+                  "declaredRange": "~8.4.32",
+                  "kind": "dependencies"
+                }
+              ]
+            }
+          ]
+        },
+        "GHSA-6g55-p6wh-862q": {
+          "package": "postcss",
+          "cve": "CVE-2026-45623",
+          "severity": "high",
+          "url": "https://github.com/advisories/GHSA-6g55-p6wh-862q",
+          "affectedRange": "<=8.5.11",
+          "publishedPatches": [
+            {
+              "package": {
+                "ecosystem": "npm",
+                "name": "postcss"
+              },
+              "vulnerable_version_range": "<= 8.5.11",
+              "first_patched_version": "8.5.12",
+              "vulnerable_functions": []
+            }
+          ],
+          "status": "fixed by published override",
+          "packages": [
+            {
+              "path": "node_modules/postcss",
+              "lockedVersion": "8.5.32",
+              "parents": [
+                {
+                  "packagePath": "node_modules/@expo/metro-config",
+                  "dependency": "postcss",
+                  "declaredRange": "~8.4.32",
+                  "kind": "dependencies"
+                }
+              ]
+            }
+          ]
+        },
+        "GHSA-fxqj-rqcc-2cmp": {
+          "package": "postcss",
+          "cve": "CVE-2026-69153",
+          "severity": "moderate",
+          "url": "https://github.com/advisories/GHSA-fxqj-rqcc-2cmp",
+          "affectedRange": "<=8.5.22",
+          "publishedPatches": [
+            {
+              "package": {
+                "ecosystem": "npm",
+                "name": "postcss"
+              },
+              "vulnerable_version_range": "<= 8.5.22",
+              "first_patched_version": "8.5.23",
+              "vulnerable_functions": []
+            }
+          ],
+          "status": "fixed by published override",
+          "packages": [
+            {
+              "path": "node_modules/postcss",
+              "lockedVersion": "8.5.32",
+              "parents": [
+                {
+                  "packagePath": "node_modules/@expo/metro-config",
+                  "dependency": "postcss",
+                  "declaredRange": "~8.4.32",
+                  "kind": "dependencies"
+                }
+              ]
+            }
+          ]
+        },
+        "GHSA-r28c-9q8g-f849": {
+          "package": "postcss",
+          "cve": "CVE-2026-73646",
+          "severity": "high",
+          "url": "https://github.com/advisories/GHSA-r28c-9q8g-f849",
+          "affectedRange": "<=8.5.17",
+          "publishedPatches": [
+            {
+              "package": {
+                "ecosystem": "npm",
+                "name": "postcss"
+              },
+              "vulnerable_version_range": "<= 8.5.17",
+              "first_patched_version": "8.5.18",
+              "vulnerable_functions": []
+            }
+          ],
+          "status": "fixed by published override",
+          "packages": [
+            {
+              "path": "node_modules/postcss",
+              "lockedVersion": "8.5.32",
+              "parents": [
+                {
+                  "packagePath": "node_modules/@expo/metro-config",
+                  "dependency": "postcss",
+                  "declaredRange": "~8.4.32",
+                  "kind": "dependencies"
+                }
+              ]
+            }
+          ]
+        },
+        "GHSA-w5hq-g745-h8pq": {
+          "package": "uuid",
+          "cve": "CVE-2026-41907",
+          "severity": "moderate",
+          "url": "https://github.com/advisories/GHSA-w5hq-g745-h8pq",
+          "affectedRange": "<11.1.1",
+          "publishedPatches": [
+            {
+              "package": {
+                "ecosystem": "npm",
+                "name": "uuid"
+              },
+              "vulnerable_version_range": ">= 12.0.0, < 12.0.1",
+              "first_patched_version": "12.0.1",
+              "vulnerable_functions": []
+            },
+            {
+              "package": {
+                "ecosystem": "npm",
+                "name": "uuid"
+              },
+              "vulnerable_version_range": ">= 13.0.0, < 13.0.1",
+              "first_patched_version": "13.0.1",
+              "vulnerable_functions": []
+            },
+            {
+              "package": {
+                "ecosystem": "npm",
+                "name": "uuid"
+              },
+              "vulnerable_version_range": "< 11.1.1",
+              "first_patched_version": "11.1.1",
+              "vulnerable_functions": []
+            }
+          ],
+          "status": "conditional engineering exception; independent security acceptance pending",
+          "packages": [
+            {
+              "path": "node_modules/uuid",
+              "lockedVersion": "7.0.3",
+              "parents": [
+                {
+                  "packagePath": "node_modules/xcode",
+                  "dependency": "uuid",
+                  "declaredRange": "^7.0.3",
+                  "kind": "dependencies"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "propagatedAffectedEntries": {
+        "@eslint-community/eslint-utils": {
+          "severity": "moderate",
+          "via": [
+            "eslint"
+          ],
+          "nodes": [
+            "node_modules/@eslint-community/eslint-utils"
+          ]
+        },
+        "@eslint/config-array": {
+          "severity": "moderate",
+          "via": [
+            "minimatch"
+          ],
+          "nodes": [
+            "node_modules/@eslint/config-array"
+          ]
+        },
+        "@eslint/eslintrc": {
+          "severity": "moderate",
+          "via": [
+            "minimatch"
+          ],
+          "nodes": [
+            "node_modules/@eslint/eslintrc"
+          ]
+        },
+        "@expo/cli": {
+          "severity": "moderate",
+          "via": [
+            "@expo/config",
+            "@expo/config-plugins",
+            "@expo/metro-config",
+            "@expo/prebuild-config",
+            "@react-native/dev-middleware",
+            "glob",
+            "minimatch"
+          ],
+          "nodes": [
+            "node_modules/expo/node_modules/@expo/cli"
+          ]
+        },
+        "@expo/config": {
+          "severity": "moderate",
+          "via": [
+            "@expo/config-plugins",
+            "deepmerge",
+            "glob"
+          ],
+          "nodes": [
+            "node_modules/@expo/config"
+          ]
+        },
+        "@expo/config-plugins": {
+          "severity": "moderate",
+          "via": [
+            "glob",
+            "xcode"
+          ],
+          "nodes": [
+            "node_modules/@expo/config-plugins"
+          ]
+        },
+        "@expo/fingerprint": {
+          "severity": "moderate",
+          "via": [
+            "glob",
+            "minimatch"
+          ],
+          "nodes": [
+            "node_modules/@expo/fingerprint"
+          ]
+        },
+        "@expo/metro-config": {
+          "severity": "moderate",
+          "via": [
+            "@expo/config",
+            "glob"
+          ],
+          "nodes": [
+            "node_modules/@expo/metro-config"
+          ]
+        },
+        "@expo/prebuild-config": {
+          "severity": "moderate",
+          "via": [
+            "@expo/config",
+            "@expo/config-plugins"
+          ],
+          "nodes": [
+            "node_modules/@expo/prebuild-config"
+          ]
+        },
+        "@jest/core": {
+          "severity": "moderate",
+          "via": [
+            "@jest/reporters",
+            "@jest/transform",
+            "jest-config",
+            "jest-resolve-dependencies",
+            "jest-runner",
+            "jest-runtime",
+            "jest-snapshot"
+          ],
+          "nodes": [
+            "node_modules/@jest/core"
+          ]
+        },
+        "@jest/expect": {
+          "severity": "moderate",
+          "via": [
+            "jest-snapshot"
+          ],
+          "nodes": [
+            "node_modules/@jest/expect"
+          ]
+        },
+        "@jest/globals": {
+          "severity": "moderate",
+          "via": [
+            "@jest/expect"
+          ],
+          "nodes": [
+            "node_modules/@jest/globals"
+          ]
+        },
+        "@jest/reporters": {
+          "severity": "moderate",
+          "via": [
+            "@jest/transform",
+            "glob"
+          ],
+          "nodes": [
+            "node_modules/@jest/reporters"
+          ]
+        },
+        "@jest/transform": {
+          "severity": "moderate",
+          "via": [
+            "babel-plugin-istanbul"
+          ],
+          "nodes": [
+            "node_modules/@jest/transform"
+          ]
+        },
+        "@maplibre/maplibre-react-native": {
+          "severity": "moderate",
+          "via": [
+            "expo"
+          ],
+          "nodes": [
+            "node_modules/@maplibre/maplibre-react-native"
+          ]
+        },
+        "@react-native/babel-plugin-codegen": {
+          "severity": "moderate",
+          "via": [
+            "@react-native/codegen"
+          ],
+          "nodes": [
+            "node_modules/@react-native/babel-plugin-codegen"
+          ]
+        },
+        "@react-native/babel-preset": {
+          "severity": "moderate",
+          "via": [
+            "@react-native/babel-plugin-codegen"
+          ],
+          "nodes": [
+            "node_modules/@react-native/babel-preset"
+          ]
+        },
+        "@react-native/codegen": {
+          "severity": "moderate",
+          "via": [
+            "glob"
+          ],
+          "nodes": [
+            "node_modules/@react-native/codegen"
+          ]
+        },
+        "@react-native/community-cli-plugin": {
+          "severity": "moderate",
+          "via": [
+            "@react-native/dev-middleware"
+          ],
+          "nodes": [
+            "node_modules/@react-native/community-cli-plugin"
+          ]
+        },
+        "@react-native/dev-middleware": {
+          "severity": "moderate",
+          "via": [
+            "chromium-edge-launcher"
+          ],
+          "nodes": [
+            "node_modules/@react-native/dev-middleware"
+          ]
+        },
+        "@testing-library/react-native": {
+          "severity": "low",
+          "via": [
+            "jest"
+          ],
+          "nodes": [
+            "node_modules/@testing-library/react-native"
+          ]
+        },
+        "@typescript-eslint/eslint-plugin": {
+          "severity": "moderate",
+          "via": [
+            "@typescript-eslint/parser",
+            "@typescript-eslint/type-utils",
+            "@typescript-eslint/utils",
+            "eslint"
+          ],
+          "nodes": [
+            "node_modules/@typescript-eslint/eslint-plugin"
+          ]
+        },
+        "@typescript-eslint/parser": {
+          "severity": "moderate",
+          "via": [
+            "@typescript-eslint/typescript-estree",
+            "eslint"
+          ],
+          "nodes": [
+            "node_modules/@typescript-eslint/parser"
+          ]
+        },
+        "@typescript-eslint/type-utils": {
+          "severity": "moderate",
+          "via": [
+            "@typescript-eslint/typescript-estree",
+            "@typescript-eslint/utils",
+            "eslint"
+          ],
+          "nodes": [
+            "node_modules/@typescript-eslint/type-utils"
+          ]
+        },
+        "@typescript-eslint/typescript-estree": {
+          "severity": "moderate",
+          "via": [
+            "minimatch"
+          ],
+          "nodes": [
+            "node_modules/@typescript-eslint/typescript-estree"
+          ]
+        },
+        "@typescript-eslint/utils": {
+          "severity": "moderate",
+          "via": [
+            "@eslint-community/eslint-utils",
+            "@typescript-eslint/typescript-estree",
+            "eslint"
+          ],
+          "nodes": [
+            "node_modules/@typescript-eslint/utils"
+          ]
+        },
+        "babel-jest": {
+          "severity": "moderate",
+          "via": [
+            "@jest/transform",
+            "babel-plugin-istanbul"
+          ],
+          "nodes": [
+            "node_modules/babel-jest"
+          ]
+        },
+        "babel-plugin-istanbul": {
+          "severity": "moderate",
+          "via": [
+            "test-exclude"
+          ],
+          "nodes": [
+            "node_modules/babel-plugin-istanbul"
+          ]
+        },
+        "babel-preset-expo": {
+          "severity": "moderate",
+          "via": [
+            "@react-native/babel-preset"
+          ],
+          "nodes": [
+            "node_modules/babel-preset-expo"
+          ]
+        },
+        "chromium-edge-launcher": {
+          "severity": "moderate",
+          "via": [
+            "rimraf"
+          ],
+          "nodes": [
+            "node_modules/chromium-edge-launcher"
+          ]
+        },
+        "create-jest": {
+          "severity": "low",
+          "via": [
+            "jest-config"
+          ],
+          "nodes": [
+            "node_modules/create-jest"
+          ]
+        },
+        "deepmerge": {
+          "severity": "low",
+          "via": [
+            {
+              "source": 1243505,
+              "name": "deepmerge",
+              "dependency": "deepmerge",
+              "title": "deepmerge mergeObject() allows prototype poisoning of returned objects",
+              "url": "https://github.com/advisories/GHSA-gcqx-w48m-w2h4",
+              "severity": "low",
+              "cwe": [
+                "CWE-1321"
+              ],
+              "cvss": {
+                "score": 5.3,
+                "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:L/A:N"
+              },
+              "range": ">=4.2.0 <=4.3.1"
+            }
+          ],
+          "nodes": [
+            "node_modules/deepmerge"
+          ]
+        },
+        "eslint": {
+          "severity": "moderate",
+          "via": [
+            "@eslint-community/eslint-utils",
+            "@eslint/config-array",
+            "@eslint/eslintrc",
+            "minimatch"
+          ],
+          "nodes": [
+            "node_modules/eslint"
+          ]
+        },
+        "eslint-plugin-react": {
+          "severity": "moderate",
+          "via": [
+            "minimatch"
+          ],
+          "nodes": [
+            "node_modules/eslint-plugin-react"
+          ]
+        },
+        "expo": {
+          "severity": "moderate",
+          "via": [
+            "@expo/cli",
+            "@expo/config",
+            "@expo/config-plugins",
+            "@expo/fingerprint",
+            "@expo/metro-config",
+            "babel-preset-expo",
+            "expo-asset",
+            "expo-constants"
+          ],
+          "nodes": [
+            "node_modules/expo"
+          ]
+        },
+        "expo-asset": {
+          "severity": "moderate",
+          "via": [
+            "expo-constants"
+          ],
+          "nodes": [
+            "node_modules/expo-asset"
+          ]
+        },
+        "expo-constants": {
+          "severity": "moderate",
+          "via": [
+            "@expo/config"
+          ],
+          "nodes": [
+            "node_modules/expo-constants"
+          ]
+        },
+        "expo-manifests": {
+          "severity": "moderate",
+          "via": [
+            "@expo/config"
+          ],
+          "nodes": [
+            "node_modules/expo-manifests"
+          ]
+        },
+        "expo-updates": {
+          "severity": "moderate",
+          "via": [
+            "expo-manifests",
+            "glob"
+          ],
+          "nodes": [
+            "node_modules/expo-updates"
+          ]
+        },
+        "glob": {
+          "severity": "moderate",
+          "via": [
+            {
+              "source": 1244013,
+              "name": "glob",
+              "dependency": "glob",
+              "title": "Glob: AbortSignal cancellation bypass allows post-timeout filesystem traversal",
+              "url": "https://github.com/advisories/GHSA-3g3m-2fjr-6pw4",
+              "severity": "moderate",
+              "cwe": [
+                "CWE-400"
+              ],
+              "cvss": {
+                "score": 0,
+                "vectorString": null
+              },
+              "range": ">=9.0.0 <=14.0.1"
+            },
+            "minimatch"
+          ],
+          "nodes": [
+            "node_modules/@expo/config-plugins/node_modules/glob",
+            "node_modules/@expo/config/node_modules/glob",
+            "node_modules/@expo/fingerprint/node_modules/glob",
+            "node_modules/@expo/metro-config/node_modules/glob",
+            "node_modules/expo-updates/node_modules/glob",
+            "node_modules/expo/node_modules/glob",
+            "node_modules/glob"
+          ]
+        },
+        "jest": {
+          "severity": "low",
+          "via": [
+            "@jest/core",
+            "jest-cli"
+          ],
+          "nodes": [
+            "node_modules/jest"
+          ]
+        },
+        "jest-circus": {
+          "severity": "moderate",
+          "via": [
+            "@jest/expect",
+            "jest-runtime",
+            "jest-snapshot"
+          ],
+          "nodes": [
+            "node_modules/jest-circus"
+          ]
+        },
+        "jest-cli": {
+          "severity": "low",
+          "via": [
+            "@jest/core",
+            "create-jest",
+            "jest-config"
+          ],
+          "nodes": [
+            "node_modules/jest-cli"
+          ]
+        },
+        "jest-config": {
+          "severity": "moderate",
+          "via": [
+            "babel-jest",
+            "deepmerge",
+            "glob",
+            "jest-circus",
+            "jest-runner"
+          ],
+          "nodes": [
+            "node_modules/jest-config"
+          ]
+        },
+        "jest-expo": {
+          "severity": "moderate",
+          "via": [
+            "@expo/config",
+            "@jest/globals",
+            "babel-jest",
+            "jest-snapshot",
+            "jest-watch-typeahead"
+          ],
+          "nodes": [
+            "node_modules/jest-expo"
+          ]
+        },
+        "jest-resolve-dependencies": {
+          "severity": "moderate",
+          "via": [
+            "jest-snapshot"
+          ],
+          "nodes": [
+            "node_modules/jest-resolve-dependencies"
+          ]
+        },
+        "jest-runner": {
+          "severity": "moderate",
+          "via": [
+            "@jest/transform",
+            "jest-runtime"
+          ],
+          "nodes": [
+            "node_modules/jest-runner"
+          ]
+        },
+        "jest-runtime": {
+          "severity": "moderate",
+          "via": [
+            "@jest/globals",
+            "@jest/transform",
+            "glob",
+            "jest-snapshot"
+          ],
+          "nodes": [
+            "node_modules/jest-runtime"
+          ]
+        },
+        "jest-snapshot": {
+          "severity": "moderate",
+          "via": [
+            "@jest/transform"
+          ],
+          "nodes": [
+            "node_modules/jest-snapshot"
+          ]
+        },
+        "jest-watch-typeahead": {
+          "severity": "low",
+          "via": [
+            "jest"
+          ],
+          "nodes": [
+            "node_modules/jest-watch-typeahead"
+          ]
+        },
+        "minimatch": {
+          "severity": "moderate",
+          "via": [
+            {
+              "source": 1244012,
+              "name": "minimatch",
+              "dependency": "minimatch",
+              "title": "minimatch has potential denial of service via globparts amplification",
+              "url": "https://github.com/advisories/GHSA-g3hv-75wg-m249",
+              "severity": "moderate",
+              "cwe": [
+                "CWE-405"
+              ],
+              "cvss": {
+                "score": 0,
+                "vectorString": null
+              },
+              "range": "<11.0.1"
+            }
+          ],
+          "nodes": [
+            "node_modules/@eslint/config-array/node_modules/minimatch",
+            "node_modules/@eslint/eslintrc/node_modules/minimatch",
+            "node_modules/eslint-plugin-react/node_modules/minimatch",
+            "node_modules/eslint/node_modules/minimatch",
+            "node_modules/expo/node_modules/@expo/cli/node_modules/minimatch",
+            "node_modules/glob/node_modules/minimatch",
+            "node_modules/minimatch",
+            "node_modules/test-exclude/node_modules/minimatch"
+          ]
+        },
+        "react-native": {
+          "severity": "moderate",
+          "via": [
+            "@react-native/codegen",
+            "@react-native/community-cli-plugin",
+            "babel-jest",
+            "glob"
+          ],
+          "nodes": [
+            "node_modules/react-native"
+          ]
+        },
+        "react-native-reanimated": {
+          "severity": "moderate",
+          "via": [
+            "react-native"
+          ],
+          "nodes": [
+            "node_modules/react-native-reanimated"
+          ]
+        },
+        "rimraf": {
+          "severity": "moderate",
+          "via": [
+            "glob"
+          ],
+          "nodes": [
+            "node_modules/rimraf"
+          ]
+        },
+        "test-exclude": {
+          "severity": "moderate",
+          "via": [
+            "glob",
+            "minimatch"
+          ],
+          "nodes": [
+            "node_modules/test-exclude"
+          ]
+        },
+        "uuid": {
+          "severity": "moderate",
+          "via": [
+            {
+              "source": 1119441,
+              "name": "uuid",
+              "dependency": "uuid",
+              "title": "uuid: Missing buffer bounds check in v3/v5/v6 when buf is provided",
+              "url": "https://github.com/advisories/GHSA-w5hq-g745-h8pq",
+              "severity": "moderate",
+              "cwe": [
+                "CWE-787",
+                "CWE-1285"
+              ],
+              "cvss": {
+                "score": 7.5,
+                "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:N"
+              },
+              "range": "<11.1.1"
+            }
+          ],
+          "nodes": [
+            "node_modules/uuid"
+          ]
+        },
+        "xcode": {
+          "severity": "moderate",
+          "via": [
+            "uuid"
+          ],
+          "nodes": [
+            "node_modules/xcode"
+          ]
+        }
+      }
+    },
+    "consumer": {
+      "lockSHA256": "f1ff922f8ca397475717512d8de34441427ae979c895b7f2af7ff09cb6523645",
+      "rawAuditSHA256": "e1c596539f0136dd986b55f0320c531eb6d6e93c87f9355bd61b5812fc527d92",
+      "auditExit": 1,
+      "counts": {
+        "info": 0,
+        "low": 6,
+        "moderate": 37,
+        "high": 0,
+        "critical": 0,
+        "total": 43
+      },
+      "currentSourceAdvisories": [
+        "GHSA-3g3m-2fjr-6pw4",
+        "GHSA-g3hv-75wg-m249",
+        "GHSA-gcqx-w48m-w2h4"
+      ],
+      "allInitialAdvisoryDispositions": {
+        "GHSA-gcqx-w48m-w2h4": {
+          "package": "deepmerge",
+          "cve": "CVE-2026-93753",
+          "severity": "low",
+          "url": "https://github.com/advisories/GHSA-gcqx-w48m-w2h4",
+          "affectedRange": ">=4.2.0 <=4.3.1",
+          "publishedPatches": [
+            {
+              "package": {
+                "ecosystem": "npm",
+                "name": "deepmerge"
+              },
+              "vulnerable_version_range": ">= 4.2.0, <= 4.3.1",
+              "first_patched_version": null,
+              "vulnerable_functions": []
+            }
+          ],
+          "status": "conditional engineering exception; independent security acceptance pending",
+          "packages": [
+            {
+              "path": "node_modules/deepmerge",
+              "lockedVersion": "4.3.1",
+              "parents": [
+                {
+                  "packagePath": "node_modules/@expo/config",
+                  "dependency": "deepmerge",
+                  "declaredRange": "^4.3.1",
+                  "kind": "dependencies"
+                },
+                {
+                  "packagePath": "node_modules/jest-config",
+                  "dependency": "deepmerge",
+                  "declaredRange": "^4.2.2",
+                  "kind": "dependencies"
+                }
+              ]
+            }
+          ]
+        },
+        "GHSA-3g3m-2fjr-6pw4": {
+          "package": "glob",
+          "cve": "CVE-2026-118773",
+          "severity": "moderate",
+          "url": "https://github.com/advisories/GHSA-3g3m-2fjr-6pw4",
+          "affectedRange": ">=9.0.0 <=14.0.1",
+          "publishedPatches": [
+            {
+              "package": {
+                "ecosystem": "npm",
+                "name": "glob"
+              },
+              "vulnerable_version_range": ">= 9.0.0, <= 14.0.1",
+              "first_patched_version": "14.0.2",
+              "vulnerable_functions": []
+            }
+          ],
+          "status": "conditional engineering exception; independent security acceptance pending",
+          "packages": [
+            {
+              "path": "node_modules/@expo/config-plugins/node_modules/glob",
+              "lockedVersion": "13.0.6",
+              "parents": [
+                {
+                  "packagePath": "node_modules/@expo/config-plugins",
+                  "dependency": "glob",
+                  "declaredRange": "^13.0.0",
+                  "kind": "dependencies"
+                }
+              ]
+            },
+            {
+              "path": "node_modules/@expo/config/node_modules/glob",
+              "lockedVersion": "13.0.6",
+              "parents": [
+                {
+                  "packagePath": "node_modules/@expo/config",
+                  "dependency": "glob",
+                  "declaredRange": "^13.0.0",
+                  "kind": "dependencies"
+                }
+              ]
+            },
+            {
+              "path": "node_modules/@expo/fingerprint/node_modules/glob",
+              "lockedVersion": "13.0.6",
+              "parents": [
+                {
+                  "packagePath": "node_modules/@expo/fingerprint",
+                  "dependency": "glob",
+                  "declaredRange": "^13.0.0",
+                  "kind": "dependencies"
+                }
+              ]
+            },
+            {
+              "path": "node_modules/expo/node_modules/glob",
+              "lockedVersion": "13.0.6",
+              "parents": [
+                {
+                  "packagePath": "node_modules/expo/node_modules/@expo/cli",
+                  "dependency": "glob",
+                  "declaredRange": "^13.0.0",
+                  "kind": "dependencies"
+                },
+                {
+                  "packagePath": "node_modules/expo/node_modules/@expo/metro-config",
+                  "dependency": "glob",
+                  "declaredRange": "^13.0.0",
+                  "kind": "dependencies"
+                }
+              ]
+            },
+            {
+              "path": "node_modules/glob",
+              "lockedVersion": "7.2.3",
+              "parents": [
+                {
+                  "packagePath": "node_modules/@jest/reporters",
+                  "dependency": "glob",
+                  "declaredRange": "^7.1.3",
+                  "kind": "dependencies"
+                },
+                {
+                  "packagePath": "node_modules/@react-native/codegen",
+                  "dependency": "glob",
+                  "declaredRange": "^7.1.1",
+                  "kind": "dependencies"
+                },
+                {
+                  "packagePath": "node_modules/jest-config",
+                  "dependency": "glob",
+                  "declaredRange": "^7.1.3",
+                  "kind": "dependencies"
+                },
+                {
+                  "packagePath": "node_modules/jest-runtime",
+                  "dependency": "glob",
+                  "declaredRange": "^7.1.3",
+                  "kind": "dependencies"
+                },
+                {
+                  "packagePath": "node_modules/react-native",
+                  "dependency": "glob",
+                  "declaredRange": "^7.1.1",
+                  "kind": "dependencies"
+                },
+                {
+                  "packagePath": "node_modules/rimraf",
+                  "dependency": "glob",
+                  "declaredRange": "^7.1.3",
+                  "kind": "dependencies"
+                },
+                {
+                  "packagePath": "node_modules/test-exclude",
+                  "dependency": "glob",
+                  "declaredRange": "^7.1.4",
+                  "kind": "dependencies"
+                }
+              ]
+            }
+          ]
+        },
+        "GHSA-5p2g-fcmc-qvqq": {
+          "package": "image-size",
+          "cve": "CVE-2025-71329",
+          "severity": "high",
+          "url": "https://github.com/advisories/GHSA-5p2g-fcmc-qvqq",
+          "affectedRange": ">=1.2.0 <=2.0.2",
+          "publishedPatches": [
+            {
+              "package": {
+                "ecosystem": "npm",
+                "name": "image-size"
+              },
+              "vulnerable_version_range": ">= 1.2.0, <= 2.0.2",
+              "first_patched_version": "2.0.3",
+              "vulnerable_functions": []
+            }
+          ],
+          "status": "fixed by published override",
+          "packages": [
+            {
+              "path": "node_modules/image-size",
+              "lockedVersion": "2.0.4",
+              "parents": [
+                {
+                  "packagePath": "node_modules/metro",
+                  "dependency": "image-size",
+                  "declaredRange": "^1.0.2",
+                  "kind": "dependencies"
+                }
+              ]
+            }
+          ]
+        },
+        "GHSA-w3rx-r6r6-pgpr": {
+          "package": "image-size",
+          "cve": "CVE-2025-71330",
+          "severity": "high",
+          "url": "https://github.com/advisories/GHSA-w3rx-r6r6-pgpr",
+          "affectedRange": ">=0.6.3 <=2.0.2",
+          "publishedPatches": [
+            {
+              "package": {
+                "ecosystem": "npm",
+                "name": "image-size"
+              },
+              "vulnerable_version_range": ">= 0.6.3, <= 2.0.2",
+              "first_patched_version": "2.0.3",
+              "vulnerable_functions": []
+            }
+          ],
+          "status": "fixed by published override",
+          "packages": [
+            {
+              "path": "node_modules/image-size",
+              "lockedVersion": "2.0.4",
+              "parents": [
+                {
+                  "packagePath": "node_modules/metro",
+                  "dependency": "image-size",
+                  "declaredRange": "^1.0.2",
+                  "kind": "dependencies"
+                }
+              ]
+            }
+          ]
+        },
+        "GHSA-g3hv-75wg-m249": {
+          "package": "minimatch",
+          "cve": "CVE-2026-118764",
+          "severity": "moderate",
+          "url": "https://github.com/advisories/GHSA-g3hv-75wg-m249",
+          "affectedRange": "<11.0.1",
+          "publishedPatches": [
+            {
+              "package": {
+                "ecosystem": "npm",
+                "name": "minimatch"
+              },
+              "vulnerable_version_range": "< 11.0.1",
+              "first_patched_version": "11.0.1",
+              "vulnerable_functions": []
+            }
+          ],
+          "status": "conditional engineering exception; independent security acceptance pending",
+          "packages": [
+            {
+              "path": "node_modules/expo/node_modules/@expo/cli/node_modules/minimatch",
+              "lockedVersion": "9.0.9",
+              "parents": [
+                {
+                  "packagePath": "node_modules/expo/node_modules/@expo/cli",
+                  "dependency": "minimatch",
+                  "declaredRange": "^9.0.0",
+                  "kind": "dependencies"
+                }
+              ]
+            },
+            {
+              "path": "node_modules/glob/node_modules/minimatch",
+              "lockedVersion": "3.1.5",
+              "parents": [
+                {
+                  "packagePath": "node_modules/glob",
+                  "dependency": "minimatch",
+                  "declaredRange": "^3.1.1",
+                  "kind": "dependencies"
+                }
+              ]
+            },
+            {
+              "path": "node_modules/minimatch",
+              "lockedVersion": "10.2.6",
+              "parents": [
+                {
+                  "packagePath": "node_modules/@expo/config-plugins/node_modules/glob",
+                  "dependency": "minimatch",
+                  "declaredRange": "^10.2.2",
+                  "kind": "dependencies"
+                },
+                {
+                  "packagePath": "node_modules/@expo/config/node_modules/glob",
+                  "dependency": "minimatch",
+                  "declaredRange": "^10.2.2",
+                  "kind": "dependencies"
+                },
+                {
+                  "packagePath": "node_modules/@expo/fingerprint",
+                  "dependency": "minimatch",
+                  "declaredRange": "^10.2.2",
+                  "kind": "dependencies"
+                },
+                {
+                  "packagePath": "node_modules/@expo/fingerprint/node_modules/glob",
+                  "dependency": "minimatch",
+                  "declaredRange": "^10.2.2",
+                  "kind": "dependencies"
+                },
+                {
+                  "packagePath": "node_modules/expo/node_modules/glob",
+                  "dependency": "minimatch",
+                  "declaredRange": "^10.2.2",
+                  "kind": "dependencies"
+                }
+              ]
+            },
+            {
+              "path": "node_modules/test-exclude/node_modules/minimatch",
+              "lockedVersion": "3.1.5",
+              "parents": [
+                {
+                  "packagePath": "node_modules/test-exclude",
+                  "dependency": "minimatch",
+                  "declaredRange": "^3.0.4",
+                  "kind": "dependencies"
+                }
+              ]
+            }
+          ]
+        },
+        "GHSA-qx2v-qp2m-jg93": {
+          "package": "postcss",
+          "cve": "CVE-2026-41305",
+          "severity": "moderate",
+          "url": "https://github.com/advisories/GHSA-qx2v-qp2m-jg93",
+          "affectedRange": "<8.5.10",
+          "publishedPatches": [
+            {
+              "package": {
+                "ecosystem": "npm",
+                "name": "postcss"
+              },
+              "vulnerable_version_range": "< 8.5.10",
+              "first_patched_version": "8.5.10",
+              "vulnerable_functions": []
+            }
+          ],
+          "status": "fixed by published override",
+          "packages": [
+            {
+              "path": "node_modules/postcss",
+              "lockedVersion": "8.5.32",
+              "parents": [
+                {
+                  "packagePath": "node_modules/expo/node_modules/@expo/metro-config",
+                  "dependency": "postcss",
+                  "declaredRange": "~8.4.32",
+                  "kind": "dependencies"
+                }
+              ]
+            }
+          ]
+        },
+        "GHSA-6g55-p6wh-862q": {
+          "package": "postcss",
+          "cve": "CVE-2026-45623",
+          "severity": "high",
+          "url": "https://github.com/advisories/GHSA-6g55-p6wh-862q",
+          "affectedRange": "<=8.5.11",
+          "publishedPatches": [
+            {
+              "package": {
+                "ecosystem": "npm",
+                "name": "postcss"
+              },
+              "vulnerable_version_range": "<= 8.5.11",
+              "first_patched_version": "8.5.12",
+              "vulnerable_functions": []
+            }
+          ],
+          "status": "fixed by published override",
+          "packages": [
+            {
+              "path": "node_modules/postcss",
+              "lockedVersion": "8.5.32",
+              "parents": [
+                {
+                  "packagePath": "node_modules/expo/node_modules/@expo/metro-config",
+                  "dependency": "postcss",
+                  "declaredRange": "~8.4.32",
+                  "kind": "dependencies"
+                }
+              ]
+            }
+          ]
+        },
+        "GHSA-fxqj-rqcc-2cmp": {
+          "package": "postcss",
+          "cve": "CVE-2026-69153",
+          "severity": "moderate",
+          "url": "https://github.com/advisories/GHSA-fxqj-rqcc-2cmp",
+          "affectedRange": "<=8.5.22",
+          "publishedPatches": [
+            {
+              "package": {
+                "ecosystem": "npm",
+                "name": "postcss"
+              },
+              "vulnerable_version_range": "<= 8.5.22",
+              "first_patched_version": "8.5.23",
+              "vulnerable_functions": []
+            }
+          ],
+          "status": "fixed by published override",
+          "packages": [
+            {
+              "path": "node_modules/postcss",
+              "lockedVersion": "8.5.32",
+              "parents": [
+                {
+                  "packagePath": "node_modules/expo/node_modules/@expo/metro-config",
+                  "dependency": "postcss",
+                  "declaredRange": "~8.4.32",
+                  "kind": "dependencies"
+                }
+              ]
+            }
+          ]
+        },
+        "GHSA-r28c-9q8g-f849": {
+          "package": "postcss",
+          "cve": "CVE-2026-73646",
+          "severity": "high",
+          "url": "https://github.com/advisories/GHSA-r28c-9q8g-f849",
+          "affectedRange": "<=8.5.17",
+          "publishedPatches": [
+            {
+              "package": {
+                "ecosystem": "npm",
+                "name": "postcss"
+              },
+              "vulnerable_version_range": "<= 8.5.17",
+              "first_patched_version": "8.5.18",
+              "vulnerable_functions": []
+            }
+          ],
+          "status": "fixed by published override",
+          "packages": [
+            {
+              "path": "node_modules/postcss",
+              "lockedVersion": "8.5.32",
+              "parents": [
+                {
+                  "packagePath": "node_modules/expo/node_modules/@expo/metro-config",
+                  "dependency": "postcss",
+                  "declaredRange": "~8.4.32",
+                  "kind": "dependencies"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "propagatedAffectedEntries": {
+        "@expo/cli": {
+          "severity": "moderate",
+          "via": [
+            "@expo/config",
+            "@expo/config-plugins",
+            "@expo/metro-config",
+            "@expo/prebuild-config",
+            "@react-native/dev-middleware",
+            "glob",
+            "minimatch"
+          ],
+          "nodes": [
+            "node_modules/expo/node_modules/@expo/cli"
+          ]
+        },
+        "@expo/config": {
+          "severity": "moderate",
+          "via": [
+            "@expo/config-plugins",
+            "deepmerge",
+            "glob"
+          ],
+          "nodes": [
+            "node_modules/@expo/config"
+          ]
+        },
+        "@expo/config-plugins": {
+          "severity": "moderate",
+          "via": [
+            "glob"
+          ],
+          "nodes": [
+            "node_modules/@expo/config-plugins"
+          ]
+        },
+        "@expo/fingerprint": {
+          "severity": "moderate",
+          "via": [
+            "glob",
+            "minimatch"
+          ],
+          "nodes": [
+            "node_modules/@expo/fingerprint"
+          ]
+        },
+        "@expo/metro-config": {
+          "severity": "moderate",
+          "via": [
+            "@expo/config",
+            "glob"
+          ],
+          "nodes": [
+            "node_modules/expo/node_modules/@expo/metro-config"
+          ]
+        },
+        "@expo/prebuild-config": {
+          "severity": "moderate",
+          "via": [
+            "@expo/config",
+            "@expo/config-plugins"
+          ],
+          "nodes": [
+            "node_modules/expo/node_modules/@expo/cli/node_modules/@expo/prebuild-config"
+          ]
+        },
+        "@jest/core": {
+          "severity": "moderate",
+          "via": [
+            "@jest/reporters",
+            "@jest/transform",
+            "jest-config",
+            "jest-resolve-dependencies",
+            "jest-runner",
+            "jest-runtime",
+            "jest-snapshot"
+          ],
+          "nodes": [
+            "node_modules/@jest/core"
+          ]
+        },
+        "@jest/expect": {
+          "severity": "moderate",
+          "via": [
+            "jest-snapshot"
+          ],
+          "nodes": [
+            "node_modules/@jest/expect"
+          ]
+        },
+        "@jest/globals": {
+          "severity": "moderate",
+          "via": [
+            "@jest/expect"
+          ],
+          "nodes": [
+            "node_modules/@jest/globals"
+          ]
+        },
+        "@jest/reporters": {
+          "severity": "moderate",
+          "via": [
+            "@jest/transform",
+            "glob"
+          ],
+          "nodes": [
+            "node_modules/@jest/reporters"
+          ]
+        },
+        "@jest/transform": {
+          "severity": "moderate",
+          "via": [
+            "babel-plugin-istanbul"
+          ],
+          "nodes": [
+            "node_modules/@jest/transform"
+          ]
+        },
+        "@maplibre/maplibre-react-native": {
+          "severity": "moderate",
+          "via": [
+            "expo"
+          ],
+          "nodes": [
+            "node_modules/@maplibre/maplibre-react-native"
+          ]
+        },
+        "@muslim-ummah/offline-navigation": {
+          "severity": "moderate",
+          "via": [
+            "@maplibre/maplibre-react-native"
+          ],
+          "nodes": [
+            "node_modules/@muslim-ummah/offline-navigation"
+          ]
+        },
+        "@react-native/babel-plugin-codegen": {
+          "severity": "moderate",
+          "via": [
+            "@react-native/codegen"
+          ],
+          "nodes": [
+            "node_modules/@react-native/babel-plugin-codegen"
+          ]
+        },
+        "@react-native/babel-preset": {
+          "severity": "moderate",
+          "via": [
+            "@react-native/babel-plugin-codegen"
+          ],
+          "nodes": [
+            "node_modules/@react-native/babel-preset"
+          ]
+        },
+        "@react-native/codegen": {
+          "severity": "moderate",
+          "via": [
+            "glob"
+          ],
+          "nodes": [
+            "node_modules/@react-native/codegen"
+          ]
+        },
+        "@react-native/community-cli-plugin": {
+          "severity": "moderate",
+          "via": [
+            "@react-native/dev-middleware"
+          ],
+          "nodes": [
+            "node_modules/@react-native/community-cli-plugin"
+          ]
+        },
+        "@react-native/dev-middleware": {
+          "severity": "moderate",
+          "via": [
+            "chromium-edge-launcher"
+          ],
+          "nodes": [
+            "node_modules/@react-native/dev-middleware"
+          ]
+        },
+        "@testing-library/react-native": {
+          "severity": "low",
+          "via": [
+            "jest"
+          ],
+          "nodes": [
+            "node_modules/@testing-library/react-native"
+          ]
+        },
+        "babel-jest": {
+          "severity": "moderate",
+          "via": [
+            "@jest/transform",
+            "babel-plugin-istanbul"
+          ],
+          "nodes": [
+            "node_modules/babel-jest"
+          ]
+        },
+        "babel-plugin-istanbul": {
+          "severity": "moderate",
+          "via": [
+            "test-exclude"
+          ],
+          "nodes": [
+            "node_modules/babel-plugin-istanbul"
+          ]
+        },
+        "babel-preset-expo": {
+          "severity": "moderate",
+          "via": [
+            "@react-native/babel-preset"
+          ],
+          "nodes": [
+            "node_modules/babel-preset-expo"
+          ]
+        },
+        "chromium-edge-launcher": {
+          "severity": "moderate",
+          "via": [
+            "rimraf"
+          ],
+          "nodes": [
+            "node_modules/chromium-edge-launcher"
+          ]
+        },
+        "create-jest": {
+          "severity": "low",
+          "via": [
+            "jest-config"
+          ],
+          "nodes": [
+            "node_modules/create-jest"
+          ]
+        },
+        "deepmerge": {
+          "severity": "low",
+          "via": [
+            {
+              "source": 1243505,
+              "name": "deepmerge",
+              "dependency": "deepmerge",
+              "title": "deepmerge mergeObject() allows prototype poisoning of returned objects",
+              "url": "https://github.com/advisories/GHSA-gcqx-w48m-w2h4",
+              "severity": "low",
+              "cwe": [
+                "CWE-1321"
+              ],
+              "cvss": {
+                "score": 5.3,
+                "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:L/A:N"
+              },
+              "range": ">=4.2.0 <=4.3.1"
+            }
+          ],
+          "nodes": [
+            "node_modules/deepmerge"
+          ]
+        },
+        "expo": {
+          "severity": "moderate",
+          "via": [
+            "@expo/cli",
+            "@expo/config",
+            "@expo/config-plugins",
+            "@expo/fingerprint",
+            "@expo/metro-config",
+            "babel-preset-expo",
+            "expo-asset",
+            "expo-constants"
+          ],
+          "nodes": [
+            "node_modules/expo"
+          ]
+        },
+        "expo-asset": {
+          "severity": "moderate",
+          "via": [
+            "expo-constants"
+          ],
+          "nodes": [
+            "node_modules/expo-asset"
+          ]
+        },
+        "expo-constants": {
+          "severity": "moderate",
+          "via": [
+            "@expo/config"
+          ],
+          "nodes": [
+            "node_modules/expo-constants"
+          ]
+        },
+        "glob": {
+          "severity": "moderate",
+          "via": [
+            {
+              "source": 1244013,
+              "name": "glob",
+              "dependency": "glob",
+              "title": "Glob: AbortSignal cancellation bypass allows post-timeout filesystem traversal",
+              "url": "https://github.com/advisories/GHSA-3g3m-2fjr-6pw4",
+              "severity": "moderate",
+              "cwe": [
+                "CWE-400"
+              ],
+              "cvss": {
+                "score": 0,
+                "vectorString": null
+              },
+              "range": ">=9.0.0 <=14.0.1"
+            },
+            "minimatch"
+          ],
+          "nodes": [
+            "node_modules/@expo/config-plugins/node_modules/glob",
+            "node_modules/@expo/config/node_modules/glob",
+            "node_modules/@expo/fingerprint/node_modules/glob",
+            "node_modules/expo/node_modules/glob",
+            "node_modules/glob"
+          ]
+        },
+        "jest": {
+          "severity": "low",
+          "via": [
+            "@jest/core",
+            "jest-cli"
+          ],
+          "nodes": [
+            "node_modules/jest"
+          ]
+        },
+        "jest-circus": {
+          "severity": "moderate",
+          "via": [
+            "@jest/expect",
+            "jest-runtime",
+            "jest-snapshot"
+          ],
+          "nodes": [
+            "node_modules/jest-circus"
+          ]
+        },
+        "jest-cli": {
+          "severity": "low",
+          "via": [
+            "@jest/core",
+            "create-jest",
+            "jest-config"
+          ],
+          "nodes": [
+            "node_modules/jest-cli"
+          ]
+        },
+        "jest-config": {
+          "severity": "moderate",
+          "via": [
+            "babel-jest",
+            "deepmerge",
+            "glob",
+            "jest-circus",
+            "jest-runner"
+          ],
+          "nodes": [
+            "node_modules/jest-config"
+          ]
+        },
+        "jest-expo": {
+          "severity": "moderate",
+          "via": [
+            "@expo/config",
+            "@jest/globals",
+            "babel-jest",
+            "jest-snapshot",
+            "jest-watch-typeahead"
+          ],
+          "nodes": [
+            "node_modules/jest-expo"
+          ]
+        },
+        "jest-resolve-dependencies": {
+          "severity": "moderate",
+          "via": [
+            "jest-snapshot"
+          ],
+          "nodes": [
+            "node_modules/jest-resolve-dependencies"
+          ]
+        },
+        "jest-runner": {
+          "severity": "moderate",
+          "via": [
+            "@jest/transform",
+            "jest-runtime"
+          ],
+          "nodes": [
+            "node_modules/jest-runner"
+          ]
+        },
+        "jest-runtime": {
+          "severity": "moderate",
+          "via": [
+            "@jest/globals",
+            "@jest/transform",
+            "glob",
+            "jest-snapshot"
+          ],
+          "nodes": [
+            "node_modules/jest-runtime"
+          ]
+        },
+        "jest-snapshot": {
+          "severity": "moderate",
+          "via": [
+            "@jest/transform"
+          ],
+          "nodes": [
+            "node_modules/jest-snapshot"
+          ]
+        },
+        "jest-watch-typeahead": {
+          "severity": "low",
+          "via": [
+            "jest"
+          ],
+          "nodes": [
+            "node_modules/jest-watch-typeahead"
+          ]
+        },
+        "minimatch": {
+          "severity": "moderate",
+          "via": [
+            {
+              "source": 1244012,
+              "name": "minimatch",
+              "dependency": "minimatch",
+              "title": "minimatch has potential denial of service via globparts amplification",
+              "url": "https://github.com/advisories/GHSA-g3hv-75wg-m249",
+              "severity": "moderate",
+              "cwe": [
+                "CWE-405"
+              ],
+              "cvss": {
+                "score": 0,
+                "vectorString": null
+              },
+              "range": "<11.0.1"
+            }
+          ],
+          "nodes": [
+            "node_modules/expo/node_modules/@expo/cli/node_modules/minimatch",
+            "node_modules/glob/node_modules/minimatch",
+            "node_modules/minimatch",
+            "node_modules/test-exclude/node_modules/minimatch"
+          ]
+        },
+        "react-native": {
+          "severity": "moderate",
+          "via": [
+            "@react-native/codegen",
+            "@react-native/community-cli-plugin",
+            "babel-jest",
+            "glob"
+          ],
+          "nodes": [
+            "node_modules/react-native"
+          ]
+        },
+        "rimraf": {
+          "severity": "moderate",
+          "via": [
+            "glob"
+          ],
+          "nodes": [
+            "node_modules/rimraf"
+          ]
+        },
+        "test-exclude": {
+          "severity": "moderate",
+          "via": [
+            "glob",
+            "minimatch"
+          ],
+          "nodes": [
+            "node_modules/test-exclude"
+          ]
+        }
+      }
+    }
+  }
+}

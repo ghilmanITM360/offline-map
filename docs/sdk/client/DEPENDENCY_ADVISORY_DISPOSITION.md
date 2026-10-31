@@ -1,48 +1,57 @@
-# Dependency advisory disposition — SDK 0.1.0 release candidate
+# Dependency advisory disposition — SDK 0.1.0
 
-**Source:** the independent audit (Codex, baseline `13f4629`) ran `npm audit --package-lock-only --ignore-scripts` and reported **15 affected package
-nodes in the repository lockfile (1 critical, 10 high, 4 moderate)** and **9 in a freshly resolved consumer (0 critical, 8 high, 1 moderate)**. Those are
-package-graph nodes, not 24 runtime vulnerabilities: a vulnerable build tool marks every package that depends on it (Expo, MapLibre's peer, the SDK itself in
-the consumer) as affected. The SDK package has **no runtime dependencies** (React, React Native and MapLibre are peers supplied by the host app).
+Reviewed 1 November 2026 for release-closure issue #393. This supersedes the earlier three-package exception list. It is an engineering assessment, not independent security approval.
 
-This document records, for every distinct advisory, what was installed, how it is reached, what it needs to be exploited, whether a compatible fix exists
-and what was decided. The repository's own package-by-package triage is [`docs/DEPENDENCY_SECURITY_STATUS.md`](../../DEPENDENCY_SECURITY_STATUS.md) (issue
-#370); this page adds the SDK-release view and the changes made for this release candidate. No `npm audit fix`, `--force` or major upgrade was run.
+The SDK declares **no direct runtime dependencies**. React, React Native and optional MapLibre are host peers. The root app and delivered example have separate Node build/test graphs. A propagated Expo/RN/Jest/MapLibre/SDK label does not establish handset runtime reachability. Native CocoaPods/Gradle/Hermes/MapLibre libraries are outside this JS lockfile assessment.
 
-## What changed in this release candidate
+## Exact-lock method
 
-Four packages had a fixed release **inside the range their parent already declares**. Each was updated on its own (`npm update <name>`), the lockfile diff
-was checked to contain nothing else, and the full test chain was re-run.
+```sh
+npm audit --package-lock-only --ignore-scripts --json --fetch-retries=0 --fetch-timeout=20000
+```
 
-| Package | Advisory | Before | After | Parent range | Why safe |
-| --- | --- | --- | --- | --- | --- |
-| shell-quote | GHSA-pqg4-j6r4-53mv (critical) | 1.10.0 | 1.12.0 | `^1.6.1` (react-devtools-core) | patch/minor inside the declared range; developer tooling only |
-| node-forge | GHSA-86w9-cpqp-85rv (high) | 1.4.0 | 1.4.2 | `^1.3.3` (Expo code-signing helper) | patch inside the declared range; not used by the app at runtime |
-| undici | GHSA-4qv8-2p9j-2685, GHSA-xjj6-f33q-929c (high) | 6.28.1 | 6.29.1 | `^6.18.2` (Expo CLI) | patch inside the declared range; Expo CLI network client, build host only |
-| source-map-js | GHSA-68fv-2mgg-jv7q (high) | 1.2.1 | 1.2.2 | `^1.2.1` (PostCSS) | patch inside the declared range; build host only |
+Fresh pre-correction results: root **58 affected entries / 10 distinct advisories** (6 low, 50 moderate, 2 high, 0 critical); corrected delivery consumer **45 / 9** (6 low, 37 moderate, 2 high, 0 critical). The original consumer lock SHA is `cfaf101aa79b34c2e031afc400a5493f2450c66f4197577e74ec76263db909a4`. Counts describe propagated package-name entries, not distinct exploits. Current selected graph: root **57 entries / 4 sources (6 low, 51 moderate, 0 high, 0 critical)**; consumer **43 / 3 (6 low, 37 moderate, 0 high, 0 critical)**. Exact locked versions, paths, parent ranges and every advisory disposition are in `DEPENDENCY_AUDIT_SNAPSHOT.json`; final delivery acceptance verifies the reviewed consumer lock identity. **Audit exits remain nonzero for unresolved findings.**
 
-Repository lockfile result: **15 nodes (1 critical / 10 high / 4 moderate) → 8 nodes (0 critical / 2 high / 6 moderate)**, measured with the same command. The
-remaining nodes come from three distinct packages (below) and their propagation through Expo.
+Raw audit responses, exact commands/timing, every installed version/immediate-parent constraint, call-site hashes and current GitHub advisory/npm registry metadata are preserved in owner audit storage under `offline-sdk-release-closure-2026-10-31/resume-20261101/`. The generated delivery `DEPENDENCY_INVENTORY.md` describes the exact consumer lock used by `npm ci`.
 
-## Advisories that remain, and why
+## Applied correction
 
-| Advisory | Installed | Path | Reached at | Needs to be exploited | Fix | Decision | Residual risk |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| image-size GHSA-5p2g-fcmc-qvqq, GHSA-w3rx-r6r6-pgpr (high, denial of service via infinite loop in JXL/HEIF/ICNS parsing) | 1.2.1 | Metro `^1.0.2` → `metro/src/Assets.js` | **Build time** (the bundler reads image dimensions of assets in the project). Not in the app bundle. | An attacker-supplied image asset placed in the project's asset set | 2.0.3+, a **major** version outside Metro's `^1.0.2` | **Documented exception.** A forced override could break Metro's asset API; a major bump of Metro/Expo is a separate compatibility decision. | A hostile asset in the repository could hang a developer or CI build. The SDK and sample assets are repository-owned PNG/PMTiles files. |
-| postcss GHSA-qx2v-qp2m-jg93, GHSA-6g55-p6wh-862q, GHSA-fxqj-rqcc-2cmp (high; XSS in CSS stringify, arbitrary file read through a hostile `sourceMappingURL`) | 8.4.49 | `@expo/metro-config` pins `~8.4.32` | **Build time**, only when a CSS file is processed. The app has no CSS, and Expo supplies `from`. | An attacker-controlled CSS file or source map in the project | 8.5.23+, outside Expo's `~8.4.32` pin | **Documented exception.** | Same as above: a hostile file already inside the project. |
-| uuid GHSA-w5hq-g745-h8pq (moderate; missing bounds check in v3/v5/v6 when the caller passes an output buffer) | 7.0.3 | `xcode@3.0.1` (Expo config plugins) | **Build time** (native project generation). `xcode` calls only `uuid.v4()` without a buffer, which the advisory does not cover. | The vulnerable call shape, which the code does not use | 11.1.1+, a major version outside `xcode`'s `^7.0.3` | **Documented exception — not reachable.** | None identified. |
+The earlier compatible patches remain: **shell-quote 1.12.0, node-forge 1.4.2, undici 6.29.1, source-map-js 1.2.2**. Root and example now select exact **PostCSS 8.5.32** via an override. This is the same major, deliberately outside Expo metro-config's `~8.4.32` constraint. Image-size is also pinned to **2.0.4**. Although outside Metro’s declared `^1.0.2`, its published `__esModule` CommonJS default export preserves both exact Metro 0.83.3 buffer call sites; removed 1.x path/callback APIs are not used by Metro. A bounded real-Metro probe reproduces an ICNS memory-exhaustion failure at 1.2.1; 2.0.4 rejects ICNS/JXL zero-length records promptly even renamed `.png`, and reads a healthy PNG correctly. No adapter, monkey patch or local parser backport is needed. Node >=18 is required (tested Node 24.14). PostCSS’s required Nano ID dependency changes 3.3.19 → 3.3.20 in the root lock. No SDK dependency, Expo/RN/MapLibre version, native source, venue data or routing golden changes.
 
-## The fresh consumer (what a client installs)
+The installed 8.4.49 baseline demonstrably read a harmless canary `.map` outside the CSS directory even with `from` supplied. `npm run test:dependency-security` catches that defect. At 8.5.32 it checks relative traversal, an absolute annotation without `from`, explicit `map:false`, same-directory maps, and Expo's async default/process/content plugin API. Final acceptance also requires types and standalone Android/iOS production Metro exports.
 
-The consumer example pins its direct dependencies to exactly what the repository resolves (checked by `scripts/sdk-package/consumer.mjs`); everything below them
-resolves to the newest release allowed by each parent range at install time, which is why the consumer count differs from the repository's. The delivery
-bundle ships the **resolved lockfile** (`examples/expo-consumer/package-lock.json`, produced against the delivered tarball) so a client installs the same
-graph with `npm ci`, plus a generated inventory (`docs/DEPENDENCY_INVENTORY.md`). Re-run `npm audit` against the lockfile in your own tree: advisories are published daily and
-this table is a point-in-time record. Remaining items there are the same three packages above (build-time Expo/Metro tooling).
+The old claim that supplying `from` mitigates all source-map reads was incorrect: `map:false` bypasses annotation loading; `from` alone did not prevent traversal.
 
-## What is not claimed
+## Every distinct advisory source
 
-- Not a statement that the host application is free of advisories: the host's own lockfile governs its build.
-- Not an audit of native libraries (CocoaPods, Gradle, Hermes, MapLibre Native). Generate those inventories from the host build; see `LICENSES_AND_NOTICES.md`.
-- Runtime exploitability of the three remaining packages was reviewed from the installed sources (call sites above), not demonstrated; an external security review of the final build is still open.
-- A major React Native, Expo or MapLibre upgrade would clear the two build-time exceptions but needs its own compatibility decision and native re-acceptance; it is deliberately **not** part of SDK 0.1.0.
+Each GHSA links to the primary advisory. Four PostCSS rows are fixed, not exceptions. Version and parent details are point-in-time; reassess when the lock changes.
+
+| Source / CVE | Severity; installed → fixed | Reachable path and exploitation prerequisite | Disposition |
+| --- | --- | --- | --- |
+| [deepmerge GHSA-gcqx-w48m-w2h4](https://github.com/advisories/GHSA-gcqx-w48m-w2h4), CVE-2026-93753 | Low; 4.3.1; no patched release | Expo config/config-plugins and Jest merging attacker-controlled project configuration. Returned-object prototype poisoning, not demonstrated global Object.prototype compromise. | **E1 conditional exception.** Latest 4.x remains affected. Reviewed local configuration only; malicious config can change merged behavior. |
+| [glob GHSA-3g3m-2fjr-6pw4](https://github.com/advisories/GHSA-3g3m-2fjr-6pw4), CVE-2026-118773 | Moderate; 13.0.6 → 14.0.2 | Expo config/fingerprint/Metro filesystem discovery. Abort-budgeted walks can continue costly traversal. Reviewed config uses fixed synchronous patterns without signals. | **E2 conditional exception.** No fixed 13.x backport. Host availability risk on hostile trees. Glob 7.x is outside this source range but inherits minimatch findings. |
+| [minimatch GHSA-g3hv-75wg-m249](https://github.com/advisories/GHSA-g3hv-75wg-m249), CVE-2026-118764 | Moderate; root 3.1.5 / 9.0.9 / 10.2.5; consumer 3.1.5 / 9.0.9 / 10.2.6 → 11.0.1 | Glob, Expo CLI/fingerprint, RN codegen, Jest/test-exclude; root also ESLint. Hostile glob patterns amplify globparts at optimizationLevel 2, selected by modern glob. Legacy 3.x lacks that exact algorithm despite broad advisory range. | **E2 conditional exception.** No fixed 3/9/10 backport. Do not feed untrusted patterns into privileged builds. CPU/memory exhaustion remains possible. |
+| [image-size GHSA-5p2g-fcmc-qvqq](https://github.com/advisories/GHSA-5p2g-fcmc-qvqq), CVE-2025-71329 | High; 1.2.1 → 2.0.3 | Metro Assets.js reads project asset bytes; malformed JXL/HEIF can loop. Content sniffing means renaming PNG is insufficient. | **Fixed 2.0.4 override.** Exact Metro interop and bounded malformed-image rejection verified; remaining acceptance includes both production Metro exports. |
+| [image-size GHSA-w3rx-r6r6-pgpr](https://github.com/advisories/GHSA-w3rx-r6r6-pgpr), CVE-2025-71330 | High; 1.2.1 → 2.0.3 | Same Metro path; malformed ICNS lengths can loop. Node parser not identified in handset navigation. | **Fixed 2.0.4 override**, with the same exact-Metro regression. |
+| [PostCSS GHSA-qx2v-qp2m-jg93](https://github.com/advisories/GHSA-qx2v-qp2m-jg93), CVE-2026-41305 | Moderate; 8.4.49 → 8.5.10 | Untrusted CSS stringified into HTML style context; no such native sample path identified. | **Fixed 8.5.32.** |
+| [PostCSS GHSA-6g55-p6wh-862q](https://github.com/advisories/GHSA-6g55-p6wh-862q), CVE-2026-45623 | High; 8.4.49 → 8.5.12 | PreviousMap follows hostile sourceMappingURL and reads host files with automatic maps enabled. | **Fixed 8.5.32.** |
+| [PostCSS GHSA-fxqj-rqcc-2cmp](https://github.com/advisories/GHSA-fxqj-rqcc-2cmp), CVE-2026-69153 | Moderate; 8.4.49 → 8.5.23 | Follow-up source-map read when `from` is absent. | **Fixed 8.5.32.** |
+| [PostCSS GHSA-r28c-9q8g-f849](https://github.com/advisories/GHSA-r28c-9q8g-f849), CVE-2026-73646 | High; 8.4.49 → 8.5.18 | Traversal outside CSS directory even with `from`; reproduced with harmless canary before patch. | **Fixed 8.5.32.** |
+| [uuid GHSA-w5hq-g745-h8pq](https://github.com/advisories/GHSA-w5hq-g745-h8pq), CVE-2026-41907 | Moderate; root only 7.0.3 → 11.1.1 | xcode/config-plugin project generation calls v4 without buffers. Advisory needs v3/v5/v6 plus caller-provided buffer. | **E4: affected API not identified on reviewed path.** Fixed major outside xcode `^7.0.3`; reassess if callers change. Absent from consumer. |
+
+## Scope and operating conditions
+
+No compatible fixed backport was published within current deepmerge/glob/minimatch/uuid parent ranges. No blanket audit fix or framework upgrade/downgrade was adopted. The two deliberate overrides are bounded by installed API evidence and executable regressions. Transitive status does not make a finding harmless.
+
+E1–E2 require reviewed, provenance-pinned repository assets, configuration, plugins and patterns. Do not process untrusted uploads, PR assets/config, themes or arbitrary patterns on privileged build hosts without separate review/isolation. Pins establish integrity, not publisher authenticity or safety of future inputs. The sample's non-web CSS returns before PostCSS; configured web processing normally uses `map:false`; no tracked CSS/PCSS/PostCSS config was found. Those facts do not cover every future host.
+
+**Engineering disposition:** retain E1–E2 under the reviewed-input conditions above; no affected attendee-input runtime call path was identified. The owner delegated implementation judgment after requesting further web research; that is not independent security approval. External security acceptance remains a release gate. Untrusted build-input support invalidates these exceptions. External security and native dependency reviews remain open. No unrestricted production security GO is given.
+
+## Primary compatibility sources
+
+- [Image-size 1.2.1 supported API and disabled-types facility](https://github.com/image-size/image-size/blob/v1.2.1/Readme.md). Disabling types alone is not the selected fix: detection can enter validators before the disabled-type check.
+- [Published image-size release metadata](https://registry.npmjs.org/image-size/2.0.4), with tarball SHA-512 verified against registry integrity before inspecting its CommonJS export.
+- [PostCSS 8.5.32 release](https://github.com/postcss/postcss/releases/tag/8.5.32) and [8.5 compatibility release notes](https://github.com/postcss/postcss/releases/tag/8.5.0).
+- [Deepmerge upstream investigation](https://github.com/TehShrike/deepmerge/issues/273); no patched release listed by the current advisory.
+
+All six image-size/PostCSS advisory sources in the initial audit are addressed by published fixed versions. The remaining source advisories are deepmerge, glob, minimatch and root-only uuid; no critical/high source advisory remains in the selected graph, confirmed by fresh exact-lock metadata audits; actual delivery must match the reviewed lock. npm audit still reports low/moderate findings.

@@ -1,5 +1,9 @@
 # Complete package-level dependency triage
 
+> Historical inventory below (11 October 2026). For SDK 0.1.0 it is superseded by the
+> [1 November release disposition](sdk/client/DEPENDENCY_ADVISORY_DISPOSITION.md) and fresh exact-lock audits.
+> The four earlier compatible patches and PostCSS 8.5.32 override supersede the older versions/deferrals below.
+
 Current tracking: [#370](https://github.com/ghilmanITM360/offline-map/issues/370), superseding reliance on the older exception in #62. Audited lockfile is unchanged by PRs #367–372 and the guidance localization continuation. Fresh 2026-10-11 npm audit remains 66 findings: 13 moderate, 52 high, 1 critical. No package or native dependency upgrade is included. Issue #370 remains open; inventory is not remediation.
 
 ## Scope and result
