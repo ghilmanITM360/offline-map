@@ -1,0 +1,8 @@
+{
+  "ios/Podfile": "63c04b52692248a9d128e955dc9bbaf96423202296f3f7a192e2d9c25b898e9f",
+  "ios/Podfile.lock": "d72025a5fa5430fb306fabf3d4180980d5b6167d15fd23c860a05c34c8666b98",
+  "ios/Podfile.properties.json": "4222d802ab80961762b71603a713160c16c0fa3ce5d6c74a111c67785872331a",
+  "android/app/build.gradle": "0ba32960cd62f6dbaec9f12d9c84eb73981149e7e2b7647baf8767194662f660",
+  "android/gradle.properties": "815512557a44f1e92bf4e2c139a0017e4e0c00fbfc7a60d7b777a4f0fa4ae765",
+  "android/app/src/main/AndroidManifest.xml": "771cb91ff0652a6d1649329962e8d0011c5bfb8c0f795454f8fbe83223dcd23f"
+}

@@ -1,0 +1,76 @@
+{
+  "source": "1a913b9e521c093499855625c8b3a76cc11fd61a",
+  "head": "0a96ad0cc07318ea7db0d75098f28580b80e7be9",
+  "apk": "/Users/ghilmankhan/Documents/offline-map-audits/offline-sdk-virtual-device-2026-11-01/sdk-consumer-1a913b9-android-arm64-release.apk",
+  "sha256": "86f24fdfbf6ac0246633e5edfad0231a9343aa8d50345df8b421158470f585c7",
+  "variant": "Release ARM64 Hermes, new architecture, local debug signing; NOT production signing",
+  "buildExit": 0,
+  "buildDuration": "3m39s",
+  "assets": [
+    {
+      "source": "assets/karachi-basemap.pmtiles",
+      "sha256": "d5e6883d55d55b0fa9e3230ab92585fb25a8949551528ef4d176192384a28cc0",
+      "apkEntry": "res/ii.pmtiles"
+    },
+    {
+      "source": "assets/packs/synthetic-demo-venue/pack.manifest.json.packfile",
+      "sha256": "edd5367bf0bdf1ca4eebba68a69c6ff177eb7d8ccf865593560ae76bcb11f7b0",
+      "apkEntry": "res/Fc.packfile"
+    },
+    {
+      "source": "assets/packs/synthetic-demo-venue/data__routing-graph.json.packfile",
+      "sha256": "f17ac5b48a243fc417f7c691dd527947d53a3442ac183db62c9b718fd5009c0b",
+      "apkEntry": "res/g_.packfile"
+    },
+    {
+      "source": "assets/packs/synthetic-demo-venue/data__place-directory.json.packfile",
+      "sha256": "b40aa8f2d26e984125c734b9141dd4f734a554ee0b851c1d15daf4fcf46ec957",
+      "apkEntry": "res/5Z.packfile"
+    },
+    {
+      "source": "assets/packs/synthetic-demo-venue/data__localization.json.packfile",
+      "sha256": "3a2744b6e71ffcf85ca2b6f1c0ac5d5b70699286e268ef49881f605b458e5b1b",
+      "apkEntry": "res/Jn.packfile"
+    },
+    {
+      "source": "assets/packs/synthetic-demo-venue/data__gate-metadata.json.packfile",
+      "sha256": "2e0042ca889d86535f045d8f1eade59fe23783a658d8b7eecd3b308c7977e5b1",
+      "apkEntry": "res/Dh.packfile"
+    },
+    {
+      "source": "assets/packs/synthetic-demo-venue/PROVENANCE.json.packfile",
+      "sha256": "9f50151b395862612a20760ddb58676e4e430e30e79be27e06e7b89218365f3f",
+      "apkEntry": "res/Ia.packfile"
+    },
+    {
+      "source": "assets/packs/karachi-ijtema/pack.manifest.json.packfile",
+      "sha256": "e248c3730203c7535d82041f665ed41809edfe7998959bbe10f6ee9390a03ad1",
+      "apkEntry": "res/x2.packfile"
+    },
+    {
+      "source": "assets/packs/karachi-ijtema/data__routing-graph.json.packfile",
+      "sha256": "111697eae740376d5521c5ad017a2f090309b46e7d00e3f36068c60586469329",
+      "apkEntry": "res/2U.packfile"
+    },
+    {
+      "source": "assets/packs/karachi-ijtema/data__place-directory.json.packfile",
+      "sha256": "3f0118d7e20b35a4d8bf9c9491c5b1175fe63158da599371a8d97cdf44b2a645",
+      "apkEntry": "res/cB.packfile"
+    },
+    {
+      "source": "assets/packs/karachi-ijtema/data__localization.json.packfile",
+      "sha256": "e80987a16daf31a12286b01f0f818258625fc04f8f2370a4a774af9c84f55964",
+      "apkEntry": "res/nr.packfile"
+    },
+    {
+      "source": "assets/packs/karachi-ijtema/data__gate-metadata.json.packfile",
+      "sha256": "6b99ad07ea237ae137374115bcf45ddf12a16a11d9efe6f2505c3a56099709d6",
+      "apkEntry": "res/lf.packfile"
+    },
+    {
+      "source": "assets/packs/karachi-ijtema/PROVENANCE.json.packfile",
+      "sha256": "4a07678ee81f552d97db7c1a1645d09fe2e660005d53b6b47efd864082ded4c2",
+      "apkEntry": "res/9o.packfile"
+    }
+  ]
+}

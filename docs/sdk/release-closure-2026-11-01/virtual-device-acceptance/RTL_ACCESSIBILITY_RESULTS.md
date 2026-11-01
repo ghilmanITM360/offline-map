@@ -1,0 +1,9 @@
+# RTL, text and accessibility
+
+Test HEAD `0a96ad0cc07318ea7db0d75098f28580b80e7be9`; executable source `1a913b9e521c093499855625c8b3a76cc11fd61a`. Android APK `86f24fdfbf6ac0246633e5edfad0231a9343aa8d50345df8b421158470f585c7`; iOS executable `d6fdcca0f7ef05d27106d11ab221e49e2f727ecdb4cab8ac2a3326fbcfd2f47d`. Source, SDK and delivery bytes unchanged. Raw evidence: `/Users/ghilmankhan/Documents/offline-map-audits/offline-sdk-virtual-device-2026-11-01`. File identities are in EVIDENCE_SHA256.txt. UI observations use the native accessibility tree and screenshots; no Jest doubles were used for these native cases.
+
+A08 PASS subset: Android Urdu step2 retained, RTL Previous/Next ordering. I03/I04/I06/I07 PASS subset: iOS Urdu Directory and guide, Large→Extra-Large plus unrelated React commits; step2 retained through AX5 and repeated reverse changes. Next/Previous operate at AX5. CPU samples did not show a sustained100% loop; see performance report. I08 Dark map/UI restyle PASS on iOS. Translation correctness remains unreviewed.
+
+I13 BLOCKED: AX5 Arrival Card pushes actions below the first viewport. Tool scroll/drag did not establish visible action reachability. AX Finish succeeds; that is not a touch-scroll acceptance pass. Source contains a bounded ScrollView, so a product defect is not yet established; reproduce with verified simulator gesture coordinates before changing source. Screenshots ios-12/13 retained.
+
+Android Dark observed FAIL (A09), pending clean-guest reproduction; Android font150/200%, navigation-mode variants, narrow display, Roman Urdu and rapid appearance/language stress NOT RUN. iOS Roman Urdu, landscape, Xcode Accessibility Inspector audit and audible VoiceOver NOT RUN. TalkBack NOT RUN. Native AX labels are hierarchy observations only, not a human usability or audible-speech PASS.

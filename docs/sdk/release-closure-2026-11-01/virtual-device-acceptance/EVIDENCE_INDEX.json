@@ -1,0 +1,446 @@
+{
+  "root": "/Users/ghilmankhan/Documents/offline-map-audits/offline-sdk-virtual-device-2026-11-01",
+  "scope": "Top-level preserved logs, screenshots, binaries and execution records. DerivedData excluded; complete tested iOS app inventory is ios-app-CHECKSUMS.txt.",
+  "files": [
+    {
+      "name": "android-01-directory.png",
+      "bytes": 144914,
+      "sha256": "01d3180f4e876d3a0498a832c861d331aa35a35a02994e153a9f2311cc947eaa"
+    },
+    {
+      "name": "android-01-directory.xml",
+      "bytes": 29197,
+      "sha256": "69057d0899a733d958464d0f9f14e11db03dfd0a7b260e019fbc452084a3bff3"
+    },
+    {
+      "name": "android-02-destination.png",
+      "bytes": 114716,
+      "sha256": "a535ade961b2190cc6ed5c494d5a9694c2de85848160d211f22040963ab1abb2"
+    },
+    {
+      "name": "android-02-destination.xml",
+      "bytes": 20296,
+      "sha256": "70a809e59a927ad5f22399b0d1a7ff3409fa8cfeeece54a00d6b11fbc62616c4"
+    },
+    {
+      "name": "android-03-origin.png",
+      "bytes": 144892,
+      "sha256": "c5a574738e3021577452a9ed66e15adf891aa1b0b18b2b32c4b05a42b3df38b1"
+    },
+    {
+      "name": "android-03-origin.xml",
+      "bytes": 30992,
+      "sha256": "71f4f86c7d3f1743e765808e6adfae6b126c5bfcd8194a68c25f6c55ef6ac0e0"
+    },
+    {
+      "name": "android-04-preview.png",
+      "bytes": 142676,
+      "sha256": "b7e55e992a2c11bfb4b9ea4607b82c2b34fd9536f3842435881b831d3680de0e"
+    },
+    {
+      "name": "android-04-preview.xml",
+      "bytes": 23214,
+      "sha256": "1aef73c7336d8e146e40598e5fb9032e934952da40fcf6d287ebca88cb9d641c"
+    },
+    {
+      "name": "android-05-manual.png",
+      "bytes": 115406,
+      "sha256": "174a9edd8ebf8c4e8d35005b5cae55db3dc0dac8d35d1acff79ccc2294b65df5"
+    },
+    {
+      "name": "android-05-manual.xml",
+      "bytes": 16735,
+      "sha256": "3a89566aa573c2470bf498e64fbaa5a825b89b8c91a64d36cd4bad2a86590c9b"
+    },
+    {
+      "name": "android-06-manual-step2.png",
+      "bytes": 110274,
+      "sha256": "e46119df83619b431a29219bc024e33a4bb8230bf9fca6cc36dd86b7cfac09b0"
+    },
+    {
+      "name": "android-06-manual-step2.xml",
+      "bytes": 16728,
+      "sha256": "8c953cff912c43261cfbb7a11d6328af8865ca32ffd80b6298f96ad33bca104d"
+    },
+    {
+      "name": "android-07-manual-final.png",
+      "bytes": 118144,
+      "sha256": "22a9a27169530cb53a2b9b11ae0b94513167457f3bbb205b576db72d8f67d136"
+    },
+    {
+      "name": "android-07-manual-final.xml",
+      "bytes": 16397,
+      "sha256": "e4e2b742332628fa7081c056f254f622aca277849bea21e83004a802da77da57"
+    },
+    {
+      "name": "android-09-tools.png",
+      "bytes": 182451,
+      "sha256": "4d466a47e8c26d175839013850dd3fb652864757a997ff8aa2a8067648e8f65c"
+    },
+    {
+      "name": "android-09-tools.xml",
+      "bytes": 25056,
+      "sha256": "954d2d5f4992b9eae435dcdf770699742ddce1cfb3e2ad873a1328a754d3b55a"
+    },
+    {
+      "name": "android-10-dark-step2.png",
+      "bytes": 179502,
+      "sha256": "05f61d9a4aef730ffb4b6b58d339d2013f0c894091da309c0848a35463b86da2"
+    },
+    {
+      "name": "android-10-dark-step2.xml",
+      "bytes": 25055,
+      "sha256": "bd3005ba0c039f64eec605b573941deb392a3bc8c79e5d884a47636a20ee33da"
+    },
+    {
+      "name": "android-11-urdu-step2.png",
+      "bytes": 186004,
+      "sha256": "dadb2338a52fe6b6f3b9acf8ca673848232244adb7b3278712cfb0745bfbe578"
+    },
+    {
+      "name": "android-11-urdu-step2.xml",
+      "bytes": 25184,
+      "sha256": "939b03e453ed60df0f24b4255d84aed6fd6e2cb2119105e262e2948a0104552b"
+    },
+    {
+      "name": "android-baseline-app-process.txt",
+      "bytes": 5,
+      "sha256": "fdbad9c8e82c8f64bc51a2c1e4c642bb62d0cddac3f416b6b9c040ad31184223"
+    },
+    {
+      "name": "android-baseline-gfxinfo.txt",
+      "bytes": 5235,
+      "sha256": "cc0bfc63abe0db4b6ff98976f0ec9c5eac25556359131207c19c1971d87c91d1"
+    },
+    {
+      "name": "android-baseline-hierarchy.txt",
+      "bytes": 58,
+      "sha256": "25b3b6a981c4d7f011087f20ba613a794aff5e595119a11937a6412255ba24c9"
+    },
+    {
+      "name": "android-baseline-location.txt",
+      "bytes": 8098,
+      "sha256": "034ec10cbf021760735f347b9354bda8ff95b7138a5cc05dfa19ad4acebe7bd4"
+    },
+    {
+      "name": "android-baseline-meminfo.txt",
+      "bytes": 3247,
+      "sha256": "69fced91ce34d30b54f436ac23e68f8f142b17beefc76744423ab35ba4d162e0"
+    },
+    {
+      "name": "android-build-identity.json",
+      "bytes": 3260,
+      "sha256": "d106181fafff0b0ae487c8db7dad17ceb904c34502ca261cb9ef2ceeb361c7a8"
+    },
+    {
+      "name": "android-build.log",
+      "bytes": 44903,
+      "sha256": "d7caa235e73b0c0adbe7955a454fb5a1afb6b9142ade7c4fc6dcc5100bd27005"
+    },
+    {
+      "name": "android-commands.jsonl",
+      "bytes": 1043771,
+      "sha256": "c6dd7eb3e0f94b710cbcea80c6ab53b42e7d0165a27accea7f08505d6afde854"
+    },
+    {
+      "name": "android-current.png",
+      "bytes": 183134,
+      "sha256": "6d3980c8cedcbdbf47bfcbac4890d402a23d867b6774726b0f42e1aef2d3a342"
+    },
+    {
+      "name": "android-device-baseline.json",
+      "bytes": 7541,
+      "sha256": "674a0d6a431c550e0c332b051d9aac76e61d65d00fc140fedb0302c9d4dcdf7d"
+    },
+    {
+      "name": "android-emulator-second-boot.log",
+      "bytes": 10671,
+      "sha256": "1f16e8b5ead4e7ef2476a980f9aaeda4c0a5b26c7b7c9cfdd0fbb8278a615adc"
+    },
+    {
+      "name": "android-emulator.log",
+      "bytes": 25786,
+      "sha256": "de96b880dbad056bcd9e16f89056d3ad5fa9ec2ab30dcd605e51202a55b2b230"
+    },
+    {
+      "name": "android-install.log",
+      "bytes": 36,
+      "sha256": "781a31c82430c97897af612ece5e0ca2205e301cb5ff121ce2660541ea5182c7"
+    },
+    {
+      "name": "android-launch.log",
+      "bytes": 178,
+      "sha256": "bcd0369c7101b294cd5cf4965323d8c5b905e2058fba1f2af3aa51e47dab998d"
+    },
+    {
+      "name": "android-prebuild.log",
+      "bytes": 159,
+      "sha256": "2c7ed98130fe237bb437ecb89e0494653fece6501df1d4f8705f9b24a9db50ee"
+    },
+    {
+      "name": "android-restore-boot.log",
+      "bytes": 10670,
+      "sha256": "deb280e5849c4beaf40fbfaeaee1fc6c79b17ba50cfa78f47fc73959b9e63f82"
+    },
+    {
+      "name": "android-settings-restoration.json",
+      "bytes": 1003,
+      "sha256": "3adb7d3e26755e1cf8cf58313eafda077704fc8fefd48e1270499334bcc38788"
+    },
+    {
+      "name": "android-signature.txt",
+      "bytes": 342,
+      "sha256": "a355997bae3e4812f3506ebb9f734b38d7fa78d5faaaaad4f038ab00c2f76ab6"
+    },
+    {
+      "name": "android-startup-hierarchy.xml",
+      "bytes": 29197,
+      "sha256": "69057d0899a733d958464d0f9f14e11db03dfd0a7b260e019fbc452084a3bff3"
+    },
+    {
+      "name": "android-startup-logcat.txt",
+      "bytes": 344145,
+      "sha256": "23cfd65b914aa1abfab2c63cfe455ba69edae277332c2263cae2bb43f11181c1"
+    },
+    {
+      "name": "android-transport-blocker.json",
+      "bytes": 429,
+      "sha256": "0e521e2d46a62ef0700e277a673d134b8188c6bff6559f7c301e65b6ebab77db"
+    },
+    {
+      "name": "android_control.py",
+      "bytes": 2014,
+      "sha256": "22e53a5604b6241da3e232311e7710e19159c05fa864cf454bdb39e277dbc6dd"
+    },
+    {
+      "name": "emulator-launch.json",
+      "bytes": 295,
+      "sha256": "5cca4be4cb4d7311527f1f8306f8aedee23f2c0022a7017ed72bcca44acb0bbe"
+    },
+    {
+      "name": "ios-01-urdu-directory-large.png",
+      "bytes": 249908,
+      "sha256": "b99216b04997e2c0097ccf8369b7e791c98e9be2a1e97bc263451fc444f3afaf"
+    },
+    {
+      "name": "ios-02-urdu-guide-step2-large.png",
+      "bytes": 194278,
+      "sha256": "1e039a62b8bab1cdfd70cab5585bf8a8c01639ee52afbeca9b19bcee8dd8b926"
+    },
+    {
+      "name": "ios-03-urdu-guide-step2-extra-large.png",
+      "bytes": 200087,
+      "sha256": "71529be728f9b27776eda2ae4db4c77c81f05f90eba9e1141db375b22f9a62b4"
+    },
+    {
+      "name": "ios-04-urdu-guide-step2-AX5.png",
+      "bytes": 197549,
+      "sha256": "34f47ae7782d00f99fc2c15b90d0595f4cd48ecd1dce2aa644f860de0010044a"
+    },
+    {
+      "name": "ios-05-urdu-guide-restored-large.png",
+      "bytes": 193844,
+      "sha256": "e78f48cc215aaac9479076da550accfe66ee720edfb04bb6f5497d1f11129aa2"
+    },
+    {
+      "name": "ios-06-dark-urdu-guide.png",
+      "bytes": 264677,
+      "sha256": "7eecf7b08ce8bce535d567196e6ce1f017ef00b1f6130cb8ecbf9e2df97be93b"
+    },
+    {
+      "name": "ios-07-pack-selftest.png",
+      "bytes": 299930,
+      "sha256": "e610146541fe1d6fa58a256ab8f6b404a55099115a6beb8b5de85b47a2a79f9f"
+    },
+    {
+      "name": "ios-08-device-source.png",
+      "bytes": 302512,
+      "sha256": "0169fe4fd8b08ad84cc25e21b73f794f21f0226eaabc687f6866e4c58631a9ea"
+    },
+    {
+      "name": "ios-09-native-live-start.png",
+      "bytes": 191888,
+      "sha256": "9b8ce4195488bc30ea7765edb79f67d05908ec1872d3c7893d80b6449d3ab3df"
+    },
+    {
+      "name": "ios-10-native-live-progress.png",
+      "bytes": 169129,
+      "sha256": "71dd6c9ac6b6a142484e062d6030c198f223f4b627076d2762437dbf023e1e7d"
+    },
+    {
+      "name": "ios-11-native-arrival.png",
+      "bytes": 153563,
+      "sha256": "c393369461a420b252a94a203ce473396d922f51a7f8e6149d36a0166f9282db"
+    },
+    {
+      "name": "ios-12-arrival-AX5.png",
+      "bytes": 193606,
+      "sha256": "096b387ccebe7fb1570399885997c27ee4d159edfef80bdf16cbd51d593f21d6"
+    },
+    {
+      "name": "ios-13-arrival-AX5-after-swipe.png",
+      "bytes": 192179,
+      "sha256": "26498df3e27dad1a0447897d035f3021d4f728212b65801f876ed9102c64dcab"
+    },
+    {
+      "name": "ios-14-done-directory.png",
+      "bytes": 219871,
+      "sha256": "37212af7c875a252b350d51390c52e762c3ca46e2fff645c7452150390265077"
+    },
+    {
+      "name": "ios-15-relaunch-directory.png",
+      "bytes": 216558,
+      "sha256": "8d7248c6384b1f9ad59508ef9f8faa3a6f3184d028e83fa730aae422024d9e0d"
+    },
+    {
+      "name": "ios-app-CHECKSUMS.txt",
+      "bytes": 15085,
+      "sha256": "ac70361585588d4f2077f276f5422de157b7d66954ff0666ee6c80c0f621a2e8"
+    },
+    {
+      "name": "ios-autolinking-structured.json",
+      "bytes": 4465,
+      "sha256": "eda047bd74b70cabafa60c120f8324aa6095acf247c3fc485eefaa9844472376"
+    },
+    {
+      "name": "ios-autolinking.json",
+      "bytes": 6818,
+      "sha256": "2b8efb5acb7d6abeb50a300927b57be259a27e4f57f5f1e5a92d7e63d7438dc9"
+    },
+    {
+      "name": "ios-boot.log",
+      "bytes": 499,
+      "sha256": "ca90168cd4995d3d0a04903692b677d83bf5ef9409ab5acf9ae03473d103a157"
+    },
+    {
+      "name": "ios-build-canonical-entry.log",
+      "bytes": 772230,
+      "sha256": "164d68179bd5fb4e9d6efea8bb83c4f2ab9712849d27f55c4c8588596e653316"
+    },
+    {
+      "name": "ios-build-identity.json",
+      "bytes": 4485,
+      "sha256": "5bb15cbf6c94825e5f47d551c2ae5cf5fe0346115d7abdcc579bff7da69cf5d1"
+    },
+    {
+      "name": "ios-build.log",
+      "bytes": 5584644,
+      "sha256": "89101bf74948ee6125d769790477ab8d892ae53bc8e52f4fd56b70f3e337c539"
+    },
+    {
+      "name": "ios-cleanup-and-relaunch.json",
+      "bytes": 1330,
+      "sha256": "3ef42e2a315b4a77de16eb3cb4f461e9b85fb1dedcd7c7c2d78e9437d4f04741"
+    },
+    {
+      "name": "ios-cpu-directory-extra-large.txt",
+      "bytes": 255,
+      "sha256": "c0d1b36ba01a0e8ad27ab8b6f9b786052473d2ea85b42ab5678a26e34d74057a"
+    },
+    {
+      "name": "ios-cpu-guide-AX5.txt",
+      "bytes": 255,
+      "sha256": "e3e16af19a410021d938203788fce40341cefc2a21d1364c43702f0610b979c2"
+    },
+    {
+      "name": "ios-cpu-guide-extra-large.txt",
+      "bytes": 255,
+      "sha256": "d8302c3fa298f54ee0b33f2c1d6f93cccc7db1b4ae15756067b250c306bf50a0"
+    },
+    {
+      "name": "ios-device-baseline.json",
+      "bytes": 716,
+      "sha256": "7e23f34b8443488a22b25ecad6c245e024357c8f37addf306eb5e65df3318678"
+    },
+    {
+      "name": "ios-font-cycles.json",
+      "bytes": 1411,
+      "sha256": "cda22d8c71992dd45ffe7c764dc3e573d6ed1d2e9ca9a409b01bca8258a60a3f"
+    },
+    {
+      "name": "ios-install.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "ios-launch.log",
+      "bytes": 31,
+      "sha256": "11d92c99b22e146a968322037bb1050099134d5f972cd061b69a2e7ea857e7ff"
+    },
+    {
+      "name": "ios-location-native.log",
+      "bytes": 56560,
+      "sha256": "a7b3f725ed7b4698a8c53fd36cab4bf03de988b3f09e5f5f0c3d3da35df414d2"
+    },
+    {
+      "name": "ios-native-walk.json",
+      "bytes": 481,
+      "sha256": "36ffeb256848931e23206dedc4ec412435ab84943f7abba18d3bac2186496361"
+    },
+    {
+      "name": "ios-pack-selftest-results.json",
+      "bytes": 1736,
+      "sha256": "135435d52569f5d0e1a40763626e632644b4a327bcbbfba7c53d22ab8e8aa4fb"
+    },
+    {
+      "name": "ios-pack-storage-hashes.json",
+      "bytes": 1872,
+      "sha256": "505461978b8ca407de0bbf65cad3e074b5b28ee989d51072922ac9ff4c311570"
+    },
+    {
+      "name": "ios-pod-install.log",
+      "bytes": 24861,
+      "sha256": "8fddc00cf6745e862bdfff0d9b386b5fbcc8a066318fa7e9ee07d3ecc26ad32b"
+    },
+    {
+      "name": "ios-prebuild.log",
+      "bytes": 240,
+      "sha256": "8b25f8fabee05772a5f79392e6f03f702d4a4da3844b2d353ae7938a96548d97"
+    },
+    {
+      "name": "native-acceptance-issue.md",
+      "bytes": 1487,
+      "sha256": "dcb32ca7864c25736748a59d661d82f865568bc001f214e6e861496785d4e83c"
+    },
+    {
+      "name": "native-configuration-hashes.json",
+      "bytes": 590,
+      "sha256": "b218dfc7a127f3751c7a9c49cb1958fec3b62507cfa13e04e1fbfa6266e41176"
+    },
+    {
+      "name": "paths.json",
+      "bytes": 291,
+      "sha256": "534e10a6f800a3261db336e7b9768f178f76a6f6ccc659f092b24f37ed5b3a7e"
+    },
+    {
+      "name": "preexisting-installed-consumer.apk",
+      "bytes": 34392968,
+      "sha256": "bdfe5c92d9593f0661a7f10c7bf70d920aa5d86f4e3531be896aef074b1865ce"
+    },
+    {
+      "name": "preflight.log",
+      "bytes": 2362,
+      "sha256": "87bb4f93efd041c574dc0f385bd7d338d187b6e81420f7bffaeb8c2aeb716c02"
+    },
+    {
+      "name": "provenance.json",
+      "bytes": 1505,
+      "sha256": "8496bc34cde5258e4378cced4590ff597c47fd48d6cdc34330b65a3b1cd513ce"
+    },
+    {
+      "name": "record-results.py",
+      "bytes": 19026,
+      "sha256": "2b1280e0598f043fa0b4e136abe5ceaf1fca9c8b2a1a922be67863707b3bdf6e"
+    },
+    {
+      "name": "sdk-consumer-1a913b9-android-arm64-release.apk",
+      "bytes": 34392968,
+      "sha256": "86f24fdfbf6ac0246633e5edfad0231a9343aa8d50345df8b421158470f585c7"
+    },
+    {
+      "name": "walking-fixture.json",
+      "bytes": 586,
+      "sha256": "e317430e5bf90e2043036a06c494dc315af86ebd1371020930c489e51f8d4ade"
+    }
+  ]
+}

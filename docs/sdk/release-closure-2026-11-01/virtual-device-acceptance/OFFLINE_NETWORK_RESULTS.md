@@ -1,0 +1,5 @@
+# Offline and network isolation
+
+Test HEAD `0a96ad0cc07318ea7db0d75098f28580b80e7be9`; executable source `1a913b9e521c093499855625c8b3a76cc11fd61a`. Android APK `86f24fdfbf6ac0246633e5edfad0231a9343aa8d50345df8b421158470f585c7`; iOS executable `d6fdcca0f7ef05d27106d11ab221e49e2f727ecdb4cab8ac2a3326fbcfd2f47d`. Source, SDK and delivery bytes unchanged. Raw evidence: `/Users/ghilmankhan/Documents/offline-map-audits/offline-sdk-virtual-device-2026-11-01`. File identities are in EVIDENCE_SHA256.txt. UI observations use the native accessibility tree and screenshots; no Jest doubles were used for these native cases.
+
+Both standalone binaries embed13 offline assets byte-for-byte. Native local maps, directory and routing were observed. These facts do not prove effective network isolation. No virtual radios were disabled and no runtime network denial was imposed. Android EMULATOR OFFLINE and iOS SIMULATOR NETWORK-DENIAL are NOT RUN; no physical airplane-mode cold-start PASS. No Mac network/firewall change. Outside-provider outage/fallback NOT RUN. Continue by verifying effective per-device isolation before assigning offline PASS.

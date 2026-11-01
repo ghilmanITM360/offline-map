@@ -1,0 +1,48 @@
+{
+  "method": "Transcribed from actual native AX results returned by Simulator after built-in Run pack self-test, in this chat; not generated from Jest",
+  "executableSHA256": "d6fdcca0f7ef05d27106d11ab221e49e2f727ecdb4cab8ac2a3326fbcfd2f47d",
+  "checks": [
+    {
+      "name": "file system: replace, list, size, chunked read, rename onto an existing directory is refused",
+      "status": "PASS"
+    },
+    {
+      "name": "replacing a file interrupted before the new text is moved in: the previous complete text comes back",
+      "status": "PASS"
+    },
+    {
+      "name": "install, update, confirm and roll back across restarts",
+      "status": "PASS"
+    },
+    {
+      "name": "a resource changed on disk: caught at the next start, the previous pack serves",
+      "status": "PASS"
+    },
+    {
+      "name": "a resource deleted from disk: caught at the next start, the previous pack serves",
+      "status": "PASS"
+    },
+    {
+      "name": "an update with a missing file is refused, its staging is removed, and the active pack is untouched",
+      "status": "PASS"
+    },
+    {
+      "name": "an update interrupted before it is installed leaves staging that startup sweeps away",
+      "status": "PASS"
+    },
+    {
+      "name": "a pinned journey keeps its pack files through an update; releasing lets them go",
+      "status": "PASS"
+    },
+    {
+      "name": "storage pressure: an update that does not fit is refused before staging, the real free space admits one that does",
+      "status": "PASS"
+    },
+    {
+      "name": "two venues stay separate: each resolves its own pack, and updating one leaves the other alone",
+      "status": "PASS"
+    }
+  ],
+  "labRequireSignature": false,
+  "physicalAcceptance": false
+}

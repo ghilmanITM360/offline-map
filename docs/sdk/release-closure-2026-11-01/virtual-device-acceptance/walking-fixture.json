@@ -1,0 +1,27 @@
+{
+  "graphSHA256": "111697eae740376d5521c5ad017a2f090309b46e7d00e3f36068c60586469329",
+  "nodeIds": [
+    "GATE_01",
+    "R6-01",
+    "GATE_02"
+  ],
+  "points": [
+    {
+      "id": "GATE_01",
+      "lat": 24.975054,
+      "lng": 67.006408
+    },
+    {
+      "id": "R6-01",
+      "lat": 24.974873,
+      "lng": 67.006427
+    },
+    {
+      "id": "GATE_02",
+      "lat": 24.975056,
+      "lng": 67.005542
+    }
+  ],
+  "distanceM": 111,
+  "evidenceLevel": "Synthetic traversal of existing graph geometry through native virtual-device location provider; not field survey or physical GPS"
+}

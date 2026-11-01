@@ -1,0 +1,59 @@
+{
+  "ready": true,
+  "results": [
+    {
+      "args": [
+        "shell",
+        "settings",
+        "get",
+        "secure",
+        "ui_night_mode"
+      ],
+      "exit": 0,
+      "stdout": "2\n",
+      "stderr": ""
+    },
+    {
+      "args": [
+        "shell",
+        "settings",
+        "put",
+        "secure",
+        "ui_night_mode",
+        "1"
+      ],
+      "exit": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "args": [
+        "shell",
+        "settings",
+        "get",
+        "secure",
+        "ui_night_mode"
+      ],
+      "exit": 0,
+      "stdout": "1\n",
+      "stderr": ""
+    },
+    {
+      "args": [
+        "shell",
+        "settings",
+        "get",
+        "system",
+        "font_scale"
+      ],
+      "exit": 0,
+      "stdout": "1.0\n",
+      "stderr": ""
+    },
+    {
+      "stopExit": 0,
+      "stdout": "OK: killing emulator, bye bye\nOK\n"
+    }
+  ],
+  "scope": "Restore baseline secure ui_night_mode=1 only; no new acceptance batch after85% threshold"
+}
