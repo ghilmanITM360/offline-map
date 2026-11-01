@@ -1,0 +1,51 @@
+{
+  "templateOnly": true,
+  "status": "NOT RUN",
+  "scenarioId": "J01",
+  "platform": "iOS",
+  "tester": null,
+  "approver": null,
+  "dateUtc": null,
+  "device": {
+    "model": null,
+    "osVersionBuild": null,
+    "physical": null,
+    "screenReaderVersionVoice": null,
+    "textScale": null,
+    "radioSettings": null,
+    "precisePermission": null,
+    "mockLocationDisabled": null
+  },
+  "build": {
+    "sourceCommit": null,
+    "sdkSha256": "d722ce2541c3cd179cd0ce19ecf9536ec50481ace08beea3a0ef61f19dd29cca",
+    "deliverySha256": "82b32fd74702a2e29ee8ff3913765c9591110b5d58eb7fec4c0730db72e8972e",
+    "lockSha256": "64e9d1190452c48d7379c8fd598b6ccac10fc2070fac9aa98fcba4ebb0b06e68",
+    "binaryPath": null,
+    "binarySha256": null,
+    "appId": null,
+    "versionBuildNumber": null,
+    "signingCertificatePublicFingerprint": null,
+    "provisioningOrInstallRoute": null,
+    "nativeDependencyManifestSha256": null,
+    "matchesAcceptedSourceAndGraph": null
+  },
+  "route": {
+    "venueId": null,
+    "packManifestSha256": null,
+    "surveyRouteReference": null,
+    "synthetic": null
+  },
+  "stepsObserved": [],
+  "evidence": [],
+  "openDefects": [],
+  "remediationReference": null,
+  "finalApproval": {
+    "status": "PENDING",
+    "by": null,
+    "dateUtc": null,
+    "scope": null,
+    "expiryOrRecheckTrigger": null
+  },
+  "privacy": "Do not put precise tracks, device serials, account identifiers or secret material in Git. Evidence entries record durable private path, SHA-256, bytes, consent and sanitized summary."
+}

@@ -1,5 +1,7 @@
 # SDK engineering closure and single-checkout checkpoint — 1 November 2026
 
+Current external-acceptance coordination: [gate matrix, all J01–J18 and reviewer/owner packet](external-acceptance/README.md). This supersedes historical “next review” scheduling prose below; same-chat focused engineering review is complete, organizationally external and physical acceptance remain pending. No new implementation/build or accepted-artifact regeneration.
+
 **Engineering software closure complete — independent and external acceptance pending.**
 
 Subsequent [focused fresh-context review](focused-review/README.md) at documentation HEAD `18847f7fb11fe846af1766b99c2c835910d93fb3` freshly passed delivered-consumer installation/tests/both Metro exports, security reconciliation, 222 component suites / 2,367 tests and SDK byte reproducibility. No new defect was found. This was a reviewer subagent within the same Codex chat; organizationally external acceptance remains pending. No accepted artifact or executable source changed.
