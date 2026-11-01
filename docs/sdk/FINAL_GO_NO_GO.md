@@ -2,6 +2,8 @@
 
 Updated 1 November 2026, release-closure issue #393. Completed final delivery identities, exact results and preserved evidence are tracked in [the closure checkpoint](release-closure-2026-11-01/README.md). Exact source and artifact identities are in the final delivery manifest and attached QA handoff. This author-side report is not independent acceptance of Codex-authored corrections.
 
+The subsequent [focused reviewer record](release-closure-2026-11-01/focused-review/README.md) freshly confirms both delivered Metro exports, 63 consumer tests, 222 component suites / 2,367 tests, security-disposition reconciliation and byte-reproducible SDK packs. No new defect was found. The reviewer ran in a fresh context within the same Codex chat; organizationally external/security acceptance and the release boundaries below remain pending.
+
 ## Software gates
 
 | Gate | Engineering evidence | Remaining acceptance |

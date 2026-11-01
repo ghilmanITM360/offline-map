@@ -1,0 +1,178 @@
+{
+  "reviewType": "Fresh-context read-only subagent within the same Codex chat; not organizationally external independent acceptance",
+  "evidenceLevel": "SOURCE/RUNTIME VERIFIED",
+  "scope": [
+    "DELIV-01",
+    "SUP-01",
+    "REG-01"
+  ],
+  "verdict": "PASS focused engineering review; release GO withheld pending owner/external/security acceptance",
+  "findings": {
+    "critical": [],
+    "important": [],
+    "minor": []
+  },
+  "testedHead": "18847f7fb11fe846af1766b99c2c835910d93fb3",
+  "artifactSource": "1a913b9e521c093499855625c8b3a76cc11fd61a",
+  "nodeVersion": "24.14.0",
+  "npmVersion": "11.9.0",
+  "identities": {
+    "bundle": {
+      "path": "/Users/ghilmankhan/Documents/offline-map-audits/offline-sdk-release-closure-2026-10-31/delivery-1a913b9-final.tgz",
+      "sha256": "82b32fd74702a2e29ee8ff3913765c9591110b5d58eb7fec4c0730db72e8972e",
+      "bytes": 888020,
+      "expected": "82b32fd74702a2e29ee8ff3913765c9591110b5d58eb7fec4c0730db72e8972e"
+    },
+    "sdk": {
+      "path": "/private/tmp/offline-sdk-focused-review-7987d90b0152/offline-sdk-delivery-1a913b9-20261101/package/muslim-ummah-offline-navigation-0.1.0.tgz",
+      "sha256": "d722ce2541c3cd179cd0ce19ecf9536ec50481ace08beea3a0ef61f19dd29cca",
+      "bytes": 107061,
+      "expected": "d722ce2541c3cd179cd0ce19ecf9536ec50481ace08beea3a0ef61f19dd29cca"
+    },
+    "consumerLock": {
+      "path": "/private/tmp/offline-sdk-focused-review-7987d90b0152/offline-sdk-delivery-1a913b9-20261101/examples/expo-consumer/package-lock.json",
+      "sha256": "64e9d1190452c48d7379c8fd598b6ccac10fc2070fac9aa98fcba4ebb0b06e68",
+      "bytes": 409503,
+      "expected": "64e9d1190452c48d7379c8fd598b6ccac10fc2070fac9aa98fcba4ebb0b06e68"
+    },
+    "manifest": {
+      "path": "/private/tmp/offline-sdk-focused-review-7987d90b0152/offline-sdk-delivery-1a913b9-20261101/manifest.json",
+      "sha256": "9b8fec4a704dd3f2de69ab85de302f21299ae26606fde82d3947191de572c947",
+      "bytes": 13694,
+      "expected": "9b8fec4a704dd3f2de69ab85de302f21299ae26606fde82d3947191de572c947"
+    },
+    "checksums": {
+      "path": "/private/tmp/offline-sdk-focused-review-7987d90b0152/offline-sdk-delivery-1a913b9-20261101/CHECKSUMS.txt",
+      "sha256": "5922cca5270c16bc5db88280c03994b73114de6fe254db74570c87e97089ca0f",
+      "bytes": 8234,
+      "expected": "5922cca5270c16bc5db88280c03994b73114de6fe254db74570c87e97089ca0f"
+    }
+  },
+  "tests": {
+    "consumer-tests": {
+      "numPassedTestSuites": 6,
+      "numPassedTests": 63,
+      "numFailedTestSuites": 0,
+      "numFailedTests": 0,
+      "numPendingTests": 0,
+      "numTodoTests": 0
+    },
+    "focused-components": {
+      "numPassedTestSuites": 2,
+      "numPassedTests": 57,
+      "numFailedTestSuites": 0,
+      "numFailedTests": 0,
+      "numPendingTests": 0,
+      "numTodoTests": 0
+    },
+    "full-components": {
+      "numPassedTestSuites": 222,
+      "numPassedTests": 2367,
+      "numFailedTestSuites": 0,
+      "numFailedTests": 0,
+      "numPendingTests": 0,
+      "numTodoTests": 0
+    }
+  },
+  "audits": {
+    "root": {
+      "counts": {
+        "info": 0,
+        "low": 6,
+        "moderate": 51,
+        "high": 0,
+        "critical": 0,
+        "total": 57
+      },
+      "distinctSources": [
+        "GHSA-gcqx-w48m-w2h4",
+        "GHSA-3g3m-2fjr-6pw4",
+        "GHSA-g3hv-75wg-m249",
+        "GHSA-w5hq-g745-h8pq"
+      ],
+      "installedPathChecks": 17,
+      "auditExit": 1,
+      "mismatches": []
+    },
+    "consumer": {
+      "counts": {
+        "info": 0,
+        "low": 6,
+        "moderate": 37,
+        "high": 0,
+        "critical": 0,
+        "total": 43
+      },
+      "distinctSources": [
+        "GHSA-gcqx-w48m-w2h4",
+        "GHSA-3g3m-2fjr-6pw4",
+        "GHSA-g3hv-75wg-m249"
+      ],
+      "installedPathChecks": 10,
+      "auditExit": 1,
+      "mismatches": []
+    }
+  },
+  "state": {
+    "head": "18847f7fb11fe846af1766b99c2c835910d93fb3",
+    "branch": "feat/muslim-ummah-offline-navigation-sdk",
+    "upstream": "18847f7fb11fe846af1766b99c2c835910d93fb3",
+    "liveRemote": "18847f7fb11fe846af1766b99c2c835910d93fb3",
+    "statusPorcelain": "",
+    "worktrees": "worktree /Users/ghilmankhan/workprojects/offline-map\nHEAD 18847f7fb11fe846af1766b99c2c835910d93fb3\nbranch refs/heads/feat/muslim-ummah-offline-navigation-sdk",
+    "stashes": [
+      "b5a47d6c39274b77d5cb8132e4c4b28f1092a734",
+      "6d4a9c8de0ab763ca3719b50caa2c782d9d11cce"
+    ],
+    "protectedBaseline": "9c0fd50d7434b5b2daf875f47fbb45ab6d444995",
+    "unchangedSourceTrees": {
+      "src": {
+        "currentGitTreeSHA": "513c471920989294018a19805660cd5ac0df3be8",
+        "baselineGitTreeSHA": "513c471920989294018a19805660cd5ac0df3be8"
+      },
+      "packages/offline-navigation": {
+        "currentGitTreeSHA": "42a271f810fa8620d2109627cffe54ae07d4db65",
+        "baselineGitTreeSHA": "42a271f810fa8620d2109627cffe54ae07d4db65"
+      },
+      "assets": {
+        "currentGitTreeSHA": "fd78f0643da78ef90a8d7db03037ad47cafb82a1",
+        "baselineGitTreeSHA": "fd78f0643da78ef90a8d7db03037ad47cafb82a1"
+      },
+      "scripts/sdk-pack": {
+        "currentGitTreeSHA": "b29c5c724d0eb0d0ece7df89d26898fabc1316a3",
+        "baselineGitTreeSHA": "b29c5c724d0eb0d0ece7df89d26898fabc1316a3"
+      },
+      "scripts/sdk-headless": {
+        "currentGitTreeSHA": "0c01ae31fb9fd9934aab7853fabd435d3193071b",
+        "baselineGitTreeSHA": "0c01ae31fb9fd9934aab7853fabd435d3193071b"
+      }
+    },
+    "rootTestSourceFileCount": 228,
+    "diskFreeBytes": 11631288320,
+    "reviewAllocatedKiB": "378308\t/private/tmp/offline-sdk-focused-review-7987d90b0152\n2300\t/Users/ghilmankhan/Documents/offline-map-audits/offline-sdk-release-closure-2026-10-31/focused-review-20261101/review-20261101T064656Z-e05b19c7"
+  },
+  "commandCount": 27,
+  "reproducibility": {
+    "result": "PASS",
+    "allThreeByteIdentical": true,
+    "expectedAcceptedSDK": "d722ce2541c3cd179cd0ce19ecf9536ec50481ace08beea3a0ef61f19dd29cca",
+    "artifacts": [
+      {
+        "path": "/private/tmp/offline-sdk-focused-review-7987d90b0152/proof-first/muslim-ummah-offline-navigation-0.1.0.tgz",
+        "sha256": "d722ce2541c3cd179cd0ce19ecf9536ec50481ace08beea3a0ef61f19dd29cca",
+        "bytes": 107061
+      },
+      {
+        "path": "/private/tmp/offline-sdk-focused-review-7987d90b0152/proof-second/muslim-ummah-offline-navigation-0.1.0.tgz",
+        "sha256": "d722ce2541c3cd179cd0ce19ecf9536ec50481ace08beea3a0ef61f19dd29cca",
+        "bytes": 107061
+      },
+      {
+        "path": "/private/tmp/offline-sdk-focused-review-7987d90b0152/offline-sdk-delivery-1a913b9-20261101/package/muslim-ummah-offline-navigation-0.1.0.tgz",
+        "sha256": "d722ce2541c3cd179cd0ce19ecf9536ec50481ace08beea3a0ef61f19dd29cca",
+        "bytes": 107061
+      }
+    ]
+  },
+  "rootDefaultTestTimeoutMs": 5000
+}
