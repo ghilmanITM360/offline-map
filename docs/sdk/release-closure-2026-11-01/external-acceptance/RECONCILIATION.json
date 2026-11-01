@@ -148,5 +148,21 @@
       "sha256": "113838ef934c44f9dedc921badc45a2b926930349e1ca13cd458c7a7130cf37a",
       "bytes": 3171
     }
-  ]
+  ],
+  "ownerFollowUp": {
+    "reply": "take best dicision",
+    "recordedAgainstHead": "11c1d4aa2578ddba81efd1c5093c79f7649ab466",
+    "interpretation": "Delegated coordination judgment; no hardware/tester/access facts or external release approvals provided.",
+    "confirmedExternalAssignments": false,
+    "releaseApprovalGranted": false,
+    "priority": [
+      "Independent security and final-delivery review",
+      "Parallel human translation and venue-rights review",
+      "Physical acceptance after exact device/build identities are established",
+      "Permitted field walks and Gate18/19 survey",
+      "Signing/distribution decision after required approvals"
+    ],
+    "controlledPilot": "NO-GO",
+    "unrestrictedProduction": "NO-GO"
+  }
 }

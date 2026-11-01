@@ -10,10 +10,26 @@ This is a coordination packet, not a new implementation milestone or a release a
 - [x] Rehash the five accepted artifacts; review the actual original J01–J18 plan and existing native boundaries.
 - [x] Prepare platform/scenario records, field/offline/accessibility procedures and the 89-string human review worksheet.
 - [x] Prepare security, rights, survey and signing decision requests; validate documentation and commit/push to the existing branch.
-- [ ] Owner confirms devices, named testers, venue access, reviewers and signing custodians. No availability answer was received at this checkpoint.
+- [ ] Owner confirms devices, named testers, venue access, reviewers and signing custodians. The follow-up delegated coordination judgment but supplied no availability details; assignments remain unconfirmed.
 - [ ] Appropriate reviewers execute tests and approve evidence against exact native build identities. No physical or external PASS is granted here.
 
 The detailed [reconciliation](RECONCILIATION.json) records fresh artifact/source hashes and hardware observations. The original audit file was initially a cloud placeholder; it became readable and was copied byte-for-byte as [the original plan](MANUAL_DEVICE_TEST_PLAN.original.md), without modifying the original. Scenario summaries supplement that plan; they do not replace or weaken it.
+
+## Delegated coordination decision
+
+Owner follow-up: “take best dicision”. Recorded against parent HEAD `11c1d4aa2578ddba81efd1c5093c79f7649ab466`. This delegates coordination judgment; it provides no device, tester, venue-access, security, rights or signing evidence and grants no release acceptance.
+
+The selected sequence is:
+
+1. Prioritize an organizationally independent security/final-delivery review using the existing exact-identity packet. Keep E1/E2/E4 approvals pending; preserve the tested dependency graph while the reviewer decides residual-risk acceptance.
+2. Prepare human translation and venue-rights reviews in parallel; these desk reviews need no native build. Use the existing worksheet and rights request without inventing wording, grants or reviewers.
+3. Once physical hardware/testers are identified, establish exact approved device-compatible build identities and run the original platform scenarios. Prefer available supported devices, including a narrow/low-memory Android representative; do not select a specific model or claim a device is available without evidence.
+4. Arrange permitted venue walks and authoritative survey only through confirmed access. Gates18/19 remain unsupported/unconnected; their blocked survey is not waived or marked passed.
+5. Make production signing/distribution decisions after the applicable security, rights and physical evidence is reviewed. Both controlled-pilot and unrestricted-production GO remain withheld.
+
+Ghilmankhan remains the accountable owner for arranging external people, physical access and signing authority; Codex maintains the packet and incorporates genuine returned evidence. No new software milestone, native build, artifact regeneration, procurement, external engagement or release approval is initiated by this decision. The best next executable work depends on those external resources; repeating automated engineering tests cannot replace them.
+
+Follow-up documentation validation passed: JSON parsing, pending-approval invariants, local links, two intended documentation paths only, preserved stashes/baseline and one worktree. No engineering or physical test was rerun.
 
 ## Available people, hardware and access
 
