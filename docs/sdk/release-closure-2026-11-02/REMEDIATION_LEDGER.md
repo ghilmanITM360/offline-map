@@ -41,3 +41,5 @@ Final APK 7b343f5b15a3588bd78fb670e0d2123b3e373259f74d512c290a8a9918d9030f from 
 ## ANDROID-FONT-02 — FAIL observation, root cause unresolved
 
 Settings-return test B44–B46 preserves step2 but existing Text bounds remain47/69px atfontScale2.0 while controls reflow. C paragraph re-key and D cached-metrics refresh probes both failed to change these bounds; no speculative source fix accepted. Earlier200%Arrival claim is withdrawn; normal rendered-size touch clearance passed. See ANDROID_FONT_SCALE_INVESTIGATION.md. Distinguish real Settings configuration delivery from ADB automation before implementing a native correction.
+
+Resumed ANDROID-FONT-02: actual Settings reproduction and E–I native instrumentation prove stale Fabric font-context/measurement invalidation. Narrow correction implemented with RN0.81.5-pinned native helper plus paragraph recreation. RED2fails/20pass; focused22pass;2guard cases included in full223suites/2389tests/npm/type/lint/package PASS. DiagnosticI bidirectional geometry passes; production Release compile/retest pending before A07 promotion. See updated investigation.

@@ -104,14 +104,14 @@ describe('SDK Text: when the native Text is replaced', () => {
     expect(screen.getByTestId('fixed').props.allowFontScaling).toBe(false);
   });
 
-  test('is never replaced on Android', async () => {
+  test('recreates Android paragraphs after native font-layout invalidation', async () => {
     platformOS.restore();
     platformOS = jest.replaceProperty(Platform, 'OS', 'android');
     const log = instanceLog();
     await render(<Text ref={log.ref} testID="android" style={{ fontSize: 18 }}>Android</Text>);
     await setWindow({ fontScale: 1.3 });
     await setWindow({ fontScale: 2 });
-    expect(log.attached()).toHaveLength(1);
+    expect(log.attached()).toHaveLength(3);
     expect(screen.getByTestId('android')).toHaveTextContent('Android');
     expect(StyleSheet.flatten(screen.getByTestId('android').props.style)).toEqual({ fontSize: 18 });
   });

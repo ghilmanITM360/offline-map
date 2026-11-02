@@ -20,3 +20,5 @@ asset extension.
 
 Not proven here: native builds, a simulator or device, real MapLibre rendering or PMTiles reads, real GPS. The Jest and bundle
 checks are JS-only, and Jest replaces the native map and the file system with recorders.
+
+On Android with RN0.81.5, keep the registered `withAndroidConfigChanges` plugin and both files in `plugins/` when integrating this consumer. Keeping the Activity alive preserves the journey; the companion font-layout plugin also enables RN's existing measurement invalidation and remeasures the React surface on font changes. The SDK Text wrapper recreates only affected native paragraphs. Android retains nonlinear system scaling, with no added text cap or manual size multiplication. Native projects that do not use Expo prebuild must integrate the equivalent MainApplication/MainActivity changes. This workaround uses a pinned RN internal initializer, preserves the selected stock provider/SoLoader/edge-to-edge setup, and intentionally rejects another RN version or an unknown native source shape until revalidated.

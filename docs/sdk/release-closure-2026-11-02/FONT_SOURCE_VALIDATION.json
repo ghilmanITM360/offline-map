@@ -1,0 +1,95 @@
+{
+  "sourceTests": {
+    "suites": 223,
+    "tests": 2389
+  },
+  "checks": [
+    {
+      "command": [
+        "npm",
+        "run",
+        "typecheck"
+      ],
+      "cwd": "/Users/ghilmanislam360/GhilmanProjects/offline-map",
+      "node": "24.14.0",
+      "startedUTC": "2026-11-02T07:37:37.256326+00:00",
+      "durationSeconds": 8.106,
+      "exitCode": 0,
+      "log": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/final-source-0.log",
+      "logSha256": "1f526e8af8d7c0d50bd938d1a64afe9bf80f625bb4334c9f9ee4dad104f98a77"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "lint"
+      ],
+      "cwd": "/Users/ghilmanislam360/GhilmanProjects/offline-map",
+      "node": "24.14.0",
+      "startedUTC": "2026-11-02T07:37:45.364234+00:00",
+      "durationSeconds": 6.152,
+      "exitCode": 0,
+      "log": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/final-source-1.log",
+      "logSha256": "987bbbf68474de914f52718b5408a0fd224cedb805df53995b41b035d92a9f9a"
+    },
+    {
+      "command": [
+        "npm",
+        "test"
+      ],
+      "cwd": "/Users/ghilmanislam360/GhilmanProjects/offline-map",
+      "node": "24.14.0",
+      "startedUTC": "2026-11-02T07:37:51.516987+00:00",
+      "durationSeconds": 67.333,
+      "exitCode": 0,
+      "log": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/final-source-2.log",
+      "logSha256": "fc3b7158551883439291a8cbbd1b7e465d676c8accb8907430a77050060b5850"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "test:components",
+        "--",
+        "--runInBand",
+        "--watchman=false"
+      ],
+      "cwd": "/Users/ghilmanislam360/GhilmanProjects/offline-map",
+      "node": "24.14.0",
+      "startedUTC": "2026-11-02T07:38:58.850942+00:00",
+      "durationSeconds": 98.325,
+      "exitCode": 0,
+      "log": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/final-source-3.log",
+      "logSha256": "f868b27d905b8bf1f7e5b286ed5eaf2d90250f069135f686fd204921c9663b07"
+    },
+    {
+      "command": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "cwd": "/Users/ghilmanislam360/GhilmanProjects/offline-map",
+      "node": "24.14.0",
+      "startedUTC": "2026-11-02T07:40:37.172371+00:00",
+      "durationSeconds": 0.035,
+      "exitCode": 0,
+      "log": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/final-source-4.log",
+      "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "test:sdk-package"
+      ],
+      "cwd": "/Users/ghilmanislam360/GhilmanProjects/offline-map",
+      "node": "24.14.0",
+      "startedUTC": "2026-11-02T07:40:37.207273+00:00",
+      "durationSeconds": 5.761,
+      "exitCode": 0,
+      "log": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/final-source-5.log",
+      "logSha256": "f217252bbd1a41a0b0269a71e37ec89449cd220a8288d7167b5a86ff88331485"
+    }
+  ],
+  "nativeStatus": "DIAGNOSTIC I PASS; production Release retest pending"
+}

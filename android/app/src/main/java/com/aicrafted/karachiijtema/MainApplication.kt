@@ -5,7 +5,6 @@ import android.content.res.Configuration
 
 import com.facebook.react.PackageList
 import com.facebook.react.ReactApplication
-import com.facebook.react.ReactNativeApplicationEntryPoint.loadReactNative
 import com.facebook.react.ReactNativeHost
 import com.facebook.react.ReactPackage
 import com.facebook.react.ReactHost
@@ -46,12 +45,36 @@ class MainApplication : Application(), ReactApplication {
     } catch (e: IllegalArgumentException) {
       ReleaseLevel.STABLE
     }
-    loadReactNative(this)
+    loadReactNativeWithFontScale()
     ApplicationLifecycleDispatcher.onApplicationCreate(this)
   }
 
   override fun onConfigurationChanged(newConfig: Configuration) {
     super.onConfigurationChanged(newConfig)
     ApplicationLifecycleDispatcher.onConfigurationChanged(this, newConfig)
+  }
+
+  @Suppress("INVISIBLE_MEMBER", "INVISIBLE_REFERENCE")
+  private fun loadReactNativeWithFontScale() {
+    try {
+      com.facebook.soloader.SoLoader.init(this, com.facebook.react.soloader.OpenSourceMergedSoMapping)
+    } catch (error: java.io.IOException) {
+      throw RuntimeException(error)
+    }
+    if (BuildConfig.IS_NEW_ARCHITECTURE_ENABLED) {
+      val stock: com.facebook.react.internal.featureflags.ReactNativeFeatureFlagsProvider = when (DefaultNewArchitectureEntryPoint.releaseLevel) {
+        ReleaseLevel.EXPERIMENTAL -> com.facebook.react.internal.featureflags.ReactNativeFeatureFlagsOverrides_RNOSS_Experimental_Android()
+        ReleaseLevel.CANARY -> com.facebook.react.internal.featureflags.ReactNativeFeatureFlagsOverrides_RNOSS_Canary_Android()
+        ReleaseLevel.STABLE -> com.facebook.react.internal.featureflags.ReactNativeFeatureFlagsOverrides_RNOSS_Stable_Android(true, true, true)
+      }
+      DefaultNewArchitectureEntryPoint.loadWithFeatureFlags(
+        object : com.facebook.react.internal.featureflags.ReactNativeFeatureFlagsProvider by stock {
+          override fun enableFontScaleChangesUpdatingLayout() = true
+        }
+      )
+    }
+    if (BuildConfig.IS_EDGE_TO_EDGE_ENABLED) {
+      com.facebook.react.views.view.setEdgeToEdgeFeatureFlagOn()
+    }
   }
 }

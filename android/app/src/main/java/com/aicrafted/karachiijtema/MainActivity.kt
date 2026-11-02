@@ -17,6 +17,7 @@ class MainActivity : ReactActivity() {
     // This is required for expo-splash-screen.
     setTheme(R.style.AppTheme);
     super.onCreate(null)
+    sdkFontScale = resources.configuration.fontScale
   }
 
   override fun onResume() {
@@ -63,5 +64,17 @@ class MainActivity : ReactActivity() {
       // Use the default back button implementation on Android S
       // because it's doing more than [Activity.moveTaskToBack] in fact.
       super.invokeDefaultOnBackPressed()
+  }
+
+  private var sdkFontScale = 1f
+
+  override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
+    val fontScaleChanged = sdkFontScale != newConfig.fontScale
+    super.onConfigurationChanged(newConfig)
+    sdkFontScale = newConfig.fontScale
+    if (fontScaleChanged) {
+      // Measure the React surface itself; measuring only decorView is insufficient.
+      reactDelegate?.reactRootView?.requestLayout()
+    }
   }
 }

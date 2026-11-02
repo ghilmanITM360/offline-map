@@ -5,6 +5,7 @@
 
 import fs from 'fs';
 import path from 'path';
+import os from 'os';
 import { spawnSync } from 'node:child_process';
 
 const root = path.resolve(__dirname, '..', '..');
@@ -46,4 +47,38 @@ describe('MainActivity handles font and display size changes itself', () => {
     const main = activities.find((activity: { $: Record<string, string> }) => activity.$['android:name'] === '.MainActivity');
     expect(main.$['android:configChanges'].split('|')).toEqual(expect.arrayContaining(['fontScale', 'smallestScreenSize', 'density']));
   }, 20_000);
+});
+
+// #394: exercise real prebuild because MainApplication/Activity mods are not introspective.
+it('the delivered consumer generates native font invalidation without replacing the journey', () => {
+  const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'sdk-font-prebuild-'));
+  try {
+    for (const name of ['app.json', 'package.json', 'plugins']) {
+      fs.cpSync(path.join(root, 'examples/expo-consumer', name), path.join(temporary, name), { recursive: true });
+    }
+    fs.symlinkSync(path.join(root, 'node_modules'), path.join(temporary, 'node_modules'), 'dir');
+    const result = spawnSync(process.execPath, [path.join(root, 'node_modules/expo/bin/cli'), 'prebuild', '--platform', 'android', '--no-install', '--template', path.join(root, 'node_modules/expo/template.tgz')], {
+      cwd: temporary, encoding: 'utf8', timeout: 30_000,
+      env: { ...process.env, CI: '1', EXPO_OFFLINE: '1', EXPO_NO_TELEMETRY: '1', EXPO_NO_DOTENV: '1' },
+    });
+    expect({ status: result.status, stderr: result.stderr }).toMatchObject({ status: 0 });
+    const java = path.join(temporary, 'android/app/src/main/java/com/example/sdkconsumer');
+    const application = fs.readFileSync(path.join(java, 'MainApplication.kt'), 'utf8');
+    const activity = fs.readFileSync(path.join(java, 'MainActivity.kt'), 'utf8');
+    expect(application).toContain('enableFontScaleChangesUpdatingLayout() = true');
+    expect(activity).toContain('reactDelegate?.reactRootView?.requestLayout()');
+    expect(application).toContain('BuildConfig.IS_EDGE_TO_EDGE_ENABLED');
+    expect(application).not.toContain('dangerouslyForceOverride');
+  } finally {
+    fs.rmSync(temporary, { recursive: true, force: true });
+  }
+}, 40_000);
+
+const { patchApplication, patchActivity } = require(path.join(root, 'examples/expo-consumer/plugins/withAndroidFontScale.js'));
+test.each([patchApplication, patchActivity])('native workaround rejects a changed RN version and is idempotent', (patch) => {
+  const name = patch === patchApplication ? 'MainApplication' : 'MainActivity';
+  const source = fs.readFileSync(path.join(root, `android/app/src/main/java/com/aicrafted/karachiijtema/${name}.kt`), 'utf8');
+  expect(patch(source, '0.81.5')).toBe(source);
+  expect(() => patch(source, '0.82.0')).toThrow('requires revalidation');
+  expect(() => patch('class Unknown {}', '0.81.5')).toThrow('Unrecognized');
 });
