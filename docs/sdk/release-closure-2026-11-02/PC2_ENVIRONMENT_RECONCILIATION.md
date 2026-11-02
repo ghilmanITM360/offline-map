@@ -49,7 +49,7 @@ Evidence root: `/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2
 - `dependencies-before.json` and `dependencies-after.json`: every locked location, installed/expected version, platform, status.
 - `node-modules-recovery-manifest.json`: exact original/backup paths, file hashes and symlink targets. Restore the preserved directory to the original node_modules location only after stopping dependency users and preserving any newer installation. The workspace link target is stored verbatim; it resolves correctly when restored to its original location.
 - `runtime/node-v24.14.0-darwin-arm64.tar.gz`:SHA256 `a1a54f46a750d2523d628d924aab61758a51c9dad3e0238beb14141be9615dd3`, checked against downloaded nodejs.org SHASUMS256.txt.
-- `checks.jsonl`: argv/cwd/runtime/start UTC/duration/exit/log SHA256. First six records are the reconciled baseline, subsequent records final correction verification.
+- `checks.jsonl`: argv/cwd/runtime/start UTC/duration/exit/log SHA256. First six records retain baseline command summaries; repeated command log filenames were superseded by the final correction run. Last six records and tracked SOURCE_VALIDATION.json are the authoritative final logs/hashes.
 - `logs/npm-ci.log`, `logs/dependency-security.log`, `input-hashes-before.json`.
 
 No device/field claim. Native graph is separately unverified on PC2.

@@ -6,12 +6,13 @@
 // C5.3: the Expo consumer's second bundled pack, so the app can show two venues and prove they stay isolated. It is the consumer's SYNTHETIC
 // four-node demo venue (not a surveyed place), shipped with the same Karachi archive because a pack needs a map and the demo sits inside it.
 //   node --import tsx scripts/sdk-pack/demo.ts <outDir> [--write-pin]
-import { copyFileSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { describeDemoPlace, demoVenue } from '../../examples/expo-consumer/demoVenue';
 import { compilePack, pinFor, type CompiledPack, type PackBuildSpec } from './compile';
 import { KARACHI_PMTILES_SHA256 } from './karachi';
 import { createHash } from 'node:crypto';
+import { createPackOutput } from './output';
 
 const REPO = resolve(__dirname, '../..');
 const BASEMAP = join(REPO, 'assets/offline-map/ijtema-basemap.pmtiles');
@@ -19,6 +20,7 @@ export const DEMO_PIN_FILE = join(__dirname, 'synthetic-demo-venue.pin.json');
 const json = (v: unknown): string => `${JSON.stringify(v, null, 1)}\n`;
 
 export const buildDemoPack = async (outDir: string, options: { write?: boolean } = { write: true }): Promise<CompiledPack> => {
+  outDir = createPackOutput(outDir);
   const archive = readFileSync(BASEMAP);
   if (createHash('sha256').update(archive).digest('hex') !== KARACHI_PMTILES_SHA256) throw new Error('the tracked PMTiles archive no longer matches its recorded digest');
   const basemap = JSON.parse(readFileSync(join(REPO, 'assets/offline-map/BASEMAP_PROVENANCE.json'), 'utf8'));
@@ -40,7 +42,6 @@ export const buildDemoPack = async (outDir: string, options: { write?: boolean }
       basemap: { archive: basemap.archive, attribution: basemap.attribution, license: basemap.license },
     }),
   };
-  rmSync(outDir, { recursive: true, force: true });
   mkdirSync(join(outDir, 'map'), { recursive: true });
   copyFileSync(BASEMAP, join(outDir, 'map/ijtema-basemap.pmtiles'));
   for (const [path, content] of Object.entries(files)) {
@@ -69,7 +70,7 @@ export const buildDemoPack = async (outDir: string, options: { write?: boolean }
 if (require.main === module) {
   const [out, flag] = process.argv.slice(2);
   if (!out) { console.error('usage: demo.ts <outDir> [--write-pin]'); process.exit(2); }
-  buildDemoPack(resolve(out)).then((pack) => {
+  buildDemoPack(out).then((pack) => {
     const pin = pinFor(pack);
     if (flag === '--write-pin') writeFileSync(DEMO_PIN_FILE, json(pin));
     console.log(JSON.stringify(pin));

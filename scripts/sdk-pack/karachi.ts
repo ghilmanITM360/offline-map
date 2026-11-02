@@ -9,7 +9,7 @@
 // and place names. Nothing is added; Gates 18/19 keep the (absence of) connectivity they have today. The manifest is unsigned: the app
 // pins its digest (karachi-ijtema.pin.json) and that, plus being inside the signed app binary, is what authenticates it.
 import { createHash } from 'node:crypto';
-import { copyFileSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { IJTEMA_BLOCKS } from '../../src/data/ijtema/blocks';
 import { IJTEMA_GATES } from '../../src/data/ijtema/gates';
@@ -17,6 +17,7 @@ import { MAJOR_GATE_IDS } from '../../src/data/ijtema/gateMeta';
 import { IJTEMA_VENUE_SOURCE } from '../../src/data/ijtema/venueAdapter';
 import type { LocalizedLabel } from '../../src/data/ijtema/types';
 import { compilePack, pinFor, type CompiledPack, type PackBuildSpec } from './compile';
+import { createPackOutput } from './output';
 
 const REPO = resolve(__dirname, '../..');
 const BASEMAP = join(REPO, 'assets/offline-map/ijtema-basemap.pmtiles');
@@ -35,6 +36,7 @@ const json = (v: unknown): string => `${JSON.stringify(v, null, 1)}\n`;
 const names = (n: LocalizedLabel): Record<string, string> => ({ en: n.en, ur: n.ur ?? n.en, 'ur-Latn': n.romanUrdu ?? n.en });
 
 export const buildKarachiPack = async (outDir: string, options: { write?: boolean } = { write: true }): Promise<CompiledPack> => {
+  outDir = createPackOutput(outDir);
   const archive = readFileSync(BASEMAP);
   if (sha(archive) !== KARACHI_PMTILES_SHA256) throw new Error('the tracked PMTiles archive no longer matches its recorded digest');
   const basemap = JSON.parse(readFileSync(BASEMAP_PROVENANCE, 'utf8'));
@@ -79,7 +81,6 @@ export const buildKarachiPack = async (outDir: string, options: { write?: boolea
       ],
     }),
   };
-  rmSync(outDir, { recursive: true, force: true });
   mkdirSync(join(outDir, 'map'), { recursive: true });
   copyFileSync(BASEMAP, join(outDir, 'map/ijtema-basemap.pmtiles'));
   for (const [path, content] of Object.entries(files)) {
@@ -119,7 +120,7 @@ export const buildKarachiPack = async (outDir: string, options: { write?: boolea
 if (require.main === module) {
   const [out, flag] = process.argv.slice(2);
   if (!out) { console.error('usage: karachi.ts <outDir> [--write-pin]'); process.exit(2); }
-  buildKarachiPack(resolve(out)).then((pack) => {
+  buildKarachiPack(out).then((pack) => {
     const pin = pinFor(pack);
     if (flag === '--write-pin') writeFileSync(KARACHI_PIN_FILE, json(pin));
     console.log(JSON.stringify(pin));

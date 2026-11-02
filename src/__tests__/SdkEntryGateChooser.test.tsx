@@ -31,6 +31,7 @@ const hav = (a: VenueCoordinate, b: VenueCoordinate) => {
 };
 
 let dir: string;
+let scratch: string;
 let venue: VenueDataSource;
 let names: Map<string, string>;
 let eligible: Array<{ id: string; label: string }>;
@@ -38,7 +39,8 @@ let blocked: string[];
 let destination: string;
 
 beforeAll(async () => {
-  dir = mkdtempSync(join(tmpdir(), 'sdk-gates-'));
+  scratch = mkdtempSync(join(tmpdir(), 'sdk-gates-'));
+  dir = join(scratch, 'pack');
   const { manifest } = await buildKarachiPack(dir);
   const text = (kind: string) => readFileSync(join(dir, manifest.resources.find((r) => r.kind === kind)!.path), 'utf8');
   const loaded = parsePackVenueData(text('routing-graph'), text('place-directory'), 'karachi-ijtema');
@@ -50,7 +52,7 @@ beforeAll(async () => {
   blocked = gates.filter((g) => !g.canStartRouteFromOutside).map((g) => g.id);
   destination = venue.placeIds().find((id) => venue.getPlace(id)?.kind === 'block')!;
 });
-afterAll(() => { rmSync(dir, { recursive: true, force: true }); });
+afterAll(() => { rmSync(scratch, { recursive: true, force: true }); });
 beforeEach(() => { Dimensions.set({ window: { width: 390, height: 844, scale: 2, fontScale: 1 } }); });
 
 const gateCoordinate = (id: string) => venue.graph.getNode(venue.getPlace(id)!.nodeIds[0])!.coordinate;
