@@ -1,3 +1,7 @@
+## Native continuation — 2 November2026
+
+iOS continuation current counts:{'PASS': 13, 'FAIL': 0, 'BLOCKED': 6, 'NOT RUN': 1}. See FINAL_ENGINEERING_STATUS.md and NATIVE_RESUME_RESULTS.json for current evidence/boundaries. Previous checkpoint preserved below.
+
 # Final iOS simulator checkpoint
 
 EMULATOR VERIFIED: final executable`29962a589b6f0249417f5bf290aaf12efef06c729a81b65184f0c80429a8b32d`, JS`ad88c6c7349e2d95eeecdb50f237beb7dd27f8d71cb3b84fc5315735fa6acf6c`. **12/12 native XCTest acceptance cases PASS**; setup/failed harness attempts are separate. Expanded20-group matrix: **12PASS/0FAIL/4BLOCKED/4NOT RUN**. This is a new breakdown; historical14-case and earlier-binary results are not added.

@@ -1,3 +1,7 @@
+## Native continuation — 2 November2026
+
+Fresh20session controlled memory run complete; attribution INCONCLUSIVE, no confirmed leak.. See FINAL_ENGINEERING_STATUS.md and NATIVE_RESUME_RESULTS.json for current evidence/boundaries. Previous checkpoint preserved below.
+
 # Memory attribution — INCONCLUSIVE
 
 Five warm-up Live/lifecycle journeys, three warm idle samples and six completed measured Live/background/foreground/Exit sessions were preserved. The requested two10-session blocks were interrupted at92%five-hour usage, before block quiet/procstats/heap stages. No leak is established; no leak fix was made.

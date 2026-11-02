@@ -1,3 +1,7 @@
+## Native continuation — 2 November2026
+
+Android continuation current counts:{'PASS': 29, 'FAIL': 0, 'BLOCKED': 4, 'NOT RUN': 2}. See FINAL_ENGINEERING_STATUS.md and NATIVE_RESUME_RESULTS.json for current evidence/boundaries. Previous checkpoint preserved below.
+
 # Final Android checkpoint — corrected APK
 
 EMULATOR VERIFIED. Source21d1ed40dc652f54670d49d3075b13d4c3be796d; APK`40228465e6073b3c37d902f6870f54b0e26895327cb85026e0f4d2d9d7e87f90`. Final35rows: {'PASS': 25, 'NOT RUN': 7, 'BLOCKED': 3}. Historical12PASS/23NOTRUN on d071437 and earlier25PASS are not inherited.
