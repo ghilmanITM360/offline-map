@@ -1,9 +1,5 @@
-# Offline network acceptance
+# Final offline/network evidence
 
-Android EMULATOR VERIFIED subset, accepted APK7b343f5b15a3588bd78fb670e0d2123b3e373259f74d512c290a8a9918d9030f. Guest-only `cmd connectivity airplane-mode enable`, `svc wifi disable`, `svc data disable`; host Mac networking stayed available. `dumpsys connectivity` reported active default network:none and no current networks; `ip route` empty. IP1.1.1.1 returned Network is unreachable; example.com returned unknown host. Exact commands, exits and raw network state: `/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/final/offline-*`.
+Android final APK40228465e6073b3c37d902f6870f54b0e26895327cb85026e0f4d2d9d7e87f90: guest default network none, route table empty, IP unreachable and DNS unknown. Cold/warm launch, visible bundled map, directory/search/manual routing and actual native GPS/arrival/reroute work under this denial. Exact probes/screens/commands are in final Android batch. Host networking was not disabled; this is EMULATOR VERIFIED, not physical airplane mode.
 
-Fresh disposable app-data cold launch, warm resume, directory/search selection, Karachi map rendering, manual origin/preview/guide, native emulator GPS candidate/Live/progress/loss/recovery and Arrival all worked under this isolation. No external URL was necessary for those exercised paths. This is evidence for exercised paths, not a universal static claim about every URL. Reroute and remaining venue variants require their own results.
-
-iOS effective isolation and native offline scenarios: BLOCKED by unresolved Pods/Yoga gate. Whole physical-device airplane-mode cold start remains BLOCKED; no emulator result replaces it. Guest networking must be restored to saved original state at campaign shutdown; no whole-Mac networking changes.
-
-Resumed source085a493: source/package gates pass; previous native results remain tied to their original binary. Current affected native retests are separate in ANDROID_NATIVE_RESULTS.md and IOS_NATIVE_RESULTS.md. External/physical J gates are unchanged; no approval inferred.
+iOS safe scoped network denial was not established; full denial/cold-warm/offline matrix remains BLOCKED. Bundled map/search/manual/native journeys passed, but are not labelled verified network-denied. Physical whole-device offline testing remains external. Original guest network/display/font state restored; task devices stopped.

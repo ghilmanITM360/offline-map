@@ -1,168 +1,25 @@
 {
-  "sourceCommit": "085a4930d4335653c37ef32d081e146edfe4d3c8",
-  "sdkSha256": "d1260aaa49d771072a8ce51d097fe4f1225339020181fd3358cdc3fee906123c",
-  "deliverySha256": "298c8b852c83ca92df87df3eb9d50fc9c5df54bd6ff66f9f7e70c284cbd1b3c9",
-  "delivery": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/delivery-085a493.tgz",
-  "android": {
-    "sourceCommit": "085a4930d4335653c37ef32d081e146edfe4d3c8",
-    "sdkSha256": "d1260aaa49d771072a8ce51d097fe4f1225339020181fd3358cdc3fee906123c",
-    "consumerLockSha256": "044a61a9049bda621e191eb89b96e3c39f75b3a461799b59c4093a935959b850",
-    "apk": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/sdk-consumer-085a493-arm64-release.apk",
-    "sha256": "d071437ce60366fdcf11c573a0736b127b605706f6b11420f366e0b890afeed2",
-    "bytes": 34393016,
-    "buildCommand": "JAVA_HOME=/opt/homebrew/opt/openjdk@17 ./gradlew assembleRelease -PreactNativeArchitectures=arm64-v8a --max-workers=2 --no-daemon",
-    "builtAtUTC": "2026-11-02T07:51:16.610398+00:00",
-    "variant": "ARM64 Release Hermes new architecture; template debug signing, not production signing",
-    "buildExit": 0,
-    "assets": [
-      {
-        "source": "assets/karachi-basemap.pmtiles",
-        "sha256": "d5e6883d55d55b0fa9e3230ab92585fb25a8949551528ef4d176192384a28cc0",
-        "apkEntries": [
-          "res/ii.pmtiles"
-        ]
-      },
-      {
-        "source": "assets/packs/synthetic-demo-venue/pack.manifest.json.packfile",
-        "sha256": "edd5367bf0bdf1ca4eebba68a69c6ff177eb7d8ccf865593560ae76bcb11f7b0",
-        "apkEntries": [
-          "res/Fc.packfile"
-        ]
-      },
-      {
-        "source": "assets/packs/synthetic-demo-venue/data__routing-graph.json.packfile",
-        "sha256": "f17ac5b48a243fc417f7c691dd527947d53a3442ac183db62c9b718fd5009c0b",
-        "apkEntries": [
-          "res/g_.packfile"
-        ]
-      },
-      {
-        "source": "assets/packs/synthetic-demo-venue/data__place-directory.json.packfile",
-        "sha256": "b40aa8f2d26e984125c734b9141dd4f734a554ee0b851c1d15daf4fcf46ec957",
-        "apkEntries": [
-          "res/5Z.packfile"
-        ]
-      },
-      {
-        "source": "assets/packs/synthetic-demo-venue/data__localization.json.packfile",
-        "sha256": "3a2744b6e71ffcf85ca2b6f1c0ac5d5b70699286e268ef49881f605b458e5b1b",
-        "apkEntries": [
-          "res/Jn.packfile"
-        ]
-      },
-      {
-        "source": "assets/packs/synthetic-demo-venue/data__gate-metadata.json.packfile",
-        "sha256": "2e0042ca889d86535f045d8f1eade59fe23783a658d8b7eecd3b308c7977e5b1",
-        "apkEntries": [
-          "res/Dh.packfile"
-        ]
-      },
-      {
-        "source": "assets/packs/synthetic-demo-venue/PROVENANCE.json.packfile",
-        "sha256": "9f50151b395862612a20760ddb58676e4e430e30e79be27e06e7b89218365f3f",
-        "apkEntries": [
-          "res/Ia.packfile"
-        ]
-      },
-      {
-        "source": "assets/packs/karachi-ijtema/pack.manifest.json.packfile",
-        "sha256": "e248c3730203c7535d82041f665ed41809edfe7998959bbe10f6ee9390a03ad1",
-        "apkEntries": [
-          "res/x2.packfile"
-        ]
-      },
-      {
-        "source": "assets/packs/karachi-ijtema/data__routing-graph.json.packfile",
-        "sha256": "111697eae740376d5521c5ad017a2f090309b46e7d00e3f36068c60586469329",
-        "apkEntries": [
-          "res/2U.packfile"
-        ]
-      },
-      {
-        "source": "assets/packs/karachi-ijtema/data__place-directory.json.packfile",
-        "sha256": "3f0118d7e20b35a4d8bf9c9491c5b1175fe63158da599371a8d97cdf44b2a645",
-        "apkEntries": [
-          "res/cB.packfile"
-        ]
-      },
-      {
-        "source": "assets/packs/karachi-ijtema/data__localization.json.packfile",
-        "sha256": "e80987a16daf31a12286b01f0f818258625fc04f8f2370a4a774af9c84f55964",
-        "apkEntries": [
-          "res/nr.packfile"
-        ]
-      },
-      {
-        "source": "assets/packs/karachi-ijtema/data__gate-metadata.json.packfile",
-        "sha256": "6b99ad07ea237ae137374115bcf45ddf12a16a11d9efe6f2505c3a56099709d6",
-        "apkEntries": [
-          "res/lf.packfile"
-        ]
-      },
-      {
-        "source": "assets/packs/karachi-ijtema/PROVENANCE.json.packfile",
-        "sha256": "4a07678ee81f552d97db7c1a1645d09fe2e660005d53b6b47efd864082ded4c2",
-        "apkEntries": [
-          "res/9o.packfile"
-        ]
-      }
-    ],
-    "sdkTarballSha256": "d1260aaa49d771072a8ce51d097fe4f1225339020181fd3358cdc3fee906123c",
-    "metadataCorrection": "v1 inherited old sdkSha256/consumerLockSha256/builtAtUTC; v2 replaces those with actual inputs/time; APK hash unchanged"
-  },
-  "ios": {
-    "argv": [
-      "xcodebuild",
-      "-workspace",
-      "SDKConsumer.xcworkspace",
-      "-scheme",
-      "SDKConsumer",
-      "-configuration",
-      "Release",
-      "-sdk",
-      "iphonesimulator",
-      "-destination",
-      "generic/platform=iOS Simulator",
-      "-derivedDataPath",
-      "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/ios-resume-20261102/DerivedData",
-      "ARCHS=arm64",
-      "ONLY_ACTIVE_ARCH=YES",
-      "CODE_SIGNING_ALLOWED=NO",
-      "-jobs",
-      "2",
-      "build"
-    ],
-    "cwd": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/delivery-70275f3.verification/delivery-70275f3/examples/expo-consumer/ios",
-    "exitCode": 0,
-    "durationSeconds": 36.838980916999994,
-    "sourceExecutableCommit": "085a4930d4335653c37ef32d081e146edfe4d3c8",
-    "sdkTarballSha256": "d1260aaa49d771072a8ce51d097fe4f1225339020181fd3358cdc3fee906123c",
-    "log": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/ios-resume-20261102/release-build-085a493.log",
-    "logSha256": "7e80c926862a41dd88b9c6c42c9597dea54b48a58d3b7959975be9d521cb5a89",
-    "completedUTC": "2026-11-02T07:55:56.918988+00:00",
-    "app": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/ios-resume-20261102/DerivedData/Build/Products/Release-iphonesimulator/SDKConsumer.app",
-    "executableSha256": "5d75d3b8b34fb28be1d4452d48fe697e7463170135cafc72265ba2c9f241dd66",
-    "bundleSha256": "75d2597dae7a649398452d5af4140af18d4f1a383d527cdec872b0a792de213d"
-  },
-  "previousArtifactsPreserved": true,
-  "currentAndroidCounts": {
-    "PASS": 12,
-    "FAIL": 0,
-    "BLOCKED": 0,
-    "NOT_RUN": 23
-  },
-  "currentIOSNativeScenariosExecuted": 0,
-  "prior70275f3IOSGroups": {
-    "PASS": 8,
-    "FAIL": 0
-  },
-  "nativeXCTest": {
-    "PASS": 1,
-    "FAIL": 0,
-    "SKIP": 0,
-    "source": "70275f3"
-  },
-  "consumerTests": 63,
-  "sourceSuites": 223,
-  "sourceTests": 2389
+  "baselineHead": "a1036cf847264fed5a0aca4b40fb54cd16059c8e",
+  "sourcePatchSha256": "ad20a07981507f22f8876e4416fd20d4aa84a6ddd1113ce75fcfcff329159071",
+  "sdk": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/delivery-arrival-column-candidate/package/muslim-ummah-offline-navigation-0.1.0.tgz",
+  "sdkSha256": "a2bb865d38d457ea19228b81670616a57f353644dd05be1c2d16fafc738f71d4",
+  "iosApp": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/closure-fix-20261102-02/IOSDerivedData/Build/Products/Release-iphonesimulator/SDKConsumer.app",
+  "iosExecutableSha256": "29962a589b6f0249417f5bf290aaf12efef06c729a81b65184f0c80429a8b32d",
+  "iosJsSha256": "ad88c6c7349e2d95eeecdb50f237beb7dd27f8d71cb3b84fc5315735fa6acf6c",
+  "androidApk": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/closure-fix-20261102-02/sdk-consumer-arrival-wrap-arm64-release.apk",
+  "androidApkSha256": "40228465e6073b3c37d902f6870f54b0e26895327cb85026e0f4d2d9d7e87f90",
+  "originalTaskHead": "45daa0189c9718a46d797ef3e3be528feca4c36a",
+  "provenanceCorrection": "v1 baselineHead field inherited the earlier task head; actual patch ad20 is relative to a1036cf. Binary bytes unchanged.",
+  "sourceCommit": "21d1ed40dc652f54670d49d3075b13d4c3be796d",
+  "delivery": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/delivery-21d1ed4.tgz",
+  "deliverySha256": "87e17e33ea10be2ae40c4d1965159989cc5d492d1637263ce5e5ca62b98871e5",
+  "payloadEqualToVerifiedCandidate": true,
+  "method": "repack SDK from committed source, verify exact native-input package equality; copy already verified delivery payload, update sourceCommit metadata, archive and independently validate archive",
+  "originalAccepted": {
+    "delivery-085a493/package/muslim-ummah-offline-navigation-0.1.0.tgz": "d1260aaa49d771072a8ce51d097fe4f1225339020181fd3358cdc3fee906123c",
+    "delivery-085a493.tgz": "298c8b852c83ca92df87df3eb9d50fc9c5df54bd6ff66f9f7e70c284cbd1b3c9",
+    "native/resume-20261102-font/sdk-consumer-085a493-arm64-release.apk": "d071437ce60366fdcf11c573a0736b127b605706f6b11420f366e0b890afeed2",
+    "native/ios-resume-20261102/DerivedData/Build/Products/Release-iphonesimulator/SDKConsumer.app/SDKConsumer": "5d75d3b8b34fb28be1d4452d48fe697e7463170135cafc72265ba2c9f241dd66",
+    "native/ios-resume-20261102/DerivedData/Build/Products/Release-iphonesimulator/SDKConsumer.app/main.jsbundle": "75d2597dae7a649398452d5af4140af18d4f1a383d527cdec872b0a792de213d"
+  }
 }

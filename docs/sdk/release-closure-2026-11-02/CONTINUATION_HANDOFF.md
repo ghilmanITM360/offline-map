@@ -1,44 +1,22 @@
-# Continuation handoff — resumed 2 November 2026
+# Engineering checkpoint — 2 November final native retest
 
-The resumed starting HEAD was `d8b64d7968db2b5636e06f372340a2daea07a6b0`. Accepted executable source is `085a4930d4335653c37ef32d081e146edfe4d3c8`; a subsequent documentation commit closes this checkpoint. Verify actual local/tracking/live HEAD before writing. PC 2 owns native/environment remediation. Preserve the one checkout/worktree, three original stashes, protected `.codex/environments/environment.toml`, all branches, baseline, `main`, exact root npm installation, `node_modules-before`, and every accepted/rejected artifact. No concurrent same-task PC 1 writing.
+Original HEAD45daa0189c9718a46d797ef3e3be528feca4c36a. Validated source fixes: a1036cf847264fed5a0aca4b40fb54cd16059c8e (UrduXL horizontal Arrival clipping) and21d1ed40dc652f54670d49d3075b13d4c3be796d (preserve AX5 column width). Both normally pushed; no font/Yoga reversal, dependency/GIS/legal/signing changes. Full223Jest suites/2389tests,91506goldens,2400differentials, TypeScript, ESLint(2existingwarnings), npm test, security14, reproducible SDK packaging, actual-delivery63tests and both Metro exports pass after final source correction. Exact commands/log hashes: ARRIVAL_COLUMN_VALIDATION.json; native build logs external. Native builds used a103+ad20patch, committed as21d; SDK repacked from21d is byte-identical to the tested native input. No unnecessary rebuild after that proof.
 
-`E` below means `/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation`.
+Final iOS12/12 XCTest cases PASS, including five Arrival variants and native accessibility audit; expanded20groups12PASS/0FAIL/4BLOCKED/4NOTRUN. Android35rows counts are in ANDROID_FINAL_MATRIX.json. Memory INCONCLUSIVE: only6/20 measured sessions at mandatory92%usage stop. No known remaining reproduced source defect asserted; incomplete/native fault and memory evidence prevents closure. Automation failures are preserved separately.
 
-Completed and pushed:
+Engineering software closure: NO-GO/incomplete evidence. Virtual-device full acceptance: NO-GO/partial; the precise12-case iOS simulator milestone is COMPLETE. Controlled pilot: NO-GO. Unrestricted production: NO-GO. Physical devices/real walking/whole-device airplane mode/human VoiceOver/TalkBack/89strings/venue rights/Gates18–19 survey/independent security/current exception approval/production signing and distribution remain external. No approval invented.
 
-- `3f8921a`: Yoga's checksum difference is Ruby glob ordering of the same 47 headers. Normal unchanged evaluation under isolated Ruby 2.6/CocoaPods 1.16.2 produces the locked checksum. Root `pod install --deployment` succeeds with 93 pods; Manifest equals lock and project exists. Podfile, lock and RN source are unchanged. Do not ask for missing Home Mac JSON again.
-- `085a493`: Android Fabric font-context/cache invalidation plus native paragraph recreation. Actual Settings changes now measure English step/turn text at 47/69 → 88/97 px; Urdu reduction, step 2 retention, theme/language commits, one background return, pan/recenter and attribution pass. The initializer uses a deliberately pinned RN 0.81.5 internal API; its Kotlin compiler warning and upgrade revalidation requirement are explicit.
-- Full final source checks pass: TypeScript, lint, npm test, 223 Jest suites/2,389 tests, 91,506 goldens, 2,400 differentials, security, exports/headless and reproducible packaging. Clean actual-delivery consumer passes 63 tests, TypeScript, security and both Metro exports; all 13 assets and source containment verified. No redundant full run after documentation-only changes.
+Task apps/providers/virtual devices stopped at checkpoint; no background work continues. Exactly one worktree and three original stashes preserved; protected .codex config remains untracked and unstaged. Verify final documentation-commit HEAD against tracking/live remote before resuming. Source HEAD21d1ed40dc652f54670d49d3075b13d4c3be796d; subsequent commit contains this QA record. All original five accepted hashes rechecked unchanged.
 
-Current identities:
+Final identities:
+- sdkSha256: `a2bb865d38d457ea19228b81670616a57f353644dd05be1c2d16fafc738f71d4`
+- deliverySha256: `87e17e33ea10be2ae40c4d1965159989cc5d492d1637263ce5e5ca62b98871e5`
+- androidApkSha256: `40228465e6073b3c37d902f6870f54b0e26895327cb85026e0f4d2d9d7e87f90`
+- iosExecutableSha256: `29962a589b6f0249417f5bf290aaf12efef06c729a81b65184f0c80429a8b32d`
+- iosJsSha256: `ad88c6c7349e2d95eeecdb50f237beb7dd27f8d71cb3b84fc5315735fa6acf6c`
 
-- SDK: `d1260aaa49d771072a8ce51d097fe4f1225339020181fd3358cdc3fee906123c`.
-- Delivery: `298c8b852c83ca92df87df3eb9d50fc9c5df54bd6ff66f9f7e70c284cbd1b3c9`, at `E/delivery-085a493.tgz`.
-- Android APK: `d071437ce60366fdcf11c573a0736b127b605706f6b11420f366e0b890afeed2`, at `E/native/resume-20261102-font/sdk-consumer-085a493-arm64-release.apk`.
-- Final iOS executable: `5d75d3b8b34fb28be1d4452d48fe697e7463170135cafc72265ba2c9f241dd66`; final JS bundle: `75d2597dae7a649398452d5af4140af18d4f1a383d527cdec872b0a792de213d`.
+Android counts: {'PASS': 25, 'NOT RUN': 7, 'BLOCKED': 3}
 
-Both final platform Release builds succeed. Android's unchanged 35-row matrix is now **12 PASS / 0 FAIL / 0 BLOCKED / 23 NOT RUN** for the new APK. Earlier B's 25/1/9 is historical, not copied to changed executable inputs. A07 is fixed; A32/A33 pass. Remaining original unfinished variants and affected UI retests are explicit in ANDROID_NATIVE_RESULTS.md.
+Evidence E=`/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation`. Final batch roots: native/closure-fix-20261102-02; native/closure-final-ios-20261102-02; native/closure-android-20261102-02. Earlier -01 batches are preserved diagnostics/superseded inputs. Final binaries are identified in FINAL_ARTIFACT_IDENTITIES.json, not by filename. SDK/delivery payload equality and committed-source reproduction: committed-final-package.json. Corrected build provenance: corrected-identities-v2.json.
 
-The source 70275f3 iOS consumer was built, installed and tested on the existing iPhone 13 mini, iOS 18.4, UDID `B4FE838C-215C-4C4C-9D64-B2952783A5D6`. Eight acceptance groups passed, including real Core Location fixture movement 111 → 91 m → Arrival. Native XCTest reports one passing AX5 swipe/Recenter/Done coordinate-touch test and confirms exit. Desktop mouse gestures failed to scroll; native XCTest gestures worked. Full-button safe-area assertions and normal/XL/Urdu variants still need work; current test only asserts hittability plus touch exit. The exact tested harness is committed in `native-tests/`.
-
-The final 085a493 iOS app was then rebuilt successfully. Its native executable stays identical but JS bytes change. **No native scenarios have run after that final rebuild.** Do not inherit previous passes. The final app is at `E/native/ios-resume-20261102/DerivedData/Build/Products/Release-iphonesimulator/SDKConsumer.app`. The earlier app is preserved at `E/native/ios-resume-20261102/SDKConsumer-70275f3.app`.
-
-Next actions when usage allows:
-
-1. Install the final iOS app on that existing simulator, select the device adapter, feed the saved graph fixture through Core Location and reach Arrival. Strengthen the native XCTest to assert fully visible frames/safe-area clearance, then test AX5, normal, XL and Urdu touch/scroll/exit. Follow with Urdu Dynamic Type/unrelated commits, accuracy/errors/restarts/lost/recovery/reroute, offline/pack and lifecycle/stress cases.
-2. Resume Android with the identified final APK: native GPS/reroute/watcher cleanup, genuine 200% Arrival, three-button/small-screen/accessibility, pack faults and noisy/permission races. Do not repeat completed 20-cycle tests just to regenerate logs; run affected final-binary cases deliberately.
-3. Characterize memory using warm-up and two comparable bounded blocks with consistent idle samples of PSS/RSS/private dirty/Java/native/graphics and watcher/subscription counts. **LEAK STATUS: UNPROVEN.** Prior PSS growth is neither a proven leak nor a leak-free pass.
-
-Tools and evidence:
-
-- Prepend `E/runtime/node-v24.14.0-darwin-arm64/bin` to PATH. Global Node and root exact-lock install remain unchanged.
-- Isolated Ruby wrapper: `E/ruby26-tools/ruby26-bundle`; CocoaPods executable: `E/ruby26-tools/bin/pod`. Its pinned libraries, logger requirement and toolchain lock are recorded in IOS_YOGA_RESOLUTION.md and YOGA_RESUME_EVIDENCE_MANIFEST.json. Avoid system Bundler 1.
-- Java 17: `/opt/homebrew/opt/openjdk@17`; Android SDK: `/Users/ghilmanislam360/Library/Android/sdk`. Existing AVD: `Codex_Ijtema_API36`, serial `emulator-5554`.
-- Native build consumer: `E/delivery-70275f3.verification/delivery-70275f3/examples/expo-consumer`, now containing the new actual tarball/plugins. No other installed package version changed. Fresh clean consumer: `E/delivery-085a493.verification/delivery-085a493/examples/expo-consumer`. These are disposable build consumers, never Git checkouts.
-- `E/native/resume-20261102-font` contains E–I diagnostics, final source/package/build checks and `build_font_android.py`. Use `production-android-identity-v2.json`: v1 inherited three old metadata fields, corrected in v2 without changing APK bytes.
-- `E/native/final-085a493` contains P01–P16 and actual Settings/frame measurements. `/usr/bin/python3` is required for XML; Homebrew Python's pyexpat is broken.
-- `E/native/ios-resume-20261102` contains native graph/build/Core Location/AX5 xcresult/attachments. RESUME_EVIDENCE_MANIFEST.json pins new raw evidence; generated dependencies/DerivedData are excluded. Original evidence, binaries and failed probes remain preserved.
-
-Task emulator/simulator and apps are stopped. Android font 1.0/System/English and iOS initial Large size were restored. No build or GPS feed continues. Usage was 3% five-hour/0% weekly at resume and reached 86%/13% before checkpointing; 17 GiB free, 36% host memory free. No paid credits or reset was used. Recheck actual meters before resuming expensive work.
-
-Engineering closure remains incomplete. Controlled-pilot and unrestricted-production authorization remain NO-GO. Physical GPS/airplane mode, human screen readers, 89 strings, rights/survey, independent security review, exception approval, signing and distribution remain owner/external gates.
+Next: verify HEAD/tracking/live and usage; preserve one worktree/three stashes/protected config. Reuse final binaries. Restore simulator DisplayZoom only if banner returns; establish actual foreground+PreciseLocation before tests. Finish Android pack summary at original1080x2400 viewport, repeated reroutes, TalkBack service traversal, two-venue roundtrip and native OS time/accuracy/permission fault variants. Run a fresh warm stable baseline and two comparable10-session Live/lifecycle blocks, with heap/procstats tools where supported, before classifying retention. Existing6samples do not meet the required experiment. Finish iOS scoped network-denial and controlled fault/watch ownership gaps. No source change is authorized merely by an automation timeout. Do not repeat the resolved font/Yoga investigation or unchanged native builds.

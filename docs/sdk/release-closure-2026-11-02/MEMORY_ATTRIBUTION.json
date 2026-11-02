@@ -1,0 +1,122 @@
+{
+  "classification": "INCONCLUSIVE",
+  "stopReason": "owner mandatory usage checkpoint reached92%five-hour",
+  "completedMeasuredSessions": 6,
+  "requiredBlocks": "two blocks of10; only first6 completed",
+  "samples": [
+    {
+      "file": "block1-session01-meminfo.txt",
+      "pssKiB": 148699,
+      "rssKiB": 247040,
+      "javaHeapPssKiB": 19872,
+      "nativeHeapPssKiB": 60068,
+      "graphicsPssKiB": 0,
+      "privateDirtyKiB": 97196,
+      "views": 520,
+      "viewRoots": 1,
+      "activities": 1
+    },
+    {
+      "file": "block1-session02-meminfo.txt",
+      "pssKiB": 153642,
+      "rssKiB": 251856,
+      "javaHeapPssKiB": 19752,
+      "nativeHeapPssKiB": 63288,
+      "graphicsPssKiB": 0,
+      "privateDirtyKiB": 101888,
+      "views": 520,
+      "viewRoots": 1,
+      "activities": 1
+    },
+    {
+      "file": "block1-session03-meminfo.txt",
+      "pssKiB": 157620,
+      "rssKiB": 256108,
+      "javaHeapPssKiB": 19520,
+      "nativeHeapPssKiB": 66188,
+      "graphicsPssKiB": 0,
+      "privateDirtyKiB": 105840,
+      "views": 520,
+      "viewRoots": 1,
+      "activities": 1
+    },
+    {
+      "file": "block1-session04-meminfo.txt",
+      "pssKiB": 163484,
+      "rssKiB": 261768,
+      "javaHeapPssKiB": 19496,
+      "nativeHeapPssKiB": 70420,
+      "graphicsPssKiB": 0,
+      "privateDirtyKiB": 111412,
+      "views": 520,
+      "viewRoots": 1,
+      "activities": 1
+    },
+    {
+      "file": "block1-session05-meminfo.txt",
+      "pssKiB": 162789,
+      "rssKiB": 261284,
+      "javaHeapPssKiB": 16336,
+      "nativeHeapPssKiB": 71528,
+      "graphicsPssKiB": 0,
+      "privateDirtyKiB": 110816,
+      "views": 519,
+      "viewRoots": 1,
+      "activities": 1
+    },
+    {
+      "file": "block1-session06-meminfo.txt",
+      "pssKiB": 175345,
+      "rssKiB": 273840,
+      "javaHeapPssKiB": 19320,
+      "nativeHeapPssKiB": 79424,
+      "graphicsPssKiB": 0,
+      "privateDirtyKiB": 122904,
+      "views": 520,
+      "viewRoots": 1,
+      "activities": 1
+    },
+    {
+      "file": "warm-0-meminfo.txt",
+      "pssKiB": 136135,
+      "rssKiB": 233552,
+      "javaHeapPssKiB": 14384,
+      "nativeHeapPssKiB": 53680,
+      "graphicsPssKiB": 0,
+      "privateDirtyKiB": 87552,
+      "views": 519,
+      "viewRoots": 1,
+      "activities": 1
+    },
+    {
+      "file": "warm-1-meminfo.txt",
+      "pssKiB": 134995,
+      "rssKiB": 233108,
+      "javaHeapPssKiB": 14168,
+      "nativeHeapPssKiB": 52940,
+      "graphicsPssKiB": 0,
+      "privateDirtyKiB": 83492,
+      "views": 519,
+      "viewRoots": 1,
+      "activities": 1
+    },
+    {
+      "file": "warm-2-meminfo.txt",
+      "pssKiB": 134847,
+      "rssKiB": 232960,
+      "javaHeapPssKiB": 13976,
+      "nativeHeapPssKiB": 52940,
+      "graphicsPssKiB": 0,
+      "privateDirtyKiB": 83304,
+      "views": 519,
+      "viewRoots": 1,
+      "activities": 1
+    }
+  ],
+  "limitations": [
+    "No retained-object/reference-chain proof; Release security unchanged",
+    "No native JS watcher/timer/subscription/session counters",
+    "OS location snapshots are preserved; aggregate GMS requests are not SDK watcher counts",
+    "Heap/procstats/block-quiet stages were not reached; no leak fix made"
+  ]
+}

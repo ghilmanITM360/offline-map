@@ -1,0 +1,863 @@
+{
+  "counts": {
+    "PASS": 25,
+    "NOT RUN": 7,
+    "BLOCKED": 3
+  },
+  "rows": [
+    {
+      "id": "A01",
+      "scenario": "Release build/install/cold launch",
+      "status": "PASS",
+      "expected": "Release build/install/cold launch",
+      "actualStepsAndObserved": "Guide step2 retained through actual font100\u2192200, Previous/Next, Dark/Light/System and Urdu/Roman/English; screenshots/native frame bounds",
+      "mechanism": "native emulator OS/GPS/actual Settings and ADB coordinate touches; pack lab has explicit injected storage port",
+      "apkSha256": "40228465e6073b3c37d902f6870f54b0e26895327cb85026e0f4d2d9d7e87f90",
+      "evidenceDirectory": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/closure-android-20261102-02",
+      "caseTrace": {
+        "ids": [
+          "A01",
+          "A02",
+          "A03",
+          "A04",
+          "A05",
+          "A06",
+          "A07",
+          "A08",
+          "A09",
+          "A10"
+        ],
+        "status": "PASS",
+        "started": 1793615301.415392,
+        "ended": 1793615467.06429,
+        "mechanism": "native emulator provider and UIAutomator/ADB touches unless explicitly labelled",
+        "observed": "Guide step2 retained through actual font100\u2192200, Previous/Next, Dark/Light/System and Urdu/Roman/English; screenshots/native frame bounds",
+        "apkSha256": "40228465e6073b3c37d902f6870f54b0e26895327cb85026e0f4d2d9d7e87f90"
+      },
+      "rawCommands": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/closure-android-20261102-02/android-commands.jsonl"
+    },
+    {
+      "id": "A02",
+      "scenario": "Karachi offline startup/map",
+      "status": "PASS",
+      "expected": "Karachi offline startup/map",
+      "actualStepsAndObserved": "Guide step2 retained through actual font100\u2192200, Previous/Next, Dark/Light/System and Urdu/Roman/English; screenshots/native frame bounds",
+      "mechanism": "native emulator OS/GPS/actual Settings and ADB coordinate touches; pack lab has explicit injected storage port",
+      "apkSha256": "40228465e6073b3c37d902f6870f54b0e26895327cb85026e0f4d2d9d7e87f90",
+      "evidenceDirectory": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/closure-android-20261102-02",
+      "caseTrace": {
+        "ids": [
+          "A01",
+          "A02",
+          "A03",
+          "A04",
+          "A05",
+          "A06",
+          "A07",
+          "A08",
+          "A09",
+          "A10"
+        ],
+        "status": "PASS",
+        "started": 1793615301.415392,
+        "ended": 1793615467.06429,
+        "mechanism": "native emulator provider and UIAutomator/ADB touches unless explicitly labelled",
+        "observed": "Guide step2 retained through actual font100\u2192200, Previous/Next, Dark/Light/System and Urdu/Roman/English; screenshots/native frame bounds",
+        "apkSha256": "40228465e6073b3c37d902f6870f54b0e26895327cb85026e0f4d2d9d7e87f90"
+      },
+      "rawCommands": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/closure-android-20261102-02/android-commands.jsonl"
+    },
+    {
+      "id": "A03",
+      "scenario": "Offline directory/search selection",
+      "status": "PASS",
+      "expected": "Offline directory/search selection",
+      "actualStepsAndObserved": "Guide step2 retained through actual font100\u2192200, Previous/Next, Dark/Light/System and Urdu/Roman/English; screenshots/native frame bounds",
+      "mechanism": "native emulator OS/GPS/actual Settings and ADB coordinate touches; pack lab has explicit injected storage port",
+      "apkSha256": "40228465e6073b3c37d902f6870f54b0e26895327cb85026e0f4d2d9d7e87f90",
+      "evidenceDirectory": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/closure-android-20261102-02",
+      "caseTrace": {
+        "ids": [
+          "A01",
+          "A02",
+          "A03",
+          "A04",
+          "A05",
+          "A06",
+          "A07",
+          "A08",
+          "A09",
+          "A10"
+        ],
+        "status": "PASS",
+        "started": 1793615301.415392,
+        "ended": 1793615467.06429,
+        "mechanism": "native emulator provider and UIAutomator/ADB touches unless explicitly labelled",
+        "observed": "Guide step2 retained through actual font100\u2192200, Previous/Next, Dark/Light/System and Urdu/Roman/English; screenshots/native frame bounds",
+        "apkSha256": "40228465e6073b3c37d902f6870f54b0e26895327cb85026e0f4d2d9d7e87f90"
+      },
+      "rawCommands": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/closure-android-20261102-02/android-commands.jsonl"
+    },
+    {
+      "id": "A04",
+      "scenario": "Manual origin and111m preview",
+      "status": "PASS",
+      "expected": "Manual origin and111m preview",
+      "actualStepsAndObserved": "Guide step2 retained through actual font100\u2192200, Previous/Next, Dark/Light/System and Urdu/Roman/English; screenshots/native frame bounds",
+      "mechanism": "native emulator OS/GPS/actual Settings and ADB coordinate touches; pack lab has explicit injected storage port",
+      "apkSha256": "40228465e6073b3c37d902f6870f54b0e26895327cb85026e0f4d2d9d7e87f90",
+      "evidenceDirectory": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/closure-android-20261102-02",
+      "caseTrace": {
+        "ids": [
+          "A01",
+          "A02",
+          "A03",
+          "A04",
+          "A05",
+          "A06",
+          "A07",
+          "A08",
+          "A09",
+          "A10"
+        ],
+        "status": "PASS",
+        "started": 1793615301.415392,
+        "ended": 1793615467.06429,
+        "mechanism": "native emulator provider and UIAutomator/ADB touches unless explicitly labelled",
+        "observed": "Guide step2 retained through actual font100\u2192200, Previous/Next, Dark/Light/System and Urdu/Roman/English; screenshots/native frame bounds",
+        "apkSha256": "40228465e6073b3c37d902f6870f54b0e26895327cb85026e0f4d2d9d7e87f90"
+      },
+      "rawCommands": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/closure-android-20261102-02/android-commands.jsonl"
+    },
+    {
+      "id": "A05",
+      "scenario": "Manual Next/Previous/Recenter",
+      "status": "PASS",
+      "expected": "Manual Next/Previous/Recenter",
+      "actualStepsAndObserved": "Guide step2 retained through actual font100\u2192200, Previous/Next, Dark/Light/System and Urdu/Roman/English; screenshots/native frame bounds",
+      "mechanism": "native emulator OS/GPS/actual Settings and ADB coordinate touches; pack lab has explicit injected storage port",
+      "apkSha256": "40228465e6073b3c37d902f6870f54b0e26895327cb85026e0f4d2d9d7e87f90",
+      "evidenceDirectory": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/closure-android-20261102-02",
+      "caseTrace": {
+        "ids": [
+          "A01",
+          "A02",
+          "A03",
+          "A04",
+          "A05",
+          "A06",
+          "A07",
+          "A08",
+          "A09",
+          "A10"
+        ],
+        "status": "PASS",
+        "started": 1793615301.415392,
+        "ended": 1793615467.06429,
+        "mechanism": "native emulator provider and UIAutomator/ADB touches unless explicitly labelled",
+        "observed": "Guide step2 retained through actual font100\u2192200, Previous/Next, Dark/Light/System and Urdu/Roman/English; screenshots/native frame bounds",
+        "apkSha256": "40228465e6073b3c37d902f6870f54b0e26895327cb85026e0f4d2d9d7e87f90"
+      },
+      "rawCommands": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/closure-android-20261102-02/android-commands.jsonl"
+    },
+    {
+      "id": "A06",
+      "scenario": "Journey retained through font-setting changes",
+      "status": "PASS",
+      "expected": "Journey retained through font-setting changes",
+      "actualStepsAndObserved": "Guide step2 retained through actual font100\u2192200, Previous/Next, Dark/Light/System and Urdu/Roman/English; screenshots/native frame bounds",
+      "mechanism": "native emulator OS/GPS/actual Settings and ADB coordinate touches; pack lab has explicit injected storage port",
+      "apkSha256": "40228465e6073b3c37d902f6870f54b0e26895327cb85026e0f4d2d9d7e87f90",
+      "evidenceDirectory": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/closure-android-20261102-02",
+      "caseTrace": {
+        "ids": [
+          "A01",
+          "A02",
+          "A03",
+          "A04",
+          "A05",
+          "A06",
+          "A07",
+          "A08",
+          "A09",
+          "A10"
+        ],
+        "status": "PASS",
+        "started": 1793615301.415392,
+        "ended": 1793615467.06429,
+        "mechanism": "native emulator provider and UIAutomator/ADB touches unless explicitly labelled",
+        "observed": "Guide step2 retained through actual font100\u2192200, Previous/Next, Dark/Light/System and Urdu/Roman/English; screenshots/native frame bounds",
+        "apkSha256": "40228465e6073b3c37d902f6870f54b0e26895327cb85026e0f4d2d9d7e87f90"
+      },
+      "rawCommands": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/closure-android-20261102-02/android-commands.jsonl"
+    },
+    {
+      "id": "A07",
+      "scenario": "Existing text enlarges dynamically",
+      "status": "PASS",
+      "expected": "Existing text enlarges dynamically",
+      "actualStepsAndObserved": "Guide step2 retained through actual font100\u2192200, Previous/Next, Dark/Light/System and Urdu/Roman/English; screenshots/native frame bounds",
+      "mechanism": "native emulator OS/GPS/actual Settings and ADB coordinate touches; pack lab has explicit injected storage port",
+      "apkSha256": "40228465e6073b3c37d902f6870f54b0e26895327cb85026e0f4d2d9d7e87f90",
+      "evidenceDirectory": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/closure-android-20261102-02",
+      "caseTrace": {
+        "ids": [
+          "A01",
+          "A02",
+          "A03",
+          "A04",
+          "A05",
+          "A06",
+          "A07",
+          "A08",
+          "A09",
+          "A10"
+        ],
+        "status": "PASS",
+        "started": 1793615301.415392,
+        "ended": 1793615467.06429,
+        "mechanism": "native emulator provider and UIAutomator/ADB touches unless explicitly labelled",
+        "observed": "Guide step2 retained through actual font100\u2192200, Previous/Next, Dark/Light/System and Urdu/Roman/English; screenshots/native frame bounds",
+        "apkSha256": "40228465e6073b3c37d902f6870f54b0e26895327cb85026e0f4d2d9d7e87f90"
+      },
+      "rawCommands": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/closure-android-20261102-02/android-commands.jsonl"
+    },
+    {
+      "id": "A08",
+      "scenario": "Dark map and system bars",
+      "status": "PASS",
+      "expected": "Dark map and system bars",
+      "actualStepsAndObserved": "Guide step2 retained through actual font100\u2192200, Previous/Next, Dark/Light/System and Urdu/Roman/English; screenshots/native frame bounds",
+      "mechanism": "native emulator OS/GPS/actual Settings and ADB coordinate touches; pack lab has explicit injected storage port",
+      "apkSha256": "40228465e6073b3c37d902f6870f54b0e26895327cb85026e0f4d2d9d7e87f90",
+      "evidenceDirectory": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/closure-android-20261102-02",
+      "caseTrace": {
+        "ids": [
+          "A01",
+          "A02",
+          "A03",
+          "A04",
+          "A05",
+          "A06",
+          "A07",
+          "A08",
+          "A09",
+          "A10"
+        ],
+        "status": "PASS",
+        "started": 1793615301.415392,
+        "ended": 1793615467.06429,
+        "mechanism": "native emulator provider and UIAutomator/ADB touches unless explicitly labelled",
+        "observed": "Guide step2 retained through actual font100\u2192200, Previous/Next, Dark/Light/System and Urdu/Roman/English; screenshots/native frame bounds",
+        "apkSha256": "40228465e6073b3c37d902f6870f54b0e26895327cb85026e0f4d2d9d7e87f90"
+      },
+      "rawCommands": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/closure-android-20261102-02/android-commands.jsonl"
+    },
+    {
+      "id": "A09",
+      "scenario": "Light/System appearance transitions",
+      "status": "PASS",
+      "expected": "Light/System appearance transitions",
+      "actualStepsAndObserved": "Guide step2 retained through actual font100\u2192200, Previous/Next, Dark/Light/System and Urdu/Roman/English; screenshots/native frame bounds",
+      "mechanism": "native emulator OS/GPS/actual Settings and ADB coordinate touches; pack lab has explicit injected storage port",
+      "apkSha256": "40228465e6073b3c37d902f6870f54b0e26895327cb85026e0f4d2d9d7e87f90",
+      "evidenceDirectory": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/closure-android-20261102-02",
+      "caseTrace": {
+        "ids": [
+          "A01",
+          "A02",
+          "A03",
+          "A04",
+          "A05",
+          "A06",
+          "A07",
+          "A08",
+          "A09",
+          "A10"
+        ],
+        "status": "PASS",
+        "started": 1793615301.415392,
+        "ended": 1793615467.06429,
+        "mechanism": "native emulator provider and UIAutomator/ADB touches unless explicitly labelled",
+        "observed": "Guide step2 retained through actual font100\u2192200, Previous/Next, Dark/Light/System and Urdu/Roman/English; screenshots/native frame bounds",
+        "apkSha256": "40228465e6073b3c37d902f6870f54b0e26895327cb85026e0f4d2d9d7e87f90"
+      },
+      "rawCommands": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/closure-android-20261102-02/android-commands.jsonl"
+    },
+    {
+      "id": "A10",
+      "scenario": "Urdu/Roman Urdu/English journey retention",
+      "status": "PASS",
+      "expected": "Urdu/Roman Urdu/English journey retention",
+      "actualStepsAndObserved": "Guide step2 retained through actual font100\u2192200, Previous/Next, Dark/Light/System and Urdu/Roman/English; screenshots/native frame bounds",
+      "mechanism": "native emulator OS/GPS/actual Settings and ADB coordinate touches; pack lab has explicit injected storage port",
+      "apkSha256": "40228465e6073b3c37d902f6870f54b0e26895327cb85026e0f4d2d9d7e87f90",
+      "evidenceDirectory": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/closure-android-20261102-02",
+      "caseTrace": {
+        "ids": [
+          "A01",
+          "A02",
+          "A03",
+          "A04",
+          "A05",
+          "A06",
+          "A07",
+          "A08",
+          "A09",
+          "A10"
+        ],
+        "status": "PASS",
+        "started": 1793615301.415392,
+        "ended": 1793615467.06429,
+        "mechanism": "native emulator provider and UIAutomator/ADB touches unless explicitly labelled",
+        "observed": "Guide step2 retained through actual font100\u2192200, Previous/Next, Dark/Light/System and Urdu/Roman/English; screenshots/native frame bounds",
+        "apkSha256": "40228465e6073b3c37d902f6870f54b0e26895327cb85026e0f4d2d9d7e87f90"
+      },
+      "rawCommands": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/closure-android-20261102-02/android-commands.jsonl"
+    },
+    {
+      "id": "A11",
+      "scenario": "Effective offline cold/warm launch",
+      "status": "PASS",
+      "expected": "Effective offline cold/warm launch",
+      "actualStepsAndObserved": "Guest default-network/routing/IP/DNS probes saved; cold/warm/manual actual final APK",
+      "mechanism": "native emulator OS/GPS/actual Settings and ADB coordinate touches; pack lab has explicit injected storage port",
+      "apkSha256": "40228465e6073b3c37d902f6870f54b0e26895327cb85026e0f4d2d9d7e87f90",
+      "evidenceDirectory": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/closure-android-20261102-02",
+      "caseTrace": {
+        "ids": [
+          "A11",
+          "A12"
+        ],
+        "status": "PASS",
+        "started": 1793614907.16734,
+        "ended": 1793614936.977689,
+        "mechanism": "native emulator provider and UIAutomator/ADB touches unless explicitly labelled",
+        "observed": "Guest default-network/routing/IP/DNS probes saved; cold/warm/manual actual final APK",
+        "apkSha256": "40228465e6073b3c37d902f6870f54b0e26895327cb85026e0f4d2d9d7e87f90"
+      },
+      "rawCommands": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/closure-android-20261102-02/android-commands.jsonl"
+    },
+    {
+      "id": "A12",
+      "scenario": "Offline manual route/guide",
+      "status": "PASS",
+      "expected": "Offline manual route/guide",
+      "actualStepsAndObserved": "Guest default-network/routing/IP/DNS probes saved; cold/warm/manual actual final APK",
+      "mechanism": "native emulator OS/GPS/actual Settings and ADB coordinate touches; pack lab has explicit injected storage port",
+      "apkSha256": "40228465e6073b3c37d902f6870f54b0e26895327cb85026e0f4d2d9d7e87f90",
+      "evidenceDirectory": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/closure-android-20261102-02",
+      "caseTrace": {
+        "ids": [
+          "A11",
+          "A12"
+        ],
+        "status": "PASS",
+        "started": 1793614907.16734,
+        "ended": 1793614936.977689,
+        "mechanism": "native emulator provider and UIAutomator/ADB touches unless explicitly labelled",
+        "observed": "Guest default-network/routing/IP/DNS probes saved; cold/warm/manual actual final APK",
+        "apkSha256": "40228465e6073b3c37d902f6870f54b0e26895327cb85026e0f4d2d9d7e87f90"
+      },
+      "rawCommands": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/closure-android-20261102-02/android-commands.jsonl"
+    },
+    {
+      "id": "A13",
+      "scenario": "Real filesystem pack lifecycle lab",
+      "status": "NOT RUN",
+      "expected": "Real filesystem pack lifecycle lab",
+      "actualStepsAndObserved": "Pack result retrieval failed after display-profile restoration error; no complete final-APK10/10 accepted. Earlier binary result not inherited.",
+      "mechanism": "native emulator OS/GPS/actual Settings and ADB coordinate touches; pack lab has explicit injected storage port",
+      "apkSha256": "40228465e6073b3c37d902f6870f54b0e26895327cb85026e0f4d2d9d7e87f90",
+      "evidenceDirectory": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/closure-android-20261102-02",
+      "caseTrace": null,
+      "rawCommands": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/closure-android-20261102-02/android-commands.jsonl"
+    },
+    {
+      "id": "A14",
+      "scenario": "Native permission denial",
+      "status": "PASS",
+      "expected": "Native permission denial",
+      "actualStepsAndObserved": "Real Android permission prompt denied; manual fallback observed",
+      "mechanism": "native emulator OS/GPS/actual Settings and ADB coordinate touches; pack lab has explicit injected storage port",
+      "apkSha256": "40228465e6073b3c37d902f6870f54b0e26895327cb85026e0f4d2d9d7e87f90",
+      "evidenceDirectory": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/closure-android-20261102-02",
+      "caseTrace": {
+        "ids": [
+          "A14"
+        ],
+        "status": "PASS",
+        "started": 1793614937.100975,
+        "ended": 1793614968.5563571,
+        "mechanism": "native emulator provider and UIAutomator/ADB touches unless explicitly labelled",
+        "observed": "Real Android permission prompt denied; manual fallback observed",
+        "apkSha256": "40228465e6073b3c37d902f6870f54b0e26895327cb85026e0f4d2d9d7e87f90"
+      },
+      "rawCommands": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/closure-android-20261102-02/android-commands.jsonl"
+    },
+    {
+      "id": "A15",
+      "scenario": "Native approximate permission rejected",
+      "status": "PASS",
+      "expected": "Native approximate permission rejected",
+      "actualStepsAndObserved": "Actual coarse-only Android grants; precise blocker captured",
+      "mechanism": "native emulator OS/GPS/actual Settings and ADB coordinate touches; pack lab has explicit injected storage port",
+      "apkSha256": "40228465e6073b3c37d902f6870f54b0e26895327cb85026e0f4d2d9d7e87f90",
+      "evidenceDirectory": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/closure-android-20261102-02",
+      "caseTrace": {
+        "ids": [
+          "A15"
+        ],
+        "status": "PASS",
+        "started": 1793614968.5817878,
+        "ended": 1793615011.299049,
+        "mechanism": "native emulator provider and UIAutomator/ADB touches unless explicitly labelled",
+        "observed": "Actual coarse-only Android grants; precise blocker captured",
+        "apkSha256": "40228465e6073b3c37d902f6870f54b0e26895327cb85026e0f4d2d9d7e87f90"
+      },
+      "rawCommands": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/closure-android-20261102-02/android-commands.jsonl"
+    },
+    {
+      "id": "A16",
+      "scenario": "Precise GPS candidate acquisition",
+      "status": "PASS",
+      "expected": "Precise GPS candidate acquisition",
+      "actualStepsAndObserved": "Native emulator GPS acquisition, candidate cancel/reacquire, explicit Live, movement, loss/recovery, correct-destination Arrival, coordinate Recenter/Done and exit",
+      "mechanism": "native emulator OS/GPS/actual Settings and ADB coordinate touches; pack lab has explicit injected storage port",
+      "apkSha256": "40228465e6073b3c37d902f6870f54b0e26895327cb85026e0f4d2d9d7e87f90",
+      "evidenceDirectory": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/closure-android-20261102-02",
+      "caseTrace": {
+        "ids": [
+          "A16",
+          "A17",
+          "A18",
+          "A19",
+          "A20",
+          "A21",
+          "A22"
+        ],
+        "status": "PASS",
+        "started": 1793615011.407516,
+        "ended": 1793615113.4355469,
+        "mechanism": "native emulator provider and UIAutomator/ADB touches unless explicitly labelled",
+        "observed": "Native emulator GPS acquisition, candidate cancel/reacquire, explicit Live, movement, loss/recovery, correct-destination Arrival, coordinate Recenter/Done and exit",
+        "apkSha256": "40228465e6073b3c37d902f6870f54b0e26895327cb85026e0f4d2d9d7e87f90"
+      },
+      "rawCommands": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/closure-android-20261102-02/android-commands.jsonl"
+    },
+    {
+      "id": "A17",
+      "scenario": "Candidate cancellation/reacquisition",
+      "status": "PASS",
+      "expected": "Candidate cancellation/reacquisition",
+      "actualStepsAndObserved": "Native emulator GPS acquisition, candidate cancel/reacquire, explicit Live, movement, loss/recovery, correct-destination Arrival, coordinate Recenter/Done and exit",
+      "mechanism": "native emulator OS/GPS/actual Settings and ADB coordinate touches; pack lab has explicit injected storage port",
+      "apkSha256": "40228465e6073b3c37d902f6870f54b0e26895327cb85026e0f4d2d9d7e87f90",
+      "evidenceDirectory": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/closure-android-20261102-02",
+      "caseTrace": {
+        "ids": [
+          "A16",
+          "A17",
+          "A18",
+          "A19",
+          "A20",
+          "A21",
+          "A22"
+        ],
+        "status": "PASS",
+        "started": 1793615011.407516,
+        "ended": 1793615113.4355469,
+        "mechanism": "native emulator provider and UIAutomator/ADB touches unless explicitly labelled",
+        "observed": "Native emulator GPS acquisition, candidate cancel/reacquire, explicit Live, movement, loss/recovery, correct-destination Arrival, coordinate Recenter/Done and exit",
+        "apkSha256": "40228465e6073b3c37d902f6870f54b0e26895327cb85026e0f4d2d9d7e87f90"
+      },
+      "rawCommands": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/closure-android-20261102-02/android-commands.jsonl"
+    },
+    {
+      "id": "A18",
+      "scenario": "Explicit native Live confirmation",
+      "status": "PASS",
+      "expected": "Explicit native Live confirmation",
+      "actualStepsAndObserved": "Native emulator GPS acquisition, candidate cancel/reacquire, explicit Live, movement, loss/recovery, correct-destination Arrival, coordinate Recenter/Done and exit",
+      "mechanism": "native emulator OS/GPS/actual Settings and ADB coordinate touches; pack lab has explicit injected storage port",
+      "apkSha256": "40228465e6073b3c37d902f6870f54b0e26895327cb85026e0f4d2d9d7e87f90",
+      "evidenceDirectory": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/closure-android-20261102-02",
+      "caseTrace": {
+        "ids": [
+          "A16",
+          "A17",
+          "A18",
+          "A19",
+          "A20",
+          "A21",
+          "A22"
+        ],
+        "status": "PASS",
+        "started": 1793615011.407516,
+        "ended": 1793615113.4355469,
+        "mechanism": "native emulator provider and UIAutomator/ADB touches unless explicitly labelled",
+        "observed": "Native emulator GPS acquisition, candidate cancel/reacquire, explicit Live, movement, loss/recovery, correct-destination Arrival, coordinate Recenter/Done and exit",
+        "apkSha256": "40228465e6073b3c37d902f6870f54b0e26895327cb85026e0f4d2d9d7e87f90"
+      },
+      "rawCommands": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/closure-android-20261102-02/android-commands.jsonl"
+    },
+    {
+      "id": "A19",
+      "scenario": "Native provider movement",
+      "status": "PASS",
+      "expected": "Native provider movement",
+      "actualStepsAndObserved": "Native emulator GPS acquisition, candidate cancel/reacquire, explicit Live, movement, loss/recovery, correct-destination Arrival, coordinate Recenter/Done and exit",
+      "mechanism": "native emulator OS/GPS/actual Settings and ADB coordinate touches; pack lab has explicit injected storage port",
+      "apkSha256": "40228465e6073b3c37d902f6870f54b0e26895327cb85026e0f4d2d9d7e87f90",
+      "evidenceDirectory": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/closure-android-20261102-02",
+      "caseTrace": {
+        "ids": [
+          "A16",
+          "A17",
+          "A18",
+          "A19",
+          "A20",
+          "A21",
+          "A22"
+        ],
+        "status": "PASS",
+        "started": 1793615011.407516,
+        "ended": 1793615113.4355469,
+        "mechanism": "native emulator provider and UIAutomator/ADB touches unless explicitly labelled",
+        "observed": "Native emulator GPS acquisition, candidate cancel/reacquire, explicit Live, movement, loss/recovery, correct-destination Arrival, coordinate Recenter/Done and exit",
+        "apkSha256": "40228465e6073b3c37d902f6870f54b0e26895327cb85026e0f4d2d9d7e87f90"
+      },
+      "rawCommands": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/closure-android-20261102-02/android-commands.jsonl"
+    },
+    {
+      "id": "A20",
+      "scenario": "Native lost signal and recovery",
+      "status": "PASS",
+      "expected": "Native lost signal and recovery",
+      "actualStepsAndObserved": "Native emulator GPS acquisition, candidate cancel/reacquire, explicit Live, movement, loss/recovery, correct-destination Arrival, coordinate Recenter/Done and exit",
+      "mechanism": "native emulator OS/GPS/actual Settings and ADB coordinate touches; pack lab has explicit injected storage port",
+      "apkSha256": "40228465e6073b3c37d902f6870f54b0e26895327cb85026e0f4d2d9d7e87f90",
+      "evidenceDirectory": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/closure-android-20261102-02",
+      "caseTrace": {
+        "ids": [
+          "A16",
+          "A17",
+          "A18",
+          "A19",
+          "A20",
+          "A21",
+          "A22"
+        ],
+        "status": "PASS",
+        "started": 1793615011.407516,
+        "ended": 1793615113.4355469,
+        "mechanism": "native emulator provider and UIAutomator/ADB touches unless explicitly labelled",
+        "observed": "Native emulator GPS acquisition, candidate cancel/reacquire, explicit Live, movement, loss/recovery, correct-destination Arrival, coordinate Recenter/Done and exit",
+        "apkSha256": "40228465e6073b3c37d902f6870f54b0e26895327cb85026e0f4d2d9d7e87f90"
+      },
+      "rawCommands": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/closure-android-20261102-02/android-commands.jsonl"
+    },
+    {
+      "id": "A21",
+      "scenario": "Offline native Arrival",
+      "status": "PASS",
+      "expected": "Offline native Arrival",
+      "actualStepsAndObserved": "Native emulator GPS acquisition, candidate cancel/reacquire, explicit Live, movement, loss/recovery, correct-destination Arrival, coordinate Recenter/Done and exit",
+      "mechanism": "native emulator OS/GPS/actual Settings and ADB coordinate touches; pack lab has explicit injected storage port",
+      "apkSha256": "40228465e6073b3c37d902f6870f54b0e26895327cb85026e0f4d2d9d7e87f90",
+      "evidenceDirectory": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/closure-android-20261102-02",
+      "caseTrace": {
+        "ids": [
+          "A16",
+          "A17",
+          "A18",
+          "A19",
+          "A20",
+          "A21",
+          "A22"
+        ],
+        "status": "PASS",
+        "started": 1793615011.407516,
+        "ended": 1793615113.4355469,
+        "mechanism": "native emulator provider and UIAutomator/ADB touches unless explicitly labelled",
+        "observed": "Native emulator GPS acquisition, candidate cancel/reacquire, explicit Live, movement, loss/recovery, correct-destination Arrival, coordinate Recenter/Done and exit",
+        "apkSha256": "40228465e6073b3c37d902f6870f54b0e26895327cb85026e0f4d2d9d7e87f90"
+      },
+      "rawCommands": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/closure-android-20261102-02/android-commands.jsonl"
+    },
+    {
+      "id": "A22",
+      "scenario": "Arrival Recenter/Done touch and exit",
+      "status": "PASS",
+      "expected": "Arrival Recenter/Done touch and exit",
+      "actualStepsAndObserved": "Native emulator GPS acquisition, candidate cancel/reacquire, explicit Live, movement, loss/recovery, correct-destination Arrival, coordinate Recenter/Done and exit",
+      "mechanism": "native emulator OS/GPS/actual Settings and ADB coordinate touches; pack lab has explicit injected storage port",
+      "apkSha256": "40228465e6073b3c37d902f6870f54b0e26895327cb85026e0f4d2d9d7e87f90",
+      "evidenceDirectory": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/closure-android-20261102-02",
+      "caseTrace": {
+        "ids": [
+          "A16",
+          "A17",
+          "A18",
+          "A19",
+          "A20",
+          "A21",
+          "A22"
+        ],
+        "status": "PASS",
+        "started": 1793615011.407516,
+        "ended": 1793615113.4355469,
+        "mechanism": "native emulator provider and UIAutomator/ADB touches unless explicitly labelled",
+        "observed": "Native emulator GPS acquisition, candidate cancel/reacquire, explicit Live, movement, loss/recovery, correct-destination Arrival, coordinate Recenter/Done and exit",
+        "apkSha256": "40228465e6073b3c37d902f6870f54b0e26895327cb85026e0f4d2d9d7e87f90"
+      },
+      "rawCommands": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/closure-android-20261102-02/android-commands.jsonl"
+    },
+    {
+      "id": "A23",
+      "scenario": "True200% Arrival touch clearance",
+      "status": "PASS",
+      "expected": "True200% Arrival touch clearance",
+      "actualStepsAndObserved": "Real Settings font2.0, enlarged Arrival inspected, actual Recenter/Done touches and exit",
+      "mechanism": "native emulator OS/GPS/actual Settings and ADB coordinate touches; pack lab has explicit injected storage port",
+      "apkSha256": "40228465e6073b3c37d902f6870f54b0e26895327cb85026e0f4d2d9d7e87f90",
+      "evidenceDirectory": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/closure-android-20261102-02",
+      "caseTrace": {
+        "ids": [
+          "A23"
+        ],
+        "status": "PASS",
+        "started": 1793615190.147228,
+        "ended": 1793615301.377513,
+        "mechanism": "native emulator provider and UIAutomator/ADB touches unless explicitly labelled",
+        "observed": "Real Settings font2.0, enlarged Arrival inspected, actual Recenter/Done touches and exit",
+        "apkSha256": "40228465e6073b3c37d902f6870f54b0e26895327cb85026e0f4d2d9d7e87f90"
+      },
+      "rawCommands": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/closure-android-20261102-02/android-commands.jsonl"
+    },
+    {
+      "id": "A24",
+      "scenario": "20background/foreground cycles",
+      "status": "NOT RUN",
+      "expected": "20background/foreground cycles",
+      "actualStepsAndObserved": "Six measured Live/lifecycle sessions complete; required20 not complete at usage checkpoint.",
+      "mechanism": "native emulator OS/GPS/actual Settings and ADB coordinate touches; pack lab has explicit injected storage port",
+      "apkSha256": "40228465e6073b3c37d902f6870f54b0e26895327cb85026e0f4d2d9d7e87f90",
+      "evidenceDirectory": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/closure-android-20261102-02",
+      "caseTrace": {
+        "ids": [
+          "A27",
+          "A24",
+          "A26"
+        ],
+        "status": "PASS",
+        "started": 1793615113.5416389,
+        "ended": 1793615190.1163268,
+        "mechanism": "native emulator provider and UIAutomator/ADB touches unless explicitly labelled",
+        "observed": "Actual native off-route graph nodes R6-02\u2192R6-03, reroute, foreground reacquisition, Exit and late-fix rejection; watcher internals not observable",
+        "apkSha256": "40228465e6073b3c37d902f6870f54b0e26895327cb85026e0f4d2d9d7e87f90"
+      },
+      "rawCommands": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/closure-android-20261102-02/android-commands.jsonl"
+    },
+    {
+      "id": "A25",
+      "scenario": "20new navigation sessions",
+      "status": "NOT RUN",
+      "expected": "20new navigation sessions",
+      "actualStepsAndObserved": "Six measured Live/lifecycle sessions complete; required20 not complete at usage checkpoint.",
+      "mechanism": "native emulator OS/GPS/actual Settings and ADB coordinate touches; pack lab has explicit injected storage port",
+      "apkSha256": "40228465e6073b3c37d902f6870f54b0e26895327cb85026e0f4d2d9d7e87f90",
+      "evidenceDirectory": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/closure-android-20261102-02",
+      "caseTrace": null,
+      "rawCommands": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/closure-android-20261102-02/android-commands.jsonl"
+    },
+    {
+      "id": "A26",
+      "scenario": "Bounded native watcher ownership/cleanup",
+      "status": "BLOCKED",
+      "expected": "Bounded native watcher ownership/cleanup",
+      "actualStepsAndObserved": "Exit/late-fix behavior passes; exact watcher/subscription ownership not observable in unchanged Release.",
+      "mechanism": "native emulator OS/GPS/actual Settings and ADB coordinate touches; pack lab has explicit injected storage port",
+      "apkSha256": "40228465e6073b3c37d902f6870f54b0e26895327cb85026e0f4d2d9d7e87f90",
+      "evidenceDirectory": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/closure-android-20261102-02",
+      "caseTrace": {
+        "ids": [
+          "A27",
+          "A24",
+          "A26"
+        ],
+        "status": "PASS",
+        "started": 1793615113.5416389,
+        "ended": 1793615190.1163268,
+        "mechanism": "native emulator provider and UIAutomator/ADB touches unless explicitly labelled",
+        "observed": "Actual native off-route graph nodes R6-02\u2192R6-03, reroute, foreground reacquisition, Exit and late-fix rejection; watcher internals not observable",
+        "apkSha256": "40228465e6073b3c37d902f6870f54b0e26895327cb85026e0f4d2d9d7e87f90"
+      },
+      "rawCommands": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/closure-android-20261102-02/android-commands.jsonl"
+    },
+    {
+      "id": "A27",
+      "scenario": "Native reroute and repeated reroutes",
+      "status": "NOT RUN",
+      "expected": "Native reroute and repeated reroutes",
+      "actualStepsAndObserved": "One native off-route reroute PASS; repeated-reroute variant not executed.",
+      "mechanism": "native emulator OS/GPS/actual Settings and ADB coordinate touches; pack lab has explicit injected storage port",
+      "apkSha256": "40228465e6073b3c37d902f6870f54b0e26895327cb85026e0f4d2d9d7e87f90",
+      "evidenceDirectory": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/closure-android-20261102-02",
+      "caseTrace": {
+        "ids": [
+          "A27",
+          "A24",
+          "A26"
+        ],
+        "status": "PASS",
+        "started": 1793615113.5416389,
+        "ended": 1793615190.1163268,
+        "mechanism": "native emulator provider and UIAutomator/ADB touches unless explicitly labelled",
+        "observed": "Actual native off-route graph nodes R6-02\u2192R6-03, reroute, foreground reacquisition, Exit and late-fix rejection; watcher internals not observable",
+        "apkSha256": "40228465e6073b3c37d902f6870f54b0e26895327cb85026e0f4d2d9d7e87f90"
+      },
+      "rawCommands": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/closure-android-20261102-02/android-commands.jsonl"
+    },
+    {
+      "id": "A28",
+      "scenario": "Three-button versus gesture controls",
+      "status": "PASS",
+      "expected": "Three-button versus gesture controls",
+      "actualStepsAndObserved": "Three-button normal guide, 360x640dp small-screen controls, actual Next/Previous/Exit; accessibility-service proof separate",
+      "mechanism": "native emulator OS/GPS/actual Settings and ADB coordinate touches; pack lab has explicit injected storage port",
+      "apkSha256": "40228465e6073b3c37d902f6870f54b0e26895327cb85026e0f4d2d9d7e87f90",
+      "evidenceDirectory": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/closure-android-20261102-02",
+      "caseTrace": {
+        "ids": [
+          "A28",
+          "A29"
+        ],
+        "status": "PASS",
+        "started": 1793615546.591946,
+        "ended": 1793615606.710156,
+        "mechanism": "native emulator provider and UIAutomator/ADB touches unless explicitly labelled",
+        "observed": "Three-button normal guide, 360x640dp small-screen controls, actual Next/Previous/Exit; accessibility-service proof separate",
+        "apkSha256": "40228465e6073b3c37d902f6870f54b0e26895327cb85026e0f4d2d9d7e87f90"
+      },
+      "rawCommands": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/closure-android-20261102-02/android-commands.jsonl"
+    },
+    {
+      "id": "A29",
+      "scenario": "Small-screen/accessibility-service traversal",
+      "status": "NOT RUN",
+      "expected": "Small-screen/accessibility-service traversal",
+      "actualStepsAndObserved": "360x640dp controls PASS; installed TalkBack service traversal not executed.",
+      "mechanism": "native emulator OS/GPS/actual Settings and ADB coordinate touches; pack lab has explicit injected storage port",
+      "apkSha256": "40228465e6073b3c37d902f6870f54b0e26895327cb85026e0f4d2d9d7e87f90",
+      "evidenceDirectory": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/closure-android-20261102-02",
+      "caseTrace": {
+        "ids": [
+          "A28",
+          "A29"
+        ],
+        "status": "PASS",
+        "started": 1793615546.591946,
+        "ended": 1793615606.710156,
+        "mechanism": "native emulator provider and UIAutomator/ADB touches unless explicitly labelled",
+        "observed": "Three-button normal guide, 360x640dp small-screen controls, actual Next/Previous/Exit; accessibility-service proof separate",
+        "apkSha256": "40228465e6073b3c37d902f6870f54b0e26895327cb85026e0f4d2d9d7e87f90"
+      },
+      "rawCommands": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/closure-android-20261102-02/android-commands.jsonl"
+    },
+    {
+      "id": "A30",
+      "scenario": "Remaining native manifest/pointer/signature faults",
+      "status": "BLOCKED",
+      "expected": "Remaining native manifest/pointer/signature faults",
+      "actualStepsAndObserved": "Remaining trust/pointer/manifest fault controls absent from shipped lab; signature-required imports not certified.",
+      "mechanism": "native emulator OS/GPS/actual Settings and ADB coordinate touches; pack lab has explicit injected storage port",
+      "apkSha256": "40228465e6073b3c37d902f6870f54b0e26895327cb85026e0f4d2d9d7e87f90",
+      "evidenceDirectory": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/closure-android-20261102-02",
+      "caseTrace": null,
+      "rawCommands": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/closure-android-20261102-02/android-commands.jsonl"
+    },
+    {
+      "id": "A31",
+      "scenario": "Offline two-venue round trip",
+      "status": "NOT RUN",
+      "expected": "Offline two-venue round trip",
+      "actualStepsAndObserved": "Final-APK two-venue round trip not executed before usage stop.",
+      "mechanism": "native emulator OS/GPS/actual Settings and ADB coordinate touches; pack lab has explicit injected storage port",
+      "apkSha256": "40228465e6073b3c37d902f6870f54b0e26895327cb85026e0f4d2d9d7e87f90",
+      "evidenceDirectory": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/closure-android-20261102-02",
+      "caseTrace": null,
+      "rawCommands": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/closure-android-20261102-02/android-commands.jsonl"
+    },
+    {
+      "id": "A32",
+      "scenario": "Native attribution dialog opens",
+      "status": "PASS",
+      "expected": "Native attribution dialog opens",
+      "actualStepsAndObserved": "Native pan/recenter and attribution dialog",
+      "mechanism": "native emulator OS/GPS/actual Settings and ADB coordinate touches; pack lab has explicit injected storage port",
+      "apkSha256": "40228465e6073b3c37d902f6870f54b0e26895327cb85026e0f4d2d9d7e87f90",
+      "evidenceDirectory": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/closure-android-20261102-02",
+      "caseTrace": {
+        "ids": [
+          "A32",
+          "A33"
+        ],
+        "status": "PASS",
+        "started": 1793615882.545376,
+        "ended": 1793615962.989933,
+        "mechanism": "native emulator provider and UIAutomator/ADB touches unless explicitly labelled",
+        "observed": "Native pan/recenter and attribution dialog",
+        "apkSha256": "40228465e6073b3c37d902f6870f54b0e26895327cb85026e0f4d2d9d7e87f90"
+      },
+      "rawCommands": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/closure-android-20261102-02/android-commands.jsonl"
+    },
+    {
+      "id": "A33",
+      "scenario": "Pan then recenter camera behavior",
+      "status": "PASS",
+      "expected": "Pan then recenter camera behavior",
+      "actualStepsAndObserved": "Native pan/recenter and attribution dialog",
+      "mechanism": "native emulator OS/GPS/actual Settings and ADB coordinate touches; pack lab has explicit injected storage port",
+      "apkSha256": "40228465e6073b3c37d902f6870f54b0e26895327cb85026e0f4d2d9d7e87f90",
+      "evidenceDirectory": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/closure-android-20261102-02",
+      "caseTrace": {
+        "ids": [
+          "A32",
+          "A33"
+        ],
+        "status": "PASS",
+        "started": 1793615882.545376,
+        "ended": 1793615962.989933,
+        "mechanism": "native emulator provider and UIAutomator/ADB touches unless explicitly labelled",
+        "observed": "Native pan/recenter and attribution dialog",
+        "apkSha256": "40228465e6073b3c37d902f6870f54b0e26895327cb85026e0f4d2d9d7e87f90"
+      },
+      "rawCommands": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/closure-android-20261102-02/android-commands.jsonl"
+    },
+    {
+      "id": "A34",
+      "scenario": "Rapid permission/noisy duplicate/out-of-order native fixes",
+      "status": "NOT RUN",
+      "expected": "Rapid permission/noisy duplicate/out-of-order native fixes",
+      "actualStepsAndObserved": "OS test-provider supports time/accuracy injection, but this batch was not started before usage threshold.",
+      "mechanism": "native emulator OS/GPS/actual Settings and ADB coordinate touches; pack lab has explicit injected storage port",
+      "apkSha256": "40228465e6073b3c37d902f6870f54b0e26895327cb85026e0f4d2d9d7e87f90",
+      "evidenceDirectory": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/closure-android-20261102-02",
+      "caseTrace": null,
+      "rawCommands": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/closure-android-20261102-02/android-commands.jsonl"
+    },
+    {
+      "id": "A35",
+      "scenario": "Long-duration performance/leak closure",
+      "status": "BLOCKED",
+      "expected": "Long-duration performance/leak closure",
+      "actualStepsAndObserved": "Memory INCONCLUSIVE: two comparable blocks not completed, no retained-object evidence.",
+      "mechanism": "native emulator OS/GPS/actual Settings and ADB coordinate touches; pack lab has explicit injected storage port",
+      "apkSha256": "40228465e6073b3c37d902f6870f54b0e26895327cb85026e0f4d2d9d7e87f90",
+      "evidenceDirectory": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/closure-android-20261102-02",
+      "caseTrace": null,
+      "rawCommands": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/closure-android-20261102-02/android-commands.jsonl"
+    }
+  ]
+}

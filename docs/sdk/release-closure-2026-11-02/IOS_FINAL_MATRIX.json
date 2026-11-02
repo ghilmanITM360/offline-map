@@ -1,0 +1,94 @@
+{
+  "nativeXCTestCounts": {
+    "passed": 12
+  },
+  "nativeCases": {
+    "test04UrduExtraLarge": {
+      "status": "passed",
+      "log": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/closure-final-ios-20261102-02/campaign-1793615472.log"
+    },
+    "test05UrduAX5": {
+      "status": "passed",
+      "log": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/closure-final-ios-20261102-02/campaign-1793615472.log"
+    },
+    "test01Normal": {
+      "status": "passed",
+      "log": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/closure-final-ios-20261102-02/campaign-1793615710.log"
+    },
+    "test02ExtraLarge": {
+      "status": "passed",
+      "log": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/closure-final-ios-20261102-02/campaign-1793615710.log"
+    },
+    "test03AX5": {
+      "status": "passed",
+      "log": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/closure-final-ios-20261102-02/campaign-1793615710.log"
+    },
+    "test06UrduDynamicType": {
+      "status": "passed",
+      "log": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/closure-final-ios-20261102-02/campaign-1793615710.log"
+    },
+    "test07NativeRecoveryReroute": {
+      "status": "passed",
+      "log": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/closure-final-ios-20261102-02/campaign-1793615710.log"
+    },
+    "test08NativePackLab": {
+      "status": "passed",
+      "log": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/closure-final-ios-20261102-02/campaign-1793615710.log"
+    },
+    "test09PermissionDenialRecovery": {
+      "status": "passed",
+      "log": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/closure-final-ios-20261102-02/campaign-1793615710.log"
+    },
+    "test10NativeAsyncCancellationReplacement": {
+      "status": "passed",
+      "log": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/closure-final-ios-20261102-02/campaign-1793615710.log"
+    },
+    "test11ReducedAccuracyRecovery": {
+      "status": "passed",
+      "log": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/closure-final-ios-20261102-02/campaign-1793615710.log"
+    },
+    "test12NativeAccessibilityAudit": {
+      "status": "passed",
+      "log": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/closure-final-ios-20261102-02/campaign-1793615710.log"
+    }
+  },
+  "additionalGates": [
+    {
+      "scenario": "Native transient CoreLocation error/backoff/duplicate watcher proof",
+      "status": "BLOCKED"
+    },
+    {
+      "scenario": "Native stale/weak-fix controlled fault variants",
+      "status": "NOT RUN"
+    },
+    {
+      "scenario": "Failed reroute recovery fault",
+      "status": "BLOCKED"
+    },
+    {
+      "scenario": "Verified scoped iOS network denial/offline cold-warm campaign",
+      "status": "BLOCKED"
+    },
+    {
+      "scenario": "Urdu Directory DynamicType variant and all manual endpoint-disabled variants",
+      "status": "NOT RUN"
+    },
+    {
+      "scenario": "Actual OS location-prompt touch variant (TCC commands used)",
+      "status": "NOT RUN"
+    },
+    {
+      "scenario": "Remaining pack trust/manifest/pointer variants beyond shipped lab",
+      "status": "BLOCKED"
+    },
+    {
+      "scenario": "Long native iOS stress campaign",
+      "status": "NOT RUN"
+    }
+  ],
+  "binary": {
+    "iosApp": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/closure-fix-20261102-02/IOSDerivedData/Build/Products/Release-iphonesimulator/SDKConsumer.app",
+    "iosExecutableSha256": "29962a589b6f0249417f5bf290aaf12efef06c729a81b65184f0c80429a8b32d",
+    "iosJsSha256": "ad88c6c7349e2d95eeecdb50f237beb7dd27f8d71cb3b84fc5315735fa6acf6c"
+  }
+}
