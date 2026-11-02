@@ -1,0 +1,204 @@
+{
+  "sourceEvidenceLevel": "SOURCE/RUNTIME VERIFIED",
+  "baselineHead": "45daa0189c9718a46d797ef3e3be528feca4c36a",
+  "checks": [
+    {
+      "command": [
+        "npm",
+        "run",
+        "typecheck"
+      ],
+      "startedUTC": "2026-11-02T09:47:04.459816+00:00",
+      "exit": 0,
+      "seconds": 8.325714111328125,
+      "log": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/closure-fix-20261102-01/validation-00.log",
+      "sha256": "1f526e8af8d7c0d50bd938d1a64afe9bf80f625bb4334c9f9ee4dad104f98a77"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "lint"
+      ],
+      "startedUTC": "2026-11-02T09:47:12.786332+00:00",
+      "exit": 0,
+      "seconds": 6.722195148468018,
+      "log": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/closure-fix-20261102-01/validation-01.log",
+      "sha256": "987bbbf68474de914f52718b5408a0fd224cedb805df53995b41b035d92a9f9a"
+    },
+    {
+      "command": [
+        "npm",
+        "test"
+      ],
+      "startedUTC": "2026-11-02T09:47:19.509294+00:00",
+      "exit": 0,
+      "seconds": 63.21954798698425,
+      "log": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/closure-fix-20261102-01/validation-02.log",
+      "sha256": "0bfd7dcb05b7ddcc80cb02688117af567501b4d069c8b86f7ed6adaae47f016b"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "test:components",
+        "--",
+        "--runInBand",
+        "--watchman=false"
+      ],
+      "startedUTC": "2026-11-02T09:48:22.729877+00:00",
+      "exit": 0,
+      "seconds": 92.58531713485718,
+      "log": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/closure-fix-20261102-01/validation-03.log",
+      "sha256": "d01fa411019d69afed2884405911b3c62b2f44c9dd52bc88e06c770b56a6496a"
+    },
+    {
+      "command": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "startedUTC": "2026-11-02T09:49:55.316921+00:00",
+      "exit": 0,
+      "seconds": 0.026026010513305664,
+      "log": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/closure-fix-20261102-01/validation-04.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "test:sdk-package"
+      ],
+      "startedUTC": "2026-11-02T09:49:55.343288+00:00",
+      "exit": 0,
+      "seconds": 5.372168064117432,
+      "log": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/closure-fix-20261102-01/validation-05.log",
+      "sha256": "5c47216dd790ddce051d66c1d44bc63006371ba6133a19b09e5f374fef51fca4"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "sdk:bundle",
+        "--",
+        "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/delivery-arrival-wrap-candidate"
+      ],
+      "startedUTC": "2026-11-02T09:50:00.715863+00:00",
+      "exit": 0,
+      "seconds": 75.97262287139893,
+      "log": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/closure-fix-20261102-01/validation-06.log",
+      "sha256": "6500398615c4135a96677b64a629d29d2ee52452d8d8d95880b1556787db893d"
+    }
+  ],
+  "consumerChecks": [
+    {
+      "command": [
+        "npm",
+        "ci",
+        "--ignore-scripts",
+        "--no-audit",
+        "--no-fund",
+        "--prefer-offline"
+      ],
+      "cwd": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/delivery-arrival-wrap-candidate.verification/delivery-arrival-wrap-candidate/examples/expo-consumer",
+      "exit": 0,
+      "seconds": 6.947779178619385,
+      "log": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/closure-fix-20261102-01/consumer-00.log",
+      "sha256": "24761a08c20ffb9910d0fea0083dc0f12857c8c627750600f4a04977b4c195c9"
+    },
+    {
+      "command": [
+        "npx",
+        "--no-install",
+        "tsc",
+        "--noEmit"
+      ],
+      "cwd": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/delivery-arrival-wrap-candidate.verification/delivery-arrival-wrap-candidate/examples/expo-consumer",
+      "exit": 0,
+      "seconds": 4.271577835083008,
+      "log": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/closure-fix-20261102-01/consumer-01.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "command": [
+        "./node_modules/.bin/jest",
+        "--ci",
+        "--runInBand",
+        "--watchman=false",
+        "--json",
+        "--outputFile=/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/closure-fix-20261102-01/consumer-jest.json"
+      ],
+      "cwd": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/delivery-arrival-wrap-candidate.verification/delivery-arrival-wrap-candidate/examples/expo-consumer",
+      "exit": 0,
+      "seconds": 11.509126901626587,
+      "log": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/closure-fix-20261102-01/consumer-02.log",
+      "sha256": "5fdd26a8a754319ea6cdd4de6877c5c87728d01d5b6d9f6dec85bae52b6518bc"
+    },
+    {
+      "command": [
+        "node",
+        "/Users/ghilmanislam360/GhilmanProjects/offline-map/scripts/test-dependency-security.mjs",
+        "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/delivery-arrival-wrap-candidate.verification/delivery-arrival-wrap-candidate/examples/expo-consumer"
+      ],
+      "cwd": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/delivery-arrival-wrap-candidate.verification/delivery-arrival-wrap-candidate/examples/expo-consumer",
+      "exit": 0,
+      "seconds": 0.2230520248413086,
+      "log": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/closure-fix-20261102-01/consumer-03.log",
+      "sha256": "59ddb974d0b859da032479f2a9feb776dd569564f4d2c2331786ee28d4fe718e"
+    },
+    {
+      "command": [
+        "./node_modules/.bin/expo",
+        "export",
+        "--platform",
+        "android",
+        "--output-dir",
+        "export-android",
+        "--dump-sourcemap",
+        "--max-workers",
+        "2"
+      ],
+      "cwd": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/delivery-arrival-wrap-candidate.verification/delivery-arrival-wrap-candidate/examples/expo-consumer",
+      "exit": 0,
+      "seconds": 10.108782768249512,
+      "log": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/closure-fix-20261102-01/consumer-04.log",
+      "sha256": "79e6a7584b99883b89b9fef4a1409c92ac427a26eef7a53a1df5794d1ea2c318"
+    },
+    {
+      "command": [
+        "./node_modules/.bin/expo",
+        "export",
+        "--platform",
+        "ios",
+        "--output-dir",
+        "export-ios",
+        "--dump-sourcemap",
+        "--max-workers",
+        "2"
+      ],
+      "cwd": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/delivery-arrival-wrap-candidate.verification/delivery-arrival-wrap-candidate/examples/expo-consumer",
+      "exit": 0,
+      "seconds": 9.091975927352905,
+      "log": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/closure-fix-20261102-01/consumer-05.log",
+      "sha256": "70a1d57193e1f66c62f234f41d38baf4687264f6b8ea60946d7127b9511e469f"
+    }
+  ],
+  "jestSuites": 223,
+  "jestTests": 2389,
+  "routingGoldenComparisons": 91506,
+  "differentialComparisons": 2400,
+  "consumerTests": 63,
+  "nativeIdentities": {
+    "baselineHead": "45daa0189c9718a46d797ef3e3be528feca4c36a",
+    "sourcePatchSha256": "8c6bc410dfa8efb00280827d36b25428220a592ef591f277dd515430a4ae6d7f",
+    "sdk": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/delivery-arrival-wrap-candidate/package/muslim-ummah-offline-navigation-0.1.0.tgz",
+    "sdkSha256": "7094baa005c8785e9038a8e9c555048fb4d7b54851bd5962af1a1dbd81d92072",
+    "iosApp": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/closure-fix-20261102-01/IOSDerivedData/Build/Products/Release-iphonesimulator/SDKConsumer.app",
+    "iosExecutableSha256": "62ea0bc4f5bbfe250df84cdd3603b35a173d11ef9a64d0e5e5179ef6bcd58c07",
+    "iosJsSha256": "5b74398ecf794bb75de89de636bc578cf26797f6cc9392cd51d1cb9162f052ff",
+    "androidApk": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/closure-fix-20261102-01/sdk-consumer-arrival-wrap-v2-arm64-release.apk",
+    "androidApkSha256": "690a293d66b863dda1f3f7caeb519b684fe1d7a1e41304bac14b499d143dc5f8"
+  },
+  "nativeOriginalRegression": "EMULATOR VERIFIED: test04UrduExtraLarge fails on baseline and passes after wrapping; final broader campaign pending"
+}
