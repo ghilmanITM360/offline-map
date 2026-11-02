@@ -87,7 +87,7 @@ const makeStyles = ({ colors }: ArrivalCardTheme) => StyleSheet.create({
   destination: { fontSize: 16, color: colors.muted, marginTop: 6, textAlign: 'center' },
   // Urdu at Extra-Large can exceed the viewport before the large-text stacking threshold.
   actionsRow: { flexDirection: 'row', flexWrap: 'wrap', alignSelf: 'stretch', justifyContent: 'center', marginTop: 28, gap: 12 },
-  actionsColumn: { flexDirection: 'column', alignSelf: 'stretch' },
+  actionsColumn: { flexDirection: 'column', flexWrap: 'nowrap', alignSelf: 'stretch' },
   buttonStacked: { alignSelf: 'stretch', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 },
   button: { backgroundColor: colors.accent, borderRadius: 28, paddingHorizontal: 48, paddingVertical: 16 },
   buttonText: { color: colors.onAccent, fontSize: 17, fontWeight: 'bold' },

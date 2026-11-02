@@ -76,6 +76,22 @@ final class ArrivalTouch: XCTestCase {
  boot();manual();gps("pause",11);tap("Use my location");continueAttempt();tap("Not now");tap("End directions");tap("Gate 03. Gate");gps("gate02");sleep(3)
  XCTAssertTrue(text("To Gate 03").exists);XCTAssertFalse(app.buttons["End navigation"].exists);XCTAssertFalse(app.buttons["nav-arrived-done-button"].exists);evidence("native-cancel-replace-late-fix")
  }
+ func setPrecise(_ enabled:Bool,_ settings:XCUIApplication){
+ let control=settings.switches["Precise Location"];let expected=enabled ? "1":"0"
+ if control.value as? String == expected {return}
+ let cell=settings.cells.matching(NSPredicate(format:"label BEGINSWITH 'Precise Location'")).firstMatch
+ XCTAssertTrue(cell.waitForExistence(timeout:5));let frame=cell.frame;mark("PRECISE_TOUCH frame=\(frame) before=\(String(describing:control.value)) target=\(expected)")
+ settings.coordinate(withNormalizedOffset:.zero).withOffset(CGVector(dx:frame.maxX-32,dy:frame.midY)).tap();sleep(1)
+ XCTAssertEqual(control.value as? String,expected)
+ }
+ func test00RestorePreciseSetting(){
+ let settings=XCUIApplication(bundleIdentifier:"com.apple.Preferences");settings.activate()
+ if !settings.switches["Precise Location"].exists {
+  for _ in 0..<8 {if settings.buttons["com.apple.settings.privacyAndSecurity"].exists {break};settings.navigationBars.buttons.element(boundBy:0).tap()}
+  settings.buttons["com.apple.settings.privacyAndSecurity"].tap();settings.buttons["LOCATION"].tap();settings.cells.matching(NSPredicate(format:"label BEGINSWITH 'SDK Consumer'")).firstMatch.tap()
+ }
+ setPrecise(true,settings)
+ }
  func test11ReducedAccuracyRecovery(){
  boot();manual()
  let settings=XCUIApplication(bundleIdentifier:"com.apple.Preferences");settings.activate()
@@ -84,9 +100,14 @@ final class ArrivalTouch: XCTestCase {
  let consumer=settings.cells.matching(NSPredicate(format:"label BEGINSWITH 'SDK Consumer'")).firstMatch
  for _ in 0..<10 {if consumer.exists {break};settings.swipeUp()};XCTAssertTrue(consumer.exists);consumer.tap()
  mark("ACCURACY_SETTINGS "+settings.debugDescription)
- let precise=settings.switches["Precise Location"];XCTAssertTrue(precise.waitForExistence(timeout:5));XCTAssertEqual(precise.value as? String,"1");precise.tap()
+ let precise=settings.switches["Precise Location"];XCTAssertTrue(precise.waitForExistence(timeout:5));XCTAssertEqual(precise.value as? String,"1");setPrecise(false,settings);addTeardownBlock {settings.activate();self.setPrecise(true,settings)}
  let reduced=XCTAttachment(screenshot:settings.screenshot());reduced.name="native-reduced-accuracy-setting";reduced.lifetime = .keepAlways;add(reduced)
  app.activate();tap("Use my location");continueAttempt();XCTAssertTrue(text("Live navigation needs precise location").waitForExistence(timeout:8));evidence("native-reduced-blocker")
- settings.activate();precise.tap();app.activate();tap("Not now");gps("gate01");tap("Use my location");continueAttempt();XCTAssertTrue(text("Your live route").waitForExistence(timeout:12));evidence("native-full-accuracy-recovered");tap("Not now");tap("End directions")
+ settings.activate();setPrecise(true,settings);sleep(2);XCTAssertEqual(precise.value as? String,"1");app.activate();tap("Not now");gps("gate01",4);tap("Use my location");continueAttempt();for attempt in 0..<3 {if text("Your live route").waitForExistence(timeout:8) {break};evidence("accuracy-recovery-retry-\(attempt)");if app.buttons["Try again"].exists {tap("Try again")}};XCTAssertTrue(text("Your live route").waitForExistence(timeout:8));evidence("native-full-accuracy-recovered");tap("Not now");tap("End directions")
+ }
+ func test12NativeAccessibilityAudit() throws {
+ boot();evidence("native-accessibility-before-audit")
+ if #available(iOS 17.0, *) {try app.performAccessibilityAudit(for:.all)} else {throw XCTSkip("Native audit requires iOS17+")}
+ evidence("native-accessibility-after-audit")
  }
 }

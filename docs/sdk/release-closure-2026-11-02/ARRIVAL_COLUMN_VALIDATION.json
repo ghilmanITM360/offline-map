@@ -1,0 +1,206 @@
+{
+  "baselineHead": "a1036cf847264fed5a0aca4b40fb54cd16059c8e",
+  "sourcePatchSha256": "ad20a07981507f22f8876e4416fd20d4aa84a6ddd1113ce75fcfcff329159071",
+  "checks": [
+    {
+      "command": [
+        "npm",
+        "run",
+        "typecheck"
+      ],
+      "startedUTC": "2026-11-02T10:09:41.168996+00:00",
+      "exit": 0,
+      "seconds": 6.481738090515137,
+      "log": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/closure-fix-20261102-02/validation-00.log",
+      "sha256": "1f526e8af8d7c0d50bd938d1a64afe9bf80f625bb4334c9f9ee4dad104f98a77"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "lint"
+      ],
+      "startedUTC": "2026-11-02T10:09:47.651587+00:00",
+      "exit": 0,
+      "seconds": 6.8979270458221436,
+      "log": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/closure-fix-20261102-02/validation-01.log",
+      "sha256": "987bbbf68474de914f52718b5408a0fd224cedb805df53995b41b035d92a9f9a"
+    },
+    {
+      "command": [
+        "npm",
+        "test"
+      ],
+      "startedUTC": "2026-11-02T10:09:54.550270+00:00",
+      "exit": 0,
+      "seconds": 67.04062628746033,
+      "log": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/closure-fix-20261102-02/validation-02.log",
+      "sha256": "c31fc3189908d3249eff4d1651455e28bd70e24e985104afbbad6550b4808e27"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "test:components",
+        "--",
+        "--runInBand",
+        "--watchman=false"
+      ],
+      "startedUTC": "2026-11-02T10:11:01.592690+00:00",
+      "exit": 0,
+      "seconds": 98.10505318641663,
+      "log": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/closure-fix-20261102-02/validation-03.log",
+      "sha256": "f99d62b4d17fb7719a0fc402613f008b6151a9ff962ce45c89d294a4f6b0afda"
+    },
+    {
+      "command": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "startedUTC": "2026-11-02T10:12:39.699396+00:00",
+      "exit": 0,
+      "seconds": 0.03913092613220215,
+      "log": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/closure-fix-20261102-02/validation-04.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "test:sdk-package"
+      ],
+      "startedUTC": "2026-11-02T10:12:39.738880+00:00",
+      "exit": 0,
+      "seconds": 5.607635021209717,
+      "log": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/closure-fix-20261102-02/validation-05.log",
+      "sha256": "0658cb62dd166f67b17a66c47f445092e2d3e346a91c79fb65f9485f91cc7dcf"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "sdk:bundle",
+        "--",
+        "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/delivery-arrival-column-candidate"
+      ],
+      "startedUTC": "2026-11-02T10:12:45.346960+00:00",
+      "exit": 0,
+      "seconds": 91.21740627288818,
+      "log": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/closure-fix-20261102-02/validation-06.log",
+      "sha256": "8ed063d269dfe371dc8e4769c9da40f148b5f71ff0f0650ed11850a5a3c50920"
+    }
+  ],
+  "consumerChecks": [
+    {
+      "command": [
+        "npm",
+        "ci",
+        "--ignore-scripts",
+        "--no-audit",
+        "--no-fund",
+        "--prefer-offline"
+      ],
+      "cwd": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/delivery-arrival-column-candidate.verification/delivery-arrival-column-candidate/examples/expo-consumer",
+      "exit": 0,
+      "seconds": 8.610390186309814,
+      "log": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/closure-fix-20261102-02/consumer-00.log",
+      "sha256": "0ef37f0ceb694d48902b6403a8058c1401d502317301fa7f38d8c98984cd69c5"
+    },
+    {
+      "command": [
+        "npx",
+        "--no-install",
+        "tsc",
+        "--noEmit"
+      ],
+      "cwd": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/delivery-arrival-column-candidate.verification/delivery-arrival-column-candidate/examples/expo-consumer",
+      "exit": 0,
+      "seconds": 2.9923410415649414,
+      "log": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/closure-fix-20261102-02/consumer-01.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "command": [
+        "./node_modules/.bin/jest",
+        "--ci",
+        "--runInBand",
+        "--watchman=false",
+        "--json",
+        "--outputFile=/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/closure-fix-20261102-02/consumer-jest.json"
+      ],
+      "cwd": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/delivery-arrival-column-candidate.verification/delivery-arrival-column-candidate/examples/expo-consumer",
+      "exit": 0,
+      "seconds": 10.55081295967102,
+      "log": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/closure-fix-20261102-02/consumer-02.log",
+      "sha256": "f542d9d76fdc3289aa5dae81b53feccc5dd857906bb1422c634c80629387e025"
+    },
+    {
+      "command": [
+        "node",
+        "/Users/ghilmanislam360/GhilmanProjects/offline-map/scripts/test-dependency-security.mjs",
+        "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/delivery-arrival-column-candidate.verification/delivery-arrival-column-candidate/examples/expo-consumer"
+      ],
+      "cwd": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/delivery-arrival-column-candidate.verification/delivery-arrival-column-candidate/examples/expo-consumer",
+      "exit": 0,
+      "seconds": 0.15723276138305664,
+      "log": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/closure-fix-20261102-02/consumer-03.log",
+      "sha256": "7bc111b5b36c5f34b81ecd748874feb64b6e7f7974669baa6097a2de97f70310"
+    },
+    {
+      "command": [
+        "./node_modules/.bin/expo",
+        "export",
+        "--platform",
+        "android",
+        "--output-dir",
+        "export-android",
+        "--dump-sourcemap",
+        "--max-workers",
+        "2"
+      ],
+      "cwd": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/delivery-arrival-column-candidate.verification/delivery-arrival-column-candidate/examples/expo-consumer",
+      "exit": 0,
+      "seconds": 10.925843238830566,
+      "log": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/closure-fix-20261102-02/consumer-04.log",
+      "sha256": "f45767add56a2fc49eb16565ec3d866fa9d84d56a4ee71cf6100822cbebbd0de"
+    },
+    {
+      "command": [
+        "./node_modules/.bin/expo",
+        "export",
+        "--platform",
+        "ios",
+        "--output-dir",
+        "export-ios",
+        "--dump-sourcemap",
+        "--max-workers",
+        "2"
+      ],
+      "cwd": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/delivery-arrival-column-candidate.verification/delivery-arrival-column-candidate/examples/expo-consumer",
+      "exit": 0,
+      "seconds": 9.33041524887085,
+      "log": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/closure-fix-20261102-02/consumer-05.log",
+      "sha256": "bd530004fb8a36ae41642d2a5b5f502e9bb8397374458fdcbcd80b8087713350"
+    }
+  ],
+  "jestSuites": 223,
+  "jestTests": 2389,
+  "consumerTests": 63,
+  "goldenComparisons": 91506,
+  "differentialComparisons": 2400,
+  "nativeIdentities": {
+    "baselineHead": "a1036cf847264fed5a0aca4b40fb54cd16059c8e",
+    "sourcePatchSha256": "ad20a07981507f22f8876e4416fd20d4aa84a6ddd1113ce75fcfcff329159071",
+    "sdk": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/delivery-arrival-column-candidate/package/muslim-ummah-offline-navigation-0.1.0.tgz",
+    "sdkSha256": "a2bb865d38d457ea19228b81670616a57f353644dd05be1c2d16fafc738f71d4",
+    "iosApp": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/closure-fix-20261102-02/IOSDerivedData/Build/Products/Release-iphonesimulator/SDKConsumer.app",
+    "iosExecutableSha256": "29962a589b6f0249417f5bf290aaf12efef06c729a81b65184f0c80429a8b32d",
+    "iosJsSha256": "ad88c6c7349e2d95eeecdb50f237beb7dd27f8d71cb3b84fc5315735fa6acf6c",
+    "androidApk": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/closure-fix-20261102-02/sdk-consumer-arrival-wrap-arm64-release.apk",
+    "androidApkSha256": "40228465e6073b3c37d902f6870f54b0e26895327cb85026e0f4d2d9d7e87f90",
+    "originalTaskHead": "45daa0189c9718a46d797ef3e3be528feca4c36a",
+    "provenanceCorrection": "v1 baselineHead field inherited the earlier task head; actual patch ad20 is relative to a1036cf. Binary bytes unchanged."
+  },
+  "nativeRegression": "EMULATOR VERIFIED: final Urdu Extra-Large and Urdu AX5 both pass full frames, coordinate touch exit and another journey; remaining acceptance running"
+}
