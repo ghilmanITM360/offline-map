@@ -1,0 +1,103 @@
+{
+  "evidenceLevel": "SOURCE/RUNTIME VERIFIED",
+  "commands": [
+    {
+      "command": [
+        "npm",
+        "run",
+        "typecheck"
+      ],
+      "cwd": "/Users/ghilmanislam360/GhilmanProjects/offline-map",
+      "node": "24.14.0",
+      "startedUTC": "2026-11-02T05:46:46.284119+00:00",
+      "durationSeconds": 5.756,
+      "exitCode": 0,
+      "log": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/logs/native-config-0-typecheck.log",
+      "logSha256": "1f526e8af8d7c0d50bd938d1a64afe9bf80f625bb4334c9f9ee4dad104f98a77"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "lint"
+      ],
+      "cwd": "/Users/ghilmanislam360/GhilmanProjects/offline-map",
+      "node": "24.14.0",
+      "startedUTC": "2026-11-02T05:46:52.041044+00:00",
+      "durationSeconds": 4.841,
+      "exitCode": 0,
+      "log": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/logs/native-config-1-lint.log",
+      "logSha256": "987bbbf68474de914f52718b5408a0fd224cedb805df53995b41b035d92a9f9a"
+    },
+    {
+      "command": [
+        "npm",
+        "test"
+      ],
+      "cwd": "/Users/ghilmanislam360/GhilmanProjects/offline-map",
+      "node": "24.14.0",
+      "startedUTC": "2026-11-02T05:46:56.882495+00:00",
+      "durationSeconds": 58.677,
+      "exitCode": 0,
+      "log": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/logs/native-config-2-test.log",
+      "logSha256": "75ae120ea0ab1eab94373577c1459d29c0b7eccb3d51ccbf72ec12ded8a2b425"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "test:components",
+        "--",
+        "--runInBand",
+        "--watchman=false"
+      ],
+      "cwd": "/Users/ghilmanislam360/GhilmanProjects/offline-map",
+      "node": "24.14.0",
+      "startedUTC": "2026-11-02T05:47:55.560978+00:00",
+      "durationSeconds": 88.73,
+      "exitCode": 0,
+      "log": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/logs/native-config-3-test-components.log",
+      "logSha256": "94fdee31a88fae53a3a6bf2ada02010e7bef39fd97581fcaaab88f8e43a98044"
+    },
+    {
+      "command": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "cwd": "/Users/ghilmanislam360/GhilmanProjects/offline-map",
+      "node": "24.14.0",
+      "startedUTC": "2026-11-02T05:49:24.284794+00:00",
+      "durationSeconds": 0.028,
+      "exitCode": 0,
+      "log": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/logs/native-config-4---check.log",
+      "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "test:sdk-package"
+      ],
+      "cwd": "/Users/ghilmanislam360/GhilmanProjects/offline-map",
+      "node": "24.14.0",
+      "startedUTC": "2026-11-02T05:49:24.312799+00:00",
+      "durationSeconds": 5.326,
+      "exitCode": 0,
+      "log": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/logs/native-config-5-test-sdk-package.log",
+      "logSha256": "be8354e855781e6348e2523b925eefd661d9e0da58fc63802ba593a02c17b8f9"
+    }
+  ],
+  "jest": {
+    "suites": 223,
+    "tests": 2386,
+    "failed": 0
+  },
+  "differential": 2400,
+  "goldenRoutes": 91506,
+  "headlessChecks": 83,
+  "exports": 8,
+  "securityChecks": 14,
+  "nativeRetest": "PENDING rebuilt APK",
+  "sdkSha256": "d722ce2541c3cd179cd0ce19ecf9536ec50481ace08beea3a0ef61f19dd29cca"
+}
