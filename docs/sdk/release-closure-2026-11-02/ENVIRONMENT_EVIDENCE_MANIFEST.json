@@ -1,0 +1,56 @@
+{
+  "evidenceRoot": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation",
+  "source": "2d9fa73874938a2d7483c4499ed0a1bddc3ba0bc",
+  "files": [
+    {
+      "path": "dependencies-before.json",
+      "bytes": 213280,
+      "sha256": "f122e7a35bf7f1ec44f8c7fb6b00f0b874f2a9645953aeebd6c52089c5b9e15e"
+    },
+    {
+      "path": "dependencies-after.json",
+      "bytes": 214089,
+      "sha256": "dd3acfe2d41cb6ea22c968fce2ac966c1a5aec173e3334a0d3f629165e9a32f7"
+    },
+    {
+      "path": "input-hashes-before.json",
+      "bytes": 355,
+      "sha256": "fa1a4a1579a779e317dec62a7f823907959773f1a42189d8aaa87c97d32d62f7"
+    },
+    {
+      "path": "node-modules-recovery-manifest.json",
+      "bytes": 18163385,
+      "sha256": "787a3c320647fdb3b0594ae5572a09851d26ad4a4abd939dd8bee21d4d73cb1f"
+    },
+    {
+      "path": "logs/npm-ci.log",
+      "bytes": 2147,
+      "sha256": "eb81d9004f593338452816ab2aafc36be86b5ad38ec1f5cb940deaeca8d5460f"
+    },
+    {
+      "path": "logs/dependency-security.log",
+      "bytes": 235,
+      "sha256": "bb9a1534ec5491b6fb68fc35a120901e97d5b7c40c23854640908385864d7719"
+    },
+    {
+      "path": "evaluate_yoga.rb",
+      "bytes": 758,
+      "sha256": "e6616c67489ce627cf4faa4a4dca122a2b8b854469f1b13c8b3dda366821e5c2"
+    },
+    {
+      "path": "yoga/Yoga-source.json",
+      "bytes": 2592,
+      "sha256": "790c503aebcead7e43ccf74ea556e00874d328923d4bae67768b78301ac06e2b"
+    },
+    {
+      "path": "yoga/Yoga-prebuilt.json",
+      "bytes": 2586,
+      "sha256": "4a5f7673d048800016f4a2b8b2d7833231cc30ec1bd5aecb579cc0770b09d9b7"
+    },
+    {
+      "path": "yoga/field-comparison.json",
+      "bytes": 266,
+      "sha256": "83b63b703bc9a538211324ad0e3cc64a7f98b6f19b2a02cfcfe9267a916511c0"
+    }
+  ]
+}
