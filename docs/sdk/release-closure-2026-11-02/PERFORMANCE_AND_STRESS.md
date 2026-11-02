@@ -22,3 +22,6 @@ Fresh offline cold launch am-start TotalTime833ms; corrected initial cold990ms. 
 UIAutomator intermittently timed out before actions; screenshot/ADB later recovered. Emulator logged bad color buffer handle333; host memory free34–35% during one interruption. No causal GPU, host-pressure, framework or SDK attribution is proved. Retried premature candidate/demo-tool actions are recorded as automation errors, not app failures.
 
 Rapid permission races, duplicate/out-of-order noisy fixes, repeated reroutes,20Live sessions,20Live lifecycle races, small-screen/three-button layouts, native accessibility-service traversal, timer/listener/watch leak attribution and long-running CPU/ANR tests remain NOT RUN. iOS stress BLOCKED by Pods. Human TalkBack/VoiceOver remain external.
+
+
+Resumed checkpoint: controlled retained-memory experiment NOT RUN before the owner's85%five-hour stop threshold. Prior PSS observations are not attributed to a leak; **LEAK STATUS:UNPROVEN**. Do not inherit stress passes to new085a493 executable. Next: warm-up, consistent quiet samples of PSS/RSS/private-dirty/Java/native/graphics, two comparable bounded session blocks and watcher/subscription ownership instrumentation. One current-binary background return preserved step2(P12); it is not20cycles. No new memory/CPU estimate is invented.

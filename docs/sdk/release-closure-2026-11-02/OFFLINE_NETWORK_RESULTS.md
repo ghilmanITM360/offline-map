@@ -5,3 +5,5 @@ Android EMULATOR VERIFIED subset, accepted APK7b343f5b15a3588bd78fb670e0d2123b3e
 Fresh disposable app-data cold launch, warm resume, directory/search selection, Karachi map rendering, manual origin/preview/guide, native emulator GPS candidate/Live/progress/loss/recovery and Arrival all worked under this isolation. No external URL was necessary for those exercised paths. This is evidence for exercised paths, not a universal static claim about every URL. Reroute and remaining venue variants require their own results.
 
 iOS effective isolation and native offline scenarios: BLOCKED by unresolved Pods/Yoga gate. Whole physical-device airplane-mode cold start remains BLOCKED; no emulator result replaces it. Guest networking must be restored to saved original state at campaign shutdown; no whole-Mac networking changes.
+
+Resumed source085a493: source/package gates pass; previous native results remain tied to their original binary. Current affected native retests are separate in ANDROID_NATIVE_RESULTS.md and IOS_NATIVE_RESULTS.md. External/physical J gates are unchanged; no approval inferred.

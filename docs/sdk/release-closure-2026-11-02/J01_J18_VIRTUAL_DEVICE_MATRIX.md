@@ -22,3 +22,5 @@ Original definitions and hardware gates remain in ../release-closure-2026-11-01/
 | J16 Audible screen readers | NOT RUN | BLOCKED Pods/Yoga | BLOCKED |
 | J17 Large text/RTL/themes | FAIL observation: dynamic text; themes/RTL/journey subsets pass | BLOCKED Pods/Yoga | BLOCKED |
 | J18 Gate18/19survey | BLOCKED field | BLOCKED Pods/Yoga | BLOCKED |
+
+Resumed source085a493: source/package gates pass; previous native results remain tied to their original binary. Current affected native retests are separate in ANDROID_NATIVE_RESULTS.md and IOS_NATIVE_RESULTS.md. External/physical J gates are unchanged; no approval inferred.

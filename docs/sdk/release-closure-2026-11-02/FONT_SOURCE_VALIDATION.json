@@ -91,5 +91,5 @@
       "logSha256": "f217252bbd1a41a0b0269a71e37ec89449cd220a8288d7167b5a86ff88331485"
     }
   ],
-  "nativeStatus": "DIAGNOSTIC I PASS; production Release retest pending"
+  "nativeStatus": "Production085a493 APK builds and English/Urdu actual Settings/font/state retests PASS; remaining platform cases pending"
 }

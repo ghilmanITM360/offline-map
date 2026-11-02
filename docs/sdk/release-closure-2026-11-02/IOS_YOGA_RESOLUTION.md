@@ -1,4 +1,4 @@
-# iOS Yoga / CocoaPods — installation resolved; build pending
+# iOS Yoga / CocoaPods — installation resolved; consumer Release build PASS
 
 Resume from d8b64d7, tracking #395/#394. **ENVIRONMENT VERIFIED**, not an iOS native-build PASS.
 
@@ -23,3 +23,5 @@ Executed from repository `ios/`: `<E>/ruby26-tools/ruby26-bundle <E>/ruby26-tool
 Three existing RN dependency/Hermes script-phase warnings remain visible in the log. Actual Release compilation and simulator acceptance are **NOT RUN at this installation checkpoint**. Next: build/identify the delivered SDK consumer using this reproducible environment, then AX5Arrival actual-touch acceptance.
 
 E=`/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation`. Evidence includes field-by-field comparison, actual glob probes, normal evaluator, source hashes, complete command logs and toolchain lock. Wrapper reproduction requires `-I` both task-local RubyGems and Bundler libraries plus `-rlogger -rbundler/setup`; see pinned wrapper, not the system default Bundler1.
+
+Latest resumed result: both initial and final SDK consumer iOS Release builds PASS; final-runtime retests remain pending. See IOS_NATIVE_RESULTS.md for separate executable/JS identities and actual native acceptance. Earlier installation-checkpoint build-pending wording above is historical.

@@ -1,4 +1,4 @@
-# Android dynamic text rendering — FAIL, unresolved
+# Android dynamic text rendering — resolved in085a493
 
 Accepted APK `7b343f5b15a3588bd78fb670e0d2123b3e373259f74d512c290a8a9918d9030f`, source `70275f3`, API36 ARM64 Codex_Ijtema_API36.
 
@@ -21,3 +21,8 @@ Source correction: existing config plugin now installs a version-pinned font hel
 RED: two regressions fail against previous source (actual fresh consumer prebuild missing native handling; Android paragraph instance remains stale). GREEN: initial focused22tests pass;2version/idempotence cases also pass in full223suites/2389tests; TypeScript/lint/npm test/package checks pass. SDK tarball reproducibility nowd1260aaa49d771072a8ce51d097fe4f1225339020181fd3358cdc3fee906123c. Diagnostics are not final-binary acceptance. Build a fresh production consumer from this source and retest Settings, Urdu, unrelated commits, Arrival, theme and lifecycle before resolving A07.
 
 New evidence batch: `<E>/native/resume-20261102-font`, including E–I identities, exact native sources, full logcat/native frame/span values, Settings screenshots/XML, diagnostic-discriminator.json and source RED/GREEN/final-source command logs. Rejected probes and all accepted old artifacts remain preserved. Disposable original JS/Activity/Application bytes restored after staging I.
+
+
+## Final production retest
+
+085a493 ReleaseAPK d071437ce60366fdcf11c573a0736b127b605706f6b11420f366e0b890afeed2 builds37.698s. Actual Settings100→200 gives title85→127px,step47→88px,turn69→97px. Urdu200→100 reduces real text bounds; step2 retained. Next/Previous, unrelated Dark/Light/System and language commits, one background return, pan/recenter and attribution dialog pass on this APK. Native A07 is PASS. Android200%Arrival/nativeGPS/stress remain separate pending cases. Production frames and screenshots are `<E>/native/final-085a493`; current matrix12/0/0/23. Compiler warning on pinned Kotlin-internal initializer remains explicit. Full source/consumer checks pass. No subsequent executable source edit.

@@ -1,0 +1,1411 @@
+{
+  "files": [
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/E-initial-logcat.txt",
+      "bytes": 3674,
+      "sha256": "ea63db9df02d1e965c63e5fff26566d67d8f474c9390303bc1c53c42f7e92f06"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/E01-launch.png",
+      "bytes": 145944,
+      "sha256": "ff8ece6cfb22017f9bf47a06c58187bf3904d66b489d0cdad9a25a6cf5230d91"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/E01-launch.xml",
+      "bytes": 12680,
+      "sha256": "57ddf3d1d0c315ec0d0dbb135f7b3ad696b689e3d2fe537507f7fe99c42a42e6"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/E02-step2.png",
+      "bytes": 103275,
+      "sha256": "04e6a5788e23eec7c6a8644179f94da65cb82fce5f89ed5955bd31e6ca760334"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/E02-step2.xml",
+      "bytes": 10563,
+      "sha256": "d93842d930eb42bf9d25dddfb731f1c0fa74447af1be5676759278b3a1aab547"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/E03-display.png",
+      "bytes": 135944,
+      "sha256": "334421cec2cdb6f0bab943ff237ad5a26450aaabc2deb12371cd0542adc93849"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/E03-display.xml",
+      "bytes": 12146,
+      "sha256": "60785b21dae08efdf52bee1357177dba26c4d986b34e1de21d079ba9c27498ea"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/E04-settings-max.png",
+      "bytes": 209546,
+      "sha256": "0e753d053439150a84547f5b21cf1815ac92c6d202986ef3004c07b6e6204f1f"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/E04-settings-max.xml",
+      "bytes": 8693,
+      "sha256": "aca7558f70963c75645c8ad8b414a586ec1e8762cbca35fbc92088f74f877739"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/E05-logcat.txt",
+      "bytes": 12374,
+      "sha256": "49fbc1595ffe627d0a42ce49de5a01ae1419cce37ab3d878e8a58581a4274ce2"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/E05-step2-max.png",
+      "bytes": 102358,
+      "sha256": "183800e4b77879112ebb0fcb2f0a34266264e0f8b3149e431fc2fc05f97d163d"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/E05-step2-max.xml",
+      "bytes": 10184,
+      "sha256": "06a9ed06c6eb9c15bd71523849744417a26df9966754dd91d414e35ee42d1481"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/F01-cold-at-max.png",
+      "bytes": 150776,
+      "sha256": "4e7d0b1d1d8e493c3f9c211c3d61dfcd916d86adfc177e513196ef8e83499a42"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/F01-cold-at-max.xml",
+      "bytes": 10496,
+      "sha256": "7b1e43888c3dbb4ef5a7e6c875f2bbb996773f884c9eda02d51776b0f483700d"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/F02-destination.png",
+      "bytes": 151644,
+      "sha256": "e1241f88444c4b264250b81825b204ef5116894fb508c9e1af7c88cebde127fe"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/F02-destination.xml",
+      "bytes": 9125,
+      "sha256": "94ca6df10a39ee2c788ad5fc0bd86fa81a1a26350a0fd99a15f7f4398c5508cd"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/F03-preview-max.png",
+      "bytes": 175114,
+      "sha256": "6ecb6c24a0d9639d13ab8e48a6db8cce6c8c4df0a30c5bf1e15fe0959e03ec1a"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/F03-preview-max.xml",
+      "bytes": 9555,
+      "sha256": "faaae581d9bf521a6d6c186412e86c5d7a6a32fc91012c71fe2fb49ee8f533f5"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/F04-guide-max.png",
+      "bytes": 143154,
+      "sha256": "cb90f7c7419b5d51254a64c5831cbc6ae786740f4fd67b9037b3517915c54d72"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/F04-guide-max.xml",
+      "bytes": 10177,
+      "sha256": "166f8914a92fef52cb4984c2f33c6166cb742fe400d0d6e1490f6d8e06a3153d"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/F05-settings-retry.png",
+      "bytes": 146427,
+      "sha256": "717db01300175f5d7536250764c35673947fefd8a6406656eba4e02cc8664e40"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/F05-settings-retry.xml",
+      "bytes": 9506,
+      "sha256": "3e7c4b9f7f2c9245ada9b77a8635bf47f2e773d6d041c70576402000ffe92957"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/F06-settings-normal.png",
+      "bytes": 191305,
+      "sha256": "9d58204604f5efae5406ebc6639fddfa9e4535f96c5dce6add9cbdb2dd117d96"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/F06-settings-normal.xml",
+      "bytes": 10940,
+      "sha256": "2e1d800e7dba7dd8126eecf3724ba8ec9b36cb61ed6566748bc981ee79a86ee1"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/F07-logcat.txt",
+      "bytes": 24147,
+      "sha256": "87e65ae815414bc78731ddcd6af2994912b98d0fcfd2d3a6c6a1ab26f066318a"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/F07-return-normal.png",
+      "bytes": 135518,
+      "sha256": "26c4afbe6a183a80896fdfc7271c913c6da96876ea9d5c5979ef42d61845ba89"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/F07-return-normal.xml",
+      "bytes": 10563,
+      "sha256": "effc60dd2fbe7a2c38d4eb8adb24dca76eb48ad031bcf7d73a1285803128fb45"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/G-hang-logcat.txt",
+      "bytes": 132445,
+      "sha256": "b0719a89dfb135bc3ff691752f16f07bb6e5da5f3e8d43b94f60ad47c915a9d5"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/G-hang-memory.txt",
+      "bytes": 3249,
+      "sha256": "721b035e3e54ca00eb0050e53d4971ab39be8eb50c35ca78d6066a92ed878011"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/G01-quick.png",
+      "bytes": 146271,
+      "sha256": "ccb42329e2c7ac1b966740067e7f8b35fee5d5ebd3c7336bd3debf7c945f78de"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/G02-destination-ready.png",
+      "bytes": 112485,
+      "sha256": "fe3f25bd3347ac4ffb7095c7b1fe15615f38a1ca695b67b696e2c43a46266494"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/G02-destination-ready.xml",
+      "bytes": 9139,
+      "sha256": "02d383f9ad9c99b7ae67e9fbf672678c72b8e2b04229b2c8860fbde1c57c537c"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/G03-guide-normal.png",
+      "bytes": 104095,
+      "sha256": "a41eb341aadf1398a5e6bd7758dbd833e61792ce415023748d894069c187cfd3"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/G03-guide-normal.xml",
+      "bytes": 10563,
+      "sha256": "d93842d930eb42bf9d25dddfb731f1c0fa74447af1be5676759278b3a1aab547"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/G04-settings-max.png",
+      "bytes": 210101,
+      "sha256": "1dac36c9a2456f8205dead6c1a5cedc33351bfea00f403255c6293c01436a99c"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/G04-settings-max.xml",
+      "bytes": 8693,
+      "sha256": "aca7558f70963c75645c8ad8b414a586ec1e8762cbca35fbc92088f74f877739"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/G05-logcat.txt",
+      "bytes": 33882,
+      "sha256": "b2ff648f1686185ef5dde2ebd24aa40639a53399fff80697f1653b14a3d9f51f"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/G05-return-max.png",
+      "bytes": 102850,
+      "sha256": "5744189b35346df310cfb4edf9e676a311e185ad008757d23e9afd0dd6c0546f"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/G05-return-max.xml",
+      "bytes": 10184,
+      "sha256": "06a9ed06c6eb9c15bd71523849744417a26df9966754dd91d414e35ee42d1481"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/H01-guide-cold.png",
+      "bytes": 143420,
+      "sha256": "a33fdc46809027a158ef6f2565a1c56fe4bf0ce2a5d6b6ec4d5279d143d0ad1b"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/H01-guide-cold.xml",
+      "bytes": 10177,
+      "sha256": "166f8914a92fef52cb4984c2f33c6166cb742fe400d0d6e1490f6d8e06a3153d"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/H02-logcat.txt",
+      "bytes": 45649,
+      "sha256": "5c3a6ef00da6cc001f11fa33ea5564c8bc09205797cc4d54a5971001e3f87186"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/H02-return.png",
+      "bytes": 129762,
+      "sha256": "21da447c79af48abacdf57a4024dbba9b9a43605b2df6c8ce126c5615bd24a19"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/H02-return.xml",
+      "bytes": 10563,
+      "sha256": "b49ddddd2ed7712c1140ed0ef0d95e46341794e89bc3f77b54f4d8d06595eb66"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/H02-scale.txt",
+      "bytes": 3,
+      "sha256": "d0ff5974b6aa52cf562bea5921840c032a860a91a3512f7fe8f768f6bbe005f6"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/H02-settings.png",
+      "bytes": 190119,
+      "sha256": "b689be7efa5db3aaeb22a275613ca809a2777285ba6176d17304391b2af7ba0b"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/H02-settings.xml",
+      "bytes": 10940,
+      "sha256": "2e1d800e7dba7dd8126eecf3724ba8ec9b36cb61ed6566748bc981ee79a86ee1"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/H03-logcat.txt",
+      "bytes": 54357,
+      "sha256": "158652cabf88c37b7416677972ebde86bb1a0c821dc83f448b32922f270e0322"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/H03-return.png",
+      "bytes": 143399,
+      "sha256": "372ac3fb1c8390ff35f11b6a648e63b873837fa1c5fb8727f5dfea73f2c59f63"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/H03-return.xml",
+      "bytes": 10177,
+      "sha256": "166f8914a92fef52cb4984c2f33c6166cb742fe400d0d6e1490f6d8e06a3153d"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/H03-scale.txt",
+      "bytes": 3,
+      "sha256": "d84bdb34d4eeef4034d77e5403f850e35bc4a51b1143e3a83510e1aaad839748"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/H03-settings.png",
+      "bytes": 210276,
+      "sha256": "56b67ab0a38f896f8ede9c0b7b0e7713a626c2798ba9477ebd91da10ea0b2563"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/H03-settings.xml",
+      "bytes": 8693,
+      "sha256": "aca7558f70963c75645c8ad8b414a586ec1e8762cbca35fbc92088f74f877739"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/H04-logcat.txt",
+      "bytes": 63074,
+      "sha256": "987bb95a4f066035f04c5d1a888f62618523655b6562ada9ad203d929bc51041"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/H04-return.png",
+      "bytes": 132117,
+      "sha256": "2ee83f8c6f6a1d8f52b4c16565bea21e46d4a9c33b328f520219f929d651c78e"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/H04-return.xml",
+      "bytes": 10563,
+      "sha256": "d93842d930eb42bf9d25dddfb731f1c0fa74447af1be5676759278b3a1aab547"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/H04-scale.txt",
+      "bytes": 3,
+      "sha256": "d0ff5974b6aa52cf562bea5921840c032a860a91a3512f7fe8f768f6bbe005f6"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/H04-settings.png",
+      "bytes": 190543,
+      "sha256": "70702de23b18ce70c3eaa7350c3a051dd76e1fe1f546540685d635d155d98aba"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/H04-settings.xml",
+      "bytes": 10940,
+      "sha256": "2e1d800e7dba7dd8126eecf3724ba8ec9b36cb61ed6566748bc981ee79a86ee1"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/I01-guide-cold.png",
+      "bytes": 102404,
+      "sha256": "10913ebabadfab2cfb3d901dadbac67220b6c35a6df9b9fa1425f9cc0bd7d5a3"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/I01-guide-cold.xml",
+      "bytes": 10563,
+      "sha256": "d93842d930eb42bf9d25dddfb731f1c0fa74447af1be5676759278b3a1aab547"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/I02-logcat.txt",
+      "bytes": 75428,
+      "sha256": "b18103f1f82a0a38322c15c16fcc1da3095ce929d0c6ef2b49c2126185a880a3"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/I02-return.png",
+      "bytes": 129691,
+      "sha256": "1800a6eb5cb4aa3402b452fbb0abcd703d1f114cbcff9000da3e0c4bfb4c1ad7"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/I02-return.xml",
+      "bytes": 10177,
+      "sha256": "166f8914a92fef52cb4984c2f33c6166cb742fe400d0d6e1490f6d8e06a3153d"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/I02-scale.txt",
+      "bytes": 3,
+      "sha256": "d84bdb34d4eeef4034d77e5403f850e35bc4a51b1143e3a83510e1aaad839748"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/I02-settings.png",
+      "bytes": 208928,
+      "sha256": "5cebf7776e7f87bc5c4077e456f2ea7f4a592b09284d1b13c5d99b1cbad4d996"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/I02-settings.xml",
+      "bytes": 8693,
+      "sha256": "aca7558f70963c75645c8ad8b414a586ec1e8762cbca35fbc92088f74f877739"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/I03-logcat.txt",
+      "bytes": 84149,
+      "sha256": "3f39a9cbd8b56b0be2c6f5e177cab6bc5bfa0881cd069433b5d7bdd7f6c32d47"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/I03-return.png",
+      "bytes": 102510,
+      "sha256": "b7b9ea94fa79a046e90b918597e44c2eeb1d595ff83a5384a82d68d0e780fbf4"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/I03-return.xml",
+      "bytes": 10563,
+      "sha256": "d93842d930eb42bf9d25dddfb731f1c0fa74447af1be5676759278b3a1aab547"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/I03-scale.txt",
+      "bytes": 3,
+      "sha256": "d0ff5974b6aa52cf562bea5921840c032a860a91a3512f7fe8f768f6bbe005f6"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/I03-settings.png",
+      "bytes": 189900,
+      "sha256": "f2813b6e5272d4d734b484fe0eba90456fcaa62c1b90c6cb5d68a0d1059e2c59"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/I03-settings.xml",
+      "bytes": 10940,
+      "sha256": "2e1d800e7dba7dd8126eecf3724ba8ec9b36cb61ed6566748bc981ee79a86ee1"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/MainActivity-original.kt",
+      "bytes": 2193,
+      "sha256": "b5c4c6dade7f4aa26aa3ae87421ae7d2a39fc3b378631cccb0b3d96f3df05cf3"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/MainActivity-probe-G.kt",
+      "bytes": 4413,
+      "sha256": "2ffb3e92f7f0abaecd9e7a512d86eb9fae3935731ad1e2cf10060ac7d6da130e"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/MainActivity-probe-H.kt",
+      "bytes": 4426,
+      "sha256": "e69022f32144af64015e409139fc760ce68bac9b182ab87da732cc2e882a10cd"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/MainActivity-probe.kt",
+      "bytes": 4376,
+      "sha256": "9b7f02853d277856b9e6fbbb4c1df52bebd5b5e04c8aea56831ff9e0b6578763"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/MainApplication-original.kt",
+      "bytes": 2036,
+      "sha256": "a6a3984a82b0c6a70dc9ff20b097a69e8371cda2b4e004776325dceeb6883cc7"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/MainApplication-probe-F.kt",
+      "bytes": 2643,
+      "sha256": "4e35cf2c55e9c121152b49f4cf728bbd63993438660aea341b4f173dbaeb64cd"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/R01-launch.png",
+      "bytes": 1502756,
+      "sha256": "16914be01c83ca433e43de16d1b500b69d7f0c872e4417950efdeebd07e64477"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/R01-launch.xml",
+      "bytes": 461,
+      "sha256": "5a1622058eb721ec66532b391a85ba83ae1fad0b1b4eb473d2e0a182749e2d2f"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/R02-launch.png",
+      "bytes": 144872,
+      "sha256": "7ae70d496f5d803e3e481bc1fafff62682698f57818bdd22c7d08ed45ef65e42"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/R02-launch.xml",
+      "bytes": 12680,
+      "sha256": "57ddf3d1d0c315ec0d0dbb135f7b3ad696b689e3d2fe537507f7fe99c42a42e6"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/R03-destination.png",
+      "bytes": 111065,
+      "sha256": "078ca19c96c6d54843d55bd16ea0374e5a0f9d65fbe51f3c6d2e60484f4b74be"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/R03-destination.xml",
+      "bytes": 9139,
+      "sha256": "02d383f9ad9c99b7ae67e9fbf672678c72b8e2b04229b2c8860fbde1c57c537c"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/R04-start.png",
+      "bytes": 145242,
+      "sha256": "dfba6bf8874037c7a2e2493e37d9b34824db0ba0b9fb1a3ba1e81f8ee43f467e"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/R04-start.xml",
+      "bytes": 13407,
+      "sha256": "d9ae08a968c5dff1f462e9810d0813a4443260960fe9dc86c45df5f12fc2fffc"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/R05-preview.png",
+      "bytes": 137475,
+      "sha256": "9e1d52fa5349d28d1d2fd97b06767036742798c3f337450ce0e82b7ea6404c57"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/R05-preview.xml",
+      "bytes": 9568,
+      "sha256": "3b3400a1c32a1447d45a1784afa7cc989f2aa705b9a3faea75b5662ae5d58bfc"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/R06-step2-normal.png",
+      "bytes": 108018,
+      "sha256": "db5838599f0463a3eac81d69bb7102e48b8f449d727f7fdcb777c635a089be86"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/R06-step2-normal.xml",
+      "bytes": 10563,
+      "sha256": "d93842d930eb42bf9d25dddfb731f1c0fa74447af1be5676759278b3a1aab547"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/R07-display-settings.png",
+      "bytes": 135822,
+      "sha256": "609426c57025aec7af5c91144bf6be16f32cb51fbba96366a25dc04a39cf164d"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/R07-display-settings.xml",
+      "bytes": 12146,
+      "sha256": "60785b21dae08efdf52bee1357177dba26c4d986b34e1de21d079ba9c27498ea"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/R08-font-settings.png",
+      "bytes": 190472,
+      "sha256": "77d0c296ba5334a588ae4db7d889dba65428205c0877b083e8722090c438052d"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/R08-font-settings.xml",
+      "bytes": 10940,
+      "sha256": "2e1d800e7dba7dd8126eecf3724ba8ec9b36cb61ed6566748bc981ee79a86ee1"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/R09-font-scale.txt",
+      "bytes": 4,
+      "sha256": "b6403da9b22abe355ad17208a336e658322c5d1d7ff646ca7b9229237ba4aef4"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/R09-settings-max.png",
+      "bytes": 199361,
+      "sha256": "a224b30a5c2dde500a5e0808c9baf5e6ebd87d82268bf8bc4881af65efab6c96"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/R09-settings-max.xml",
+      "bytes": 10168,
+      "sha256": "4371f987ecb93e4e39eaaf83aaff695e44a4eaa6342b268fbf460501e82e5b8c"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/R10-return-settings-max.png",
+      "bytes": 85119,
+      "sha256": "6d24bf3e792795b1139613e70beaa5956121a575c3dc4f4ca5b5bf65275bb3bb"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/R10-return-settings-max.xml",
+      "bytes": 10563,
+      "sha256": "d93842d930eb42bf9d25dddfb731f1c0fa74447af1be5676759278b3a1aab547"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/R11-font-scale.txt",
+      "bytes": 4,
+      "sha256": "d526eb4e878a23ef26ae190031b4efd2d58ed66789ac049ea3dbaf74c9df7402"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/R11-settings-max-actual.png",
+      "bytes": 209409,
+      "sha256": "a145ba1dd6dcc6021c39c83f5dec1d2bd7acbc0ac578c9941c41a57e3616bf4a"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/R11-settings-max-actual.xml",
+      "bytes": 8693,
+      "sha256": "aca7558f70963c75645c8ad8b414a586ec1e8762cbca35fbc92088f74f877739"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/R12-return-max-actual.png",
+      "bytes": 107326,
+      "sha256": "d3d01ac1c21c0fdf0934bcb5185a8c07cb7fdf870fb9ba0a82131dca7aba5f87"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/R12-return-max-actual.xml",
+      "bytes": 10184,
+      "sha256": "06a9ed06c6eb9c15bd71523849744417a26df9966754dd91d414e35ee42d1481"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/R13-settings-scroll.png",
+      "bytes": 167758,
+      "sha256": "a58fe3cb9d79c3b3e910ff2dee243fd29f1603ffed0405b534a28bb7521e3555"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/R13-settings-scroll.xml",
+      "bytes": 11014,
+      "sha256": "d8da050fdaf1dd411f95a6324153f274496d4dfa574b9a6482589327dec78ca5"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/R14-settings-normal.png",
+      "bytes": 189920,
+      "sha256": "818e670254844a79afdefd330ebecc59e5bd249a0d8c1ed680ceaccf7d58df26"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/R14-settings-normal.xml",
+      "bytes": 10940,
+      "sha256": "2e1d800e7dba7dd8126eecf3724ba8ec9b36cb61ed6566748bc981ee79a86ee1"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/Text-before-I.js",
+      "bytes": 1564,
+      "sha256": "a07dfcc32ed894ecfd0a0fbe4a0c32ea994f127d9299e02ee3e721bc62a8da84"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/Text-probe-I.js",
+      "bytes": 1610,
+      "sha256": "7e9ec08ff657041288b8268d89fdff15cba079bad1d88d14565cfdff51925ee3"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/android-commands.jsonl",
+      "bytes": 4601197,
+      "sha256": "93d815d78999d58355cea17563f30f9b1a0b24094f974ba466fb35d35bfefcb9"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/build_font_android.py",
+      "bytes": 3279,
+      "sha256": "73d2abaa67075bae4ebd0ca079cb812f1231511b5bf51b62155ea35e4843ca39"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/delivery-build.log",
+      "bytes": 532,
+      "sha256": "67c693e2bf37d67460a990cf6f7306d829613d126b26db6747a1a7e700d0cfa5"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/diagnostic-discriminator.json",
+      "bytes": 4095,
+      "sha256": "65d09ae300c7ed45117543e1c1b5ae428231c996026e082028cf03ecd099afc1"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/emulator.log",
+      "bytes": 10189,
+      "sha256": "1d4383c86c1b69e2e42775898f43e09904f73a346d3a6d80401a7fd3b46d81b4"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/final-consumer-audit.log",
+      "bytes": 22479,
+      "sha256": "5b39b79204cd8838e686eed271a0ba175d8db58a1c7c2c793482ae8eac6bca1c"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/final-consumer-checks.jsonl",
+      "bytes": 5070,
+      "sha256": "e0020d717b4f475150a5b78f9d4e901af0a4ca52441c57908a16d1e1ec9bccb3"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/final-consumer-ci.log",
+      "bytes": 1804,
+      "sha256": "24761a08c20ffb9910d0fea0083dc0f12857c8c627750600f4a04977b4c195c9"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/final-consumer-export-android.log",
+      "bytes": 2670,
+      "sha256": "31856a2c64b4e95214535c6316aa00a54b9dd2d76ba4ed433243b3c3d8a5f40b"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/final-consumer-export-ios.log",
+      "bytes": 2642,
+      "sha256": "57f99133ad4715def6d7f8af98a8e18b1ab050b788106c2fff53d45d14c759e4"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/final-consumer-jest.json",
+      "bytes": 27929,
+      "sha256": "2fd5e795fc37d8ea476ee799d440537c85b3ba76616eaff8d9578238eed07c19"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/final-consumer-jest.log",
+      "bytes": 431,
+      "sha256": "a40597af4281fac130b723a195cad84139ad4c851fb2e8041db438a60e8a69d4"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/final-consumer-security.log",
+      "bytes": 257,
+      "sha256": "94bce0a28cad3ab4bd9b2fddb5f4f960f949b214e94065472d23a73fbe273d52"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/final-consumer-types.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/final-metro-containment-085a493.json",
+      "bytes": 513,
+      "sha256": "e0cb079cece644d2a7938ff927e29ac14e1c77c366dead2be2595e515419e4d3"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/final-source-0.log",
+      "bytes": 261,
+      "sha256": "1f526e8af8d7c0d50bd938d1a64afe9bf80f625bb4334c9f9ee4dad104f98a77"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/final-source-1.log",
+      "bytes": 520,
+      "sha256": "987bbbf68474de914f52718b5408a0fd224cedb805df53995b41b035d92a9f9a"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/final-source-2.log",
+      "bytes": 53179,
+      "sha256": "fc3b7158551883439291a8cbbd1b7e465d676c8accb8907430a77050060b5850"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/final-source-3.log",
+      "bytes": 267839,
+      "sha256": "f868b27d905b8bf1f7e5b286ed5eaf2d90250f069135f686fd204921c9663b07"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/final-source-4.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/final-source-5.log",
+      "bytes": 1002,
+      "sha256": "f217252bbd1a41a0b0269a71e37ec89449cd220a8288d7167b5a86ff88331485"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/final-source-checks.jsonl",
+      "bytes": 2792,
+      "sha256": "11d37a7beb10db4d19ec6f18c2b7c06299b1d239e2144c87707df3c7ee08189b"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/final_source_checks.py",
+      "bytes": 1081,
+      "sha256": "c60c5701863e0ac79791d9d2f5bf2ee77a85f5c52779a096fca3a7ebdc7bc185"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/font-probe-E-identity.json",
+      "bytes": 355,
+      "sha256": "a7efc8722181b220652167ee5f5be2e056c00f56f302d1475377190a72e25578"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/font-probe-E.apk",
+      "bytes": 34392992,
+      "sha256": "d43bf0a4b97df8cfed89284e111d2a9bd774c37c1ddc655c44e222a8228d21f2"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/font-probe-F-identity.json",
+      "bytes": 359,
+      "sha256": "4d25433267afe77c4c23090cafe2e0383fcb62e3e0fa8b2ecef8fc34b78b2d44"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/font-probe-F.apk",
+      "bytes": 34392992,
+      "sha256": "c05edc8385e373257c783fd3cfde1eac4c839aeef02b56721cec90698b32f906"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/font-probe-G-identity.json",
+      "bytes": 342,
+      "sha256": "1832537f2272c77af55951eba3870d19e19200bf5aece70ee3d5ddb92b3a4100"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/font-probe-G.apk",
+      "bytes": 34392992,
+      "sha256": "4c9936e56823cc3fc4c8bd66b94f9ab0bffc04a537b66e8da86a5b18bb6b2d19"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/font-probe-H-identity.json",
+      "bytes": 353,
+      "sha256": "3200a497170f30b327bfaf7f50b2bd1bb82f7b22eafef8daeb6a0c46a0c875d0"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/font-probe-H.apk",
+      "bytes": 34392992,
+      "sha256": "c47fa75a436b2dc4cd311e353436d9244af949461d823d7d479e6fe9422a6e6b"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/font-probe-I-identity.json",
+      "bytes": 368,
+      "sha256": "061caddd5b6d25234a73daf5125ef58210bfbbca65666cda89c66521531668a4"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/font-probe-I.apk",
+      "bytes": 34393016,
+      "sha256": "59cd7ac4cec4c4d93c76550bf131cb4c86e14faeb440f1e7c23d255997f3d38a"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/font_probe_run.py",
+      "bytes": 1636,
+      "sha256": "0c6511d4e3041eea40f490ddfdc1fab51b1e3cb9b6eb8de2f4b2eada92255d0f"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/native-consumer-after-font-lock.json",
+      "bytes": 409501,
+      "sha256": "044a61a9049bda621e191eb89b96e3c39f75b3a461799b59c4093a935959b850"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/native-consumer-before-font-lock.json",
+      "bytes": 409503,
+      "sha256": "64e9d1190452c48d7379c8fd598b6ccac10fc2070fac9aa98fcba4ebb0b06e68"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/probe-F-build.log",
+      "bytes": 26206,
+      "sha256": "128d9b73dcdc9ed7496f5d2093f521fa102b37e9e4a65e11fc0fd81c08297416"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/probe-G-build.log",
+      "bytes": 25281,
+      "sha256": "9c523e4220125c6c400b68231e794828fe7ac7beb3d788edaab211bfd113c3c4"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/probe-H-build.log",
+      "bytes": 25281,
+      "sha256": "0d8ed85927719fdda2837aefa5f7b33d64378900d02171b443dbf6b437eb6749"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/probe-I-build.log",
+      "bytes": 26812,
+      "sha256": "c0f95bfe83866e5b0067fb935843b3c306c4bbe626c80da84fc2308e819c646e"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/probe-build.log",
+      "bytes": 25281,
+      "sha256": "154013c5a6b00945962428f20a2949aa67317b456775ece78119c46ff3ce5c1b"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/production-MainActivity.kt",
+      "bytes": 2687,
+      "sha256": "325f1b884df563525f9055530ee96ddebbc3a406c3e1c5ab39751342567ba5d8"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/production-MainApplication.kt",
+      "bytes": 3266,
+      "sha256": "4d75750fc2105185c662b461e89807eb539bd3d9fe8869403a6652854513d09d"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/production-android-identity-v2.json",
+      "bytes": 4125,
+      "sha256": "5dadc76933bff6abc200e3d5e5ecda84d3e3bac8c63a658d4f5b7e72fb7122a6"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/production-android-identity.json",
+      "bytes": 3978,
+      "sha256": "3b8811d17675269b37b32ce1dbcd65c5b11cdf775ec9926268898f22296115b3"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/production-build-commands.jsonl",
+      "bytes": 1843,
+      "sha256": "604caf6b155b8a7fb704d78d9855b0cab2b92cda7f5aad46fe841fdff10dd337"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/production-build.log",
+      "bytes": 27161,
+      "sha256": "198d5e840ff412ebf3a570f0f352a04acb1f3c5b42a1178f048e4867cdd69a29"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/production-emulator.log",
+      "bytes": 10118,
+      "sha256": "386d95841b6ffbf5e70ba2de24514db2d6051f184fbef208d845bf5c8093d51e"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/production-install.log",
+      "bytes": 1015,
+      "sha256": "54036d303671285f8d92d89d24a43aa96967b2159e1e93356dbdabece6848186"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/production-prebuild.log",
+      "bytes": 191,
+      "sha256": "f545f5026840ae0ca77e64c7978a6ee729428325ad0ac9014bed6a49bb170783"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/sdk-consumer-085a493-arm64-release.apk",
+      "bytes": 34393016,
+      "sha256": "d071437ce60366fdcf11c573a0736b127b605706f6b11420f366e0b890afeed2"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/source-green.log",
+      "bytes": 464,
+      "sha256": "fd04892c519026ba743eb185d9093687ea0f8813ccad8e7f90cc469a2a70d481"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/source-red-attempt2.log",
+      "bytes": 4678,
+      "sha256": "a455c4a040cd6e890e5f67d41f3344fe5cf2607cd449cfe2e497a09948cf2512"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/source-red.log",
+      "bytes": 2375,
+      "sha256": "d2f4859499c7420a42179892ea336ee4349000de8ea8a1e049bd65535f98e009"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/typecheck.log",
+      "bytes": 261,
+      "sha256": "1f526e8af8d7c0d50bd938d1a64afe9bf80f625bb4334c9f9ee4dad104f98a77"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/resume-20261102-font/verify_consumer.py",
+      "bytes": 2064,
+      "sha256": "7dc6147905195990f518a9a4ec4e9bd7433d60d9cc53443395e17fe2021bb65c"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/final-085a493/P01-guide-cold.png",
+      "bytes": 104017,
+      "sha256": "02001890d374b8fd5268bbf38372e85d974c68a7599e1a1b440aa0a421aa445f"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/final-085a493/P01-guide-cold.xml",
+      "bytes": 10563,
+      "sha256": "d93842d930eb42bf9d25dddfb731f1c0fa74447af1be5676759278b3a1aab547"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/final-085a493/P02-logcat.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/final-085a493/P02-return.png",
+      "bytes": 131334,
+      "sha256": "43e347ce2b49e80b673294736b7a32da283ad167b0da3c3710fbe71fb2c5c734"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/final-085a493/P02-return.xml",
+      "bytes": 10177,
+      "sha256": "166f8914a92fef52cb4984c2f33c6166cb742fe400d0d6e1490f6d8e06a3153d"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/final-085a493/P02-scale.txt",
+      "bytes": 3,
+      "sha256": "d84bdb34d4eeef4034d77e5403f850e35bc4a51b1143e3a83510e1aaad839748"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/final-085a493/P02-settings.png",
+      "bytes": 210730,
+      "sha256": "ad6557da9abeb82275db00d150a81ee614445d1eee7579142c8bed6abcf9c655"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/final-085a493/P02-settings.xml",
+      "bytes": 8693,
+      "sha256": "aca7558f70963c75645c8ad8b414a586ec1e8762cbca35fbc92088f74f877739"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/final-085a493/P03-next-max.png",
+      "bytes": 150520,
+      "sha256": "edca3296743a18710afa34008b7e66d87571a5bc83b0e4bb6aec22021008e6a1"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/final-085a493/P03-next-max.xml",
+      "bytes": 9846,
+      "sha256": "cd3afb6ce33ddf6004559bfc19ef3b9251ab11e9341eda9e0b1939656355ef1c"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/final-085a493/P04-tools.png",
+      "bytes": 193344,
+      "sha256": "87064bdefe717c0b3bfe26628bfbc00787c20b96346f13d28adc7a009dac4c64"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/final-085a493/P04-tools.xml",
+      "bytes": 17409,
+      "sha256": "5a7aafb657549e43b477513d9d456fce7baff7ea4e40832e43aa3168ee0922da"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/final-085a493/P05-urdu-max.png",
+      "bytes": 200456,
+      "sha256": "38f15ec227f5fc00ccf6764458a96de8fe25beee80cf6b79c572c8bf6b6a8ec7"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/final-085a493/P05-urdu-max.xml",
+      "bytes": 17541,
+      "sha256": "c7297d08a2262cfc8692c016b2280a35a9fb116d6956624d97e5a844bf925007"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/final-085a493/P06-dark-urdu-max.png",
+      "bytes": 196506,
+      "sha256": "5e52a85bf48ae2e2964916451a3021ee17fafa8bbc7647803642fd18778adb2b"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/final-085a493/P06-dark-urdu-max.xml",
+      "bytes": 17540,
+      "sha256": "d49e73d6d84e4a95eae4bb91fcc512c89df9048405e886b66fcd08ae1aa56899"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/final-085a493/P07-urdu-max-unrelated-commit.png",
+      "bytes": 147555,
+      "sha256": "1c4f3ba68305abc2fde7c59933bfd68b9eb7e9d0372bf7aaa2cc3474a616ef46"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/final-085a493/P07-urdu-max-unrelated-commit.xml",
+      "bytes": 10307,
+      "sha256": "3a2333b8dfe528aa92a45d1df3c6822ff5ec2913d309a6805c56db446f7572fe"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/final-085a493/P08-logcat.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/final-085a493/P08-return.png",
+      "bytes": 109990,
+      "sha256": "92d44792e26f36a27ea00cdcf9e45fc165b5f2ccc713da089d32b99dcfc6d0bc"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/final-085a493/P08-return.xml",
+      "bytes": 10693,
+      "sha256": "cf2f53df6b0775e7d8cd00b11f6b29ac6f22f34f5bebc10436a28693aaa54343"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/final-085a493/P08-scale.txt",
+      "bytes": 3,
+      "sha256": "d0ff5974b6aa52cf562bea5921840c032a860a91a3512f7fe8f768f6bbe005f6"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/final-085a493/P08-settings.png",
+      "bytes": 190792,
+      "sha256": "c16732ea290650945816dfaa99f05e3195f8a4026c64d9f311382785bd42354e"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/final-085a493/P08-settings.xml",
+      "bytes": 10940,
+      "sha256": "2e1d800e7dba7dd8126eecf3724ba8ec9b36cb61ed6566748bc981ee79a86ee1"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/final-085a493/P09-light.png",
+      "bytes": 182392,
+      "sha256": "cd8e32c8875201e1be12c5e237cd9f3588f2c67885a7841792a1ce1fab0c01a0"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/final-085a493/P09-light.xml",
+      "bytes": 18289,
+      "sha256": "6d12c10dd8b70fc3f11b4ac7a336f81ac1754cd38f53573ffa49ce1690ff13ab"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/final-085a493/P10-roman.png",
+      "bytes": 181999,
+      "sha256": "e54c4455dad9fff40ec8759ac1a2ce6de5e98d936fcb088973104929df72940d"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/final-085a493/P10-roman.xml",
+      "bytes": 18203,
+      "sha256": "9323f2d9f72605e343ab922f76e3cb633c796d7853e6689b4f036d588c3783b1"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/final-085a493/P11-english-restored.png",
+      "bytes": 104084,
+      "sha256": "4d0021bfa00d035b73ba4fbebccf6961158937b90faef2a94aa5ef0eb8ea9747"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/final-085a493/P11-english-restored.xml",
+      "bytes": 10563,
+      "sha256": "d93842d930eb42bf9d25dddfb731f1c0fa74447af1be5676759278b3a1aab547"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/final-085a493/P12-background-recovery.png",
+      "bytes": 104084,
+      "sha256": "4d0021bfa00d035b73ba4fbebccf6961158937b90faef2a94aa5ef0eb8ea9747"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/final-085a493/P12-background-recovery.xml",
+      "bytes": 10563,
+      "sha256": "d93842d930eb42bf9d25dddfb731f1c0fa74447af1be5676759278b3a1aab547"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/final-085a493/P13-pan.png",
+      "bytes": 101865,
+      "sha256": "7c019a93b22bf11fbcc6ab92bfde26ec70520b9a5139e146279839093492fa3e"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/final-085a493/P13-pan.xml",
+      "bytes": 10563,
+      "sha256": "d93842d930eb42bf9d25dddfb731f1c0fa74447af1be5676759278b3a1aab547"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/final-085a493/P14-recenter.png",
+      "bytes": 108934,
+      "sha256": "c91bd786f1e1056042659e334ec96589a27e859c57800b353fa1d094ae0c05da"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/final-085a493/P14-recenter.xml",
+      "bytes": 10563,
+      "sha256": "d93842d930eb42bf9d25dddfb731f1c0fa74447af1be5676759278b3a1aab547"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/final-085a493/P15-attribution.png",
+      "bytes": 103559,
+      "sha256": "ae5432bb0230920eb75d2b7d7bb94c635d5a7d1ce9e36bc00e83ef5d1f592284"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/final-085a493/P15-attribution.xml",
+      "bytes": 1238,
+      "sha256": "faea670465f6b79c173683e7c83c9a2bf3e8c24880ea57e799ecc29c2e7d09ee"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/final-085a493/P16-attribution-exit.png",
+      "bytes": 108934,
+      "sha256": "c91bd786f1e1056042659e334ec96589a27e859c57800b353fa1d094ae0c05da"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/final-085a493/P16-attribution-exit.xml",
+      "bytes": 10563,
+      "sha256": "d93842d930eb42bf9d25dddfb731f1c0fa74447af1be5676759278b3a1aab547"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/final-085a493/android-commands.jsonl",
+      "bytes": 1914307,
+      "sha256": "bc785f7bb5945cbc427ebeb7b5f489ff87456a71c45ff0651e1fedf5ce5091d1"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/final-085a493/production-font-measurements-v2.json",
+      "bytes": 420,
+      "sha256": "8789b6f941bbc8225a511075e4704a66bfd035f532eaad5b9086d87b19111515"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/final-085a493/production-font-measurements.json",
+      "bytes": 186,
+      "sha256": "2889105796076ec6d0bd09fa7f2a73e72c86ed8eb9f57320e002dbcad98f32d7"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/final-085a493/production_run.py",
+      "bytes": 1777,
+      "sha256": "4746da3852850aa0ddb5d63c8c75245e79203ad89a75f2ff81b9f4277f15e9e7"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/ios-resume-20261102/AX5-touch-attachments/652B0B3A-CE1C-461B-8C0A-C39D5169E422.png",
+      "bytes": 100971,
+      "sha256": "081951a594619989b5fa5eae3696c047f33473b943737e2b9bb41f8d5210343e"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/ios-resume-20261102/AX5-touch-attachments/D00CC8D2-AC23-453E-A873-D86D013CF0FB.png",
+      "bytes": 151951,
+      "sha256": "18354b062f05ee0b26d58fdd2e7070bf70d5f8f9b16c28bc8936f68402c29f3b"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/ios-resume-20261102/AX5-touch-attachments/manifest.json",
+      "bytes": 1106,
+      "sha256": "308bf37dde61e064bf3a949720fb64e46e55f584f362686850e4063fd6272939"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/ios-resume-20261102/AX5-touch-summary.json",
+      "bytes": 983,
+      "sha256": "dce5b07ded4f641165666420d98547477464aa95f2193f6e12de3a15eb1c1cb7"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/ios-resume-20261102/AX5-touch.log",
+      "bytes": 106473,
+      "sha256": "ad5c3e66d7885d39ae43bb9a055fe85775f3c410c7fc1c229b575bb831a24981"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/ios-resume-20261102/AX5-touch.xcresult/Data/data.0~-Iz5Z7RbavQEvCfWxLyuCRoJoWrclOfXlzLzeMxUqWMjw_3sT-jCNeM90crTEULTlmSo0AQrLI98rTNIfvkahQ==",
+      "bytes": 3631,
+      "sha256": "0389495655fb706135340c027f1bb21e18c3b6af193d6c2a68be8d0622f4b4d6"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/ios-resume-20261102/AX5-touch.xcresult/Data/data.0~1Jxog5F-plXL5P4UCqPnnw1PH94ny1ciLE6a818uGzZ9S2dH4QgDFOZIaVBeGuR6fPyxE9-aZESsiEX7qhNkTQ==",
+      "bytes": 151951,
+      "sha256": "18354b062f05ee0b26d58fdd2e7070bf70d5f8f9b16c28bc8936f68402c29f3b"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/ios-resume-20261102/AX5-touch.xcresult/Data/data.0~4VqMqsI5lOfxRppnud6-VDWcNsU8J7VgFCJfW2dXPwOcAkvU-I8Um5yp9n0Zv6nr3VmcxYggaVMDFfR0U_vjKw==",
+      "bytes": 2,
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/ios-resume-20261102/AX5-touch.xcresult/Data/data.0~8WpcuKxx8BlFinhjtlliS_ouyUjPbSWm4JnG02jx5-PNUMbJJnJOw6RtTasg3GFXbOusYjBqKvkejEx3TbMQ6A==",
+      "bytes": 3433,
+      "sha256": "8191087cd2884a34146511a2833a4a5e239df37538df7aa4cb892be33c387a66"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/ios-resume-20261102/AX5-touch.xcresult/Data/data.0~8opjPGnEysIzHRAM4z6irnmPPVmFWMi_g1x7Cp1KwQGfIQ8CXjuL8aoNuBN_4odHFQAM3SmXmArfkQLRSskszA==",
+      "bytes": 30331,
+      "sha256": "a94439382376e643f572baee93820f0025007708f02e8bb1760fd7a9ba6f391a"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/ios-resume-20261102/AX5-touch.xcresult/Data/data.0~HDNM86Rv3_qcCokPC8g6Z2PYwjmjRgKPpNDS3-8IE9hv5C2-XMMz2E3ch_vzkPELZX4CyJdn3L47CizWe3AZBA==",
+      "bytes": 1034,
+      "sha256": "bbaa61ab8f29e2e140590dffac4d5d43660b2fbe278838c7a27f0c915afd1950"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/ios-resume-20261102/AX5-touch.xcresult/Data/data.0~H_Uy6k5470mVGYsvl-Lp9cvzyp13_vkv_AT6lPfaGq7mxNGx8C4fYJMjCtR3KVDjEaPzaKx4K2G6OT8OPoNZLQ==",
+      "bytes": 106,
+      "sha256": "87f019af9efaa0157ababbf94bd83d5b43501f42c67d67483f0481b62ca6d8d1"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/ios-resume-20261102/AX5-touch.xcresult/Data/data.0~IuA3bLrn7Hk5A1HXyrSUjUo4aE6K1ux8m9Y9Gt9SPVVAD2ju-iek1nbHytTeQhbARkVi9TRjbFdLVQeRNFs4hw==",
+      "bytes": 188,
+      "sha256": "d33e511f0444f0be0214fa1dadd6800be0b53af71687a703ae6680071debd0ac"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/ios-resume-20261102/AX5-touch.xcresult/Data/data.0~KsOlRE67GeQ6Trju7zwkAhVSD66ALS7ri_wpsEH70B6qDLzJ0yCgbpF1Rc3YujRVQP0R0GTuSYG0Kl_LEv0DPA==",
+      "bytes": 820,
+      "sha256": "96cb2d705013e3d4b35a3a1e2d7520dd7b21a87a25bd87e38875ad18d3630bf8"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/ios-resume-20261102/AX5-touch.xcresult/Data/data.0~T9FqKZNAnZ8k9MNyh0vpXiwPN4dbxDgO4fmHRTOCoK_O7fcq6Bt1TJEe-CYlsFSW-FpQLCSzxotjQ5LCXsFpDg==",
+      "bytes": 14364,
+      "sha256": "2fb120482d71ecef62b7e15aa1a07de6018aaab682404632aa3796ba307c99a4"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/ios-resume-20261102/AX5-touch.xcresult/Data/data.0~VHeCIcqr8y6tMXoDurslj0Ji86A1lUJboK6nC4xDvyYb1xzzPlW51oniLHy7GYLnJyOyrD3EvEL4lxmYI7FLJg==",
+      "bytes": 783,
+      "sha256": "deefb5ed3f21904f2dd73f0d96e1f664044e19c5d596724b899934d7d3366b9a"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/ios-resume-20261102/AX5-touch.xcresult/Data/data.0~axR4hdSB9SsTpk1sfkKG8yx-irZ-aIPn3GvJnh1nt4I6otaE8HAnRDDZ57NwrkPMDXAe07_aGu_76Da-ntJeyw==",
+      "bytes": 38,
+      "sha256": "c6734c8f2e683db7e43e46b1d0c7df5b7da705bb15c83ff1b119482849034e55"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/ios-resume-20261102/AX5-touch.xcresult/Data/data.0~eyFQTvbJWUkNYtR4xx2aQ1y8zgQuz9Cgnq2kVcPcvwpuJoFrS6YPbp3cTiidiFRIxJ75YZ8FyLOSz3t-0gt01g==",
+      "bytes": 118,
+      "sha256": "712ded4b6939be635a70b0a2208d48cccc714209a342dff469f24cec9dded4c4"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/ios-resume-20261102/AX5-touch.xcresult/Data/data.0~osJh0yW3lL8q7j_0uawLdw3bDa1RDK6E7wqMdJAzpcHeViYnMfTASNnTC2cN-hl7i6vcBJhGVjv98V8cV-ybcA==",
+      "bytes": 295,
+      "sha256": "c254037c84b42a7702b5352f81dceb95a81b182bc11567e5f9dfe5f7d25f961c"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/ios-resume-20261102/AX5-touch.xcresult/Data/data.0~pa-d0ew4Uc1VleLjBrj5VfeehJr300-7xM0qVEX25mMX3rHyjbGvscbUMUltJMOwT7ctBbga9p5mJn6AHm-8gg==",
+      "bytes": 100971,
+      "sha256": "081951a594619989b5fa5eae3696c047f33473b943737e2b9bb41f8d5210343e"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/ios-resume-20261102/AX5-touch.xcresult/Data/data.0~xSWiqxBL6WhgVZoxW8raM_Tg59uLBK7arJzyTxkFcLXRW6CnW4Kr--XR0FwMbnvvETxBfGKK5sJFsdZZPIkU_Q==",
+      "bytes": 1685,
+      "sha256": "94c70eb302112513a53e6448710e0a15b691b91ab95dea29b43b781c3b7a6021"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/ios-resume-20261102/AX5-touch.xcresult/Data/data.0~zlF35sB_4VUI5m7xkWzC2_lFSkOVSLhKc8t3p2QXEpWvB_bB1-v8NfX12ft-Y42Mj2BOB3s2kSat7Q4whjRozg==",
+      "bytes": 367,
+      "sha256": "4f73e1bb57938c9e900997233e2063697474c11b9c2c6a745dc0478cfe6a3392"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/ios-resume-20261102/AX5-touch.xcresult/Data/refs.0~-Iz5Z7RbavQEvCfWxLyuCRoJoWrclOfXlzLzeMxUqWMjw_3sT-jCNeM90crTEULTlmSo0AQrLI98rTNIfvkahQ==",
+      "bytes": 1,
+      "sha256": "6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/ios-resume-20261102/AX5-touch.xcresult/Data/refs.0~1Jxog5F-plXL5P4UCqPnnw1PH94ny1ciLE6a818uGzZ9S2dH4QgDFOZIaVBeGuR6fPyxE9-aZESsiEX7qhNkTQ==",
+      "bytes": 1,
+      "sha256": "6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/ios-resume-20261102/AX5-touch.xcresult/Data/refs.0~4VqMqsI5lOfxRppnud6-VDWcNsU8J7VgFCJfW2dXPwOcAkvU-I8Um5yp9n0Zv6nr3VmcxYggaVMDFfR0U_vjKw==",
+      "bytes": 1,
+      "sha256": "6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/ios-resume-20261102/AX5-touch.xcresult/Data/refs.0~8WpcuKxx8BlFinhjtlliS_ouyUjPbSWm4JnG02jx5-PNUMbJJnJOw6RtTasg3GFXbOusYjBqKvkejEx3TbMQ6A==",
+      "bytes": 133,
+      "sha256": "50def18ed49346f0f5a5101d8b6624403cb41879a5eace42ff10e6e6135f4421"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/ios-resume-20261102/AX5-touch.xcresult/Data/refs.0~8opjPGnEysIzHRAM4z6irnmPPVmFWMi_g1x7Cp1KwQGfIQ8CXjuL8aoNuBN_4odHFQAM3SmXmArfkQLRSskszA==",
+      "bytes": 1,
+      "sha256": "6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/ios-resume-20261102/AX5-touch.xcresult/Data/refs.0~HDNM86Rv3_qcCokPC8g6Z2PYwjmjRgKPpNDS3-8IE9hv5C2-XMMz2E3ch_vzkPELZX4CyJdn3L47CizWe3AZBA==",
+      "bytes": 1,
+      "sha256": "6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/ios-resume-20261102/AX5-touch.xcresult/Data/refs.0~H_Uy6k5470mVGYsvl-Lp9cvzyp13_vkv_AT6lPfaGq7mxNGx8C4fYJMjCtR3KVDjEaPzaKx4K2G6OT8OPoNZLQ==",
+      "bytes": 133,
+      "sha256": "38840515a46545b7122c78ba40eb976918a85c56c532b4941f43a3f7c39e1eb8"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/ios-resume-20261102/AX5-touch.xcresult/Data/refs.0~IuA3bLrn7Hk5A1HXyrSUjUo4aE6K1ux8m9Y9Gt9SPVVAD2ju-iek1nbHytTeQhbARkVi9TRjbFdLVQeRNFs4hw==",
+      "bytes": 199,
+      "sha256": "2a2f3f34b9ded637989c8dbe1dea2aca9602ebf1ab379f97e6d5ce8561388601"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/ios-resume-20261102/AX5-touch.xcresult/Data/refs.0~KsOlRE67GeQ6Trju7zwkAhVSD66ALS7ri_wpsEH70B6qDLzJ0yCgbpF1Rc3YujRVQP0R0GTuSYG0Kl_LEv0DPA==",
+      "bytes": 67,
+      "sha256": "63f0a83d70a585fef0854a6611c9c6bd78856bec07c166fe5a6529f439e8ff46"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/ios-resume-20261102/AX5-touch.xcresult/Data/refs.0~T9FqKZNAnZ8k9MNyh0vpXiwPN4dbxDgO4fmHRTOCoK_O7fcq6Bt1TJEe-CYlsFSW-FpQLCSzxotjQ5LCXsFpDg==",
+      "bytes": 1,
+      "sha256": "6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/ios-resume-20261102/AX5-touch.xcresult/Data/refs.0~VHeCIcqr8y6tMXoDurslj0Ji86A1lUJboK6nC4xDvyYb1xzzPlW51oniLHy7GYLnJyOyrD3EvEL4lxmYI7FLJg==",
+      "bytes": 1,
+      "sha256": "6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/ios-resume-20261102/AX5-touch.xcresult/Data/refs.0~axR4hdSB9SsTpk1sfkKG8yx-irZ-aIPn3GvJnh1nt4I6otaE8HAnRDDZ57NwrkPMDXAe07_aGu_76Da-ntJeyw==",
+      "bytes": 67,
+      "sha256": "26c826329c95e47cff0a44f37b00ec66264c26d7ea3dfb283f72887d8df59eae"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/ios-resume-20261102/AX5-touch.xcresult/Data/refs.0~eyFQTvbJWUkNYtR4xx2aQ1y8zgQuz9Cgnq2kVcPcvwpuJoFrS6YPbp3cTiidiFRIxJ75YZ8FyLOSz3t-0gt01g==",
+      "bytes": 133,
+      "sha256": "7da901fb655e662d55f3afb4f2e7e38d6dda33ef0e8abf77fee7c0410a7f2939"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/ios-resume-20261102/AX5-touch.xcresult/Data/refs.0~osJh0yW3lL8q7j_0uawLdw3bDa1RDK6E7wqMdJAzpcHeViYnMfTASNnTC2cN-hl7i6vcBJhGVjv98V8cV-ybcA==",
+      "bytes": 1,
+      "sha256": "6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/ios-resume-20261102/AX5-touch.xcresult/Data/refs.0~pa-d0ew4Uc1VleLjBrj5VfeehJr300-7xM0qVEX25mMX3rHyjbGvscbUMUltJMOwT7ctBbga9p5mJn6AHm-8gg==",
+      "bytes": 1,
+      "sha256": "6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/ios-resume-20261102/AX5-touch.xcresult/Data/refs.0~xSWiqxBL6WhgVZoxW8raM_Tg59uLBK7arJzyTxkFcLXRW6CnW4Kr--XR0FwMbnvvETxBfGKK5sJFsdZZPIkU_Q==",
+      "bytes": 331,
+      "sha256": "fe4db18ba982769e2f55b16bcd1b53732131f6555cfc7b01e6315b99e70c55d1"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/ios-resume-20261102/AX5-touch.xcresult/Data/refs.0~zlF35sB_4VUI5m7xkWzC2_lFSkOVSLhKc8t3p2QXEpWvB_bB1-v8NfX12ft-Y42Mj2BOB3s2kSat7Q4whjRozg==",
+      "bytes": 1,
+      "sha256": "6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/ios-resume-20261102/AX5-touch.xcresult/Info.plist",
+      "bytes": 715,
+      "sha256": "2330b411f18bf3d1eb7e18e59ed169f73c082ca69d1c51ceeb14b710e0b536b1"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/ios-resume-20261102/AX5-touch.xcresult/database.sqlite3",
+      "bytes": 258048,
+      "sha256": "1b857b79ab1ff2dd3d4d072570aa53de0d814351f4e3cfea3e7329b6c6389075"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/ios-resume-20261102/S01-guide-normal.png",
+      "bytes": 211647,
+      "sha256": "44ea966e641f9a96c622f592068d6806206d128ec8dea8e1fc9564c822039d8d"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/ios-resume-20261102/S02-ax5-next-touch.png",
+      "bytes": 218361,
+      "sha256": "f8a0f8b88aeb82b941b55b43ce96933ad4b7152b014f6a18a06f71ad74f31858"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/ios-resume-20261102/S03-device-location-source.png",
+      "bytes": 340406,
+      "sha256": "18d2e7f0b36db89009a3c3a8e531ea3039ab571542528f2e34e562de0daacbb4"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/ios-resume-20261102/S04-location-denied.png",
+      "bytes": 249385,
+      "sha256": "1ae158aad7ed406bc50d32ea48665afbe5aa3b9ca30d43bf4a8d8b63fdfd8328"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/ios-resume-20261102/S05-precise-candidate.png",
+      "bytes": 247412,
+      "sha256": "38bd82a23bea57383e1e1bd3e2b8e3604912252d4abea3f1609c582c8eebb4e1"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/ios-resume-20261102/S06-live-native.png",
+      "bytes": 204098,
+      "sha256": "c15a039842adf92a6bb6ad7ce43f19418a59a809b30a905279a2e33f4de7b33d"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/ios-resume-20261102/S07-native-progress.png",
+      "bytes": 195445,
+      "sha256": "b54fce9d656caea1d511bec688d16b35f7803fbb65a1bcdae7cc123a02211649"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/ios-resume-20261102/S08-ax5-arrival-swipe-no-movement.png",
+      "bytes": 147728,
+      "sha256": "158f9faeab84035eb1a52546c47527771417d46bffc1dc0b039830ecd8e7c337"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/ios-resume-20261102/TouchAcceptance/ArrivalTouch.swift",
+      "bytes": 1429,
+      "sha256": "dd99ac0a9102a406c0fa9c044a0e8de0e8cf68f45303073d2b880592c89aca8c"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/ios-resume-20261102/TouchAcceptance/TouchAcceptance.xcodeproj/project.pbxproj",
+      "bytes": 10530,
+      "sha256": "bb49244d8d4460b0c28fd4d92055e3de838f906af4032cc500455dd869d8c720"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/ios-resume-20261102/TouchAcceptance/TouchAcceptance.xcodeproj/xcshareddata/xcschemes/TouchAcceptance.xcscheme",
+      "bytes": 2483,
+      "sha256": "81ba187c40ca824102485c986c80b582e53069f0b85a02af06b5188ddaca155d"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/ios-resume-20261102/TouchAcceptance/create_project.rb",
+      "bytes": 695,
+      "sha256": "26022af3f65e3e91907150a01cb11bee0b421c52d32890abe7e7bb77d170ab9d"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/ios-resume-20261102/build_ios.py",
+      "bytes": 1619,
+      "sha256": "929ef9d111a9ce7dfcc903abdbb5f208b80ef739a90ab01cd6281c1e180ef5af"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/ios-resume-20261102/build_ios_085a493.py",
+      "bytes": 1633,
+      "sha256": "bf245437c7231f9038c206c4cd03be95b1648a573362a657a28edb6a7a69a5d4"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/ios-resume-20261102/build_ios_attempt2.py",
+      "bytes": 1635,
+      "sha256": "a9166ef55599f9be90f2a27ae4b662b6d07ae13b6645bb4edd9430678f8b6a83"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/ios-resume-20261102/consumer-native-graph.json",
+      "bytes": 1033,
+      "sha256": "205c57899e08c74e55c52ba7b1b66f9d18bc00327f3b9b6f6c2b298e8cc469f4"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/ios-resume-20261102/consumer-pod-install.log",
+      "bytes": 24735,
+      "sha256": "74e113b423ea6fd5371460d088bf486c0b18f9b316cdea51de5fd1f2a5e1ec5d"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/ios-resume-20261102/gps-commands.jsonl",
+      "bytes": 21840,
+      "sha256": "7def3c420969f75cad88871b80a81ac7f638555724f79c07ba74cc3ba0c49366"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/ios-resume-20261102/gps-point",
+      "bytes": 6,
+      "sha256": "043b5057c933a177fea0061878325be76df27bd1446bbc84b22002708b7e0b29"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/ios-resume-20261102/ios_gps_feed.py",
+      "bytes": 632,
+      "sha256": "ea240b97f12c34b8a8302a82b210da91d0ff1e5559e848ffe6d31fea455c2c66"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/ios-resume-20261102/prebuild.log",
+      "bytes": 240,
+      "sha256": "8b25f8fabee05772a5f79392e6f03f702d4a4da3844b2d353ae7938a96548d97"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/ios-resume-20261102/release-build-085a493-result.json",
+      "bytes": 1659,
+      "sha256": "72aea372c2f801efa4c6c364704811e5a093255a40fa6f3a22894c0eabe57ee5"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/ios-resume-20261102/release-build-085a493.log",
+      "bytes": 897267,
+      "sha256": "7e80c926862a41dd88b9c6c42c9597dea54b48a58d3b7959975be9d521cb5a89"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/ios-resume-20261102/release-build-attempt2-result.json",
+      "bytes": 1655,
+      "sha256": "109e9df664a169ec1629e1216adaa3b21ca76cb2bbdbca6b66d06d8f38816fb9"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/ios-resume-20261102/release-build-attempt2.log",
+      "bytes": 6896440,
+      "sha256": "68e20f275d8f69867ce9162acbb022152f2813a01222be8395b6149d546a0395"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/ios-resume-20261102/release-build-result.json",
+      "bytes": 1267,
+      "sha256": "769127a1def3fbf6f8e3570f789a5b740a6463167bc4b3f06d41c83353cdee10"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/ios-resume-20261102/release-build.log",
+      "bytes": 1240,
+      "sha256": "5ef6356be2d51417469b47f0d7c42df9c3a195f7ea28eb5bbeeb24338883f5a3"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/delivery-085a493.tgz",
+      "bytes": 891235,
+      "sha256": "298c8b852c83ca92df87df3eb9d50fc9c5df54bd6ff66f9f7e70c284cbd1b3c9"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/delivery-085a493/package/muslim-ummah-offline-navigation-0.1.0.tgz",
+      "bytes": 107226,
+      "sha256": "d1260aaa49d771072a8ce51d097fe4f1225339020181fd3358cdc3fee906123c"
+    }
+  ],
+  "excluded": "DerivedData, dependency trees and copied app trees; executable/bundle hashes in identities",
+  "filesCount": 281
+}
