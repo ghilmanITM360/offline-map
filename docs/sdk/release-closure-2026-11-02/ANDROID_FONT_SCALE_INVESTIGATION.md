@@ -1,0 +1,11 @@
+# Android dynamic text rendering — FAIL, unresolved
+
+Accepted APK `7b343f5b15a3588bd78fb670e0d2123b3e373259f74d512c290a8a9918d9030f`, source `70275f3`, API36 ARM64 Codex_Ijtema_API36.
+
+Reproduction: normal-text cold launch, Gate02 → Choose a start → Gate01 → Follow the steps → Next. Set `settings put system font_scale 2.0`, Home, `am start -W -n com.example.sdkconsumer/.MainActivity`. Step2 remains and the panel switches to vertical controls, but Step2 text height stays47px and Turn-right text height stays69px. Returning to1.0 restores layout. B44/B45/B46 preserve XML and screenshots. This is a different failure from the corrected Activity recreation/journey reset.
+
+React Native0.81.5 DeviceInfoModule updates its Android fontScale value onHostResume. An in-foreground ADB setting alone does not prove applied text scaling; earlier B03/B40 claims are superseded by this measured check. Arrival Recenter/Done were touched successfully at normal rendered size; true enlarged Arrival clearance remains NOT RUN.
+
+Two disposable Release diagnostics tested hypotheses without changing repository source: C keyed Android native Text instances on the new fontScale; D also refreshed DisplayMetricsHolder in Activity.onConfigurationChanged. Both retained47/69px text heights at2.0, so neither correction was accepted. Diagnostic APK identities and the exact pre-probe module/MainActivity bytes remain external. Disposable installed Text.js and MainActivity.kt were restored, and accepted APK B was reinstalled. Do not count C/D as final SDK acceptance.
+
+Root cause is narrowed to native Android text measurement/configuration propagation, but not established sufficiently for a source correction. No security or layout assertion was weakened. Next action: instrument actual MainActivity.onConfigurationChanged/onResume, Activity/Application/ReactContext configuration.fontScale, DisplayMetrics scaledDensity/fontScaleConverter and RN paragraph measurement during a real Android Settings font-size change. Distinguish ADB-only configuration delivery from a real Settings-return failure before choosing a native or Text correction. Preserve journey authority; do not reintroduce Activity recreation. Add a regression only after the responsible boundary is proved, rebuild and repeat100→200→100, Urdu, unrelated commit, and Arrival touch clearance.

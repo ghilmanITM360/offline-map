@@ -1,5 +1,7 @@
 # Project Status
 
+**SDK remediation checkpoint, 2026-11-02:** SDK source `70275f3` on `feat/muslim-ummah-offline-navigation-sdk`; PC2 dependency reconciliation and two source corrections validated. Full source chain passes (223 Jest suites / 2386 tests; 91506 routing goldens). Android native acceptance is partial with an unresolved dynamic-text observation; iOS Pods/Yoga and external release gates remain blocked. [Current SDK engineering status](sdk/release-closure-2026-11-02/FINAL_ENGINEERING_STATUS.md) supersedes the older host-only snapshot below for SDK work.
+
 **Updated:** 2026-10-12. Canonical: `integration/ijtema-clean-baseline`.
 Validated application source: `d7cafed977e1b0660b5efc915bd8dc66ca2cd618` ([PR #375](https://github.com/ghilmanITM360/offline-map/pull/375)).
 Permanent root: `/Users/ghilmanislam360/GhilmanProjects/offline-map`.

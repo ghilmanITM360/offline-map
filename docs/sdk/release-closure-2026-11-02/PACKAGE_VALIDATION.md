@@ -1,0 +1,13 @@
+# Delivered package verification — SOURCE/RUNTIME VERIFIED
+
+Source70275f31e3c9358dbd3a01c1abbcc791fa052b3c; private candidate, no publication. SDK0.1.0 byte identity remains the accepted d722ce2541c3cd179cd0ce19ecf9536ec50481ace08beea3a0ef61f19dd29cca. Complete delivery SHA256265b8de7a4ff2a9d78accb12cc55e68f946569d2311514904a8c140b6034a591. Consumer lock64e9d1190452c48d7379c8fd598b6ccac10fc2070fac9aa98fcba4ebb0b06e68 matches historical accepted lock.
+
+`sdk:bundle` passed independent artifact runtime probe, tarball byte reproducibility, compiled JS/declarations/exports/allowlist/Apache LICENSE checks and independent archive unpack/checksums.74payload files; all12packfiles plus shared PMTiles present and pinned. No asset generator/copy augmented the unpacked consumer.
+
+Clean shipped-lock `npm ci --ignore-scripts --no-audit --no-fund --prefer-offline`, consumer TypeScript,6Jest suites/63tests and14dependency-security checks PASS. Both `expo export --platform <android|ios> --output-dir export-<platform> --dump-sourcemap` PASS with769Android/771iOScontained module sources and13hashed assets each. No repository source leakage; shipped SDK screen/controller loaded by package from consumer node_modules. Exact commands/timings/log hashes in external final-consumer-checks.jsonl; final-metro-containment.json records bundle hashes/containment proof. Final SDK/package identities in FINAL_ARTIFACT_IDENTITIES.json.
+
+Current `npm audit --package-lock-only --ignore-scripts --json --fetch-retries=0 --fetch-timeout=20000` exits1 as expected: root57findings(6low/51moderate),consumer43(6low/37moderate),0high/critical each. Root advisory sources deepmerge/glob/minimatch/uuid; consumer deepmerge/glob/minimatch. Counts and sources match the existing DEPENDENCY_ADVISORY_DISPOSITION.md; no invented exception approval and no speculative dependency upgrade. External security/current exception approval remain BLOCKED. Full JSON preserved externally with hashes in final evidence manifest.
+
+The independently unpacked consumer is later used as disposable native build storage; original archive and its verified files remain unchanged. Expo-generated package scripts/native project state are environment/build outputs, not SDK source changes. Native build/acceptance are separate evidence levels.
+
+The final delivery includes the registered self-contained Android configuration plugin. Native candidate A and its delivery remain preserved as superseded evidence. Metro maps contain 769 Android/771 iOS file sources plus two known virtual Metro polyfills per platform; every file source resolves inside this delivered consumer. Production HBC byte identities are unchanged.

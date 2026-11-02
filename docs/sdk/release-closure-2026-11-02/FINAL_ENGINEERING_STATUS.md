@@ -1,0 +1,13 @@
+# Engineering status — partial closure, NO-GO
+
+Accepted source `70275f31e3c9358dbd3a01c1abbcc791fa052b3c`; starting HEAD `2d9fa73874938a2d7483c4499ed0a1bddc3ba0bc`. Final checkpoint includes documentation after that source commit; obtain exact documentation HEAD with `git log -1` and the handoff Git checks. No branch, clone, worktree or history replacement.
+
+SOURCE/RUNTIME VERIFIED: all23 stale dependency versions and4 applicable missing locations reconciled to lock under task-local Node24.14.0;1079 exact installed locations,0mismatches/applicable missing;46 foreign-platform optional omissions. Original installation and global runtime preserved. Security14 checks now pass without weakening the probe.
+
+Validated/pushed corrections: `7534e3e` refuses destructive pack compiler destinations (18 regression checks,4 actual RED canaries); `70275f3` ships the existing Android config handler so font/display changes preserve the consumer journey. `6d5cc76` records environment/Yoga evidence. Native text-size journey retention passes; actual dynamic text rendering has an unresolved FAIL observation, detailed separately.
+
+Final source chain PASS: app/script TypeScript; ESLint0errors/2existingwarnings; npm test;223 Jest suites/2386 tests; git diff --check; SDK exports/headless/package/declarations/LICENSE/allowlist/reproducibility.83headless/8exports/14security checks;2400 A* differential and91506 unchanged routing golden comparisons. Exact commands/timings/log hashes: NATIVE_CONFIG_SOURCE_VALIDATION.json. No source changes after those checks; documentation alone does not require another native rebuild.
+
+Delivered consumer PASS: clean exact-lock install from independently unpacked actual delivery tarball; TypeScript;6 Jest suites/63 tests;14security; both production Metro exports;13 pinned assets; all769Android/771iOS file modules contained (plus2virtual Metro polyfills each). SDK SHA d722ce2541c3cd179cd0ce19ecf9536ec50481ace08beea3a0ef61f19dd29cca; delivery SHA265b8de7a4ff2a9d78accb12cc55e68f946569d2311514904a8c140b6034a591. Root57/consumer43 current advisories, all low/moderate,0high/critical; current exception approval is still external.
+
+Engineering software closure is NOT PASS: Android dynamic text rendering observation is unresolved; necessary iOS native retests are blocked by the unreconciled Yoga lock/Pods state; remaining native scenarios and memory-growth investigation are incomplete. See ANDROID_NATIVE_RESULTS.md, ANDROID_FONT_SCALE_INVESTIGATION.md, IOS_YOGA_RESOLUTION.md, PERFORMANCE_AND_STRESS.md and FINAL_GO_NO_GO.md. No physical GPS, field, legal, security approval or distribution acceptance is inferred.
