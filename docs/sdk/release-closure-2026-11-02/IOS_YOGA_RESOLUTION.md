@@ -1,15 +1,25 @@
-# iOS Yoga / CocoaPods status — BLOCKED
+# iOS Yoga / CocoaPods — installation resolved; build pending
 
-2 November2026, tracking#395/#394. **ENVIRONMENT INSPECTION ONLY; no new iOS build or acceptance.**
+Resume from d8b64d7, tracking #395/#394. **ENVIRONMENT VERIFIED**, not an iOS native-build PASS.
 
-Exact-lock Node24.14.0 install did not change the mismatch. Ruby3.0.0/JSON2.5.1/CocoaPods1.16.2; RN0.81.5; Xcode26.2. Unmodified installed Yoga.podspec SHA256 `edcabf5c6df6d0e9b90559a041ea57154144b48a10da7d060f299e9cb90123a3` matches previously verified official RN bytes (historical upstream comparison, not a new network comparison).
+The actual cause is Ruby glob ordering in RN0.81.5 Yoga.podspec's `private_header_files`. Ruby3.0.0 defaults to lexical sorting; installed system Ruby2.6.10 returns filesystem order. Both contain exactly the same47 headers. No other evaluated field differs between the matching prebuilt configurations. JSON2.1.0 versus2.5.1 is ruled out: equal header order serializes to identical bytes.
 
-Fresh evaluated prebuilt JSON SHA1 `5934998fbeaef7845dbf698f698518695ab4cd1a`, identical to persisted local spec. Lock requires `3fd22c2cae22d7a2b0f0b538f55f7c2a17dc94d5`. Source mode produces `728df40394d49f3f471688747cf558158b3a3bd1`. CocoaPods computes JSON-spec checksum over serialized file bytes; raw Ruby podspec SHA1 is a different identity.
+| Legitimate evaluation | SHA-1 |
+|---|---|
+| Ruby3 default, prebuilt | 5934998fbeaef7845dbf698f698518695ab4cd1a |
+| Ruby2.6 normal unchanged podspec, CocoaPods1.16.2 | **3fd22c2cae22d7a2b0f0b538f55f7c2a17dc94d5** |
+| Ruby3 `sort:false` diagnostic comparison | same locked checksum/bytes |
 
-Structured comparison: source vs prebuilt differs only at `source_files`: `yoga/**/*.{cpp,h}` versus `yoga/**/*.h`. All other evaluated fields, including47lexically ordered private headers, match. Expected locked JSON is unavailable here, so expected-vs-current field differences are **UNKNOWN**, not inferred from the checksum. `yoga/field-comparison.json` records exact fields. The earlier six-run investigation in IMPLEMENTATION_ROADMAP.md confirms this is not a newly discovered checksum condition. Git history records a08601d changing it and545017e retaining it; neither proves generating environment.
+Twelve source/prebuilt × framework × INSTALL_YOGA_WITHOUT_PATH_OPTION evaluations excluded those mode differences under Ruby3. The exact lock-producing HomeMac JSON was not received; its historical preservation is recorded in IMPLEMENTATION_ROADMAP.md. Its absence no longer blocks the demonstrated local mechanism. Do not infer HomeMac's Ruby version from this reconstruction.
 
-Pods/Manifest.lock and Pods.xcodeproj/project.pbxproj remain missing. No pod install attempted because the discrepancy remains unexplained; no checksum edit, synthetic spec, verification bypass, pod update or native regeneration. Native build PASS cannot be claimed.
+[Upstream #56975](https://github.com/react/react-native/issues/56975) and [sorting correction64c9663](https://github.com/react/react-native/commit/64c9663152879a87d061a3f01b9e9c4e98cc73bc) describe the same class of instability. Local cross-version outputs establish this project's diagnosis. No upstream dependency patch or checksum rewrite was applied.
 
-**Smallest next action:** on HomeMac, export the unchanged lock-producing `ios/Pods/Local Podspecs/Yoga.podspec.json` and verify SHA1 equals3fd22c2; also capture Yoga.podspec bytes and Ruby/JSON/CocoaPods versions plus RCT_USE_PREBUILT_RNCORE/RCT_USE_RN_DEP/USE_FRAMEWORKS/INSTALL_YOGA_* flags. Compare exact fields/serialization with the preserved PC2 evaluation before a lock-respecting `pod install --deployment`.
+Provisioned isolated tools under `<E>/ruby26-tools`, leaving global Ruby/Node/gems unchanged: system Ruby2.6.10, task-local RubyGems3.4.22 library, Bundler2.4.22, CocoaPods1.16.2, compatible ActiveSupport6.1.7.10. Full42-gem resolution is captured in `toolchain-Gemfile.lock`; Gemfile, wrapper and installation logs are pinned by YOGA_RESUME_EVIDENCE_MANIFEST.json. These are historical build tools, not mobile runtime dependencies or a recommendation to adopt Ruby2.6 generally. Existing security/native-review and exception-approval gates remain open.
 
-Reproduce from repository root with task-local Node PATH: `ruby <evidence-root>/evaluate_yoga.rb <new-output-directory>`. The evaluator uses installed RN helpers and normal Pod::Specification evaluation for source/prebuilt modes; it does not modify inputs. Evidence root is in PC2_ENVIRONMENT_RECONCILIATION.md.
+Normal `Pod::Specification.from_file` evaluation through the isolated wrapper produced the locked checksum before installation. Diagnostic JSON was never copied into Pods. Preserved the incomplete183MiB Pods tree at `<E>/yoga/resume-20261102-ruby-order/Pods-before-deployment` before installing.
+
+Executed from repository `ios/`: `<E>/ruby26-tools/ruby26-bundle <E>/ruby26-tools/bin/pod install --deployment`. **PASS:93 dependencies/93pods**. `Pods/Manifest.lock` is byte-identical to committed Podfile.lock; Pods.xcodeproj/project.pbxproj exists; normally generated Yoga JSON hashes to the locked3fd22c2. Podfile, Podfile.lock, RN source and all committed dependency inputs remain unchanged. CocoaPods only reordered two existing root-project entries; the diff was preserved and original bytes restored. No pod update, validation bypass or clean prebuild.
+
+Three existing RN dependency/Hermes script-phase warnings remain visible in the log. Actual Release compilation and simulator acceptance are **NOT RUN at this installation checkpoint**. Next: build/identify the delivered SDK consumer using this reproducible environment, then AX5Arrival actual-touch acceptance.
+
+E=`/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation`. Evidence includes field-by-field comparison, actual glob probes, normal evaluator, source hashes, complete command logs and toolchain lock. Wrapper reproduction requires `-I` both task-local RubyGems and Bundler libraries plus `-rlogger -rbundler/setup`; see pinned wrapper, not the system default Bundler1.

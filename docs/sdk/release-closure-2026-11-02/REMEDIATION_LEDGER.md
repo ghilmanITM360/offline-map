@@ -20,9 +20,9 @@ Correction: scripts/sdk-pack/output.ts claims a new outside-repository directory
 
 Tests: SdkPackOutputSafety (18checks including4real-builder canary cases and2CLI cases); existing SdkKarachiPack/SdkDemoPack pin/reproducibility/gate-data tests. SdkEntryGateChooser now builds into fresh child of owned mkdtemp rather than replacing the temp root. Focused5suites64tests PASS. Independent read-only diff review: no actionable findings. No runtime SDK/app/native/GIS/manifest/pin/golden changes, so this compiler-only fix does not require rebuilding an existing verified binary; PC2 acceptance needs its own verified binary because historical HomeMac binaries are unavailable here.
 
-## IOS-YOGA-01 — BLOCKED
+## IOS-YOGA-01 — PASS installation (ENVIRONMENT), native build pending
 
-Fresh correct-lock evaluation reproduces local5934998, not expected3fd22c2. Expected lock-producing JSON/environment unavailable. No speculative correction or install attempt. See IOS_YOGA_RESOLUTION.md for exact next action.
+Resume diagnosis proves the47 private-header ordering difference between Ruby3 sorted glob and actual Ruby2.6 filesystem order. Normal unchanged podspec evaluation under isolated Ruby2.6/CocoaPods1.16.2 produces locked3fd22c2. Deployment install93pods succeeds; Manifest.lock equals committed lock and Pods.xcodeproj exists. No source/lock correction or checksum substitution. Original incomplete Pods tree preserved. See IOS_YOGA_RESOLUTION.md and YOGA_RESUME_EVIDENCE_MANIFEST.json. iOS Release build/acceptance remain separate pending gates.
 
 Final source chain: typecheck(app/scripts),lint(0errors/2existing warnings),npm test,full Jest223suites/2385tests,git diff --check,SDK package runtime/declarations/allowlist/Apache licence/reproducibility all PASS.2400differential and91506unchanged golden route comparisons,83headless/8exports/14security checks PASS. SOURCE_VALIDATION.json records exact commands/timing/log hashes. SDK tarball remains d722ce2541c3cd179cd0ce19ecf9536ec50481ace08beea3a0ef61f19dd29cca.
 

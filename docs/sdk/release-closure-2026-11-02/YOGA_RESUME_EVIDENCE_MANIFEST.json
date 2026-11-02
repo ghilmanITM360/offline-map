@@ -1,0 +1,230 @@
+{
+  "evidenceLevel": "ENVIRONMENT VERIFIED; native build NOT RUN",
+  "files": [
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/yoga/resume-20261102-ruby-order/2-6-10-default-headers.json",
+      "bytes": 1400,
+      "sha256": "16baaecba2c17ba22893e736736712d04f31f21d84a83c86bae7c7c38eea3f9a"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/yoga/resume-20261102-ruby-order/2-6-10-default-reserialized.json",
+      "bytes": 2586,
+      "sha256": "2531ea379e66c8ada9a6b7d6f23485dcd763785a9e05e4cdeaac2e23ab347554"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/yoga/resume-20261102-ruby-order/3-0-0-default-headers.json",
+      "bytes": 1400,
+      "sha256": "195414e1aaf52abc09ecdceba34e9ff9a17866d3f1b6b93880175846bbc454e5"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/yoga/resume-20261102-ruby-order/3-0-0-default-reserialized.json",
+      "bytes": 2586,
+      "sha256": "4a5f7673d048800016f4a2b8b2d7833231cc30ec1bd5aecb579cc0770b09d9b7"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/yoga/resume-20261102-ruby-order/3-0-0-unsorted-headers.json",
+      "bytes": 1400,
+      "sha256": "16baaecba2c17ba22893e736736712d04f31f21d84a83c86bae7c7c38eea3f9a"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/yoga/resume-20261102-ruby-order/3-0-0-unsorted-reserialized.json",
+      "bytes": 2586,
+      "sha256": "2531ea379e66c8ada9a6b7d6f23485dcd763785a9e05e4cdeaac2e23ab347554"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/yoga/resume-20261102-ruby-order/FINAL_SHA256_MANIFEST.json",
+      "bytes": 4419,
+      "sha256": "27310b987e7a928906b3701678ddbd5c6906e667b65907f22fe38879a16b7cfe"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/yoga/resume-20261102-ruby-order/FINDINGS.md",
+      "bytes": 2698,
+      "sha256": "7aae2c84a99dcf45daa108e4e83b7d668100438ea8ff2186e4c33c7b9aa21df2"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/yoga/resume-20261102-ruby-order/SHA256_MANIFEST.json",
+      "bytes": 3981,
+      "sha256": "c326b442c573055e43ba46dc04054cc49d42ec0bdef6acbc246b74f534d344eb"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/yoga/resume-20261102-ruby-order/bundle-install.log",
+      "bytes": 2663,
+      "sha256": "bfe69822212a48468bbf317d4e21bdc705a895b041f395bc4793956637d71699"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/yoga/resume-20261102-ruby-order/bundler-bootstrap.log",
+      "bytes": 54,
+      "sha256": "ecaa842e7ffc68b1f9c608a80f5c13776730227f3cbc6d8fa8cb476503ec03d9"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/yoga/resume-20261102-ruby-order/cross-version-results.json",
+      "bytes": 3353,
+      "sha256": "07263ac396a7fbfad9d1d17f8cad02e91183d585e83f1140a144ae7beed0214d"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/yoga/resume-20261102-ruby-order/deployment-result.json",
+      "bytes": 1003,
+      "sha256": "8b0040f02ce9fe8df7cac9dc4da6629bf7f7f6f526707b7ee669c2eaa3add5fc"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/yoga/resume-20261102-ruby-order/evaluate-matrix.rb",
+      "bytes": 2402,
+      "sha256": "de2e645610bbd168584c02b752c9e00d7ef3c806b15a0d92ea428e8bc9f53695"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/yoga/resume-20261102-ruby-order/field-differences.json",
+      "bytes": 17130,
+      "sha256": "1e02f384a8103274ce6808f7795ef21b13d9ed0b8450e3eb19d2a878b24618b7"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/yoga/resume-20261102-ruby-order/gem-bootstrap.log",
+      "bytes": 62,
+      "sha256": "d15ec7dd03b3499d5bf648f7ded655e78d309a5acb710b786a73fb550c408566"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/yoga/resume-20261102-ruby-order/glob_probe.rb",
+      "bytes": 1009,
+      "sha256": "d2a21c290432e6be28c424cbca1e85d06db441d613c57c462306c30ffa0dd5c7"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/yoga/resume-20261102-ruby-order/installed-runtime-inventory.json",
+      "bytes": 1515,
+      "sha256": "09a600abbbf40d81006ef40d6b8194bcc638b36509724c30deaeb23ab88fdbb6"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/yoga/resume-20261102-ruby-order/matrix.json",
+      "bytes": 15411,
+      "sha256": "7f678b13bcd50d637d05d66bf2167b69a3a8d5e98af9f92312b83326419236e1"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/yoga/resume-20261102-ruby-order/normal-ruby26-evaluation/Yoga-prebuilt.json",
+      "bytes": 2586,
+      "sha256": "2531ea379e66c8ada9a6b7d6f23485dcd763785a9e05e4cdeaac2e23ab347554"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/yoga/resume-20261102-ruby-order/normal-ruby26-evaluation/Yoga-source.json",
+      "bytes": 2592,
+      "sha256": "73e704c6f75c894ae86d023fcb0eb430dc79b46cdb2d13745fb850e7c8efeb43"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/yoga/resume-20261102-ruby-order/normal-ruby26-evaluation-attempt2.log",
+      "bytes": 220,
+      "sha256": "8e3cfc751712971e3c807b249647150a78ca021279a61fbab068cd2ef5ae7c40"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/yoga/resume-20261102-ruby-order/normal-ruby26-evaluation.log",
+      "bytes": 1802,
+      "sha256": "e039e55c943faa0e49d60181f117ddd2e7cee2aaa54cd708de19b445a561cc29"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/yoga/resume-20261102-ruby-order/pod-deployment.log",
+      "bytes": 23914,
+      "sha256": "b3153f63a3dc8ea26151464389296fedbc88dec30965ead488279d53f1d93a44"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/yoga/resume-20261102-ruby-order/pods-before-files.json",
+      "bytes": 5024,
+      "sha256": "ffdde5d98f0a380bf07acbac9afb6493eb6716d83d4a858004644ebc6300bdb3"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/yoga/resume-20261102-ruby-order/pre-install-inputs.json",
+      "bytes": 535,
+      "sha256": "8d3969f7a8d5d78ae7a94d6497eae4b8512e2dc926d0cdf8dafeb634ce8d35ea"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/yoga/resume-20261102-ruby-order/prebuilt-dynamic-path.json",
+      "bytes": 2643,
+      "sha256": "8c03c70424b23fbc93a8dd8d4a87b20e98b6d2601237a7cbc568482b83e45572"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/yoga/resume-20261102-ruby-order/prebuilt-dynamic-without-path.json",
+      "bytes": 1188,
+      "sha256": "b99d6cdf7b0f32810601dfef8ec0a908e7ea4772cd003fbf81734e4f365583eb"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/yoga/resume-20261102-ruby-order/prebuilt-no-frameworks-path.json",
+      "bytes": 2586,
+      "sha256": "4a5f7673d048800016f4a2b8b2d7833231cc30ec1bd5aecb579cc0770b09d9b7"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/yoga/resume-20261102-ruby-order/prebuilt-no-frameworks-without-path.json",
+      "bytes": 1131,
+      "sha256": "7d8f6f600f3e509acdd96c88bdd52f1ec727f164de30834b6cf5fdc33a041913"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/yoga/resume-20261102-ruby-order/prebuilt-static-path.json",
+      "bytes": 2643,
+      "sha256": "8c03c70424b23fbc93a8dd8d4a87b20e98b6d2601237a7cbc568482b83e45572"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/yoga/resume-20261102-ruby-order/prebuilt-static-without-path.json",
+      "bytes": 1188,
+      "sha256": "b99d6cdf7b0f32810601dfef8ec0a908e7ea4772cd003fbf81734e4f365583eb"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/yoga/resume-20261102-ruby-order/project-reordering.diff",
+      "bytes": 4216,
+      "sha256": "507e10d98e220d6be58ac278755aadfb4250821a52e75e25ba6ca3d4a4a7478d"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/yoga/resume-20261102-ruby-order/ruby30-with-actual-ruby26-header-order.json",
+      "bytes": 2586,
+      "sha256": "2531ea379e66c8ada9a6b7d6f23485dcd763785a9e05e4cdeaac2e23ab347554"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/yoga/resume-20261102-ruby-order/run_cross_version.py",
+      "bytes": 1980,
+      "sha256": "0b79a19a6c9d5c6fd28dd524ce456ab6c54ecde9f5aaa82e62196a9d64fdc7fc"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/yoga/resume-20261102-ruby-order/source-dynamic-path.json",
+      "bytes": 2649,
+      "sha256": "3188f500bf26134e7ec6cba0295a7057a1dd549b47c7446d7aafef052b60755e"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/yoga/resume-20261102-ruby-order/source-dynamic-without-path.json",
+      "bytes": 1211,
+      "sha256": "82391eabb69bb72c31dc3d6d6152077085f04456c43a32724b0b3e6a0692adcd"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/yoga/resume-20261102-ruby-order/source-no-frameworks-path.json",
+      "bytes": 2592,
+      "sha256": "790c503aebcead7e43ccf74ea556e00874d328923d4bae67768b78301ac06e2b"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/yoga/resume-20261102-ruby-order/source-no-frameworks-without-path.json",
+      "bytes": 1154,
+      "sha256": "26ec5d373ed79f976ea1392de192f5e83519f0b202d80e082823ebfa871e617e"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/yoga/resume-20261102-ruby-order/source-static-path.json",
+      "bytes": 2649,
+      "sha256": "3188f500bf26134e7ec6cba0295a7057a1dd549b47c7446d7aafef052b60755e"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/yoga/resume-20261102-ruby-order/source-static-without-path.json",
+      "bytes": 1211,
+      "sha256": "82391eabb69bb72c31dc3d6d6152077085f04456c43a32724b0b3e6a0692adcd"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/yoga/resume-20261102-ruby-order/system-ruby26-reserialize.json",
+      "bytes": 2586,
+      "sha256": "2531ea379e66c8ada9a6b7d6f23485dcd763785a9e05e4cdeaac2e23ab347554"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/yoga/resume-20261102-ruby-order/toolchain-Gemfile",
+      "bytes": 192,
+      "sha256": "d766585da8ee36bc38d8b0939e8c63d6df794f5031a2d41ea8950f7e73c38e3c"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/yoga/resume-20261102-ruby-order/toolchain-Gemfile.lock",
+      "bytes": 2666,
+      "sha256": "d3724980c26796e2ef183e377fded98dfcb9a0d0e1afc9eca03401dde30e9de9"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/yoga/resume-20261102-ruby-order/toolchain-ruby26-bundle",
+      "bytes": 1052,
+      "sha256": "89a25cf55c6c9081ded600acadeea171a71364d2759916c0c87822c027563d3e"
+    }
+  ]
+}

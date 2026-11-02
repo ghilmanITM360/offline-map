@@ -2,9 +2,9 @@
 
 | Decision | Verdict | Concrete reason / next action |
 |---|---|---|
-| Engineering software closure | INCOMPLETE | Source/package gates pass, but Android dynamic text observation and memory-growth characterization remain; iOS necessary native tests blocked. Diagnose font propagation using real Settings/instrumented native metrics; finish retained-memory measurements. |
+| Engineering software closure | INCOMPLETE | Source/package gates pass, but Android dynamic text observation and memory-growth characterization remain; iOS necessary native tests pending after successful lock-respecting Pods install. Diagnose font propagation using real Settings/instrumented native metrics; finish retained-memory measurements. |
 | Android virtual acceptance | PARTIAL / FAIL observation | See exact final APK matrix; dynamic enlarged text not proved, remaining GPS/reroute/navigation-mode/accessibility variants NOT RUN. |
-| iOS virtual acceptance | BLOCKED | Obtain lock-producing Yoga JSON/environment, compare exact fields/serialization, then deployment install and Release build; AX5 touch acceptance first. |
+| iOS virtual acceptance | BLOCKED | Yoga ordering cause proved and deployment install passes; build/identify Release consumer, then AX5 touch acceptance first. |
 | Controlled pilot authorization | NO-GO / owner acceptance pending | This engineering checkpoint alone does not authorize a pilot. Resolve software/native blockers and obtain explicit current security/rights/physical-device acceptance. Private local QA remains permitted. |
 | Unrestricted production | NO-GO | External acceptance below is not complete. |
 
