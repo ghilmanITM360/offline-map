@@ -139,37 +139,36 @@ for (const [name, mutate, message] of [
 }
 step('invalid plugin options fail with a message naming the option');
 
-// 7. Client pack integrated into the app: app-assets + table entry, then a production export that must carry the pack's bytes.
-const withPack = join(work, 'my-app-with-pack');
-cpSync(app, withPack, { recursive: true, filter: (p) => !/(^|\/)(node_modules|export-(android|ios))(\/|$)/.test(relative(app, p)) });
-symlinkSync(join(app, 'node_modules'), join(withPack, 'node_modules'), 'dir');
-const printed = run(process.execPath, [tool, 'app-assets', '--pack', join(work, 'venue-build/pack'), '--app', withPack], work);
-const entry = printed.slice(printed.indexOf('  {\n    id:'));
-const tablePath = join(withPack, 'bundledPackTable.ts');
-const table = readFileSync(tablePath, 'utf8');
-assert.ok(table.includes('\n];\n\nexport const BUNDLED_PACK_TABLE'));
-writeFileSync(tablePath, table.replace('\n];\n\nexport const BUNDLED_PACK_TABLE', `\n${entry.trimEnd()}\n];\n\nexport const BUNDLED_PACK_TABLE`));
-run(join(app, 'node_modules/.bin/tsc'), ['--noEmit', '-p', '.'], withPack);
-step('app-assets copied the client pack into the app; the table entry type-checks');
-
-// 8. Production Metro exports for both platforms: contained in the app, one React/RN/MapLibre, every pack asset present (including the client's).
+// 7+8. Production Metro exports for both platforms: contained in the app, one React/RN/MapLibre, every pack asset present. Run once as delivered, then again after
+// the client's own compiled pack has been added with `app-assets` and its table entry, which must also export the pack's bytes. (Metro does not follow a symlinked
+// node_modules, so the pack is added to the app itself, as a client would.)
 const clientHashes = pin.resources.map((r) => r.sha256).concat(pin.manifestSha256);
-for (const [label, dir] of [['app', app], ['app with client pack', withPack]]) {
+const exportAll = (label, withClientPack) => {
   for (const platform of ['android', 'ios']) {
-    const out = join(dir, `export-${platform}`);
-    run(expo, ['export', '--platform', platform, '--output-dir', out, '--dump-sourcemap', '--max-workers', '1'], dir, { EXPO_OFFLINE: '1' });
+    const out = join(app, `export-${platform}-${withClientPack ? 'pack' : 'base'}`);
+    run(expo, ['export', '--platform', platform, '--output-dir', out, '--dump-sourcemap', '--max-workers', '1'], app, { EXPO_OFFLINE: '1' });
     const files = walk(out);
     const maps = files.filter((f) => f.endsWith('.map'));
     assert.ok(maps.length > 0 && files.some((f) => /\.(hbc|js)$/.test(f) && statSync(f).size > 100_000), `${label} ${platform}: no bundle`);
-    const sources = maps.flatMap((m) => JSON.parse(readFileSync(m, 'utf8')).sources).filter((s) => !s.startsWith('\0')).map((s) => (existsSync(join(dir, s)) ? join(dir, s) : s));
-    assert.ok(sources.every((s) => s.startsWith(dir + sep) || s.startsWith(app + sep)), `${label} ${platform}: source outside the app: ${sources.find((s) => !(s.startsWith(dir + sep) || s.startsWith(app + sep)))}`);
+    const sources = maps.flatMap((m) => JSON.parse(readFileSync(m, 'utf8')).sources).filter((s) => !s.startsWith('\0')).map((s) => (existsSync(join(app, s)) ? join(app, s) : s));
+    assert.ok(sources.every((s) => s.startsWith(app + sep)), `${label} ${platform}: source outside the app: ${sources.find((s) => !s.startsWith(app + sep))}`);
     for (const needle of ['dist/ui/NavigationScreen.js', 'dist/domain/navigation/NavigationController.js', 'dist/maplibre/MapLibreNavigationMap.js']) assert.ok(sources.some((s) => s.endsWith(`@muslim-ummah/offline-navigation/${needle}`)), `${label} ${platform}: ${needle}`);
     const hashes = new Set(files.filter((f) => !f.endsWith('.map')).map((f) => sha256Hex(readFileSync(f))));
     for (const p of manifest.files.filter((f) => /^examples\/expo-consumer\/assets\/(packs\/.*\.packfile|karachi-basemap\.pmtiles)$/.test(f.path))) assert.ok(hashes.has(p.sha256), `${label} ${platform}: ${p.path} missing from the export`);
-    if (dir === withPack) for (const h of clientHashes) assert.ok(hashes.has(h), `${platform}: client pack asset ${h.slice(0, 12)} missing from the export`);
+    if (withClientPack) for (const h of clientHashes) assert.ok(hashes.has(h), `${platform}: client pack asset ${h.slice(0, 12)} missing from the export`);
     step(`production export ${platform} (${label})`, `${sources.length} module sources`);
   }
-}
+};
+exportAll('as delivered', false);
+const printed = run(process.execPath, [tool, 'app-assets', '--pack', join(work, 'venue-build/pack'), '--app', app], work);
+const entry = printed.slice(printed.indexOf('  {\n    id:'));
+const tablePath = join(app, 'bundledPackTable.ts');
+const table = readFileSync(tablePath, 'utf8');
+assert.ok(table.includes('\n];\n\nexport const BUNDLED_PACK_TABLE'));
+writeFileSync(tablePath, table.replace('\n];\n\nexport const BUNDLED_PACK_TABLE', `\n${entry.trimEnd()}\n];\n\nexport const BUNDLED_PACK_TABLE`));
+run(join(app, 'node_modules/.bin/tsc'), ['--noEmit', '-p', '.'], app);
+step('app-assets copied the client pack into the app; the table entry type-checks');
+exportAll('with the client pack added', true);
 
 // 9. Nothing in the unpacked delivery points at a developer machine.
 const forbidden = [/\/Users\/[A-Za-z]/, /ghilman/i, /BEGIN [A-Z ]*PRIVATE KEY/];
