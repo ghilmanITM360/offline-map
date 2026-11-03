@@ -53,3 +53,6 @@ The alternate smoke is a distinct environment identity and is not transferred to
 | iPhone 12 Pro Max (iOS 26.3, booted) | NOT RUN | Not a task simulator, accepted Release app not installed, harness hardcodes 375x812/top 50. Left untouched. |
 
 No matrix counts changed (13 PASS / 0 FAIL / 6 BLOCKED / 1 NOT RUN stands). A27, A29, A34 and the 13 mini geometry stay BLOCKED; pilot and production stay NO-GO.
+
+## Continuation — 3 November 2026 (iOS 26.3 cross-device campaign)
+Four cross-device tests passed on a task-owned iPhone 17 / iOS 26.3 simulator with the accepted, unmodified Release app. Details and identities: `IOS26_CROSS_DEVICE_RESULTS.md`. The iPhone 13 mini rows are unchanged and not replaced by this evidence.
