@@ -30,8 +30,8 @@ try {
     for (const peer of Object.keys(pkg.peerDependencies)) assert.equal(pkg.peerDependenciesMeta[peer].optional, true, peer);
     assert.equal(pkg.dependencies, undefined);
   });
-  check('every entrypoint the manifest names exists; only ".", "./session", "./ui", "./maplibre" are public', () => {
-    assert.deepEqual(Object.keys(pkg.exports), ['.', './session', './ui', './maplibre', './package.json']);
+  check('every entrypoint the manifest names exists; only the four code entrypoints, the Expo plugin and the Metro helper are public', () => {
+    assert.deepEqual(Object.keys(pkg.exports), ['.', './session', './ui', './maplibre', './app.plugin.js', './metro', './package.json']);
     const targets = [pkg.main, pkg.types, pkg['react-native'], ...Object.values(pkg.exports).flatMap((v) => typeof v === 'string' ? [v] : Object.values(v))];
     for (const t of targets) assert.ok(existsSync(join(pkgDir, t)), `missing ${t}`);
   });

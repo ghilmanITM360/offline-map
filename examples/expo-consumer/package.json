@@ -3,8 +3,15 @@
   "version": "0.0.0",
   "private": true,
   "main": "index.js",
+  "scripts": {
+    "typecheck": "tsc --noEmit -p .",
+    "test": "jest --ci --runInBand --watchman=false",
+    "export:android": "expo export --platform android --output-dir export-android --dump-sourcemap",
+    "export:ios": "expo export --platform ios --output-dir export-ios --dump-sourcemap"
+  },
   "dependencies": {
     "@maplibre/maplibre-react-native": "11.5.0",
+    "@muslim-ummah/ios-location-precision": "file:./ios-precision.tgz",
     "@muslim-ummah/offline-navigation": "file:./sdk.tgz",
     "expo": "54.0.37",
     "expo-asset": "12.0.13",

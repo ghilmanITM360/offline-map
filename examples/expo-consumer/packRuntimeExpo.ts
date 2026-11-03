@@ -124,6 +124,7 @@ export const runDeviceSelfTest = async (): Promise<SelfTestResult[]> => {
   const rootUri = packRootUri('ummah-packs-selftest');
   const fs = createExpoPackFileSystem(rootUri);
   const [primary, secondary] = BUNDLED_PACK_TABLE;
+  if (!secondary) throw new Error('The pack self-test needs two bundled packs; this build bundles one.');
   const results = await runPackSelfTest({
     fs,
     reset: async () => { const d = new Directory(rootUri); if (d.exists) d.delete(); d.create({ intermediates: true, idempotent: true }); },

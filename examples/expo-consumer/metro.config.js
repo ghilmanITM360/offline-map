@@ -1,8 +1,5 @@
-// Stock Expo Metro config on purpose: the packed SDK must need no resolver, transformer or watchFolders tweaks.
-// The one host setting is the app's own asset types: the bundled offline basemap archive and the venue-pack files.
+// Stock Expo Metro config plus the SDK's one helper, which registers the offline basemap (pmtiles) and venue-pack files (packfile) as assets.
 const { getDefaultConfig } = require('expo/metro-config');
+const { withOfflineNavigation } = require('@muslim-ummah/offline-navigation/metro');
 
-const config = getDefaultConfig(__dirname);
-config.resolver.assetExts = [...config.resolver.assetExts, 'pmtiles', 'packfile']; // packfile: bundled venue-pack files, copied byte-for-byte
-
-module.exports = config;
+module.exports = withOfflineNavigation(getDefaultConfig(__dirname));

@@ -8,13 +8,7 @@
       "ios"
     ],
     "ios": {
-      "bundleIdentifier": "com.example.sdkconsumer",
-      "infoPlist": {
-        "CFBundleLocalizations": [
-          "en",
-          "ur"
-        ]
-      }
+      "bundleIdentifier": "com.example.sdkconsumer"
     },
     "android": {
       "package": "com.example.sdkconsumer",
@@ -26,14 +20,14 @@
       ]
     },
     "plugins": [
-      "./plugins/withAndroidConfigChanges.js",
-      "@maplibre/maplibre-react-native",
       [
-        "expo-location",
+        "@muslim-ummah/offline-navigation",
         {
-          "locationWhenInUsePermission": "The SDK consumer uses your location only while the app is open, to follow your progress along a route.",
-          "locationAlwaysPermission": false,
-          "locationAlwaysAndWhenInUsePermission": false
+          "locationPermissionText": "The SDK consumer uses your location only while the app is open, to follow your progress along a route.",
+          "languages": [
+            "en",
+            "ur"
+          ]
         }
       ]
     ],

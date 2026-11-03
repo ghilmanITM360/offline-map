@@ -1,0 +1,11 @@
+{
+  "name": "@muslim-ummah/ios-location-precision",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Reads the iOS location accuracy authorization (full or reduced) for @muslim-ummah/offline-navigation location adapters. Never asks for permission and never starts location updates.",
+  "license": "Apache-2.0",
+  "main": "./index.js",
+  "types": "./index.d.ts",
+  "files": ["index.js", "index.d.ts", "expo-module.config.json", "ios", "LICENSE"],
+  "peerDependencies": { "expo": ">=54.0.0" }
+}

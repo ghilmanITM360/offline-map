@@ -31,14 +31,14 @@ const pkgDir = join(consumer, 'node_modules/@muslim-ummah/offline-navigation');
 const manifest = JSON.parse(readFileSync(join(pkgDir, 'package.json'), 'utf8'));
 assert.equal(manifest.private, true);
 assert.equal(manifest.version, '0.1.0');
-assert.deepEqual(Object.keys(manifest.exports), ['.', './session', './ui', './maplibre', './package.json']);
+assert.deepEqual(Object.keys(manifest.exports), ['.', './session', './ui', './maplibre', './app.plugin.js', './metro', './package.json']);
 assert.equal(manifest.dependencies, undefined);
 assert.deepEqual(manifest.peerDependencies, { '@maplibre/maplibre-react-native': '>=11.5.0 <12', react: '>=19.1.0', 'react-native': '>=0.81.0' });
 assert.deepEqual(Object.keys(manifest.peerDependenciesMeta).sort(), Object.keys(manifest.peerDependencies).sort());
 for (const target of [manifest.main, manifest.types, manifest['react-native'], ...Object.values(manifest.exports).flatMap((v) => typeof v === 'string' ? [v] : Object.values(v))]) assert.ok(existsSync(join(pkgDir, target)), target);
 const walk = (dir) => readdirSync(dir, { withFileTypes: true }).flatMap((e) => e.isDirectory() ? walk(join(dir, e.name)) : [join(dir, e.name)]);
 for (const file of walk(pkgDir)) {
-  assert.ok(file.endsWith('package.json') || file === join(pkgDir, 'LICENSE') || /\/dist\/.*\.(js|d\.ts)$/.test(file), file);
+  assert.ok(file.endsWith('package.json') || file === join(pkgDir, 'LICENSE') || [join(pkgDir, 'app.plugin.js'), join(pkgDir, 'metro.js'), join(pkgDir, 'metro.d.ts')].includes(file) || /\/plugin\/[A-Za-z]+\.js$/.test(file) || /\/dist\/.*\.(js|d\.ts)$/.test(file), file);
   assert.ok(!readFileSync(file, 'utf8').includes(root), 'artifact contains repository path');
 }
 // The licence text must be the verbatim Apache License 2.0 (sha-256 of apache.org/licenses/LICENSE-2.0.txt, 11,358 bytes).

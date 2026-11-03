@@ -2,7 +2,7 @@
  * @license
  * SPDX-License-Identifier: Apache-2.0
  */
-const { withMainActivity, withMainApplication } = require('@expo/config-plugins');
+const { withMainActivity, withMainApplication } = require('expo/config-plugins');
 
 // RN0.81.5 contains native font-context/cache invalidation behind a disabled flag.
 // Use its initializer once, with the selected stock provider and only this flag changed.
@@ -46,8 +46,9 @@ const ACTIVITY_METHOD = `
   }
 `;
 
+const SUPPORTED_REACT_NATIVE = '0.81.5';
 function checkVersion(version) {
-  if (version !== '0.81.5') throw new Error(`Android font-layout workaround requires revalidation for RN ${version}; expected0.81.5`);
+  if (version !== SUPPORTED_REACT_NATIVE) throw new Error(`Android font-layout workaround requires revalidation for RN ${version}; expected ${SUPPORTED_REACT_NATIVE}`);
 }
 function appendMethod(contents, method) {
   if (!/}\s*$/.test(contents)) throw new Error('Unrecognized Android Kotlin class ending');
@@ -85,5 +86,6 @@ function withAndroidFontScale(config) {
   });
 }
 module.exports = withAndroidFontScale;
+module.exports.SUPPORTED_REACT_NATIVE = SUPPORTED_REACT_NATIVE;
 module.exports.patchApplication = patchApplication;
 module.exports.patchActivity = patchActivity;

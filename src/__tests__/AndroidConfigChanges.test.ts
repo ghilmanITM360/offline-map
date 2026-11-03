@@ -53,7 +53,7 @@ describe('MainActivity handles font and display size changes itself', () => {
 it('the delivered consumer generates native font invalidation without replacing the journey', () => {
   const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'sdk-font-prebuild-'));
   try {
-    for (const name of ['app.json', 'package.json', 'plugins']) {
+    for (const name of ['app.json', 'package.json']) {
       fs.cpSync(path.join(root, 'examples/expo-consumer', name), path.join(temporary, name), { recursive: true });
     }
     fs.symlinkSync(path.join(root, 'node_modules'), path.join(temporary, 'node_modules'), 'dir');
@@ -74,7 +74,7 @@ it('the delivered consumer generates native font invalidation without replacing 
   }
 }, 40_000);
 
-const { patchApplication, patchActivity } = require(path.join(root, 'examples/expo-consumer/plugins/withAndroidFontScale.js'));
+const { patchApplication, patchActivity } = require(path.join(root, 'packages/offline-navigation/plugin/androidFontScale.js'));
 test.each([patchApplication, patchActivity])('native workaround rejects a changed RN version and is idempotent', (patch) => {
   const name = patch === patchApplication ? 'MainApplication' : 'MainActivity';
   const source = fs.readFileSync(path.join(root, `android/app/src/main/java/com/aicrafted/karachiijtema/${name}.kt`), 'utf8');

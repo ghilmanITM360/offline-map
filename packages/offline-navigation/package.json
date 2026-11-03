@@ -13,9 +13,11 @@
     "./session": { "types": "./src/domain/session/index.ts", "default": "./src/domain/session/index.ts" },
     "./ui": { "types": "./src/ui/index.ts", "default": "./src/ui/index.ts" },
     "./maplibre": { "types": "./src/maplibre/index.ts", "default": "./src/maplibre/index.ts" },
+    "./app.plugin.js": "./app.plugin.js",
+    "./metro": { "types": "./metro.d.ts", "default": "./metro.js" },
     "./package.json": "./package.json"
   },
-  "files": ["src"],
+  "files": ["src", "app.plugin.js", "plugin", "metro.js", "metro.d.ts"],
   "peerDependencies": {
     "@maplibre/maplibre-react-native": ">=11.5.0 <12",
     "react": ">=19.1.0",

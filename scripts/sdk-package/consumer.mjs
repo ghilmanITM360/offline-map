@@ -4,7 +4,7 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, statSync, symlinkSync, writeFileSync } from 'node:fs';
 import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
@@ -27,12 +27,14 @@ const walk = (dir) => readdirSync(dir, { withFileTypes: true }).flatMap((e) => e
 // 1. The artifact under test: the same reproducible tarball test:sdk-package checks.
 const packDir = join(out, 'pack');
 const tarball = run(process.execPath, [join(root, 'scripts/sdk-package/pack.mjs'), packDir], root).trim().split('\n').pop();
+const iosPrecisionTarball = run(process.execPath, [join(root, 'scripts/sdk-package/pack-ios-precision.mjs'), join(out, 'pack-ios-precision')], root).trim().split('\n').pop();
 
 // 2. A fresh project from the committed example, pinned to exactly what the repository itself resolves, so the
 // consumer cannot silently drift to other React/Expo versions.
 const consumer = join(out, 'consumer');
 cpSync(join(root, 'examples/expo-consumer'), consumer, { recursive: true, filter: (p) => !p.includes('node_modules') });
 cpSync(tarball, join(consumer, 'sdk.tgz'));
+cpSync(iosPrecisionTarball, join(consumer, 'ios-precision.tgz'));
 
 // The verified Karachi archive is the repository's own; the example's constants must describe exactly these bytes.
 const ARCHIVE = join(root, 'assets/offline-map/ijtema-basemap.pmtiles');
@@ -67,6 +69,7 @@ for (const [venue, script, pinFile] of [['karachi-ijtema', 'karachi.ts', 'karach
 const manifest = JSON.parse(readFileSync(join(consumer, 'package.json'), 'utf8'));
 const pins = { ...manifest.dependencies, ...manifest.devDependencies };
 delete pins['@muslim-ummah/offline-navigation'];
+delete pins['@muslim-ummah/ios-location-precision'];
 // A package the repository does not itself install (the example's expo-system-ui) is pinned to what the installed Expo SDK declares compatible.
 const bundled = JSON.parse(readFileSync(join(root, 'node_modules/expo/bundledNativeModules.json'), 'utf8'));
 const compatible = (range, version) => {
@@ -90,9 +93,30 @@ const copies = (name) => run('find', [join(consumer, 'node_modules'), '-path', `
   .filter((p) => JSON.parse(readFileSync(p, 'utf8')).name === name);
 for (const name of ['react', 'react-native', '@maplibre/maplibre-react-native']) assert.equal(copies(name).length, 1, `exactly one ${name} must be installed`);
 
-// The MapLibre config plugin must resolve from the app's own dependencies (it is what edits the native projects).
+// The SDK's one config plugin must resolve from the app's own dependencies (it applies expo-location and MapLibre itself).
 const expoConfig = JSON.parse(run(join(consumer, 'node_modules/.bin/expo'), ['config', '--json', '--type', 'public'], consumer, { EXPO_OFFLINE: '1' }));
-assert.ok(expoConfig.plugins.some((p) => p === '@maplibre/maplibre-react-native' || p[0] === '@maplibre/maplibre-react-native'), 'the MapLibre config plugin must be configured');
+assert.ok(expoConfig.plugins.some((p) => p[0] === '@muslim-ummah/offline-navigation'), 'the SDK config plugin must be configured');
+assert.ok(!expoConfig.plugins.some((p) => p === '@maplibre/maplibre-react-native' || p === 'expo-location' || p[0] === 'expo-location'), 'the SDK plugin applies MapLibre and expo-location itself');
+
+// Real prebuild of both native projects in a throwaway copy (JS only: no pod install, Gradle or compiler runs). It proves the plugin's native
+// configuration and that the iOS precision module is autolinked from node_modules, with nothing copied by hand.
+const prebuild = join(out, 'prebuild');
+mkdirSync(prebuild);
+for (const name of ['app.json', 'package.json']) cpSync(join(consumer, name), join(prebuild, name));
+symlinkSync(join(consumer, 'node_modules'), join(prebuild, 'node_modules'), 'dir');
+run(join(consumer, 'node_modules/.bin/expo'), ['prebuild', '--platform', 'all', '--no-install', '--template', join(consumer, 'node_modules/expo/template.tgz')], prebuild, { EXPO_OFFLINE: '1', EXPO_NO_DOTENV: '1' });
+const android = join(prebuild, 'android/app/src/main');
+const manifestXml = readFileSync(join(android, 'AndroidManifest.xml'), 'utf8');
+assert.ok(manifestXml.includes('android.permission.ACCESS_FINE_LOCATION'), 'Android fine-location permission');
+for (const change of ['fontScale', 'smallestScreenSize', 'density']) assert.ok(/android:configChanges="[^"]*/.exec(manifestXml)?.[0].includes(change), `MainActivity must handle ${change}`);
+const javaDir = join(android, 'java/com/example/sdkconsumer');
+assert.ok(readFileSync(join(javaDir, 'MainApplication.kt'), 'utf8').includes('enableFontScaleChangesUpdatingLayout() = true'), 'Android font-layout fix');
+assert.ok(readFileSync(join(javaDir, 'MainActivity.kt'), 'utf8').includes('reactDelegate?.reactRootView?.requestLayout()'), 'Android font re-measure');
+const plist = readFileSync(join(prebuild, 'ios/SDKConsumer/Info.plist'), 'utf8');
+assert.ok(plist.includes('NSLocationWhenInUseUsageDescription') && !plist.includes('NSLocationAlwaysUsageDescription'), 'iOS foreground-location text only');
+assert.ok(/CFBundleLocalizations<\/key>\s*<array>\s*<string>en<\/string>\s*<string>ur<\/string>/.test(plist), 'iOS language declarations');
+const autolinked = JSON.parse(run(join(consumer, 'node_modules/.bin/expo-modules-autolinking'), ['resolve', '--platform', 'apple', '--json'], prebuild));
+assert.ok(JSON.stringify(autolinked).includes('SdkLocationPrecision'), 'the iOS precision module must be autolinked from node_modules');
 
 // 4. Types, then rendering, both against the installed artifact.
 run(join(consumer, 'node_modules/.bin/tsc'), ['--noEmit', '-p', '.'], consumer);

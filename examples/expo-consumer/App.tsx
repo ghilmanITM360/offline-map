@@ -15,7 +15,7 @@ import {
 import { BASEMAP } from './basemap';
 import { copyFor, isRTLLanguage, LANGUAGES, type Language } from './copy';
 import { appStateLifecycle, createExpoLocationAdapter } from './expoLocation';
-import { readIOSPrecision } from './modules/sdk-location-precision';
+import { readIOSPrecision } from '@muslim-ummah/ios-location-precision';
 import { DEFAULT_VENUE_ID, type OpenedVenue, type PackRuntime } from './packRuntime';
 import { packRootUri, runDeviceSelfTest, runStartupBenchmark, startBundledPacks, type StartupBenchmarkRow } from './packRuntimeExpo';
 import type { SelfTestResult } from './packSelfTest';
