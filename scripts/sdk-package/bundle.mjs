@@ -1,13 +1,16 @@
 // Assemble the private release-candidate delivery bundle OUTSIDE the repository: the packed tarball, the client documents, the
 // working consumer app sources (with the sample basemap), checksums and a manifest. Nothing is published or sent anywhere.
-//   node scripts/sdk-package/bundle.mjs <fresh directory outside the repository>
+//   node scripts/sdk-package/bundle.mjs <fresh directory outside the repository> [--allow-dirty]
+// The archive is written by scripts/sdk-package/tar.mjs (pure Node), never by the host `tar`, so it holds exactly the declared files.
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { copyFileSync, cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
-import { basename, dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
+import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { inventoryFromLock, renderInventory } from './inventory.mjs';
+import { auditEntries, readTarGz, writeTarGz } from './tar.mjs';
+import { buildVenueTool } from './venue-tool.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 assert.ok(process.argv[2], 'usage: node scripts/sdk-package/bundle.mjs <fresh outside-repository directory>');
@@ -16,6 +19,10 @@ const rel = relative(root, out);
 assert.ok(rel === '..' || rel.startsWith(`..${sep}`) || isAbsolute(rel), 'output must be outside the repository');
 assert.ok(!existsSync(out) || readdirSync(out).length === 0, 'use a fresh, empty bundle directory');
 assert.ok(!existsSync(`${out}.tgz`) && !existsSync(`${out}.verification`), 'use fresh archive and verification paths');
+const gitHead = spawnSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).stdout.trim();
+const dirty = spawnSync('git', ['status', '--porcelain', '--untracked-files=no'], { cwd: root, encoding: 'utf8' }).stdout.trim();
+assert.ok(process.argv.includes('--allow-dirty') || dirty === '', `tracked files differ from HEAD ${gitHead.slice(0, 7)}; commit first so the delivery names the source it was built from (or pass --allow-dirty for a throwaway build)`);
+const deliveryId = `delivery-${gitHead.slice(0, 7)}`; // the archive's top-level folder: identical for identical sources, whatever directory built it
 mkdirSync(out, { recursive: true });
 
 const run = (cmd, args, cwd = root) => {
@@ -36,9 +43,23 @@ const tarSha = sha256(first);
 mkdirSync(join(out, 'package'), { recursive: true });
 cpSync(first, join(out, 'package', tarName));
 
-// 2. The archive allowlist: only package.json, the licence text and compiled dist/ JavaScript and declarations.
-const listing = run('tar', ['-tzf', first]).split('\n').filter(Boolean);
-for (const entry of listing) assert.ok(/^package\/(package\.json|LICENSE|dist\/.*\.(js|d\.ts))$/.test(entry), `unexpected archive entry: ${entry}`);
+// 2. The archive allowlist, read by the raw TAR parser: only package.json, the licence, the Expo plugin, the Metro helper and compiled dist/.
+const sdkEntries = readTarGz(first);
+for (const entry of sdkEntries) assert.ok(/^package\/(package\.json|LICENSE|app\.plugin\.js|metro\.js|metro\.d\.ts|plugin\/[A-Za-z]+\.js|dist\/.*\.(js|d\.ts))$/.test(entry.path) && entry.type === '0', `unexpected archive entry: ${entry.path}`);
+assert.deepEqual(auditEntries(sdkEntries), [], 'the SDK tarball must be clean');
+
+// 2b. The iOS location-precision native module (a separate, tiny npm package) and the venue pack tool, both reproducible.
+const iosA = run(process.execPath, [join(root, 'scripts/sdk-package/pack-ios-precision.mjs'), join(scratch, 'ios-a')]).trim().split('\n').pop();
+const iosB = run(process.execPath, [join(root, 'scripts/sdk-package/pack-ios-precision.mjs'), join(scratch, 'ios-b')]).trim().split('\n').pop();
+assert.equal(sha256(iosA), sha256(iosB), 'the iOS precision tarball must be byte-reproducible');
+const iosName = iosA.split(sep).pop();
+cpSync(iosA, join(out, 'package', iosName));
+assert.deepEqual(auditEntries(readTarGz(iosA)), [], 'the iOS precision tarball must be clean');
+mkdirSync(join(out, 'tools/venue-pack'), { recursive: true });
+await buildVenueTool(join(scratch, 'tool-a.cjs'));
+await buildVenueTool(join(scratch, 'tool-b.cjs'));
+assert.equal(sha256(join(scratch, 'tool-a.cjs')), sha256(join(scratch, 'tool-b.cjs')), 'the venue tool must be byte-reproducible');
+cpSync(join(scratch, 'tool-a.cjs'), join(out, 'tools/venue-pack/venue-pack.cjs'));
 
 // 3. Independent reinstall of the artifact alone into an empty project: the headless entrypoint must load in plain Node.
 const probe = join(scratch, 'probe');
@@ -47,6 +68,8 @@ writeFileSync(join(probe, 'package.json'), JSON.stringify({ name: 'probe', versi
 run('npm', ['install', '--ignore-scripts', '--no-audit', '--no-fund', '--no-package-lock', first], probe);
 const loaded = run(process.execPath, ['-e', "const m=require('@muslim-ummah/offline-navigation'); console.log(typeof m.createNavigationController, typeof m.createPackManager)"], probe).trim();
 assert.equal(loaded, 'function function');
+const extras = run(process.execPath, ['-e', "const m=require('@muslim-ummah/offline-navigation/metro'); const c=m.withOfflineNavigation({resolver:{assetExts:['png']}}); console.log(c.resolver.assetExts.join(','))"], probe).trim();
+assert.equal(extras, 'png,pmtiles,packfile');
 
 // 4. Documents and the working example (without installs, builds or generated native projects).
 mkdirSync(join(out, 'docs'), { recursive: true });
@@ -56,7 +79,11 @@ for (const f of ['FINAL_GO_NO_GO.md', 'FINAL_CLOSURE_LEDGER.md']) cpSync(join(ro
 // Generated native projects live at the example's top level only; modules/*/ios is real source and must ship.
 const skip = /(^|\/)(node_modules|\.expo|sdk\.tgz|package-lock\.json|\._[^/]*|__MACOSX)(\/|$)|^(ios|android)(\/|$)|^export-/;
 cpSync(join(root, 'examples/expo-consumer'), join(out, 'examples/expo-consumer'), { recursive: true, filter: (p) => !skip.test(relative(join(root, 'examples/expo-consumer'), p)) });
+// The synthetic example venue for the pack tool, with the same sample basemap the example app ships (a pack needs a map archive).
+cpSync(join(root, 'examples/synthetic-venue'), join(out, 'examples/synthetic-venue'), { recursive: true, filter: (p) => !/(^|\/)(\._[^/]*|\.DS_Store)$/.test(p) });
+mkdirSync(join(out, 'examples/synthetic-venue/input/map'), { recursive: true });
 const archive = join(root, 'assets/offline-map/ijtema-basemap.pmtiles');
+cpSync(archive, join(out, 'examples/synthetic-venue/input/map/basemap.pmtiles'));
 const provenance = JSON.parse(readFileSync(join(root, 'assets/offline-map/BASEMAP_PROVENANCE.json'), 'utf8'));
 assert.equal(sha256(archive), provenance.archive.sha256, 'the sample archive must match its provenance');
 mkdirSync(join(out, 'examples/expo-consumer/assets'), { recursive: true });
@@ -86,6 +113,7 @@ for (const [venue, script] of [['karachi-ijtema', 'karachi.ts'], ['synthetic-dem
   }
 }
 cpSync(first, join(out, 'examples/expo-consumer/sdk.tgz'));
+cpSync(iosA, join(out, 'examples/expo-consumer/ios-precision.tgz'));
 copyFileSync(join(root, 'packages/offline-navigation/LICENSE'), join(out, 'LICENSE'));
 
 // 4b. A reviewed, reproducible consumer install: resolve the example's pinned dependencies once, against THIS tarball, and ship the lockfile.
@@ -94,6 +122,7 @@ const lockDir = join(scratch, 'lock');
 mkdirSync(lockDir);
 for (const f of ['package.json']) cpSync(join(root, 'examples/expo-consumer', f), join(lockDir, f));
 cpSync(first, join(lockDir, 'sdk.tgz'));
+cpSync(iosA, join(lockDir, 'ios-precision.tgz'));
 run('npm', ['install', '--package-lock-only', '--ignore-scripts', '--no-audit', '--no-fund'], lockDir);
 run('npm', ['ci', '--dry-run', '--ignore-scripts', '--no-audit', '--no-fund'], lockDir);
 const lockFile = join(lockDir, 'package-lock.json');
@@ -105,7 +134,8 @@ writeFileSync(join(out, 'docs/DEPENDENCY_INVENTORY.md'), renderInventory(invento
 }));
 rmSync(scratch, { recursive: true, force: true });
 
-for (const f of ['modules/sdk-location-precision/ios/SdkLocationPrecisionModule.swift', 'modules/sdk-location-precision/ios/SdkLocationPrecision.podspec', 'modules/sdk-location-precision/expo-module.config.json']) assert.ok(existsSync(join(out, 'examples/expo-consumer', f)), `missing ${f}`);
+// The consumer must carry no native module sources of its own: the iOS module arrives from its tarball, the plugin from the SDK.
+for (const f of ['modules', 'plugins', 'sdk.tgz', 'ios-precision.tgz', 'package-lock.json']) assert.equal(existsSync(join(out, 'examples/expo-consumer', f)), f !== 'modules' && f !== 'plugins', `${f} in the example app`);
 
 // 5. Hygiene: no personal paths, secrets or unrelated files in anything text.
 const textFiles = walk(out).filter((f) => /\.(md|json|ts|tsx|js|mjs|swift|podspec|txt)$/.test(f));
@@ -120,15 +150,38 @@ const version = JSON.parse(readFileSync(join(root, 'packages/offline-navigation/
 const files = walk(out).map((f) => relative(out, f)).sort();
 const entries = files.map((f) => ({ path: f, bytes: statSync(join(out, f)).size, sha256: sha256(join(out, f)) }));
 const info = {
-  name: '@muslim-ummah/offline-navigation', version, status: 'release candidate with outstanding acceptance (see docs/SECURITY_AND_VALIDATION_REPORT.md)',
-  sourceCommit: run('git', ['rev-parse', 'HEAD']).trim(), tarball: { file: `package/${tarName}`, sha256: tarSha },
+  name: '@muslim-ummah/offline-navigation', version, deliveryId, status: 'release candidate with outstanding acceptance (see docs/SECURITY_AND_VALIDATION_REPORT.md)',
+  supersedes: { deliveryId: 'delivery-21d1ed4', sha256: '87e17e33ea10be2ae40c4d1965159989cc5d492d1637263ce5e5ca62b98871e5', reason: 'carried AppleDouble entries and no venue pack tool; kept unchanged as history' },
+  sourceCommit: gitHead, tarball: { file: `package/${tarName}`, sha256: tarSha },
+  iosPrecisionTarball: { file: `package/${iosName}`, sha256: sha256(iosA) },
   generatedBy: 'scripts/sdk-package/bundle.mjs', published: false,
 };
 writeFileSync(join(out, 'manifest.json'), JSON.stringify({ ...info, files: entries }, null, 2) + '\n');
 writeFileSync(join(out, 'CHECKSUMS.txt'), entries.map((e) => `${e.sha256}  ${e.path}`).join('\n') + '\n');
-writeFileSync(join(out, 'README.txt'), `Muslim Ummah Offline Navigation SDK ${version} - private release candidate\n\nStart at docs/README.md. Install package/${tarName}.\nVerify with: shasum -a 256 -c CHECKSUMS.txt (manifest.json, CHECKSUMS.txt and this README are not listed in it).\nThis bundle is NOT published anywhere and carries outstanding physical-device and field acceptance: docs/SECURITY_AND_VALIDATION_REPORT.md.\n`);
-// Exercise the actual client archive, including metadata exclusion and every referenced pinned asset.
-run('tar', ['-czf', `${out}.tgz`, '-C', dirname(out), basename(out)]);
-console.log(run(process.execPath, [join(root, 'scripts/sdk-package/test-bundle.mjs'), `${out}.tgz`, `${out}.verification`]).trim());
-console.log(`sdk-bundle: ${files.length} files, tarball sha256 ${info.tarball.sha256}, commit ${info.sourceCommit}`);
-console.log(out);
+writeFileSync(join(out, 'README.txt'), `Muslim Ummah Offline Navigation SDK ${version} - private release candidate (${deliveryId})
+
+Start at docs/QUICK_START.md (the one onboarding path). What is in this delivery:
+
+  LIBRARY (install these)
+    package/${tarName}      the SDK
+    package/${iosName}      iOS location-precision native module (Expo apps on iOS)
+  CLIENT TOOL (run these)
+    tools/venue-pack/venue-pack.cjs                    turns your surveyed venue data into a verified offline pack (docs/VENUE_PACK_TOOL.md)
+  EXAMPLES (read, copy from, do not ship as is)
+    examples/synthetic-venue/                          an invented venue and the spec that compiles it
+    examples/expo-consumer/                            a working Expo app using only the packages above
+  DOCUMENTS
+    docs/                                              quick start, API reference, compatibility matrix, limits, checklist
+
+Verify with: shasum -a 256 -c CHECKSUMS.txt (manifest.json, CHECKSUMS.txt and this README are not listed in it).
+This bundle is NOT published anywhere. It carries outstanding physical-device and field acceptance: docs/SECURITY_AND_VALIDATION_REPORT.md.
+The example app ships the owner's Karachi Ijtema sample pack for acceptance testing only; redistribution rights are an owner decision (docs/LICENSES_AND_NOTICES.md).
+`);
+// The archive: every file of the delivery, once, under one top-level folder, written by tar.mjs and then audited by the raw parser.
+const everything = walk(out).map((f) => relative(out, f)).sort();
+const archivePath = `${out}.tgz`;
+const archiveSha = writeTarGz(everything.map((f) => ({ path: `${deliveryId}/${f}`, data: readFileSync(join(out, f)) })), archivePath);
+assert.deepEqual(auditEntries(readTarGz(archivePath), new Set(everything.map((f) => `${deliveryId}/${f}`))), [], 'the delivery archive must hold exactly the declared files');
+console.log(run(process.execPath, [join(root, 'scripts/sdk-package/test-bundle.mjs'), archivePath, `${out}.verification`]).trim());
+console.log(`sdk-bundle: ${files.length} files, archive sha256 ${archiveSha}, tarball sha256 ${info.tarball.sha256}, commit ${info.sourceCommit}`);
+console.log(archivePath);
