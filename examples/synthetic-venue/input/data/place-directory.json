@@ -1,0 +1,48 @@
+{
+ "schemaVersion": 1,
+ "venueId": "example-courtyard",
+ "places": [
+  {
+   "id": "entrance",
+   "kind": "gate",
+   "nodeIds": [
+    "entrance"
+   ]
+  },
+  {
+   "id": "courtyard",
+   "kind": "plaza",
+   "nodeIds": [
+    "courtyard"
+   ]
+  },
+  {
+   "id": "hall",
+   "kind": "room",
+   "nodeIds": [
+    "hall"
+   ]
+  },
+  {
+   "id": "library",
+   "kind": "room",
+   "nodeIds": [
+    "library"
+   ]
+  },
+  {
+   "id": "cafe",
+   "kind": "facility",
+   "nodeIds": [
+    "cafe"
+   ]
+  },
+  {
+   "id": "annex",
+   "kind": "room",
+   "nodeIds": [
+    "annex"
+   ]
+  }
+ ]
+}

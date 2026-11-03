@@ -1,0 +1,6 @@
+{
+ "schemaVersion": 1,
+ "venueId": "example-courtyard",
+ "synthetic": true,
+ "note": "Invented example: six points and six corridors that follow no real path. Not a surveyed place; free to use as a template. The basemap is the OpenStreetMap extract shipped with the SDK example (ODbL-1.0)."
+}

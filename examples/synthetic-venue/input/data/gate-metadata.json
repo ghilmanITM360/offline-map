@@ -1,0 +1,10 @@
+{
+ "schemaVersion": 1,
+ "venueId": "example-courtyard",
+ "gates": [
+  {
+   "id": "entrance",
+   "note": "Synthetic example gate. Replace with your own gate records, or an empty list."
+  }
+ ]
+}

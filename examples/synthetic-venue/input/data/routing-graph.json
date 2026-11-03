@@ -1,0 +1,99 @@
+{
+ "schemaVersion": 1,
+ "venueId": "example-courtyard",
+ "dataVersion": "example-1",
+ "nodes": [
+  {
+   "id": "entrance",
+   "lat": 24.97,
+   "lng": 67.005
+  },
+  {
+   "id": "courtyard",
+   "lat": 24.9704492,
+   "lng": 67.005
+  },
+  {
+   "id": "hall",
+   "lat": 24.9704492,
+   "lng": 67.0056937
+  },
+  {
+   "id": "library",
+   "lat": 24.9709881,
+   "lng": 67.0056937
+  },
+  {
+   "id": "cafe",
+   "lat": 24.9704492,
+   "lng": 67.0044054
+  },
+  {
+   "id": "annex",
+   "lat": 24.9709881,
+   "lng": 67.005
+  }
+ ],
+ "edges": [
+  {
+   "from": "entrance",
+   "to": "courtyard",
+   "distanceM": 50.1
+  },
+  {
+   "from": "courtyard",
+   "to": "entrance",
+   "distanceM": 50.1
+  },
+  {
+   "from": "courtyard",
+   "to": "hall",
+   "distanceM": 70.1
+  },
+  {
+   "from": "hall",
+   "to": "courtyard",
+   "distanceM": 70.1
+  },
+  {
+   "from": "hall",
+   "to": "library",
+   "distanceM": 60.1
+  },
+  {
+   "from": "library",
+   "to": "hall",
+   "distanceM": 60.1
+  },
+  {
+   "from": "courtyard",
+   "to": "cafe",
+   "distanceM": 60.1
+  },
+  {
+   "from": "cafe",
+   "to": "courtyard",
+   "distanceM": 60.1
+  },
+  {
+   "from": "courtyard",
+   "to": "annex",
+   "distanceM": 60.1
+  },
+  {
+   "from": "annex",
+   "to": "courtyard",
+   "distanceM": 60.1
+  },
+  {
+   "from": "annex",
+   "to": "library",
+   "distanceM": 70.1
+  },
+  {
+   "from": "library",
+   "to": "annex",
+   "distanceM": 70.1
+  }
+ ]
+}

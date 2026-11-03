@@ -1,0 +1,45 @@
+{
+ "schemaVersion": 1,
+ "venueId": "example-courtyard",
+ "languages": [
+  "en"
+ ],
+ "entries": [
+  {
+   "id": "entrance",
+   "names": {
+    "en": "Entrance"
+   }
+  },
+  {
+   "id": "courtyard",
+   "names": {
+    "en": "Courtyard"
+   }
+  },
+  {
+   "id": "hall",
+   "names": {
+    "en": "Hall"
+   }
+  },
+  {
+   "id": "library",
+   "names": {
+    "en": "Library"
+   }
+  },
+  {
+   "id": "cafe",
+   "names": {
+    "en": "Cafe"
+   }
+  },
+  {
+   "id": "annex",
+   "names": {
+    "en": "Annex"
+   }
+  }
+ ]
+}

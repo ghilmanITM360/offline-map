@@ -5,10 +5,13 @@
 import { lstatSync, mkdirSync, realpathSync } from 'node:fs';
 import { dirname, isAbsolute, relative, resolve, sep } from 'node:path';
 
-const REPO = realpathSync(resolve(__dirname, '../..'));
+const checkoutRoot = (): string => realpathSync(resolve(__dirname, '../..'));
 
-/** Claim a new output directory. Pack generation never replaces or deletes an existing directory. */
-export const createPackOutput = (input: string): string => {
+/**
+ * Claim a new output directory. Pack generation never replaces or deletes an existing directory. `repo` is the checkout the output must
+ * stay out of; the standalone venue tool has none and passes null (the other guards still apply).
+ */
+export const createPackOutput = (input: string, repo: string | null = checkoutRoot()): string => {
   if (!input || input !== input.trim() || input.includes('\\') || input.includes('\0')
     || input.split('/').some((part) => part === '.' || part === '..') || input.includes('//')) {
     throw new Error('pack output must name a fresh directory without path aliases');
@@ -31,9 +34,11 @@ export const createPackOutput = (input: string): string => {
     if (dirname(part) === part) break;
   }
   if (!canonical) throw new Error('pack output has no accessible parent');
-  const fromRepo = relative(REPO, canonical);
-  if (fromRepo === '' || (!isAbsolute(fromRepo) && fromRepo !== '..' && !fromRepo.startsWith(`..${sep}`))) {
-    throw new Error('pack output must be outside the repository');
+  if (repo !== null) {
+    const fromRepo = relative(repo, canonical);
+    if (fromRepo === '' || (!isAbsolute(fromRepo) && fromRepo !== '..' && !fromRepo.startsWith(`..${sep}`))) {
+      throw new Error('pack output must be outside the repository');
+    }
   }
   mkdirSync(dirname(canonical), { recursive: true });
   mkdirSync(canonical); // Exclusive creation also rejects a concurrent claim; no recursive deletion.

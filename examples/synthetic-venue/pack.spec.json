@@ -1,0 +1,58 @@
+{
+ "packId": "example-courtyard@1.0.0",
+ "venueId": "example-courtyard",
+ "packVersion": "1.0.0",
+ "sdkCompatibility": ">=0.1.0 <0.2.0",
+ "routingPolicyVersion": "example-1",
+ "createdAt": "2026-11-03T00:00:00Z",
+ "minimumPlatformCapabilities": [
+  "pmtiles-local-read"
+ ],
+ "bounds": {
+  "west": 66.976,
+  "south": 24.943,
+  "east": 67.037,
+  "north": 25.0
+ },
+ "languages": [
+  "en"
+ ],
+ "resources": [
+  {
+   "path": "map/basemap.pmtiles",
+   "kind": "map-archive"
+  },
+  {
+   "path": "data/routing-graph.json",
+   "kind": "routing-graph"
+  },
+  {
+   "path": "data/place-directory.json",
+   "kind": "place-directory"
+  },
+  {
+   "path": "data/gate-metadata.json",
+   "kind": "gate-metadata"
+  },
+  {
+   "path": "data/localization.json",
+   "kind": "localization"
+  },
+  {
+   "path": "PROVENANCE.json",
+   "kind": "provenance"
+  }
+ ],
+ "attributions": [
+  {
+   "name": "© OpenStreetMap contributors",
+   "license": "ODbL-1.0",
+   "url": "https://www.openstreetmap.org/copyright"
+  }
+ ],
+ "provenance": {
+  "source": "Synthetic example venue over the OpenStreetMap basemap shipped with the SDK example",
+  "licence": "ODbL-1.0 (basemap); example data free to reuse",
+  "generatedBy": "venue-pack compile"
+ }
+}
