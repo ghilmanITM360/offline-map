@@ -1,0 +1,29 @@
+{
+  "classification": "INCONCLUSIVE",
+  "reason": "No confirmed leak and no source defect. Native retained bytes in React Native/Fabric are sawtooth and tied to unobserved GC/reclaim timing; one reclaim occurred in block 1, none in block 2, and a RUNNING_CRITICAL trim released only ~1.5 MiB. A limited negative result is not supported without Hermes/JS heap census or an additional block.",
+  "diagnosticApk": {"sha256": "61b0822121497b7b7a245a66557250f712f2bd5295185bd551c1bbab2b38bc60", "manifestDiff": "adds <profileable android:shell=\"true\"/> only; debuggable not set; same SDK source/deps as accepted release 21d1ed4 (accepted APK 40228465... unchanged)"},
+  "trace": {"file": "run4/traces/heap.pftrace (local, private, not committed)", "sha256": "a1ff3f641fc69823121bf28172e85c4faf2bf9e51b08049df70db3645aab1f62", "bytes": 5287682, "allocRecords": 37593, "freeRecords": 30199, "samplingIntervalBytes": 8192, "pid": 3990, "locationSource": "device (explicitly selected)"},
+  "protocol": "5 warm-ups, baseline, 10 sessions, idle, 10 sessions, idle, final; normal Exit each; same PID 3990 throughout",
+  "heapprofdNetSampledBytes": {
+    "libc.malloc": {"baseline": 18013696, "block1Quiet": 14281188, "block2Quiet": 37816804, "final": 34070016},
+    "com.android.art": {"baseline": 469032, "block1Quiet": 1266342, "block2Quiet": 2105416, "final": 2130625}
+  },
+  "ownerLibNetBytes": {
+    "libreactnative": {"baseline": 12124160, "block1Quiet": 6873088, "block2Quiet": 25550848, "final": 24518656},
+    "libjsi": {"baseline": 2613248, "block1Quiet": 991232, "block2Quiet": 4988928, "final": 4980736},
+    "libmaplibre": {"baseline": 769728, "block1Quiet": 1138368, "block2Quiet": 1171136, "final": 1171136},
+    "libhermes": {"baseline": 204800, "block1Quiet": 335872, "block2Quiet": 532480, "final": 532480}
+  },
+  "topRetainedStacks": "Fabric UIManager::createNode and YogaLayoutableShadowNode::cloneChildInPlace (operator new), JSI dynamicFromValue; each falls then rises across checkpoints (not monotonic). A single -24.5 MB free event in block 1 shows the memory is reclaimable.",
+  "dumpsysMeminfo": {
+    "nativeHeapPssKiB": {"baseline": 50991, "block1Quiet": 51951, "block2Quiet": 73671, "final": 73671},
+    "dalvikHeapPssKiB": {"baseline": 13018, "block1Quiet": 13314, "block2Quiet": 13345, "final": 13081},
+    "totalPssKiB": {"baseline": 131893, "block1Quiet": 141532, "block2Quiet": 162001, "final": 161730},
+    "swapPssKiB": 229, "views": 519, "viewRootImpl": 1, "activities": 1, "appContexts": 5, "threads": {"baseline": 56, "final": 58}
+  },
+  "cleanup": "dumpsys location shows 0 sdkconsumer registrations at every idle checkpoint after normal Exit; Activity/View counts constant (no retention).",
+  "trimProbe": {"command": "am send-trim-memory RUNNING_CRITICAL", "nativeHeapPssKiBBefore": 73671, "after": 72159},
+  "limitations": ["java_hprof not run (concurrent hprof stalled the 2 GB emulator earlier)", "no Hermes/JS heap census", "heapprofd tracks only allocations after attach", "sampling 8192 B is statistical", "emulator, not physical device", "3 reclaim-phase checkpoints only"],
+  "priorAttempts": "run1-run3 aborted (hprof concurrency, setup, system_server ANR 'Process system isn't responding' with ~170 MB free guest RAM); guest rebooted once, data preserved. System ANR not attributed to the SDK.",
+  "smallestFollowUp": "Third 10-session block plus Hermes heap census (or forced Hermes GC) to see whether Fabric shadow-node bytes are reclaimed; no source change justified now."
+}

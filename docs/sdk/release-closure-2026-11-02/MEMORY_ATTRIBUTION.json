@@ -1314,5 +1314,12 @@
         "Heap/procstats/block-quiet stages were not reached; no leak fix made"
       ]
     }
-  ]
+  ],
+  "profileableDiagnosticRun": {
+    "summary": "memory-profile-run4/summary.json",
+    "classification": "INCONCLUSIVE",
+    "diagnosticApkSha256": "61b0822121497b7b7a245a66557250f712f2bd5295185bd551c1bbab2b38bc60",
+    "traceSha256": "a1ff3f641fc69823121bf28172e85c4faf2bf9e51b08049df70db3645aab1f62",
+    "confirmedLeak": false
+  }
 }
