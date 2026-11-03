@@ -1,0 +1,66 @@
+{
+  "scope": "3 November usage-stop checkpoint only; all older evidence/manifests preserved",
+  "evidenceRoot": "/Users/ghilmanislam360/.codex/visualizations/2026/11/03/01a19f9c-4933-7161-bacb-f0e1c8c15e05/native-blocker-checkpoint-20261103-0913",
+  "files": [
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/03/01a19f9c-4933-7161-bacb-f0e1c8c15e05/native-blocker-checkpoint-20261103-0913/artifact-verification.json",
+      "bytes": 2304,
+      "sha256": "dc1bd0e392e0179ae4c796a4eca75c250cf8910547b0bb68ea9aabfc654793f3"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/03/01a19f9c-4933-7161-bacb-f0e1c8c15e05/native-blocker-checkpoint-20261103-0913/checkpoint-result.json",
+      "bytes": 9257,
+      "sha256": "bff1515fba515966a5aeb20bd1ccd2e79b1d208e6f52c8ab829d75a046c97efa"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/03/01a19f9c-4933-7161-bacb-f0e1c8c15e05/native-blocker-checkpoint-20261103-0913/disk.json",
+      "bytes": 292,
+      "sha256": "6facec7d96d19c06c78b4054822ef6e18d03c67cbcf71a8a9b8d73887634e325"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/03/01a19f9c-4933-7161-bacb-f0e1c8c15e05/native-blocker-checkpoint-20261103-0913/issue-394-before.json",
+      "bytes": 15890,
+      "sha256": "772ede84201005601f361fbf1a55f5906555e9a9678d947761699dd8d032faf1"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/03/01a19f9c-4933-7161-bacb-f0e1c8c15e05/native-blocker-checkpoint-20261103-0913/live-remote-before.json",
+      "bytes": 308,
+      "sha256": "f30f5ced6942c1d91044d69176b6a67a500a216a860b1b336ace7d0698a0bb5d"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/03/01a19f9c-4933-7161-bacb-f0e1c8c15e05/native-blocker-checkpoint-20261103-0913/matrix-before.sha256.json",
+      "bytes": 197,
+      "sha256": "3a01a3f497cbe0409123a9393694c239c19c787668f0d18d584d4c3b82effec5"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/03/01a19f9c-4933-7161-bacb-f0e1c8c15e05/native-blocker-checkpoint-20261103-0913/original-remaining-rows.json",
+      "bytes": 17393,
+      "sha256": "fcd96f384d7b21a6d7f77f761d6101d33f1a62d4eb2636456c113aa75a051f24"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/03/01a19f9c-4933-7161-bacb-f0e1c8c15e05/native-blocker-checkpoint-20261103-0913/processes.json",
+      "bytes": 299282,
+      "sha256": "432be10a5e3be03569f14e276b31f895c28a14c2f345e09fcba8d40b8e97a99a"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/03/01a19f9c-4933-7161-bacb-f0e1c8c15e05/native-blocker-checkpoint-20261103-0913/repository-before.json",
+      "bytes": 1561,
+      "sha256": "eb69bedcc5f63f7f65741217da6827f294e3babe17f5cc73f86dcd85f7360486"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/03/01a19f9c-4933-7161-bacb-f0e1c8c15e05/native-blocker-checkpoint-20261103-0913/swap.json",
+      "bytes": 226,
+      "sha256": "2874a44d846f3d8e9d15dc290473860aa6cf870ee20b72a24a5cc87e7c41d914"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/03/01a19f9c-4933-7161-bacb-f0e1c8c15e05/native-blocker-checkpoint-20261103-0913/usage-limits.json",
+      "bytes": 1775,
+      "sha256": "1de78be668adbd23fe2749dbd070c5d20857a7ecc45c76b8e78272fa8bbfe31f"
+    },
+    {
+      "path": "/Users/ghilmanislam360/.codex/visualizations/2026/11/03/01a19f9c-4933-7161-bacb-f0e1c8c15e05/native-blocker-checkpoint-20261103-0913/checkpoint-validation.json",
+      "bytes": 558,
+      "sha256": "b215e5353b0c2847a4c15d6f926d9e2ceff1ca097d047f454533a9c1f5669475"
+    }
+  ]
+}

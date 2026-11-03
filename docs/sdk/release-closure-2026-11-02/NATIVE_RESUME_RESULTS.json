@@ -188,5 +188,183 @@
   "artifactVerification": "/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19c13-387a-73d3-9ae8-d9ecfc79b7d8/native-acceptance-20261102-1645/artifact-verification.json",
   "memoryClassification": "INCONCLUSIVE",
   "issue": "https://github.com/ghilmanITM360/offline-map/issues/394",
-  "scope": "Bounded one-hour native continuation; no production source/binary/package change"
+  "scope": "Bounded one-hour native continuation; no production source/binary/package change",
+  "usageStopCheckpoint20261103": {
+    "recordedUTC": "2026-11-03T04:16:00.021628+00:00",
+    "startHead": "7892855a2fc76efbd579709536e953dd22a88430",
+    "finalHeadDefinition": "Commit containing this checkpoint; exact SHA recorded in issue394 after normal push.",
+    "issue": "https://github.com/ghilmanITM360/offline-map/issues/394",
+    "reason": "Owner mandatory stop threshold already reached on initial live usage check (90% five-hour;54% weekly). No native workload or diagnostic build started.",
+    "latestUsage": {
+      "fiveHourUsedPercent": 92,
+      "weeklyUsedPercent": 54,
+      "paidCreditsUsed": false,
+      "resetCreditsUsed": false
+    },
+    "evidenceRoot": "/Users/ghilmanislam360/.codex/visualizations/2026/11/03/01a19f9c-4933-7161-bacb-f0e1c8c15e05/native-blocker-checkpoint-20261103-0913",
+    "nativeCasesCompleted": [],
+    "nativeResultsChanged": false,
+    "sourceChanges": [],
+    "productionRebuilds": [],
+    "diagnosticApk": null,
+    "diagnosticApkReason": "Not built: owner usage stop threshold reached before expensive work.",
+    "remainingOriginalRows": [
+      {
+        "platform": "Android",
+        "originalId": "A26",
+        "scenario": "Bounded native watcher ownership/cleanup",
+        "expected": "Bounded native watcher ownership/cleanup",
+        "status": "BLOCKED",
+        "blockerClassification": "Executable with safe diagnostic instrumentation",
+        "nextProof": "Release OS request start/stop evidence does not expose exact GMS/Expo/JS watcher, route subscription or timer ownership."
+      },
+      {
+        "platform": "Android",
+        "originalId": "A27",
+        "scenario": "Native reroute and repeated reroutes",
+        "expected": "Native reroute and repeated reroutes",
+        "status": "NOT RUN",
+        "blockerClassification": "Executable now",
+        "nextProof": "Complete two policy-eligible successive reroutes, generation ownership, Exit late-callback rejection, map and camera; preserve prior single reroute evidence."
+      },
+      {
+        "platform": "Android",
+        "originalId": "A29",
+        "scenario": "Small-screen/accessibility-service traversal",
+        "expected": "Small-screen/accessibility-service traversal",
+        "status": "NOT RUN",
+        "blockerClassification": "Executable now",
+        "nextProof": "Actual bound TalkBack traversal remains incomplete; human audible usability is Requires external human acceptance."
+      },
+      {
+        "platform": "Android",
+        "originalId": "A30",
+        "scenario": "Remaining native manifest/pointer/signature faults",
+        "expected": "Remaining native manifest/pointer/signature faults",
+        "status": "BLOCKED",
+        "blockerClassification": "Executable with safe diagnostic instrumentation",
+        "nextProof": "Shipped lab lacks remaining native manifest/pointer/signature fault controls."
+      },
+      {
+        "platform": "Android",
+        "originalId": "A34",
+        "scenario": "Rapid permission/noisy duplicate/out-of-order native fixes",
+        "expected": "Rapid permission/noisy duplicate/out-of-order native fixes",
+        "status": "BLOCKED",
+        "blockerClassification": "Executable with safe diagnostic instrumentation",
+        "nextProof": "Validate controlled accuracy/timestamp delivery through GMS/Expo before attributing weak/stale/noisy/race/recovery behavior to SDK."
+      },
+      {
+        "platform": "Android",
+        "originalId": "A35",
+        "scenario": "Long-duration performance/leak closure",
+        "expected": "Long-duration performance/leak closure",
+        "status": "BLOCKED",
+        "blockerClassification": "Executable with safe diagnostic instrumentation",
+        "nextProof": "Separately hashed profileable consumer from accepted source/dependency graph required for allocation stacks; do not rerun unprofiled 20-session Release campaign."
+      },
+      {
+        "platform": "iOS",
+        "originalArray": "additionalGates",
+        "originalIndex": 0,
+        "scenario": "Native transient CoreLocation error/backoff/duplicate watcher proof",
+        "expected": null,
+        "expectedFieldNote": "No separate expected field or stable test ID in original row; exact scenario and zero-based array index preserved.",
+        "status": "BLOCKED",
+        "blockerClassification": "Simulator/emulator capability limitation",
+        "nextProof": "Validated native Core Location error/backoff and watcher harness required."
+      },
+      {
+        "platform": "iOS",
+        "originalArray": "additionalGates",
+        "originalIndex": 1,
+        "scenario": "Native stale/weak-fix controlled fault variants",
+        "expected": null,
+        "expectedFieldNote": "No separate expected field or stable test ID in original row; exact scenario and zero-based array index preserved.",
+        "status": "BLOCKED",
+        "blockerClassification": "Simulator/emulator capability limitation",
+        "nextProof": "simctl location has no controlled accuracy/timestamp/error injection."
+      },
+      {
+        "platform": "iOS",
+        "originalArray": "additionalGates",
+        "originalIndex": 2,
+        "scenario": "Failed reroute recovery fault",
+        "expected": null,
+        "expectedFieldNote": "No separate expected field or stable test ID in original row; exact scenario and zero-based array index preserved.",
+        "status": "BLOCKED",
+        "blockerClassification": "Automation or environment limitation",
+        "nextProof": "Controlled reroute failure facility missing from acceptance harness."
+      },
+      {
+        "platform": "iOS",
+        "originalArray": "additionalGates",
+        "originalIndex": 3,
+        "scenario": "Verified scoped iOS network denial/offline cold-warm campaign",
+        "expected": null,
+        "expectedFieldNote": "No separate expected field or stable test ID in original row; exact scenario and zero-based array index preserved.",
+        "status": "BLOCKED",
+        "blockerClassification": "Automation or environment limitation",
+        "nextProof": "Validated scoped network denial unavailable; no host-wide outage."
+      },
+      {
+        "platform": "iOS",
+        "originalArray": "additionalGates",
+        "originalIndex": 4,
+        "scenario": "Urdu Directory DynamicType variant and all manual endpoint-disabled variants",
+        "expected": null,
+        "expectedFieldNote": "No separate expected field or stable test ID in original row; exact scenario and zero-based array index preserved.",
+        "status": "BLOCKED",
+        "blockerClassification": "Automation or environment limitation",
+        "nextProof": "Restore simulator-wide banner/display geometry through supported settings, then execute original Directory/endpoints scenario."
+      },
+      {
+        "platform": "iOS",
+        "originalArray": "additionalGates",
+        "originalIndex": 6,
+        "scenario": "Remaining pack trust/manifest/pointer variants beyond shipped lab",
+        "expected": null,
+        "expectedFieldNote": "No separate expected field or stable test ID in original row; exact scenario and zero-based array index preserved.",
+        "status": "BLOCKED",
+        "blockerClassification": "Executable with safe diagnostic instrumentation",
+        "nextProof": "Remaining trust/manifest/pointer fault controls absent from shipped lab."
+      },
+      {
+        "platform": "iOS",
+        "originalArray": "additionalGates",
+        "originalIndex": 7,
+        "scenario": "Long native iOS stress campaign",
+        "expected": null,
+        "expectedFieldNote": "No separate expected field or stable test ID in original row; exact scenario and zero-based array index preserved.",
+        "status": "NOT RUN",
+        "blockerClassification": "Automation or environment limitation",
+        "nextProof": "Executable after baseline restoration and protocol continuity verification.16/20 recorded; four new sessions cannot automatically be combined after shutdown/reboot."
+      }
+    ],
+    "androidCountsBeforeAndAfter": {
+      "PASS": 29,
+      "FAIL": 0,
+      "BLOCKED": 4,
+      "NOT RUN": 2
+    },
+    "iosCountsBeforeAndAfter": {
+      "PASS": 13,
+      "FAIL": 0,
+      "BLOCKED": 6,
+      "NOT RUN": 1
+    },
+    "memoryClassification": "INCONCLUSIVE; prior native reclamation is neither a confirmed leak nor proof of leak freedom.",
+    "geometryRootCause": "Not newly investigated; prior evidence describes simulator-wide banner/top93 versus50; app defect unconfirmed.",
+    "iosStressCompletedSessions": 16,
+    "nativeBoundary": "No new EMULATOR VERIFIED acceptance. Initial sandbox simctl/ADB denials do not establish a host simulator/ADB defect; no unsandboxed native probe needed after stop.",
+    "concurrentPC1Writer": "Not verified with PC1; no executable source writes performed.",
+    "automatedBaseline": "Historical unchanged-source PASS retained:223 Jest suites/2389tests,91506goldens,2400differentials,14security,63consumer tests,typecheck/lint,bothMetroexports,deterministicpackage. Not rerun for documentation-only checkpoint.",
+    "decisions": {
+      "softwareImplementationAndAutomatedChecks": "Historical SOURCE/RUNTIME VERIFIED PASS unchanged; final engineering evidence closure incomplete.",
+      "nativeVirtualDeviceAcceptance": "NO-GO / partial",
+      "controlledPilot": "NO-GO",
+      "unrestrictedProduction": "NO-GO"
+    },
+    "externalAcceptance": "Physical walking/GPS/hardware/network,whole-device offline cold start,human TalkBack/VoiceOver,89strings,venue rights,Gate18/19survey,external security/native review and exception approval,signing/distribution remain pending."
+  }
 }
