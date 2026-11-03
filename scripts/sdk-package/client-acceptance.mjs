@@ -131,8 +131,9 @@ for (const [name, mutate, message] of [
   ['bad-language', (e) => { e.plugins[0][1].languages = []; }, /"languages" must be a non-empty list/],
 ]) {
   const dir = inspect(name, mutate);
-  const r = spawnSync(expo, ['config', '--json', '--type', 'public'], { cwd: dir, encoding: 'utf8', env: { ...env, EXPO_OFFLINE: '1' } });
+  const r = spawnSync(expo, ['prebuild', '--platform', 'android', '--no-install', '--template', join(app, 'node_modules/expo/template.tgz')], { cwd: dir, encoding: 'utf8', env: { ...env, EXPO_OFFLINE: '1' } });
   assert.notEqual(r.status, 0, `${name} must fail`);
+  assert.ok(!existsSync(join(dir, 'android')), `${name}: no native project may be generated from an invalid configuration`);
   assert.match(r.stdout + r.stderr, message);
   assert.match(r.stdout + r.stderr, /\[@muslim-ummah\/offline-navigation\]/);
 }
