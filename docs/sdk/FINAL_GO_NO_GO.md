@@ -1,3 +1,5 @@
+> **Superseded for current status (3 Nov 2026):** see [SDK_0_1_0_ENGINEERING_HANDOFF.md](SDK_0_1_0_ENGINEERING_HANDOFF.md) — implementation complete; automated verification PASS; native acceptance PARTIAL; controlled pilot and unrestricted production NO-GO. Historical content below is unchanged.
+
 # Final GO / NO-GO — SDK 0.1.0 release closure
 
 External acceptance is now coordinated through [the current release acceptance matrix](release-closure-2026-11-01/external-acceptance/README.md), including all J01–J18, exact native-build prerequisites, language worksheet and security/rights/signing decisions. No physical, external, legal or signing approval is recorded. **Controlled pilot: NO-GO (approval withheld). Unrestricted production: NO-GO.**
