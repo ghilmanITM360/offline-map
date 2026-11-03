@@ -37,6 +37,17 @@ Anything not listed is untested; widen only after testing.
 
 Widen a range only after running the delivered example against the new version.
 
+## Native evidence for candidate 2 (the plugin, Metro helper and iOS package; virtual devices only)
+
+The navigation, routing and UI source is unchanged from the candidate-1 native campaigns, whose results below still apply to it. For the **new configuration path** (one plugin, Metro helper,
+iOS module as a package) the delivered example was built from the unpacked archive on 3 November 2026:
+
+| Platform | Result |
+| --- | --- |
+| Android API 36 arm64 emulator (Google Play image, `-gpu host`) | **Built and run.** `expo prebuild` + `./gradlew assembleRelease -PreactNativeArchitectures=arm64-v8a` (Gradle 8.14.3, JDK 17, 4 min 18 s) succeeded; the APK installs and starts. Observed offline: directory from the verified pack, route preview (111 m), Manual Guide Next/Previous, explicit Live (simulated GPS) to arrival at the right destination, Done, an independent second journey, venue switch to the second pack, Urdu and Roman Urdu draft text, a cold start with the emulator's airplane mode on, and the on-device pack self-test 10 of 10. Foreground location permissions only; no crash in logcat. Test-signed APK, not a deliverable. |
+| iOS | **Partly verified, build BLOCKED by the environment.** `expo prebuild` produced `Info.plist` with the foreground-location text, no Always strings or background modes, and `CFBundleLocalizations` en/ur; `pod install` succeeded and `Podfile.lock` shows `SdkLocationPrecision` linked from `node_modules/@muslim-ummah/ios-location-precision/ios`. `xcodebuild` could not start: this Mac's Xcode 26.2 reports "iOS 26.2 is not installed" (the platform component is missing; only iOS 18.x simulator runtimes are present, which Xcode 26.2 cannot target). The Swift module itself is byte-identical to the one built and run on the iOS 26.3 simulator for candidate 1. |
+| Not re-run | real GPS, physical devices, TalkBack/VoiceOver, A27/A29/A34 variants, memory profiling (unchanged open items in the handoff) |
+
 ## Evidence level per capability
 
 | Capability | Jest/Node | Metro bundle | iOS simulator | Android emulator | Physical device |

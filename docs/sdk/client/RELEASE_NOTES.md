@@ -15,6 +15,7 @@ are untouched). What changed is everything around them that a client touches:
   Still pending native-speaker review; not production translations.
 - **Delivery archive**: written by a pure-Node deterministic TAR writer (no AppleDouble or PAX metadata, fixed order, owner, mode and time) and audited with a raw TAR parser; the
   archive is named for its source commit and records the one it supersedes.
+- **Verification**: the delivered archive was unpacked outside any repository and exercised end to end (`client-acceptance.mjs`: venue tool, `npm ci`, headless journey, 63 consumer tests, plugin prebuild for both platforms, four production exports including a client-compiled pack); an Android release build of the delivered example ran a full offline journey on the emulator. iOS native build was blocked on the build machine (see the compatibility matrix).
 - **Documentation**: [QUICK_START.md](QUICK_START.md), [VENUE_PACK_TOOL.md](VENUE_PACK_TOOL.md); corrected package-reproduction command (`npm run pack:sdk -- <dir>`, not `npm pack`);
   bare React Native steps written out and marked not natively validated.
 
