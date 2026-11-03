@@ -53,6 +53,7 @@ const iosA = run(process.execPath, [join(root, 'scripts/sdk-package/pack-ios-pre
 const iosB = run(process.execPath, [join(root, 'scripts/sdk-package/pack-ios-precision.mjs'), join(scratch, 'ios-b')]).trim().split('\n').pop();
 assert.equal(sha256(iosA), sha256(iosB), 'the iOS precision tarball must be byte-reproducible');
 const iosName = iosA.split(sep).pop();
+const iosSha = sha256(iosA);
 cpSync(iosA, join(out, 'package', iosName));
 assert.deepEqual(auditEntries(readTarGz(iosA)), [], 'the iOS precision tarball must be clean');
 mkdirSync(join(out, 'tools/venue-pack'), { recursive: true });
@@ -153,7 +154,7 @@ const info = {
   name: '@muslim-ummah/offline-navigation', version, deliveryId, status: 'release candidate with outstanding acceptance (see docs/SECURITY_AND_VALIDATION_REPORT.md)',
   supersedes: { deliveryId: 'delivery-21d1ed4', sha256: '87e17e33ea10be2ae40c4d1965159989cc5d492d1637263ce5e5ca62b98871e5', reason: 'carried AppleDouble entries and no venue pack tool; kept unchanged as history' },
   sourceCommit: gitHead, tarball: { file: `package/${tarName}`, sha256: tarSha },
-  iosPrecisionTarball: { file: `package/${iosName}`, sha256: sha256(iosA) },
+  iosPrecisionTarball: { file: `package/${iosName}`, sha256: iosSha },
   generatedBy: 'scripts/sdk-package/bundle.mjs', published: false,
 };
 writeFileSync(join(out, 'manifest.json'), JSON.stringify({ ...info, files: entries }, null, 2) + '\n');
