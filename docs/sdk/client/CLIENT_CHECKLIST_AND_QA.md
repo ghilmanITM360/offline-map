@@ -3,21 +3,22 @@
 ## A. Integration checklist (tick before you ship)
 
 **Install**
-- [ ] Tarball installed; `npm ls react react-native` shows one version each; no Metro aliases/resolvers for the SDK.
-- [ ] `@maplibre/maplibre-react-native` 11.5.0 installed once; config plugin listed; Release build opens a map offline.
-- [ ] `pmtiles` registered as a Metro asset extension; archive size and SHA-256 recorded in your own manifest.
+- [ ] Delivery archive checksum and `CHECKSUMS.txt` verified; both tarballs installed; `npm ls react react-native` shows one version each; no Metro aliases/resolvers for the SDK.
+- [ ] `@maplibre/maplibre-react-native` 11.5.0 installed once; the SDK plugin (`"@muslim-ummah/offline-navigation"`) is the only location/MapLibre plugin entry; Release build opens a map offline.
+- [ ] `metro.config.js` uses `withOfflineNavigation` (registers `pmtiles` and `packfile`); archive size and SHA-256 recorded in your pack.
+- [ ] On Android, RN is 0.81.5 or `androidFontScaleFix` is knowingly `false`.
 
 **Data**
-- [ ] A surveyed `VenueDataSource` (not `demoVenue.ts`); node coordinates inside the archive's bounds; place names reviewed.
+- [ ] A surveyed venue compiled with `venue-pack compile` (not `examples/synthetic-venue`, not `demoVenue.ts`); `verify --pin` passes on the machine that ships it; node coordinates inside the archive's bounds; place names reviewed; no warnings left unexplained (`--strict`).
 - [ ] Attribution "© OpenStreetMap contributors" visible on the map screen (the adapter keeps it).
 
 **Language and theme**
-- [ ] Every language you ship is in `copy` (type-checked), reviewed by a native speaker; `ur` in iOS `CFBundleLocalizations`.
+- [ ] Every language you ship is in `copy` (type-checked), reviewed by a native speaker (the shipped Urdu / Roman Urdu are drafts); `ur` in the plugin's `languages`.
 - [ ] `isRTL` passed to screen and theme; chevrons and alignment checked in RTL; light and dark checked.
 
 **Location and privacy**
 - [ ] Location adapter reviewed against [INTEGRATION_GUIDES.md](INTEGRATION_GUIDES.md) §6; prompt only from the explicit Live request.
-- [ ] iOS precision reader supplied (or Live is knowingly Manual-only on iOS).
+- [ ] `@muslim-ummah/ios-location-precision` installed and passed as `readIOSPrecision` (or Live is knowingly Manual-only on iOS).
 - [ ] Foreground only: no Always strings, no background modes, no background location permission.
 - [ ] Android manifest reviewed (`blockedPermissions`; decide about `INTERNET` for an app with no network features).
 
@@ -36,9 +37,9 @@
 The original 16 SOURCE/RUNTIME findings passed independent retest at `923a604be161c749bd5bf50d8fdd8c036ba4bcbb`. Their SDK runtime source is unchanged; reopen only if a relevant change warrants it. Release closure was implemented by Codex, so its author-side results are not independent approval. Use the exact source/artifact identities and commands in the final handoff.
 
 1. Preserve original audits/reproducers. Review only the packaging correction, dependency disposition/overrides and REG-01 evidence. Do not create a worktree/branch/clone or repeat native builds for packaging/tooling-only changes.
-2. Test the actual delivery archive: `node scripts/sdk-package/test-bundle.mjs /absolute/delivery.tgz /private/tmp/fresh-unpack`. This checks all 12 packfiles, pinned manifests/resources, inventory/checksums and metadata exclusion from the unpacked archive.
-3. Enter that unpacked `examples/expo-consumer`. Run `npm ci --ignore-scripts --no-audit --no-fund --prefer-offline`, `./node_modules/.bin/tsc --noEmit -p .`, and `./node_modules/.bin/jest --ci --runInBand --watchman=false` (6 suites / 63 tests). Do not run an asset generator or copy any assets into the consumer. The shipped lock, SDK and pack bytes must remain unchanged.
-4. From the delivered consumer, run both real exports with `CI=1 EXPO_OFFLINE=1 EXPO_NO_TELEMETRY=1 ./node_modules/.bin/expo export --platform android --output-dir export-android --dump-sourcemap --max-workers 1`, then the equivalent `ios` command. Every nonvirtual source-map source must resolve inside this consumer; all pack asset hashes must appear in exports. No NODE_PATH, source alias, parent node_modules link or implementation import is permitted. The repository consumer driver is not a substitute for these tests.
+2. Test the actual delivery archive: `node scripts/sdk-package/test-bundle.mjs /absolute/delivery.tgz /private/tmp/fresh-unpack`. It reads the archive with the raw TAR parser (so metadata entries that `tar -t` hides are seen), requires exactly the declared files with correct sizes and SHA-256, checks all 12 packfiles and pinned manifests, and runs the shipped venue tool on the shipped example.
+3. For the full independent-client run, use `node scripts/sdk-package/client-acceptance.mjs /absolute/delivery.tgz /private/tmp/fresh-client <archive sha256>`. It unpacks only the archive outside any repository, then does what [QUICK_START.md](QUICK_START.md) says: compile the synthetic venue with the shipped tool, `npm ci` the example from its shipped lock, run a headless journey on the client-compiled pack, type-check, run the example's Jest suites, prebuild both native projects through the plugin, reject invalid plugin options, add the compiled pack to the app, and export Android and iOS production bundles containing it. Do not run an asset generator or copy any assets into the example by hand.
+4. By hand, in the unpacked `examples/expo-consumer`: `npm ci --ignore-scripts --no-audit --no-fund --prefer-offline`, `npm run typecheck`, `npm test` (the suites and tests are counted in the run output). Then `CI=1 EXPO_OFFLINE=1 EXPO_NO_TELEMETRY=1 npm run export:android -- --max-workers 1` and `export:ios`. Every nonvirtual source-map source must resolve inside this example; all pack asset hashes must appear in the exports. No NODE_PATH, source alias, parent node_modules link or implementation import is permitted.
 5. Run `node /absolute/checkout/scripts/test-dependency-security.mjs /absolute/unpacked/examples/expo-consumer`; it resolves dependencies inside the supplied consumer and tests patched PostCSS plus actual Metro image parsing. Re-audit both exact locks using the command in [DEPENDENCY_ADVISORY_DISPOSITION.md](DEPENDENCY_ADVISORY_DISPOSITION.md); report nonzero audit exits and remaining low/moderate advisories truthfully.
 6. REG-01: the unchanged LocationsDirectoryScreen and DirectoryRecentManagement suites use default timeouts. Implementation evidence includes three 57-test focused passes and a clean full 222-suite / 2,367-test run, plus final-source validation. Review exact raw JSON and scenario durations; do not infer physical behavior or environmental causation from these results.
 7. Final routing evidence must show 2,400 differential and 91,506 unchanged golden comparisons, headless/exports/package checks and artifact reproducibility. No golden regeneration. A reviewer can choose relevant impacted checks rather than redo the original 17-finding audit.

@@ -1,13 +1,13 @@
 # Integration guides
 
-The reference implementation of everything below is [`examples/expo-consumer`](../../../examples/expo-consumer): a small Expo 54 app
-that installs the packed `.tgz`. Build and test it with `npm run test:sdk-consumer -- <fresh dir outside the repo>` from the
-repository root (it packs the SDK, copies the example, installs, runs `tsc`, Jest and both production bundles).
+The reference implementation of everything below is `examples/expo-consumer`: a small Expo 54 app that installs the packed `.tgz` files and nothing else. In
+the delivered folder it is checked with `npm ci --ignore-scripts`, `npm run typecheck`, `npm test` and `npm run export:android` / `npm run export:ios`. The step-by-step
+path is [QUICK_START.md](QUICK_START.md); this page is the detail behind it.
 
 ## 1. Install
 
 ```bash
-npm install ./muslim-ummah-offline-navigation-0.1.0.tgz
+npm install ./package/muslim-ummah-offline-navigation-0.1.0.tgz ./package/muslim-ummah-ios-location-precision-0.1.0.tgz   # the second is for iOS Live
 npm install @maplibre/maplibre-react-native@11.5.0   # only if you use the /maplibre entrypoint
 ```
 
@@ -23,28 +23,51 @@ MapLibre is a native module, so Expo Go cannot run it: use a development build o
 ```json
 { "expo": {
   "userInterfaceStyle": "automatic",
-  "ios": { "bundleIdentifier": "com.yourco.app", "infoPlist": { "CFBundleLocalizations": ["en", "ur"] } },
+  "ios": { "bundleIdentifier": "com.yourco.app" },
   "android": { "package": "com.yourco.app", "blockedPermissions": ["android.permission.READ_EXTERNAL_STORAGE","android.permission.WRITE_EXTERNAL_STORAGE","android.permission.SYSTEM_ALERT_WINDOW","android.permission.VIBRATE"] },
-  "plugins": [
-    "@maplibre/maplibre-react-native",
-    ["expo-location", { "locationWhenInUsePermission": "<reviewed text>", "locationAlwaysPermission": false, "locationAlwaysAndWhenInUsePermission": false }]
-  ]
+  "plugins": [["@muslim-ummah/offline-navigation", { "locationPermissionText": "<reviewed text>", "languages": ["en", "ur"] }]]
 } }
 ```
 
-- `CFBundleLocalizations` must list every language you ship, **including `ur`**, or iOS keeps the app in English and
-  `I18nManager.isRTL` stays false.
-- The expo-location plugin otherwise adds "Always" usage strings; the SDK is foreground-only, so turn them off.
-- `metro.config.js`: stock `expo/metro-config` plus `config.resolver.assetExts.push('pmtiles')` so the archive is bundled.
+`metro.config.js`: `module.exports = require('@muslim-ummah/offline-navigation/metro').withOfflineNavigation(getDefaultConfig(__dirname));` (it only adds the `pmtiles` and
+`packfile` asset types to the config's own list).
+
+The single plugin replaces what used to be four hand-copied pieces; **do not also list `expo-location` or `@maplibre/maplibre-react-native`**:
+
+| Setting | Applied by the plugin |
+| --- | --- |
+| Android permissions | `ACCESS_FINE_LOCATION`, `ACCESS_COARSE_LOCATION` (foreground only), via the `expo-location` plugin the SDK invokes |
+| Android configuration changes | `MainActivity` handles `fontScale`, `smallestScreenSize`, `density`, so a font or display-size change does not recreate the activity (the native map would fail and the journey would be lost) |
+| Android font layout | React Native 0.81.5's own font-scale invalidation flag is turned on and the React surface is re-measured. **Only on RN 0.81.5**: any other version stops `expo prebuild` with `requires revalidation for RN x.y.z`; set `"androidFontScaleFix": false` to accept the older behaviour knowingly |
+| iOS location | `NSLocationWhenInUseUsageDescription` = `locationPermissionText`; Always strings and background modes are not added |
+| iOS languages | `CFBundleLocalizations` = `languages`. It must include `ur` for Urdu, or iOS keeps the app in English and `I18nManager.isRTL` stays false |
+| MapLibre | its config plugin (`"maplibre": false` skips it) |
+| iOS precision module | autolinked from `node_modules` (`@muslim-ummah/ios-location-precision`); nothing to copy |
+
+A missing peer (`expo-location`, MapLibre), an unknown option or an invalid option stops the build with a message that names it.
+
 - `npx expo prebuild`, then `pod install` (iOS) and a Release build. Use real paths for the project root when building
   from a temp directory (`/tmp` vs `/private/tmp` made Metro fail the bundle phase).
 
-## 3. Bare React Native
+## 3. Bare React Native (manual native setup; not validated by a native build)
 
-Same peers and the same `@maplibre/maplibre-react-native` 11.5.0 install (follow its README for autolinking on 0.81.5 with the New
-Architecture). iOS: `pod install`, deployment target 15.1+. Android: `minSdk 24`, `compileSdk 36`. Add the permission
-declarations by hand: Android `ACCESS_FINE_LOCATION` + `ACCESS_COARSE_LOCATION` only; iOS `NSLocationWhenInUseUsageDescription`
-only (no Always, no background modes).
+The Expo plugin cannot run, so apply by hand what it applies. **Status: no bare React Native project has been built with this SDK.** The Expo equivalents were generated and
+inspected (`expo prebuild`) and built on a simulator and an emulator; the bare steps below are the same edits written out and have **not** been executed.
+
+Same peers and the same `@maplibre/maplibre-react-native` 11.5.0 install (follow its README for autolinking on 0.81.5 with the New Architecture).
+
+- **Metro:** `module.exports = require('@muslim-ummah/offline-navigation/metro').withOfflineNavigation(mergeConfig(getDefaultConfig(__dirname), {}));`
+- **Android** (`minSdk 24`, `compileSdk 36`): `AndroidManifest.xml` gets `ACCESS_FINE_LOCATION` and `ACCESS_COARSE_LOCATION` only; `MainActivity`'s `android:configChanges`
+  gains `fontScale|smallestScreenSize|density` (keep what is there). Optional font re-measure, RN 0.81.5 only: the exact `MainApplication.kt` and `MainActivity.kt` additions are the
+  Kotlin in `node_modules/@muslim-ummah/offline-navigation/plugin/androidFontScale.js` (`APPLICATION_METHOD`, `ACTIVITY_METHOD`); skip them and a font-size change re-measures text
+  after a restart.
+- **iOS** (deployment target 15.1+): `pod install`; `Info.plist` gets `NSLocationWhenInUseUsageDescription` (no Always, no background modes) and `CFBundleLocalizations` listing every
+  language including `ur`.
+- **iOS precision:** the module is an Expo module (`ExpoModulesCore`). A bare app either adopts Expo modules (`npx install-expo-modules`) and installs
+  `@muslim-ummah/ios-location-precision`, or implements the 15 lines itself (`CLLocationManager().accuracyAuthorization`, read-only; the Swift is in the package's `ios/`) and passes
+  the result as `readIOSPrecision`. Without any precision reader, iOS Live is refused as `precision_unknown`.
+- **Minimal checks after wiring:** the production bundle exports for both platforms; Release builds open the map in airplane mode; one Manual Guide journey; one Live journey with
+  a permission prompt; a font-size change mid-journey keeps the journey.
 
 ## 4. The offline basemap
 
@@ -75,9 +98,8 @@ Implement `NavigationLocationAdapter` (see [API_REFERENCE.md](API_REFERENCE.md))
   after a denial.
 - Android: precision from `permission.android.accuracy` (`fine`/`coarse`); approximate-only is refused as `approximate_only`.
 - **iOS:** `expo-location` 19.0.8 cannot tell full from reduced accuracy, so without a native check precision is reported `none`
-  and Live is refused as `precision_unknown`. The example adds a ~15-line Swift Expo module
-  (`modules/sdk-location-precision`, `CLLocationManager.accuracyAuthorization`, no prompt/updates/coordinates) and passes it as
-  `readIOSPrecision`. Do not infer precision from a fix's accuracy.
+  and Live is refused as `precision_unknown`. Install `@muslim-ummah/ios-location-precision` (a ~15-line Swift Expo module,
+  `CLLocationManager.accuracyAuthorization`, no prompt/updates/coordinates; autolinked, nothing to copy) and pass its `readIOSPrecision` to the adapter. Do not infer precision from a fix's accuracy.
 - `getCurrentFix` must be a fresh `getCurrentPositionAsync`, never last-known; `watch` must release exactly once (the reference
   handles stop-before-subscribe).
 - Wire `lifecycle={{ onForeground }}` from `AppState` so Live resumes cleanly.
@@ -105,11 +127,12 @@ Use `react-native-safe-area-context` insets (Android edge-to-edge draws under th
 The SDK validates, stores and activates venue packs; **you** supply the filesystem and, for packs that ship in the app, the bytes.
 Format, compiler and trust rules: [../OFFLINE_PACK_SPEC.md](../OFFLINE_PACK_SPEC.md).
 
-**Build a pack.** `scripts/sdk-pack/compile.ts` (`compilePack(dir, spec, { write: true })`) turns a directory of resources plus a build
-spec into a deterministic `pack.manifest.json` (sorted resources, streamed SHA-256, no clock or host paths). It refuses symlinks,
-undeclared/missing files, unsafe or duplicate paths, missing required kinds, bad versions, missing attribution and a data file that
-names another venue. `npm run sdk:karachi-pack -- <dir>` builds the real Karachi pack; its digest is pinned in
-`scripts/sdk-pack/karachi-ijtema.pin.json`.
+**Build a pack.** Use `tools/venue-pack/venue-pack.cjs` from the delivery ([VENUE_PACK_TOOL.md](VENUE_PACK_TOOL.md)): `compile` turns a folder of your survey output plus a
+`pack.spec.json` into a deterministic, verified pack (sorted resources, streamed SHA-256, no clock or host paths) and prints the manifest digest your app pins; `verify` re-checks it;
+`app-assets` copies it into your Expo app and prints the `bundledPackTable.ts` entry. It checks the graph and places (unknown nodes, duplicate ids, bad coordinates and distances,
+unreachable places) and refuses symlinks, undeclared or missing files, unsafe or duplicate paths, missing required kinds, bad versions, missing attribution and a data file that names
+another venue. It never overwrites or deletes. (Inside the SDK repository the same compiler is `scripts/sdk-pack/compile.ts`; `npm run sdk:karachi-pack -- <dir>` builds the Karachi pack,
+pinned in `scripts/sdk-pack/karachi-ijtema.pin.json`.)
 
 **Ship it in the app.** `examples/expo-consumer` is the reference: `bundledPackTable.ts` lists each bundled pack's pinned manifest
 digest and its files (Metro assets with a `.packfile` extension registered in `metro.config.js`); `bundledPacks.ts` copies a pack into
@@ -131,7 +154,7 @@ journey in it.
 
 **Fast verification.** Hashing a pack in JS costs about a second on a phone (Hermes has no JIT). Pass `digestFile` to `createFileSystemPackStore` / the bundled installer to use the platform's SHA-256: the example installs `expo-crypto` (15.0.9 for Expo 54) and `nativeDigest.ts` reads a whole file (up to 8 MiB) and returns `{ bytes, sha256 }` of exactly what it hashed; anything it declines is hashed by the SDK in bounded chunks. Verification still fails on any byte difference.
 
-**Appearance and language in the example.** `expo-system-ui` (6.0.9 for Expo 54) is installed so `userInterfaceStyle: "automatic"` and the root background work on Android. The *System / Light / Dark* and *English / اردو / Roman Urdu* pickers sit above the venue and the journey: switching restyles in place and keeps the trip, the step, the map camera and the pack pin. Urdu and Roman Urdu use only the reviewed-pending wording in [TRANSLATION_REVIEW.md](TRANSLATION_REVIEW.md).
+**Appearance and language in the example.** `expo-system-ui` (6.0.9 for Expo 54) is installed so `userInterfaceStyle: "automatic"` and the root background work on Android. The *System / Light / Dark* and *English / اردو / Roman Urdu* pickers sit above the venue and the journey: switching restyles in place and keeps the trip, the step, the map camera and the pack pin. Urdu and Roman Urdu use the complete draft tables in `copy/` (generated from [TRANSLATION_REVIEW.md](TRANSLATION_REVIEW.md); pending native review).
 
 **Imported and remote packs are refused.** Installing needs a signature from a trusted key; no signing scheme or key exists yet, so
 `createPackManager` is configured without a verifier and every `installStaged` fails with `signature-required`. SHA-256 proves

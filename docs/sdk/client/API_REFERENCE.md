@@ -2,6 +2,20 @@
 
 Types are in the package's `.d.ts`; this page is the behavioural contract. Every claim here is covered by the package's tests.
 
+## Package exports
+
+| Specifier | What it is |
+| --- | --- |
+| `@muslim-ummah/offline-navigation` | headless domain (below) |
+| `…/session` | `createNavigationSession` |
+| `…/ui` | provider, hooks, `NavigationScreen`, leaf cards, theme, English copy |
+| `…/maplibre` | `createMapLibreNavigationMap`, `buildOfflineBasemapStyle` |
+| `…/app.plugin.js` | the Expo config plugin (build time; referenced by name in `app.json`: `"@muslim-ummah/offline-navigation"`). Options: `locationPermissionText`, `languages`, `maplibre`, `androidFontScaleFix` ([QUICK_START.md](QUICK_START.md) step 3) |
+| `…/metro` | `withOfflineNavigation(metroConfig)` and `ASSET_EXTENSIONS` (`pmtiles`, `packfile`); build time, typed by `metro.d.ts` |
+| `…/package.json` | the manifest |
+
+Nothing else is importable: `…/dist/…` paths are refused (`ERR_PACKAGE_PATH_NOT_EXPORTED`).
+
 ## Headless: `@muslim-ummah/offline-navigation`
 
 ### `createNavigationController(options): NavigationController`

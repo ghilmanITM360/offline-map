@@ -1,5 +1,23 @@
 # Release notes and changelog
 
+## 0.1.0 client-delivery candidate 2 (private; supersedes `delivery-21d1ed4`, whose files are kept as history)
+
+Same SDK version and the same executable navigation source as `21d1ed40` (routing, controller, UI and map code are unchanged: the 91,506 golden and 2,400 differential comparisons
+are untouched). What changed is everything around them that a client touches:
+
+- **Venue pack tool** `tools/venue-pack/venue-pack.cjs` (`compile`, `verify`, `app-assets`) and the invented `examples/synthetic-venue`: a client builds a verified pack without our
+  repository. Reuses the repository's deterministic compiler; adds graph/place checks, friendly errors, checksums and a pin file ([VENUE_PACK_TOOL.md](VENUE_PACK_TOOL.md)).
+- **One Expo config plugin** (`"@muslim-ummah/offline-navigation"`) and a **Metro helper** (`…/metro`), replacing the four hand-copied pieces (the Android config-changes and font-layout
+  plugins, the expo-location and MapLibre plugin entries, the language declarations, the Metro asset line). Two new package exports: `./app.plugin.js` and `./metro`. The Android
+  font fix still refuses any React Native other than 0.81.5.
+- **`@muslim-ummah/ios-location-precision`**: the iOS accuracy reader is now an installable package (same Swift code as before) instead of a folder to copy.
+- **Complete draft Urdu and Roman Urdu** for all 89 screen strings (26 host-shipped, 63 SDK-team drafts), with automated placeholder, script, completeness and fallback checks.
+  Still pending native-speaker review; not production translations.
+- **Delivery archive**: written by a pure-Node deterministic TAR writer (no AppleDouble or PAX metadata, fixed order, owner, mode and time) and audited with a raw TAR parser; the
+  archive is named for its source commit and records the one it supersedes.
+- **Documentation**: [QUICK_START.md](QUICK_START.md), [VENUE_PACK_TOOL.md](VENUE_PACK_TOOL.md); corrected package-reproduction command (`npm run pack:sdk -- <dir>`, not `npm pack`);
+  bare React Native steps written out and marked not natively validated.
+
 ## 0.1.0 (release candidate, private)
 
 ### Included

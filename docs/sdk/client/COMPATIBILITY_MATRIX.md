@@ -5,7 +5,10 @@ Anything not listed is untested; widen only after testing.
 
 | Component | Version exercised | Notes |
 | --- | --- | --- |
-| SDK | 0.1.0 | private, unsigned, reproducible tarball |
+| SDK | 0.1.0 | private, unsigned, reproducible tarball (`npm run pack:sdk`) |
+| `@muslim-ummah/ios-location-precision` | 0.1.0 | reads iOS accuracy authorization; Expo >= 54 module (needs `ExpoModulesCore`); reproducible tarball |
+| Expo config plugin (`@muslim-ummah/offline-navigation`) | 0.1.0 | Expo SDK 54: `expo prebuild` for Android and iOS generated and inspected; Android font-layout part pinned to RN 0.81.5 and refuses any other version |
+| Venue pack tool (`venue-pack.cjs`) | 0.1.0 | plain Node >= 18 (exercised on Node 24.14); bundled from the repository's pack compiler |
 | React | 19.1.0 | single copy enforced by the consumer driver |
 | React Native | 0.81.5 (New Architecture) | Hermes |
 | Expo | 54.0.37 | development/release builds; not Expo Go |
@@ -21,6 +24,18 @@ Anything not listed is untested; widen only after testing.
 | PostCSS / Metro family | 8.5.32 / 0.83.8 | deliberate build-tool overrides; parser/API regressions and standalone Metro export acceptance required; no native or SDK runtime dependency upgrade |
 | Xcode / iOS Simulator | 26.2 (17C52) / iPhone 17 Pro, iOS 26.2 | Release, arm64 simulator |
 | Android | API 36 arm64 emulator (Google Play image), Gradle wrapper 8.14.3, JDK 17 | Release APK, arm64-v8a only |
+
+## Declared range versus what was tested
+
+| Dependency | Declared (peer range) | Tested | Notes |
+| --- | --- | --- | --- |
+| `react` | `>=19.1.0` | 19.1.0 only | |
+| `react-native` | `>=0.81.0` | 0.81.5 only | the Expo plugin's Android font-layout fix is **exactly 0.81.5** and stops the build on any other version (`androidFontScaleFix: false` opts out); other 0.81.x and later are untested |
+| `@maplibre/maplibre-react-native` | `>=11.5.0 <12` | 11.5.0 only | optional |
+| Expo SDK | not a peer (plugin and the iOS module need Expo) | 54.0.37 only | |
+| Bare React Native (no Expo) | supported in principle (headless, `/ui`, `/maplibre`) | **not validated**: no bare project has been built; the manual native steps in [INTEGRATION_GUIDES.md](INTEGRATION_GUIDES.md) §3 are written out, not executed | |
+
+Widen a range only after running the delivered example against the new version.
 
 ## Evidence level per capability
 

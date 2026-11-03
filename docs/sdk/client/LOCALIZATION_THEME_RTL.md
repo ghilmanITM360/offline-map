@@ -7,10 +7,11 @@ shipped. **Urdu and Roman Urdu are not shipped**: supply reviewed text through t
 missing string will not compile). Place names come from your `describePlace`; the SDK handles ids only. Never substitute
 unreviewed translations for production Urdu.
 
-The sample app shows the screen in Urdu (right to left) and Roman Urdu so the layout can be checked, **without inventing any wording**: a string gets Urdu /
-Roman Urdu text only where the Ijtema host already ships a message whose English is word for word the same (26 of 88 strings), and every other string stays
-English. All of it is listed, with its source, in [TRANSLATION_REVIEW.md](TRANSLATION_REVIEW.md) and is **pending owner review**; reuse of a host string is not
-approval for this screen.
+The reference app ships **complete draft tables** for Urdu (right to left) and Roman Urdu: all 89 screen strings, each with its source. 26 are wording the Ijtema host already
+ships (reused only where the host's English is word for word the same) and 63 are drafts written by the SDK team for strings the host has no equivalent for. The tables live in
+`copy/translationTable.ts` (generated; `copyFor(language)` builds the `copy` object) and are listed in [TRANSLATION_REVIEW.md](TRANSLATION_REVIEW.md). **They are drafts pending
+native-speaker review, not approved production translations.** Automated checks cover missing and stale keys, empty text, placeholders, script, and the fallback to English
+for any key a table lacks, so a screen never shows a blank. The SDK itself still ships English only and the host still supplies all copy.
 
 ## RTL
 

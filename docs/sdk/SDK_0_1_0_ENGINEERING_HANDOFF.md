@@ -1,5 +1,9 @@
 # SDK 0.1.0 — final engineering handoff
 
+> **Partly superseded (3 November 2026, client-delivery candidate 2).** This record is kept as written for the executable source `21d1ed4` and its candidate-1 artifacts. For what a client
+> installs today, use [CLIENT_DELIVERY_REPORT.md](CLIENT_DELIVERY_REPORT.md): the new delivery archive and SDK tarball hashes, the venue pack tool, the single Expo plugin, the
+> AppleDouble-free archive and the corrected package command. Corrections to this file are marked "Correction" below; nothing else here has been rewritten.
+
 Authoritative closure record for `@muslim-ummah/offline-navigation` 0.1.0 (3 November 2026). It consolidates, and does not replace, the
 evidence in [release-closure-2026-11-02](release-closure-2026-11-02/) and [client/](client/). No new feature work, source change, native rebuild or test
 rerun was done for this handoff. No further native diagnostics are planned; reopen only for a new reproducible product defect, a scope
@@ -48,6 +52,9 @@ Full paths and provenance: [FINAL_ARTIFACT_IDENTITIES.json](release-closure-2026
 1. Unpack the delivery archive; install `package/muslim-ummah-offline-navigation-0.1.0.tgz` plus peers (`react >=19.1.0`, `react-native >=0.81.0`, optional `@maplibre/maplibre-react-native >=11.5.0 <12`). Details: [INTEGRATION_GUIDES.md](client/INTEGRATION_GUIDES.md).
 2. Copy `examples/expo-consumer` (in the delivery and the repository). It depends on the tarball only. Do not run `npm install` in the repo copy; `sdk.tgz` exists only in the driver's copy.
 3. Replace the synthetic venue with a surveyed `VenueDataSource` and install your own basemap archive; on Android keep the `withAndroidConfigChanges` plugin and the two files in `plugins/` (README of the example).
+> **Correction (candidate 2):** the native steps in item 3 no longer involve copying `plugins/` files. The SDK now ships one Expo plugin (`"@muslim-ummah/offline-navigation"` in `app.json`) and a
+> Metro helper, and the iOS precision module is the installable `@muslim-ummah/ios-location-precision`. Follow [client/QUICK_START.md](client/QUICK_START.md).
+
 4. Verify with the driver from the repo root: `npm run test:sdk-consumer -- <fresh directory outside the repo>`; then follow [CLIENT_CHECKLIST_AND_QA.md](client/CLIENT_CHECKLIST_AND_QA.md).
 
 ## 5. Automated verification (historical, unchanged-source; not rerun here)
@@ -113,6 +120,10 @@ Root audit 0 critical / 0 high; remaining low/moderate advisories have a complet
 
 ## 12. For the next engineering team
 
-- Reproduce automated checks: `npm test`, `npm run typecheck`, `npm run lint` at `21d1ed40`; golden/differential suites run inside `npm test`. Package: `npm pack` from the SDK package directory should reproduce the tarball hash above (deterministic).
+- **Correction (candidate 2) — the package is NOT reproduced by `npm pack`.** The source package exports TypeScript from `src/`; the delivered tarball is compiled by `tsc`, has its `exports` rewritten
+  to `dist/`, and ships only an allowlist. The supported command is `npm run pack:sdk -- <fresh directory outside the repository>` (`scripts/sdk-package/pack.mjs`); it prints the `.tgz` path, and
+  running it twice gives identical bytes (`npm run test:sdk-package -- <fresh dir>` proves that). The delivery archive is built by `npm run sdk:bundle -- <fresh dir outside the repository>` from a clean tracked tree.
+  A bare `npm pack` inside `packages/offline-navigation` yields a source-only package with a different hash.
+- Reproduce automated checks: `npm test`, `npm run typecheck`, `npm run lint` at `21d1ed40`; golden/differential suites run inside `npm test`. ~~Package: `npm pack` from the SDK package directory should reproduce the tarball hash above (deterministic).~~ (Incorrect as written; use the command in the correction above.)
 - Reproduce native: Android runners and iOS harness are in [native-tests/](release-closure-2026-11-02/native-tests/); iOS 26.3 usage `run_cross_device.py <UDID> <workdir> [TestName …]` after `simctl privacy grant location com.example.sdkconsumer`.
 - Raw evidence stays outside Git under `~/.codex/visualizations/2026/11/…`; manifests with SHA-256 are the `*_MANIFEST.json` files in the closure folder.
