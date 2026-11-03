@@ -31,3 +31,16 @@ EMULATOR VERIFIED: final executable`29962a589b6f0249417f5bf290aaf12efef06c729a81
 Five Arrival configurations use measured375x812 window, top50/bottom34 safe bounds, full card/scroll/button geometry, native swipe and coordinate Recenter/Done touches, actual exit and another journey. English Large/XL/AX5 and UrduXL/AX5 pass. Urdu step2 survives seven text transitions and unrelated theme commits; controls remain responsive. Real CoreLocation fixture111→91m→correct Gate02 arrival, loss/recovery, native off-route reroute, lifecycle return, TCC denial/recovery, reduced accuracy/recovery and cancellation/replacement pass. Native filesystem lab10/10 and XCTest `.all` accessibility audit pass. These do not certify physical GPS, VoiceOver or a full Accessibility Inspector human review.
 
 System-wide rdar45025538 wrong dimensions were resolved by recorded DisplayZoom toggle/restoration, without changing app/frameworks. TCC authorization and PreciseLocation are separate: grant alone does not restore precision. The final harness uses measured-row coordinate touches and teardown restoration. Final Large/English/System restored, location simulation cleared and only task simulator shut down; unrelated simulator untouched.
+
+## Continuation — 3 November 2026 (iOS geometry and alternate simulator)
+
+Per-row records (no matrix counts changed; 13 PASS / 0 FAIL / 6 BLOCKED / 1 NOT RUN stands):
+
+| Row | Status | Boundary / evidence |
+|---|---|---|
+| iPhone 13 mini (iOS 18.4, 375x812) geometry acceptance | BLOCKED | Simulator-wide red `rdar:45025538` banner (also in Apple Settings; survives status-bar clear and reboot) moves the app top inset 50 -> 93; `test01Normal` fails `93.0 != 50.0`. Harness measuring the inset instead produced bottom -141.5 and was reverted. XCTest assertions and app layout NOT changed. Evidence: `closure-ios-20261103-geometry/`. |
+| Directory rerun, remaining NOT RUN group, 16/20 stress, isolated fault injection on the 13 mini | NOT RUN | Depend on the 375x812 harness above. |
+| Alternate-simulator smoke: iPhone 16 Pro, iOS 18.1 (22B81), 402x874 | PASS (smoke only, manual) | Accepted Release app installed unmodified (executable sha256 `29962a589b6f0249417f5bf290aaf12efef06c729a81b65184f0c80429a8b32d`, JS `ad88c6c7349e2d95eeecdb50f237beb7dd27f8d71cb3b84fc5315735fa6acf6c`). Cold launch, Directory, destination Gate 01, Route Preview Gate 02 -> Gate 01 "111 m walk", Follow the steps "Step 1 of 3 / 91 m". No banner. Top content inset about 62 pt, bottom 34 pt. Evidence: `closure-ios-20261103-alt/` (ENV.txt). |
+| Alternate-simulator XCTest functional/offline/stress | NOT RUN | Harness hardcodes 375x812 and top == 50; not weakened or edited. A parameterised, separately identified harness would be needed. |
+
+The alternate smoke is a distinct environment identity and is not transferred to the iPhone 13 mini layout acceptance. iPhone 16 (iOS 18.4) was booted for inspection and left untouched; the Islam 360 app was not touched.

@@ -53,3 +53,6 @@ Repository safety: one existing checkout; same SDK branch; all3stash identities,
 Evidence root:`/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19c13-387a-73d3-9ae8-d9ecfc79b7d8/native-acceptance-20261102-1645`; native evidence hashes in NATIVE_RESUME_EVIDENCE_MANIFEST.json. Reproduction scripts/protocol/commands in that batch. Intermediate compiler outputs are excluded from the evidence manifest; all native logs/XML/PNG/trace/xcresult attachments and harness/protocol files included.
 
 Fresh validation commands: `/usr/bin/python3 /private/tmp/sdk-close-native.py`; `git diff --quiet 21d1ed40dc652f54670d49d3075b13d4c3be796d -- :!docs`; `git diff --check`. Evidence manifest rehash: all3,846entries verified after native processes stopped.
+
+## Verdicts as of 3 November 2026
+1 Source/automated regression: unchanged (no source change since 21d1ed4). 2 Android emulator: PARTIAL (A27/A29 BLOCKED, A34 NOT RUN). 3 iOS simulator: PARTIAL (13 mini geometry BLOCKED; alternate smoke PASS only). 4 Memory attribution: INCONCLUSIVE. 5 Engineering evidence closure: NO-GO/incomplete. 6 Controlled pilot: NO-GO. 7 Unrestricted production: NO-GO. External gates unchanged and still BLOCKED.

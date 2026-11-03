@@ -45,3 +45,12 @@ EMULATOR VERIFIED. Source21d1ed40dc652f54670d49d3075b13d4c3be796d; APK`40228465e
 | A35 | Long-duration performance/leak closure | BLOCKED | Memory INCONCLUSIVE: two comparable blocks not completed, no retained-object evidence. |
 
 Per-row expected/observed/mechanism/binary/time-trace/evidence are in ANDROID_FINAL_MATRIX.json. Raw XML/PNG and every command: `/Users/ghilmanislam360/.codex/visualizations/2026/11/02/01a19ab2-dc2e-7663-9270-d933f439f1b1/pc2-remediation/native/closure-android-20261102-02`. Native candidate confirmation is awaited before movement; premature movement correctly triggered route-outdated in superseded automation. Small-screen reset initially removed an existing1080x2400 override; it was restored before warm memory sampling. These are harness errors, not product defects. Guest display/font/network state was restored from the first batch, task emulator stopped. Human TalkBack remains external.
+
+## Continuation — 3 November 2026
+
+| Row | Status | Boundary |
+|---|---|---|
+| A27 repeated native reroute | BLOCKED | Same APK reaches Live on `Codex_Ijtema_API36` (GMS 25.08.34) but not `Pixel_7_Pro_API_36` (GMS 26.32.34), also with Google Location Accuracy off; cause UNKNOWN, no SDK defect established. Earlier harness "PASS" for a27 is vacuous (case() passes when no exception) and is not counted. |
+| A29 real TalkBack traversal | BLOCKED (tooling) | `adb input` bypasses TalkBack gesture handling; raw `adb emu event send` touch injection was inconsistent (first swipe moved focus, next five did not). Only focus rings observed. Not an SDK finding. |
+| A34 controlled accuracy/timestamp delivery | NOT RUN | Emulator refused to start: host free disk 3.9 GiB ("not enough disk space to run avd"). No deletion performed. Boundary of expected data flow therefore not reached. |
+| Phase 4 memory attribution (heapprofd) | NOT RUN | Needs emulator + diagnostic build; same disk boundary. Verdict: INCONCLUSIVE (no new data). |
