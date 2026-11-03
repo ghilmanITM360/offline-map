@@ -1,24 +1,35 @@
 # Expo consumer of the packed SDK
 
-A tiny Expo app that uses `@muslim-ummah/offline-navigation` the way an outside app would: installed from the packed `.tgz`
-(`file:./sdk.tgz`), with its own React and React Native, a stock Metro config, and nothing from this repository's source.
+A small Expo 54 app that uses `@muslim-ummah/offline-navigation` the way an outside app would: installed from the packed `.tgz` files (`file:./sdk.tgz`,
+`file:./ios-precision.tgz`), with its own React and React Native and nothing from the SDK's source repository. It is **example code**: copy from it, do not ship it as it is.
+The step-by-step path is `docs/QUICK_START.md` in the delivery.
 
-It is driven by `npm run test:sdk-consumer -- <fresh directory outside the repo>` from the repository root, which packs the
-SDK, copies this folder next to the tarball, installs, then runs `tsc`, the Jest flows and production Android and iOS bundles.
-Do not run `npm install` here: `sdk.tgz` only exists in that copy.
+```bash
+npm ci --ignore-scripts --no-audit --no-fund   # installs exactly the tested versions from package-lock.json
+npm run typecheck && npm test                  # tsc, then the Jest flows (journeys, venue switch, pack recovery, language, theme)
+npm run export:android && npm run export:ios   # production Metro bundles
+npx expo prebuild && npx expo run:ios --configuration Release   # or run:android --variant release; development/release builds, not Expo Go
+```
 
-What the host owns, and this app shows: the venue (`demoVenue.ts`, synthetic, placed inside the Karachi basemap only so the
-map has something under it), place names, the basemap file (`basemap.ts` installs the bundled PMTiles archive into app-private
-storage and trusts it only when its SHA-256 matches), the location service (`simulatedLocation.ts`, a stand-in for
-`expo-location`), language, theme and safe area. The ready-made `NavigationScreen` owns the journey and the SDK's
-`@muslim-ummah/offline-navigation/maplibre` adapter owns the map. `@maplibre/maplibre-react-native` 11.5.0 is the app's own
-dependency (an optional SDK peer) and its Expo config plugin is listed in `app.json`.
+(In the SDK repository this folder has no `sdk.tgz`; `npm run test:sdk-consumer -- <fresh directory outside the repo>` packs the SDK, copies the app next to the tarballs and runs the same checks.)
 
-The driver copies the repository's verified `assets/offline-map/ijtema-basemap.pmtiles` to `assets/karachi-basemap.pmtiles`
-and checks `basemap.ts` against `BASEMAP_PROVENANCE.json`. `metro.config.js` is stock apart from registering `pmtiles` as an
-asset extension.
+## What the SDK does for this app
 
-Not proven here: native builds, a simulator or device, real MapLibre rendering or PMTiles reads, real GPS. The Jest and bundle
-checks are JS-only, and Jest replaces the native map and the file system with recorders.
+- **One Expo config plugin** in `app.json`: `["@muslim-ummah/offline-navigation", { "locationPermissionText": "…", "languages": ["en", "ur"] }]`. It applies foreground location,
+  MapLibre, the iOS language declarations, and the two Android settings the journey needs (MainActivity keeps running through font/display-size changes; React Native re-measures text
+  on a font-scale change). The Android font fix is pinned to React Native 0.81.5 and stops `expo prebuild` on any other version rather than patch something untested. Do not also list
+  `expo-location` or the MapLibre plugin.
+- **One Metro line** in `metro.config.js`: `withOfflineNavigation(getDefaultConfig(__dirname))` registers the `pmtiles` and `packfile` asset types.
+- **iOS precision** arrives as the `@muslim-ummah/ios-location-precision` package (autolinked); there is no `modules/` or `plugins/` folder to copy.
 
-On Android with RN0.81.5, keep the registered `withAndroidConfigChanges` plugin and both files in `plugins/` when integrating this consumer. Keeping the Activity alive preserves the journey; the companion font-layout plugin also enables RN's existing measurement invalidation and remeasures the React surface on font changes. The SDK Text wrapper recreates only affected native paragraphs. Android retains nonlinear system scaling, with no added text cap or manual size multiplication. Native projects that do not use Expo prebuild must integrate the equivalent MainApplication/MainActivity changes. This workaround uses a pinned RN internal initializer, preserves the selected stock provider/SoLoader/edge-to-edge setup, and intentionally rejects another RN version or an unknown native source shape until revalidated.
+## What the host (this app) owns
+
+The venue packs (`bundledPackTable.ts`: pinned manifest digests and Metro asset files; built with `tools/venue-pack/venue-pack.cjs`), place names (from the pack), the basemap file (each pack carries
+its PMTiles archive, copied into app-private storage and trusted only while its bytes hash to the pinned manifest), the location service (`simulatedLocation.ts` for the demo,
+`expoLocation.ts` for the device), language and theme (`copy/`), safe areas and system bars. The ready-made `NavigationScreen` owns the journey and the SDK's
+`@muslim-ummah/offline-navigation/maplibre` adapter owns the map.
+
+Sample data: the Karachi pack (the owner's, for acceptance testing; redistribution rights are an owner decision) and `synthetic-demo-venue` (invented). Replace both with your own pack
+(`docs/QUICK_START.md` step 4).
+
+Not proven by this folder's checks: real GPS, physical devices, whole-device airplane mode. Jest replaces the native map and file system with recorders; native evidence is in the compatibility matrix.
