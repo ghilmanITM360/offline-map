@@ -198,6 +198,7 @@ it('keeps simulated and device locations apart: a blocked device permission refu
 
 // ---- appearance and language: the host's two preferences, changed mid-journey ----
 const urdu = (path: string): any => path.split('.').reduce((node: any, part) => node[part], require('./copy').copyFor('ur'));
+const roman = (path: string): any => path.split('.').reduce((node: any, part) => node[part], require('./copy').copyFor('ur-Latn'));
 const flatStyle = (style: unknown) => Object.assign({}, ...[style].flat(3).filter(Boolean));
 
 describe('appearance', () => {
@@ -281,12 +282,12 @@ describe('language', () => {
     expect(screen.getByRole('button', { name: room('Entrance') })).toBeOnTheScreen(); // no Urdu name: English, not a guess
   });
 
-  it('Roman Urdu is left-to-right and, like Urdu, shows English for any string without reviewed wording', async () => {
+  it('Roman Urdu is left-to-right and shows its complete draft wording, including titles the host never shipped', async () => {
     await render(<App />);
     await showTools();
     await press('Language: Roman Urdu');
     expect(flatStyle(screen.getByTestId('navigation-panel').props.style).direction).toBe('ltr');
-    expect(screen.getByText(copy.directory.destinationTitle)).toBeOnTheScreen(); // no host wording exists for this title, so it stays English
+    expect(screen.getByText(roman('directory.destinationTitle'))).toBeOnTheScreen(); // draft wording (pending native review), not an English fallback
   });
 });
 
