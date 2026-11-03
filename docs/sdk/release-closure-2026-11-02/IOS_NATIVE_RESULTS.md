@@ -44,3 +44,12 @@ Per-row records (no matrix counts changed; 13 PASS / 0 FAIL / 6 BLOCKED / 1 NOT 
 | Alternate-simulator XCTest functional/offline/stress | NOT RUN | Harness hardcodes 375x812 and top == 50; not weakened or edited. A parameterised, separately identified harness would be needed. |
 
 The alternate smoke is a distinct environment identity and is not transferred to the iPhone 13 mini layout acceptance. iPhone 16 (iOS 18.4) was booted for inspection and left untouched; the Islam 360 app was not touched.
+
+## Continuation — 3 November 2026 (post-run4 environment check)
+
+| Row | Status | Boundary / evidence |
+|---|---|---|
+| Alternate-simulator XCTest functional/offline/stress (iPhone 16 Pro iOS 18.1) | BLOCKED | `xcrun simctl list runtimes` now shows only iOS 26.3. The iOS 18.x runtime profiles are not found ("runtime profile not found using System match policy"), so the iPhone 13 mini (B4FE838C…), 16 Pro and 16 devices are unavailable. Restoring them needs a runtime download/mount, which is outside the no-sudo constraint. Nothing was deleted or altered. |
+| iPhone 12 Pro Max (iOS 26.3, booted) | NOT RUN | Not a task simulator, accepted Release app not installed, harness hardcodes 375x812/top 50. Left untouched. |
+
+No matrix counts changed (13 PASS / 0 FAIL / 6 BLOCKED / 1 NOT RUN stands). A27, A29, A34 and the 13 mini geometry stay BLOCKED; pilot and production stay NO-GO.
