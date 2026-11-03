@@ -1,5 +1,8 @@
 # Security and validation report — SDK 0.1.0
 
+> **Identities superseded for the current client delivery (3 November 2026, candidate 2).** The SDK, delivery and lock hashes below describe the earlier candidate and are kept as history. The
+> current archive, SDK tarball, iOS-precision tarball and venue-tool identities, and what was verified for them, are in `docs/sdk/CLIENT_DELIVERY_REPORT.md` of the repository (and `manifest.json` of the delivery).
+
 Release-closure update: **1 November 2026**, release-closure issue #393. Current results supersede older C5/C6/remediation totals; historical native evidence is separated below.
 
 ## Release status

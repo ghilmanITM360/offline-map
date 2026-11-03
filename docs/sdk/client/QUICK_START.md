@@ -84,7 +84,7 @@ It checks the graph and places (unknown nodes, duplicates, bad coordinates, unre
 node tools/venue-pack/venue-pack.cjs app-assets --pack ./build/my-venue/pack --app ../my-app
 ```
 
-Paste the table entry it prints into `BUNDLED_PACK_TABLE` in `bundledPackTable.ts` (replace the sample entries), set `DEFAULT_VENUE_ID` in `packRuntime.ts` to your venue id and
+Paste the entry it prints into the `PACKS` list in `bundledPackTable.ts` (replace the sample entries), set `DEFAULT_VENUE_ID` in `packRuntime.ts` to your venue id and
 `BASEMAP.zoom` in `basemap.ts` to your archive's min/max zoom. Delete `assets/packs/karachi-ijtema*` and the demo pack when you no longer need them.
 
 ## 5. Configure the location adapter

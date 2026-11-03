@@ -66,6 +66,14 @@ for (const required of [manifest.tarball.file, manifest.iosPrecisionTarball.file
   assert.ok(manifest.files.some((f) => f.path === required), `delivery lacks ${required}`);
 }
 assert.ok(!existsSync(join(consumer, 'modules')) && !existsSync(join(consumer, 'plugins')), 'no hand-copied native modules or plugins in the example app');
+// The start-here documents must not point anywhere that does not exist in the delivery.
+for (const doc of ['README.md', 'QUICK_START.md', 'VENUE_PACK_TOOL.md', 'INTEGRATION_GUIDES.md', 'TRANSLATION_REVIEW.md', 'COMPATIBILITY_MATRIX.md']) {
+  const text = readFileSync(join(delivery, 'docs', doc), 'utf8');
+  for (const [, target] of text.matchAll(/\]\(([^)#\s]+)(?:#[^)]*)?\)/g)) {
+    if (/^[a-z]+:/.test(target)) continue;
+    assert.ok(existsSync(resolve(delivery, 'docs', target)), `docs/${doc} links to ${target}, which the delivery does not contain`);
+  }
+}
 
 // 3. The packaged SDK exposes the plugin and the Metro helper next to the compiled entrypoints.
 const sdkTar = readTarGz(join(delivery, manifest.tarball.file));

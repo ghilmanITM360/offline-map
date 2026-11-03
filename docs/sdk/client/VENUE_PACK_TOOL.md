@@ -95,6 +95,6 @@ Every error is `error: <code>: <message>` followed by a `hint:` and exit code 1 
 
 `app-assets` copies the pack's files to `assets/packs/<packId>/` as Metro `.packfile` assets (never overwriting) and prints the table entry. The app copies each pack into private storage,
 trusts it only while every byte hashes to the pinned manifest, and repairs a damaged copy from the packaged one at the next start ([INTEGRATION_GUIDES.md](INTEGRATION_GUIDES.md) §8,
-[OFFLINE_PACK_SPEC.md](OFFLINE_PACK_SPEC.md)). Remote or imported packs are refused until a signing scheme exists.
+[OFFLINE_PACK_SPEC.md](../OFFLINE_PACK_SPEC.md)). Remote or imported packs are refused until a signing scheme exists.
 
 Data rights: the tool does not grant any. Your venue data and your basemap must be yours to redistribute; keep the basemap's attribution in `attributions`.

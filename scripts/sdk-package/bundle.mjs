@@ -76,7 +76,14 @@ assert.equal(extras, 'png,pmtiles,packfile');
 mkdirSync(join(out, 'docs'), { recursive: true });
 for (const f of readdirSync(join(root, 'docs/sdk/client'))) cpSync(join(root, 'docs/sdk/client', f), join(out, 'docs', f));
 cpSync(join(root, 'docs/sdk/OFFLINE_PACK_SPEC.md'), join(out, 'docs/OFFLINE_PACK_SPEC.md'));
-for (const f of ['FINAL_GO_NO_GO.md', 'FINAL_CLOSURE_LEDGER.md']) cpSync(join(root, 'docs/sdk', f), join(out, 'docs', f));
+for (const f of ['FINAL_GO_NO_GO.md', 'FINAL_CLOSURE_LEDGER.md', 'CODEX_AUDIT_REMEDIATION.md']) cpSync(join(root, 'docs/sdk', f), join(out, 'docs', f));
+// The delivery's docs/ is flat and the example app sits beside it, so repository-relative links are rewritten to where the files really are.
+for (const f of readdirSync(join(out, 'docs')).filter((n) => n.endsWith('.md'))) {
+  const text = readFileSync(join(out, 'docs', f), 'utf8')
+    .replaceAll('](../../../examples/', '](../examples/')
+    .replace(/\]\(\.\.\/([A-Z0-9_]+\.md)(#[^)]*)?\)/g, (whole, name, hash = '') => (existsSync(join(out, 'docs', name)) ? `](${name}${hash})` : whole));
+  writeFileSync(join(out, 'docs', f), text);
+}
 // Generated native projects live at the example's top level only; modules/*/ios is real source and must ship.
 const skip = /(^|\/)(node_modules|\.expo|sdk\.tgz|package-lock\.json|\._[^/]*|__MACOSX)(\/|$)|^(ios|android)(\/|$)|^export-/;
 cpSync(join(root, 'examples/expo-consumer'), join(out, 'examples/expo-consumer'), { recursive: true, filter: (p) => !skip.test(relative(join(root, 'examples/expo-consumer'), p)) });

@@ -12,7 +12,8 @@ export interface BundledPackAssets extends BundledPackSource {
   assets: Record<string, number>;
 }
 
-export const BUNDLED_PACK_TABLE: BundledPackAssets[] = [
+// Typed explicitly: without it TypeScript unions the entries' differently-shaped `assets` objects and rejects a pack whose file names differ.
+const PACKS: Array<Omit<BundledPackAssets, 'files'>> = [
   {
     id: 'karachi-ijtema-1.0.0',
     packId: 'karachi-ijtema@1.0.0',
@@ -41,4 +42,6 @@ export const BUNDLED_PACK_TABLE: BundledPackAssets[] = [
       'map/ijtema-basemap.pmtiles': ARCHIVE,
     },
   },
-].map((pack) => ({ ...pack, files: Object.keys(pack.assets) }));
+];
+
+export const BUNDLED_PACK_TABLE: BundledPackAssets[] = PACKS.map((pack) => ({ ...pack, files: Object.keys(pack.assets) }));

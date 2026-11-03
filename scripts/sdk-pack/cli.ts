@@ -208,7 +208,7 @@ async function appAssets(args: string[], io: Io): Promise<void> {
   const manifestSha = createSha256();
   manifestSha.update(new TextEncoder().encode(readFileSync(join(packDir, PACK_MANIFEST_FILE), 'utf8')));
   io.out(`copied ${files.length} files to ${dest}`);
-  io.out('add this entry to BUNDLED_PACK_TABLE in bundledPackTable.ts (metro.config.js must list "packfile" in assetExts):');
+  io.out('add this entry to the PACKS list in bundledPackTable.ts (metro.config.js must register "packfile" assets; withOfflineNavigation does):');
   io.out(`  {\n    id: '${id}',\n    packId: '${manifest.packId}',\n    manifestSha256: '${manifestSha.digestHex()}',\n    assets: {\n${files.map((f) => `      '${f}': require('./assets/packs/${id}/${asset(f)}'),`).join('\n')}\n    },\n  },`);
 }
 

@@ -147,8 +147,8 @@ const printed = run(process.execPath, [tool, 'app-assets', '--pack', join(work, 
 const entry = printed.slice(printed.indexOf('  {\n    id:'));
 const tablePath = join(withPack, 'bundledPackTable.ts');
 const table = readFileSync(tablePath, 'utf8');
-assert.ok(table.includes('].map((pack)'));
-writeFileSync(tablePath, table.replace('].map((pack)', `${entry.trimEnd()}\n].map((pack)`));
+assert.ok(table.includes('\n];\n\nexport const BUNDLED_PACK_TABLE'));
+writeFileSync(tablePath, table.replace('\n];\n\nexport const BUNDLED_PACK_TABLE', `\n${entry.trimEnd()}\n];\n\nexport const BUNDLED_PACK_TABLE`));
 run(join(app, 'node_modules/.bin/tsc'), ['--noEmit', '-p', '.'], withPack);
 step('app-assets copied the client pack into the app; the table entry type-checks');
 
