@@ -49,7 +49,7 @@ Files are kept outside Git in `~/Documents/offline-map-audits/offline-sdk-client
 | Repository consumer driver | PASS: 63 consumer tests, plugin prebuild for both platforms, iOS module autolinked, Android 769 / iOS 771 module bundles (same counts as before) |
 | **Independent client** (`client-acceptance.mjs` on the final archive, unpacked with Node only, outside any repository) | **PASS, 13 steps**: raw audit clean and `CHECKSUMS.txt` verified; venue tool compiled the synthetic venue, verified its pin, refused to reuse an output folder; `npm ci` from the shipped lock with one React / React Native / MapLibre; headless journey on the client-compiled pack (preview, Manual Guide, same-place, unknown place, exit, fresh controller); app type-checks against shipped declarations; 63 tests / 6 suites; plugin result for Android (permissions, configChanges, font fix) and iOS (foreground text, languages, no background modes, module autolinked); invalid options rejected by name; Android and iOS production exports, as delivered and again with the client's compiled pack added (776 / 778 module sources, every pack asset present, nothing outside the app); no developer paths or keys in text files |
 | Android native smoke (emulator API 36, release APK built from the delivered example) | PASS: offline directory, preview, Manual Guide, Live (simulated GPS) to arrival, Done, second journey, venue switch, Urdu / Roman Urdu draft text, airplane-mode cold start, on-device pack self-test 10 of 10, no crash. The smoked delivery (`af67de4`) differs from the final one in three documentation files only |
-| iOS native | **BLOCKED (environment)**: prebuild and `pod install` pass and link `SdkLocationPrecision` from `node_modules`; `xcodebuild` cannot run because this Mac's Xcode 26.2 lacks the iOS 26.2 platform (two destination forms tried). The Swift file is byte-identical to the one that ran on the iOS 26.3 simulator for candidate 1 |
+| iOS native | PC 1 (`Ghilmans-Laptop.local`): **BLOCKED (environment)**: prebuild and `pod install` pass and link `SdkLocationPrecision` from `node_modules`; `xcodebuild` cannot run because that Mac's Xcode 26.2 lacks the iOS 26.2 platform. **Superseded by PC 2 (section 7): built and run on an iOS 26.3 simulator, 5 of 5 native tests PASS** |
 
 ## 4. What a client must provide, what is automated, what is unsupported
 
@@ -68,6 +68,65 @@ Still pending and separate: physical Android and iOS devices with real GPS, whol
 
 | Question | Verdict |
 | --- | --- |
-| Client-integration engineering for the agreed scope | **COMPLETE and verified** at the levels above; one iOS native build is BLOCKED by this machine's Xcode components, not by a source defect |
+| Client-integration engineering for the agreed scope | **COMPLETE and verified** at the levels above; iOS native now verified on PC 2 (section 7). Narrower limitation: the tested bytes are PC 2's rebuild of the candidate-2 source; its tarball and archive hashes differ from the reported ones until compared on PC 1 |
 | Controlled pilot | **NO-GO until the owner's approval**; the engineering preconditions in this report are met |
 | Unrestricted production | **NO-GO** until the external gates above are satisfied |
+
+## 7. PC 2 iOS native acceptance (4 November 2026, `Users-MacBook-Pro.local`)
+
+PC 1's results above (13-step client acceptance, Android native, 225 suites / 2,429 tests, 91,506 goldens, iOS prebuild and autolinking, iOS build BLOCKED) are **independent evidence from another Mac and were not repeated**. Everything in this section is PC 2's own native result. Evidence stays outside Git in `~/Documents/offline-map-audits/ios-candidate2-pc2/` (unpacked delivery, built app, DerivedData, xcresult, logs, screenshots).
+
+**Candidate identity on PC 2.** The delivery archive was not on this Mac, so it was rebuilt from `b9cd118` (`git checkout --detach b9cd118`, `node scripts/sdk-package/bundle.mjs`, branch restored afterwards; its built-in client acceptance reported PASS). Two untracked, git-ignored Finder `.DS_Store` files in `docs/` stopped the first attempt (the archive writer refuses metadata files, as designed) and were deleted; no tracked file changed.
+
+| Artifact | PC 1 reported | PC 2 rebuilt | Match |
+| --- | --- | --- | --- |
+| Venue tool `venue-pack.cjs` | `02cddf51…d35` | `02cddf51010ce7ffd5615d0aa2db977ed4a4e9931db3531aa79d5ca5be35d746` | **identical** |
+| SDK tarball | `0ff4dfc4…c76` | `859570a8fdfb17c51b80f5da9eda60f89653f0dee551e13b686fa7acf422ddad` | **different** |
+| iOS precision tarball | `6ee10a9f…551d` | `90bb00296c09f03de4b968f4f7675eb1ea807070b6657ece468087b7cc4ccf73` | **different** |
+| Delivery archive | `28fe810b…4069` | `bebcf0e2b4ac2ad0ec6621caf382b472f6f92f9dc842cbf6a350c7814b8a2bf1` | **different** |
+| Example `package-lock.json` | `67018778…5f6` | `d08930c5bed3b438359131f15031292a53de1565c9e4bd485a1bd7cea10286f7` | different (it embeds the tarball integrity) |
+
+The byte-identical hashes of the reported Candidate 2 were **not reproduced** on this Mac. The pure-JavaScript venue tool matches, so the source and esbuild are the same; the two tarballs come from `npm pack` (gzip). The most likely cause is the toolchain (PC 2: Node 25.2.1 / npm 11.6.2; the compatibility matrix records PC 1 as Node 24.14), but that was **not verified** (no second Node was available and none was downloaded). The iOS tarball's Swift module file is byte-identical to the tracked source (`1bd909c2…eb1b`). Consequently the bytes tested here are PC 2's rebuild of Candidate 2's source commit, not PC 1's archive. Candidate 1 was not used. Closing this gap needs one comparison on PC 1: list and hash the entries inside both tarballs (`gunzip -c … | shasum`), or rebuild with Node 24.14.
+
+**Toolchain and simulator.** Xcode 26.2 (17C52), CocoaPods 1.16.2, iOS Simulator SDK 26.2. Simulator: task-owned `OfflineMap-SDK-iOS26`, UDID `BD24E31D-30F4-43C6-8986-784AAD3A5FB6`, iPhone 17, iOS 26.3.1 (23D8133), 402 x 874 pt, measured top safe inset 62 pt. `xcodebuild -showdestinations` lists it as a valid destination, so the PC 1 block does not apply here. No runtime was downloaded and no other project's simulator was touched.
+
+**Build from the delivered files** (copied from the unpacked archive to a folder outside Git): `npm ci --ignore-scripts` from the shipped lock (841 packages), `expo prebuild --platform ios`, `pod install` (81 dependencies; `SdkLocationPrecision` installed from `../node_modules/@muslim-ummah/ios-location-precision/ios`, so no `modules/` copy), then `xcodebuild -configuration Release -destination id=BD24E31D…`: **BUILD SUCCEEDED**.
+
+| Built app (`SDKConsumer.app`, `com.example.sdkconsumer`) | Value |
+| --- | --- |
+| Executable SHA-256 | `e4c390f6cabafba9276f48432096378d5a827fd80c4fe55578d085d846b20895` (x86_64 + arm64, minos 15.1) |
+| `main.jsbundle` SHA-256 | `6f09ce42816e5b1d8122939cb0e52180805bc52d2cc45a4f42243285ee44ddd4` |
+| Installed copy rehashed | both equal to the built files |
+
+These differ from candidate 1's (`29962a58…`, `ad88c6c7…`) because they are a different build (SDK 0.1.0 candidate 2 sources, universal simulator binary); they are not comparable to it.
+
+**Precision module.** `SdkLocationPrecision` is linked (51 matching symbols in the executable). Its runtime behaviour was exercised through the real path: with the location source switched to the device adapter, "Use my location" asks the module for `accuracyAuthorization`; with permission granted via `simctl privacy`, the SDK proceeded to "Your live route", offered "Start live navigation" and ran it (an absent or `none` result is refused as `precision_unknown`). Only the **full-accuracy** branch ran; the reduced-accuracy branch cannot be set on the simulator and stays BLOCKED, as for candidate 1.
+
+**Functional run.** Harness `native-tests/ios-candidate2/` (new; derived from the iOS 26 cross-device harness with the class renamed, plus `test05` for venue switching and Roman Urdu). It measures the screen and safe area at run time and asserts frames against them (inside screen, below the top inset, at least 44 pt, no overlaps, real coordinate taps, scroll reachability). Location is the recorded venue-graph coordinates fed through `simctl location` at 1 Hz. Result: **`xcodebuild test` TEST SUCCEEDED, 5 tests, 0 failures, first run, 473 s**.
+
+| # | Required case | Result | Evidence |
+| --- | --- | --- | --- |
+| 1 | Cold launch, offline map rendering | PASS | `test01` (map element within 40 s; screenshots) |
+| 2 | Directory and destination search | PASS | `test01` (search "02", Gate 02) |
+| 3 | Manual origin, route preview | PASS | `test01` ("111 m walk") |
+| 4 | Manual Guide Next / Previous | PASS | `test01`, `test02`, `test03` |
+| 5 | Explicit Live Navigation | PASS | `test01` (End navigation present after "Start live navigation") |
+| 6 | Linked iOS precision-module behaviour | PASS (full accuracy only) | see above |
+| 7 | Simulated GPS movement and progress | PASS | `test01` (Gate 01, R6, R602, no early arrival) |
+| 8 | Rerouting | PASS | `test01` ("Route updated from where you are.") |
+| 9 | Arrival, Done, Exit | PASS | `test01` (Recenter and Done by coordinate touch, return to "Where to?") |
+| 10 | Second journey without stale state | PASS | `test01` |
+| 11 | Multi-venue switching | PASS | `test05` (karachi-ijtema to synthetic-demo-venue and back; no Gate 02 leaked into the second venue) |
+| 12 | English, Urdu, Roman Urdu draft rendering | PASS | `test04` (Urdu RTL, mirrored Previous / Next, extra-large and AX5 text), `test05` (Roman Urdu directory and guide) |
+| 13 | Light / Dark | PASS | `test03` (system and in-app) |
+| 14 | Background / foreground recovery | PASS | `test02` (Guide and Live survive Home) |
+| 15 | Safe-area controls, touch reachability | PASS | layout assertions in every test, arrival frames in `test01` |
+| 16 | Offline behaviour | PASS at this level only | 100 host `lsof` samples during the run: zero sockets owned by `SDKConsumer`. Not airplane mode, not a network-less cold start |
+
+Confirmed defects: **none**; no source, plugin or precision-module change was needed. The harness change is new files only; routing, GIS and historical test data are untouched. Harness SHA-256: `Candidate2Journey.swift` `556fa28633ea09deb4fa43e9e6b7167447a912207415beda28750757f7ec9671`, `run_candidate2.py` `a918fcbc89657312c8ce02a393cd65b34ab77a17f6276ba60dad04ecb3ff28ba`, `create_project.rb` `f3f49d7ec44b0648456b821ea40430cf9a8bc2830732033fb127c849afe84f89`. Test log SHA-256 `569a3e58…4ade`, network samples `f1780c16…4ab5`.
+
+Limits of this evidence: iOS Simulator only, simulated GPS, one device model and OS version (iOS 26.3.1); the same simulated-GPS caveat applies as for candidate 1 and it is **not** physical-device acceptance. Urdu and Roman Urdu are still drafts.
+
+## 8. Final verdict (PC 2, 4 November 2026)
+
+**SDK 0.1.0 Candidate 2 — CLIENT INTEGRATION ENGINEERING COMPLETE**, for source `b9cd118`, with one narrower limitation: the exact SHA-256 values of PC 1's tarballs and archive were not reproduced on PC 2 (section 7), so the iOS result applies to PC 2's rebuild of that source and not byte-for-byte to PC 1's archive. Controlled pilot and production authorization stay **NO-GO** until physical-device, human accessibility and translation, data-rights, security and signing approvals exist.
