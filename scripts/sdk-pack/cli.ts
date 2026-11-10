@@ -17,7 +17,8 @@ import {
 } from '../../packages/offline-navigation/src/index';
 import { compilePack, pinFor, PackCompileError, type PackBuildSpec } from './compile';
 import { createNodePackFileSystem } from './nodePackFileSystem';
-import { checkBounds, checkGateCoordinates, checkGraphCoordinates, checkTranslations, emptyFindings, type Findings } from './dataChecks';
+import { checkBounds, checkCatalogAndGeometry, checkGateCoordinates, checkGraphCoordinates, checkTranslations, emptyFindings, type Findings } from './dataChecks';
+import { IntakeError, runImport, runMerge } from './intake/commands';
 import { createPackOutput } from './output';
 
 declare const SDK_VERSION: string; // injected when the tool is bundled; the repository build reads the package instead
@@ -97,6 +98,8 @@ export const checkVenueData = (read: (path: string) => string, spec: Pick<PackBu
   checkGraphCoordinates(source, spec.bounds, pathOf('routing-graph'), found);
   checkGateCoordinates(read(pathOf('gate-metadata')), spec.bounds, pathOf('gate-metadata'), found);
   checkTranslations(read(pathOf('localization')), source, spec.languages, pathOf('localization'), found);
+  const optional = (kind: 'place-catalog' | 'venue-geometry') => { const r = spec.resources.find((x) => x.kind === kind); return r ? { file: r.path, text: read(r.path) } : null; };
+  checkCatalogAndGeometry(optional, source, spec.venueId, spec.bounds, spec.languages, found);
   if (source.placeIds().length === 0) errors.push('the place directory is empty: a venue needs at least one place');
 
   // Routing quality: the A* heuristic is the straight-line distance, so an edge cheaper than the straight line makes routes suboptimal.
@@ -224,6 +227,8 @@ const USAGE = `usage:
   venue-pack compile --spec <pack.spec.json> --input <folder> --out <new folder> [--strict]
   venue-pack verify <pack folder> [--pin <manifest sha-256>]
   venue-pack app-assets --pack <pack folder> --app <Expo app folder>
+  venue-pack import --workbook <.xlsx | folder of .csv> --base <current pack folder> --out <new folder> [--geojson <folder>]
+  venue-pack merge --candidate <import folder> --base <current pack folder> --pack-version <x.y.z> --out <new folder> [--approval <approval.json>]
 The output folder must not exist yet; the tool never deletes or overwrites anything.`;
 
 /** Returns the process exit code: 0 ok, 1 the input is not acceptable, 2 wrong usage. */
@@ -233,6 +238,14 @@ export async function main(argv: string[], io: Io): Promise<number> {
     if (command === 'compile') await compile(rest, io);
     else if (command === 'verify') await verify(rest, io);
     else if (command === 'app-assets') await appAssets(rest, io);
+    else if (command === 'import') {
+      const need = (n: string) => flagValue(rest, n) ?? fail('usage', `import needs ${n}`);
+      const c = runImport({ workbook: need('--workbook'), base: need('--base'), out: need('--out'), geojson: flagValue(rest, '--geojson') }, io);
+      return c.outcome === 'REJECT' ? 1 : 0;
+    } else if (command === 'merge') {
+      const need = (n: string) => flagValue(rest, n) ?? fail('usage', `merge needs ${n}`);
+      runMerge({ candidate: need('--candidate'), base: need('--base'), out: need('--out'), packVersion: need('--pack-version'), approval: flagValue(rest, '--approval') }, io);
+    }
     else { io.err(USAGE); return command === undefined || command === '--help' || command === 'help' ? 0 : 2; }
     return 0;
   } catch (e) {
@@ -241,6 +254,11 @@ export async function main(argv: string[], io: Io): Promise<number> {
       if (e.hint) io.err(`hint: ${e.hint}`);
       if (e.code === 'usage') io.err(USAGE);
       return e.code === 'usage' ? 2 : 1;
+    }
+    if (e instanceof IntakeError) {
+      io.err(`error: ${e.code}: ${e.message}`);
+      if (e.hint) io.err(`hint: ${e.hint}`);
+      return 1;
     }
     if (e instanceof PackCompileError) {
       io.err(`error: ${e.code}: ${e.message}`);

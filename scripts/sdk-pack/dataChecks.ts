@@ -9,7 +9,9 @@
 //   warnings - real findings that can be intentional (a place with no Urdu name, an unreachable gate); they block only under --strict.
 //   review  - needs a human decision (a translation identical to English, which may be a draft or fallback); never blocks, always listed.
 // Each message names the file, the record and the field. Decimal places are never read as survey accuracy.
-import { diagnoseCoordinate, haversineM, type CoordinateProblem, type GeoBounds, type VenueDataSource } from '../../packages/offline-navigation/src/index';
+import {
+  diagnoseCoordinate, haversineM, parsePackPlaceCatalog, ringsOverlap, parsePackVenueGeometry, type CoordinateProblem, type GeoBounds, type VenueDataSource,
+} from '../../packages/offline-navigation/src/index';
 
 export interface Findings { errors: string[]; warnings: string[]; review: string[] }
 export const emptyFindings = (): Findings => ({ errors: [], warnings: [], review: [] });
@@ -86,4 +88,44 @@ export const checkTranslations = (locText: string, source: VenueDataSource, lang
     }
   }
   for (const [lang, ids] of identical) out.review.push(`${file}: ${ids.length} place(s) have names.${lang} identical to names.en (a draft, a fallback, or a name that really is the same): ${ids.slice(0, 5).join(', ')}${ids.length > 5 ? ', ...' : ''}`);
+};
+
+/**
+ * The optional catalog and geometry resources, checked against the graph and the place directory they describe. A catalog place that claims a
+ * route must be a place the router can reach, and a router place must be in the catalog with the same nodes: the two files cannot disagree.
+ */
+export const checkCatalogAndGeometry = (
+  read: (kind: 'place-catalog' | 'venue-geometry') => { file: string; text: string } | null, source: VenueDataSource, venueId: string, bounds: GeoBounds, languages: readonly string[], out: Findings,
+): void => {
+  const nodeIds = new Set(source.graph.nodeIds());
+  const cat = read('place-catalog');
+  let placeIds: ReadonlySet<string> = new Set(source.placeIds());
+  if (cat) {
+    const parsed = parsePackPlaceCatalog(cat.text, { venueId, bounds, nodeIds, languages });
+    if (!parsed.ok) out.errors.push(`${cat.file}: ${parsed.error.path ?? 'catalog'}: ${parsed.error.message}`);
+    else {
+      placeIds = new Set(parsed.catalog.places.map((p) => p.id));
+      for (const p of parsed.catalog.places) {
+        const routed = p.routing === 'routable' || p.routing === 'provisional';
+        const place = source.getPlace(p.id);
+        if (routed && !place) out.errors.push(`${cat.file}: places['${p.id}'].routing is '${p.routing}' but the place directory cannot route to it`);
+        if (routed && place && (place.nodeIds.length !== p.nodeIds.length || place.nodeIds.some((n, i) => n !== p.nodeIds[i]))) out.errors.push(`${cat.file}: places['${p.id}'].nodeIds differ from the place directory's`);
+        if (!routed && place && place.nodeIds.some((n) => source.graph.edgesFrom(n).length > 0)) out.warnings.push(`${cat.file}: places['${p.id}'] is '${p.routing}' although the router has nodes for it`);
+        if (p.category === 'block' && p.location === 'pending') out.errors.push(`${cat.file}: places['${p.id}'] is a block with no location`);
+      }
+      for (const id of source.placeIds()) if (!parsed.catalog.byId.has(id)) out.errors.push(`${cat.file}: the place directory has '${id}' but the catalog does not (it would be unsearchable)`);
+    }
+  }
+  const geo = read('venue-geometry');
+  if (geo) {
+    const parsed = parsePackVenueGeometry(geo.text, { venueId, bounds, placeIds, nodeIds });
+    if (!parsed.ok) out.errors.push(`${geo.file}: ${parsed.error.path ?? 'geometry'}: ${parsed.error.message}`);
+    else {
+      const blocks = parsed.geometry.features.filter((f) => f.shape === 'polygon' && f.role === 'block');
+      for (let i = 0; i < blocks.length; i++) for (let j = i + 1; j < blocks.length; j++) {
+        const [a, b] = [blocks[i], blocks[j]];
+        if (a.shape === 'polygon' && b.shape === 'polygon' && ringsOverlap(a.ring, b.ring)) out.warnings.push(`${geo.file}: blocks '${a.id}' and '${b.id}' overlap`);
+      }
+    }
+  }
 };

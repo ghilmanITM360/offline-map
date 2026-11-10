@@ -17,6 +17,7 @@ import { MAJOR_GATE_IDS } from '../../src/data/ijtema/gateMeta';
 import { IJTEMA_VENUE_SOURCE } from '../../src/data/ijtema/venueAdapter';
 import type { LocalizedLabel } from '../../src/data/ijtema/types';
 import { compilePack, pinFor, type CompiledPack, type PackBuildSpec } from './compile';
+import { buildKarachiPlaceCatalog, buildKarachiVenueGeometry } from '../../src/data/ijtema/packResources';
 import { createPackOutput } from './output';
 
 const REPO = resolve(__dirname, '../..');
@@ -29,14 +30,18 @@ export const KARACHI_PMTILES_SHA256 = 'd5e6883d55d55b0fa9e3230ab92585fb25a894955
 
 const VENUE_ID = IJTEMA_VENUE_SOURCE.venueId;
 const PACK_VERSION = '1.0.0';
+/** The internal Karachi-ready preset: the same data plus the venue-geometry and place-catalog resources (needs SDK >= 0.1.1). */
+export const KARACHI_PRESET_VERSION = '1.1.0';
+export const KARACHI_PRESET_PIN_FILE = join(__dirname, 'karachi-ijtema-1.1.0.pin.json');
 const LANGUAGES = ['en', 'ur', 'ur-Latn'];
 const sha = (b: Uint8Array): string => createHash('sha256').update(b).digest('hex');
 const json = (v: unknown): string => `${JSON.stringify(v, null, 1)}\n`;
 
 const names = (n: LocalizedLabel): Record<string, string> => ({ en: n.en, ur: n.ur ?? n.en, 'ur-Latn': n.romanUrdu ?? n.en });
 
-export const buildKarachiPack = async (outDir: string, options: { write?: boolean } = { write: true }): Promise<CompiledPack> => {
+export const buildKarachiPack = async (outDir: string, options: { write?: boolean; preset?: boolean } = { write: true }): Promise<CompiledPack> => {
   outDir = createPackOutput(outDir);
+  const preset = options.preset === true;
   const archive = readFileSync(BASEMAP);
   if (sha(archive) !== KARACHI_PMTILES_SHA256) throw new Error('the tracked PMTiles archive no longer matches its recorded digest');
   const basemap = JSON.parse(readFileSync(BASEMAP_PROVENANCE, 'utf8'));
@@ -78,9 +83,17 @@ export const buildKarachiPack = async (outDir: string, options: { write?: boolea
         'GATE_18 has no valid graph connector within 320 m of any internal path; blocked pending physical field survey (docs/KNOWN_LIMITATIONS_AND_OWNER_ACTIONS.md).',
         'GATE_19 field connectivity is deferred pending physical ground truth.',
         'Outside-venue routing is not part of this pack.',
+        ...(preset ? [
+          'Block corners are boundary geometry, not entrances. The four corner-derived graph nodes per block are LEGACY_UNVERIFIED access aliases until a field survey supplies real access points.',
+          'A route to a block ends at one of those boundary nodes; the block marker is the surveyed centre. No tent, ilaqa or facility location is included.',
+        ] : []),
       ],
     }),
   };
+  if (preset) {
+    files['data/venue-geometry.json'] = json(buildKarachiVenueGeometry());
+    files['data/place-catalog.json'] = json(buildKarachiPlaceCatalog());
+  }
   mkdirSync(join(outDir, 'map'), { recursive: true });
   copyFileSync(BASEMAP, join(outDir, 'map/ijtema-basemap.pmtiles'));
   for (const [path, content] of Object.entries(files)) {
@@ -89,8 +102,8 @@ export const buildKarachiPack = async (outDir: string, options: { write?: boolea
   }
 
   const spec: PackBuildSpec = {
-    packId: `${VENUE_ID}@${PACK_VERSION}`, venueId: VENUE_ID, packVersion: PACK_VERSION,
-    sdkCompatibility: '>=0.1.0 <0.2.0', routingPolicyVersion: '2026-06-ijtema-v2',
+    packId: `${VENUE_ID}@${preset ? KARACHI_PRESET_VERSION : PACK_VERSION}`, venueId: VENUE_ID, packVersion: preset ? KARACHI_PRESET_VERSION : PACK_VERSION,
+    sdkCompatibility: preset ? '>=0.1.1 <0.2.0' : '>=0.1.0 <0.2.0', routingPolicyVersion: '2026-06-ijtema-v2',
     createdAt: String(basemap.builtAt).replace(/\.\d+Z$/, 'Z'),
     minimumPlatformCapabilities: ['pmtiles-local-read'],
     bounds: { west: basemap.bounds.west, south: basemap.bounds.south, east: basemap.bounds.east, north: basemap.bounds.north },
@@ -102,6 +115,7 @@ export const buildKarachiPack = async (outDir: string, options: { write?: boolea
       { path: 'data/gate-metadata.json', kind: 'gate-metadata' },
       { path: 'data/localization.json', kind: 'localization' },
       { path: 'PROVENANCE.json', kind: 'provenance' },
+      ...(preset ? [{ path: 'data/venue-geometry.json', kind: 'venue-geometry' as const }, { path: 'data/place-catalog.json', kind: 'place-catalog' as const }] : []),
     ],
     attributions: [
       { name: '© OpenStreetMap contributors', license: 'ODbL-1.0', url: 'https://www.openstreetmap.org/copyright' },
@@ -118,11 +132,12 @@ export const buildKarachiPack = async (outDir: string, options: { write?: boolea
 };
 
 if (require.main === module) {
-  const [out, flag] = process.argv.slice(2);
-  if (!out) { console.error('usage: karachi.ts <outDir> [--write-pin]'); process.exit(2); }
-  buildKarachiPack(out).then((pack) => {
+  const [out, ...flags] = process.argv.slice(2);
+  if (!out) { console.error('usage: karachi.ts <outDir> [--preset] [--write-pin]'); process.exit(2); }
+  const preset = flags.includes('--preset');
+  buildKarachiPack(out, { write: true, preset }).then((pack) => {
     const pin = pinFor(pack);
-    if (flag === '--write-pin') writeFileSync(KARACHI_PIN_FILE, json(pin));
+    if (flags.includes('--write-pin')) writeFileSync(preset ? KARACHI_PRESET_PIN_FILE : KARACHI_PIN_FILE, json(pin));
     console.log(JSON.stringify(pin));
   }, (e) => { console.error(e); process.exit(1); });
 }

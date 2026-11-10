@@ -1,0 +1,55 @@
+{
+ "packId": "karachi-ijtema@1.1.0",
+ "manifestSha256": "4eea9a74d95f9cd431750e8fd4a81a5bf733ccc341e6764239830319cbbfcec1",
+ "manifestBytes": 2747,
+ "resources": [
+  {
+   "path": "PROVENANCE.json",
+   "kind": "provenance",
+   "bytes": 3912,
+   "sha256": "a71f396e7c6872ab8058658d8c386b0424342d1b247dcd41f7bb4af675d79a62"
+  },
+  {
+   "path": "data/gate-metadata.json",
+   "kind": "gate-metadata",
+   "bytes": 8362,
+   "sha256": "6b99ad07ea237ae137374115bcf45ddf12a16a11d9efe6f2505c3a56099709d6"
+  },
+  {
+   "path": "data/localization.json",
+   "kind": "localization",
+   "bytes": 7215,
+   "sha256": "e80987a16daf31a12286b01f0f818258625fc04f8f2370a4a774af9c84f55964"
+  },
+  {
+   "path": "data/place-catalog.json",
+   "kind": "place-catalog",
+   "bytes": 34644,
+   "sha256": "a538584f64ac1735787282839d6519f439083c4453c335a953d4482a794bd513"
+  },
+  {
+   "path": "data/place-directory.json",
+   "kind": "place-directory",
+   "bytes": 6601,
+   "sha256": "3f0118d7e20b35a4d8bf9c9491c5b1175fe63158da599371a8d97cdf44b2a645"
+  },
+  {
+   "path": "data/routing-graph.json",
+   "kind": "routing-graph",
+   "bytes": 66688,
+   "sha256": "111697eae740376d5521c5ad017a2f090309b46e7d00e3f36068c60586469329"
+  },
+  {
+   "path": "data/venue-geometry.json",
+   "kind": "venue-geometry",
+   "bytes": 90747,
+   "sha256": "3e63d34f97d7de900ee9d00f187cf6be366f2b4b41f7f06babad5b3a1d51d263"
+  },
+  {
+   "path": "map/ijtema-basemap.pmtiles",
+   "kind": "map-archive",
+   "bytes": 434589,
+   "sha256": "d5e6883d55d55b0fa9e3230ab92585fb25a8949551528ef4d176192384a28cc0"
+  }
+ ]
+}

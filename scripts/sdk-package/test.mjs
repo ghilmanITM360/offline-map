@@ -18,7 +18,7 @@ function run(cmd, args, cwd = out) {
 const artifacts = ['first', 'second'].map((name) => {
   const dir = join(out, name);
   run(process.execPath, [join(root, 'scripts/sdk-package/pack.mjs'), dir]);
-  return join(dir, 'muslim-ummah-offline-navigation-0.1.0.tgz');
+  return join(dir, 'muslim-ummah-offline-navigation-0.1.1.tgz');
 });
 const hash = (p) => createHash('sha256').update(readFileSync(p)).digest('hex');
 assert.equal(hash(artifacts[0]), hash(artifacts[1]), 'identical input must produce byte-identical tarballs');
@@ -30,7 +30,7 @@ run('npm', ['install', '--offline', '--ignore-scripts', '--legacy-peer-deps', '-
 const pkgDir = join(consumer, 'node_modules/@muslim-ummah/offline-navigation');
 const manifest = JSON.parse(readFileSync(join(pkgDir, 'package.json'), 'utf8'));
 assert.equal(manifest.private, true);
-assert.equal(manifest.version, '0.1.0');
+assert.equal(manifest.version, '0.1.1');
 assert.deepEqual(Object.keys(manifest.exports), ['.', './session', './ui', './maplibre', './app.plugin.js', './metro', './package.json']);
 assert.equal(manifest.dependencies, undefined);
 assert.deepEqual(manifest.peerDependencies, { '@maplibre/maplibre-react-native': '>=11.5.0 <12', react: '>=19.1.0', 'react-native': '>=0.81.0' });

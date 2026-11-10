@@ -1,6 +1,6 @@
 {
   "name": "@muslim-ummah/offline-navigation",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "description": "Offline venue and street navigation: a headless routing/journey/session domain plus presentational React Native UI.",
   "license": "Apache-2.0",
