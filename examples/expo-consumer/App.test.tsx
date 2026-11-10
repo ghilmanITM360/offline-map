@@ -130,6 +130,7 @@ it('goes Live only on the explicit request, follows the simulated GPS to arrival
   expect(sourceData('sdk-markers').features.some((f: any) => f.properties.role === 'position')).toBe(true);
   await nextGps();
   await nextGps();
+  await nextGps(); // arrival needs a second consecutive in-radius fix
   expect(await screen.findByText(copy.arrival.title)).toBeOnTheScreen();
   await press(copy.arrival.doneA11y);
   expect(screen.getByText(copy.directory.destinationTitle)).toBeOnTheScreen();
