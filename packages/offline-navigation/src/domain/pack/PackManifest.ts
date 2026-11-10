@@ -10,11 +10,13 @@ import { parseStrictJson, StrictJsonError } from './StrictJson';
 export const PACK_SCHEMA_VERSION = 1;
 
 export const PACK_RESOURCE_KINDS = [
-  'map-archive', 'routing-graph', 'place-directory', 'gate-metadata', 'localization', 'provenance', 'map-style',
+  'map-archive', 'routing-graph', 'place-directory', 'gate-metadata', 'localization', 'provenance', 'map-style', 'venue-geometry', 'place-catalog',
 ] as const;
 export type PackResourceKind = typeof PACK_RESOURCE_KINDS[number];
-/** A pack without all of these cannot be navigated; `map-style` is optional. */
-export const REQUIRED_PACK_RESOURCE_KINDS: readonly PackResourceKind[] = PACK_RESOURCE_KINDS.filter((k) => k !== 'map-style');
+/** Added after version-1 packs existed: a pack without them still loads, exactly as before. */
+export const OPTIONAL_PACK_RESOURCE_KINDS: readonly PackResourceKind[] = ['map-style', 'venue-geometry', 'place-catalog'];
+/** A pack without all of these cannot be navigated. */
+export const REQUIRED_PACK_RESOURCE_KINDS: readonly PackResourceKind[] = PACK_RESOURCE_KINDS.filter((k) => !OPTIONAL_PACK_RESOURCE_KINDS.includes(k));
 
 export interface PackResource {
   /** Relative, `/`-separated path inside the pack. */

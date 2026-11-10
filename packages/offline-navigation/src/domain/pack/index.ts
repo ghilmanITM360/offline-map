@@ -9,6 +9,8 @@ export * from './PackManager';
 export * from './PackManifest';
 export * from './PackStore';
 export * from './PackVenueData';
+export * from './PackVenueGeometry';
+export * from './PackPlaceCatalog';
 export * from './PackVerifier';
 export * from './FileSystemPackStore';
 export * from './Sha256';

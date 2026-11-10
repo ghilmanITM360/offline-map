@@ -62,7 +62,7 @@ export interface CompiledPack {
 }
 
 /** Data resources must say which venue they belong to, so a graph can never be filed under another venue's pack. */
-const VENUE_SCOPED_JSON: readonly PackResourceKind[] = ['routing-graph', 'place-directory', 'gate-metadata', 'localization'];
+const VENUE_SCOPED_JSON: readonly PackResourceKind[] = ['routing-graph', 'place-directory', 'gate-metadata', 'localization', 'venue-geometry', 'place-catalog'];
 const MAX_JSON_BYTES = 32 * 1024 * 1024;
 const CHUNK_BYTES = 64 * 1024;
 
