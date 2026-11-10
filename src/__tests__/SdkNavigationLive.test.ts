@@ -377,6 +377,8 @@ describe('ingestFix: live progress', () => {
     walk(L, offset(N2, 0, 40));
     expect(c.getState().phase).toBe('live');
     walk(L, N3);
+    expect(c.getState().phase).toBe('live'); // one fix is not arrival
+    walk(L, N3);
     const arrived = c.getState();
     expect(arrived).toMatchObject({ phase: 'arrived', presentation: 'ARRIVED' });
     expect(arrived.route).not.toBeNull();
@@ -568,6 +570,7 @@ describe('rerouting', () => {
     offRoute(L);
     expect(c.getState().live!.rerouting).toBe(true);
     walk(L, N3); // arrives while the reroute is still computing
+    walk(L, N3);
     const route = c.getState().route;
     expect(c.getState().phase).toBe('arrived');
     settle(findBestVenuePath(testVenue.graph, ['n/4'], ['n/3']));
@@ -861,6 +864,7 @@ describe('outside-venue routing (injected capability)', () => {
     const total = lengths[0] + lengths[1] + lengths[2];
     for (let d = 30; d < total; d += 30) walk(L, alongOutside(d));
     walk(L, alongOutside(total));
+    walk(L, alongOutside(total));
     expect(c.getState().phase).toBe('arrived');
     expect(L.watching).toBe(0);
   });
@@ -1059,5 +1063,90 @@ describe('resume asks for a fresh fix', () => {
     L.getCurrentFix = async () => { asked += 1; return null; };
     await c.resume();
     expect(asked).toBe(0);
+  });
+});
+
+// Arrival needs two consecutive valid in-radius fixes: one noisy fix near the end must not finish the trip.
+describe('arrival confirmation: two consecutive valid in-radius fixes', () => {
+  const nearEnd = () => offset(N3, 6, 0);
+  const toEnd = async (extra: Partial<NavigationControllerOptions> = {}) => {
+    const s = await goLive(extra);
+    walk(s.L, offset(N1, 40, 0));
+    walk(s.L, N2);
+    walk(s.L, offset(N2, 0, 40));
+    expect(s.c.getState().phase).toBe('live');
+    return s;
+  };
+
+  it('a single in-radius fix does not arrive; the second consecutive one does, about one fix interval later', async () => {
+    const { c, L } = await toEnd();
+    walk(L, nearEnd());
+    expect(c.getState().phase).toBe('live');
+    expect(L.watching).toBe(1);
+    walk(L, nearEnd());
+    expect(c.getState().phase).toBe('arrived');
+    expect(L.watching).toBe(0);
+  });
+
+  it('a duplicate, stale or out-of-order fix is not a second confirmation', async () => {
+    const { c, L } = await toEnd();
+    walk(L, nearEnd());
+    L.emit(fix(nearEnd(), { observedAtMs: t })); // same observation again
+    L.emit(fix(nearEnd(), { observedAtMs: t - 2_000 })); // older than the first
+    expect(c.getState().phase).toBe('live');
+    walk(L, nearEnd());
+    expect(c.getState().phase).toBe('arrived');
+  });
+
+  it('an out-of-radius, weak or lost fix between the two resets the confirmation', async () => {
+    const { c, L } = await toEnd();
+    walk(L, nearEnd());
+    walk(L, offset(N3, 40, 0)); // noisy fix 40 m away
+    walk(L, nearEnd());
+    expect(c.getState().phase).toBe('live');
+    walk(L, nearEnd(), 4_000, { accuracy: 500 }); // weak fix freezes arrival evidence
+    walk(L, nearEnd());
+    expect(c.getState().phase).toBe('live');
+    walk(L, nearEnd());
+    expect(c.getState().phase).toBe('arrived');
+  });
+
+  it('GPS loss while one confirmation is pending clears it', async () => {
+    const { c, L } = await toEnd();
+    walk(L, nearEnd());
+    t += 9_000;
+    c.tick();
+    expect(c.getState().live!.signal).toBe('lost');
+    walk(L, nearEnd(), 1_000);
+    expect(c.getState().phase).toBe('live');
+    walk(L, nearEnd());
+    expect(c.getState().phase).toBe('arrived');
+  });
+
+  it('a reroute while one confirmation is pending clears it', async () => {
+    const { c, L } = await toEnd();
+    walk(L, nearEnd());
+    expect(c.requestReroute()).toBe(true);
+    await flush();
+    walk(L, nearEnd());
+    expect(c.getState().phase).toBe('live');
+  });
+
+  it('exit during a pending confirmation does not leak into the next trip', async () => {
+    const { c, L } = await toEnd();
+    walk(L, nearEnd());
+    c.exit();
+    c.selectDestination('annex');
+    L.currentFix = fix(offset(N1, 3, 0));
+    expect(await c.requestLive()).toBe(true);
+    walk(L, nearEnd());
+    expect(c.getState().phase).toBe('live');
+  });
+
+  it('a cached fix from before the watcher started never counts', async () => {
+    const { c, L } = await toEnd();
+    walk(L, nearEnd());
+    walk(L, nearEnd(), 4_000, { observedAtMs: T0 - 60_000 });
+    expect(c.getState().phase).toBe('live');
   });
 });

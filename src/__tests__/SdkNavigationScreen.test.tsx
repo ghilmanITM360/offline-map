@@ -635,6 +635,7 @@ describe('NavigationScreen: GPS loss, reroute, arrival and Exit while live (simu
     await offRoute(L);
     expect(c.getState().live!.rerouting).toBe(true);
     await walk(L, N3); // arrives while the reroute is still computing
+    await walk(L, N3); // second consecutive fix confirms arrival
     expect(c.getState().phase).toBe('arrived');
     const route = c.getState().route;
     await settle(() => f.calls[0].settle(findBestVenuePath(testVenue.graph, ['n/4'], ['n/3'])));
@@ -648,6 +649,7 @@ describe('NavigationScreen: GPS loss, reroute, arrival and Exit while live (simu
     const { L, c } = await goLive({}, { onTripEnded });
     await walk(L, offset(N1, 56, 0));
     await walk(L, N3);
+    await walk(L, N3); // second consecutive fix confirms arrival
     expect(c.getState().phase).toBe('arrived');
     expect(await screen.findByText(copy.arrival.title)).toBeOnTheScreen();
     expect(screen.getByText('Annex Wing')).toBeOnTheScreen();
@@ -679,6 +681,7 @@ describe('NavigationScreen: GPS loss, reroute, arrival and Exit while live (simu
     await screen.findByText(copy.live.exit);
     await walk(L, offset(N1, 56, 0));
     await walk(L, N3);
+    await walk(L, N3); // second consecutive fix confirms arrival
     expect(c.getState().phase).toBe('arrived');
     expect(await screen.findByText(copy.arrival.provisionalTitle!)).toBeOnTheScreen();
     expect(screen.getByText(copy.arrival.provisionalSubtitle!)).toBeOnTheScreen();
@@ -694,6 +697,7 @@ describe('NavigationScreen: GPS loss, reroute, arrival and Exit while live (simu
     const { L, c } = await goLive({}, { bottomInset: 0, arrivalBottomInset: 34 });
     await walk(L, offset(N1, 56, 0));
     await walk(L, N3);
+    await walk(L, N3); // second consecutive fix confirms arrival
     expect(c.getState().phase).toBe('arrived');
     expect(flatStyle((await screen.findByTestId('nav-arrived-card')).props.style).paddingBottom).toBe(58);
     expect(flatStyle(screen.getByTestId('navigation-panel').props.style).paddingBottom).toBe(0);
@@ -703,6 +707,7 @@ describe('NavigationScreen: GPS loss, reroute, arrival and Exit while live (simu
     const { L, c } = await goLive({}, { bottomInset: 34 });
     await walk(L, offset(N1, 56, 0));
     await walk(L, N3);
+    await walk(L, N3); // second consecutive fix confirms arrival
     expect(c.getState().phase).toBe('arrived');
     expect(flatStyle((await screen.findByTestId('nav-arrived-card')).props.style).paddingBottom).toBe(58);
   });
@@ -772,6 +777,7 @@ describe('NavigationScreen: injected map', () => {
     await screen.findByText(copy.live.exit);
     await walk(L, offset(N1, 56, 0));
     await walk(L, N3);
+    await walk(L, N3); // second consecutive fix confirms arrival
     await press(copy.arrival.recenterA11y);
     expect(recenters).toBe(1);
   });

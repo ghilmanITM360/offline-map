@@ -255,6 +255,8 @@ interface Track {
   offRouteStartMs: number | null;
   offRouteAnchor: VenueCoordinate | null;
   lastRerouteAtMs: number | null;
+  /** Time of the first in-radius fix awaiting a second consecutive one; any loss of evidence, reroute or out-of-radius fix clears it. */
+  arrivalPendingAtMs: number | null;
   stopWatch: (() => void) | null;
   lastAcceptedPoint: VenueCoordinate | null;
   /** Aborts the fresh-fix request made on resume. */
@@ -419,6 +421,11 @@ export function createNavigationController(options: NavigationControllerOptions)
     tr.offRouteStartMs = null;
     tr.offRouteAnchor = null;
   };
+  // Loss of authority, a reroute or a replaced route also discards a pending arrival; merely being back on the route does not.
+  const resetAllEvidence = (tr: Track) => {
+    resetEvidence(tr);
+    tr.arrivalPendingAtMs = null;
+  };
   const setSignal = (signal: LiveSignal) => {
     if (state.live && state.live.signal !== signal) updateLive({ signal });
   };
@@ -429,7 +436,7 @@ export function createNavigationController(options: NavigationControllerOptions)
       // The start fix was validated as live, so it is the oldest fix this watcher generation may accept.
       boundaryMs: firstFix.observedAtMs ?? now(), permission, lastFixAtMs: now(), lastObservedAtMs: null, watchOwner: null,
       lastAcceptedObservedAtMs: null, previousProgressM: 0, previousEtaMinutes: undefined, consecutiveOffRoute: 0,
-      offRouteStartMs: null, offRouteAnchor: null, lastRerouteAtMs: null, stopWatch: null, lastAcceptedPoint: null, fixAbort: null,
+      offRouteStartMs: null, offRouteAnchor: null, lastRerouteAtMs: null, arrivalPendingAtMs: null, stopWatch: null, lastAcceptedPoint: null, fixAbort: null,
     };
     track = tr;
     update({
@@ -499,7 +506,7 @@ export function createNavigationController(options: NavigationControllerOptions)
     const near = nearestNode(point);
     const keep = () => {
       tr.lastRerouteAtMs = now();
-      resetEvidence(tr);
+      resetAllEvidence(tr);
       if (state.phase === 'live') updateLive({ rerouting: false, notice: 'kept_route' });
     };
     // Outside the venue only the host's provider can offer a walking route; without one the current route stays.
@@ -514,7 +521,7 @@ export function createNavigationController(options: NavigationControllerOptions)
         tr.lastAcceptedObservedAtMs = null;
         tr.previousEtaMinutes = undefined;
         tr.lastRerouteAtMs = now();
-        resetEvidence(tr);
+        resetAllEvidence(tr);
         update({
           route, stepIndex: 0,
           live: {
@@ -557,7 +564,7 @@ export function createNavigationController(options: NavigationControllerOptions)
     const capability = evaluateLocationCapability({ permission: tr.permission, liveFix: fix, nowMs });
     if (capability.liveBlocker !== null) {
       // Loss of authority or fix quality freezes movement, arrival and reroute evidence while the journey is kept.
-      resetEvidence(tr);
+      resetAllEvidence(tr);
       const trustworthyWeak = capability.liveBlocker === 'weak_fix' && observedAt != null && isValidCoordinate(fix) &&
         fix.accuracy != null && Number.isFinite(fix.accuracy) && fix.accuracy >= 0;
       if (trustworthyWeak) tr.lastFixAtMs = nowMs;
@@ -584,10 +591,15 @@ export function createNavigationController(options: NavigationControllerOptions)
     if (isArrivedAtDestination({
       stepIndex: located.stepIndex, stepCount: route.steps.length, point, destination: route.line.points[route.line.points.length - 1],
     })) {
-      stopWatch();
-      session?.cancel();
-      return updateLive({ ...liveUpdate, rerouting: false }, { phase: 'arrived', stepIndex: located.stepIndex });
-    }
+      // One noisy in-radius fix is not arrival: a second, strictly later valid fix (earlier duplicates, stale and out-of-order fixes returned above)
+      // must also be in radius. Both callbacks come from one receiver, so this halves false arrivals, it does not make them independent.
+      if (tr.arrivalPendingAtMs !== null) {
+        stopWatch();
+        session?.cancel();
+        return updateLive({ ...liveUpdate, rerouting: false }, { phase: 'arrived', stepIndex: located.stepIndex });
+      }
+      tr.arrivalPendingAtMs = observedAt ?? nowMs;
+    } else tr.arrivalPendingAtMs = null;
     updateLive(liveUpdate, { stepIndex: located.stepIndex });
     if (!stillLive(tr)) return; // a subscriber exited, disposed or changed the destination while this was published
 
@@ -753,7 +765,7 @@ export function createNavigationController(options: NavigationControllerOptions)
     const mine = (resumes += 1);
     tr.boundaryMs = now();
     stopWatch();
-    resetEvidence(tr);
+    resetAllEvidence(tr);
     let permission: LocationPermissionInput;
     try {
       permission = await location.getPermission(); // never prompts on resume
@@ -846,7 +858,7 @@ export function createNavigationController(options: NavigationControllerOptions)
     tick() {
       if (disposed || state.phase !== 'live' || !track || !state.live) return;
       if (track.lastFixAtMs === null || now() - track.lastFixAtMs >= GPS_LOST_TIMEOUT_MS) {
-        resetEvidence(track);
+        resetAllEvidence(track);
         setSignal('lost');
       }
     },

@@ -88,6 +88,9 @@ export const navigationChecks = async (asyncCheck: (name: string, fn: () => void
       t += dt;
       emit(at(coord));
     }
+    assert.equal(c.getState().phase, 'live'); // one in-radius fix is not arrival
+    t += 4_000;
+    emit(at(n3));
     assert.equal(c.getState().phase, 'arrived');
     assert.equal(watching, 0);
 
