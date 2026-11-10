@@ -10,6 +10,7 @@ export * from './domain/algorithms/MinHeap';
 export { SpatialGrid, haversineM as spatialHaversineM, type SpatialGridPoint } from './domain/geo/SpatialGrid';
 export * from './domain/geo/isValidCoordinate';
 export * from './domain/geo/geometry';
+export * from './domain/catalog';
 export * from './domain/journey';
 export * from './domain/navigation';
 export * from './domain/pack';
