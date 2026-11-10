@@ -1,0 +1,37 @@
+{
+  "sdk": "@muslim-ummah/offline-navigation",
+  "version": "0.1.1",
+  "status": "release candidate; NOT published; no sdk-v0.1.1 tag (owner authorisation required)",
+  "runtimeSourceCommit": "6128d3a114cb6ed336ddeee08347bac70233278f",
+  "packageBuildCommit": "78310097c6d5449f07101aad6bc2f8ef8c030825",
+  "documentationToolingHead": "741091d7e252521ddb4feb2506df7858f15e7725",
+  "note": "Commits after 7831009 changed only docs, .nvmrc, package.json (sdk:doctor script), the sdk:doctor script and the CI workflow; none of them is an input of the SDK tarball or of the delivery payload, so the archives built at 7831009 are retained unrenamed.",
+  "artifacts": {
+    "sdkTarball": { "file": "muslim-ummah-offline-navigation-0.1.1.tgz", "sha256": "acbdd74aa9a5cc8ea7aeaad59043b0755dfc786938d90784f7df591688a0332b" },
+    "iosPrecisionTarball": { "file": "muslim-ummah-ios-location-precision-0.1.0.tgz", "sha256": "6ee10a9fb77ceeaf2266916b4979a694c6f7efba005165560d578cb13505551d" },
+    "venueTool": { "file": "tools/venue-pack/venue-pack.cjs", "sha256": "2f50192db87eaa7eb7df1a6f2dfc337084b4b1be7452a14ce2bd271bee2106c4" },
+    "internalArchive": { "file": "delivery-7831009.tgz", "sha256": "34b70225b3354c6ca7f9e0421900afbb1dd65b9b74389797b28f8578c10d1b98" },
+    "externalArchive": { "file": "delivery-7831009-external.tgz", "sha256": "1618516d0ec3782b2eeaf61961b4851a3a81e0828534f230aa7c52b6339f525e" }
+  },
+  "durableCopies": "~/Documents/offline-map-audits/sdk-0.1.1-native-final/ (outside Git; byte hashes re-verified after copy)",
+  "lockfiles": {
+    "rootPackageLock": "760e0aac4cf4651554a55b59f6be196697e579c7ae8a5413e336ac852b92b80b",
+    "internalConsumerPackageLock": "7532dbc6eb0ff0bb2551f4c1d4531691ad246bb60b5c9cf9e365d946faa96ccd"
+  },
+  "mapAssets": {
+    "karachi-ijtema-basemap.pmtiles": { "sha256": "d5e6883d55d55b0fa9e3230ab92585fb25a8949551528ef4d176192384a28cc0", "redistribution": "RIGHTS OPEN: owner must approve; the external archive still contains this file" }
+  },
+  "nativeBinaries": {
+    "ios": { "build": "Release, iOS Simulator, Xcode 26.2", "executableSha256": "7968ea7748177d6f14e4057c50a0843914308bb8f96b5af97e1a3252e7971220", "jsBundleSha256": "bcc9c41acee2eaa5301a4c987b6c50790adbc8bf2c00d55913fde409b6056e9d", "builtFrom": "delivery-7831009 internal consumer" },
+    "android": { "build": "Release, arm64-v8a", "apkSha256": "d9213418da50fdb08bd3e28ec5f8ce48295b7cc9520d56e5f04df2bc1f723d57", "builtFrom": "delivery-7831009 internal consumer" }
+  },
+  "validation": {
+    "freshCheckout7831009": "npm ci, typecheck, lint, npm test (234 suites / 2536 tests), 684 SDK+Karachi tests, reproducible tarball, 13/13 client acceptance for both archives",
+    "ciHead741091d": "SDK checks SUCCESS",
+    "iosSimulator": "iPhone 17, iOS 26.2: test02,03,04,05,07 PASS; test01 PASS on 5 of 8 runs (3 early intermittent failures, unexplained); test06 NOT PASSED (see audit R20)",
+    "androidEmulator": "API 36 arm64 Play image, airplane mode: focused journey PASS (see audit R20); no crash or ANR",
+    "notVerified": ["physical devices", "field GPS accuracy", "100,000 users", "second Mac", "TalkBack/VoiceOver", "reduced-accuracy iOS branch"]
+  },
+  "compatibility": { "expo": "54.0.37", "reactNative": "0.81.5", "react": "19.1.0", "maplibreReactNative": "11.5.0", "node": "24.14.0 (.nvmrc)" },
+  "restrictions": ["Karachi pack and basemap: owner rights decision pending", "external archive: synthetic venue data only except the basemap", "internal archive: not for external distribution"]
+}
