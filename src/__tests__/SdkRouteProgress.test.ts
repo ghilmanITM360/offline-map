@@ -118,6 +118,38 @@ describe('advanceProgress', () => {
     expect(r.progressM).toBeCloseTo(29.2, 6);
   });
 
+  describe('a route that folds back beside itself (production-scale review 2026-11-10)', () => {
+    // Out 200 m north, 25 m east, back 200 m south.
+    const A = { lat: 38.7, lng: -9.14 };
+    const u: RouteLine = { points: [A, offset(A, 200, 0), offset(A, 200, 25), offset(A, 0, 25)], cumulativeM: [0, 200, 225, 425], totalM: 425 };
+    const walkNoisy = (trueNorthM: (i: number) => number, eastM: (i: number) => number, fixes: number): number => {
+      let previousProgressM = trueNorthM(0);
+      for (let i = 1; i <= fixes; i += 1) {
+        previousProgressM = advanceProgress({
+          line: u, speedMps: 1.4, point: offset(A, trueNorthM(i), eastM(i)), previousProgressM,
+          observedAtMs: 10_000 + i * 1000, previousObservedAtMs: 9_000 + i * 1000, accuracyM: 24,
+        }).progressM;
+      }
+      return previousProgressM;
+    };
+    it('noisy fixes nearer the far leg cannot ratchet progress ahead of a walker on the near leg', () => {
+      // Standing 60 m up the out-leg; every other fix lands 30 m east: 5 m from the return leg, 30 m from the walker's own leg.
+      expect(walkNoisy(() => 60, (i) => (i % 2 ? 30 : 0), 20)).toBeCloseTo(60, 0); // it used to end about 290 m ahead, on the return leg
+      // Walking north at 1.4 m/s with the same noise: progress follows the walker.
+      expect(walkNoisy((i) => 60 + i * 1.4, (i) => (i % 2 ? 30 : 0), 40)).toBeCloseTo(116, 0);
+    });
+    it('the reported snap and distance-to-route are those of the reachable leg, so the far leg cannot hide being off the route', () => {
+      const r = advanceProgress({ line: u, speedMps: 1.4, point: offset(A, 60, 30), previousProgressM: 60, observedAtMs: 11_000, previousObservedAtMs: 10_000, accuracyM: 24 });
+      expect(r.progressM).toBeCloseTo(60, 0);
+      expect(r.distanceToRouteM).toBeCloseTo(30, 0);
+    });
+    it('a fix beyond the off-route tolerance of the reachable part still advances by the bound, as before', () => {
+      // 5 m accuracy: tolerance 30 m. A fix 40 m east of the out-leg is 15 m beyond the return leg and belongs to neither window.
+      const r = advanceProgress({ line: u, speedMps: 1.4, point: offset(A, 60, 40), previousProgressM: 60, observedAtMs: 11_000, previousObservedAtMs: 10_000, accuracyM: 5 });
+      expect(r.progressM).toBeCloseTo(89.2, 1);
+    });
+  });
+
   it('a long gap widens the bound, so a real walk while backgrounded is not clipped', () => {
     const r = advanceProgress({ ...base, point: N3, previousProgressM: 0, observedAtMs: 70_000, previousObservedAtMs: 10_000 });
     expect(r.progressM).toBeCloseTo(117, 0);

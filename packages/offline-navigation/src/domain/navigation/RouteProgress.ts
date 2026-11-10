@@ -24,6 +24,8 @@ const PLAUSIBLE_FORWARD_SPEED_FACTOR = 3;
 const GPS_JITTER_ALLOWANCE_M = 25;
 const MAX_BACKTRACK_M = 15;
 const SNAP_SWITCH_MARGIN_M = 5;
+/** Any finite value larger than a route: lifts the switch margin and the backtrack limit of a continuity window. */
+const FAR_LEG_NEVER_WINS = 1e9;
 const M_PER_DEG = 111_320;
 const toRad = (d: number): number => (d * Math.PI) / 180;
 
@@ -153,16 +155,26 @@ export function advanceProgress(input: ProgressInput): ProgressResult {
     const elapsedS = Math.max(1, (input.observedAtMs - input.previousObservedAtMs) / 1000);
     maxForwardM = input.speedMps * PLAUSIBLE_FORWARD_SPEED_FACTOR * elapsedS + GPS_JITTER_ALLOWANCE_M;
   }
-  const projection = projectOnRoute(
+  const acceptDistanceM = offRouteThresholdM(input.accuracyM ?? 0);
+  let projection = projectOnRoute(
     input.line,
     input.point,
     maxForwardM == null ? undefined : {
       previousProgressM: input.previousProgressM,
       maxForwardM,
-      acceptDistanceM: offRouteThresholdM(input.accuracyM ?? 0),
+      acceptDistanceM,
       switchMarginM: Math.max(SNAP_SWITCH_MARGIN_M, input.accuracyM ?? 0),
     },
   );
+  if (maxForwardM != null && projection.progressM > input.previousProgressM + maxForwardM) {
+    // The nearest point is farther ahead than the walker can have gone. If the fix is also within the off-route tolerance of the part of
+    // the route they CAN be on, that is where they are: on a route that folds back beside itself, noisy fixes nearer the far leg otherwise
+    // added the forward bound again and again and walked progress hundreds of metres ahead of the walker.
+    const reachable = projectOnRoute(input.line, input.point, {
+      previousProgressM: input.previousProgressM, maxForwardM, acceptDistanceM, switchMarginM: FAR_LEG_NEVER_WINS, maxBacktrackM: FAR_LEG_NEVER_WINS,
+    });
+    if (reachable.progressM <= input.previousProgressM + maxForwardM) projection = reachable;
+  }
   let progressM = projection.progressM;
   if (progressM + MAX_BACKTRACK_M < input.previousProgressM) progressM = input.previousProgressM;
   else if (maxForwardM != null && progressM > input.previousProgressM + maxForwardM) progressM = input.previousProgressM + maxForwardM;
