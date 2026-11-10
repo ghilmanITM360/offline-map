@@ -133,7 +133,7 @@ Limits of this evidence: iOS Simulator only, simulated GPS, one device model and
 
 ## 9. Candidate 3 — SDK 0.1.1 (10 November 2026)
 
-The one closure record for the coordinate-safety, venue-geometry, catalog, intake and Karachi-preset pass. Sections 1-8 above remain the record for candidate 2 and are not edited.
+**Superseded for artifacts, native results and CI by section 10** (native acceptance on Android and iOS, two fixes, new delivery `delivery-b74aa4a`). The one closure record for the coordinate-safety, venue-geometry, catalog, intake and Karachi-preset pass. Sections 1-8 above remain the record for candidate 2 and are not edited.
 
 **Where it ran.** The assignment named `Users-MacBook-Pro.local` / `/Users/ghilmanislam360/...`. It ran on `Ghilmans-Laptop.local` in `/Users/ghilmankhan/workprojects/offline-map`, the one checkout `AGENTS.md` authorizes for this branch. One worktree, no clone, no new branch; stashes (2) untouched. The branch was fast-forwarded `143ab61 -> f2ce28e` (PC 2's docs-only commit) before any edit. If PC 2 also wrote source from the same assignment, reconcile before pushing further.
 
@@ -185,7 +185,7 @@ Two independent internal builds gave the identical archive hash. Evidence (logs,
 
 The golden fixture was **not** regenerated; no graph data changed.
 
-### Native Android and iOS: NOT RUN for candidate 3
+### Native Android and iOS: NOT RUN for candidate 3 (superseded: run and recorded in section 10)
 
 No native build or emulator/simulator run was made in this session, so **nothing native is claimed for 0.1.1**. Candidate 2's native results (section 3 and 7) describe candidate 2 and do not carry over to the new map layers, markers or controller change. This machine has `adb`, two Android AVDs, Xcode 26.2 and an iOS 26.2 simulator runtime (none booted), so this is a budget decision, not a proven environment blocker. Evidence level of everything above is SOURCE/RUNTIME VERIFIED plus a JS-only consumer install and bundle; the real MapLibre rendering of the polygons, `Marker` labels and tap selection is untested on a device. Required next: one Android debug/release build of the internal consumer and a focused journey (cold launch, rich map, search, preview, Guide, Live with simulated GPS, reroute, arrival, second journey, venue switch, Urdu and Roman Urdu), then the same on an iOS simulator.
 
@@ -202,3 +202,104 @@ A field survey: verified access points per block (or the walkable connectors tha
 ### Rights and release authorization
 
 The Karachi preset and internal delivery are owner-controlled and **not cleared for external distribution**; the intake marks any candidate without a named distribution authority as internal-only. The external delivery contains synthetic venue data over the OpenStreetMap basemap (ODbL, attribution kept); the basemap clips the real Karachi area, which is public map data, not the owner's survey. Signature policy is unchanged: imported or remote packs are still refused and no signing scheme exists. **Not approved** for unrestricted production: physical-device, field, accessibility, translation, rights and signing approvals are still outstanding.
+
+## 10. Candidate 3 native acceptance and delivery closure (10 November 2026)
+
+Execution of the directive "final native acceptance and delivery closure". Host `Ghilmans-Laptop.local`, the authorized checkout, one worktree, both stashes preserved, no force push. Start: local, tracking and live HEAD were all `1f32f22118b911ed3e0108c6d4095daa6efe322b`; both section-9 archives re-hashed to the recorded values. Evidence stays outside Git in `~/Documents/offline-map-audits/offline-sdk-candidate-3-native-2026-11-10/` (APK, zipped iOS app, xcresults, screenshots, logs, driver scripts) and `.../offline-sdk-candidate-3-2026-11-10/`.
+
+### 10.1 Defects found by native testing and fixed (both with a failing regression first)
+
+| # | Defect | Fix | Regression |
+| --- | --- | --- | --- |
+| N1 | **Arrival wording overclaimed.** For a block-edge (`provisional`) destination the last step and the arrival card said "You have arrived at Block N", which reads as arrival at or inside the block although the route ends at a LEGACY_UNVERIFIED corner node. | When the catalog marks the destination `provisional`, the final step says "You have reached the edge of Block N" and the arrival card says "You have reached the block boundary / This is the edge of the block, not a verified entrance." Optional copy fields `routeStep.arriveAtEdge`, `arrival.provisionalTitle`, `arrival.provisionalSubtitle`; 3 new draft Urdu / Roman Urdu strings (113 total, unreviewed). | `SdkNavigationScreen` "arrival at a provisional (block-edge) destination ..." (failed before the change). Seen on Android (arrival card) and iOS (test06) after the fix. |
+| N2 | **Invalid offers on an unroutable destination** (found on the Android emulator). Gate 18 and a pending place showed the right explanation but still offered "Navigate with my location" (which ended in a second, misleading "No walking route from your location was found.") and "Try again". | The preview offers no Live, no upgrade card, no entry-gate chooser and no Try again when the error is `destination_unreachable` or `destination_not_located`. | `SdkCatalogScreen` Gate 18 and pending-ilaqa cases (both failed before the change). Confirmed on Android (Gate 19, Demo Tent) and iOS (test07). |
+
+No other software defect was found. Routing, the controller, goldens and every protected Karachi file are unchanged (`npm test`: 91,506-pair golden still equal; not regenerated).
+
+### 10.2 Source and artifacts
+
+Executable source commit **`b74aa4a2234551b7ddc8c61308106ee22357fe5d`** (commits `2a410f4`, `4ec7b85`, `b74aa4a` on top of `1f32f22`). The section-9 archives (`delivery-71b26f5*`) are superseded by:
+
+| Artifact | SHA-256 |
+| --- | --- |
+| **Internal delivery** `delivery-b74aa4a.tgz` (86 files; Karachi preset; not cleared for external distribution) | `8100d50e643c5e5bdd797b7f7f73265cf12a92283521788aff03953ced816be0` |
+| **External-shareable delivery** `delivery-b74aa4a-external.tgz` (78 files; synthetic data only) | `4451259d77c9a670a8158314d13dac2f84ec3f1412c47c34a6655d5fbd2d2737` |
+| SDK tarball 0.1.1 | `5d5bdb3fec9290a29c13626914919a857670b6c1141ea3a25781f8322c13159b` |
+| ...its uncompressed tar / member list | `28ba0447ac25640920b5a47c5afbaeb769bfba40c71e7346ca1e0e0738039f8e` / `11bcf3a3c08c1b79c9a0bd2432e4538edf6b65325fc944de19a71fd321f32690` |
+| iOS precision tarball (unchanged) | `6ee10a9fb77ceeaf2266916b4979a694c6f7efba005165560d578cb13505551d` |
+| Venue tool (unchanged) | `fbb5172fcb35fbb51e3995bbb5e2f5a88dc69ca1f42439f7dcdc7fdcff27ad9c` |
+| Example app `package-lock.json` | `9ca5059514e99d1bae3842743d537e11d96e691b63b55ca1116cf8b314acd649` |
+| Pack manifests (unchanged) | Karachi 1.1.0 `4eea9a74...cbec1`; synthetic 1.1.0 `7006cde9...bc69d`; Karachi 1.0.0 `e248c373...03ad1` |
+| **Android Release APK** (arm64-v8a + x86_64, `com.example.sdkconsumer`, debug-keystore signed by the Expo template, not a release signature) | `15e337635b5f0d8a1684f875f4ca51ae77fd1d6bdcb22d8bafb98911a62f5a7b` |
+| **iOS Release simulator app**: executable `SDKConsumer` / `main.jsbundle` / app folder as tar | `a6effbfff414e05527d5f16fd2bcdc76c182774e39deb22ebd95bfce1838a0ce` / `5fbf90dd64958bced27ac7c9cc0c60e2e90283095e6b617d3be3c7c344e26716` / `0c7a94d0d56c0f81a1803594c61b9977d8d604552d3b7cbf785c470dccb0b20a` |
+
+Build input: both native apps were built from an isolated consumer folder produced by `consumer.mjs` from the SDK tarball `5d5bdb3f...`, the same bytes shipped in `delivery-b74aa4a`. Each delivery was built once in this session; the SDK, iOS and venue-tool tarballs are each built twice inside every bundle run and must match (they did). A second full internal rebuild to compare the archive hash was **not** repeated for this candidate.
+
+### 10.3 Android native (Release APK, emulator)
+
+Evidence level: **EMULATOR**. Device `sdk_gphone64_arm64` (AVD `Ijtema_API_36_Play`, Android 16 / API 36, arm64-v8a, `-gpu host`), clean install (`adb uninstall` first). No crash, ANR or FATAL in logcat for the app. Cold start 0.4 s. The shipped pack self-test on the device filesystem: 10 of 10 PASS.
+
+| # | Item | Result |
+| --- | --- | --- |
+| 1-2 | Cold launch with offline assets; offline PMTiles basemap | **PASS** (also cold-launched in airplane mode: map and directory render; no established TCP connection on the whole device at that moment, not a per-app measurement) |
+| 3 | 42 block outlines and centres | **PARTIAL**: outlines, labels and the selected block's centre marker were seen; the count of 42 was not counted on the device (asserted in Jest) |
+| 4-6 | Selected-block highlight; gate and rasta overlays; route end vs block centre | **PASS** (visual: red block, centre marker and a separate route-end marker, rastas, gates, special routes, route line) |
+| 7 | Search EN / Urdu / Roman Urdu | **PARTIAL**: English typed queries PASS; Urdu UI and Urdu names PASS (RTL, mirrored); Urdu-script and Roman Urdu *typed* queries were not entered on Android (`adb input text` cannot type Urdu); covered in Jest, Roman Urdu UI on iOS test05 |
+| 8 | Category | **PASS**: chips filter; the synthetic venue shows Ilaqas and Tents chips (its only pending place is a Tent, no ilaqa row exists there) |
+| 9 | Pending places cannot start navigation | **PASS** for the synthetic "Demo Tent" ("Location not yet available", then explanation only). **Karachi has no ilaqa data** (none imported), so no Karachi ilaqa could be tested natively |
+| 10 | Gates 18/19 | **PASS after N2** (before the fix: failed, see 10.1) |
+| 11-14 | Origin/destination, preview (902 m), Manual Guide, Next/Previous/Recenter | **PASS** |
+| 15 | Explicit Live confirmation | **PASS** (two explicit steps; "Not now" returns to the guide) |
+| 16 | Simulated walk to the endpoint | **PASS** (SDK demo walker, 21 steps) |
+| 18-19 | Arrival; exit and second journey | **PASS** (arrival card shows the N1 wording) |
+| 20 | Venue switch | **PARTIAL**: Karachi to synthetic and back verified on iOS (test05); on Android only Karachi to synthetic was run |
+| 21 | Light / dark / large font | **PASS**: dark and light, font scale 2.0 on the Guide (all controls on screen), Urdu RTL |
+| 22 | Pack integrity | **PASS** (pinned-digest status line, 10/10 on-device self-test) |
+
+**Device-location path (tested separately from the SDK walker).** The app's own "Location source" switch selects the expo-location adapter. The real OS prompt appeared; **Approximate** was refused by the SDK with "Live navigation needs precise location, but only approximate location is allowed". Precise was then granted with `adb shell pm grant ...ACCESS_FINE_LOCATION` (the equivalent of the user raising it in Settings). Fixes were injected through the emulator console (`adb emu geo fix`, a script walking the real Gate 12 to Block 12 route at 12 m spacing and 1 Hz; **not** a GPX file replay and not a recorded real walk): "902 m left" at the start, 698 m after 20 fixes, then 70 m off route gave a genuine **"Route updated from where you are."** (500 m left), then arrival "You have reached the block boundary". Active `HIGH_ACCURACY` request for the app existed while Live ran and none remained after Exit or after arrival (`dumpsys location`). The individual boundaries (OS delivery, Google fusion, adapter, SDK ingestion) were not instrumented one by one; the end-to-end effect on progress, reroute and arrival is the evidence. The 70 m offset was one leg only.
+
+### 10.4 iOS native (Release build, simulator)
+
+Evidence level: **SIMULATOR** (simulated Core Location through `simctl location`). Task-owned simulator `OfflineMap-SDK-C3-iOS26`, iPhone 17, **iOS 26.2 runtime** (the earlier 26.3.1 simulator is not on this Mac; created new, no other simulator touched), Xcode 26.2. `expo prebuild`, `pod install` (needs a UTF-8 `LANG`), `xcodebuild -configuration Release` for the simulator: **BUILD SUCCEEDED** after supplying real-path `PROJECT_ROOT` / `ENTRY_FILE` (the known `/tmp` Metro trap, not a product defect). `SdkLocationPrecision` is in `Podfile.lock` (autolinked from the package). Harness `docs/sdk/release-closure-2026-11-10/native-tests/ios-candidate3/` (derived from the candidate-2 harness; geometry assertions measured at run time and not weakened).
+
+Result: **7 tests, all PASS**. Tests 01-06 passed on the first run. Test 07 failed once on its first run at a "No verified route yet" label check made immediately after the row appeared (no wait). The same assertions passed on two reruns (49 s each); the check now waits up to 8 s for the element. This is recorded as a harness timing race, not a product change; no assertion was loosened.
+
+| Test | Covers | Result |
+| --- | --- | --- |
+| 01 full journey | search, preview, Guide, Live, progress, reroute, arrival, second journey; device-source fixes | PASS (127 s) |
+| 02 background / foreground | Guide and Live survive Home and return | PASS |
+| 03 appearance | light, dark, forced app appearance, layout | PASS |
+| 04 Urdu RTL, large text | Urdu at `extra-large` and `accessibility-extra-extra-extra-large`, mirrored order, touch size | PASS |
+| 05 venue switch, Roman Urdu | Karachi to synthetic and back, no place leak, Roman Urdu draft UI | PASS |
+| 06 block route (new) | Block 12 from Gate 12, device-source walk, a genuine 70 m off-route leg, reroute, **provisional arrival wording** and no generic "You have arrived" | PASS (142 s) |
+| 07 unreachable / pending (new) | Gate 18 and the pending Demo Tent: explanation only, no Live, Try again or Guide | PASS (after the harness wait) |
+
+Network: 153 periodic `lsof` samples of the app process showed no socket. iOS watcher cleanup after Exit was **not** measured separately on iOS (it was on Android, and arrival/Exit is asserted in the SDK tests). The iOS precision module was exercised at full accuracy only (reduced accuracy was not simulated).
+
+### 10.5 Client delivery verification
+
+| Check | Result |
+| --- | --- |
+| `scripts/sdk-package/client-acceptance.mjs` on **both** final archives (unpacked outside any repository: archive audit and checksums, venue tool compile / verify / pin, `npm ci` from the shipped lock with one React / React Native / MapLibre, headless journey, type-check against the shipped declarations, app tests, plugin result for both platforms with the iOS module autolinked, invalid options rejected, production exports for both platforms with a client pack added, no developer paths or keys) | **PASS, 13 steps each** (internal 786 / 788 module sources, external 778 / 780) |
+| Shipped importer on the real owner workbook (`venue-pack import`, the shipped `venue-pack.cjs`, a base pack rebuilt from the delivered synthetic assets) | **NEEDS_REVIEW** as designed: 99 ilaqas, 0 errors, 8 review items, 1 warning; the workbook's SHA-256 is unchanged. (`verify` on that rebuilt base failed only because its basemap file is shipped under another name; not a pack defect.) |
+| External profile data | No Karachi pack file; the only Karachi-named file is the shared basemap `karachi-basemap.pmtiles`, an OpenStreetMap-derived vector extract (see `BASEMAP_PROVENANCE.json`), which the synthetic venue sits inside. It is not the owner's survey data; whether it may leave the owner is a rights decision (10.7) |
+| Expo plugin, Metro helper, precision module link, one React / RN / MapLibre | PASS (inside the 13 steps and the Android / iOS builds above) |
+| Toolchain reproduction | The tar and member hashes are the cross-machine identity; the `.tgz` hash depends on the compressor (section 9). Not re-compared on another Mac |
+
+### 10.6 Source tests after the fixes
+
+Full Jest 234 suites / **2,525** tests passed (was 2,524: +1 arrival regression; the Gate 18 and pending cases gained assertions); `npm test` (112 scripts) exit 0 including "303 nodes, 90300 routable + 1206 unreachable pairs == golden" and the 91,506-pair service parity; `tsc` and ESLint clean.
+
+**Hosted CI ("SDK checks").** `1f32f22`: **SUCCESS** (run 42836372580, 2 m 34 s). Final code commit `b74aa4a`: **SUCCESS** (run 42853963398). The report-only commit that follows triggers its own run, which is not claimed here. A passing hosted run proves only the checks in the workflow (typecheck and lint, SDK tests, routing suite), not native behaviour.
+
+### 10.7 Limitations, data and authorizations (unchanged by this pass)
+
+- **Not a physical device.** Emulator and simulator only; no real GPS, no airplane-mode test on iOS, no TalkBack or VoiceOver audio, no human accessibility review.
+- **Android signature** is the Expo template's debug keystore, not a production signing key.
+- **Survey inputs still missing, nothing invented:** verified access points or walkable connectors for blocks, Gates 18 and 19, tent / ilaqa / facility coordinates, a venue boundary; native-speaker review of every Urdu and Roman Urdu string (now 85 drafts).
+- **Rights:** the Karachi preset and the internal delivery are owner-controlled and not cleared for external distribution; the shared basemap needs the same decision before an external hand-over. Production signing and distribution approval, independent security review and the legacy host-only point-in-polygon copies are out of scope and unchanged.
+- Native items not run on Android: typed Urdu-script and Roman Urdu queries, the return venue switch, counting all 42 block outlines.
+
+### 10.8 Final engineering verdict
+
+**SDK 0.1.1 Candidate 3 is an engineering release candidate** for source `b74aa4a`: source verified, Android emulator verified, iOS simulator verified, client delivery verified (two archives, 13 steps each), and no confirmed unresolved P0 or P1 software defect (two defects found by native testing were fixed with regressions). It is **not** approved for unrestricted production or external distribution of the Karachi data: field survey, legal / rights, physical-device, human accessibility, translation and signing approvals remain separate and open.
