@@ -98,3 +98,23 @@ trusts it only while every byte hashes to the pinned manifest, and repairs a dam
 [OFFLINE_PACK_SPEC.md](../OFFLINE_PACK_SPEC.md)). Remote or imported packs are refused until a signing scheme exists.
 
 Data rights: the tool does not grant any. Your venue data and your basemap must be yours to redistribute; keep the basemap's attribution in `attributions`.
+
+## Client data intake: `import` and `merge`
+
+Survey data arrives in the client workbook (`Karachi_Ijtema_Client_Location_Data_Template.xlsx`: Ilaqas, Tents, Facilities, Access_Points, Gates_Changes, Blocks_Changes, Geometry_Files, Metadata), as UTF-8 CSV files named after those sheets, and as GeoJSON for polygons and paths. The chain is import, validate, **review**, merge, then the existing `compile` and `verify`. There is no second compiler.
+
+```bash
+# 1. read + validate (writes a fresh candidate folder: candidate.json, findings.json, SUMMARY.txt, candidate.sha256)
+venue-pack import --workbook client.xlsx --base <current pack folder> --out <new candidate folder> [--geojson <folder of .geojson>]
+# 2. a responsible person reads SUMMARY.txt and, for a NEEDS_REVIEW candidate, writes approval.json
+#    {"candidateSha256": "...", "approvedBy": "...", "approvedOn": "YYYY-MM-DD", "acknowledge": ["DUPLICATE_NAME", ...]}
+# 3. apply the approved candidate to a copy of the base pack's resources and write a spec for the existing compiler
+venue-pack merge --candidate <candidate folder> --base <current pack folder> --pack-version 1.2.0 --approval approval.json --out <new folder>
+# 4. the existing tools
+venue-pack compile --spec <new folder>/pack.spec.json --input <new folder>/input --out <final folder>
+venue-pack verify <final folder>/pack
+```
+
+Outcomes: `ACCEPT`, `ACCEPT_AS_PENDING` (valid, with places that have no location yet), `NEEDS_REVIEW` (a person must decide something: duplicate names, a placeholder name, a change to a verified coordinate, an ambiguous block, unconfirmed rights), `REJECT` (an error; nothing is carried forward and the command exits 1). Findings are errors, warnings or review items and name the sheet, row and field.
+
+What it will not do: invent a coordinate (a blank is *pending*, never zero), treat a block corner as an entrance, assign a tent to a block unless the point is inside exactly one polygon, apply a proposed change to a verified gate or block (those are recorded as change requests and need a separate reviewed change), add a route (a verified access point or a walkable path is recorded but adds no graph edge), overwrite an existing folder, follow a link, or read a macro, external link or encrypted workbook. The header `Logitude` (the original workbook's spelling) is accepted as `longitude`. Identifiers are assigned once (`IL-0001`…) and are never derived from names or row numbers; a duplicate name stays a separate record flagged `DUPLICATE_NAME`, and a placeholder name keeps its id but is not offered in search. A candidate whose rights are not confirmed with a named authority is marked **internal-only**.

@@ -1,6 +1,6 @@
 import {
-  createFileSystemPackStore, createPackManager, parsePackVenueData, sha256Hex, type PackError, type PackFileSystem, type PackManager,
-  type PackManifest, type PackPin, type RecoveryReport, type VenueDataSource,
+  createFileSystemPackStore, createPackManager, createPlaceCatalog, parsePackPlaceCatalog, parsePackVenueData, parsePackVenueGeometry, sha256Hex,
+  type PackError, type PackFileSystem, type PackManager, type PackManifest, type PackPin, type PlaceCatalog, type RecoveryReport, type VenueDataSource, type VenueGeometry,
 } from '@muslim-ummah/offline-navigation';
 import { installBundledPacks, type BundledPackInstall, type BundledPackSource, type PackAssetCopier } from './bundledPacks';
 
@@ -53,6 +53,10 @@ export interface OpenedVenue {
   names: ReadonlyMap<string, string>;
   /** Every language the pack's localization file carries, per place: `{ en, ur, 'ur-Latn' }`. */
   localizedNames?: ReadonlyMap<string, Readonly<Record<string, string>>>;
+  /** Present only when the pack carries a `place-catalog`: every place a person can search for, with its location and routing status. */
+  catalog?: PlaceCatalog;
+  /** Present only when the pack carries a `venue-geometry`: block outlines, access points, gates, rastas, facilities. */
+  geometry?: VenueGeometry;
   /** Drop the journey pin. Idempotent. */
   release(): void;
 }
@@ -116,7 +120,7 @@ export const startPacks = async (deps: PackRuntimeDeps): Promise<PackRuntime> =>
     const dir = pin.ref.area === 'bundled' ? `bundled/${pin.ref.id}` : `packs/installed/${pin.ref.id}`;
     const resource = (kind: PackManifest['resources'][number]['kind']) => pin.manifest.resources.find((r) => r.kind === kind)!;
     // The pack was verified when it was resolved; the bytes about to be parsed are checked against the manifest again.
-    const read = async (kind: 'routing-graph' | 'place-directory' | 'localization'): Promise<string | PackError> => {
+    const read = async (kind: 'routing-graph' | 'place-directory' | 'localization' | 'place-catalog' | 'venue-geometry'): Promise<string | PackError> => {
       const r = resource(kind);
       const text = await fs.readText(`${dir}/${r.path}`).catch(() => null);
       if (text === null) return { code: 'resource-missing', message: 'file is missing', path: r.path };
@@ -138,9 +142,29 @@ export const startPacks = async (deps: PackRuntimeDeps): Promise<PackRuntime> =>
     } catch {
       return fail({ code: 'resource-invalid', message: 'localization is not valid JSON', path: resource('localization').path });
     }
+    // Optional resources: absent in a version-1 pack, which then opens exactly as before. Present, they are held to the same re-check and strict
+    // parsing as the routing data, and a bad one fails the open (a pack is never activated with half its data).
+    let catalog: PlaceCatalog | undefined;
+    let geometry: VenueGeometry | undefined;
+    const nodeIds = new Set(parsed.source.graph.nodeIds());
+    if (pin.manifest.resources.some((r) => r.kind === 'place-catalog')) {
+      const text = await read('place-catalog');
+      if (typeof text !== 'string') return fail(text);
+      const c = parsePackPlaceCatalog(text, { venueId, bounds: pin.manifest.bounds, nodeIds, languages: pin.manifest.languages });
+      if (!c.ok) return fail(c.error);
+      catalog = createPlaceCatalog(c.catalog);
+    }
+    if (pin.manifest.resources.some((r) => r.kind === 'venue-geometry')) {
+      const text = await read('venue-geometry');
+      if (typeof text !== 'string') return fail(text);
+      const placeIds = new Set(catalog ? catalog.list().map((p) => p.id) : parsed.source.placeIds());
+      const g = parsePackVenueGeometry(text, { venueId, bounds: pin.manifest.bounds, placeIds, nodeIds });
+      if (!g.ok) return fail(g.error);
+      geometry = g.geometry;
+    }
     return {
       ok: true,
-      venue: { source: parsed.source, manifest: pin.manifest, origin: pin.ref.area === 'bundled' ? 'bundled' : 'installed', archivePath: `${dir}/${resource('map-archive').path}`, names, localizedNames, release: () => pin.release() },
+      venue: { source: parsed.source, manifest: pin.manifest, ...(catalog ? { catalog } : {}), ...(geometry ? { geometry } : {}), origin: pin.ref.area === 'bundled' ? 'bundled' : 'installed', archivePath: `${dir}/${resource('map-archive').path}`, names, localizedNames, release: () => pin.release() },
     };
   };
 

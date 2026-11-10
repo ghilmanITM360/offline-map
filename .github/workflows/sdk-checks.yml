@@ -1,0 +1,84 @@
+name: SDK checks
+
+# The Muslim Ummah Offline Navigation SDK branch. The baseline workflow (canonical-checks.yml) is unchanged and still covers the original
+# release branch; this one covers the SDK branch and the pull requests that target it. Source- and artifact-level checks only: no emulator,
+# simulator, device or field run happens here, and a green run must never be read as native verification.
+#
+# A red job is a real failure of that exact step. If GitHub refuses to start a job at all (billing, spending limit, no runner) the run shows
+# no steps; that is an external blocker, not a code result.
+
+on:
+  pull_request:
+    branches:
+      - feat/muslim-ummah-offline-navigation-sdk
+  push:
+    branches:
+      - feat/muslim-ummah-offline-navigation-sdk
+
+concurrency:
+  group: sdk-checks-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  typecheck-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.14.0'
+          cache: 'npm'
+      - name: Install dependencies (reproducible, from lockfile)
+        run: npm ci
+      - name: Typecheck (app and scripts)
+        run: npm run typecheck
+      - name: Lint
+        run: npm run lint
+      - name: Whitespace / conflict-marker check (pull requests)
+        if: github.event_name == 'pull_request'
+        run: |
+          git fetch origin "${{ github.base_ref }}"
+          git diff --check "origin/${{ github.base_ref }}...HEAD"
+
+  sdk-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.14.0'
+          cache: 'npm'
+      - run: npm ci
+      - name: SDK Jest suites (pack compiler, importer, geometry, catalog, controller, screen, map, runtime)
+        run: npx jest src/__tests__/Sdk src/__tests__/Karachi --ci
+      - name: Consumer runtime tests (pack runtime over the Expo file-system adapter)
+        working-directory: examples/expo-consumer
+        run: npx jest --ci packRuntime expoPackFileSystem packSelfTest nativeDigest expoLocation
+      - name: Headless SDK (plain Node, no React Native)
+        run: npm run test:sdk-headless
+      - name: Export contract
+        run: npm run test:sdk-exports
+      - name: Routing golden (seeded A* comparison) and venue contract
+        run: |
+          npm run test:astar-extraction
+          npm run test:venue-contract
+      - name: Venue data maintenance (checksums of the committed baseline)
+        run: npm run data:check
+      - name: Packed artifact (contents, reproducibility, isolated runtime)
+        run: |
+          npm run test:sdk-package
+          npm run test:sdk-archive
+
+  routing-suite:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.14.0'
+          cache: 'npm'
+      - run: npm ci
+      - name: Routing / high-value script suite (includes the 91,506-pair golden comparisons)
+        run: npm test

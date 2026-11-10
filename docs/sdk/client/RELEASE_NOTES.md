@@ -97,3 +97,13 @@ are untouched). What changed is everything around them that a client touches:
 ### Known issues
 
 See [SECURITY_AND_VALIDATION_REPORT.md](SECURITY_AND_VALIDATION_REPORT.md) §Known limitations.
+
+## 0.1.1 (candidate 3, private; source and Jest evidence unless stated)
+
+- Pack: optional `venue-geometry` and `place-catalog` resources (manifest still version 1; old packs load unchanged). The Karachi preset pack is `karachi-ijtema@1.1.0` (internal only); the synthetic pack is `synthetic-demo-venue@1.1.0`. Karachi `1.0.0` and its pin are unchanged.
+- Safety: the venue-data checker now fails swapped, `(0, 0)`, non-finite and out-of-venue coordinates (bounds are the venue's own), checks translations per place, and separates errors, warnings and review items.
+- Blocks: corners are geometry; the four corner-derived graph nodes are labelled `LEGACY_UNVERIFIED` access aliases; no verified entrance exists yet. The destination marker is the block centre and the route end is a separate, labelled marker.
+- Gates 18 and 19 stay known but unreachable: the SDK explains this in English, Urdu and Roman Urdu (draft) instead of drawing a route. No connector was invented.
+- Intake: `venue-pack import` and `merge` (Excel, CSV, GeoJSON) in front of the unchanged compiler.
+- Copy: 21 new strings (draft Urdu and Roman Urdu, not reviewed); the original 89 are unchanged.
+- Not done here: no field survey exists, so no tent, ilaqa or facility has a location and no access point is verified; native Android and iOS acceptance of this candidate is recorded in the delivery report with its exact status.

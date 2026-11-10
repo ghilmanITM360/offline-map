@@ -8,8 +8,11 @@ import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, statSync, sym
 import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
-assert.ok(process.argv[2], 'usage: node scripts/sdk-package/consumer.mjs <fresh outside-repository evidence directory>');
+assert.ok(process.argv[2], 'usage: node scripts/sdk-package/consumer.mjs <fresh outside-repository evidence directory> [--profile internal|external]');
 const out = resolve(process.argv[2]);
+// internal: the owner-controlled Karachi preset + the synthetic venue. external: synthetic data only (nothing from the Karachi survey).
+const profile = process.argv.includes('--profile') ? process.argv[process.argv.indexOf('--profile') + 1] : 'internal';
+assert.ok(['internal', 'external'].includes(profile), '--profile must be internal or external');
 const rel = relative(root, out);
 assert.ok(rel === '..' || rel.startsWith(`..${sep}`) || isAbsolute(rel), 'output must be outside the repository');
 assert.ok(!existsSync(join(out, 'consumer')), 'use a fresh evidence directory for each verification');
@@ -49,11 +52,14 @@ for (const literal of [`sha256: '${provenance.archive.sha256}'`, `bytes: ${prove
 
 // The bundled venue packs are built by the pack compiler from tracked sources and pinned by manifest digest. The example's table must
 // describe exactly what the compiler produced: same digest, same file list, one asset per file (the archive is the shared one above).
+if (profile === 'external') cpSync(join(consumer, 'bundledPackTable.external.ts'), join(consumer, 'bundledPackTable.ts'));
 const packTable = readFileSync(join(consumer, 'bundledPackTable.ts'), 'utf8');
+if (profile === 'external') assert.ok(!/karachi-ijtema/.test(packTable.replace(/karachi-basemap|ijtema-basemap/g, '')), 'the external profile must not reference the Karachi venue pack');
 const bundledPackFiles = [];
-for (const [venue, script, pinFile] of [['karachi-ijtema', 'karachi.ts', 'karachi-ijtema.pin.json'], ['synthetic-demo-venue', 'demo.ts', 'synthetic-demo-venue.pin.json']]) {
+const PROFILE_PACKS = [['karachi-ijtema', 'karachi.ts', 'karachi-ijtema-1.1.0.pin.json'], ['synthetic-demo-venue', 'demo.ts', 'synthetic-demo-venue-1.1.0.pin.json']].filter(([v]) => profile === 'internal' || v === 'synthetic-demo-venue');
+for (const [venue, script, pinFile] of PROFILE_PACKS) {
   const built = join(out, 'packs', venue);
-  run(process.execPath, ['--import', 'tsx', join(root, 'scripts/sdk-pack', script), built], root);
+  run(process.execPath, ['--import', 'tsx', join(root, 'scripts/sdk-pack', script), built, '--preset'], root);
   const pin = JSON.parse(readFileSync(join(root, 'scripts/sdk-pack', pinFile), 'utf8'));
   assert.equal(sha256(join(built, 'pack.manifest.json')), pin.manifestSha256, `${venue}: the built pack differs from its committed pin`);
   assert.ok(packTable.includes(`packId: '${pin.packId}'`) && packTable.includes(`id: '${pin.packId.replace('@', '-')}'`) && packTable.includes(`manifestSha256: '${pin.manifestSha256}'`), `bundledPackTable.ts must pin ${pin.packId} at ${pin.manifestSha256}`);
@@ -155,6 +161,7 @@ for (const platform of ['android', 'ios']) {
 const ls = JSON.parse(spawnSync('npm', ['ls', '--all', '--json'], { cwd: consumer, encoding: 'utf8', env, maxBuffer: 256 * 1024 * 1024 }).stdout);
 const versions = ls.dependencies;
 const evidence = {
+  profile,
   tarball, sha256: sha256(tarball),
   lockfileSha256: sha256(join(consumer, 'package-lock.json')),
   npmLsProblems: ls.problems ?? [],

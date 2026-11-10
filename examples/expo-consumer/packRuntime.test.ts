@@ -21,14 +21,14 @@ beforeEach(() => {
 });
 afterEach(() => { rmSync(work, { recursive: true, force: true }); });
 
-const buildPack = (venueId: string, version?: string, over?: { graph?: unknown }) => build(app, venueId, version, over);
+const buildPack = (venueId: string, version?: string, over?: Parameters<typeof build>[3]) => build(app, venueId, version, over);
 const copier = (failAfter = Infinity) => directoryCopier(app, device, failAfter);
 
-const start = async (packs: Array<{ id: string; sha: string; files: string[] }>, c = copier()) => {
+const start = async (packs: Array<{ id: string; sha: string; files: string[] }>, c = copier(), sdkVersion = '0.1.0') => {
   const fake = createFakeExpoFs();
   const fs = createExpoPackFileSystem(`file://${device}`, fake.api);
   const runtime = await startPacks({
-    fs, copier: c, sdkVersion: '0.1.0', platformCapabilities: ['pmtiles-local-read'],
+    fs, copier: c, sdkVersion, platformCapabilities: ['pmtiles-local-read'],
     sources: packs.map((p) => ({ id: p.id, manifestSha256: p.sha, files: p.files })),
   });
   return { runtime, fake, fs };
@@ -167,5 +167,53 @@ describe('bundled packs at startup', () => {
     const result = await runtime.manager.installStaged(stagingId, { venueId: 'venue-a', signature: 'anything' });
     expect(result).toMatchObject({ ok: false, error: { code: 'signature-required' } });
     expect((await runtime.manager.resolveActive('venue-a'))?.manifest.packVersion).toBe('1.0.0');
+  });
+});
+
+describe('optional place catalog and venue geometry', () => {
+  const catalog = (extra: object[] = []) => ({
+    schemaVersion: 1, venueId: 'venue-a', places: [
+      { id: 'p1', category: 'block', names: { en: 'one' }, location: 'verified', routing: 'provisional', routingReason: 'LEGACY_BOUNDARY_ACCESS', coordinate: { lat: 24.97, lng: 67.0 }, nodeIds: ['a'], provenance: { source: 't' }, flags: [] },
+      { id: 'ILAQA_1', category: 'ilaqa', names: { en: 'Pending Ilaqa' }, location: 'pending', routing: 'not-located', routingReason: 'LOCATION_PENDING', nodeIds: [], provenance: { source: 't' }, flags: ['NEEDS_REVIEW'] },
+      ...extra,
+    ],
+  });
+  const geometry = { schemaVersion: 1, venueId: 'venue-a', type: 'FeatureCollection', features: [{ type: 'Feature', id: 'g1', geometry: { type: 'Point', coordinates: [67.0, 24.97] }, properties: { kind: 'gate', placeId: 'p1' } }] };
+
+  it('opens a pack with both: a catalog that lists a pending place without a route, and geometry', async () => {
+    const a = await buildPack('venue-a', '1.1.0', { catalog: catalog(), geometry });
+    const { runtime } = await start([a], copier(), '0.1.1');
+    const opened = await runtime.open('venue-a');
+    if (!opened.ok) throw new Error(JSON.stringify(opened.error));
+    expect(opened.venue.catalog!.list().map((p) => p.id)).toEqual(['p1', 'ILAQA_1']);
+    expect(opened.venue.catalog!.availability('ILAQA_1')).toMatchObject({ canRoute: false, message: 'location_pending' });
+    expect(opened.venue.source.getPlace('ILAQA_1')).toBeUndefined(); // listed, never routable
+    expect(opened.venue.geometry!.features).toHaveLength(1);
+    opened.venue.release();
+  });
+  it('a version-1 pack still opens exactly as before, with neither', async () => {
+    const a = await buildPack('venue-a');
+    const { runtime } = await start([a]);
+    const opened = await runtime.open('venue-a');
+    if (!opened.ok) throw new Error('should open');
+    expect(opened.venue.catalog).toBeUndefined();
+    expect(opened.venue.geometry).toBeUndefined();
+    opened.venue.release();
+  });
+  it('a catalog or geometry that is internally wrong fails the open: the pack is never activated with half its data', async () => {
+    const wrongNode = await buildPack('venue-a', '1.1.0', { catalog: catalog([{ id: 'p9', category: 'block', names: { en: 'nine' }, location: 'verified', routing: 'routable', coordinate: { lat: 24.97, lng: 67.0 }, nodeIds: ['nope'], provenance: { source: 't' }, flags: [] }]) });
+    const r1 = await (await start([wrongNode], copier(), '0.1.1')).runtime.open('venue-a');
+    expect(r1.ok).toBe(false);
+    if (!r1.ok) expect(r1.error).toMatchObject({ code: 'resource-invalid' });
+    rmSync(app, { recursive: true, force: true }); mkdirSync(app);
+    const swapped = await buildPack('venue-a', '1.1.0', { catalog: catalog(), geometry: { ...geometry, features: [{ ...geometry.features[0], geometry: { type: 'Point', coordinates: [24.97, 67.0] } }] } });
+    const r2 = await (await start([swapped], copier(), '0.1.1')).runtime.open('venue-a');
+    expect(r2.ok).toBe(false);
+  });
+  it('an SDK older than 0.1.1 refuses a pack that needs the new resources', async () => {
+    const a = await buildPack('venue-a', '1.1.0', { catalog: catalog() });
+    const { runtime } = await start([a], copier(), '0.1.0');
+    const opened = await runtime.open('venue-a');
+    expect(opened.ok).toBe(false);
   });
 });

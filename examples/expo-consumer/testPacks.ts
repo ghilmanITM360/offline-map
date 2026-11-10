@@ -10,7 +10,7 @@ const json = (v: unknown): string => `${JSON.stringify(v)}\n`;
 
 export interface BuiltPack { id: string; sha: string; files: string[] }
 
-export const buildPack = async (app: string, venueId: string, version = '1.0.0', over: { graph?: unknown } = {}): Promise<BuiltPack> => {
+export const buildPack = async (app: string, venueId: string, version = '1.0.0', over: { graph?: unknown; catalog?: unknown; geometry?: unknown } = {}): Promise<BuiltPack> => {
   const dir = join(app, `${venueId}@${version}`);
   mkdirSync(join(dir, 'data'), { recursive: true });
   mkdirSync(join(dir, 'map'), { recursive: true });
@@ -24,10 +24,13 @@ export const buildPack = async (app: string, venueId: string, version = '1.0.0',
     'data/gate-metadata.json': json({ schemaVersion: 1, venueId, gates: [] }),
     'data/localization.json': json({ schemaVersion: 1, venueId, languages: ['en'], entries: [{ id: 'p1', names: { en: `${venueId} one` } }, { id: 'p2', names: { en: `${venueId} two` } }] }),
     'PROVENANCE.json': json({ schemaVersion: 1, venueId }),
+    ...(over.catalog === undefined ? {} : { 'data/place-catalog.json': json(over.catalog) }),
+    ...(over.geometry === undefined ? {} : { 'data/venue-geometry.json': json(over.geometry) }),
   };
   const kinds: Record<string, PackManifest['resources'][number]['kind']> = {
     'map/ijtema-basemap.pmtiles': 'map-archive', 'data/routing-graph.json': 'routing-graph', 'data/place-directory.json': 'place-directory',
     'data/gate-metadata.json': 'gate-metadata', 'data/localization.json': 'localization', 'PROVENANCE.json': 'provenance',
+    'data/place-catalog.json': 'place-catalog', 'data/venue-geometry.json': 'venue-geometry',
   };
   const resources = Object.entries(files).map(([path, content]) => {
     writeFileSync(join(dir, path), content);
@@ -35,7 +38,7 @@ export const buildPack = async (app: string, venueId: string, version = '1.0.0',
     return { path, kind: kinds[path], bytes: b.length, sha256: sha256Hex(b) };
   }).sort((x, y) => (x.path < y.path ? -1 : 1));
   const manifest: PackManifest = {
-    schemaVersion: 1, packId: `${venueId}@${version}`, venueId, packVersion: version, sdkCompatibility: '>=0.1.0 <0.2.0', routingPolicyVersion: '1',
+    schemaVersion: 1, packId: `${venueId}@${version}`, venueId, packVersion: version, sdkCompatibility: over.catalog !== undefined || over.geometry !== undefined ? '>=0.1.1 <0.2.0' : '>=0.1.0 <0.2.0', routingPolicyVersion: '1',
     createdAt: '2026-10-05T09:02:46Z', minimumPlatformCapabilities: ['pmtiles-local-read'], bounds: { west: 66.9, south: 24.9, east: 67.1, north: 25.1 }, languages: ['en'],
     totalBytes: resources.reduce((n, r) => n + r.bytes, 0), fileCount: resources.length, resources,
     attributions: [{ name: '© OpenStreetMap contributors', license: 'ODbL-1.0' }], provenance: { source: 'test', licence: 'ODbL-1.0' },

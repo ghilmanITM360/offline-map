@@ -69,3 +69,7 @@ iOS module as a package) the delivered example was built from the unpacked archi
 | Real GPS walking | n/a | n/a | **no** | **no** | **no** |
 
 Current standalone production Metro counts and byte sizes are recorded in final raw export logs and the release handoff; older C5.3 values (759/761 modules) are historical. Every current source must resolve inside the delivered consumer with one React/RN/MapLibre and all pinned pack assets exported. Native rows above describe historical source/package combinations, not a newly rebuilt final SDK native binary. Exact APK A/B and earlier iOS identities are in [SECURITY_AND_VALIDATION_REPORT.md](SECURITY_AND_VALIDATION_REPORT.md).
+
+## Candidate 3 (0.1.1): what changed and what was not re-run
+
+`sdkCompatibility` for the new packs is `>=0.1.1 <0.2.0` (the old range `>=0.1.0 <0.2.0` still describes the `1.0.0` packs, which do not use the new resources). The optional pack kinds need MapLibre only through the existing adapter. Native evidence for this candidate is listed in the delivery report; evidence for candidate 2 is not carried over to it.

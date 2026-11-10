@@ -1,0 +1,55 @@
+{
+ "packId": "synthetic-demo-venue@1.1.0",
+ "manifestSha256": "7006cde90e71206c84a6c8434d2c59eefd60de084c4265f9a568e271b03bc69d",
+ "manifestBytes": 2370,
+ "resources": [
+  {
+   "path": "PROVENANCE.json",
+   "kind": "provenance",
+   "bytes": 570,
+   "sha256": "9f50151b395862612a20760ddb58676e4e430e30e79be27e06e7b89218365f3f"
+  },
+  {
+   "path": "data/gate-metadata.json",
+   "kind": "gate-metadata",
+   "bytes": 74,
+   "sha256": "2e0042ca889d86535f045d8f1eade59fe23783a658d8b7eecd3b308c7977e5b1"
+  },
+  {
+   "path": "data/localization.json",
+   "kind": "localization",
+   "bytes": 673,
+   "sha256": "f3fb2f26e92aab649c06a1ea934fd683d77e262cedcde9272f373093dbacfc5e"
+  },
+  {
+   "path": "data/place-catalog.json",
+   "kind": "place-catalog",
+   "bytes": 3437,
+   "sha256": "54491dec13b98fb0de245b02e0e2e7962c6d9223d60a98a639f6dfb5a44d078b"
+  },
+  {
+   "path": "data/place-directory.json",
+   "kind": "place-directory",
+   "bytes": 382,
+   "sha256": "b40aa8f2d26e984125c734b9141dd4f734a554ee0b851c1d15daf4fcf46ec957"
+  },
+  {
+   "path": "data/routing-graph.json",
+   "kind": "routing-graph",
+   "bytes": 753,
+   "sha256": "f17ac5b48a243fc417f7c691dd527947d53a3442ac183db62c9b718fd5009c0b"
+  },
+  {
+   "path": "data/venue-geometry.json",
+   "kind": "venue-geometry",
+   "bytes": 3317,
+   "sha256": "1473bdfa82495f001a0f1c072bc068dc21b14d61cb3bf59d4485d1f30c026114"
+  },
+  {
+   "path": "map/ijtema-basemap.pmtiles",
+   "kind": "map-archive",
+   "bytes": 434589,
+   "sha256": "d5e6883d55d55b0fa9e3230ab92585fb25a8949551528ef4d176192384a28cc0"
+  }
+ ]
+}

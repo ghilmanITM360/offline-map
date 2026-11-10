@@ -31,6 +31,7 @@
     "sdk:karachi-pack": "node --import tsx scripts/sdk-pack/karachi.ts",
     "test:sdk-exports": "node scripts/test-sdk-exports.mjs",
     "test:sdk-archive": "node scripts/sdk-package/test-tar.mjs",
+    "sdk:artifact-identity": "node scripts/sdk-package/identity.mjs",
     "sdk:venue-tool": "node scripts/sdk-package/venue-tool.mjs",
     "pack:ios-precision": "node scripts/sdk-package/pack-ios-precision.mjs",
     "test:sdk-client": "node scripts/sdk-package/client-acceptance.mjs",

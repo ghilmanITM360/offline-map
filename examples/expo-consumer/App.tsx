@@ -199,16 +199,22 @@ function VenueScreen({ runtime, venue, switchVenue, preferences, theme }: { runt
   const simulated = useMemo(() => createSimulatedLocation(start), [start]);
   const device = useMemo(() => createExpoLocationAdapter({ platform: Platform.OS === 'ios' ? 'ios' : 'android', readIOSPrecision }), []);
   const controller = useMemo(
-    () => createNavigationController({ venue: source, location: locationSource === 'device' ? device : simulated, now: Date.now }),
-    [source, locationSource, device, simulated],
+    // A pack with a place catalog says which places can be routed to; one without it behaves exactly as before.
+    () => createNavigationController({ venue: source, location: locationSource === 'device' ? device : simulated, now: Date.now, availability: venue.catalog?.availability }),
+    [source, venue.catalog, locationSource, device, simulated],
   );
+  // The map is created once per pack, so a tap on a block or gate reaches whichever controller is current through a ref.
+  const controllerRef = useRef(controller);
+  controllerRef.current = controller;
   useEffect(() => () => controller.dispose(), [controller]);
   // The archive is the verified one inside the open pack. Created once per pack so the map component keeps a stable identity.
   const archiveUri = `${packRootUri()}/${venue.archivePath}`;
   const MapComponent = useMemo(() => createMapLibreNavigationMap({
     venue: source, archiveUri, archiveZoom: BASEMAP.zoom, initialCenter: center, initialZoom: 17,
     attributionBottomInset: insets.bottom + 8,
-  }), [source, archiveUri, center, insets.bottom]);
+    geometry: venue.geometry ?? null, catalog: venue.catalog ?? null,
+    onSelectPlace: (placeId) => controllerRef.current.selectDestination(placeId),
+  }), [source, archiveUri, center, insets.bottom, venue.geometry, venue.catalog]);
   // The pack's own names in the chosen language; a place with no name in it falls back to English, never to a guess.
   const describePlace = useCallback((place: { id: string }) => ({
     title: venue.localizedNames?.get(place.id)?.[language] ?? venue.names.get(place.id) ?? place.id,
@@ -224,6 +230,8 @@ function VenueScreen({ runtime, venue, switchVenue, preferences, theme }: { runt
           theme={theme}
           isRTL={isRTL}
           describePlace={describePlace}
+          catalog={venue.catalog}
+          language={language}
           MapComponent={MapComponent}
           // The demo bar below the screen clears the system bar itself, so the panel needs none; the arrival sheet is a Modal that draws under it.
           bottomInset={0}
