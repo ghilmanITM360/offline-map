@@ -62,10 +62,11 @@ export interface PlaceCatalog {
 }
 
 export const createPlaceCatalog = (data: PlaceCatalogData): PlaceCatalog => {
-  const keys = new Map<string, { names: string[]; words: string[] }>();
+  const keys = new Map<string, { names: string[]; exact: string[]; words: string[] }>();
   for (const p of data.places) {
     const names = [...Object.values(p.names), ...p.aliases, p.id].map(searchKey).filter(Boolean);
-    keys.set(p.id, { names, words: [...new Set(names.flatMap((n) => n.split(' ')))] });
+    // `exact` is the place's own names only (aliases and the id do not count as an exact name match), filtered independently so a name that folds to nothing cannot shift the rest.
+    keys.set(p.id, { names, exact: Object.values(p.names).map(searchKey).filter(Boolean), words: [...new Set(names.flatMap((n) => n.split(' ')))] });
   }
   const inCategories = (p: CatalogPlace, categories?: readonly PlaceCategory[]) => !categories || categories.length === 0 || categories.includes(p.category);
   const displayName = (p: CatalogPlace, language: string): string => p.names[language] ?? p.names.en;
@@ -85,7 +86,7 @@ export const createPlaceCatalog = (data: PlaceCatalogData): PlaceCatalog => {
         if (words.length) {
           if (!words.every((w) => k.names.some((n) => n.includes(w)))) continue;
           const q = words.join(' ');
-          rank = k.names.slice(0, Object.keys(place.names).length).includes(q) ? 3
+          rank = k.exact.includes(q) ? 3
             : words.every((w) => k.words.some((x) => x.startsWith(w))) ? 2 : 1;
         }
         hits.push({ place, rank, sameNameAs: [] });

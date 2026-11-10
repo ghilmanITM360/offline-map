@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { parsePackPlaceCatalog, parsePackVenueGeometry, REQUIRED_PACK_RESOURCE_KINDS, PACK_RESOURCE_KINDS } from '@muslim-ummah/offline-navigation';
+import { createPlaceCatalog, parsePackPlaceCatalog, parsePackVenueGeometry, REQUIRED_PACK_RESOURCE_KINDS, PACK_RESOURCE_KINDS } from '@muslim-ummah/offline-navigation';
 
 const BOUNDS = { west: 67.0, south: 24.96, east: 67.01, north: 24.98 };
 const ccw = [[67.001, 24.97], [67.002, 24.97], [67.002, 24.971], [67.001, 24.971], [67.001, 24.97]];
@@ -110,5 +110,21 @@ describe('parsePackPlaceCatalog', () => {
     const r = parseCat([place({ id: 'ILAQA_5', ...pend, names: { en: 'Same Name' } }), place({ id: 'ILAQA_29', ...pend, names: { en: 'Same Name' } })]);
     expect(catErr(r)).toBe('OK');
     if (r.ok) expect(r.catalog.places.map((p) => p.id)).toEqual(['ILAQA_5', 'ILAQA_29']);
+  });
+});
+
+describe('catalog search ranking', () => {
+  // A name with no letters or digits folds to nothing; it must not shift which entries count as a place's NAMES.
+  it('an alias never outranks a real name because another name folded to nothing', () => {
+    const place = (id: string, names: Record<string, string>, aliases: string[]) => ({
+      id, category: 'facility', names, aliases, location: 'verified', routing: 'routable', coordinate: { lat: 24.97, lng: 67.001 },
+      nodeIds: [id], provenance: { source: 'test' }, flags: [],
+    });
+    const parsed = parsePackPlaceCatalog(JSON.stringify({
+      schemaVersion: 1, venueId: 'v', places: [place('a', { en: 'Main Gate', ur: '--' }, ['Foo']), place('b', { en: 'Foo' }, [])],
+    }));
+    if (!parsed.ok) throw new Error(parsed.error.message);
+    const hits = createPlaceCatalog(parsed.catalog).search('foo');
+    expect(hits.map((h) => [h.place.id, h.rank])).toEqual([['b', 3], ['a', 2]]);
   });
 });
