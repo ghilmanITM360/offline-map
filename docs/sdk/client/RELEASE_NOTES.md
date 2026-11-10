@@ -1,5 +1,19 @@
 # Release notes and changelog
 
+## 0.1.1 production-scale review (10 November 2026, private)
+
+Three fixes on top of the 0.1.1 candidate 3 source; routes are unchanged (the 91,506 golden and 2,400 differential comparisons are untouched). No API was removed or renamed.
+
+- **Live request far from the venue**: the nearest-node search no longer walks outwards through empty space. On a large venue (100,000 graph nodes) one Live request from far
+  outside used to block the app for many seconds; it now answers at once. `SpatialGrid.nearest(lat, lng, maxDistanceM?)` has a new optional third argument.
+- **Progress on a route that folds back beside itself**: under heavy GPS noise progress could run far ahead of the walker and show a later step. The reachable part of the route
+  now wins over a far leg the walker cannot have reached.
+- **Search on the ready-made screen** folds text exactly like the catalog search: Urdu typed on an Arabic keyboard (ي ك ه), vowel marks and punctuation now match, an exact
+  name is listed first, and typing stays fast on very large lists. `filterPlaceItems` and `normalizeSearchText` keep their names and exports.
+
+Known limits, unchanged: no "wrong way" warning; arrival can be declared early when the reported accuracy is poor; search does not correct misspellings (add aliases to the
+venue data). Not yet re-run on a device or emulator with these fixes.
+
 ## 0.1.0 client-delivery candidate 2 (private; supersedes `delivery-21d1ed4`, whose files are kept as history)
 
 Same SDK version and the same executable navigation source as `21d1ed40` (routing, controller, UI and map code are unchanged: the 91,506 golden and 2,400 differential comparisons
