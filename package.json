@@ -35,6 +35,7 @@
     "sdk:venue-tool": "node scripts/sdk-package/venue-tool.mjs",
     "pack:ios-precision": "node scripts/sdk-package/pack-ios-precision.mjs",
     "test:sdk-client": "node scripts/sdk-package/client-acceptance.mjs",
+    "bench:sdk-scale": "node --expose-gc --import tsx scripts/sdk-audit/scale-accuracy.ts",
     "test:dependency-security": "node scripts/test-dependency-security.mjs",
     "test:venue-contract": "node --import tsx scripts/test-venue-contract.ts",
     "test:street-graph-contract": "node --import tsx scripts/test-street-graph-contract.ts",

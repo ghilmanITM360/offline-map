@@ -1,0 +1,377 @@
+{
+ "generatedBy": "scripts/sdk-audit/scale-accuracy.ts",
+ "node": "v24.14.0",
+ "quick": false,
+ "note": "Simulated fixes and synthetic grids. Not real-world GPS accuracy; not a surveyed venue beyond the Karachi data it reads.",
+ "karachiData": {
+  "nodes": 303,
+  "directedEdges": 686,
+  "oneWayEdges": 0,
+  "weightedEdges": 0,
+  "edgesShorterThanStraightLine": 0,
+  "weakComponents": 3,
+  "nodesOutsideMainComponent": [
+   {
+    "id": "GATE_18",
+    "nearestMainNodeM": 361.7
+   },
+   {
+    "id": "GATE_19",
+    "nearestMainNodeM": 189.9
+   }
+  ],
+  "nodesWithNoOutgoingEdge": [
+   "GATE_18",
+   "GATE_19"
+  ],
+  "routerPlaces": 60,
+  "catalogPlaces": 60,
+  "catalogByCategoryAndRouting": {
+   "block": {
+    "provisional": 42
+   },
+   "gate": {
+    "routable": 16,
+    "unreachable": 2
+   }
+  }
+ },
+ "karachiRouteOptimality": {
+  "orderedNodePairs": 91506,
+  "costMismatchesVsIndependentDijkstra": 0,
+  "unreachablePairsBothAgree": 1206,
+  "endpointErrors": 0,
+  "routeLatencyMs": {
+   "n": 91506,
+   "p50": 0.049,
+   "p95": 0.172,
+   "p99": 0.219,
+   "max": 2.279
+  }
+ },
+ "karachiDestinationSelection": {
+  "routable": 58,
+  "refusedUnreachable": 2,
+  "refusedNotLocated": 0,
+  "endsOnOwnNode": 58,
+  "wrong": []
+ },
+ "karachiSimulatedWalks_clean": {
+  "sigmaM": 0,
+  "attempted": 1508,
+  "liveStarted": 1492,
+  "notStarted": 16,
+  "arrived": 1492,
+  "arrivalRate": 1,
+  "prematureArrivals_over40mOfRouteLeft": 0,
+  "rerouteEventsOnAnOnRouteWalker": 0,
+  "keptRouteEvents": 0,
+  "walksWithAnyRerouteEvent": 0,
+  "walksWithProgressErrorOver60m": 0,
+  "alongRouteErrorM": {
+   "n": 806939,
+   "p50": 0,
+   "p95": 0,
+   "p99": 0,
+   "max": 0
+  },
+  "trueRouteLeftAtArrivalM": {
+   "n": 1492,
+   "p50": 14.4,
+   "p95": 20,
+   "p99": 20.8,
+   "max": 22
+  },
+  "straightLineToEndpointAtArrivalM": {
+   "n": 1492,
+   "p50": 14.314,
+   "p95": 19.813,
+   "p99": 19.968,
+   "max": 19.976
+  }
+ },
+ "karachiSimulatedWalks_noise5m": {
+  "sigmaM": 5,
+  "attempted": 1508,
+  "liveStarted": 1492,
+  "notStarted": 16,
+  "arrived": 1492,
+  "arrivalRate": 1,
+  "prematureArrivals_over40mOfRouteLeft": 0,
+  "rerouteEventsOnAnOnRouteWalker": 0,
+  "keptRouteEvents": 0,
+  "walksWithAnyRerouteEvent": 0,
+  "walksWithProgressErrorOver60m": 0,
+  "alongRouteErrorM": {
+   "n": 802263,
+   "p50": 3.383,
+   "p95": 9.981,
+   "p99": 13.465,
+   "max": 54.6
+  },
+  "trueRouteLeftAtArrivalM": {
+   "n": 1492,
+   "p50": 19.4,
+   "p95": 27.8,
+   "p99": 31.2,
+   "max": 39
+  },
+  "straightLineToEndpointAtArrivalM": {
+   "n": 1492,
+   "p50": 18.334,
+   "p95": 26.584,
+   "p99": 29.905,
+   "max": 38.403
+  }
+ },
+ "karachiSimulatedWalks_noise12m": {
+  "sigmaM": 12,
+  "attempted": 1508,
+  "liveStarted": 1492,
+  "notStarted": 16,
+  "arrived": 1492,
+  "arrivalRate": 1,
+  "prematureArrivals_over40mOfRouteLeft": 105,
+  "rerouteEventsOnAnOnRouteWalker": 0,
+  "keptRouteEvents": 0,
+  "walksWithAnyRerouteEvent": 0,
+  "walksWithProgressErrorOver60m": 13,
+  "alongRouteErrorM": {
+   "n": 792194,
+   "p50": 8.88,
+   "p95": 25.187,
+   "p99": 33.47,
+   "max": 72.616
+  },
+  "trueRouteLeftAtArrivalM": {
+   "n": 1492,
+   "p50": 28.4,
+   "p95": 41.2,
+   "p99": 48.2,
+   "max": 83.2
+  },
+  "straightLineToEndpointAtArrivalM": {
+   "n": 1492,
+   "p50": 26.203,
+   "p95": 38.852,
+   "p99": 44.871,
+   "max": 55.307
+  }
+ },
+ "karachiSearch": [
+  {
+   "probe": "exact name or alias",
+   "queries": 285,
+   "catalogFound": 285,
+   "catalogTop1": 285,
+   "screenFound": 285,
+   "screenTop1": 285
+  },
+  {
+   "probe": "upper case",
+   "queries": 285,
+   "catalogFound": 285,
+   "catalogTop1": 285,
+   "screenFound": 285,
+   "screenTop1": 285
+  },
+  {
+   "probe": "punctuation instead of spaces",
+   "queries": 285,
+   "catalogFound": 285,
+   "catalogTop1": 285,
+   "screenFound": 285,
+   "screenTop1": 285
+  },
+  {
+   "probe": "Urdu typed on an Arabic keyboard (ي ك ه)",
+   "queries": 67,
+   "catalogFound": 67,
+   "catalogTop1": 67,
+   "screenFound": 67,
+   "screenTop1": 67
+  },
+  {
+   "probe": "one letter dropped (misspelling)",
+   "queries": 218,
+   "catalogFound": 25,
+   "catalogTop1": 25,
+   "screenFound": 25,
+   "screenTop1": 25
+  },
+  {
+   "probe": "two adjacent letters swapped (misspelling)",
+   "queries": 218,
+   "catalogFound": 0,
+   "catalogTop1": 0,
+   "screenFound": 0,
+   "screenTop1": 0
+  }
+ ],
+ "syntheticScale": [
+  {
+   "places": 1000,
+   "graphNodes": 1024,
+   "graphEdges": 3968,
+   "packJsonBytes": 551261,
+   "parseRoutingGraphAndDirectoryMs": 13,
+   "parseAndIndexCatalogMs": 13.7,
+   "retainedHeapMB": 2.8,
+   "catalogSearchMs": {
+    "n": 60,
+    "p50": 0.236,
+    "p95": 0.446,
+    "p99": 0.477,
+    "max": 0.477
+   },
+   "screenDirectoryFilterMs": {
+    "n": 60,
+    "p50": 0.092,
+    "p95": 0.19,
+    "p99": 3.281,
+    "max": 3.281
+   },
+   "routeAcrossGridMs": {
+    "n": 60,
+    "p50": 0.109,
+    "p95": 0.64,
+    "p99": 1.448,
+    "max": 1.448
+   },
+   "firstLiveStartMs_buildsNodeIndex": 1,
+   "liveStartInsideVenueMs": {
+    "n": 20,
+    "p50": 0.121,
+    "p95": 0.637,
+    "p99": 0.637,
+    "max": 0.637
+   },
+   "liveRequestOutsideVenue_2kmMs": 0,
+   "liveRequestOutsideVenue_50kmMs": 0,
+   "liveRequestOutsideVenue_1000kmMs": 0
+  },
+  {
+   "places": 10000,
+   "graphNodes": 10000,
+   "graphEdges": 39600,
+   "packJsonBytes": 5659908,
+   "parseRoutingGraphAndDirectoryMs": 74.3,
+   "parseAndIndexCatalogMs": 130.5,
+   "retainedHeapMB": 28.4,
+   "catalogSearchMs": {
+    "n": 60,
+    "p50": 1.947,
+    "p95": 2.946,
+    "p99": 4.694,
+    "max": 4.694
+   },
+   "screenDirectoryFilterMs": {
+    "n": 60,
+    "p50": 0.701,
+    "p95": 2.392,
+    "p99": 33.217,
+    "max": 33.217
+   },
+   "routeAcrossGridMs": {
+    "n": 60,
+    "p50": 0.592,
+    "p95": 6.215,
+    "p99": 7.247,
+    "max": 7.247
+   },
+   "firstLiveStartMs_buildsNodeIndex": 4.7,
+   "liveStartInsideVenueMs": {
+    "n": 20,
+    "p50": 0.342,
+    "p95": 3.678,
+    "p99": 3.678,
+    "max": 3.678
+   },
+   "liveRequestOutsideVenue_2kmMs": 0.1,
+   "liveRequestOutsideVenue_50kmMs": 0,
+   "liveRequestOutsideVenue_1000kmMs": 0
+  },
+  {
+   "places": 50000,
+   "graphNodes": 50176,
+   "graphEdges": 199808,
+   "packJsonBytes": 29112566,
+   "parseRoutingGraphAndDirectoryMs": 354.8,
+   "parseAndIndexCatalogMs": 631.8,
+   "retainedHeapMB": 106.6,
+   "catalogSearchMs": {
+    "n": 60,
+    "p50": 15.795,
+    "p95": 22.016,
+    "p99": 23.245,
+    "max": 23.245
+   },
+   "screenDirectoryFilterMs": {
+    "n": 60,
+    "p50": 7.504,
+    "p95": 8.91,
+    "p99": 177.45,
+    "max": 177.45
+   },
+   "routeAcrossGridMs": {
+    "n": 60,
+    "p50": 7.077,
+    "p95": 36.632,
+    "p99": 39.407,
+    "max": 39.407
+   },
+   "firstLiveStartMs_buildsNodeIndex": 32.4,
+   "liveStartInsideVenueMs": {
+    "n": 20,
+    "p50": 2.797,
+    "p95": 16.04,
+    "p99": 16.04,
+    "max": 16.04
+   },
+   "liveRequestOutsideVenue_2kmMs": 0,
+   "liveRequestOutsideVenue_50kmMs": 0,
+   "liveRequestOutsideVenue_1000kmMs": 0
+  },
+  {
+   "places": 100000,
+   "graphNodes": 100489,
+   "graphEdges": 400688,
+   "packJsonBytes": 58473350,
+   "parseRoutingGraphAndDirectoryMs": 753.3,
+   "parseAndIndexCatalogMs": 1323.8,
+   "retainedHeapMB": 280.6,
+   "catalogSearchMs": {
+    "n": 60,
+    "p50": 32.308,
+    "p95": 40.441,
+    "p99": 58.027,
+    "max": 58.027
+   },
+   "screenDirectoryFilterMs": {
+    "n": 60,
+    "p50": 15.504,
+    "p95": 17.871,
+    "p99": 379.687,
+    "max": 379.687
+   },
+   "routeAcrossGridMs": {
+    "n": 60,
+    "p50": 15.869,
+    "p95": 62.494,
+    "p99": 81.561,
+    "max": 81.561
+   },
+   "firstLiveStartMs_buildsNodeIndex": 23.4,
+   "liveStartInsideVenueMs": {
+    "n": 20,
+    "p50": 11.558,
+    "p95": 98.328,
+    "p99": 98.328,
+    "max": 98.328
+   },
+   "liveRequestOutsideVenue_2kmMs": 0.1,
+   "liveRequestOutsideVenue_50kmMs": 0,
+   "liveRequestOutsideVenue_1000kmMs": 0
+  }
+ ]
+}
