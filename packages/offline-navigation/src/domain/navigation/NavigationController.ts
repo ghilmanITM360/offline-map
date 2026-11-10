@@ -12,6 +12,7 @@
 // previous trip can no longer commit; Exit and arrival cancel it. Live navigation starts ONLY from requestLive(),
 // which is an explicit user action; nothing here ever starts, upgrades or retries live by itself.
 
+import type { PlaceAvailability } from '../catalog/PlaceCatalog';
 import { SpatialGrid } from '../geo/SpatialGrid';
 import { isValidCoordinate } from '../geo/isValidCoordinate';
 import {
@@ -32,7 +33,7 @@ import { buildRouteSteps, type RouteStep } from './RouteSteps';
 export type NavigationPhase = 'browsing' | 'preview' | 'guide' | 'live' | 'arrived';
 /** The load states of JourneyPresentationInput, so the presentation policy is applied unchanged. */
 export type NavigationLoadState = 'idle' | 'loading' | 'ready' | 'error' | 'needs_origin' | 'same_place';
-export type NavigationError = 'unknown_place' | 'no_route' | 'route_failed';
+export type NavigationError = 'unknown_place' | 'no_route' | 'route_failed' | 'destination_unreachable' | 'destination_not_located';
 /** The origin id of a route that starts from the walker's own position rather than a venue place. */
 export const LIVE_ORIGIN_ID = 'live_location';
 
@@ -171,6 +172,12 @@ export interface NavigationControllerOptions {
   readonly location?: NavigationLocationAdapter;
   /** Routes for a walker outside the venue. Without it a fix outside the venue is refused (`outside_venue`). */
   readonly outside?: OutsideRouteProvider;
+  /**
+   * Whether a place may be routed to at all (a PlaceCatalog's `availability`). A destination it reports as `canRoute: false` (a known place with
+   * no verified connection, or one with no location yet) is refused with a specific error: no route is searched or drawn, and neither Guide
+   * nor Live is offered. A place it does not know is judged by the venue as before.
+   */
+  readonly availability?: (placeId: string) => PlaceAvailability | undefined;
   /** Walking speed for ETA. Default 1.4 m/s. */
   readonly walkingSpeedMps?: number;
   /** Reroute automatically when the walker leaves the route. Default true. */
@@ -357,6 +364,8 @@ export function createNavigationController(options: NavigationControllerOptions)
       originSource: originId === null ? null : 'manual_place', entryGateId, loadState: 'idle', error: null, route: null,
       stepIndex: 0, liveAttempt: IDLE_ATTEMPT, liveCandidate: null, live: null, ...patch,
     });
+    const availability = options.availability?.(destination.id);
+    if (availability && !availability.canRoute) return publish(derive(core({ loadState: 'error', error: availability.status === 'unreachable' ? 'destination_unreachable' : 'destination_not_located' })));
     if (originId === null) return publish(derive(core({ loadState: 'needs_origin' })));
     const origin = resolvePlace(originId);
     if (!origin) return publish(derive(core({ originId: null, originSource: null, loadState: 'error', error: 'unknown_place' })));
@@ -794,7 +803,9 @@ export function createNavigationController(options: NavigationControllerOptions)
     },
     selectDestination(placeId) {
       if (disposed) return;
-      const destination = resolvePlace(placeId);
+      // A place the catalog lists but cannot route to (no node at all) still gets a trip, so the walker is told why instead of "not found".
+      const known = options.availability?.(placeId);
+      const destination = resolvePlace(placeId) ?? (known && !known.canRoute ? { id: placeId, kind: 'unavailable', nodeIds: [] } : undefined);
       if (!destination) {
         if (state.error !== 'unknown_place') update({ error: 'unknown_place' });
         return;

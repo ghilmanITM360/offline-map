@@ -37,10 +37,10 @@ describe('consumer translation table', () => {
   const placeholders = (text: string) => (text.match(/\{\d+\}/g) ?? []).sort();
   const withoutPlaceholders = (text: string) => text.replace(/\{\d+\}/g, '');
 
-  it('has Urdu and Roman Urdu text for all 89 keys: nothing is left to fall back to English', () => {
-    expect(TRANSLATION_TABLE).toHaveLength(89);
-    expect(TRANSLATION_TABLE.filter((e) => e.source.startsWith('host:'))).toHaveLength(26);
-    expect(TRANSLATION_TABLE.filter((e) => e.source === 'draft')).toHaveLength(63);
+  it('has Urdu and Roman Urdu text for all 110 keys (the original 89 plus 21 catalog and availability strings): nothing is left to fall back to English', () => {
+    expect(TRANSLATION_TABLE).toHaveLength(110);
+    expect(TRANSLATION_TABLE.filter((e) => e.source.startsWith('host:'))).toHaveLength(28);
+    expect(TRANSLATION_TABLE.filter((e) => e.source === 'draft')).toHaveLength(82);
     for (const e of TRANSLATION_TABLE) {
       expect(typeof e.ur).toBe('string');
       expect(typeof e.urLatn).toBe('string');

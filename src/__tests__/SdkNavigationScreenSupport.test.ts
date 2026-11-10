@@ -112,7 +112,7 @@ describe('ENGLISH_NAVIGATION_SCREEN_COPY', () => {
     ];
     expect(Object.keys(copy.liveBlockers).sort()).toEqual([...blockers].sort());
     for (const b of blockers) expect(copy.liveBlockers[b].trim()).not.toBe('');
-    const errors: NavigationError[] = ['unknown_place', 'no_route', 'route_failed'];
+    const errors: NavigationError[] = ['unknown_place', 'no_route', 'route_failed', 'destination_unreachable', 'destination_not_located'];
     expect(Object.keys(copy.trip.errors).sort()).toEqual([...errors].sort());
   });
 

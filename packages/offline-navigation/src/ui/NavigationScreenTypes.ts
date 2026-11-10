@@ -5,6 +5,7 @@
 
 import type React from 'react';
 import type { Insets, StyleProp, ViewStyle } from 'react-native';
+import type { PlaceCategory } from '../domain/pack';
 import type { LiveStartBlocker, NavigationError, NavigationPhase, NavigationRoute } from '../domain/navigation';
 import type { VenueCoordinate, VenuePlace } from '../domain/venue';
 import type { ManualLiveUpgradeCardLabels } from './ManualLiveUpgradeCard';
@@ -114,6 +115,13 @@ export interface NavigationScreenCopy {
     /** The venue lists no places. */
     empty: string;
     noMatches: (query: string) => string;
+    /** The line under a place whose route is not a plain verified one. */
+    availability: { provisional: string; unreachable: string; pending: string };
+    /** Filter chip labels; `all` clears the filter. */
+    categories: Record<PlaceCategory | 'all', string>;
+    /** Tells apart places that share a name; receives the marhala number. */
+    marhala: (marhala: string) => string;
+    sameName: string;
   };
   trip: {
     title: (destination: string) => string;
@@ -130,6 +138,10 @@ export interface NavigationScreenCopy {
     /** Receives the formatted walking distance. */
     summary: (distance: string) => string;
     errors: Record<NavigationError, string>;
+    /** Shown on a route that ends at an unverified boundary point rather than at a surveyed entrance. */
+    provisionalAccess: string;
+    /** Names the marker where the route actually ends (the destination's own marker is separate). */
+    routeEndsHere: string;
     retry: string;
     startGuide: { title: string; subtitle: string };
     startLive: { title: string; subtitle: string; busy: string };
