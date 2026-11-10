@@ -68,6 +68,9 @@ export const createPlaceCatalog = (data: PlaceCatalogData): PlaceCatalog => {
     // `exact` is the place's own names only (aliases and the id do not count as an exact name match), filtered independently so a name that folds to nothing cannot shift the rest.
     keys.set(p.id, { names, exact: Object.values(p.names).map(searchKey).filter(Boolean), words: [...new Set(names.flatMap((n) => n.split(' ')))] });
   }
+  // Namesakes by English name, across the whole catalog. Built once: it used to be rebuilt on every search (every keystroke).
+  const byName = new Map<string, string[]>();
+  for (const p of data.places) { const n = searchKey(p.names.en); const ids = byName.get(n); if (ids) ids.push(p.id); else byName.set(n, [p.id]); }
   const inCategories = (p: CatalogPlace, categories?: readonly PlaceCategory[]) => !categories || categories.length === 0 || categories.includes(p.category);
   const displayName = (p: CatalogPlace, language: string): string => p.names[language] ?? p.names.en;
   return {
@@ -91,11 +94,12 @@ export const createPlaceCatalog = (data: PlaceCatalogData): PlaceCatalog => {
         }
         hits.push({ place, rank, sameNameAs: [] });
       }
-      hits.sort((a, b) => b.rank - a.rank || (a.place.id < b.place.id ? -1 : 1));
+      // Within a rank, a place one of whose aliases (or its id) is exactly the query comes first ("block three" is Block 3, not Block 23).
+      const q = words.join(' ');
+      const whole = (h: CatalogSearchHit): number => (words.length && keys.get(h.place.id)!.names.includes(q) ? 1 : 0);
+      hits.sort((a, b) => b.rank - a.rank || whole(b) - whole(a) || (a.place.id < b.place.id ? -1 : 1));
       const limited = options.limit === undefined ? hits : hits.slice(0, options.limit);
       // Duplicate names are reported across the whole catalog, not just the hits, so a single hit still says it has a namesake.
-      const byName = new Map<string, string[]>();
-      for (const p of data.places) { const n = searchKey(p.names.en); byName.set(n, [...(byName.get(n) ?? []), p.id]); }
       return limited.map((h) => ({ ...h, sameNameAs: (byName.get(searchKey(h.place.names.en)) ?? []).filter((id) => id !== h.place.id) }));
     },
   };

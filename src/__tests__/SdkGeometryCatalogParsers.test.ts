@@ -128,3 +128,16 @@ describe('catalog search ranking', () => {
     expect(hits.map((h) => [h.place.id, h.rank])).toEqual([['b', 3], ['a', 2]]);
   });
 });
+
+// Production-scale review 2026-11-10.
+describe('catalog search: an exact alias breaks a tie inside a rank', () => {
+  it('"block three" is Block 3 before Block 23 and Block 33 on the Karachi catalog', () => {
+    const { buildKarachiPlaceCatalog } = require('../data/ijtema/packResources');
+    const parsed = parsePackPlaceCatalog(JSON.stringify(buildKarachiPlaceCatalog()));
+    if (!parsed.ok) throw new Error(parsed.error.message);
+    const c = createPlaceCatalog(parsed.catalog);
+    expect(c.search('block three').map((h) => h.place.id).slice(0, 3)).toEqual(['B3', 'B23', 'B33']);
+    expect(c.search('block three')[0].rank).toBe(2); // the rank values themselves are unchanged
+    expect(c.search('G12')[0].place.id).toBe('GATE_12');
+  });
+});

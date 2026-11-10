@@ -43,6 +43,30 @@ describe('filterPlaceItems', () => {
     expect(ids(filterPlaceItems([{ id: 'x', title: 'Café' }], 'café'))).toEqual(['x']);
   });
 
+  // Production-scale review 2026-11-10: the screen's filter did not fold what the headless catalog search folds, so these found nothing.
+  describe('folds text the way the catalog search does', () => {
+    const urdu: PlaceDirectoryItem[] = [
+      { id: 'b12', title: 'Block 12', searchTerms: ['بلاک 12', 'B12'] },
+      { id: 'b2', title: 'Block 2', searchTerms: ['بلاک 2', 'B2'] },
+      { id: 'i', title: 'Liaquatabad', searchTerms: ['علاقہ لیاقت آباد', 'عَلاقہ'] },
+    ];
+    it('Urdu typed on an Arabic keyboard (ك ي ه) finds the Urdu-keyboard spelling (ک ی ہ)', () => {
+      expect(ids(filterPlaceItems(urdu, 'بلاك 12'))).toEqual(['b12']);
+      expect(ids(filterPlaceItems(urdu, 'علاقه لياقت'))).toEqual(['i']);
+    });
+    it('vowel marks and punctuation do not block a match', () => {
+      expect(ids(filterPlaceItems(urdu, 'علاقہ'))).toEqual(['i']);
+      expect(ids(filterPlaceItems(urdu, 'block-12'))).toEqual(['b12']);
+      expect(ids(filterPlaceItems(urdu, 'Block #2'))).toEqual(['b2', 'b12']);
+    });
+    it('a place whose title or search term is exactly the query comes first; the rest keep their order', () => {
+      expect(ids(filterPlaceItems(urdu, 'block 2'))).toEqual(['b2', 'b12']); // listed b12 first; the exact name wins
+      expect(ids(filterPlaceItems(urdu, 'b2'))).toEqual(['b2']);
+      expect(ids(filterPlaceItems([urdu[0], urdu[1]], '2'))).toEqual(['b12', 'b2']);
+      expect(ids(filterPlaceItems([{ id: 'x', title: 'Block 21' }, { id: 'y', title: 'Block 2' }], 'block 2'))).toEqual(['y', 'x']);
+    });
+  });
+
   it('does not change the places it is given', () => {
     const copyOfItems = JSON.parse(JSON.stringify(items));
     filterPlaceItems(items, 'lobby');

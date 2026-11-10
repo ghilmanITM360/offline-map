@@ -6,6 +6,7 @@
 import React, { useMemo } from 'react';
 import { FlatList, Platform, Pressable, ScrollView, StyleSheet, TextInput, useWindowDimensions, View } from 'react-native';
 import type { NavigationIcon } from './NavigationScreenTypes';
+import { filterPlaceItems, normalizeSearchText } from './placeSearch';
 import { Text } from './Text';
 
 /** One already-named place, as the host presents it. */
@@ -54,20 +55,7 @@ export interface PlaceDirectoryProps {
   filters?: PlaceDirectoryFilters;
 }
 
-/** Case, width and composition-insensitive text for matching; never changes what is displayed. */
-export function normalizeSearchText(text: string): string {
-  return text.normalize('NFKC').toLocaleLowerCase().replace(/\s+/g, ' ').trim();
-}
-
-/** Every word the user typed must appear somewhere in the place's title, subtitle or search terms. */
-export function filterPlaceItems<T extends PlaceDirectoryItem>(items: readonly T[], query: string): T[] {
-  const words = normalizeSearchText(query).split(' ').filter(Boolean);
-  if (words.length === 0) return [...items];
-  return items.filter((item) => {
-    const haystack = normalizeSearchText([item.title, item.subtitle ?? '', ...(item.searchTerms ?? [])].join(' '));
-    return words.every((word) => haystack.includes(word));
-  });
-}
+export { filterPlaceItems, normalizeSearchText };
 
 const TARGET = 48;
 const INPUT_FONT_SIZE = 16;
