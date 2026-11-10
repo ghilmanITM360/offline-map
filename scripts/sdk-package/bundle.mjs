@@ -1,6 +1,7 @@
 // Assemble the private release-candidate delivery bundle OUTSIDE the repository: the packed tarball, the client documents, the
 // working consumer app sources (with the sample basemap), checksums and a manifest. Nothing is published or sent anywhere.
-//   node scripts/sdk-package/bundle.mjs <fresh directory outside the repository> [--allow-dirty]
+//   node scripts/sdk-package/bundle.mjs <fresh directory outside the repository> [--allow-dirty] [--profile internal|external]
+// internal: the owner-controlled Karachi preset + the synthetic venue (NOT cleared for external distribution). external: synthetic data only.
 // The archive is written by scripts/sdk-package/tar.mjs (pure Node), never by the host `tar`, so it holds exactly the declared files.
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
@@ -22,7 +23,9 @@ assert.ok(!existsSync(`${out}.tgz`) && !existsSync(`${out}.verification`), 'use 
 const gitHead = spawnSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).stdout.trim();
 const dirty = spawnSync('git', ['status', '--porcelain', '--untracked-files=no'], { cwd: root, encoding: 'utf8' }).stdout.trim();
 assert.ok(process.argv.includes('--allow-dirty') || dirty === '', `tracked files differ from HEAD ${gitHead.slice(0, 7)}; commit first so the delivery names the source it was built from (or pass --allow-dirty for a throwaway build)`);
-const deliveryId = `delivery-${gitHead.slice(0, 7)}`; // the archive's top-level folder: identical for identical sources, whatever directory built it
+const profile = process.argv.includes('--profile') ? process.argv[process.argv.indexOf('--profile') + 1] : 'internal';
+assert.ok(['internal', 'external'].includes(profile), '--profile must be internal or external');
+const deliveryId = `delivery-${gitHead.slice(0, 7)}${profile === 'external' ? '-external' : ''}`; // the archive's top-level folder: identical for identical sources, whatever directory built it
 mkdirSync(out, { recursive: true });
 
 const run = (cmd, args, cwd = root) => {
@@ -87,6 +90,9 @@ for (const f of readdirSync(join(out, 'docs')).filter((n) => n.endsWith('.md')))
 // Generated native projects live at the example's top level only; modules/*/ios is real source and must ship.
 const skip = /(^|\/)(node_modules|\.expo|sdk\.tgz|package-lock\.json|\._[^/]*|__MACOSX)(\/|$)|^(ios|android)(\/|$)|^export-/;
 cpSync(join(root, 'examples/expo-consumer'), join(out, 'examples/expo-consumer'), { recursive: true, filter: (p) => !skip.test(relative(join(root, 'examples/expo-consumer'), p)) });
+// One pack table per delivery: the external profile ships the synthetic-only table and nothing of the Karachi survey.
+if (profile === 'external') cpSync(join(out, 'examples/expo-consumer/bundledPackTable.external.ts'), join(out, 'examples/expo-consumer/bundledPackTable.ts'));
+rmSync(join(out, 'examples/expo-consumer/bundledPackTable.external.ts'));
 // The synthetic example venue for the pack tool, with the same sample basemap the example app ships (a pack needs a map archive).
 cpSync(join(root, 'examples/synthetic-venue'), join(out, 'examples/synthetic-venue'), { recursive: true, filter: (p) => !/(^|\/)(\._[^/]*|\.DS_Store)$/.test(p) });
 mkdirSync(join(out, 'examples/synthetic-venue/input/map'), { recursive: true });
@@ -99,10 +105,10 @@ cpSync(archive, join(out, 'examples/expo-consumer/assets/karachi-basemap.pmtiles
 cpSync(join(root, 'assets/offline-map/BASEMAP_PROVENANCE.json'), join(out, 'examples/expo-consumer/assets/BASEMAP_PROVENANCE.json'));
 // Compile tracked sources, never copy ignored checkout assets. Pins and shared archive bytes are authoritative.
 const packTable = readFileSync(join(out, 'examples/expo-consumer/bundledPackTable.ts'), 'utf8');
-for (const [venue, script] of [['karachi-ijtema', 'karachi.ts'], ['synthetic-demo-venue', 'demo.ts']]) {
+for (const [venue, script] of [['karachi-ijtema', 'karachi.ts'], ['synthetic-demo-venue', 'demo.ts']].filter(([v]) => profile === 'internal' || v === 'synthetic-demo-venue')) {
   const built = join(scratch, 'packs', venue);
-  run(process.execPath, ['--import', 'tsx', join(root, 'scripts/sdk-pack', script), built]);
-  const pin = JSON.parse(readFileSync(join(root, 'scripts/sdk-pack', `${venue}.pin.json`), 'utf8'));
+  run(process.execPath, ['--import', 'tsx', join(root, 'scripts/sdk-pack', script), built, '--preset']);
+  const pin = JSON.parse(readFileSync(join(root, 'scripts/sdk-pack', `${venue}-1.1.0.pin.json`), 'utf8'));
   assert.equal(sha256(join(built, 'pack.manifest.json')), pin.manifestSha256, `${venue}: manifest pin changed`);
   assert.ok(packTable.includes(`packId: '${pin.packId}'`) && packTable.includes(`manifestSha256: '${pin.manifestSha256}'`), `${venue}: consumer pin changed`);
   for (const resource of pin.resources) {
@@ -159,7 +165,9 @@ const files = walk(out).map((f) => relative(out, f)).sort();
 const entries = files.map((f) => ({ path: f, bytes: statSync(join(out, f)).size, sha256: sha256(join(out, f)) }));
 const info = {
   name: '@muslim-ummah/offline-navigation', version, deliveryId, status: 'release candidate with outstanding acceptance (see docs/SECURITY_AND_VALIDATION_REPORT.md)',
-  supersedes: { deliveryId: 'delivery-21d1ed4', sha256: '87e17e33ea10be2ae40c4d1965159989cc5d492d1637263ce5e5ca62b98871e5', reason: 'carried AppleDouble entries and no venue pack tool; kept unchanged as history' },
+  profile,
+  distribution: profile === 'internal' ? 'internal: contains the owner-controlled Karachi preset; NOT cleared for external distribution' : 'external-shareable: synthetic venue data only; no Karachi survey data',
+  supersedes: { deliveryId: 'delivery-b9cd118', sha256: '28fe810b95bd279cb05bd69556b8690c3133cc3f4c445f42691f5f847b154069', reason: 'candidate 2 (SDK 0.1.0); kept unchanged as history' },
   sourceCommit: gitHead, tarball: { file: `package/${tarName}`, sha256: tarSha },
   iosPrecisionTarball: { file: `package/${iosName}`, sha256: iosSha },
   generatedBy: 'scripts/sdk-package/bundle.mjs', published: false,
@@ -183,7 +191,9 @@ Start at docs/QUICK_START.md (the one onboarding path). What is in this delivery
 
 Verify with: shasum -a 256 -c CHECKSUMS.txt (manifest.json, CHECKSUMS.txt and this README are not listed in it).
 This bundle is NOT published anywhere. It carries outstanding physical-device and field acceptance: docs/SECURITY_AND_VALIDATION_REPORT.md.
-The example app ships the owner's Karachi Ijtema sample pack for acceptance testing only; redistribution rights are an owner decision (docs/LICENSES_AND_NOTICES.md).
+${profile === 'internal'
+  ? "PROFILE internal: the example app ships the owner's Karachi Ijtema preset pack for acceptance testing only. It is NOT cleared for external distribution; redistribution rights are an owner decision (docs/LICENSES_AND_NOTICES.md)."
+  : 'PROFILE external: the example app ships only the invented synthetic venue (over an OpenStreetMap basemap, ODbL, with attribution). No Karachi survey data is in this delivery.'}
 `);
 // The archive: every file of the delivery, once, under one top-level folder, written by tar.mjs and then audited by the raw parser.
 const everything = walk(out).map((f) => relative(out, f)).sort();
