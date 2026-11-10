@@ -57,46 +57,46 @@ export class SpatialGrid {
   }
 
   /**
-   * Nearest point to (lat, lng), or undefined if the grid is empty.
-   * Expands search ring-by-ring until the closest candidate found is
-   * provably nearer than any point that could exist just outside the
-   * scanned rings.
+   * Nearest point to (lat, lng), or undefined if the grid is empty or (with `maxDistanceM`) nothing lies within that distance.
+   * Expands search ring-by-ring until the closest candidate found is provably nearer than any point that could exist just outside
+   * the scanned rings. Pass `maxDistanceM` whenever only a nearby point is useful: the search then stops after the few rings that
+   * can hold one, instead of walking outwards from a query that is nowhere near the grid.
    */
-  nearest(lat: number, lng: number): { point: SpatialGridPoint; distanceM: number } | undefined {
-    if (this.cells.size === 0) return undefined;
+  nearest(lat: number, lng: number, maxDistanceM = Infinity): { point: SpatialGridPoint; distanceM: number } | undefined {
+    if (this.cells.size === 0 || !Number.isFinite(lat) || !Number.isFinite(lng)) return undefined;
 
     const centerRow = Math.floor(lat / this.cellSizeDeg);
     const centerCol = Math.floor(lng / this.cellSizeDeg);
-    const cellSizeM = this.cellSizeDeg * 111320;
+    // A degree of longitude is shorter than a degree of latitude away from the equator (by cos(lat)), so the same degree-sized cell is
+    // narrower in metres east-west. Every bound below uses that narrower width so it stays conservative in both directions.
+    const ringWidthM = this.cellSizeDeg * 111320 * Math.cos(toRad(lat));
 
     let best: { point: SpatialGridPoint; distanceM: number } | undefined;
-    const maxRadius = Math.max(200, this.cells.size); // hard stop, grid is finite
+    const scan = (row: number, col: number): void => {
+      const bucket = this.cells.get(`${row}:${col}`);
+      if (!bucket) return;
+      for (const point of bucket) {
+        const distanceM = haversineM(lat, lng, point.lat, point.lng);
+        if (!best || distanceM < best.distanceM) best = { point, distanceM };
+      }
+    };
+    // Ring r can only hold points farther than (r - 1) cell widths, so nothing within maxDistanceM lies beyond this ring.
+    const maxRadius = Math.min(Math.max(200, this.cells.size), Number.isFinite(maxDistanceM) && ringWidthM > 0 ? Math.ceil(maxDistanceM / ringWidthM) + 1 : Infinity);
 
     for (let radius = 0; radius <= maxRadius; radius += 1) {
-      for (let row = centerRow - radius; row <= centerRow + radius; row += 1) {
-        for (let col = centerCol - radius; col <= centerCol + radius; col += 1) {
-          const onRing = Math.max(Math.abs(row - centerRow), Math.abs(col - centerCol)) === radius;
-          if (!onRing) continue;
-          const bucket = this.cells.get(`${row}:${col}`);
-          if (!bucket) continue;
-          for (const point of bucket) {
-            const distanceM = haversineM(lat, lng, point.lat, point.lng);
-            if (!best || distanceM < best.distanceM) best = { point, distanceM };
-          }
+      if (radius === 0) scan(centerRow, centerCol);
+      else {
+        // Only the ring's own cells, in row-major order (the order equal-distance ties have always been broken in): the whole top and
+        // bottom rows, and the two end cells of every row between them.
+        for (let row = centerRow - radius; row <= centerRow + radius; row += 1) {
+          if (row === centerRow - radius || row === centerRow + radius) for (let col = centerCol - radius; col <= centerCol + radius; col += 1) scan(row, col);
+          else { scan(row, centerCol - radius); scan(row, centerCol + radius); }
         }
       }
-
-      // Once a candidate is found, any point outside the next ring is at
-      // least `radius * cellSizeM` away in the lat direction, but a degree of
-      // longitude is shorter than a degree of latitude away from the equator
-      // (by cos(lat)), so the same degree-sized cell is narrower in meters
-      // east-west. Scale the bound down by cos(lat) so it stays conservative
-      // in both directions instead of only holding near the equator.
-      const lngCorrectedCellSizeM = cellSizeM * Math.cos(toRad(lat));
-      if (best && best.distanceM <= radius * lngCorrectedCellSizeM) break;
+      if (best && best.distanceM <= radius * ringWidthM) break;
     }
 
-    return best;
+    return best && best.distanceM <= maxDistanceM ? best : undefined;
   }
 }
 

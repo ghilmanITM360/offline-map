@@ -392,8 +392,8 @@ export function createNavigationController(options: NavigationControllerOptions)
       const node = venue.graph.getNode(id);
       return node ? [{ id, lat: node.coordinate.lat, lng: node.coordinate.lng }] : [];
     }));
-    const near = grid.nearest(point.lat, point.lng);
-    return near && near.distanceM <= maxSnapM ? { id: near.point.id, distanceM: near.distanceM } : undefined;
+    const near = grid.nearest(point.lat, point.lng, maxSnapM);
+    return near ? { id: near.point.id, distanceM: near.distanceM } : undefined;
   };
 
   const stopWatch = () => {
