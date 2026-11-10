@@ -130,3 +130,75 @@ Limits of this evidence: iOS Simulator only, simulated GPS, one device model and
 ## 8. Final verdict (PC 2, 4 November 2026)
 
 **SDK 0.1.0 Candidate 2 — CLIENT INTEGRATION ENGINEERING COMPLETE**, for source `b9cd118`, with one narrower limitation: the exact SHA-256 values of PC 1's tarballs and archive were not reproduced on PC 2 (section 7), so the iOS result applies to PC 2's rebuild of that source and not byte-for-byte to PC 1's archive. Controlled pilot and production authorization stay **NO-GO** until physical-device, human accessibility and translation, data-rights, security and signing approvals exist.
+
+## 9. Candidate 3 — SDK 0.1.1 (10 November 2026)
+
+The one closure record for the coordinate-safety, venue-geometry, catalog, intake and Karachi-preset pass. Sections 1-8 above remain the record for candidate 2 and are not edited.
+
+**Where it ran.** The assignment named `Users-MacBook-Pro.local` / `/Users/ghilmanislam360/...`. It ran on `Ghilmans-Laptop.local` in `/Users/ghilmankhan/workprojects/offline-map`, the one checkout `AGENTS.md` authorizes for this branch. One worktree, no clone, no new branch; stashes (2) untouched. The branch was fast-forwarded `143ab61 -> f2ce28e` (PC 2's docs-only commit) before any edit. If PC 2 also wrote source from the same assignment, reconcile before pushing further.
+
+**Source.** Deliveries were built from `71b26f5942db3bdfdfe05795d3849dac572f064a`; commits after it change only this report. 64 files changed; **no** change to `blocks.ts`, `gates.ts`, `graphBuilder.ts`, `rastas.ts`, `DATA_MANIFEST.json`, the golden fixtures, the PMTiles asset or `src/services` (`git diff --name-only` is empty for them).
+
+### Artifacts (SHA-256)
+
+| Artifact | SHA-256 |
+| --- | --- |
+| **Internal delivery** `delivery-71b26f5.tgz` (86 files; Karachi preset; not cleared for external distribution) | `996de1ad8751b71376d3f6184d49a182a6ba6f5f0c1b59fccda8a1af452dfce3` |
+| **External-shareable delivery** `delivery-71b26f5-external.tgz` (78 files; synthetic data only) | `3474d1a39cfd9d553cf01b515a814bdcdb7170344d7e0ecb41ae3f9bd87d783f` |
+| SDK tarball `muslim-ummah-offline-navigation-0.1.1.tgz` (144 members) | `a2fe457ed00c718c0d349d1156fc8f4fa46df93c86452c4952112ae6a059149c` |
+| ...its uncompressed tar / member list | `971b0df13a8d47077d2a76c52c456fbd6648f6f1dd95f10197d187fb27ae7083` / `f7f15a9901a60d79e5ec418c1d8b5874feca8fde20a400f7c800ff50f5192f9b` |
+| iOS precision tarball (unchanged from candidate 2) | `6ee10a9fb77ceeaf2266916b4979a694c6f7efba005165560d578cb13505551d` |
+| Venue tool `tools/venue-pack/venue-pack.cjs` | `fbb5172fcb35fbb51e3995bbb5e2f5a88dc69ca1f42439f7dcdc7fdcff27ad9c` |
+| Example app `package-lock.json` | `6340f346ddd787b83a5ddb297b6246b2d2745945d85f3f854ced5a6fa5d70beb` |
+| Pack `karachi-ijtema@1.1.0` manifest (internal only) | `4eea9a74d95f9cd431750e8fd4a81a5bf733ccc341e6764239830319cbbfcec1` |
+| Pack `synthetic-demo-venue@1.1.0` manifest | `7006cde90e71206c84a6c8434d2c59eefd60de084c4265f9a568e271b03bc69d` |
+| Unchanged: `karachi-ijtema@1.0.0` / `synthetic-demo-venue@1.0.0` | `e248c373...03ad1` / `edd5367b...f7b0` |
+
+Two independent internal builds gave the identical archive hash. Evidence (logs, both consumer `evidence.json`, both archives, `SHA256SUMS.txt`) is outside Git in `~/Documents/offline-map-audits/offline-sdk-candidate-3-2026-11-10/`.
+
+**Why candidate 2's hashes differed between PCs.** `scripts/sdk-package/identity.mjs` shows the SDK `.tgz` is made by `npm pack` with a fixed gzip header, mtime `499162500`, empty owners, mode `644` and no AppleDouble entries, so the **tar and every member are deterministic**; the compressed bytes are not: the same tar gzipped by Node's zlib (level 9) and by system `gzip -9` gives two different `.tgz` hashes and one tar hash. The `.tgz` hash therefore depends on the compressor (Node's bundled zlib, npm's version). This is consistent with the PC 1 / PC 2 mismatch but **PC 2's artifact was not available, so the historical cause is not proven**. Policy: compare the tar hash and member list across machines; reproduce the `.tgz` hash only on the pinned toolchain (Node 24.14.0, zlib 1.3.1-e00f703, npm 11.9.0 here; CI pins Node 24.14.0).
+
+### What was implemented (source and Jest unless stated)
+
+- **Coordinate validation** (shared by `compile`, `verify`, the client tool): swapped lat/lng, `(0, 0)`, non-finite and out-of-venue coordinates are errors against the venue's own bounds (a London venue passes); translations per place; findings are error / warning / review and name file, record and field. Karachi's shipped data passes with no error.
+- **Corners are not entrances.** Block outlines are validated simple counter-clockwise rings (all 42 are simple, contain their centre, and no two overlap). The four `B#_C1..C4` graph nodes stay (removing them would strand every block) but are labelled `LEGACY_UNVERIFIED`; no verified entrance exists.
+- **Pin versus route end.** The destination marker is the block centre; the route end is a separate marker; arrival is judged at the route end; the preview says the route ends at the block boundary. Tested for all 42 blocks: for 39 of them the route from Gate 12 ends at a node other than the old pin `C1` (the earlier audit's finding is reproduced).
+- **Gates 18 and 19** stay known and unreachable. The controller refuses them with `destination_unreachable` (and a pending place with `destination_not_located`): no search, no route, no Guide, no Live; no connector was invented.
+- **Pack format** (SDK 0.1.1, manifest still version 1, old packs unchanged): optional `venue-geometry` (GeoJSON, `[lng, lat]`, closed CCW simple rings) and `place-catalog` (blocks, gates, ilaqas, tents, facilities; pending places have no coordinate or node; "not located", "unreachable" and "provisional" are distinct states). Cross-checked against the graph and place directory by `compile` and `verify`; the consumer re-hashes and strictly parses them at open and a bad one fails the open.
+- **Geometry utilities** in one tested module (polygon validity, point-in-polygon, boundary distance, overlap, `inside / boundary / ambiguous / outside` assignment). The four older copies in the host app (`graphBuilder.ts`, `SnapToRoadService.ts`, `RoutingService.ts`, `EntryGateRoutingService.ts`) were **not** migrated: behaviour preservation was not demonstrated for them in this pass.
+- **Intake** `venue-pack import` and `merge` in front of the unchanged compiler: `.xlsx` (dependency-free reader with size, entry, link, macro and encryption limits), UTF-8 CSV, GeoJSON; `Logitude` alias; four outcomes; stable ids; duplicates kept separate and flagged; placeholder keeps its id and is not offered in search; unreviewed translations labelled drafts; changes to verified gates and blocks recorded and never applied; a verified access point or walkable path adds no route; no overwrite of an existing folder; deterministic output. Tested on the real `Map data.xlsx` (100 rows -> 99 ilaqas kept, `IL-0048` excluded, 10 records flagged as 5 duplicate pairs, 0 coordinates, the file's hash unchanged) and on the client template (all nine sheets read).
+- **Visuals and search.** `MapLibreNavigationMap` draws block fills and outlines, the selected block, rastas and special routes, gates (grey when unreachable), facilities and surveyed tents, selection by stable id, and labels as React Native text (offline, Urdu shaping, no glyph server). `NavigationScreen` lists every catalog place with category chips, finds a place in English, Urdu and Roman Urdu whatever language is shown, tells apart duplicate names, and says "Location not yet available" / "No verified route yet". 21 new strings (draft Urdu and Roman Urdu, unreviewed); the original 89 are unchanged.
+- **Delivery.** Internal profile (Karachi preset 1.1.0 + synthetic 1.1.0) and external profile (synthetic only). CI: `.github/workflows/sdk-checks.yml` for the SDK branch (baseline workflow unchanged); its YAML parses and its branch filters are as intended, but it has **not run on GitHub** from this machine.
+
+### Tests executed
+
+| Check | Result |
+| --- | --- |
+| `npm run typecheck`, `npx eslint` on all changed areas | clean (one pre-existing unused-import warning in `App.test.tsx`) |
+| Full Jest (`--runInBand --ci`) | **234 suites / 2,524 tests passed** (baseline 225 / 2,429; +9 suites, +95 tests, all new) |
+| `npm test` (112 scripts, incl. A* extraction 2,400 seeded comparisons, "303 nodes, 90300 routable + 1206 unreachable pairs == golden", "findBestVenuePath ... over 91506 pairs == golden", SDK headless 83 checks) | exit 0 |
+| `test:sdk-exports`, `test:sdk-package`, `data:check` | pass |
+| Consumer runtime tests in `examples/expo-consumer` | 51 passed in the repo; 67 in each isolated consumer |
+| **Independent consumer, internal profile** (`consumer.mjs`: packed tarball, one React 19.1.0 / RN 0.81.5 / MapLibre 11.5.0, config plugin, prebuild for both platforms with the iOS precision module autolinked, `tsc`, Jest, production Hermes bundles) | pass; Android 779 modules, iOS 781 |
+| **Independent consumer, external profile** | pass; Android 771, iOS 773; **0** Karachi pack files and none of `GATE_12`, `B12_C1`, `karachi-ijtema@`, `Block 12` in any exported file |
+| Delivery verifier on both archives | PASS |
+
+The golden fixture was **not** regenerated; no graph data changed.
+
+### Native Android and iOS: NOT RUN for candidate 3
+
+No native build or emulator/simulator run was made in this session, so **nothing native is claimed for 0.1.1**. Candidate 2's native results (section 3 and 7) describe candidate 2 and do not carry over to the new map layers, markers or controller change. This machine has `adb`, two Android AVDs, Xcode 26.2 and an iOS 26.2 simulator runtime (none booted), so this is a budget decision, not a proven environment blocker. Evidence level of everything above is SOURCE/RUNTIME VERIFIED plus a JS-only consumer install and bundle; the real MapLibre rendering of the polygons, `Marker` labels and tap selection is untested on a device. Required next: one Android debug/release build of the internal consumer and a focused journey (cold launch, rich map, search, preview, Guide, Live with simulated GPS, reroute, arrival, second journey, venue switch, Urdu and Roman Urdu), then the same on an iOS simulator.
+
+### Not implemented, and why
+
+- Migration of the four legacy point-in-polygon copies in the host app (behaviour not demonstrated unchanged).
+- Arrival card wording is still the generic "You arrive at ..."; only the preview carries the provisional-access note.
+- Native acceptance (above). A published GitHub run of `sdk-checks.yml`.
+
+### Missing real-world inputs (nothing was invented)
+
+A field survey: verified access points per block (or the walkable connectors that make them routable), surveyed tent, ilaqa and facility coordinates, the connectors for Gates 18 and 19, a venue boundary polygon (only a rectangle exists, so none was drawn), native-speaker review of every Urdu and Roman Urdu string and of all 60 Karachi Roman Urdu names that equal the English.
+
+### Rights and release authorization
+
+The Karachi preset and internal delivery are owner-controlled and **not cleared for external distribution**; the intake marks any candidate without a named distribution authority as internal-only. The external delivery contains synthetic venue data over the OpenStreetMap basemap (ODbL, attribution kept); the basemap clips the real Karachi area, which is public map data, not the owner's survey. Signature policy is unchanged: imported or remote packs are still refused and no signing scheme exists. **Not approved** for unrestricted production: physical-device, field, accessibility, translation, rights and signing approvals are still outstanding.
