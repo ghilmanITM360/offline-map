@@ -1,0 +1,331 @@
+kind,branch,sha10,lastCommit,ancestorOfSdkBranch,commitsNotInSdk,pullRequests,classification,action
+local,audit/codex-runtime-evidence,a55a85cfe3,2026-09-26,False,1,,KEEP,retained
+local,claude/128-a11y-tree-ownership,885bbb1ba9,2026-10-01,True,0,#206:MERGED,SAFE LOCAL CLEANUP,deleted locally with git branch -d (ref backed up in external bundle; commits reachable from SDK HEAD or on origin)
+local,claude/128-b-footer-focus-order,3ff5af2c11,2026-10-03,True,0,#230:MERGED,SAFE LOCAL CLEANUP,deleted locally with git branch -d (ref backed up in external bundle; commits reachable from SDK HEAD or on origin)
+local,claude/128-c-facility-marker-render,d1c5b2f7b7,2026-10-03,True,0,#231:MERGED,SAFE LOCAL CLEANUP,deleted locally with git branch -d (ref backed up in external bundle; commits reachable from SDK HEAD or on origin)
+local,claude/128-directory-placeholder,8ea3c614a3,2026-10-01,True,0,#214:MERGED,SAFE LOCAL CLEANUP,deleted locally with git branch -d (ref backed up in external bundle; commits reachable from SDK HEAD or on origin)
+local,claude/128-e-offline-single-message,a3d79bceb8,2026-10-03,True,0,#233:MERGED,SAFE LOCAL CLEANUP,deleted locally with git branch -d (ref backed up in external bundle; commits reachable from SDK HEAD or on origin)
+local,claude/128-e-unavailable-copy,edaf0eac7a,2026-10-03,True,0,#234:MERGED,SAFE LOCAL CLEANUP,deleted locally with git branch -d (ref backed up in external bundle; commits reachable from SDK HEAD or on origin)
+local,claude/128-live-regions,ff6dd920d1,2026-10-01,True,0,#215:MERGED,SAFE LOCAL CLEANUP,deleted locally with git branch -d (ref backed up in external bundle; commits reachable from SDK HEAD or on origin)
+local,claude/128-nav-bar-cta-inset,5be7e37cda,2026-10-01,True,0,#218:MERGED,SAFE LOCAL CLEANUP,deleted locally with git branch -d (ref backed up in external bundle; commits reachable from SDK HEAD or on origin)
+local,claude/128-svg-marker-paint,aa712908a3,2026-10-03,True,0,#232:MERGED,SAFE LOCAL CLEANUP,deleted locally with git branch -d (ref backed up in external bundle; commits reachable from SDK HEAD or on origin)
+local,claude/157-marker-titles,2ad2815f31,2026-10-01,True,0,#213:MERGED,SAFE LOCAL CLEANUP,deleted locally with git branch -d (ref backed up in external bundle; commits reachable from SDK HEAD or on origin)
+local,claude/157-place-category-label,c8ad8295bd,2026-10-03,True,0,#235:MERGED,SAFE LOCAL CLEANUP,deleted locally with git branch -d (ref backed up in external bundle; commits reachable from SDK HEAD or on origin)
+local,claude/158-splash-handoff-background,66e45c8efa,2026-10-03,True,0,#236:MERGED,SAFE LOCAL CLEANUP,deleted locally with git branch -d (ref backed up in external bundle; commits reachable from SDK HEAD or on origin)
+local,claude/159-welcome-benefit-copy,506370e689,2026-10-01,True,0,#216:MERGED,SAFE LOCAL CLEANUP,deleted locally with git branch -d (ref backed up in external bundle; commits reachable from SDK HEAD or on origin)
+local,claude/163-perm-denied-title,faffa00c35,2026-10-01,True,0,#217:MERGED,SAFE LOCAL CLEANUP,deleted locally with git branch -d (ref backed up in external bundle; commits reachable from SDK HEAD or on origin)
+local,claude/208-label-projection-crash,918b0eb392,2026-10-01,True,0,#219:MERGED,SAFE LOCAL CLEANUP,deleted locally with git branch -d (ref backed up in external bundle; commits reachable from SDK HEAD or on origin)
+local,claude/208-map-setup-screen,3c3fd8f8e0,2026-10-01,True,0,#220:MERGED,SAFE LOCAL CLEANUP,deleted locally with git branch -d (ref backed up in external bundle; commits reachable from SDK HEAD or on origin)
+local,claude/222-camera-ready-gate,50cc4ef433,2026-10-03,True,0,#254:MERGED,SAFE LOCAL CLEANUP,retained: git -d refused (origin copy has one newer merged commit); no -D used
+local,claude/222-camera-replay,9b93bda2ae,2026-10-03,True,0,#258:MERGED,SAFE LOCAL CLEANUP,deleted locally with git branch -d (ref backed up in external bundle; commits reachable from SDK HEAD or on origin)
+local,claude/222-destination-via-directory,5ddee4e4cd,2026-10-03,True,0,#238:MERGED,SAFE LOCAL CLEANUP,deleted locally with git branch -d (ref backed up in external bundle; commits reachable from SDK HEAD or on origin)
+local,claude/222-fallback-change-place,3f25e32b14,2026-10-04,True,0,#263:MERGED,SAFE LOCAL CLEANUP,deleted locally with git branch -d (ref backed up in external bundle; commits reachable from SDK HEAD or on origin)
+local,claude/222-group-from-to-talkback,d3d3571e90,2026-10-03,True,0,#241:MERGED,SAFE LOCAL CLEANUP,deleted locally with git branch -d (ref backed up in external bundle; commits reachable from SDK HEAD or on origin)
+local,claude/222-journey-audit,f0de7f1df0,2026-10-03,True,0,#237:MERGED,SAFE LOCAL CLEANUP,deleted locally with git branch -d (ref backed up in external bundle; commits reachable from SDK HEAD or on origin)
+local,claude/222-place-cta-short-window,55b8cf962c,2026-10-03,True,0,#257:MERGED,SAFE LOCAL CLEANUP,deleted locally with git branch -d (ref backed up in external bundle; commits reachable from SDK HEAD or on origin)
+local,claude/222-plain-language,3b3152b5d5,2026-10-03,True,0,#239:MERGED,SAFE LOCAL CLEANUP,deleted locally with git branch -d (ref backed up in external bundle; commits reachable from SDK HEAD or on origin)
+local,claude/222-start-copy,2afe0ec354,2026-10-03,True,0,#256:MERGED,SAFE LOCAL CLEANUP,deleted locally with git branch -d (ref backed up in external bundle; commits reachable from SDK HEAD or on origin)
+local,claude/222-start-direct-directory,765e853b25,2026-10-03,False,1,#244:CLOSED,REVIEW BEFORE DELETION,retained
+local,claude/251-control-stack-deps,326d1d2436,2026-10-03,True,0,#255:MERGED,SAFE LOCAL CLEANUP,deleted locally with git branch -d (ref backed up in external bundle; commits reachable from SDK HEAD or on origin)
+local,claude/261-replay-queued-move,ddace9fc1c,2026-10-04,True,0,#261:MERGED,SAFE LOCAL CLEANUP,deleted locally with git branch -d (ref backed up in external bundle; commits reachable from SDK HEAD or on origin)
+local,claude/301-nav-route-clobber,b7119326c1,2026-10-06,True,0,#303:MERGED,SAFE LOCAL CLEANUP,deleted locally with git branch -d (ref backed up in external bundle; commits reachable from SDK HEAD or on origin)
+local,claude/accept-128-e-directory,2158c75db4,2026-10-03,True,0,,SAFE LOCAL CLEANUP,deleted locally with git branch -d (ref backed up in external bundle; commits reachable from SDK HEAD or on origin)
+local,claude/accept-local-stack,03a240b09d,2026-09-30,False,4,,KEEP,retained
+local,claude/final-debug-build,6ee19b5cb9,2026-10-03,True,0,,SAFE LOCAL CLEANUP,deleted locally with git branch -d (ref backed up in external bundle; commits reachable from SDK HEAD or on origin)
+local,claude/guide-detent-after-settle,dd7f70cd8e,2026-10-06,True,0,#324:MERGED,SAFE LOCAL CLEANUP,deleted locally with git branch -d (ref backed up in external bundle; commits reachable from SDK HEAD or on origin)
+local,claude/journey-start-integration,07d8df1849,2026-10-06,True,0,#319:MERGED,SAFE LOCAL CLEANUP,deleted locally with git branch -d (ref backed up in external bundle; commits reachable from SDK HEAD or on origin)
+local,claude/live-autostart-integration,cdcb9e4093,2026-10-06,True,0,#321:MERGED,SAFE LOCAL CLEANUP,deleted locally with git branch -d (ref backed up in external bundle; commits reachable from SDK HEAD or on origin)
+local,claude/runtime-acceptance-fixes,fb7aad9995,2026-10-06,True,0,#320:MERGED,SAFE LOCAL CLEANUP,deleted locally with git branch -d (ref backed up in external bundle; commits reachable from SDK HEAD or on origin)
+local,claude/sprint-close-docs,d16506a850,2026-10-06,True,0,#325:MERGED,SAFE LOCAL CLEANUP,deleted locally with git branch -d (ref backed up in external bundle; commits reachable from SDK HEAD or on origin)
+local,claude/start-handler-reads-store,6748c1f693,2026-10-06,True,0,#322:MERGED,SAFE LOCAL CLEANUP,deleted locally with git branch -d (ref backed up in external bundle; commits reachable from SDK HEAD or on origin)
+local,claude/ux-directory-only-chooser,c6d59e0bfd,2026-10-05,True,0,#292:MERGED,SAFE LOCAL CLEANUP,deleted locally with git branch -d (ref backed up in external bundle; commits reachable from SDK HEAD or on origin)
+local,claude/ux-endpoint-rows-always,091f116a98,2026-10-05,True,0,#295:MERGED,SAFE LOCAL CLEANUP,deleted locally with git branch -d (ref backed up in external bundle; commits reachable from SDK HEAD or on origin)
+local,claude/ux-live-origin-start,7d705128c4,2026-10-05,True,0,#300:MERGED,SAFE LOCAL CLEANUP,deleted locally with git branch -d (ref backed up in external bundle; commits reachable from SDK HEAD or on origin)
+local,claude/ux-map-controls,54976d0b8a,2026-10-05,True,0,#294:MERGED,SAFE LOCAL CLEANUP,deleted locally with git branch -d (ref backed up in external bundle; commits reachable from SDK HEAD or on origin)
+local,claude/ux-markers-direction,34df838180,2026-10-05,True,0,#296:MERGED,SAFE LOCAL CLEANUP,deleted locally with git branch -d (ref backed up in external bundle; commits reachable from SDK HEAD or on origin)
+local,claude/ux-no-start-copy,f7236360e6,2026-10-05,True,0,#298:MERGED,SAFE LOCAL CLEANUP,deleted locally with git branch -d (ref backed up in external bundle; commits reachable from SDK HEAD or on origin)
+local,claude/ux-reroute-comprehension,2773ff2e78,2026-10-05,True,0,#297:MERGED,SAFE LOCAL CLEANUP,deleted locally with git branch -d (ref backed up in external bundle; commits reachable from SDK HEAD or on origin)
+local,claude/ux-route-ready-sheet,eb47a3560f,2026-10-05,True,0,#293:MERGED,SAFE LOCAL CLEANUP,deleted locally with git branch -d (ref backed up in external bundle; commits reachable from SDK HEAD or on origin)
+local,claude/ux-start-match-policy,bd2847ec13,2026-10-05,True,0,#299:MERGED,SAFE LOCAL CLEANUP,deleted locally with git branch -d (ref backed up in external bundle; commits reachable from SDK HEAD or on origin)
+local,claude/ux-start-nav-state-machine,bab7e6d8ea,2026-10-05,True,0,#291:MERGED,SAFE LOCAL CLEANUP,deleted locally with git branch -d (ref backed up in external bundle; commits reachable from SDK HEAD or on origin)
+local,codex/119-core-benchmarks,db837c5b49,2026-09-30,True,0,#203:MERGED,SAFE LOCAL CLEANUP,deleted locally with git branch -d (ref backed up in external bundle; commits reachable from SDK HEAD or on origin)
+local,codex/120-collection-hydration,fa37f5fece,2026-10-01,True,0,#210:MERGED,SAFE LOCAL CLEANUP,deleted locally with git branch -d (ref backed up in external bundle; commits reachable from SDK HEAD or on origin)
+local,codex/120-combined-validation,7c58583a20,2026-10-01,False,3,,KEEP,retained
+local,codex/120-core-cleanup,5bde968101,2026-09-30,True,0,#201:MERGED,SAFE LOCAL CLEANUP,deleted locally with git branch -d (ref backed up in external bundle; commits reachable from SDK HEAD or on origin)
+local,codex/120-final-canonical,c189168a85,2026-10-01,True,0,,SAFE LOCAL CLEANUP,deleted locally with git branch -d (ref backed up in external bundle; commits reachable from SDK HEAD or on origin)
+local,codex/120-navigation-gate-adapter,7671843b5a,2026-10-01,True,0,#211:MERGED,SAFE LOCAL CLEANUP,deleted locally with git branch -d (ref backed up in external bundle; commits reachable from SDK HEAD or on origin)
+local,codex/120-settings-hydration,a652d293df,2026-10-01,True,0,#207:MERGED,SAFE LOCAL CLEANUP,deleted locally with git branch -d (ref backed up in external bundle; commits reachable from SDK HEAD or on origin)
+local,codex/120-shared-distance,6608e3f09b,2026-10-01,True,0,#205:MERGED,SAFE LOCAL CLEANUP,deleted locally with git branch -d (ref backed up in external bundle; commits reachable from SDK HEAD or on origin)
+local,codex/130-emulator-profile,de8cc34978,2026-09-30,True,0,,SAFE LOCAL CLEANUP,deleted locally with git branch -d (ref backed up in external bundle; commits reachable from SDK HEAD or on origin)
+local,codex/130-ttfd-readiness-signal,0352c4ad6a,2026-10-04,True,0,#265:MERGED,SAFE LOCAL CLEANUP,deleted locally with git branch -d (ref backed up in external bundle; commits reachable from SDK HEAD or on origin)
+local,codex/142-route-start-ownership,4d7f4daf21,2026-10-01,True,0,#209:MERGED,SAFE LOCAL CLEANUP,deleted locally with git branch -d (ref backed up in external bundle; commits reachable from SDK HEAD or on origin)
+local,codex/149-v1-session-reset,f4138cf490,2026-09-30,True,0,#199:MERGED,SAFE LOCAL CLEANUP,deleted locally with git branch -d (ref backed up in external bundle; commits reachable from SDK HEAD or on origin)
+local,codex/183-hydration-runtime-guard,c788c15810,2026-09-30,True,0,#184:MERGED,SAFE LOCAL CLEANUP,deleted locally with git branch -d (ref backed up in external bundle; commits reachable from SDK HEAD or on origin)
+local,codex/185-gps-watch-generation,2df2c4112d,2026-09-30,True,0,#186:MERGED,SAFE LOCAL CLEANUP,deleted locally with git branch -d (ref backed up in external bundle; commits reachable from SDK HEAD or on origin)
+local,codex/188-v1-reroute-cancellation,d479963892,2026-09-30,True,0,#189:MERGED,SAFE LOCAL CLEANUP,deleted locally with git branch -d (ref backed up in external bundle; commits reachable from SDK HEAD or on origin)
+local,codex/191-gps-force-fix-lifecycle,43b729da00,2026-09-30,True,0,#192:MERGED,SAFE LOCAL CLEANUP,deleted locally with git branch -d (ref backed up in external bundle; commits reachable from SDK HEAD or on origin)
+local,codex/93-snap-continuity,e31484163c,2026-10-01,True,0,#212:MERGED,SAFE LOCAL CLEANUP,deleted locally with git branch -d (ref backed up in external bundle; commits reachable from SDK HEAD or on origin)
+local,codex/95-arrival-progress,0685bf47d8,2026-09-30,True,0,#197:MERGED,SAFE LOCAL CLEANUP,deleted locally with git branch -d (ref backed up in external bundle; commits reachable from SDK HEAD or on origin)
+local,codex/android-worklets-artifact-fix,86f81ee460,2026-09-29,True,0,#180:MERGED,SAFE LOCAL CLEANUP,deleted locally with git branch -d (ref backed up in external bundle; commits reachable from SDK HEAD or on origin)
+local,codex/core-five-final-validation,5aafa9a448,2026-10-01,True,0,,SAFE LOCAL CLEANUP,deleted locally with git branch -d (ref backed up in external bundle; commits reachable from SDK HEAD or on origin)
+local,codex/core-five-validation,b8cd0602bf,2026-10-01,False,5,,KEEP,retained
+local,codex/core-four-combined-validation,a985665145,2026-09-30,False,4,,KEEP,retained
+local,codex/full-ui-ux-audit,42451f1bc9,2026-09-06,False,13,,REVIEW BEFORE DELETION,retained
+local,codex/gps-timestamp-freshness,3e1f779982,2026-09-30,True,0,#182:MERGED,SAFE LOCAL CLEANUP,deleted locally with git branch -d (ref backed up in external bundle; commits reachable from SDK HEAD or on origin)
+local,codex/journey-app-shell-recovery,c833814dec,2026-10-11,True,0,#369:MERGED,SAFE LOCAL CLEANUP,deleted locally with git branch -d (ref backed up in external bundle; commits reachable from SDK HEAD or on origin)
+local,codex/journey-directory-localization,e21511a098,2026-10-11,True,0,#367:MERGED,SAFE LOCAL CLEANUP,deleted locally with git branch -d (ref backed up in external bundle; commits reachable from SDK HEAD or on origin)
+local,codex/journey-guide-localization,e0901c4c5e,2026-10-11,True,0,#368:MERGED,SAFE LOCAL CLEANUP,deleted locally with git branch -d (ref backed up in external bundle; commits reachable from SDK HEAD or on origin)
+local,codex/journey-panel-localization,ae1e104ce7,2026-10-11,True,0,#372:MERGED,SAFE LOCAL CLEANUP,deleted locally with git branch -d (ref backed up in external bundle; commits reachable from SDK HEAD or on origin)
+local,codex/journey-readiness-evidence,399812ab7e,2026-10-11,True,0,#371:MERGED,SAFE LOCAL CLEANUP,deleted locally with git branch -d (ref backed up in external bundle; commits reachable from SDK HEAD or on origin)
+local,codex/location-capability-audit,9578cd05af,2026-09-21,False,14,,KEEP,retained
+local,codex/phase-a-consolidation-evidence,34669b4f70,2026-10-11,True,0,#374:MERGED,SAFE LOCAL CLEANUP,deleted locally with git branch -d (ref backed up in external bundle; commits reachable from SDK HEAD or on origin)
+local,codex/premium-map-runtime-ui-fixes,f419771c5b,2026-09-06,False,19,#22:CLOSED,KEEP,retained
+local,codex/preview-attribution-height,cf7ee11443,2026-09-09,False,53,,KEEP,retained
+local,codex/rel003-detent-harness,948aa17605,2026-09-20,False,1,,KEEP,retained
+local,codex/release-readiness-sep19,20de34d3c2,2026-09-19,False,2,,KEEP,retained
+local,design/premium-map-ux,5d3ddca775,2026-09-05,False,15,#14:CLOSED,KEEP,retained
+local,docs/115-evidence-ledger-reconciliation,80012cad4e,2026-09-29,True,0,#175:MERGED,SAFE LOCAL CLEANUP,deleted locally with git branch -d (ref backed up in external bundle; commits reachable from SDK HEAD or on origin)
+local,docs/ui-ux-audit-reconciliation,96fdfbd562,2026-09-26,True,0,#152:MERGED,SAFE LOCAL CLEANUP,deleted locally with git branch -d (ref backed up in external bundle; commits reachable from SDK HEAD or on origin)
+local,feat/muslim-ummah-offline-navigation-sdk,ac0b3f8c15,2026-11-10,True,0,,PROTECTED,retained
+local,final/karachi-ijtema,44ed85ada0,2026-08-16,False,69,,KEEP,retained
+local,fix/111-arrival-latch-exit-reset,e122ca5e24,2026-09-23,False,1,#112:MERGED,SAFE LOCAL CLEANUP,deleted locally with git branch -d (ref backed up in external bundle; commits reachable from SDK HEAD or on origin)
+local,fix/113-reroute-cooldown-bleed,45930b2c2c,2026-09-23,False,1,#114:MERGED,SAFE LOCAL CLEANUP,deleted locally with git branch -d (ref backed up in external bundle; commits reachable from SDK HEAD or on origin)
+local,fix/66-rebase,52f4dac0da,2026-09-21,True,0,,SAFE LOCAL CLEANUP,deleted locally with git branch -d (ref backed up in external bundle; commits reachable from SDK HEAD or on origin)
+local,fix/a1-08-fresh-fix-acquisition,2a56499987,2026-10-19,False,1,#381:OPEN,PROTECTED,retained
+local,fix/a1-10-direct-guide-start-action,e909e55193,2026-10-19,True,0,#379:MERGED,SAFE LOCAL CLEANUP,deleted locally with git branch -d (ref backed up in external bundle; commits reachable from SDK HEAD or on origin)
+local,fix/a3-01-rtl-label-overlay,9c0fd50d74,2026-10-19,True,0,,PROTECTED,retained
+local,fix/a5-01-reroute-step-index,454975c639,2026-10-18,True,0,#377:MERGED,SAFE LOCAL CLEANUP,deleted locally with git branch -d (ref backed up in external bundle; commits reachable from SDK HEAD or on origin)
+local,fix/a5-02-arrival-authority-gate,494f832274,2026-10-18,True,0,#378:MERGED,SAFE LOCAL CLEANUP,deleted locally with git branch -d (ref backed up in external bundle; commits reachable from SDK HEAD or on origin)
+local,fix/attr-001-google-attribution-visibility,d0375eb6f5,2026-09-07,False,1,#24:CLOSED,KEEP,retained
+local,fix/core-functionality-finalization,8af7bc35d5,2026-09-09,False,67,#26:CLOSED,KEEP,retained
+local,fix/gps-progress-freshness-p0,19b58d4db6,2026-09-18,False,73,,KEEP,retained
+local,fix/issue-115-routing-reconciliation,9d177b4669,2026-09-27,False,1,,KEEP,retained
+local,fix/issue-124-routing-fallback,1599c324b7,2026-09-23,True,0,,SAFE LOCAL CLEANUP,deleted locally with git branch -d (ref backed up in external bundle; commits reachable from SDK HEAD or on origin)
+local,fix/issue-160-manual-gate-retention,a4048c42b4,2026-09-26,True,0,#162:MERGED,SAFE LOCAL CLEANUP,deleted locally with git branch -d (ref backed up in external bundle; commits reachable from SDK HEAD or on origin)
+local,fix/new-01-pedestrian-reroute,85a80c8cea,2026-09-06,False,5,#15:CLOSED,KEEP,retained
+local,fix/new-01-reroute-anchor,f285e6ebcb,2026-09-06,False,6,#17:MERGED,KEEP,retained
+local,fix/new-02-shahr-e-pindal-reroute-identity,de077f1789,2026-09-06,False,8,#18:MERGED,REVIEW BEFORE DELETION,retained
+local,fix/new-03-manual-gate-retention,e5bb03cd2a,2026-09-06,False,10,#19:MERGED,REVIEW BEFORE DELETION,retained
+local,fix/new-04-arrival-reliability,3b02d9c277,2026-09-06,False,8,#16:MERGED,KEEP,retained
+local,fix/new-05-live-maneuver-distance,eecd332274,2026-09-06,False,16,#21:CLOSED,KEEP,retained
+local,fix/new-06-provider-endpoint-connectors,70d710087b,2026-09-06,False,12,#20:MERGED,REVIEW BEFORE DELETION,retained
+local,fix/new-08-gps-observation-trust,42451f1bc9,2026-09-06,False,13,,REVIEW BEFORE DELETION,retained
+local,fix/sheet-dismiss-echo-guard,e7c5803bde,2026-09-05,False,4,#13:MERGED,KEEP,retained
+local,integration/aud-fix-consolidation,e3490ddec3,2026-09-13,False,72,,KEEP,retained
+local,integration/ijtema-clean-baseline,9c0fd50d74,2026-10-19,True,0,,PROTECTED,retained
+local,integration/ux-simplification-final,bd1942dc49,2026-09-09,False,63,#25:CLOSED,KEEP,retained
+local,main,fa05647984,2026-09-06,False,6,,PROTECTED,retained
+local,test/a5-03-arrival-radius-accuracy-characterization,ee54e60d6a,2026-10-19,False,1,#380:OPEN,PROTECTED,retained
+local,tmp/301-validate,8c61a8f2b8,2026-10-06,False,2,,KEEP,retained
+remote,claude/120-locationsheet-gate-adapter,12296d9a36,2026-10-04,True,0,#264:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/123-staging-readiness,b4d7b917c9,2026-10-05,True,0,#273:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/128-a11y-tree-ownership,885bbb1ba9,2026-10-01,True,0,#206:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/128-b-footer-focus-order,3ff5af2c11,2026-10-03,True,0,#230:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/128-c-facility-marker-render,d1c5b2f7b7,2026-10-03,True,0,#231:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/128-directory-320dp-200pct,cc5e1a5cb4,2026-10-01,True,0,#225:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/128-directory-chip-clip,49dcdf15de,2026-09-30,True,0,#200:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/128-directory-placeholder,8ea3c614a3,2026-10-01,True,0,#214:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/128-e-offline-single-message,a3d79bceb8,2026-10-03,True,0,#233:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/128-e-unavailable-copy,edaf0eac7a,2026-10-03,True,0,#234:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/128-live-regions,ff6dd920d1,2026-10-01,True,0,#215:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/128-map-loading-failed-tests,5bebdedb91,2026-10-03,True,0,#242:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/128-marker-talkback-names,c4f2d0c487,2026-09-30,True,0,#202:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/128-nav-bar-cta-inset,5be7e37cda,2026-10-01,True,0,#218:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/128-rtl-chevrons,3cfaa6ee5c,2026-09-30,True,0,#204:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/128-sheetheader-close-a11y,2ac07585dd,2026-09-30,True,0,#194:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/128-svg-marker-paint,aa712908a3,2026-10-03,True,0,#232:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/133-data-maintenance,e4d1271f9b,2026-10-05,True,0,#276:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/139-recovery-notice,f7389d31fd,2026-10-05,True,0,#267:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/140-basemap-pipeline,e4f81224a0,2026-10-05,True,0,#278:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/140-bundled-basemap-install,58f44957ae,2026-10-05,True,0,#279:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/140-camera-handle,8996c5e43c,2026-10-05,True,0,#280:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/140-destination-focus,36458770d5,2026-10-05,True,0,#285:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/140-homescreen-maplibre,08993d9c0c,2026-10-05,True,0,#282:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/140-ijtema-map-design,460373375f,2026-10-05,True,0,#284:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/140-offline-acceptance-evidence,72c0d043c2,2026-10-05,True,0,#290:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/140-offline-renderer-poc,c5c014bec5,2026-10-05,True,0,#277:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/140-offline-visual-contract,920fa6f7dd,2026-10-05,True,0,#275:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/140-overlay-layers,fb45842cbc,2026-10-05,True,0,#281:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/140-remove-download-ux,574c38bd61,2026-10-05,True,0,#283:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/140-remove-google-maps-config,42b235a64d,2026-10-05,True,0,#289:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/140-remove-google-maps-sdk,d1d8c37b88,2026-10-05,True,0,#288:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/140-reroute-arrival,b844e720c4,2026-10-05,True,0,#287:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/140-route-reveal,23c3b759a5,2026-10-05,True,0,#286:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/144-follow-direction,e623ea0a77,2026-10-03,True,0,#248:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/145-data-retention,cf5e172b2a,2026-10-05,True,0,#274:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/148-foreground-only-config,902a77354c,2026-10-03,True,0,#253:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/153-first-launch-directory,1ca6b26826,2026-10-03,True,0,#247:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/157-last-known-live-region-test,c349464bec,2026-09-30,True,0,#195:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/157-marker-titles,2ad2815f31,2026-10-01,True,0,#213:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/157-place-category-label,c8ad8295bd,2026-10-03,True,0,#235:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/158-splash-handoff-background,66e45c8efa,2026-10-03,True,0,#236:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/159-welcome-app-name,537a7eeedd,2026-09-30,True,0,#196:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/159-welcome-benefit-copy,506370e689,2026-10-01,True,0,#216:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/161-join-failsafe,80ebf8f843,2026-10-05,True,0,#272:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/163-app-name,307191064c,2026-10-03,True,0,#249:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/163-perm-denied-title,faffa00c35,2026-10-01,True,0,#217:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/163-skip-button-target,75271b160f,2026-09-30,True,0,#198:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/177-get-directions-redesign,a6b1084fa3,2026-09-30,True,0,#187:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/190-overlay-exclusivity,8782b72cc6,2026-09-30,True,0,#193:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/200pct-drawer,0e229943e2,2026-10-06,True,0,#329:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/200pct-nav-banner,06243bdab0,2026-10-06,True,0,#330:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/208-control-stack-geometry,062ec40c51,2026-10-01,True,0,#221:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/208-f1-sheet-geometry,3902b6506e,2026-10-01,True,0,#223:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/208-f2-sheet-footer-geometry,4c2b83b40d,2026-10-01,True,0,#224:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/208-label-projection-crash,918b0eb392,2026-10-01,True,0,#219:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/208-map-setup-screen,3c3fd8f8e0,2026-10-01,True,0,#220:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/208-offline-banner-collision,cff9fd588e,2026-10-03,True,0,#243:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/222-camera-entry,bd850d167b,2026-10-03,True,0,#250:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/222-camera-ready-gate,49560e3d27,2026-10-03,True,0,#254:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/222-camera-replay,9b93bda2ae,2026-10-03,True,0,#258:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/222-destination-via-directory,5ddee4e4cd,2026-10-03,True,0,#238:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/222-directory-single-start-chooser,060e164e55,2026-10-03,True,0,#245:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/222-fallback-change-place,3f25e32b14,2026-10-04,True,0,#263:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/222-group-from-to-talkback,d3d3571e90,2026-10-03,True,0,#241:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/222-journey-audit,f0de7f1df0,2026-10-03,True,0,#237:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/222-manual-start-collapse,00bae6ca0f,2026-10-02,True,0,#229:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/222-offline-caption-dedupe,783c53526f,2026-10-02,True,0,#228:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/222-place-cta-short-window,55b8cf962c,2026-10-03,True,0,#257:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/222-plain-copy,761ff956c1,2026-10-03,True,0,#252:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/222-plain-language,3b3152b5d5,2026-10-03,True,0,#239:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/222-route-ready-from-to,00c398104e,2026-10-03,True,0,#240:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/222-start-copy,2afe0ec354,2026-10-03,True,0,#256:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/222-start-copy-cleanup,ee777418cb,2026-10-03,True,0,#246:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/222-start-direct-directory,765e853b25,2026-10-03,False,1,#244:CLOSED,REVIEW BEFORE DELETION,retained; remote branches are never deleted by this operation
+remote,claude/251-control-stack-deps,326d1d2436,2026-10-03,True,0,#255:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/259-config-changes,6619c3c03e,2026-10-04,True,0,#260:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/261-replay-queued-move,ddace9fc1c,2026-10-04,True,0,#261:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/262-font-scale-snap,c0d54e90b2,2026-10-04,True,0,#262:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/268-rnmaps-tracker-snapshot,89eef99ee1,2026-10-05,True,0,#269:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/301-arrival-inset,1bc70366ba,2026-10-06,True,0,#304:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/301-nav-route-clobber,b7119326c1,2026-10-06,True,0,#303:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/326-directions-header-scrolls,4f4c57ac3e,2026-10-06,True,0,#328:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/326-route-guide-narrow,693bbef394,2026-10-06,True,0,#327:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/93-route-continuity,e2620860fa,2026-10-05,True,0,#270:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/95-arrival-invariant,4ede363c7d,2026-10-05,True,0,#271:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/arrival-engine-ownership,4f083fdc44,2026-10-06,True,0,#308:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/contextual-permission,0e7755f32f,2026-10-06,True,0,#312:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/contextual-top-bar,387805da2a,2026-10-06,True,0,#315:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/copy-jargon-guard,6984497d9b,2026-10-06,True,0,#337:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/core-journey-contract-final-20261006,dc72152c23,2026-10-06,True,0,#348:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/core-journey-state-20261006,2b4d0f9f61,2026-10-06,True,0,#349:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/directions-peek,4d3ae25f49,2026-10-06,True,0,#317:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/directions-sheet-contract,5e3355c8f8,2026-10-07,True,0,#353:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/directory-one-tap,35b3651936,2026-10-06,True,0,#314:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/docs-canonical,b907a6e332,2026-10-07,False,2,,REVIEW BEFORE DELETION,retained; remote branches are never deleted by this operation
+remote,claude/docs-reconcile,6da2e26496,2026-10-06,True,0,#318:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/guide-detent-after-settle,dd7f70cd8e,2026-10-06,True,0,#324:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/guide-opens-top-detent,73399afdb6,2026-10-06,True,0,#323:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/i18n-core,f36320c098,2026-10-07,True,0,#352:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/i18n-node-safe,496530d3ef,2026-10-07,True,0,#356:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/journey-start-integration,07d8df1849,2026-10-06,True,0,#319:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/l10n-app-shell,b2f8faa229,2026-10-07,False,1,#355:CLOSED,REVIEW BEFORE DELETION,retained; remote branches are never deleted by this operation
+remote,claude/l10n-directory,6fcfbefb4e,2026-10-07,False,1,,REVIEW BEFORE DELETION,retained; remote branches are never deleted by this operation
+remote,claude/l10n-home-map,9f54b453f9,2026-10-07,False,1,,REVIEW BEFORE DELETION,retained; remote branches are never deleted by this operation
+remote,claude/l10n-navigation,06b1657c37,2026-10-07,False,3,,REVIEW BEFORE DELETION,retained; remote branches are never deleted by this operation
+remote,claude/l10n-sheets,5d40739b62,2026-10-07,False,2,,REVIEW BEFORE DELETION,retained; remote branches are never deleted by this operation
+remote,claude/lint-unused-test-imports,cb5cc51d93,2026-10-06,True,0,#339:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/live-autostart-integration,cdcb9e4093,2026-10-06,True,0,#321:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/location-capability-model,1ebd284f3d,2026-10-06,True,0,#310:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/location-plain-copy,48c1fa6292,2026-10-06,True,0,#336:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/map-controls-no-x,75cef87f05,2026-10-06,True,0,#316:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/offline-copy-cleanup,b3567a7542,2026-10-06,True,0,#335:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/outside-nav-phase-20261006,504e5a81b1,2026-10-06,True,0,#351:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/outside-peek-20261006,2be692b7e8,2026-10-06,True,0,#350:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/place-share-audit,124edf61e4,2026-10-07,True,0,#354:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/pmtiles-integrity,b329f3c069,2026-10-06,True,0,#309:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/post-arrival-directory-root,1b73f4cd57,2026-10-06,True,0,#313:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/reduced-motion-fade,0570f865de,2026-10-06,True,0,#331:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/route-guide-mode,f00ed74cd0,2026-10-06,True,0,#311:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/route-state-same-place,67d6c7a187,2026-10-06,True,0,#334:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/rtl-guide-chevrons,c72902ba9a,2026-10-06,True,0,#332:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/runtime-acceptance-fixes,fb7aad9995,2026-10-06,True,0,#320:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/sprint-close-docs,d16506a850,2026-10-06,True,0,#325:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/start-handler-reads-store,6748c1f693,2026-10-06,True,0,#322:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/status-card-first,e6311e6876,2026-10-06,True,0,#338:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/ui-about-map-data,3fdf6cd58b,2026-10-06,True,0,#346:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/ui-directions-presentation,daa4626f5e,2026-10-06,True,0,#347:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/ui-drawer-simplify,875e50f201,2026-10-06,True,0,#340:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/ui-recent-manage,3c18ac4b56,2026-10-06,True,0,#342:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/ui-settings-simplify,bcf3194551,2026-10-06,True,0,#344:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/ui-share-place,448f1eb7ad,2026-10-06,True,0,#343:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/ui-sheet-full-expansion,137d449ab0,2026-10-06,True,0,#345:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/ux-directory-only-chooser,c6d59e0bfd,2026-10-05,True,0,#292:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/ux-endpoint-rows-always,091f116a98,2026-10-05,True,0,#295:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/ux-live-origin-start,7d705128c4,2026-10-05,True,0,#300:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/ux-map-controls,54976d0b8a,2026-10-05,True,0,#294:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/ux-markers-direction,34df838180,2026-10-05,True,0,#296:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/ux-no-start-copy,f7236360e6,2026-10-05,True,0,#298:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/ux-reroute-comprehension,2773ff2e78,2026-10-05,True,0,#297:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/ux-route-ready-sheet,eb47a3560f,2026-10-05,True,0,#293:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/ux-start-match-policy,bd2847ec13,2026-10-05,True,0,#299:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,claude/ux-start-nav-state-machine,bab7e6d8ea,2026-10-05,True,0,#291:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,codex/119-core-benchmarks,db837c5b49,2026-09-30,True,0,#203:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,codex/120-collection-hydration,fa37f5fece,2026-10-01,True,0,#210:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,codex/120-core-cleanup,5bde968101,2026-09-30,True,0,#201:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,codex/120-navigation-gate-adapter,7671843b5a,2026-10-01,True,0,#211:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,codex/120-settings-hydration,a652d293df,2026-10-01,True,0,#207:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,codex/120-shared-distance,6608e3f09b,2026-10-01,True,0,#205:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,codex/123-walking-proxy,76bbe610a3,2026-10-01,True,0,#227:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,codex/125-osm-provenance,e386bfee9d,2026-10-01,True,0,#226:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,codex/130-ttfd-readiness-signal,0352c4ad6a,2026-10-04,True,0,#265:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,codex/139-unfinished-journey-marker,56dd211b0b,2026-10-05,True,0,#266:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,codex/142-route-start-ownership,4d7f4daf21,2026-10-01,True,0,#209:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,codex/149-v1-session-reset,f4138cf490,2026-09-30,True,0,#199:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,codex/183-hydration-runtime-guard,c788c15810,2026-09-30,True,0,#184:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,codex/185-gps-watch-generation,2df2c4112d,2026-09-30,True,0,#186:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,codex/188-v1-reroute-cancellation,d479963892,2026-09-30,True,0,#189:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,codex/191-gps-force-fix-lifecycle,43b729da00,2026-09-30,True,0,#192:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,codex/93-snap-continuity,e31484163c,2026-10-01,True,0,#212:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,codex/95-arrival-progress,0685bf47d8,2026-09-30,True,0,#197:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,codex/android-worklets-artifact-fix,86f81ee460,2026-09-29,True,0,#180:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,codex/core-journey-correction-20261006,fe557ae390,2026-10-06,True,0,#341:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,codex/gps-timestamp-freshness,3e1f779982,2026-09-30,True,0,#182:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,codex/journey-active-safety,e244a25bb8,2026-10-10,True,0,#359:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,codex/journey-app-shell-recovery,c833814dec,2026-10-11,True,0,#369:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,codex/journey-authority,cc6b26a765,2026-10-10,True,0,#358:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,codex/journey-block2-preview,81b39d270b,2026-10-11,True,0,#366:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,codex/journey-chooser-restoration,d1d408734e,2026-10-11,True,0,#365:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,codex/journey-destination-preview,660a7d57be,2026-10-10,True,0,#360:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,codex/journey-directions-lifecycle,5561087ff3,2026-10-10,True,0,#361:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,codex/journey-directory-localization,e21511a098,2026-10-11,True,0,#367:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,codex/journey-guidance-localization,143b23495d,2026-10-11,True,0,#373:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,codex/journey-guide-localization,e0901c4c5e,2026-10-11,True,0,#368:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,codex/journey-live-fast-path,3183af2e50,2026-10-10,True,0,#362:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,codex/journey-manual-upgrade,aed1323212,2026-10-11,True,0,#363:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,codex/journey-panel-localization,ae1e104ce7,2026-10-11,True,0,#372:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,codex/journey-permission-recovery,41bdf0fa25,2026-10-11,True,0,#364:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,codex/journey-readiness-evidence,399812ab7e,2026-10-11,True,0,#371:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,codex/journey-safety,7d72ca9e76,2026-10-10,True,0,#357:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,codex/phase-a-consolidation-evidence,34669b4f70,2026-10-11,True,0,#374:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,docs/115-evidence-ledger-reconciliation,a31ad2c2e9,2026-09-29,True,0,#175:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,docs/device-acceptance-checklist,b0ebae0687,2026-09-29,True,0,#176:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,docs/new-pc-migration-handoff,32513707ef,2026-09-29,False,2,#179:OPEN,PROTECTED,retained; remote branches are never deleted by this operation
+remote,docs/phase-a-single-checkout-evidence,08ce9e3db3,2026-10-12,True,0,#376:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,docs/post-merge-status-consistency,cf441551bb,2026-09-29,True,0,#167:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,docs/ticket-reconciliation-matrix,f67a4de912,2026-09-29,True,0,#138:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,docs/ui-ux-audit-reconciliation,96fdfbd562,2026-09-26,True,0,#152:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,feat/muslim-ummah-offline-navigation-sdk,ac0b3f8c15,2026-11-10,True,0,,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,feat/phase2-ui-fixes-consolidation,3ee3175fe9,2026-10-19,False,5,,REVIEW BEFORE DELETION,retained; remote branches are never deleted by this operation
+remote,fix/111-arrival-latch-exit-reset,e122ca5e24,2026-09-23,False,1,#112:MERGED,REVIEW BEFORE DELETION,retained; remote branches are never deleted by this operation
+remote,fix/113-reroute-cooldown-bleed,45930b2c2c,2026-09-23,False,1,#114:MERGED,REVIEW BEFORE DELETION,retained; remote branches are never deleted by this operation
+remote,fix/307-recovered-button-label-layout,138ae48423,2026-10-12,True,0,#375:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,fix/a1-08-fresh-fix-acquisition,2a56499987,2026-10-19,False,1,#381:OPEN,PROTECTED,retained; remote branches are never deleted by this operation
+remote,fix/a1-10-direct-guide-start-action,e909e55193,2026-10-19,True,0,#379:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,fix/a5-01-reroute-step-index,454975c639,2026-10-18,True,0,#377:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,fix/a5-02-arrival-authority-gate,494f832274,2026-10-18,True,0,#378:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,fix/android-reanimated-worklets-clean-build,0ad84acd33,2026-09-29,True,0,#165:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,fix/android12-splash-pin,46b44b42b5,2026-09-29,True,0,#173:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,fix/claude-ui-accessibility-sprint,f6f4ad6412,2026-09-29,True,0,#164:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,fix/issue-143-reroute-exception-reset,92008653da,2026-09-29,True,0,#166:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,fix/issue-147-reject-malformed-gps-fixes,a6368b5325,2026-09-29,True,0,#168:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,fix/issue-149-v1-lifecycle-reset,b9cf8c2a6c,2026-09-29,True,0,#170:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,fix/issue-160-manual-gate-retention,a4048c42b4,2026-09-26,True,0,#162:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,fix/issue-161-provider-endpoint-joins,6e042b6bd7,2026-09-29,True,0,#171:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,fix/nav-004-v1-resume-freshness,815f87df21,2026-09-29,True,0,#172:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,fix/v2-data-structural-validation,098306f0e8,2026-09-29,True,0,#121:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,integration/ijtema-clean-baseline,9c0fd50d74,2026-10-19,True,0,,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,main,42451f1bc9,2026-09-06,False,13,,PROTECTED,retained; remote branches are never deleted by this operation
+remote,test/139-process-death-characterization,4d5d09f9b4,2026-09-29,True,0,#174:MERGED,KEEP (remote),no remote deletion without owner authorization; fully merged into SDK branch
+remote,test/a5-03-arrival-radius-accuracy-characterization,ee54e60d6a,2026-10-19,False,1,#380:OPEN,PROTECTED,retained; remote branches are never deleted by this operation
+remote,wip/download-map-preserved-for-pc-migration,d559326378,2026-09-29,False,1,#178:OPEN,PROTECTED,retained; remote branches are never deleted by this operation
