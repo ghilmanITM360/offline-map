@@ -10,7 +10,7 @@ import type { VenueCoordinate, VenueDataSource } from '../domain/venue';
 
 export interface Feature<G, P> { type: 'Feature'; properties: P; geometry: G }
 export interface Collection<F> { type: 'FeatureCollection'; features: F[] }
-export type MarkerRole = 'place' | 'origin' | 'destination' | 'position';
+export type MarkerRole = 'place' | 'origin' | 'destination' | 'endpoint' | 'position';
 export type MarkerFeature = Feature<{ type: 'Point'; coordinates: [number, number] }, { id: string; role: MarkerRole }>;
 export type RouteFeature = Feature<{ type: 'LineString'; coordinates: [number, number][] }, Record<string, never>>;
 

@@ -5,6 +5,7 @@
 
 import type React from 'react';
 import type { Insets, StyleProp, ViewStyle } from 'react-native';
+import type { PlaceCatalog } from '../domain/catalog';
 import type { PlaceCategory } from '../domain/pack';
 import type { LiveStartBlocker, NavigationError, NavigationPhase, NavigationRoute } from '../domain/navigation';
 import type { VenueCoordinate, VenuePlace } from '../domain/venue';
@@ -39,6 +40,8 @@ export interface NavigationMapProps {
   onAvailabilityChange: (available: boolean) => void;
   /** The theme's appearance. Switching it must restyle the map in place, never remount it or move the camera. */
   colorScheme?: 'light' | 'dark';
+  /** The language tag the map labels use (`en`, `ur`, `ur-Latn`). Changing it relabels in place; the map is not remounted. */
+  language?: string;
   ref?: React.Ref<NavigationMapHandle>;
 }
 
@@ -187,6 +190,14 @@ export interface NavigationScreenProps {
   isRTL: boolean;
   /** Names a place, or returns null to leave it out of the directory. Without it the place id is shown. */
   describePlace?: (place: VenuePlace) => NavigationPlacePresentation | null;
+  /**
+   * The pack's place-catalog. Given, the directory lists every catalog place (blocks, gates, ilaqas, tents, facilities...), searchable in every
+   * language at once, with category filters, and says plainly when a place has no location yet or no verified route. Without it the directory is
+   * the venue's routable places named by `describePlace`, exactly as before.
+   */
+  catalog?: PlaceCatalog;
+  /** The language tag the catalog names and the map labels use (`en`, `ur`, `ur-Latn`). Default `en`. */
+  language?: string;
   /** The host's map. Omit for a directions-only screen. */
   MapComponent?: React.ComponentType<NavigationMapProps>;
   /** Offer live navigation at all. Default true; a controller without a location adapter reports it as unsupported. */

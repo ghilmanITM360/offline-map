@@ -8,3 +8,4 @@
 export * from './MapLibreNavigationMap';
 export * from './navigationOverlay';
 export * from './offlineBasemapStyle';
+export * from './venueOverlay';

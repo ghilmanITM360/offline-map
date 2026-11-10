@@ -4,7 +4,7 @@
  */
 
 import React, { useMemo } from 'react';
-import { FlatList, Platform, Pressable, StyleSheet, TextInput, useWindowDimensions, View } from 'react-native';
+import { FlatList, Platform, Pressable, ScrollView, StyleSheet, TextInput, useWindowDimensions, View } from 'react-native';
 import type { NavigationIcon } from './NavigationScreenTypes';
 import { Text } from './Text';
 
@@ -14,6 +14,15 @@ export interface PlaceDirectoryItem {
   title: string;
   subtitle?: string;
   searchTerms?: readonly string[];
+  /** A note under the title that is not a place name (e.g. "Location not yet available"). Read aloud after the title. */
+  note?: string;
+}
+
+/** Category filter chips shown above the search field. Presentation only: the host decides what a selection filters. */
+export interface PlaceDirectoryFilters {
+  chips: readonly { id: string; label: string }[];
+  selectedId: string;
+  onSelect: (id: string) => void;
 }
 
 export interface PlaceDirectoryLabels {
@@ -29,7 +38,7 @@ export interface PlaceDirectoryTheme {
   PlaceIcon: NavigationIcon;
   /** Already chosen for the reading direction: points to the end edge. */
   ForwardIcon: NavigationIcon;
-  colors: { fill: string; border: string; pressed: string; iconDisc: string; brand: string; headingText: string; secondaryText: string };
+  colors: { fill: string; border: string; pressed: string; iconDisc: string; brand: string; headingText: string; secondaryText: string; onBrand?: string };
 }
 
 export interface PlaceDirectoryProps {
@@ -42,6 +51,7 @@ export interface PlaceDirectoryProps {
   theme: PlaceDirectoryTheme;
   /** Content that scrolls away with the list, above the search field (large text: the screen's own header). */
   header?: React.ReactNode;
+  filters?: PlaceDirectoryFilters;
 }
 
 /** Case, width and composition-insensitive text for matching; never changes what is displayed. */
@@ -63,7 +73,7 @@ const TARGET = 48;
 const INPUT_FONT_SIZE = 16;
 
 // Presentation only: the host owns the places, their names and what choosing one does.
-export function PlaceDirectory({ items, query, onQueryChange, onSelect, labels, isRTL, theme, header }: PlaceDirectoryProps) {
+export function PlaceDirectory({ items, query, onQueryChange, onSelect, labels, isRTL, theme, header, filters }: PlaceDirectoryProps) {
   const { fontScale } = useWindowDimensions();
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const visible = useMemo(() => filterPlaceItems(items, query), [items, query]);
@@ -87,27 +97,41 @@ export function PlaceDirectory({ items, query, onQueryChange, onSelect, labels, 
       style={[styles.input, manualScale && { fontSize: INPUT_FONT_SIZE * fontScale }, text]}
     />
   );
+  const chips = filters && filters.chips.length > 1 ? (
+    <ScrollView testID="category-chips" horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={[styles.chips, isRTL && styles.chipsRtl]}>
+      {filters.chips.map((chip) => {
+        const selected = chip.id === filters.selectedId;
+        return (
+          <Pressable key={chip.id} testID={`category-chip-${chip.id}`} accessibilityRole="button" accessibilityState={{ selected }} accessibilityLabel={chip.label}
+            onPress={() => filters.onSelect(chip.id)} style={[styles.chip, selected && styles.chipSelected]}>
+            <Text style={[styles.chipText, selected && styles.chipTextSelected]}>{chip.label}</Text>
+          </Pressable>
+        );
+      })}
+    </ScrollView>
+  ) : null;
   return (
     <View testID="place-directory" style={styles.root}>
-      {header ? null : input}
+      {header ? null : <>{chips}{input}</>}
       <FlatList
         data={visible}
         keyExtractor={(item) => item.id}
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={styles.list}
-        ListHeaderComponent={header ? <View style={styles.headerStack}>{header}{input}</View> : undefined}
+        ListHeaderComponent={header ? <View style={styles.headerStack}>{header}{chips}{input}</View> : undefined}
         ListEmptyComponent={<Text accessibilityLiveRegion="polite" style={[styles.empty, text]}>{emptyMessage}</Text>}
         renderItem={({ item }) => (
           <Pressable
             style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
             onPress={() => onSelect(item.id)}
             accessibilityRole="button"
-            accessibilityLabel={item.subtitle ? `${item.title}. ${item.subtitle}` : item.title}
+            accessibilityLabel={[item.title, item.subtitle, item.note].filter(Boolean).join('. ')}
           >
             <View style={styles.disc}><PlaceIcon size={22} color={colors.brand} /></View>
             <View style={styles.flex}>
               <Text style={[styles.title, text]}>{item.title}</Text>
               {item.subtitle ? <Text style={[styles.subtitle, text]}>{item.subtitle}</Text> : null}
+              {item.note ? <Text style={[styles.note, text]}>{item.note}</Text> : null}
             </View>
             <ForwardIcon size={20} color={colors.secondaryText} />
           </Pressable>
@@ -134,5 +158,12 @@ const makeStyles = ({ colors }: PlaceDirectoryTheme) => StyleSheet.create({
   disc: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.iconDisc, alignItems: 'center', justifyContent: 'center' },
   title: { fontSize: 17, fontWeight: '700', color: colors.headingText },
   subtitle: { fontSize: 14, lineHeight: 20, color: colors.secondaryText },
+  chips: { gap: 8, paddingVertical: 2 },
+  chipsRtl: { flexDirection: 'row-reverse' },
+  chip: { minHeight: TARGET, minWidth: TARGET, paddingHorizontal: 14, borderRadius: TARGET / 2, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.fill, alignItems: 'center', justifyContent: 'center' },
+  chipSelected: { backgroundColor: colors.brand, borderColor: colors.brand },
+  chipText: { fontSize: 15, fontWeight: '600', color: colors.headingText },
+  chipTextSelected: { color: colors.onBrand ?? '#FFFFFF' },
+  note: { fontSize: 13, lineHeight: 18, fontWeight: '600', color: colors.secondaryText },
   empty: { fontSize: 16, lineHeight: 22, color: colors.secondaryText, paddingVertical: 12 },
 });

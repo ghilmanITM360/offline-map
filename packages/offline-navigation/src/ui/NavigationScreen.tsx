@@ -79,7 +79,7 @@ function deriveLeafThemes({ colors, icons, Button, radius, hitSlop }: Navigation
     },
     directory: {
       PlaceIcon: icons.Place, ForwardIcon: icons.Forward,
-      colors: { fill: colors.surface, border: colors.border, pressed: colors.pressed, iconDisc: colors.brandTint, brand: colors.brand, headingText: colors.text, secondaryText: colors.textSecondary },
+      colors: { fill: colors.surface, border: colors.border, pressed: colors.pressed, iconDisc: colors.brandTint, brand: colors.brand, headingText: colors.text, secondaryText: colors.textSecondary, onBrand: colors.onBrand },
     },
   };
 }
@@ -88,7 +88,7 @@ function deriveLeafThemes({ colors, icons, Button, radius, hitSlop }: Navigation
 // step and live status, and every button below is one controller command. What lives here is view-local only: the
 // search text, which chooser is open, the Manual-to-Live confirmation and whether the host's map said it is unavailable.
 export function NavigationScreen({
-  copy, theme, isRTL, describePlace, MapComponent, allowLive = true, reviewLiveRoute = true, bottomInset = 0, arrivalBottomInset, onClose, onTripEnded, style,
+  copy, theme, isRTL, describePlace, catalog, language = 'en', MapComponent, allowLive = true, reviewLiveRoute = true, bottomInset = 0, arrivalBottomInset, onClose, onTripEnded, style,
 }: NavigationScreenProps) {
   const controller = useNavigationController();
   const state = useNavigationState();
@@ -103,9 +103,29 @@ export function NavigationScreen({
   const large = useWindowDimensions().fontScale >= LARGE_TEXT_SCALE;
 
   const places = controller.listPlaces();
+  const [category, setCategory] = useState<string>('all');
   const presented = useMemo(() => {
     const titles = new Map<string, string>();
     const items: PlaceDirectoryItem[] = [];
+    if (catalog) {
+      // The catalog lists everything a person can look for, routable or not; each row says which. Search spans every language and alias.
+      const namesake = new Map<string, number>();
+      for (const place of catalog.list()) { const k = place.names.en.trim().toLowerCase(); namesake.set(k, (namesake.get(k) ?? 0) + 1); }
+      for (const place of catalog.list()) {
+        const title = catalog.displayName(place, language);
+        titles.set(place.id, title);
+        const availability = catalog.availability(place.id)!;
+        const where = [copy.directory.categories[place.category], place.marhala === undefined ? null : copy.directory.marhala(String(place.marhala))].filter(Boolean).join(' · ');
+        const note = availability.message === 'location_pending' ? copy.directory.availability.pending
+          : availability.message === 'unreachable' ? copy.directory.availability.unreachable
+          : availability.message === 'provisional_access' ? copy.directory.availability.provisional : undefined;
+        items.push({
+          id: place.id, title, subtitle: [where, (namesake.get(place.names.en.trim().toLowerCase()) ?? 0) > 1 ? `${copy.directory.sameName} (${place.id})` : null].filter(Boolean).join(' · '),
+          ...(note ? { note } : {}), searchTerms: [...Object.values(place.names), ...place.aliases, place.id, place.category],
+        });
+      }
+      return { titles, items };
+    }
     for (const place of places) {
       const named = describePlace ? describePlace(place) : { title: place.id };
       if (!named) continue;
@@ -113,7 +133,13 @@ export function NavigationScreen({
       items.push({ id: place.id, ...named });
     }
     return { titles, items };
-  }, [places, describePlace]);
+  }, [places, describePlace, catalog, language, copy.directory]);
+  const categoryChips = useMemo(() => {
+    if (!catalog) return [];
+    const present = new Set(catalog.list().map((p) => p.category));
+    return [{ id: 'all', label: copy.directory.categories.all }, ...Object.keys(copy.directory.categories).filter((c) => c !== 'all' && present.has(c as never)).map((c) => ({ id: c, label: copy.directory.categories[c as keyof typeof copy.directory.categories] }))];
+  }, [catalog, copy.directory.categories]);
+  const inCategory = (item: PlaceDirectoryItem) => category === 'all' || !catalog || catalog.get(item.id)?.category === category;
   const titleOf = (id: string | null) => (id === null ? '' : presented.titles.get(id) ?? id);
 
   const { phase, destinationId, route, liveAttempt, live } = state;
@@ -171,7 +197,9 @@ export function NavigationScreen({
     const origin = kind === 'origin';
     const onBack = browsing ? onClose : closePicker;
     const title = origin ? copy.directory.originTitle : copy.directory.destinationTitle;
-    const listed = presented.items.filter((item) => item.id !== destinationId);
+    // A start has to be somewhere a route can begin; a place that is only listed (pending, unreachable) can be searched for but not started from.
+    const listed = presented.items.filter((item) => item.id !== destinationId && (!catalog || catalog.availability(item.id)?.canRoute));
+    const shown = (browsing ? presented.items : listed).filter(inCategory);
     const header = onBack ? (
       <DirectionsHeader
         title={title}
@@ -192,13 +220,14 @@ export function NavigationScreen({
     const error = browsing && state.error ? <Text accessibilityLiveRegion="polite" style={[styles.subtitle, text, large && styles.bleedPad]}>{copy.trip.errors[state.error]}</Text> : null;
     const places = (
       <PlaceDirectory
-        items={browsing ? presented.items : listed}
+        items={shown}
         query={query}
         onQueryChange={setQuery}
         onSelect={choose}
         labels={copy.directory}
         isRTL={isRTL}
         theme={leaf.directory}
+        filters={catalog && categoryChips.length > 1 ? { chips: categoryChips, selectedId: category, onSelect: setCategory } : undefined}
         header={large ? <View style={styles.headerBleed}>{header}{error}</View> : undefined}
       />
     );
@@ -297,6 +326,7 @@ export function NavigationScreen({
               </View>
             ) : null}
             {status ? <Text style={[styles.subtitle, text]}>{status}</Text> : null}
+            {ready && destinationId !== null && catalog?.availability(destinationId)?.status === 'provisional' ? <Text testID="navigation-provisional" style={[styles.subtitle, text]}>{copy.trip.provisionalAccess}</Text> : null}
           </View>
           {loadState === 'error' ? <Button label={copy.trip.retry} variant="brandTint" onPress={retry} /> : null}
           {state.canStartGuide ? (
@@ -454,6 +484,7 @@ export function NavigationScreen({
             stepIndex={state.stepIndex}
             onAvailabilityChange={setMapAvailable}
             colorScheme={theme.colorScheme ?? 'light'}
+            language={language}
           />
           {showRecenter ? (
             <Pressable testID="navigation-recenter" onPress={recenter} accessibilityRole="button" accessibilityLabel={copy.live.recenterA11y} style={styles.recenter}>
