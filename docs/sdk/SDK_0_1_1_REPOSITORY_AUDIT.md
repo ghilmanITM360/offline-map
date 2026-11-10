@@ -435,3 +435,7 @@ npm run sdk:doctor -- --build # + typecheck, package proof, both delivery builds
 ```
 
 Everything needed is in Git; nothing is fetched from another Mac or from expiring CI artifacts. Not in Git by design: `.env`, signing keys, `android/local.properties`, build outputs, historical audit evidence (kept in `~/Documents/offline-map-audits/`, hashes recorded above). The basemap rights disposition (R10) is still an owner decision; the external delivery still contains it.
+
+## R19. Continuation checkpoint (2026-11-11)
+
+**Not run in this pass, by decision of capacity, not by failure:** Android emulator and iOS simulator journeys on a binary containing the three production-review fixes (R14: far-Live freeze, fold ratchet, Urdu screen search); the optional Expo entrypoint (R9, next-version work); a second-Mac run; the `sdk-v0.1.1` tag (owner authorisation needed). No native, physical-device or field acceptance is claimed. This Mac now has Xcode 26.2 with an iOS 26.2 simulator runtime and CocoaPods 1.16.2 (a `ffi` gem warning appears), so the iOS build that was blocked on 2026-11-03 is worth retrying first. Next session: build the internal delivery consumer from `delivery-<sha>`, then one platform at a time with a bounded timeout and retry budget; record results here under a new R-section, not a new file.
