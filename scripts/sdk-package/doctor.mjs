@@ -32,7 +32,7 @@ for (const f of ['karachi-ijtema-1.1.0.pin.json', 'synthetic-demo-venue-1.1.0.pi
 const dirty = sh('git', ['status', '--porcelain', '--untracked-files=no']).stdout.trim();
 check('tracked tree clean (delivery builds name their source commit)', dirty === '', dirty ? 'tracked files differ from HEAD' : '');
 
-const tool = (name, cmd, args) => { const r = sh(cmd, args); check(`${name} (native builds only)`, r.status === 0, (r.stdout || r.stderr).split('\n')[0], true); };
+const tool = (name, cmd, args) => { const r = sh(cmd, args); check(`${name} (native builds only)`, r.status === 0, String(r.stdout || r.stderr || "not installed").split('\n')[0], true); };
 tool('Xcode', 'xcodebuild', ['-version']);
 tool('Java', 'java', ['-version']);
 tool('CocoaPods', 'pod', ['--version']);
