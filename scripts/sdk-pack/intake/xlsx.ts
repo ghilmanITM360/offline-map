@@ -60,7 +60,10 @@ const read = (buf: Buffer, e: Entry): string => {
 
 const decode = (s: string): string =>
   s.replace(/&(#x[0-9a-fA-F]+|#\d+|amp|lt|gt|quot|apos);/g, (_, g: string) => {
-    if (g[0] === '#') return String.fromCodePoint(g[1] === 'x' ? parseInt(g.slice(2), 16) : parseInt(g.slice(1), 10));
+    if (g[0] === '#') {
+      const cp = g[1] === 'x' ? parseInt(g.slice(2), 16) : parseInt(g.slice(1), 10);
+      return cp > 0x10ffff ? bad('not-xlsx', `a character reference is not a Unicode code point: &${g};`) : String.fromCodePoint(cp);
+    }
     return ({ amp: '&', lt: '<', gt: '>', quot: '"', apos: "'" } as Record<string, string>)[g];
   });
 // Elements may carry any namespace prefix (`<x:row>` from the Open XML SDK as well as plain `<row>`), so every pattern allows one.

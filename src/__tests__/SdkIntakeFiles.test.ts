@@ -54,6 +54,12 @@ describe('xlsx reader', () => {
     expect(refused(xlsx(grid, [{ name: 'xl/sharedStrings.xml', data: '<!DOCTYPE x [<!ENTITY a "b">]><sst/>' }]))).toBe('active-content');
     expect(readXlsx(ok)).toHaveLength(1);
   });
+  it('refuses a character reference that is not a Unicode code point with a reader error, not a raw RangeError', () => {
+    const sheet = (v: string) => ({ name: 'xl/worksheets/sheet1.xml', data: `<?xml version="1.0"?><worksheet><sheetData><row r="1"><c r="A1" t="inlineStr"><is><t>${v}</t></is></c></row></sheetData></worksheet>` });
+    expect(refused(xlsx(grid, [sheet('&#x110000;')]))).toBe('not-xlsx');
+    expect(refused(xlsx(grid, [sheet('&#99999999;')]))).toBe('not-xlsx');
+    expect(readXlsx(xlsx(grid, [sheet('&#x41;&#66;')]))[0].rows[0][0]).toBe('AB');
+  });
 });
 
 describe('import -> review -> merge -> compile -> verify (CLI, real Karachi preset base)', () => {
