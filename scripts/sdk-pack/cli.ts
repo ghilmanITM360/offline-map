@@ -17,6 +17,7 @@ import {
 } from '../../packages/offline-navigation/src/index';
 import { compilePack, pinFor, PackCompileError, type PackBuildSpec } from './compile';
 import { createNodePackFileSystem } from './nodePackFileSystem';
+import { checkBounds, checkGateCoordinates, checkGraphCoordinates, checkTranslations, emptyFindings, type Findings } from './dataChecks';
 import { createPackOutput } from './output';
 
 declare const SDK_VERSION: string; // injected when the tool is bundled; the repository build reads the package instead
@@ -84,13 +85,18 @@ const readJson = (dir: string, path: string): string => {
 };
 
 /** Semantic checks on the venue data itself. `errors` stop the build; `warnings` are real findings that can be intentional. */
-export const checkVenueData = (read: (path: string) => string, spec: Pick<PackBuildSpec, 'resources' | 'venueId' | 'languages'>): { errors: string[]; warnings: string[] } => {
+export const checkVenueData = (read: (path: string) => string, spec: Pick<PackBuildSpec, 'resources' | 'venueId' | 'languages' | 'bounds'>): Findings => {
   const pathOf = (kind: string): string => spec.resources.find((r) => r.kind === kind)?.path ?? fail('required-resource-missing', `no '${kind}' resource`);
   const parsed = parsePackVenueData(read(pathOf('routing-graph')), read(pathOf('place-directory')), spec.venueId);
-  if (!parsed.ok) return { errors: [`${parsed.error.path ?? 'venue data'}: ${parsed.error.message}`], warnings: [] };
+  if (!parsed.ok) return { ...emptyFindings(), errors: [`${parsed.error.path ?? 'venue data'}: ${parsed.error.message}`] };
   const { source } = parsed;
-  const errors = validateVenueGraph(source.graph);
-  const warnings: string[] = [];
+  const found = emptyFindings();
+  const { errors, warnings } = found;
+  errors.push(...validateVenueGraph(source.graph));
+  checkBounds(spec.bounds, found);
+  checkGraphCoordinates(source, spec.bounds, pathOf('routing-graph'), found);
+  checkGateCoordinates(read(pathOf('gate-metadata')), spec.bounds, pathOf('gate-metadata'), found);
+  checkTranslations(read(pathOf('localization')), source, spec.languages, pathOf('localization'), found);
   if (source.placeIds().length === 0) errors.push('the place directory is empty: a venue needs at least one place');
 
   // Routing quality: the A* heuristic is the straight-line distance, so an edge cheaper than the straight line makes routes suboptimal.
@@ -117,7 +123,7 @@ export const checkVenueData = (read: (path: string) => string, spec: Pick<PackBu
       for (const lang of Object.keys(entry.names ?? {})) if (!spec.languages.includes(lang)) warnings.push(`localization for '${String(entry.id)}' uses language '${lang}', which the spec does not declare`);
     }
   } catch { /* the compiler already requires this file to be JSON naming the venue */ }
-  return { errors, warnings };
+  return found;
 };
 
 const flagValue = (args: string[], name: string): string | undefined => {
@@ -140,6 +146,7 @@ async function compile(args: string[], io: Io): Promise<void> {
   const checked = checkVenueData((p) => readJson(input, p), spec);
   const strict = args.includes('--strict');
   for (const w of checked.warnings) io.err(`warning: ${w}`);
+  for (const r of checked.review) io.err(`review: ${r}`);
   if (checked.errors.length || (strict && checked.warnings.length)) {
     for (const e of checked.errors) io.err(`error: venue-data-invalid: ${e}`);
     throw new ToolError('venue-data-invalid', `${checked.errors.length + (strict ? checked.warnings.length : 0)} problem(s) in the venue data; nothing was written`, 'Fix the listed items in routing-graph.json / place-directory.json.');
@@ -186,6 +193,7 @@ async function verify(args: string[], io: Io): Promise<void> {
   if (pin !== undefined && pin.toLowerCase() !== manifestSha) fail('pin-mismatch', `manifest sha-256 is ${manifestSha}, not the pin ${pin}`);
   const checked = checkVenueData((p) => readFileSync(join(dir, p), 'utf8'), result.manifest);
   for (const w of checked.warnings) io.err(`warning: ${w}`);
+  for (const r of checked.review) io.err(`review: ${r}`);
   if (checked.errors.length) fail('venue-data-invalid', checked.errors.join('; '));
   io.out(`ok: ${result.manifest.packId} verifies (${result.manifest.fileCount} files, manifest sha-256 ${manifestSha})`);
 }

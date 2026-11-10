@@ -9,6 +9,7 @@ export * from './domain/algorithms/MinHeap';
 // Explicit: SpatialGrid also re-exports a haversineM that would collide with VenueRouting's public one.
 export { SpatialGrid, haversineM as spatialHaversineM, type SpatialGridPoint } from './domain/geo/SpatialGrid';
 export * from './domain/geo/isValidCoordinate';
+export * from './domain/geo/geometry';
 export * from './domain/journey';
 export * from './domain/navigation';
 export * from './domain/pack';
