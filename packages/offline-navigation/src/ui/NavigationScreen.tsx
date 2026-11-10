@@ -286,6 +286,8 @@ export function NavigationScreen({
   const preview = () => {
     const { loadState } = state;
     const ready = loadState === 'ready' && route !== null;
+    // A destination that can never be routed to (no verified connector, no location) offers nothing: no Live, no Try again, only the explanation.
+    const cannotRoute = loadState === 'error' && (state.error === 'destination_unreachable' || state.error === 'destination_not_located');
     const originName = state.originId === null ? null : titleOf(state.originId);
     const status = loadState === 'needs_origin' ? copy.trip.needsOrigin
       : loadState === 'same_place' ? copy.trip.samePlace
@@ -330,7 +332,7 @@ export function NavigationScreen({
             {status ? <Text style={[styles.subtitle, text]}>{status}</Text> : null}
             {ready && destinationId !== null && catalog?.availability(destinationId)?.status === 'provisional' ? <Text testID="navigation-provisional" style={[styles.subtitle, text]}>{copy.trip.provisionalAccess}</Text> : null}
           </View>
-          {loadState === 'error' ? <Button label={copy.trip.retry} variant="brandTint" onPress={retry} /> : null}
+          {loadState === 'error' && !cannotRoute ? <Button label={copy.trip.retry} variant="brandTint" onPress={retry} /> : null}
           {state.canStartGuide ? (
             <StartOptionCard
               icon={<icons.Guide size={24} color={colors.brand} />}
@@ -340,9 +342,9 @@ export function NavigationScreen({
               theme={leaf.option}
             />
           ) : null}
-          {allowLive && !candidate ? liveOption() : null}
-          {allowLive && candidate ? upgradeCard('idle') : null}
-          {allowLive ? entryGates(true) : null}
+          {allowLive && !cannotRoute && !candidate ? liveOption() : null}
+          {allowLive && !cannotRoute && candidate ? upgradeCard('idle') : null}
+          {allowLive && !cannotRoute ? entryGates(true) : null}
         </View>
       </>
     );

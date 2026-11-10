@@ -90,6 +90,8 @@ describe('choosing a place that cannot be routed to', () => {
     expect(controller.getState()).toMatchObject({ loadState: 'error', error: 'destination_not_located', route: null, canStartGuide: false });
     expect(screen.getByText(copy.trip.errors.destination_not_located)).toBeTruthy();
     expect(screen.queryByText(copy.trip.startGuide.title)).toBeNull();
+    expect(screen.queryByText(copy.trip.startLive.title)).toBeNull();
+    expect(screen.queryByText(copy.trip.retry)).toBeNull();
   });
   it('Gate 18 explains the missing verified connection instead of offering a route', async () => {
     const controller = await mount();
@@ -97,6 +99,10 @@ describe('choosing a place that cannot be routed to', () => {
     await act(async () => { fireEvent.press(row(/Gate 18/)); });
     expect(controller.getState()).toMatchObject({ error: 'destination_unreachable', route: null });
     expect(screen.getByText(copy.trip.errors.destination_unreachable)).toBeTruthy();
+    // Nothing that cannot succeed is offered: not Live from my location (it ended in a second, misleading "no route found"), not Try again.
+    expect(screen.queryByText(copy.trip.startLive.title)).toBeNull();
+    expect(screen.queryByText(copy.trip.retry)).toBeNull();
+    expect(screen.queryByText(copy.trip.startGuide.title)).toBeNull();
   });
   it('a block routes, and the screen says the route ends at the block boundary, not at an entrance', async () => {
     const controller = await mount();
