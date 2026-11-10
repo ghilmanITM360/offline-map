@@ -168,7 +168,8 @@ export interface NavigationScreenCopy {
     recenter: string;
     recenterA11y: string;
   };
-  arrival: { title: string; subtitle: string; recenter: string; recenterA11y: string; done: string; doneA11y: string };
+  /** `provisionalTitle`/`provisionalSubtitle` replace the title/subtitle when the route ended at an unverified block boundary (catalog status 'provisional'). */
+  arrival: { title: string; subtitle: string; provisionalTitle?: string; provisionalSubtitle?: string; recenter: string; recenterA11y: string; done: string; doneA11y: string };
   mapUnavailable: string;
   /**
    * Wording for the entry-gate chooser. Optional: without it the screen never shows one, whatever gates the controller's outside-route

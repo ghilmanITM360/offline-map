@@ -12,6 +12,8 @@ export interface RouteStepCopy {
   turnLeft: string;
   turnRight: string;
   arrive: (destinationLabel: string) => string;
+  /** Optional: spoken/written when the route ends at an unverified block boundary rather than a surveyed entrance. Without it `arrive` is used. */
+  arriveAtEdge?: (destinationLabel: string) => string;
   meters: (metres: number) => string;
   /** Receives a one-decimal string such as "1.5". */
   kilometers: (kilometres: string) => string;
@@ -25,10 +27,10 @@ export function formatDistance(metres: number, copy: RouteStepCopy): string | nu
 }
 
 /** Maps a controller step onto the props the RouteGuideCard already takes. */
-export function describeRouteStep(step: RouteStep, copy: RouteStepCopy, destinationLabel: string): RouteGuideCardStep {
+export function describeRouteStep(step: RouteStep, copy: RouteStepCopy, destinationLabel: string, endsAtBoundary = false): RouteGuideCardStep {
   switch (step.kind) {
     case 'arrive':
-      return { instruction: copy.arrive(destinationLabel), distance: null };
+      return { instruction: endsAtBoundary && copy.arriveAtEdge ? copy.arriveAtEdge(destinationLabel) : copy.arrive(destinationLabel), distance: null };
     case 'turn_left':
       return { instruction: copy.turnLeft, distance: formatDistance(step.distanceM, copy) };
     case 'turn_right':

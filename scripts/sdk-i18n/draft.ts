@@ -11,6 +11,7 @@ export interface DraftWording { ur: string; urLatn: string }
 
 export const DRAFT_WORDING: Readonly<Record<string, DraftWording>> = {
   'routeStep.arrive': { ur: 'آپ {0} پہنچ گئے ہیں', urLatn: 'Aap {0} pahunch gaye hain' },
+  'routeStep.arriveAtEdge': { ur: 'آپ {0} کے کنارے پہنچ گئے ہیں', urLatn: 'Aap {0} ke kinare pahunch gaye hain' },
   'routeStep.meters': { ur: '{0} میٹر', urLatn: '{0} meter' },
   'routeStep.kilometers': { ur: '{0} کلومیٹر', urLatn: '{0} kilometer' },
   'directory.destinationTitle': { ur: 'کہاں جانا ہے؟', urLatn: 'Kahan jana hai?' },
@@ -66,6 +67,8 @@ export const DRAFT_WORDING: Readonly<Record<string, DraftWording>> = {
   'live.recenterA11y': { ur: 'نقشے کو راستے کے مرکز پر لائیں', urLatn: 'Naqshe ko raste ke markaz par laayein' },
   'arrival.title': { ur: 'آپ پہنچ گئے ہیں', urLatn: 'Aap pahunch gaye hain' },
   'arrival.subtitle': { ur: 'رہنمائی مکمل ہو گئی', urLatn: 'Rehnumai mukammal ho gayi' },
+  'arrival.provisionalTitle': { ur: 'آپ بلاک کی حد تک پہنچ گئے ہیں', urLatn: 'Aap block ki hadd tak pahunch gaye hain' },
+  'arrival.provisionalSubtitle': { ur: 'یہ بلاک کا کنارہ ہے، تصدیق شدہ داخلی راستہ نہیں۔', urLatn: 'Yeh block ka kinara hai, tasdeeq shuda dakhli rasta nahin.' },
   'arrival.recenterA11y': { ur: 'نقشے کو مرکز پر لائیں', urLatn: 'Naqshe ko markaz par laayein' },
   'arrival.doneA11y': { ur: 'رہنمائی مکمل کریں', urLatn: 'Rehnumai mukammal karein' },
   mapUnavailable: { ur: 'نقشہ دکھایا نہیں جا سکتا۔ ہدایات اب بھی کام کرتی ہیں۔', urLatn: 'Naqsha dikhaya nahin ja sakta. Hidayat ab bhi kaam karti hain.' },

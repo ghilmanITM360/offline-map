@@ -119,6 +119,7 @@ fires. It owns no navigation state. Hooks: `useNavigationController()`, `useNavi
 | `allowLive` | Default true. |
 | `bottomInset` | Safe-area bottom inset for the panel, default 0. Pass `insets.bottom` when the screen is the bottom-most thing on the page and `0` when your own bar sits below it and already clears the system bar. |
 | `arrivalBottomInset` | Bottom inset for the arrival sheet, default `bottomInset`. The sheet is a Modal window that draws under the system navigation bar, so pass `insets.bottom` here even when `bottomInset` is `0`. |
+| Provisional arrival wording | When `catalog` marks the destination `provisional` (the route ends at an unverified block boundary), the spoken/written final step uses `routeStep.arriveAtEdge(destination)` and the arrival card uses `arrival.provisionalTitle` / `arrival.provisionalSubtitle` instead of "You have arrived". All three are optional copy fields; without them the generic wording is used. |
 | `onClose`, `onTripEnded('exit'\|'arrived')`, `style` | Navigation hooks; `style` goes on the root so you add safe-area padding. |
 
 The screen owns the journey UI (directory and search, start chooser, preview, Manual Guide, explicit Live, entry-gate chooser, GPS weak/lost,

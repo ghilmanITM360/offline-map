@@ -144,6 +144,8 @@ export function NavigationScreen({
 
   const { phase, destinationId, route, liveAttempt, live } = state;
   const destination = titleOf(destinationId);
+  // A legacy block-edge destination ends at an unverified boundary point: arrival wording must not claim an entrance.
+  const endsAtBoundary = destinationId !== null && catalog?.availability(destinationId)?.status === 'provisional';
   const activePicker = phase !== 'browsing' && picker?.sessionId === state.sessionId ? picker.kind : null;
   const confirming = phase === 'guide' && confirmSession === state.sessionId && allowLive;
   const direction = isRTL ? 'rtl' : 'ltr';
@@ -154,7 +156,7 @@ export function NavigationScreen({
 
   // iOS has no live regions, so VoiceOver is told about GPS loss/recovery, reroutes and each new instruction explicitly (Android keeps the live regions).
   const liveStep = phase === 'live' && route && live ? route.steps[state.stepIndex] : undefined;
-  const spoken = liveStep ? describeRouteStep(liveStep, copy.routeStep, destination) : null;
+  const spoken = liveStep ? describeRouteStep(liveStep, copy.routeStep, destination, endsAtBoundary) : null;
   const spokenDistance = liveStep && live && liveStep.kind !== 'arrive' ? formatDistance(live.maneuverDistanceM, copy.routeStep) : null;
   useSafetyAnnouncements({
     active: liveStep !== undefined,
@@ -373,7 +375,7 @@ export function NavigationScreen({
     const upgradePhase = !confirming && !candidate ? 'idle' : requesting ? 'acquiring' : liveAttempt.status === 'blocked' ? 'failed' : 'confirming';
     const heading = <Text accessibilityRole="header" maxFontSizeMultiplier={HEADING_MAX_FONT_SCALE} style={[styles.plainTitle, text]}>{copy.trip.title(destination)}</Text>;
     const guideProps = {
-      step: describeRouteStep(route.steps[state.stepIndex], copy.routeStep, destination),
+      step: describeRouteStep(route.steps[state.stepIndex], copy.routeStep, destination, endsAtBoundary),
       stepIndex: state.stepIndex,
       stepTotal: route.steps.length,
       onPrevious: () => controller.previousStep(),
@@ -419,7 +421,7 @@ export function NavigationScreen({
     if (!route || !live) return { body: null, scroll: false };
     const step = route.steps[state.stepIndex];
     // While live, a step's distance is what is left of it, not its whole length.
-    const described = describeRouteStep(step, copy.routeStep, destination);
+    const described = describeRouteStep(step, copy.routeStep, destination, endsAtBoundary);
     const distance = step.kind === 'arrive' ? null : formatDistance(live.maneuverDistanceM, copy.routeStep);
     const notice = live.notice === 'rerouted' ? copy.live.rerouted : live.notice === 'kept_route' ? copy.live.keptRoute : null;
     const exit = <Button label={copy.live.exit} variant="outline" onPress={() => endTrip('exit')} />;
@@ -502,7 +504,8 @@ export function NavigationScreen({
       <ArrivalCard
         visible={phase === 'arrived'}
         destination={destination}
-        labels={copy.arrival}
+        labels={endsAtBoundary && copy.arrival.provisionalTitle && copy.arrival.provisionalSubtitle
+          ? { ...copy.arrival, title: copy.arrival.provisionalTitle, subtitle: copy.arrival.provisionalSubtitle } : copy.arrival}
         bottomInset={arrivalBottomInset ?? bottomInset}
         onRecenter={recenter}
         onDone={() => endTrip('arrived')}

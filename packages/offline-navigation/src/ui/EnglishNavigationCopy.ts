@@ -11,6 +11,7 @@ export const ENGLISH_ROUTE_STEP_COPY: RouteStepCopy = {
   turnLeft: 'Turn left',
   turnRight: 'Turn right',
   arrive: (destinationLabel) => `You have arrived at ${destinationLabel}`,
+  arriveAtEdge: (destinationLabel) => `You have reached the edge of ${destinationLabel}`,
   meters: (metres) => `${metres} m`,
   kilometers: (kilometres) => `${kilometres} km`,
 };
@@ -115,6 +116,8 @@ export const ENGLISH_NAVIGATION_SCREEN_COPY: NavigationScreenCopy = {
   arrival: {
     title: 'You have arrived',
     subtitle: 'Navigation complete',
+    provisionalTitle: 'You have reached the block boundary',
+    provisionalSubtitle: 'This is the edge of the block, not a verified entrance.',
     recenter: 'Recenter',
     recenterA11y: 'Recenter map',
     done: 'Done',

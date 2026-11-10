@@ -3,7 +3,9 @@ import { AccessibilityInfo, Dimensions, Platform, View } from 'react-native';
 import { act, fireEvent, render, screen, within } from './test-utils';
 import {
   createNavigationController,
+  createPlaceCatalog,
   findBestVenuePath,
+  parsePackPlaceCatalog,
   type LiveFixCoordinate,
   type LocationPermissionInput,
   type NavigationController,
@@ -654,6 +656,36 @@ describe('NavigationScreen: GPS loss, reroute, arrival and Exit while live (simu
     expect(c.getState()).toMatchObject({ phase: 'browsing', route: null, live: null });
     expect(onTripEnded).toHaveBeenCalledWith('arrived');
     expect(screen.getByText(copy.directory.destinationTitle)).toBeOnTheScreen();
+  });
+
+  // A legacy block-edge destination (provisional access) ends at the edge of the block, so neither the spoken step nor the arrival card may say
+  // the walker has arrived in or at the block as if a verified entrance had been reached.
+  it('arrival at a provisional (block-edge) destination says it is the edge of the block, not an entrance', async () => {
+    const place = (id: string, en: string, routing: 'routable' | 'provisional', nodeIds: string[]) => ({
+      id, category: 'block', names: { en }, aliases: [], location: routing === 'routable' ? 'verified' : 'provisional', routing,
+      ...(routing === 'routable' ? {} : { routingReason: 'LEGACY_BOUNDARY_ACCESS' }),
+      coordinate: { lat: 24.9, lng: 67.1 }, nodeIds, provenance: { source: 'test' }, flags: [],
+    });
+    const parsed = parsePackPlaceCatalog(JSON.stringify({
+      schemaVersion: 1, venueId: 'synthetic', places: [place('lobby', 'Main Lobby', 'routable', ['n/1']), place('annex', 'Annex Wing', 'provisional', ['n/5', 'n/3'])],
+    }));
+    if (!parsed.ok) throw new Error(parsed.error.message);
+    const cat = createPlaceCatalog(parsed.catalog);
+    const L = simulatedLocation();
+    const c = ctrl({ location: L, availability: cat.availability });
+    await mount(c, { catalog: cat });
+    await fireEvent.press(screen.getByRole('button', { name: /Annex Wing/ }));
+    await press(liveOption);
+    await screen.findByText(copy.live.exit);
+    await walk(L, offset(N1, 56, 0));
+    await walk(L, N3);
+    expect(c.getState().phase).toBe('arrived');
+    expect(await screen.findByText(copy.arrival.provisionalTitle!)).toBeOnTheScreen();
+    expect(screen.getByText(copy.arrival.provisionalSubtitle!)).toBeOnTheScreen();
+    expect(screen.queryByText(copy.arrival.title)).toBeNull();
+    expect(screen.queryByText(copy.arrival.subtitle)).toBeNull();
+    expect(copy.arrival.provisionalSubtitle).toMatch(/not a verified entrance/i);
+    expect(screen.getByText('Annex Wing')).toBeOnTheScreen();
   });
 
   const flatStyle = (style: unknown) => Object.assign({}, ...[style].flat(3).filter(Boolean));
