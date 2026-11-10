@@ -92,7 +92,7 @@ Behavioural check for R1: the old and new search were compared on the real Karac
 | External delivery `delivery-f8f4cf8-external` (81 entries), archive `c244cb2d418ab9dad9c41504032687575b15172853438ccabab680f9c80e17ab`, members `24a186d3…560` | 13-step client acceptance VERIFIED PASS |
 | Profile separation | internal holds the 8 Karachi pack files; external holds none. Both ship the shared basemap `karachi-basemap.pmtiles` (rights decision, below) |
 | Venue tool manifest | `11665a6c…d32` in both profiles |
-| Hosted CI | `ac0b3f8` SUCCESS (before this pass); the commits of this pass are checked after the push (result recorded below) |
+| Hosted CI | `ac0b3f8` SUCCESS (before this pass); the commits of this pass were checked after the push: SUCCESS on `f604386`, the commit that added this file (a later doc-only commit has its own run, not claimed) |
 
 Candidate 3 identities from earlier (`delivery-b74aa4a`, native binaries) are retained as history. The SDK tarball changed from the native-tested `5d5bdb3f…` to `d914fbe3…` because `PlaceCatalog.ts` changed.
 
