@@ -11,7 +11,7 @@ Current snapshot only. This file is replaced on each update, not appended to —
 
 - The map is fully offline (bundled, hash-verified PMTiles basemap; ADR 0001). Core navigation needs no network and no Google key.
 - Launch is Splash -> Welcome (first time only) -> Directory. Location is never a launch gate. The Directory is the one place chooser; a tap means "take me here" (live navigation, Route Guide, or a contextual "Where are you starting from?").
-- Route Guide (manual FROM + TO, no location needed) and Live Navigation (fresh, precise fix) are separate modes; the app never fakes a position. Behaviour: [`PRODUCT_AND_USER_FLOWS.md`](PRODUCT_AND_USER_FLOWS.md). Data kept across launches: [`DATA_RETENTION.md`](DATA_RETENTION.md). Basemap: [`OFFLINE_BASEMAP.md`](OFFLINE_BASEMAP.md).
+- Route Guide (manual FROM + TO, no location needed) and Live Navigation (fresh, precise fix) are separate modes; the app never fakes a position. Behaviour: [`PRODUCT_AND_USER_FLOWS.md`](../PRODUCT_AND_USER_FLOWS.md). Data kept across launches: [`DATA_RETENTION.md`](../DATA_RETENTION.md). Basemap: [`OFFLINE_BASEMAP.md`](../OFFLINE_BASEMAP.md).
 - Journey-flow finalization (#307) merged as PRs #308–#324.
 
 ## Test baseline (SOURCE/RUNTIME VERIFIED on `6494092` plus the cleanup PR that carries this file, 2026-10-06)
