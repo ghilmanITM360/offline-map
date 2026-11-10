@@ -404,3 +404,34 @@ Hosted CI: run 42869985073 SUCCESS on `025acb1`; run 42870971247 SUCCESS on `807
 **Q11. Kaun kya maintain karega?** SDK owner: engine, screen, plugin, venue tool, pack format, compatibility matrix, security fixes, naye versions aur tags. Client: apni app, build aur signing, location permission text, venue data ki sehat aur updates (agar pack woh banate hain), translations ki approval, apne devices par testing aur store release.
 
 **Q12. Freeze karke client integration phase mein jayein?** Ji haan. SDK 0.1.1 ko is commit par engineering level par freeze kiya ja sakta hai; koi demonstrable release-blocking defect baqi nahin. Client integration trial shuru karein. Pilot aur production se pehle physical device testing, field survey (entrances, Gates 18/19, ilaqas) aur rights ke faislay zaroori hain.
+
+## R18. Fresh-checkout acceptance (2026-11-11)
+
+**FRESH CHECKOUT: PASS** on this Mac (single machine; a second Mac was NOT run, so cross-Mac reproduction is NOT VERIFIED).
+
+Method: `git clone --branch feat/muslim-ummah-offline-navigation-sdk` from GitHub into a throwaway folder outside the canonical checkout (no worktree, no reuse of `node_modules`, scratch folders or old deliveries). Tested SHA `78310097c6d5449f07101aad6bc2f8ef8c030825`, equal to local, origin and live remote (0/0). Tools: Node 24.14.0, npm 11.9.0, Xcode 26.2, Java 17.0.19, CocoaPods 1.16.2.
+
+| Step | Result |
+| --- | --- |
+| Git LFS | none used (`.gitattributes` has no LFS filter); the 434,589-byte basemap and all pack pins are ordinary tracked files; basemap SHA-256 `d5e6883d…8cc0` matches `BASEMAP_PROVENANCE.json` |
+| `npm ci` from the committed lockfile | OK |
+| `npm run typecheck`, `npm run lint` | 0 errors (1 existing warning) |
+| `npm test` (112 scripts, incl. golden routing parity, headless, exports, package, archive, dependency-security) | exit 0 |
+| `npm run test:components` | 234 suites, 2,536 tests PASS |
+| SDK Jest (`src/__tests__/Sdk`, `Karachi`) | 40 suites, 684 tests PASS |
+| SDK tarball | `acbdd74aa9a5cc8ea7aeaad59043b0755dfc786938d90784f7df591688a0332b`, byte-identical to the build in R14 |
+| Internal delivery `delivery-7831009` (89 entries) | archive `34b70225b3354c6ca7f9e0421900afbb1dd65b9b74389797b28f8578c10d1b98`; 13-step client acceptance PASS (consumer install, consumer tests, Android and iOS production Metro exports, no developer paths) |
+| External delivery `delivery-7831009-external` (81 entries) | archive `1618516d0ec3782b2eeaf61961b4851a3a81e0828534f230aa7c52b6339f525e`; 13-step client acceptance PASS; no Karachi pack file |
+
+The delivery id and archive hash name the commit they were built from, so they differ from `delivery-8078c4e` only because this commit also holds documentation. The SDK tarball is identical.
+
+**Reproduce on another Mac** (Git does not install the toolchain: Node 24.14.0 per `.nvmrc`, and for native builds only Xcode, Android SDK, JDK 17, CocoaPods, must be installed first):
+
+```
+git clone --branch feat/muslim-ummah-offline-navigation-sdk https://github.com/ghilmanITM360/offline-map.git
+cd offline-map && npm ci
+npm run sdk:doctor            # toolchain, committed inputs, basemap hash
+npm run sdk:doctor -- --build # + typecheck, package proof, both delivery builds
+```
+
+Everything needed is in Git; nothing is fetched from another Mac or from expiring CI artifacts. Not in Git by design: `.env`, signing keys, `android/local.properties`, build outputs, historical audit evidence (kept in `~/Documents/offline-map-audits/`, hashes recorded above). The basemap rights disposition (R10) is still an owner decision; the external delivery still contains it.

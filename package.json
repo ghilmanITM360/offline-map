@@ -27,6 +27,7 @@
     "pack:sdk": "node scripts/sdk-package/pack.mjs",
     "test:sdk-package": "node scripts/sdk-package/test.mjs",
     "test:sdk-consumer": "node scripts/sdk-package/consumer.mjs",
+    "sdk:doctor": "node scripts/sdk-package/doctor.mjs",
     "sdk:bundle": "node scripts/sdk-package/bundle.mjs",
     "sdk:karachi-pack": "node --import tsx scripts/sdk-pack/karachi.ts",
     "test:sdk-exports": "node scripts/test-sdk-exports.mjs",
