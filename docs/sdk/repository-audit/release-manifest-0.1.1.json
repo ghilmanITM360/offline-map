@@ -50,7 +50,7 @@
       "build": "Release, arm64-v8a",
       "apkSha256": "8a204853c553ad67fddee58f7978f24e9c115df476f99c6d2934da4450c3e6d2",
       "builtFrom": "delivery-6b65327 internal consumer",
-      "note": "built; NOT installed or run on an emulator"
+      "note": "built and installed (hash verified) on an API 36 emulator; journey NOT completed, see nativeAcceptance"
     }
   },
   "validation": {
@@ -84,5 +84,36 @@
     "rule": "two consecutive valid in-radius fixes, increasing timestamps, same Live session",
     "prematureOver40mAt12mNoise": "30/344 (8.7%) -> 3/344 (0.9%)",
     "delay": "about 1 s at 1 Hz"
+  },
+  "nativeAcceptance": {
+    "recordedAt": "2026-11-11, PC 1, base 6de533d",
+    "ios": {
+      "device": "iPhone 17 Pro simulator, iOS 26.2",
+      "binarySha256": "e57e83d4fb927407de121939b1d50d4585f9321b6e72591eaf72ee3c65400ff0",
+      "test01FullJourney": "PASS (121 s)",
+      "test06BlockRouteRerouteProvisionalArrival": "PASS (142 s)",
+      "note": "simulator GPS, not field GPS"
+    },
+    "android": {
+      "apkSha256": "8a204853c553ad67fddee58f7978f24e9c115df476f99c6d2934da4450c3e6d2",
+      "passed": [
+        "offline cold start",
+        "bundled venue open",
+        "destination and route (111 m)",
+        "Manual Guide",
+        "Live GPS card reached"
+      ],
+      "notRun": [
+        "one-fix non-arrival",
+        "second-fix arrival",
+        "duplicate/stale",
+        "reset on out-of-radius",
+        "GPS loss/reroute",
+        "Done/Exit",
+        "second journey"
+      ],
+      "status": "INCOMPLETE, to be finished on another Mac (owner)",
+      "openObservation": "in Live the app showed GPS signal lost and no app location request appeared in dumpsys location with adb emu geo fix or test providers; unclassified (emulator vs product), not proven a defect"
+    }
   }
 }

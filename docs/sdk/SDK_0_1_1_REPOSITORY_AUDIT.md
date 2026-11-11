@@ -481,3 +481,13 @@ PC 2 was not available; this is still PC 1. Repo at `88f7a81`: local = tracking 
 **Host preflight FAILED, no native test started.** Readings 07:46-07:49: load 42 then 135 then 167 (8 cores), swap 19.2/20 GB then 18.3/19.5 GB used, about 60 MB of free pages, Data volume 97 % full (14 GiB free). Top CPU: iCloud `bird`, `fileproviderd`, `fseventsd`, WindowServer, `mdworker` (unrelated to this work, not killed). Recovery attempts (2): shut down my idle iPhone 17 Pro simulator and re-measure after 90 s (load rose, not fell); wait/observe 60 s (no improvement). No other authorized machine available.
 
 **Result: Android API 36 journey on the corrected APK: BLOCKED (not run). iOS test01 and test06 on the corrected binary: BLOCKED (not run).** Nothing is claimed PASS. Next: rerun on PC 2 or after iCloud/swap pressure clears, with a process-group watchdog (boot 3 min, test 10 min). Tag, publish and basemap-rights decisions unchanged (owner).
+
+## R23. Native acceptance on PC 1 after host recovery (2026-11-11)
+
+Host recovered (swap 1.6/3 GB, disk fsync 3 ms, simctl under 1 s; load average about 240 was blocked I/O from iCloud and Spotlight with 50 % CPU idle, no process killed). Corrected binaries re-verified: iOS executable `e57e83d4…400ff0`, APK `8a204853…6e2`.
+
+**iOS (iPhone 17 Pro, iOS 26.2, corrected binary, external 10-min watchdog): test01FullJourney PASS, test06BlockRouteRerouteProvisionalArrival PASS.** Attempts 1 and 2 of test01 failed at "Your live route" because my own uninstall/reinstall had reset the app's location permission (screenshot: "Location access is turned off"). Cause: harness setup, not product. Fixed by `simctl privacy grant location`; attempt 3 passed. Harness (outside Git) also got a shorter simctl timeout with retries and a primed start location.
+
+**Android (API 36 arm64 Play image, airplane mode on): INCOMPLETE.** Passed: offline cold start, bundled venue, route (111 m), Manual Guide, Live card. Not run: one-fix non-arrival, second-fix arrival, duplicate/stale, out-of-radius reset, GPS loss/reroute, Done/Exit, second journey. In Live the app showed "GPS signal lost" and `dumpsys location` showed no request from the app, with `adb emu geo fix` (continuous 1 Hz) and with test providers, on two AVDs. Not classified as product or emulator; not claimed as a defect. Owner will run the Android journey on another Mac.
+
+Verdicts: iOS native on corrected arrival build PASS (simulator GPS). Android native NOT VERIFIED. Tag, publish, basemap rights, physical devices unchanged (owner).
