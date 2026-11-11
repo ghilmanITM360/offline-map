@@ -473,3 +473,11 @@ Evidence stays outside Git: `~/Documents/offline-map-audits/sdk-0.1.1-native-fin
 **Android (6b65327 APK `8a204853…6e2`).** Built (arm64 release), **not installed or run**; no emulator could be started reliably on the blocked host. Android native acceptance for the arrival change: **BLOCKED / NOT RUN**. The R20 Android pass predates the change.
 
 **Verdicts.** Arrival policy FIXED (source/package). Native acceptance of 6b65327: BLOCKED (host). Client integration trial: GO with limits only after the owner accepts that native reruns on the corrected build are pending; rerun test01, test06 and the Android journey on a quiet host first. Physical venue pilot: NO-GO. Unrestricted production: NO-GO. Owner decisions open: `sdk-v0.1.1` tag, publish, Karachi basemap rights in the external archive. Second Mac: NOT VERIFIED.
+
+## R22. Native acceptance retry preflight (2026-11-11, PC 1 `Ghilmans-Laptop.local`)
+
+PC 2 was not available; this is still PC 1. Repo at `88f7a81`: local = tracking = live remote, 0/0, clean tree, 1 worktree, 2 stashes. All five corrected identities re-verified by SHA-256 against the R21 values (SDK `39c7f7c7…a4a24`, internal `0fade7be…98`, external `8c68959c…9bce9b6`, APK `8a204853…6e2`, iOS executable `e57e83d4…400ff0`).
+
+**Host preflight FAILED, no native test started.** Readings 07:46-07:49: load 42 then 135 then 167 (8 cores), swap 19.2/20 GB then 18.3/19.5 GB used, about 60 MB of free pages, Data volume 97 % full (14 GiB free). Top CPU: iCloud `bird`, `fileproviderd`, `fseventsd`, WindowServer, `mdworker` (unrelated to this work, not killed). Recovery attempts (2): shut down my idle iPhone 17 Pro simulator and re-measure after 90 s (load rose, not fell); wait/observe 60 s (no improvement). No other authorized machine available.
+
+**Result: Android API 36 journey on the corrected APK: BLOCKED (not run). iOS test01 and test06 on the corrected binary: BLOCKED (not run).** Nothing is claimed PASS. Next: rerun on PC 2 or after iCloud/swap pressure clears, with a process-group watchdog (boot 3 min, test 10 min). Tag, publish and basemap-rights decisions unchanged (owner).
