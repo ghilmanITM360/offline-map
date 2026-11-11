@@ -85,7 +85,7 @@ export function createExpoLocationAdapter({ location = ExpoLocation, platform, r
           timer = setTimeout(start, Math.min(RESTART_BASE_MS * failures, RESTART_MAX_MS));
         };
         location.watchPositionAsync(
-          { accuracy: location.Accuracy.High, timeInterval: 1_000, distanceInterval: 1 },
+          { accuracy: location.Accuracy.High, timeInterval: 1_000, distanceInterval: 0 },
           (p) => { if (!stopped && !dead) { failures = 0; onFix(toFix(p)); } },
           die,
         ).then((s) => {

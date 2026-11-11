@@ -89,6 +89,15 @@ describe('fresh fix', () => {
 });
 
 describe('watch', () => {
+  it('asks for every fresh fix at most 1 s apart with no distance filter, so a user standing still keeps getting independently timestamped fixes', async () => {
+    // Measured on the Android emulator: distanceInterval 1 delivered nothing after the position settled (GPS-lost banner at 8 s, no second
+    // arrival fix); distanceInterval 0 delivered ~0.7 fixes/s while stationary. The SDK still rejects duplicate/stale/weak fixes itself.
+    const f = fakeLocation();
+    android(f.module).watch(() => undefined);
+    expect(f.module.watchPositionAsync).toHaveBeenCalledTimes(1);
+    expect(f.module.watchPositionAsync.mock.calls[0][0]).toEqual({ accuracy: 4, timeInterval: 1_000, distanceInterval: 0 });
+  });
+
   it('delivers fixes until stopped, then releases the subscription exactly once', async () => {
     const f = fakeLocation();
     const seen: unknown[] = [];
