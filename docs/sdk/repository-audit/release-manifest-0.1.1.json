@@ -144,14 +144,21 @@
           "map render",
           "destination and Route Preview",
           "device location source selected",
-          "Live started"
+          "Live started",
+          "watchPositionAsync subscription active (dumpsys uid 10215)",
+          "fixes reached NavigationController",
+          "two-fix arrival",
+          "watcher released on arrival and Exit"
         ],
-        "status": "INCOMPLETE: emulator guest stalls in Live mode; arrival checks not observed",
+        "status": "PARTIAL: Live subscription, continuous fixes, two-fix arrival and watcher cleanup PASS on emulator; isolated negative cases and second journey NOT VERIFIED natively",
         "gpsLostDiagnosis": [
           "default simulated source",
           "GMS Location Accuracy dialog blocks High-accuracy request",
           "identical-coordinate fixes blocked by distanceInterval 1; 8 s loss timeout is correct"
-        ]
+        ],
+        "diagnosticApkSha256": "5532436590ef210427575f15a1919db2835f5196e2b0485a6dc1fe81f11f7eee",
+        "diagnosticApkNote": "scratch build with console.log in expoLocation.ts, not delivered",
+        "emulatorNote": "fused provider interpolates one injected fix into several 1 Hz fixes"
       }
     }
   }
