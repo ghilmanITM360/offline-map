@@ -114,6 +114,45 @@
       ],
       "status": "INCOMPLETE, to be finished on another Mac (owner)",
       "openObservation": "in Live the app showed GPS signal lost and no app location request appeared in dumpsys location with adb emu geo fix or test providers; unclassified (emulator vs product), not proven a defect"
+    },
+    "pc2": {
+      "recordedAt": "2026-11-11, PC 2, base 1370e65",
+      "archives": {
+        "internal": {
+          "name": "delivery-1370e65",
+          "sha256": "e770093e31b43be2b13e33d50ecaa89ac0d1deea74a511df9d0648a5a3274106",
+          "clientAcceptance": "13/13"
+        },
+        "external": {
+          "name": "delivery-1370e65-external",
+          "sha256": "c9c9ff7987534bab6eca3a398673f8687b1d7685386058db12596fb16e1f45ed",
+          "clientAcceptance": "13/13"
+        }
+      },
+      "ios": {
+        "device": "iPhone 17 simulator, iOS 26.3, Xcode 26.2",
+        "executableSha256": "5e2353d84041c54056be4cdb6afa4af2a200c824b9dca7bf0791621aa463752f",
+        "mainJsbundleSha256": "796141a231c2c5e238692147b7ff75a62fc6f64d6b8aef469d138486e2ab3b37",
+        "test01FullJourney": "PASS (122.7 s)",
+        "test06BlockRouteRerouteProvisionalArrival": "PASS (137.4 s)",
+        "note": "simulator GPS, not field GPS"
+      },
+      "android": {
+        "apkSha256": "a4105d6fc497c2cd10e1ce8efe72160478d17e1794590026cea2670f89361d6d",
+        "passed": [
+          "offline cold start",
+          "map render",
+          "destination and Route Preview",
+          "device location source selected",
+          "Live started"
+        ],
+        "status": "INCOMPLETE: emulator guest stalls in Live mode; arrival checks not observed",
+        "gpsLostDiagnosis": [
+          "default simulated source",
+          "GMS Location Accuracy dialog blocks High-accuracy request",
+          "identical-coordinate fixes blocked by distanceInterval 1; 8 s loss timeout is correct"
+        ]
+      }
     }
   }
 }
