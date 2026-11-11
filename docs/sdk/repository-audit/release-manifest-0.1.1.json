@@ -161,5 +161,54 @@
         "emulatorNote": "fused provider interpolates one injected fix into several 1 Hz fixes"
       }
     }
+  },
+  "finalFreeze": {
+    "sourceCommit": "1036bb9 (examples/expo-consumer/expoLocation.ts: watch distanceInterval 1 -> 0, RED test first)",
+    "packagesChanged": false,
+    "sdkTarballSha256": "39c7f7c7bf8936e5aabc4ebae11323969656304304156eafaf2e8983067a4a24",
+    "archives": {
+      "internal": {
+        "name": "delivery-1036bb9",
+        "sha256": "ab4c2e361251da8e9ed1eea6a6bb1e58a06ec65d68ad09176209d9a346271a24"
+      },
+      "external": {
+        "name": "delivery-1036bb9-external",
+        "sha256": "4db8a98210f5ab3efe49a81395a846d2a034d2e78e06cc8d35618f6ca1c47987"
+      }
+    },
+    "clientAcceptance": "13/13 both archives",
+    "android": {
+      "apkSha256": "d6434ec0f845f2ce970ac30b9ee8f13b84811eef54a299b8fa0923e14576fcfc",
+      "note": "built from the 1036bb9 adapter in the scratch consumer; install+launch+device source only on this exact APK; behaviour measured on the logging build below",
+      "dist0LoggingApkSha256": "c35706d00ba8d9c13aa6cccf59be16a45c8201f7ffac2af157165fbe7efa1c36",
+      "dist1LoggingApkSha256": "5532436590ef210427575f15a1919db2835f5196e2b0485a6dc1fe81f11f7eee"
+    },
+    "ios": {
+      "executableSha256": "d436b398f03eaacdc57ad8b0d8484ea0094794ac8e14710553d472b209c7ab39",
+      "mainJsbundleSha256": "be85d11c61c3d67371701821b5fee7b6ddccd43ffdda1de5be95a5a3269d0dce",
+      "test06": "PASS 138.6 s, iPhone 17 iOS 26.3 simulator (earlier attempts failed only on simulator location permission reset by reinstall)"
+    },
+    "stationaryGps": {
+      "A_distanceInterval1": "1 injected fix -> 3 callbacks in 3 s, then none; GPS signal lost banner after 8 s while 30 m from Gate 02",
+      "B_distanceInterval0": "31 callbacks in 46 s (~0.7/s), distinct timestamps, no banner; arrival 15 s after in-radius target; ProviderRequest[OFF] after arrival; same HIGH_ACCURACY 1 s request in both so no extra GPS power"
+    },
+    "androidNative": {
+      "gpsLossInvalidatesPending": "PASS",
+      "secondJourneyCleanState": "PASS",
+      "watcherCleanup": "PASS",
+      "outOfRadiusReset": "SOURCE VERIFIED / NATIVE BLOCKED (emulator interpolation, 1 attempt raced)",
+      "weakAccuracy": "SOURCE VERIFIED / NATIVE BLOCKED (emulator fixes 5 m)",
+      "staleDuplicate": "SOURCE VERIFIED / NATIVE BLOCKED (emulator sets timestamps)",
+      "rerouteInvalidation": "SOURCE VERIFIED / NATIVE BLOCKED"
+    },
+    "tests": {
+      "jest": "2541 passed, 0 failed, 2 skipped (SdkIntakeFiles: owner Map data.xlsx and client template workbook, skipped when the file is absent; intake, not acceptance-critical)",
+      "expoConsumerJest": "52 passed; App.test.tsx needs the ios-precision tarball, run by client acceptance",
+      "npmTest": "pass",
+      "typecheck": "pass",
+      "lint": "pass",
+      "sdkPackage": "pass",
+      "dependencySecurity": "pass"
+    }
   }
 }
