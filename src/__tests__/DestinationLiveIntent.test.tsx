@@ -19,15 +19,25 @@ afterEach(() => jest.restoreAllMocks());
 
 it.each([
   { hasLocationPermission: false }, { locationPermissionPrecision: 'coarse' }, { locationPermissionPrecision: 'none' },
-  { locationServicesState: 'disabled' }, { locationServicesState: 'unknown' }, { currentLocationSource: 'remembered' },
-  { currentLocation: null }, { currentLocation: { ...fresh(), accuracy: undefined } },
-  { currentLocation: { ...fresh(), accuracy: -1 } }, { currentLocation: { ...fresh(), accuracy: 51 } },
-  { currentLocation: { ...fresh(), observedAtMs: 1 } }, { currentLocation: { ...fresh(), observedAtMs: undefined } },
-  { currentLocation: { ...fresh(), observedAtMs: Number.POSITIVE_INFINITY } },
+  { locationServicesState: 'disabled' }, { locationServicesState: 'unknown' },
 ])('selection records ineligible authority for %j', patch => {
   useAppStore.setState(patch as Partial<ReturnType<typeof useAppStore.getState>>);
   useAppStore.getState().setPendingJourney({ destination });
   expect(useAppStore.getState().destinationJourneyIntent?.autoLive).toBe('ineligible');
+});
+
+// A1-08: with permission, precision and services fine, a missing/stale/weak fix is not live-start authority by itself, but the
+// tap authorizes one bounded acquisition (DestinationFixAcquisition.test.tsx). It must never be recorded as eligible.
+it.each([
+  { currentLocationSource: 'remembered' },
+  { currentLocation: null }, { currentLocation: { ...fresh(), accuracy: undefined } },
+  { currentLocation: { ...fresh(), accuracy: -1 } }, { currentLocation: { ...fresh(), accuracy: 51 } },
+  { currentLocation: { ...fresh(), observedAtMs: 1 } }, { currentLocation: { ...fresh(), observedAtMs: undefined } },
+  { currentLocation: { ...fresh(), observedAtMs: Number.POSITIVE_INFINITY } },
+])('selection records acquirable (never eligible) authority for %j', patch => {
+  useAppStore.setState(patch as Partial<ReturnType<typeof useAppStore.getState>>);
+  useAppStore.getState().setPendingJourney({ destination });
+  expect(useAppStore.getState().destinationJourneyIntent?.autoLive).toBe('pending_fix');
 });
 
 it('handoff consumption preserves unique runtime intent; cancellation retires it', () => {
@@ -63,8 +73,22 @@ it('mounting a route without a destination-selection intent never auto-starts', 
   expect(useAppStore.getState().isNavigating).toBe(false);
 });
 
-it('later fresh GPS cannot promote an initially ineligible selection', async () => {
+it('later fresh GPS cannot promote a truly ineligible selection either', async () => {
+  useAppStore.setState({ currentLocation: null, locationServicesState: 'disabled' });
+  useAppStore.getState().setPendingJourney({ destination });
+  expect(useAppStore.getState().destinationJourneyIntent?.autoLive).toBe('ineligible');
+  const hook = await renderHook(() => useDirectionsViewModel(destination));
+  await waitFor(() => expect(useAppStore.getState().destinationJourneyIntent?.autoLive).toBe('consumed'));
+  await act(() => authorize());
+  jest.spyOn(LocationAccessService, 'resolveCurrentLocation').mockResolvedValue({ ok: true, source: 'live', coordinate: fresh(), permissionState: { granted: true, canAskAgain: true, status: 'granted' as never, precision: 'fine', servicesEnabled: true, servicesState: 'enabled' }, message: null });
+  await act(async () => hook.result.current.chooseCurrentLocation());
+  await waitFor(() => expect(hook.result.current.loadState).toBe('ready'));
+  expect(useAppStore.getState().isNavigating).toBe(false);
+});
+
+it('later fresh GPS cannot promote a selection whose own acquisition found no usable fix', async () => {
   useAppStore.setState({ currentLocation: null });
+  jest.spyOn(LocationAccessService, 'resolveCurrentLocation').mockResolvedValueOnce({ ok: false, source: null, coordinate: null, message: 'no fix', permissionState: { granted: true, canAskAgain: true, status: 'granted' as never, precision: 'fine', servicesEnabled: true, servicesState: 'enabled' } });
   useAppStore.getState().setPendingJourney({ destination });
   const hook = await renderHook(() => useDirectionsViewModel(destination));
   await act(() => authorize());
