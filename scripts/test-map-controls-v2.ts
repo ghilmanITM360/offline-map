@@ -40,7 +40,7 @@ for (const deadOffsetGuess of ['isOffline ? 42', 'showMapWarningBanner ? 56', 's
 // accounted for the other's extent). A single shared bottom value can't collide with itself.
 // #208 F1: that single value now comes from the sheet's MEASURED top (gorhom animatedPosition), applied
 // through one animated style, so the cluster still moves as one unit.
-assert(home.includes('style={[styles.controlStack, physicalLayerStyle, controlStackStyle]}'), 'HomeScreen must keep the control stack physical-LTR while positioning it through a single controlStackStyle value');
+assert(home.includes('style={[styles.controlStack, physicalLayerStyle, physicalRight(CONTROL_STACK_RIGHT), controlStackStyle]}'), 'HomeScreen must keep the control stack physical-LTR while positioning it through a single controlStackStyle value');
 assert(home.includes('animatedPosition={sheetTopY}'), 'The sheet must report its measured top so the control stack follows it, not a declared snap percentage');
 assert(home.includes('resolveControlStackPlacement({'), 'The control stack placement must come from the shared resolveControlStackPlacement worklet');
 assert(home.includes('recenter={'), 'HomeScreen must pass the recenter button into MapControls\' single stack, not render it separately');

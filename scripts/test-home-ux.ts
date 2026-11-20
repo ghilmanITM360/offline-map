@@ -20,7 +20,7 @@ assert(home.includes('handleCompassToggle'), 'Home compass control should call c
 assert(mapControls.includes('north-up') && mapControls.includes('Compass') && mapControls.includes('Navigation'), 'The orientation control must carry its own state (compass = north-up, arrow = following) with a spoken label');
 assert(home.includes('[HomeControl] pressed='), 'Home controls should emit dev diagnostics logs');
 assert(home.includes('__DEV__ && developerModeEnabled'), 'Developer controls must be gated behind __DEV__ and developer mode');
-assert(home.includes('marginRight: 76'), 'Outside-area warning should leave room for right-side map controls');
+assert(home.includes('physicalMarginRight(76)'), 'Outside-area warning should leave room for right-side map controls');
 assert(!home.includes('paddingRight: 88'), 'Home must not carry a category chip row');
 assert(home.includes('setOutsideBannerDismissed'), 'Outside-area warning should be compact and dismissible');
 assert(

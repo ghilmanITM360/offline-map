@@ -47,7 +47,8 @@ assert(!!outsideVenueBannerStyleMatch, 'Home screen must define an outsideVenueB
 const outsideVenueBannerStyle = outsideVenueBannerStyleMatch![0];
 assert(outsideVenueBannerStyle.includes('minHeight: 40'), 'Outside-venue banner must use compact pill sizing, not the old large card height');
 assert(!outsideVenueBannerStyle.includes('minHeight: 48'), 'Old two-line banner height (48) must be gone');
-assert(outsideVenueBannerStyle.includes('marginRight: 76'), 'Outside-venue banner must reserve right-side map controls');
+// 3ee3175: the 76 px reserve moved from the style block to physicalMarginRight(76) at the call site, so it stays on the physical right under RTL.
+assert(home.includes('physicalMarginRight(76)'), 'Outside-venue banner must reserve right-side map controls');
 
 // Sanity: the underlying gate lookup used by the banner is a real, cheap distance-only lookup
 // (not full route computation) and only returns gates that are actually routable/connected.
