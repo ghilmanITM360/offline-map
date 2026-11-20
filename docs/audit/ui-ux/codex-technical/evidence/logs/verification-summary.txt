@@ -1,0 +1,43 @@
+SOURCE BASELINE
+integration/ijtema-clean-baseline
+1599c324b7b5cfc1a0a92b4b1158382d4a7a2b81
+
+BUILD
+cd android
+./gradlew assembleRelease -PallowInsecureReleaseSigning=true -PreactNativeArchitectures=arm64-v8a --console=plain
+PASS: BUILD SUCCESSFUL in 8m 10s; 812 tasks
+APK SHA-256: 82907c67633a11f73675e11fe5dafeda60af5bbce2ddd8c01a14d0175eb202b2
+Signing: Android debug certificate; release-shaped, not production-signed
+
+VALIDATION
+npm run typecheck
+PASS
+
+npm run lint
+PASS
+
+npm run test:components -- --runInBand
+PASS: 55 suites, 597 tests, 0 snapshots; 48.092s
+
+npm test
+PASS: all configured script suites
+
+npm run test:all-gates-v2
+PASS: 18 cases; 16 pass; 2 explicitly BLOCKED (Gate 18/19 physical truth)
+
+npm run test:outside-street-gate-selection-cost-v2
+PASS
+
+npm run test:core-provider-routing-contract-v2
+PASS with Gate 01 sanity-cap warning
+
+npm run test:reroute-v2
+PASS
+
+WARNINGS / LIMITS
+- React act() overlap warnings in CameraManager tests.
+- Expected Splash unmount warnings.
+- Jest MapConfig reports absent env/key.
+- Node-only scripts log AsyncStorage window fallback while passing.
+- 26 street edges exceed 250 m human-review advisory; assertions pass.
+- Gradle warned about debug signing, NODE_ENV fallback and deprecated dependencies/features.
